@@ -15,15 +15,16 @@ use bbb_protocol::{
         EntityPositionSync as ProtocolEntityPositionSync,
         EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
         ItemStackSummary as ProtocolItemStackSummary, LevelChunkWithLight,
-        LightUpdate as ProtocolLightUpdate, PlayLogin as ProtocolPlayLogin,
-        RemoveEntities as ProtocolRemoveEntities, Respawn as ProtocolRespawn,
-        RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
-        SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData,
-        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
-        SetPlayerInventory as ProtocolSetPlayerInventory, TeleportEntity as ProtocolTeleportEntity,
-        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
-        PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
-        PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
+        LightUpdate as ProtocolLightUpdate, OpenScreen as ProtocolOpenScreen,
+        PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
+        Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
+        SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
+        SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
+        SetEquipment as ProtocolSetEquipment, SetPlayerInventory as ProtocolSetPlayerInventory,
+        TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X,
+        PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA,
+        PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT,
+        PLAYER_RELATIVE_Z,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -174,6 +175,8 @@ pub struct ContainerDataValue {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContainerState {
     pub container_id: i32,
+    pub menu_type_id: Option<i32>,
+    pub title: Option<String>,
     pub state_id: i32,
     pub slots: Vec<ContainerSlot>,
     pub data_values: Vec<ContainerDataValue>,
@@ -476,6 +479,7 @@ pub struct WorldCounters {
     pub inventory_slot_updates_received: usize,
     pub inventory_slots_tracked: usize,
     pub cursor_item_updates_received: usize,
+    pub container_open_updates_received: usize,
     pub container_content_updates_received: usize,
     pub container_slot_updates_received: usize,
     pub container_data_updates_received: usize,
@@ -781,11 +785,43 @@ impl WorldStore {
         self.inventory.cursor_item = packet.item;
     }
 
+    pub fn apply_open_screen(&mut self, packet: ProtocolOpenScreen) {
+        self.counters.container_open_updates_received += 1;
+        let existing = self
+            .inventory
+            .open_container
+            .take()
+            .filter(|container| container.container_id == packet.container_id)
+            .unwrap_or_else(|| ContainerState {
+                container_id: packet.container_id,
+                ..ContainerState::default()
+            });
+        self.inventory.open_container = Some(ContainerState {
+            container_id: packet.container_id,
+            menu_type_id: Some(packet.menu_type_id),
+            title: Some(packet.title),
+            state_id: existing.state_id,
+            slots: existing.slots,
+            data_values: existing.data_values,
+        });
+    }
+
     pub fn apply_container_set_content(&mut self, packet: ProtocolContainerSetContent) {
         self.counters.container_content_updates_received += 1;
         self.inventory.cursor_item = packet.carried_item;
+        let existing = self
+            .inventory
+            .open_container
+            .take()
+            .filter(|container| container.container_id == packet.container_id);
         self.inventory.open_container = Some(ContainerState {
             container_id: packet.container_id,
+            menu_type_id: existing
+                .as_ref()
+                .and_then(|container| container.menu_type_id),
+            title: existing
+                .as_ref()
+                .and_then(|container| container.title.clone()),
             state_id: packet.state_id,
             slots: packet
                 .items
@@ -796,12 +832,8 @@ impl WorldStore {
                     item,
                 })
                 .collect(),
-            data_values: self
-                .inventory
-                .open_container
-                .as_ref()
-                .filter(|container| container.container_id == packet.container_id)
-                .map(|container| container.data_values.clone())
+            data_values: existing
+                .map(|container| container.data_values)
                 .unwrap_or_default(),
         });
     }
@@ -2173,13 +2205,13 @@ mod tests {
         ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
         EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
         EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
-        EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, PlayLogin as ProtocolPlayLogin,
-        RemoveEntities as ProtocolRemoveEntities, Respawn as ProtocolRespawn,
-        RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
-        SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData,
-        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
-        SetPlayerInventory as ProtocolSetPlayerInventory, TeleportEntity as ProtocolTeleportEntity,
-        Vec3d as ProtocolVec3d,
+        EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, OpenScreen as ProtocolOpenScreen,
+        PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
+        Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
+        SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
+        SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
+        SetEquipment as ProtocolSetEquipment, SetPlayerInventory as ProtocolSetPlayerInventory,
+        TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -2365,6 +2397,11 @@ mod tests {
         );
         assert_eq!(store.inventory().cursor_item, item_stack(99, 1));
 
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 2,
+            title: "Chest".to_string(),
+        });
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 12,
@@ -2390,6 +2427,8 @@ mod tests {
 
         let container = store.inventory().open_container.as_ref().unwrap();
         assert_eq!(container.container_id, 7);
+        assert_eq!(container.menu_type_id, Some(2));
+        assert_eq!(container.title.as_deref(), Some("Chest"));
         assert_eq!(container.state_id, 13);
         assert_eq!(
             container.slots,
@@ -2417,6 +2456,7 @@ mod tests {
         assert_eq!(store.counters().inventory_slot_updates_received, 2);
         assert_eq!(store.counters().inventory_slots_tracked, 1);
         assert_eq!(store.counters().cursor_item_updates_received, 1);
+        assert_eq!(store.counters().container_open_updates_received, 1);
         assert_eq!(store.counters().container_content_updates_received, 1);
         assert_eq!(store.counters().container_slot_updates_received, 1);
         assert_eq!(store.counters().container_data_updates_received, 2);

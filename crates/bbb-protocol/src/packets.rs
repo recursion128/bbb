@@ -94,6 +94,7 @@ pub enum PlayClientbound {
     Ping { id: i32 },
     Login(PlayLogin),
     MoveEntity(EntityMove),
+    OpenScreen(OpenScreen),
     PlayerPosition(PlayerPositionUpdate),
     PlayerAbilities(PlayerAbilities),
     RemoveEntities(RemoveEntities),
@@ -285,6 +286,13 @@ pub struct ContainerSetSlot {
     pub state_id: i32,
     pub slot: i16,
     pub item: ItemStackSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpenScreen {
+    pub container_id: i32,
+    pub menu_type_id: i32,
+    pub title: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1202,6 +1210,14 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 false,
                 true,
             )?))
+        }
+        ids::play::CLIENTBOUND_OPEN_SCREEN => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::OpenScreen(OpenScreen {
+                container_id: decoder.read_var_i32()?,
+                menu_type_id: decoder.read_var_i32()?,
+                title: decode_component_summary_from_decoder(&mut decoder)?,
+            }))
         }
         ids::play::CLIENTBOUND_PLAYER_ABILITIES => {
             let mut decoder = Decoder::new(payload);
@@ -2367,6 +2383,22 @@ mod tests {
                 container_id: 7,
                 id: 3,
                 value: 42,
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        payload.write_var_i32(2);
+        payload.write_bytes(&nbt_string_root("Chest"));
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_SCREEN, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::OpenScreen(OpenScreen {
+                container_id: 7,
+                menu_type_id: 2,
+                title: "Chest".to_string(),
             })
         );
 

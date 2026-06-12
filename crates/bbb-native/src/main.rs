@@ -1852,6 +1852,9 @@ fn drain_net_events(
             NetEvent::ContainerSetSlot(update) => {
                 world.apply_container_set_slot(update);
             }
+            NetEvent::OpenScreen(update) => {
+                world.apply_open_screen(update);
+            }
             NetEvent::SetCursorItem(update) => {
                 world.apply_set_cursor_item(update);
             }

@@ -62,6 +62,7 @@ pub mod play {
     pub const CLIENTBOUND_MOVE_ENTITY_POS: i32 = 53;
     pub const CLIENTBOUND_MOVE_ENTITY_POS_ROT: i32 = 54;
     pub const CLIENTBOUND_MOVE_ENTITY_ROT: i32 = 56;
+    pub const CLIENTBOUND_OPEN_SCREEN: i32 = 59;
     pub const CLIENTBOUND_PING: i32 = 61;
     pub const CLIENTBOUND_PLAYER_ABILITIES: i32 = 64;
     pub const CLIENTBOUND_PLAYER_POSITION: i32 = 72;

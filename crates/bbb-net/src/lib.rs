@@ -12,13 +12,13 @@ use bbb_protocol::{
         self, AddEntity, BlockChangedAck, BlockUpdate, ChunksBiomes, ClientIntent,
         ConfigurationClientbound, ContainerClose, ContainerSetContent, ContainerSetData,
         ContainerSetSlot, EntityMove, EntityPositionSync, ForgetLevelChunk, GameEvent,
-        InteractionHand, LevelChunkWithLight, LightUpdate, LoginClientbound, PickItemFromBlock,
-        PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction, PlayerCommand,
-        PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState, PlayerPositionUpdate,
-        RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetChunkCacheCenter,
-        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetEntityData,
-        SetEntityMotion, SetEquipment, SetHeldSlot, SetPlayerInventory, SetSimulationDistance,
-        SystemChat, TeleportEntity, UseItem, UseItemOn,
+        InteractionHand, LevelChunkWithLight, LightUpdate, LoginClientbound, OpenScreen,
+        PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction,
+        PlayerCommand, PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState,
+        PlayerPositionUpdate, RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate,
+        SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
+        SetEntityData, SetEntityMotion, SetEquipment, SetHeldSlot, SetPlayerInventory,
+        SetSimulationDistance, SystemChat, TeleportEntity, UseItem, UseItemOn,
     },
 };
 use bbb_world::{
@@ -97,6 +97,7 @@ pub enum NetEvent {
     ContainerSetContent(ContainerSetContent),
     ContainerSetData(ContainerSetData),
     ContainerSetSlot(ContainerSetSlot),
+    OpenScreen(OpenScreen),
     SetCursorItem(SetCursorItem),
     SetPlayerInventory(SetPlayerInventory),
     AddEntity(AddEntity),
@@ -393,6 +394,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::ContainerSetSlot(update) => {
                     emit(&events, NetEvent::ContainerSetSlot(update)).await?;
                 }
+                PlayClientbound::OpenScreen(update) => {
+                    emit(&events, NetEvent::OpenScreen(update)).await?;
+                }
                 PlayClientbound::Disconnect(disconnect) => {
                     bail!("play disconnected: {}", disconnect.reason)
                 }
@@ -636,6 +640,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::ContainerSetSlot(update) => {
                     world.apply_container_set_slot(update);
+                }
+                PlayClientbound::OpenScreen(update) => {
+                    world.apply_open_screen(update);
                 }
                 PlayClientbound::Disconnect(disconnect) => {
                     bail!("play disconnected: {}", disconnect.reason)
