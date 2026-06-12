@@ -10,13 +10,15 @@ use bbb_protocol::{
     ids,
     packets::{
         self, AddEntity, BlockChangedAck, BlockUpdate, ChunksBiomes, ClientIntent,
-        ConfigurationClientbound, EntityMove, EntityPositionSync, ForgetLevelChunk, GameEvent,
+        ConfigurationClientbound, ContainerClose, ContainerSetContent, ContainerSetData,
+        ContainerSetSlot, EntityMove, EntityPositionSync, ForgetLevelChunk, GameEvent,
         InteractionHand, LevelChunkWithLight, LightUpdate, LoginClientbound, PickItemFromBlock,
         PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction, PlayerCommand,
         PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState, PlayerPositionUpdate,
         RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetChunkCacheCenter,
-        SetChunkCacheRadius, SetDefaultSpawnPosition, SetEntityData, SetEntityMotion, SetEquipment,
-        SetHeldSlot, SetSimulationDistance, SystemChat, TeleportEntity, UseItem, UseItemOn,
+        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetEntityData,
+        SetEntityMotion, SetEquipment, SetHeldSlot, SetPlayerInventory, SetSimulationDistance,
+        SystemChat, TeleportEntity, UseItem, UseItemOn,
     },
 };
 use bbb_world::{
@@ -91,6 +93,12 @@ pub enum NetEvent {
         packet_id: i32,
         len: usize,
     },
+    ContainerClose(ContainerClose),
+    ContainerSetContent(ContainerSetContent),
+    ContainerSetData(ContainerSetData),
+    ContainerSetSlot(ContainerSetSlot),
+    SetCursorItem(SetCursorItem),
+    SetPlayerInventory(SetPlayerInventory),
     AddEntity(AddEntity),
     MoveEntity(EntityMove),
     EntityPositionSync(EntityPositionSync),
@@ -373,6 +381,18 @@ pub async fn run_offline_event_stream(
                     let (id, payload) = packets::encode_play_chunk_batch_received(9.0);
                     conn.send_packet(id, &payload).await?;
                 }
+                PlayClientbound::ContainerClose(update) => {
+                    emit(&events, NetEvent::ContainerClose(update)).await?;
+                }
+                PlayClientbound::ContainerSetContent(update) => {
+                    emit(&events, NetEvent::ContainerSetContent(update)).await?;
+                }
+                PlayClientbound::ContainerSetData(update) => {
+                    emit(&events, NetEvent::ContainerSetData(update)).await?;
+                }
+                PlayClientbound::ContainerSetSlot(update) => {
+                    emit(&events, NetEvent::ContainerSetSlot(update)).await?;
+                }
                 PlayClientbound::Disconnect(disconnect) => {
                     bail!("play disconnected: {}", disconnect.reason)
                 }
@@ -403,6 +423,12 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::SetHeldSlot(slot) => {
                     emit(&events, NetEvent::HeldSlot(slot)).await?;
+                }
+                PlayClientbound::SetCursorItem(update) => {
+                    emit(&events, NetEvent::SetCursorItem(update)).await?;
+                }
+                PlayClientbound::SetPlayerInventory(update) => {
+                    emit(&events, NetEvent::SetPlayerInventory(update)).await?;
                 }
                 PlayClientbound::GameEvent(event) => {
                     emit(&events, NetEvent::GameEvent(event)).await?;
@@ -599,6 +625,18 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     let (id, payload) = packets::encode_play_chunk_batch_received(9.0);
                     conn.send_packet(id, &payload).await?;
                 }
+                PlayClientbound::ContainerClose(update) => {
+                    world.apply_container_close(update);
+                }
+                PlayClientbound::ContainerSetContent(update) => {
+                    world.apply_container_set_content(update);
+                }
+                PlayClientbound::ContainerSetData(update) => {
+                    world.apply_container_set_data(update);
+                }
+                PlayClientbound::ContainerSetSlot(update) => {
+                    world.apply_container_set_slot(update);
+                }
                 PlayClientbound::Disconnect(disconnect) => {
                     bail!("play disconnected: {}", disconnect.reason)
                 }
@@ -646,6 +684,12 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::PlayerAbilities(_) => {}
                 PlayClientbound::SetExperience(_) => {}
                 PlayClientbound::SetHeldSlot(_) => {}
+                PlayClientbound::SetCursorItem(update) => {
+                    world.apply_set_cursor_item(update);
+                }
+                PlayClientbound::SetPlayerInventory(update) => {
+                    world.apply_set_player_inventory(update);
+                }
                 PlayClientbound::SetDefaultSpawnPosition(_) => {}
                 PlayClientbound::SetSimulationDistance(_) => {}
                 PlayClientbound::SystemChat(_) => {}

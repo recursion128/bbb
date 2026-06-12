@@ -8,14 +8,19 @@ use bbb_protocol::{
     packets::{
         AddEntity as ProtocolAddEntity, BlockUpdate as ProtocolBlockUpdate,
         ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
+        ContainerClose as ProtocolContainerClose,
+        ContainerSetContent as ProtocolContainerSetContent,
+        ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
         EntityDataValue as ProtocolEntityDataValue, EntityMove as ProtocolEntityMove,
         EntityPositionSync as ProtocolEntityPositionSync,
-        EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, LevelChunkWithLight,
+        EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+        ItemStackSummary as ProtocolItemStackSummary, LevelChunkWithLight,
         LightUpdate as ProtocolLightUpdate, PlayLogin as ProtocolPlayLogin,
         RemoveEntities as ProtocolRemoveEntities, Respawn as ProtocolRespawn,
         RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
-        SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
-        SetEquipment as ProtocolSetEquipment, TeleportEntity as ProtocolTeleportEntity,
+        SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData,
+        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
+        SetPlayerInventory as ProtocolSetPlayerInventory, TeleportEntity as ProtocolTeleportEntity,
         Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
         PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
         PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
@@ -146,6 +151,49 @@ pub struct EntityState {
     pub on_ground: Option<bool>,
     pub data_values: Vec<ProtocolEntityDataValue>,
     pub equipment: Vec<ProtocolEquipmentSlotUpdate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InventorySlot {
+    pub slot: i32,
+    pub item: ProtocolItemStackSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerSlot {
+    pub slot: i16,
+    pub item: ProtocolItemStackSummary,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerDataValue {
+    pub id: i16,
+    pub value: i16,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerState {
+    pub container_id: i32,
+    pub state_id: i32,
+    pub slots: Vec<ContainerSlot>,
+    pub data_values: Vec<ContainerDataValue>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InventoryState {
+    pub player_slots: Vec<InventorySlot>,
+    pub cursor_item: ProtocolItemStackSummary,
+    pub open_container: Option<ContainerState>,
+}
+
+impl Default for InventoryState {
+    fn default() -> Self {
+        Self {
+            player_slots: Vec::new(),
+            cursor_item: ProtocolItemStackSummary::empty(),
+            open_container: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -425,6 +473,13 @@ pub struct WorldCounters {
     pub block_updates_applied: usize,
     pub chunk_forgets_received: usize,
     pub chunks_forgotten: usize,
+    pub inventory_slot_updates_received: usize,
+    pub inventory_slots_tracked: usize,
+    pub cursor_item_updates_received: usize,
+    pub container_content_updates_received: usize,
+    pub container_slot_updates_received: usize,
+    pub container_data_updates_received: usize,
+    pub container_close_updates_received: usize,
     pub entities_tracked: usize,
     pub entities_received: usize,
     pub entity_position_syncs_received: usize,
@@ -551,6 +606,7 @@ pub struct WorldStore {
     registries: RegistrySet,
     chunks: Vec<ChunkColumn>,
     entities: Vec<EntityState>,
+    inventory: InventoryState,
     counters: WorldCounters,
 }
 
@@ -706,6 +762,97 @@ impl WorldStore {
         }
         self.counters.biome_updates_applied += applied;
         Ok(applied)
+    }
+
+    pub fn apply_set_player_inventory(&mut self, packet: ProtocolSetPlayerInventory) {
+        self.counters.inventory_slot_updates_received += 1;
+        set_inventory_slot(
+            &mut self.inventory.player_slots,
+            InventorySlot {
+                slot: packet.slot,
+                item: packet.item,
+            },
+        );
+        self.update_inventory_slot_count();
+    }
+
+    pub fn apply_set_cursor_item(&mut self, packet: ProtocolSetCursorItem) {
+        self.counters.cursor_item_updates_received += 1;
+        self.inventory.cursor_item = packet.item;
+    }
+
+    pub fn apply_container_set_content(&mut self, packet: ProtocolContainerSetContent) {
+        self.counters.container_content_updates_received += 1;
+        self.inventory.cursor_item = packet.carried_item;
+        self.inventory.open_container = Some(ContainerState {
+            container_id: packet.container_id,
+            state_id: packet.state_id,
+            slots: packet
+                .items
+                .into_iter()
+                .enumerate()
+                .map(|(slot, item)| ContainerSlot {
+                    slot: slot as i16,
+                    item,
+                })
+                .collect(),
+            data_values: self
+                .inventory
+                .open_container
+                .as_ref()
+                .filter(|container| container.container_id == packet.container_id)
+                .map(|container| container.data_values.clone())
+                .unwrap_or_default(),
+        });
+    }
+
+    pub fn apply_container_set_slot(&mut self, packet: ProtocolContainerSetSlot) {
+        self.counters.container_slot_updates_received += 1;
+        let container = self.ensure_container(packet.container_id);
+        container.state_id = packet.state_id;
+        set_container_slot(
+            &mut container.slots,
+            ContainerSlot {
+                slot: packet.slot,
+                item: packet.item,
+            },
+        );
+    }
+
+    pub fn apply_container_set_data(&mut self, packet: ProtocolContainerSetData) {
+        self.counters.container_data_updates_received += 1;
+        let container = self.ensure_container(packet.container_id);
+        if let Some(existing) = container
+            .data_values
+            .iter_mut()
+            .find(|value| value.id == packet.id)
+        {
+            *existing = ContainerDataValue {
+                id: packet.id,
+                value: packet.value,
+            };
+        } else {
+            container.data_values.push(ContainerDataValue {
+                id: packet.id,
+                value: packet.value,
+            });
+        }
+        container.data_values.sort_by_key(|value| value.id);
+    }
+
+    pub fn apply_container_close(&mut self, packet: ProtocolContainerClose) -> bool {
+        self.counters.container_close_updates_received += 1;
+        if self
+            .inventory
+            .open_container
+            .as_ref()
+            .is_some_and(|container| container.container_id == packet.container_id)
+        {
+            self.inventory.open_container = None;
+            true
+        } else {
+            false
+        }
     }
 
     pub fn apply_add_entity(&mut self, packet: ProtocolAddEntity) {
@@ -1036,6 +1183,10 @@ impl WorldStore {
         self.counters.clone()
     }
 
+    pub fn inventory(&self) -> &InventoryState {
+        &self.inventory
+    }
+
     pub fn dimension(&self) -> WorldDimension {
         self.dimension
     }
@@ -1054,6 +1205,28 @@ impl WorldStore {
 
     pub fn registries(&self) -> &RegistrySet {
         &self.registries
+    }
+
+    fn ensure_container(&mut self, container_id: i32) -> &mut ContainerState {
+        if self
+            .inventory
+            .open_container
+            .as_ref()
+            .is_none_or(|container| container.container_id != container_id)
+        {
+            self.inventory.open_container = Some(ContainerState {
+                container_id,
+                ..ContainerState::default()
+            });
+        }
+        self.inventory
+            .open_container
+            .as_mut()
+            .expect("container was initialized")
+    }
+
+    fn update_inventory_slot_count(&mut self) {
+        self.counters.inventory_slots_tracked = self.inventory.player_slots.len();
     }
 
     fn update_entity_count(&mut self) {
@@ -1390,6 +1563,24 @@ fn protocol_block_pos(pos: bbb_protocol::packets::BlockPos) -> BlockPos {
         y: pos.y,
         z: pos.z,
     }
+}
+
+fn set_inventory_slot(slots: &mut Vec<InventorySlot>, update: InventorySlot) {
+    if let Some(existing) = slots.iter_mut().find(|slot| slot.slot == update.slot) {
+        *existing = update;
+    } else {
+        slots.push(update);
+    }
+    slots.sort_by_key(|slot| slot.slot);
+}
+
+fn set_container_slot(slots: &mut Vec<ContainerSlot>, update: ContainerSlot) {
+    if let Some(existing) = slots.iter_mut().find(|slot| slot.slot == update.slot) {
+        *existing = update;
+    } else {
+        slots.push(update);
+    }
+    slots.sort_by_key(|slot| slot.slot);
 }
 
 fn entity_vec3(vec: ProtocolVec3d) -> EntityVec3 {
@@ -1977,14 +2168,18 @@ mod tests {
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos,
         BlockUpdate as ProtocolBlockUpdate, ChunkBiomeData as ProtocolChunkBiomeData,
         ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes,
-        CommonPlayerSpawnInfo as ProtocolSpawnInfo, EntityDataValue as ProtocolEntityDataValue,
-        EntityDataValueKind, EntityMove as ProtocolEntityMove,
-        EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        ItemStackSummary, PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
-        Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
-        SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetEntityData as ProtocolSetEntityData,
+        CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerClose as ProtocolContainerClose,
+        ContainerSetContent as ProtocolContainerSetContent,
+        ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
+        EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+        EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
+        EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, PlayLogin as ProtocolPlayLogin,
+        RemoveEntities as ProtocolRemoveEntities, Respawn as ProtocolRespawn,
+        RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
+        SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData,
         SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
-        TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d,
+        SetPlayerInventory as ProtocolSetPlayerInventory, TeleportEntity as ProtocolTeleportEntity,
+        Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -2143,6 +2338,89 @@ mod tests {
             level.dimension_type_name.as_deref(),
             Some("minecraft:the_end")
         );
+    }
+
+    #[test]
+    fn tracks_player_inventory_and_container_state() {
+        let mut store = WorldStore::new();
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 36,
+            item: item_stack(42, 1),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 36,
+            item: item_stack(43, 2),
+        });
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(99, 1),
+        });
+
+        assert_eq!(
+            store.inventory().player_slots,
+            vec![InventorySlot {
+                slot: 36,
+                item: item_stack(43, 2),
+            }]
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(99, 1));
+
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![ItemStackSummary::empty(), item_stack(42, 64)],
+            carried_item: ItemStackSummary::empty(),
+        });
+        store.apply_container_set_slot(ProtocolContainerSetSlot {
+            container_id: 7,
+            state_id: 13,
+            slot: 1,
+            item: item_stack(44, 3),
+        });
+        store.apply_container_set_data(ProtocolContainerSetData {
+            container_id: 7,
+            id: 2,
+            value: 9,
+        });
+        store.apply_container_set_data(ProtocolContainerSetData {
+            container_id: 7,
+            id: 2,
+            value: 10,
+        });
+
+        let container = store.inventory().open_container.as_ref().unwrap();
+        assert_eq!(container.container_id, 7);
+        assert_eq!(container.state_id, 13);
+        assert_eq!(
+            container.slots,
+            vec![
+                ContainerSlot {
+                    slot: 0,
+                    item: ItemStackSummary::empty(),
+                },
+                ContainerSlot {
+                    slot: 1,
+                    item: item_stack(44, 3),
+                },
+            ]
+        );
+        assert_eq!(
+            container.data_values,
+            vec![ContainerDataValue { id: 2, value: 10 }]
+        );
+        assert_eq!(store.inventory().cursor_item, ItemStackSummary::empty());
+
+        assert!(store.apply_container_close(ProtocolContainerClose { container_id: 7 }));
+        assert!(store.inventory().open_container.is_none());
+        assert!(!store.apply_container_close(ProtocolContainerClose { container_id: 99 }));
+
+        assert_eq!(store.counters().inventory_slot_updates_received, 2);
+        assert_eq!(store.counters().inventory_slots_tracked, 1);
+        assert_eq!(store.counters().cursor_item_updates_received, 1);
+        assert_eq!(store.counters().container_content_updates_received, 1);
+        assert_eq!(store.counters().container_slot_updates_received, 1);
+        assert_eq!(store.counters().container_data_updates_received, 2);
+        assert_eq!(store.counters().container_close_updates_received, 2);
     }
 
     #[test]
@@ -2856,6 +3134,14 @@ mod tests {
             y_rot: 20.0,
             y_head_rot: 30.0,
             data: 99,
+        }
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
         }
     }
 

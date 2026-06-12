@@ -1840,6 +1840,24 @@ fn drain_net_events(
             NetEvent::PacketSeen { .. } => {
                 counters.packets_seen += 1;
             }
+            NetEvent::ContainerClose(update) => {
+                world.apply_container_close(update);
+            }
+            NetEvent::ContainerSetContent(update) => {
+                world.apply_container_set_content(update);
+            }
+            NetEvent::ContainerSetData(update) => {
+                world.apply_container_set_data(update);
+            }
+            NetEvent::ContainerSetSlot(update) => {
+                world.apply_container_set_slot(update);
+            }
+            NetEvent::SetCursorItem(update) => {
+                world.apply_set_cursor_item(update);
+            }
+            NetEvent::SetPlayerInventory(update) => {
+                world.apply_set_player_inventory(update);
+            }
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
             }
