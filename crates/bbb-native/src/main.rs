@@ -1882,6 +1882,9 @@ fn drain_net_events(
             NetEvent::SetEquipment(update) => {
                 world.apply_set_equipment(update);
             }
+            NetEvent::SetPassengers(update) => {
+                world.apply_set_passengers(update);
+            }
             NetEvent::UpdateAttributes(update) => {
                 world.apply_update_attributes(update);
             }

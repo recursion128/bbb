@@ -111,6 +111,7 @@ pub enum PlayClientbound {
     SetExperience(PlayerExperience),
     SetHealth(PlayerHealth),
     SetHeldSlot(SetHeldSlot),
+    SetPassengers(SetPassengers),
     SetPlayerInventory(SetPlayerInventory),
     SectionBlocksUpdate(SectionBlocksUpdate),
     SetChunkCacheCenter(SetChunkCacheCenter),
@@ -188,6 +189,12 @@ pub struct SetEntityMotion {
 pub struct SetEquipment {
     pub entity_id: i32,
     pub slots: Vec<EquipmentSlotUpdate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetPassengers {
+    pub vehicle_id: i32,
+    pub passenger_ids: Vec<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1301,6 +1308,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 slot: decoder.read_var_i32()?,
             }))
         }
+        ids::play::CLIENTBOUND_SET_PASSENGERS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetPassengers(decode_set_passengers(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_SECTION_BLOCKS_UPDATE => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SectionBlocksUpdate(
@@ -1548,6 +1561,22 @@ fn decode_remove_entities(decoder: &mut Decoder<'_>) -> Result<RemoveEntities> {
         entity_ids.push(decoder.read_var_i32()?);
     }
     Ok(RemoveEntities { entity_ids })
+}
+
+fn decode_set_passengers(decoder: &mut Decoder<'_>) -> Result<SetPassengers> {
+    let vehicle_id = decoder.read_var_i32()?;
+    let count = decoder.read_len()?;
+    if count > MAX_ENTITY_ID_LIST {
+        return Err(ProtocolError::PacketTooLarge(count, MAX_ENTITY_ID_LIST));
+    }
+    let mut passenger_ids = Vec::with_capacity(count);
+    for _ in 0..count {
+        passenger_ids.push(decoder.read_var_i32()?);
+    }
+    Ok(SetPassengers {
+        vehicle_id,
+        passenger_ids,
+    })
 }
 
 fn decode_teleport_entity(decoder: &mut Decoder<'_>) -> Result<TeleportEntity> {
@@ -2477,6 +2506,26 @@ mod tests {
                         modifiers: Vec::new(),
                     },
                 ],
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_set_passengers_packet() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        payload.write_var_i32(2);
+        payload.write_var_i32(123);
+        payload.write_var_i32(456);
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_PASSENGERS, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetPassengers(SetPassengers {
+                vehicle_id: 7,
+                passenger_ids: vec![123, 456],
             })
         );
     }

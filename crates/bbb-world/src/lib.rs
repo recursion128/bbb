@@ -21,11 +21,12 @@ use bbb_protocol::{
         Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
         SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
         SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
-        SetEquipment as ProtocolSetEquipment, SetPlayerInventory as ProtocolSetPlayerInventory,
-        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
-        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
-        PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
-        PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
+        SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
+        SetPlayerInventory as ProtocolSetPlayerInventory, TeleportEntity as ProtocolTeleportEntity,
+        UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d,
+        PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z,
+        PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y,
+        PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -156,6 +157,8 @@ pub struct EntityState {
     pub data_values: Vec<ProtocolEntityDataValue>,
     pub equipment: Vec<ProtocolEquipmentSlotUpdate>,
     pub attributes: Vec<ProtocolAttributeSnapshot>,
+    pub vehicle_id: Option<i32>,
+    pub passengers: Vec<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -507,6 +510,9 @@ pub struct WorldCounters {
     pub entity_attribute_updates_received: usize,
     pub entity_attributes_received: usize,
     pub entity_attribute_updates_applied: usize,
+    pub entity_passenger_updates_received: usize,
+    pub entity_passenger_ids_received: usize,
+    pub entity_passenger_updates_applied: usize,
     pub entity_motion_updates_received: usize,
     pub entity_motion_updates_applied: usize,
     pub entity_head_rotations_received: usize,
@@ -954,6 +960,8 @@ impl WorldStore {
             data_values: Vec::new(),
             equipment: Vec::new(),
             attributes: Vec::new(),
+            vehicle_id: None,
+            passengers: Vec::new(),
         };
 
         if let Some(existing) = self
@@ -1132,6 +1140,56 @@ impl WorldStore {
         true
     }
 
+    pub fn apply_set_passengers(&mut self, packet: ProtocolSetPassengers) -> bool {
+        self.counters.entity_passenger_updates_received += 1;
+        self.counters.entity_passenger_ids_received += packet.passenger_ids.len();
+        let Some(vehicle_index) = self
+            .entities
+            .iter()
+            .position(|entity| entity.id == packet.vehicle_id)
+        else {
+            return false;
+        };
+
+        for entity in &mut self.entities {
+            if entity.vehicle_id == Some(packet.vehicle_id) {
+                entity.vehicle_id = None;
+            }
+        }
+        self.entities[vehicle_index].passengers.clear();
+
+        let mut mounted = Vec::new();
+        for passenger_id in packet.passenger_ids {
+            if passenger_id == packet.vehicle_id || mounted.contains(&passenger_id) {
+                continue;
+            }
+            let Some(passenger_index) = self
+                .entities
+                .iter()
+                .position(|entity| entity.id == passenger_id)
+            else {
+                continue;
+            };
+            if let Some(old_vehicle_id) = self.entities[passenger_index].vehicle_id {
+                if let Some(old_vehicle) = self
+                    .entities
+                    .iter_mut()
+                    .find(|entity| entity.id == old_vehicle_id)
+                {
+                    old_vehicle
+                        .passengers
+                        .retain(|existing| *existing != passenger_id);
+                }
+            }
+            self.entities[passenger_index].vehicle_id = Some(packet.vehicle_id);
+            mounted.push(passenger_id);
+        }
+
+        self.entities[vehicle_index].passengers = mounted;
+        self.counters.entity_passenger_updates_applied += 1;
+        true
+    }
+
     pub fn apply_set_entity_motion(&mut self, packet: ProtocolSetEntityMotion) -> bool {
         self.counters.entity_motion_updates_received += 1;
         let Some(entity) = self
@@ -1164,10 +1222,22 @@ impl WorldStore {
 
     pub fn apply_remove_entities(&mut self, packet: ProtocolRemoveEntities) -> usize {
         self.counters.entity_removes_received += packet.entity_ids.len();
+        let removed_ids = packet.entity_ids;
         let before = self.entities.len();
         self.entities
-            .retain(|entity| !packet.entity_ids.contains(&entity.id));
+            .retain(|entity| !removed_ids.contains(&entity.id));
         let removed = before - self.entities.len();
+        for entity in &mut self.entities {
+            if entity
+                .vehicle_id
+                .is_some_and(|vehicle_id| removed_ids.contains(&vehicle_id))
+            {
+                entity.vehicle_id = None;
+            }
+            entity
+                .passengers
+                .retain(|passenger_id| !removed_ids.contains(passenger_id));
+        }
         self.counters.entities_removed += removed;
         self.update_entity_count();
         removed
@@ -2292,9 +2362,9 @@ mod tests {
         Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
         SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
         SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
-        SetEquipment as ProtocolSetEquipment, SetPlayerInventory as ProtocolSetPlayerInventory,
-        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
-        Vec3d as ProtocolVec3d,
+        SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
+        SetPlayerInventory as ProtocolSetPlayerInventory, TeleportEntity as ProtocolTeleportEntity,
+        UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -2898,6 +2968,54 @@ mod tests {
         assert_eq!(store.counters().entity_removes_received, 2);
         assert_eq!(store.counters().entities_removed, 1);
         assert_eq!(store.counters().entities_tracked, 0);
+    }
+
+    #[test]
+    fn tracks_entity_passenger_updates() {
+        let mut store = WorldStore::new();
+        for id in [10, 20, 21, 30] {
+            store.apply_add_entity(protocol_add_entity(id));
+        }
+
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![20, 21, 999, 20],
+        }));
+        assert_eq!(store.probe_entity(10).unwrap().passengers, vec![20, 21]);
+        assert_eq!(store.probe_entity(20).unwrap().vehicle_id, Some(10));
+        assert_eq!(store.probe_entity(21).unwrap().vehicle_id, Some(10));
+
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 30,
+            passenger_ids: vec![20],
+        }));
+        assert_eq!(store.probe_entity(10).unwrap().passengers, vec![21]);
+        assert_eq!(store.probe_entity(20).unwrap().vehicle_id, Some(30));
+        assert_eq!(store.probe_entity(30).unwrap().passengers, vec![20]);
+
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 10,
+            passenger_ids: Vec::new(),
+        }));
+        assert!(store.probe_entity(10).unwrap().passengers.is_empty());
+        assert_eq!(store.probe_entity(21).unwrap().vehicle_id, None);
+
+        assert!(!store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 999,
+            passenger_ids: vec![21],
+        }));
+        assert_eq!(
+            store.apply_remove_entities(ProtocolRemoveEntities {
+                entity_ids: vec![30],
+            }),
+            1
+        );
+        assert_eq!(store.probe_entity(20).unwrap().vehicle_id, None);
+        assert!(store.probe_entity(30).is_none());
+
+        assert_eq!(store.counters().entity_passenger_updates_received, 4);
+        assert_eq!(store.counters().entity_passenger_ids_received, 6);
+        assert_eq!(store.counters().entity_passenger_updates_applied, 3);
     }
 
     #[test]
