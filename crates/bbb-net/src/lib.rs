@@ -375,6 +375,7 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::AddEntity(entity) => {
                     emit(&events, NetEvent::AddEntity(entity)).await?;
                 }
+                PlayClientbound::AwardStats(_) => {}
                 PlayClientbound::MoveEntity(update) => {
                     emit(&events, NetEvent::MoveEntity(update)).await?;
                 }
@@ -634,6 +635,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::AddEntity(entity) => {
                     world.apply_add_entity(entity);
                 }
+                PlayClientbound::AwardStats(_) => {}
                 PlayClientbound::MoveEntity(update) => {
                     world.apply_entity_move(update);
                 }

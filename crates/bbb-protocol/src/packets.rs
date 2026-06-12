@@ -14,6 +14,7 @@ const MAX_ENTITY_ATTRIBUTES: usize = 1024;
 const MAX_ENTITY_ID_LIST: usize = 8192;
 const MAX_EQUIPMENT_SLOTS: usize = 8;
 const MAX_ATTRIBUTE_MODIFIERS: usize = 1024;
+const MAX_AWARD_STATS: usize = 8192;
 const MAX_ITEM_COMPONENT_PATCH_ENTRIES: usize = 1024;
 const PLAYER_INPUT_FORWARD: u8 = 1;
 const PLAYER_INPUT_BACKWARD: u8 = 2;
@@ -79,6 +80,7 @@ pub enum ConfigurationClientbound {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlayClientbound {
     AddEntity(AddEntity),
+    AwardStats(AwardStats),
     BlockChangedAck(BlockChangedAck),
     BlockEntityData(BlockEntityData),
     BlockUpdate(BlockUpdate),
@@ -146,6 +148,18 @@ pub struct AddEntity {
     pub y_rot: f32,
     pub y_head_rot: f32,
     pub data: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AwardStats {
+    pub stats: Vec<StatUpdate>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StatUpdate {
+    pub stat_type_id: i32,
+    pub value_id: i32,
+    pub amount: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -1152,6 +1166,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::AddEntity(decode_add_entity(&mut decoder)?))
         }
+        ids::play::CLIENTBOUND_AWARD_STATS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::AwardStats(decode_award_stats(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK => {
             Ok(PlayClientbound::BlockChangedAck(BlockChangedAck {
                 sequence: Decoder::new(payload).read_var_i32()?,
@@ -1517,6 +1537,23 @@ fn decode_add_entity(decoder: &mut Decoder<'_>) -> Result<AddEntity> {
         y_head_rot: unpack_degrees(decoder.read_i8()?),
         data: decoder.read_var_i32()?,
     })
+}
+
+fn decode_award_stats(decoder: &mut Decoder<'_>) -> Result<AwardStats> {
+    let count = decoder.read_len()?;
+    if count > MAX_AWARD_STATS {
+        return Err(ProtocolError::PacketTooLarge(count, MAX_AWARD_STATS));
+    }
+
+    let mut stats = Vec::with_capacity(count);
+    for _ in 0..count {
+        stats.push(StatUpdate {
+            stat_type_id: decoder.read_var_i32()?,
+            value_id: decoder.read_var_i32()?,
+            amount: decoder.read_var_i32()?,
+        });
+    }
+    Ok(AwardStats { stats })
 }
 
 fn decode_entity_position_sync(decoder: &mut Decoder<'_>) -> Result<EntityPositionSync> {
@@ -3121,6 +3158,38 @@ mod tests {
 
     #[test]
     fn decodes_single_and_section_block_updates() {
+        assert_eq!(ids::play::CLIENTBOUND_AWARD_STATS, 3);
+        assert_eq!(ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK, 4);
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+        payload.write_var_i32(34);
+        payload.write_var_i32(12);
+        payload.write_var_i32(8);
+        payload.write_var_i32(5);
+        payload.write_var_i32(1);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_AWARD_STATS, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::AwardStats(AwardStats {
+                stats: vec![
+                    StatUpdate {
+                        stat_type_id: 0,
+                        value_id: 34,
+                        amount: 12,
+                    },
+                    StatUpdate {
+                        stat_type_id: 8,
+                        value_id: 5,
+                        amount: 1,
+                    },
+                ],
+            })
+        );
+
         let mut payload = Encoder::new();
         payload.write_var_i32(17);
         let packet = decode_play_clientbound(
