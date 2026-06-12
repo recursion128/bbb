@@ -43,6 +43,7 @@ pub mod configuration {
 pub mod play {
     pub const CLIENTBOUND_ADD_ENTITY: i32 = 1;
     pub const CLIENTBOUND_BLOCK_CHANGED_ACK: i32 = 3;
+    pub const CLIENTBOUND_BLOCK_ENTITY_DATA: i32 = 6;
     pub const CLIENTBOUND_BLOCK_UPDATE: i32 = 8;
     pub const CLIENTBOUND_CHUNK_BATCH_FINISHED: i32 = 11;
     pub const CLIENTBOUND_CHUNK_BATCH_START: i32 = 12;

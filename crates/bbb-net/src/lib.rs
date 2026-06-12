@@ -9,7 +9,7 @@ use bbb_protocol::{
     },
     ids,
     packets::{
-        self, AddEntity, BlockChangedAck, BlockUpdate, ChunksBiomes, ClientIntent,
+        self, AddEntity, BlockChangedAck, BlockEntityData, BlockUpdate, ChunksBiomes, ClientIntent,
         ConfigurationClientbound, ContainerClose, ContainerSetContent, ContainerSetData,
         ContainerSetSlot, EntityMove, EntityPositionSync, ForgetLevelChunk, GameEvent,
         InteractionHand, LevelChunkWithLight, LightUpdate, LoginClientbound, OpenScreen,
@@ -125,6 +125,7 @@ pub enum NetEvent {
     SystemChat(SystemChat),
     GameEvent(GameEvent),
     SetTime(PlayTime),
+    BlockEntityData(BlockEntityData),
     BlockUpdate(BlockUpdate),
     SectionBlocksUpdate(SectionBlocksUpdate),
     SetChunkCacheCenter(SetChunkCacheCenter),
@@ -443,6 +444,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::BlockChangedAck(ack) => {
                     emit(&events, NetEvent::BlockChangedAck(ack)).await?;
                 }
+                PlayClientbound::BlockEntityData(update) => {
+                    emit(&events, NetEvent::BlockEntityData(update)).await?;
+                }
                 PlayClientbound::PlayerPosition(update) => {
                     player_position_state = update.apply_to_state(player_position_state);
                     emit(&events, NetEvent::PlayerPosition(update)).await?;
@@ -701,6 +705,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::SetSimulationDistance(_) => {}
                 PlayClientbound::SystemChat(_) => {}
                 PlayClientbound::BlockChangedAck(_) => {}
+                PlayClientbound::BlockEntityData(update) => {
+                    world.apply_block_entity_data(update)?;
+                }
                 PlayClientbound::GameEvent(_) | PlayClientbound::SetTime(_) => {}
                 PlayClientbound::PlayerPosition(update) => {
                     player_position_state = update.apply_to_state(player_position_state);

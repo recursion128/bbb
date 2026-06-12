@@ -1929,6 +1929,12 @@ fn drain_net_events(
             NetEvent::BlockChangedAck(ack) => {
                 apply_block_changed_ack(counters, ack);
             }
+            NetEvent::BlockEntityData(update) => match world.apply_block_entity_data(update) {
+                Ok(_) => {}
+                Err(err) => {
+                    counters.last_error = Some(err.to_string());
+                }
+            },
             NetEvent::GameEvent(event) => {
                 apply_game_event(counters, event);
             }

@@ -6,9 +6,9 @@ use std::{
 use bbb_protocol::{
     codec::{Decoder, ProtocolError},
     packets::{
-        AddEntity as ProtocolAddEntity, BlockUpdate as ProtocolBlockUpdate,
-        ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
-        ContainerClose as ProtocolContainerClose,
+        AddEntity as ProtocolAddEntity, BlockEntityData as ProtocolBlockEntityData,
+        BlockUpdate as ProtocolBlockUpdate, ChunksBiomes as ProtocolChunksBiomes,
+        CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerClose as ProtocolContainerClose,
         ContainerSetContent as ProtocolContainerSetContent,
         ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
         EntityDataValue as ProtocolEntityDataValue, EntityMove as ProtocolEntityMove,
@@ -49,6 +49,8 @@ pub enum WorldDecodeError {
     ByteArrayTooLarge { actual: usize, max: usize },
     #[error("biome update has {remaining} trailing bytes")]
     TrailingBiomeData { remaining: usize },
+    #[error("block entity data has {remaining} trailing bytes")]
+    TrailingBlockEntityData { remaining: usize },
     #[error("negative NBT array length {0}")]
     NegativeNbtArrayLength(i32),
     #[error("invalid NBT tag id {0}")]
@@ -467,6 +469,8 @@ pub struct WorldCounters {
     pub chunks_decoded: usize,
     pub sections_decoded: usize,
     pub block_entities_seen: usize,
+    pub block_entity_updates_received: usize,
+    pub block_entity_updates_applied: usize,
     pub light_arrays_seen: usize,
     pub light_updates_received: usize,
     pub light_updates_applied: usize,
@@ -721,6 +725,47 @@ impl WorldStore {
         }
         self.counters.block_updates_applied += applied;
         applied
+    }
+
+    pub fn apply_block_entity_data(&mut self, packet: ProtocolBlockEntityData) -> Result<bool> {
+        self.counters.block_entity_updates_received += 1;
+        let pos = protocol_block_pos(packet.pos);
+        let y = i16::try_from(pos.y).map_err(|_| {
+            ProtocolError::InvalidData(format!("block entity y {} is out of i16 range", pos.y))
+        })?;
+        let mut decoder = Decoder::new(&packet.raw_nbt);
+        let nbt = skip_nbt_any(&mut decoder)?;
+        if !decoder.is_empty() {
+            return Err(WorldDecodeError::TrailingBlockEntityData {
+                remaining: decoder.remaining_len(),
+            });
+        }
+
+        let chunk_pos = ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        };
+        let record = BlockEntityRecord {
+            local_x: pos.x.rem_euclid(16) as u8,
+            y,
+            local_z: pos.z.rem_euclid(16) as u8,
+            type_id: packet.block_entity_type_id,
+            nbt,
+        };
+        let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
+            return Ok(false);
+        };
+        if let Some(existing) = chunk.block_entities.iter_mut().find(|entity| {
+            entity.local_x == record.local_x
+                && entity.y == record.y
+                && entity.local_z == record.local_z
+        }) {
+            *existing = record;
+        } else {
+            chunk.block_entities.push(record);
+        }
+        self.counters.block_entity_updates_applied += 1;
+        Ok(true)
     }
 
     pub fn apply_light_update(&mut self, update: ProtocolLightUpdate) -> Result<bool> {
@@ -2197,10 +2242,11 @@ mod tests {
     use super::*;
     use bbb_protocol::codec::Encoder;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos,
-        BlockUpdate as ProtocolBlockUpdate, ChunkBiomeData as ProtocolChunkBiomeData,
-        ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes,
-        CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerClose as ProtocolContainerClose,
+        AddEntity as ProtocolAddEntity, BlockEntityData as ProtocolBlockEntityData,
+        BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
+        ChunkBiomeData as ProtocolChunkBiomeData, ChunkPos as ProtocolChunkPos,
+        ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
+        ContainerClose as ProtocolContainerClose,
         ContainerSetContent as ProtocolContainerSetContent,
         ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
         EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
@@ -3084,6 +3130,81 @@ mod tests {
     }
 
     #[test]
+    fn applies_block_entity_data_update() {
+        let mut store = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        store
+            .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+            .unwrap();
+
+        let raw_nbt = nbt_compound_with_string("id", "minecraft:chest");
+        let applied = store
+            .apply_block_entity_data(ProtocolBlockEntityData {
+                pos: ProtocolBlockPos {
+                    x: 33,
+                    y: 7,
+                    z: -46,
+                },
+                block_entity_type_id: 9,
+                raw_nbt: raw_nbt.clone(),
+            })
+            .unwrap();
+
+        assert!(applied);
+        assert_eq!(store.counters().block_entity_updates_received, 1);
+        assert_eq!(store.counters().block_entity_updates_applied, 1);
+
+        let chunk = store.probe_chunk(ChunkPos { x: 2, z: -3 }).unwrap();
+        assert_eq!(chunk.block_entities.len(), 1);
+        assert_eq!(
+            chunk.block_entities[0],
+            BlockEntityRecord {
+                local_x: 1,
+                y: 7,
+                local_z: 2,
+                type_id: 9,
+                nbt: Some(NbtPayloadSummary {
+                    root_type: 10,
+                    byte_len: raw_nbt.len(),
+                }),
+            }
+        );
+
+        let replacement_nbt = nbt_compound_with_string("id", "minecraft:furnace");
+        assert!(store
+            .apply_block_entity_data(ProtocolBlockEntityData {
+                pos: ProtocolBlockPos {
+                    x: 33,
+                    y: 7,
+                    z: -46,
+                },
+                block_entity_type_id: 11,
+                raw_nbt: replacement_nbt,
+            })
+            .unwrap());
+        let chunk = store.probe_chunk(ChunkPos { x: 2, z: -3 }).unwrap();
+        assert_eq!(chunk.block_entities.len(), 1);
+        assert_eq!(chunk.block_entities[0].type_id, 11);
+
+        let missing_chunk_applied = store
+            .apply_block_entity_data(ProtocolBlockEntityData {
+                pos: ProtocolBlockPos {
+                    x: 800,
+                    y: 7,
+                    z: -46,
+                },
+                block_entity_type_id: 9,
+                raw_nbt: vec![0],
+            })
+            .unwrap();
+        assert!(!missing_chunk_applied);
+        assert_eq!(store.counters().block_entity_updates_received, 3);
+        assert_eq!(store.counters().block_entity_updates_applied, 2);
+    }
+
+    #[test]
     fn forgets_loaded_chunk() {
         let mut store = WorldStore::with_dimension(WorldDimension {
             min_y: 0,
@@ -3274,6 +3395,16 @@ mod tests {
         payload.write_u8(0);
         payload.write_var_i32(biome_id);
         payload.into_inner()
+    }
+
+    fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
+        let mut payload = vec![10, 8];
+        payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+        payload.extend_from_slice(name.as_bytes());
+        payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        payload.extend_from_slice(value.as_bytes());
+        payload.push(0);
+        payload
     }
 
     fn pack_fixed_values(values: &[u64], bits_per_entry: usize) -> Vec<u64> {

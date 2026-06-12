@@ -78,6 +78,7 @@ pub enum ConfigurationClientbound {
 pub enum PlayClientbound {
     AddEntity(AddEntity),
     BlockChangedAck(BlockChangedAck),
+    BlockEntityData(BlockEntityData),
     BlockUpdate(BlockUpdate),
     ChunkBatchStart,
     ChunkBatchFinished { batch_size: i32 },
@@ -363,6 +364,13 @@ pub struct TeleportEntity {
 pub struct BlockUpdate {
     pub pos: BlockPos,
     pub block_state_id: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockEntityData {
+    pub pos: BlockPos,
+    pub block_entity_type_id: i32,
+    pub raw_nbt: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1110,6 +1118,14 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK => {
             Ok(PlayClientbound::BlockChangedAck(BlockChangedAck {
                 sequence: Decoder::new(payload).read_var_i32()?,
+            }))
+        }
+        ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::BlockEntityData(BlockEntityData {
+                pos: decode_block_pos(decoder.read_i64()?),
+                block_entity_type_id: decoder.read_var_i32()?,
+                raw_nbt: decoder.remaining().to_vec(),
             }))
         }
         ids::play::CLIENTBOUND_BLOCK_UPDATE => {
@@ -2980,6 +2996,33 @@ mod tests {
     }
 
     #[test]
+    fn decodes_block_entity_data_update() {
+        let raw_nbt = nbt_compound_with_string("id", "minecraft:chest");
+        let mut payload = Encoder::new();
+        payload.write_i64(encode_block_pos(34, 64, -45));
+        payload.write_var_i32(5);
+        payload.write_bytes(&raw_nbt);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BlockEntityData(BlockEntityData {
+                pos: BlockPos {
+                    x: 34,
+                    y: 64,
+                    z: -45,
+                },
+                block_entity_type_id: 5,
+                raw_nbt,
+            })
+        );
+    }
+
+    #[test]
     fn decodes_forget_level_chunk() {
         let mut payload = Encoder::new();
         payload.write_i64(encode_chunk_pos(12, -4));
@@ -3249,6 +3292,16 @@ mod tests {
         let mut payload = vec![8];
         payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
         payload.extend_from_slice(text.as_bytes());
+        payload
+    }
+
+    fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
+        let mut payload = vec![10, 8];
+        payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+        payload.extend_from_slice(name.as_bytes());
+        payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        payload.extend_from_slice(value.as_bytes());
+        payload.push(0);
         payload
     }
 
