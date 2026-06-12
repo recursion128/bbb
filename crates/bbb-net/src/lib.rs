@@ -17,7 +17,7 @@ use bbb_protocol::{
         PlayerCommand, PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState,
         PlayerPositionUpdate, RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate,
         SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
-        SetEntityData, SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers,
+        SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers,
         SetPlayerInventory, SetSimulationDistance, SystemChat, TeleportEntity, UpdateAttributes,
         UseItem, UseItemOn,
     },
@@ -107,6 +107,7 @@ pub enum NetEvent {
     RemoveEntities(RemoveEntities),
     RotateHead(RotateHead),
     SetEntityData(SetEntityData),
+    SetEntityLink(SetEntityLink),
     SetEntityMotion(SetEntityMotion),
     SetEquipment(SetEquipment),
     SetPassengers(SetPassengers),
@@ -483,6 +484,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetEntityMotion(update) => {
                     emit(&events, NetEvent::SetEntityMotion(update)).await?;
                 }
+                PlayClientbound::SetEntityLink(update) => {
+                    emit(&events, NetEvent::SetEntityLink(update)).await?;
+                }
                 PlayClientbound::SetEquipment(update) => {
                     emit(&events, NetEvent::SetEquipment(update)).await?;
                 }
@@ -691,6 +695,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::SetEntityMotion(update) => {
                     world.apply_set_entity_motion(update);
+                }
+                PlayClientbound::SetEntityLink(update) => {
+                    world.apply_set_entity_link(update);
                 }
                 PlayClientbound::SetEquipment(update) => {
                     world.apply_set_equipment(update);

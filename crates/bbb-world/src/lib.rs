@@ -20,13 +20,13 @@ use bbb_protocol::{
         PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
         Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
         SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
-        SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
-        SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
-        SetPlayerInventory as ProtocolSetPlayerInventory, TeleportEntity as ProtocolTeleportEntity,
-        UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d,
-        PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z,
-        PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y,
-        PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
+        SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
+        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
+        SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
+        PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
+        PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -159,6 +159,7 @@ pub struct EntityState {
     pub attributes: Vec<ProtocolAttributeSnapshot>,
     pub vehicle_id: Option<i32>,
     pub passengers: Vec<i32>,
+    pub leash_holder_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -513,6 +514,8 @@ pub struct WorldCounters {
     pub entity_passenger_updates_received: usize,
     pub entity_passenger_ids_received: usize,
     pub entity_passenger_updates_applied: usize,
+    pub entity_link_updates_received: usize,
+    pub entity_link_updates_applied: usize,
     pub entity_motion_updates_received: usize,
     pub entity_motion_updates_applied: usize,
     pub entity_head_rotations_received: usize,
@@ -962,6 +965,7 @@ impl WorldStore {
             attributes: Vec::new(),
             vehicle_id: None,
             passengers: Vec::new(),
+            leash_holder_id: None,
         };
 
         if let Some(existing) = self
@@ -1190,6 +1194,25 @@ impl WorldStore {
         true
     }
 
+    pub fn apply_set_entity_link(&mut self, packet: ProtocolSetEntityLink) -> bool {
+        self.counters.entity_link_updates_received += 1;
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.source_id)
+        else {
+            return false;
+        };
+
+        entity.leash_holder_id = if packet.dest_id == 0 {
+            None
+        } else {
+            Some(packet.dest_id)
+        };
+        self.counters.entity_link_updates_applied += 1;
+        true
+    }
+
     pub fn apply_set_entity_motion(&mut self, packet: ProtocolSetEntityMotion) -> bool {
         self.counters.entity_motion_updates_received += 1;
         let Some(entity) = self
@@ -1233,6 +1256,12 @@ impl WorldStore {
                 .is_some_and(|vehicle_id| removed_ids.contains(&vehicle_id))
             {
                 entity.vehicle_id = None;
+            }
+            if entity
+                .leash_holder_id
+                .is_some_and(|holder_id| removed_ids.contains(&holder_id))
+            {
+                entity.leash_holder_id = None;
             }
             entity
                 .passengers
@@ -2361,10 +2390,11 @@ mod tests {
         PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
         Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
         SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
-        SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
-        SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
-        SetPlayerInventory as ProtocolSetPlayerInventory, TeleportEntity as ProtocolTeleportEntity,
-        UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d,
+        SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
+        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
+        SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+        Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -3016,6 +3046,51 @@ mod tests {
         assert_eq!(store.counters().entity_passenger_updates_received, 4);
         assert_eq!(store.counters().entity_passenger_ids_received, 6);
         assert_eq!(store.counters().entity_passenger_updates_applied, 3);
+    }
+
+    #[test]
+    fn tracks_entity_link_updates() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity(10));
+        store.apply_add_entity(protocol_add_entity(20));
+
+        assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+            source_id: 10,
+            dest_id: 20,
+        }));
+        assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, Some(20));
+
+        assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+            source_id: 10,
+            dest_id: 999,
+        }));
+        assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, Some(999));
+
+        assert!(!store.apply_set_entity_link(ProtocolSetEntityLink {
+            source_id: 999,
+            dest_id: 20,
+        }));
+
+        assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+            source_id: 10,
+            dest_id: 0,
+        }));
+        assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, None);
+
+        assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
+            source_id: 10,
+            dest_id: 20,
+        }));
+        assert_eq!(
+            store.apply_remove_entities(ProtocolRemoveEntities {
+                entity_ids: vec![20],
+            }),
+            1
+        );
+        assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, None);
+
+        assert_eq!(store.counters().entity_link_updates_received, 5);
+        assert_eq!(store.counters().entity_link_updates_applied, 4);
     }
 
     #[test]

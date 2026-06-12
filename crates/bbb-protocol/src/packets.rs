@@ -106,6 +106,7 @@ pub enum PlayClientbound {
     SetCursorItem(SetCursorItem),
     SetDefaultSpawnPosition(SetDefaultSpawnPosition),
     SetEntityData(SetEntityData),
+    SetEntityLink(SetEntityLink),
     SetEntityMotion(SetEntityMotion),
     SetEquipment(SetEquipment),
     SetExperience(PlayerExperience),
@@ -183,6 +184,12 @@ pub struct RotateHead {
 pub struct SetEntityMotion {
     pub id: i32,
     pub delta_movement: Vec3d,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetEntityLink {
+    pub source_id: i32,
+    pub dest_id: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1350,6 +1357,13 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::SetEntityData(decode_set_entity_data(
                 &mut decoder,
             )?))
+        }
+        ids::play::CLIENTBOUND_SET_ENTITY_LINK => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetEntityLink(SetEntityLink {
+                source_id: decoder.read_i32()?,
+                dest_id: decoder.read_i32()?,
+            }))
         }
         ids::play::CLIENTBOUND_SET_ENTITY_MOTION => {
             let mut decoder = Decoder::new(payload);
@@ -2526,6 +2540,26 @@ mod tests {
             PlayClientbound::SetPassengers(SetPassengers {
                 vehicle_id: 7,
                 passenger_ids: vec![123, 456],
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_set_entity_link_packet() {
+        let mut payload = Encoder::new();
+        payload.write_i32(123);
+        payload.write_i32(456);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_ENTITY_LINK,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetEntityLink(SetEntityLink {
+                source_id: 123,
+                dest_id: 456,
             })
         );
     }
