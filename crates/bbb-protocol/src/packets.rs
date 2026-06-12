@@ -10,6 +10,8 @@ use crate::{
 const MAX_CHUNKS_BIOMES_BUFFER: usize = 2 * 1024 * 1024;
 const MAX_CLOCK_UPDATES: usize = 4096;
 const MAX_ENTITY_ID_LIST: usize = 8192;
+const MAX_EQUIPMENT_SLOTS: usize = 8;
+const MAX_ITEM_COMPONENT_PATCH_ENTRIES: usize = 1024;
 const PLAYER_INPUT_FORWARD: u8 = 1;
 const PLAYER_INPUT_BACKWARD: u8 = 2;
 const PLAYER_INPUT_LEFT: u8 = 4;
@@ -95,6 +97,7 @@ pub enum PlayClientbound {
     SetDefaultSpawnPosition(SetDefaultSpawnPosition),
     SetEntityData(SetEntityData),
     SetEntityMotion(SetEntityMotion),
+    SetEquipment(SetEquipment),
     SetExperience(PlayerExperience),
     SetHealth(PlayerHealth),
     SetHeldSlot(SetHeldSlot),
@@ -167,6 +170,86 @@ pub struct RotateHead {
 pub struct SetEntityMotion {
     pub id: i32,
     pub delta_movement: Vec3d,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetEquipment {
+    pub entity_id: i32,
+    pub slots: Vec<EquipmentSlotUpdate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EquipmentSlotUpdate {
+    pub slot: EquipmentSlot,
+    pub item: ItemStackSummary,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum EquipmentSlot {
+    MainHand,
+    OffHand,
+    Feet,
+    Legs,
+    Chest,
+    Head,
+    Body,
+    Saddle,
+}
+
+impl EquipmentSlot {
+    pub fn ordinal(self) -> u8 {
+        match self {
+            Self::MainHand => 0,
+            Self::OffHand => 1,
+            Self::Feet => 2,
+            Self::Legs => 3,
+            Self::Chest => 4,
+            Self::Head => 5,
+            Self::Body => 6,
+            Self::Saddle => 7,
+        }
+    }
+
+    fn from_ordinal(value: u8) -> Result<Self> {
+        Ok(match value {
+            0 => Self::MainHand,
+            1 => Self::OffHand,
+            2 => Self::Feet,
+            3 => Self::Legs,
+            4 => Self::Chest,
+            5 => Self::Head,
+            6 => Self::Body,
+            7 => Self::Saddle,
+            other => {
+                return Err(ProtocolError::InvalidData(format!(
+                    "invalid equipment slot {other}"
+                )))
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemStackSummary {
+    pub item_id: Option<i32>,
+    pub count: i32,
+    pub component_patch: DataComponentPatchSummary,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DataComponentPatchSummary {
+    pub added: usize,
+    pub removed_type_ids: Vec<i32>,
+}
+
+impl ItemStackSummary {
+    pub fn empty() -> Self {
+        Self {
+            item_id: None,
+            count: 0,
+            component_patch: DataComponentPatchSummary::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1129,6 +1212,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 delta_movement: decode_lp_vec3d(&mut decoder)?,
             }))
         }
+        ids::play::CLIENTBOUND_SET_EQUIPMENT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetEquipment(decode_set_equipment(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_SET_EXPERIENCE => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SetExperience(PlayerExperience {
@@ -1286,6 +1375,72 @@ fn decode_teleport_entity(decoder: &mut Decoder<'_>) -> Result<TeleportEntity> {
         x_rot: decoder.read_f32()?,
         relatives_mask: decoder.read_i32()?,
         on_ground: decoder.read_bool()?,
+    })
+}
+
+fn decode_set_equipment(decoder: &mut Decoder<'_>) -> Result<SetEquipment> {
+    let entity_id = decoder.read_var_i32()?;
+    let mut slots = Vec::new();
+    loop {
+        if slots.len() >= MAX_EQUIPMENT_SLOTS {
+            return Err(ProtocolError::PacketTooLarge(
+                slots.len() + 1,
+                MAX_EQUIPMENT_SLOTS,
+            ));
+        }
+
+        let raw_slot = decoder.read_u8()?;
+        let should_continue = raw_slot & 0x80 != 0;
+        let slot = EquipmentSlot::from_ordinal(raw_slot & 0x7f)?;
+        let item = decode_item_stack_summary(decoder)?;
+        slots.push(EquipmentSlotUpdate { slot, item });
+
+        if !should_continue {
+            break;
+        }
+    }
+    Ok(SetEquipment { entity_id, slots })
+}
+
+fn decode_item_stack_summary(decoder: &mut Decoder<'_>) -> Result<ItemStackSummary> {
+    let count = decoder.read_var_i32()?;
+    if count <= 0 {
+        return Ok(ItemStackSummary::empty());
+    }
+
+    let item_id = decoder.read_var_i32()?;
+    let component_patch = decode_data_component_patch_summary(decoder)?;
+    Ok(ItemStackSummary {
+        item_id: Some(item_id),
+        count,
+        component_patch,
+    })
+}
+
+fn decode_data_component_patch_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<DataComponentPatchSummary> {
+    let added = decoder.read_len()?;
+    let removed = decoder.read_len()?;
+    if added + removed > MAX_ITEM_COMPONENT_PATCH_ENTRIES {
+        return Err(ProtocolError::PacketTooLarge(
+            added + removed,
+            MAX_ITEM_COMPONENT_PATCH_ENTRIES,
+        ));
+    }
+    if added != 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "unsupported item stack component patch with {added} added component(s)"
+        )));
+    }
+
+    let mut removed_type_ids = Vec::with_capacity(removed);
+    for _ in 0..removed {
+        removed_type_ids.push(decoder.read_var_i32()?);
+    }
+    Ok(DataComponentPatchSummary {
+        added,
+        removed_type_ids,
     })
 }
 
@@ -2003,6 +2158,61 @@ mod tests {
                 ],
             })
         );
+    }
+
+    #[test]
+    fn decodes_set_equipment_slots_and_item_stacks() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_u8(EquipmentSlot::MainHand.ordinal() | 0x80);
+        payload.write_var_i32(0);
+        payload.write_u8(EquipmentSlot::Head.ordinal());
+        payload.write_var_i32(1);
+        payload.write_var_i32(42);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_EQUIPMENT, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetEquipment(SetEquipment {
+                entity_id: 123,
+                slots: vec![
+                    EquipmentSlotUpdate {
+                        slot: EquipmentSlot::MainHand,
+                        item: ItemStackSummary::empty(),
+                    },
+                    EquipmentSlotUpdate {
+                        slot: EquipmentSlot::Head,
+                        item: ItemStackSummary {
+                            item_id: Some(42),
+                            count: 1,
+                            component_patch: DataComponentPatchSummary::default(),
+                        },
+                    },
+                ],
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_set_equipment_item_stack_with_added_component_patch() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_u8(EquipmentSlot::MainHand.ordinal());
+        payload.write_var_i32(1);
+        payload.write_var_i32(42);
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_EQUIPMENT, &payload.into_inner())
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("unsupported item stack component patch"));
     }
 
     #[test]

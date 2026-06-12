@@ -15,8 +15,8 @@ use bbb_protocol::{
         PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction, PlayerCommand,
         PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState, PlayerPositionUpdate,
         RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetChunkCacheCenter,
-        SetChunkCacheRadius, SetDefaultSpawnPosition, SetEntityData, SetEntityMotion, SetHeldSlot,
-        SetSimulationDistance, SystemChat, TeleportEntity, UseItem, UseItemOn,
+        SetChunkCacheRadius, SetDefaultSpawnPosition, SetEntityData, SetEntityMotion, SetEquipment,
+        SetHeldSlot, SetSimulationDistance, SystemChat, TeleportEntity, UseItem, UseItemOn,
     },
 };
 use bbb_world::{
@@ -98,6 +98,7 @@ pub enum NetEvent {
     RotateHead(RotateHead),
     SetEntityData(SetEntityData),
     SetEntityMotion(SetEntityMotion),
+    SetEquipment(SetEquipment),
     TeleportEntity(TeleportEntity),
     RegistryData {
         registry: String,
@@ -445,6 +446,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetEntityMotion(update) => {
                     emit(&events, NetEvent::SetEntityMotion(update)).await?;
                 }
+                PlayClientbound::SetEquipment(update) => {
+                    emit(&events, NetEvent::SetEquipment(update)).await?;
+                }
                 PlayClientbound::SetEntityData(update) => {
                     emit(&events, NetEvent::SetEntityData(update)).await?;
                 }
@@ -629,6 +633,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::SetEntityMotion(update) => {
                     world.apply_set_entity_motion(update);
+                }
+                PlayClientbound::SetEquipment(update) => {
+                    world.apply_set_equipment(update);
                 }
                 PlayClientbound::SetEntityData(update) => {
                     world.apply_set_entity_data(update);

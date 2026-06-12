@@ -1858,6 +1858,9 @@ fn drain_net_events(
             NetEvent::SetEntityMotion(update) => {
                 world.apply_set_entity_motion(update);
             }
+            NetEvent::SetEquipment(update) => {
+                world.apply_set_equipment(update);
+            }
             NetEvent::SetEntityData(update) => {
                 world.apply_set_entity_data(update);
             }

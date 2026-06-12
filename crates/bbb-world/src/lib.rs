@@ -9,15 +9,16 @@ use bbb_protocol::{
         AddEntity as ProtocolAddEntity, BlockUpdate as ProtocolBlockUpdate,
         ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
         EntityDataValue as ProtocolEntityDataValue, EntityMove as ProtocolEntityMove,
-        EntityPositionSync as ProtocolEntityPositionSync, LevelChunkWithLight,
+        EntityPositionSync as ProtocolEntityPositionSync,
+        EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, LevelChunkWithLight,
         LightUpdate as ProtocolLightUpdate, PlayLogin as ProtocolPlayLogin,
         RemoveEntities as ProtocolRemoveEntities, Respawn as ProtocolRespawn,
         RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
         SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
-        TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X,
-        PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA,
-        PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT,
-        PLAYER_RELATIVE_Z,
+        SetEquipment as ProtocolSetEquipment, TeleportEntity as ProtocolTeleportEntity,
+        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
+        PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
+        PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -144,6 +145,7 @@ pub struct EntityState {
     pub y_head_rot: f32,
     pub on_ground: Option<bool>,
     pub data_values: Vec<ProtocolEntityDataValue>,
+    pub equipment: Vec<ProtocolEquipmentSlotUpdate>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -434,6 +436,9 @@ pub struct WorldCounters {
     pub entity_data_updates_received: usize,
     pub entity_data_values_received: usize,
     pub entity_data_updates_applied: usize,
+    pub entity_equipment_updates_received: usize,
+    pub entity_equipment_slots_received: usize,
+    pub entity_equipment_updates_applied: usize,
     pub entity_motion_updates_received: usize,
     pub entity_motion_updates_applied: usize,
     pub entity_head_rotations_received: usize,
@@ -718,6 +723,7 @@ impl WorldStore {
             y_head_rot: packet.y_head_rot,
             on_ground: None,
             data_values: Vec::new(),
+            equipment: Vec::new(),
         };
 
         if let Some(existing) = self
@@ -837,6 +843,33 @@ impl WorldStore {
         }
         entity.data_values.sort_by_key(|value| value.data_id);
         self.counters.entity_data_updates_applied += 1;
+        true
+    }
+
+    pub fn apply_set_equipment(&mut self, packet: ProtocolSetEquipment) -> bool {
+        self.counters.entity_equipment_updates_received += 1;
+        self.counters.entity_equipment_slots_received += packet.slots.len();
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.entity_id)
+        else {
+            return false;
+        };
+
+        for update in packet.slots {
+            if let Some(existing) = entity
+                .equipment
+                .iter_mut()
+                .find(|existing| existing.slot == update.slot)
+            {
+                *existing = update;
+            } else {
+                entity.equipment.push(update);
+            }
+        }
+        entity.equipment.sort_by_key(|update| update.slot.ordinal());
+        self.counters.entity_equipment_updates_applied += 1;
         true
     }
 
@@ -1946,10 +1979,11 @@ mod tests {
         ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes,
         CommonPlayerSpawnInfo as ProtocolSpawnInfo, EntityDataValue as ProtocolEntityDataValue,
         EntityDataValueKind, EntityMove as ProtocolEntityMove,
-        EntityPositionSync as ProtocolEntityPositionSync, PlayLogin as ProtocolPlayLogin,
-        RemoveEntities as ProtocolRemoveEntities, Respawn as ProtocolRespawn,
-        RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
-        SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
+        EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
+        ItemStackSummary, PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
+        Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
+        SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetEntityData as ProtocolSetEntityData,
+        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
         TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
@@ -2306,6 +2340,60 @@ mod tests {
             ]
         );
 
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id: 123,
+            slots: vec![
+                EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Head,
+                    item: ItemStackSummary {
+                        item_id: Some(42),
+                        count: 1,
+                        component_patch: Default::default(),
+                    },
+                },
+                EquipmentSlotUpdate {
+                    slot: EquipmentSlot::MainHand,
+                    item: ItemStackSummary::empty(),
+                },
+            ],
+        }));
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id: 123,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: ItemStackSummary {
+                    item_id: Some(51),
+                    count: 2,
+                    component_patch: Default::default(),
+                },
+            }],
+        }));
+        assert!(!store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id: 999,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::OffHand,
+                item: ItemStackSummary::empty(),
+            }],
+        }));
+        let entity = store.probe_entity(123).unwrap();
+        assert_eq!(
+            entity.equipment,
+            vec![
+                EquipmentSlotUpdate {
+                    slot: EquipmentSlot::MainHand,
+                    item: ItemStackSummary::empty(),
+                },
+                EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Head,
+                    item: ItemStackSummary {
+                        item_id: Some(51),
+                        count: 2,
+                        component_patch: Default::default(),
+                    },
+                },
+            ]
+        );
+
         assert!(
             !store.apply_entity_position_sync(ProtocolEntityPositionSync {
                 id: 999,
@@ -2325,6 +2413,9 @@ mod tests {
         assert_eq!(store.counters().entity_data_updates_received, 2);
         assert_eq!(store.counters().entity_data_values_received, 3);
         assert_eq!(store.counters().entity_data_updates_applied, 2);
+        assert_eq!(store.counters().entity_equipment_updates_received, 3);
+        assert_eq!(store.counters().entity_equipment_slots_received, 4);
+        assert_eq!(store.counters().entity_equipment_updates_applied, 2);
         assert_eq!(store.counters().entity_motion_updates_applied, 1);
         assert_eq!(store.counters().entity_head_rotations_applied, 1);
 
