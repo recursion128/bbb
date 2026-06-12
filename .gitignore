@@ -1,0 +1,8 @@
+/target/
+/.local/
+/libraries/
+/logs/
+/versions/
+/server.jar
+
+.DS_Store

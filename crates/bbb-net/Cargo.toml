@@ -1,0 +1,19 @@
+[package]
+name = "bbb-net"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+bbb-protocol = { path = "../bbb-protocol" }
+bbb-world = { path = "../bbb-world" }
+bytes = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
