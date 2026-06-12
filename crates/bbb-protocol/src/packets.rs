@@ -10,8 +10,10 @@ use crate::{
 const MAX_CHUNKS_BIOMES_BUFFER: usize = 2 * 1024 * 1024;
 const MAX_CLOCK_UPDATES: usize = 4096;
 const MAX_CONTAINER_ITEMS: usize = 1024;
+const MAX_ENTITY_ATTRIBUTES: usize = 1024;
 const MAX_ENTITY_ID_LIST: usize = 8192;
 const MAX_EQUIPMENT_SLOTS: usize = 8;
+const MAX_ATTRIBUTE_MODIFIERS: usize = 1024;
 const MAX_ITEM_COMPONENT_PATCH_ENTRIES: usize = 1024;
 const PLAYER_INPUT_FORWARD: u8 = 1;
 const PLAYER_INPUT_BACKWARD: u8 = 2;
@@ -118,6 +120,7 @@ pub enum PlayClientbound {
     SetTime(PlayTime),
     SystemChat(SystemChat),
     TeleportEntity(TeleportEntity),
+    UpdateAttributes(UpdateAttributes),
     LevelChunkWithLight(LevelChunkWithLight),
     LightUpdate(LightUpdate),
     Unknown { packet_id: i32, len: usize },
@@ -191,6 +194,26 @@ pub struct SetEquipment {
 pub struct EquipmentSlotUpdate {
     pub slot: EquipmentSlot,
     pub item: ItemStackSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UpdateAttributes {
+    pub entity_id: i32,
+    pub attributes: Vec<AttributeSnapshot>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AttributeSnapshot {
+    pub attribute_id: i32,
+    pub base: f64,
+    pub modifiers: Vec<AttributeModifier>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AttributeModifier {
+    pub id: String,
+    pub amount: f64,
+    pub operation_id: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -1368,6 +1391,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
+        ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::UpdateAttributes(decode_update_attributes(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT => {
             let mut decoder = Decoder::new(payload);
             let x = decoder.read_i32()?;
@@ -1802,6 +1831,44 @@ fn decode_section_blocks_update(decoder: &mut Decoder<'_>) -> Result<SectionBloc
         section_y,
         section_z,
         updates,
+    })
+}
+
+fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<UpdateAttributes> {
+    let entity_id = decoder.read_var_i32()?;
+    let attribute_count = decoder.read_len()?;
+    if attribute_count > MAX_ENTITY_ATTRIBUTES {
+        return Err(ProtocolError::InvalidData(format!(
+            "attribute list has {attribute_count} entries, max is {MAX_ENTITY_ATTRIBUTES}"
+        )));
+    }
+    let mut attributes = Vec::with_capacity(attribute_count);
+    for _ in 0..attribute_count {
+        let attribute_id = decoder.read_var_i32()?;
+        let base = decoder.read_f64()?;
+        let modifier_count = decoder.read_len()?;
+        if modifier_count > MAX_ATTRIBUTE_MODIFIERS {
+            return Err(ProtocolError::InvalidData(format!(
+                "attribute modifier list has {modifier_count} entries, max is {MAX_ATTRIBUTE_MODIFIERS}"
+            )));
+        }
+        let mut modifiers = Vec::with_capacity(modifier_count);
+        for _ in 0..modifier_count {
+            modifiers.push(AttributeModifier {
+                id: read_resource_key(decoder)?,
+                amount: decoder.read_f64()?,
+                operation_id: decoder.read_var_i32()?,
+            });
+        }
+        attributes.push(AttributeSnapshot {
+            attribute_id,
+            base,
+            modifiers,
+        });
+    }
+    Ok(UpdateAttributes {
+        entity_id,
+        attributes,
     })
 }
 
@@ -2368,6 +2435,50 @@ mod tests {
         assert!(error
             .to_string()
             .contains("unsupported item stack component patch"));
+    }
+
+    #[test]
+    fn decodes_update_attributes_packet() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_var_i32(2);
+        payload.write_var_i32(21);
+        payload.write_f64(20.0);
+        payload.write_var_i32(1);
+        payload.write_string("minecraft:health_bonus");
+        payload.write_f64(4.0);
+        payload.write_var_i32(0);
+        payload.write_var_i32(26);
+        payload.write_f64(0.7);
+        payload.write_var_i32(0);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::UpdateAttributes(UpdateAttributes {
+                entity_id: 123,
+                attributes: vec![
+                    AttributeSnapshot {
+                        attribute_id: 21,
+                        base: 20.0,
+                        modifiers: vec![AttributeModifier {
+                            id: "minecraft:health_bonus".to_string(),
+                            amount: 4.0,
+                            operation_id: 0,
+                        }],
+                    },
+                    AttributeSnapshot {
+                        attribute_id: 26,
+                        base: 0.7,
+                        modifiers: Vec::new(),
+                    },
+                ],
+            })
+        );
     }
 
     #[test]

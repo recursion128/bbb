@@ -6,9 +6,10 @@ use std::{
 use bbb_protocol::{
     codec::{Decoder, ProtocolError},
     packets::{
-        AddEntity as ProtocolAddEntity, BlockEntityData as ProtocolBlockEntityData,
-        BlockUpdate as ProtocolBlockUpdate, ChunksBiomes as ProtocolChunksBiomes,
-        CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerClose as ProtocolContainerClose,
+        AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
+        BlockEntityData as ProtocolBlockEntityData, BlockUpdate as ProtocolBlockUpdate,
+        ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
+        ContainerClose as ProtocolContainerClose,
         ContainerSetContent as ProtocolContainerSetContent,
         ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
         EntityDataValue as ProtocolEntityDataValue, EntityMove as ProtocolEntityMove,
@@ -21,10 +22,10 @@ use bbb_protocol::{
         SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
         SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
         SetEquipment as ProtocolSetEquipment, SetPlayerInventory as ProtocolSetPlayerInventory,
-        TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X,
-        PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA,
-        PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT,
-        PLAYER_RELATIVE_Z,
+        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
+        PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
+        PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -154,6 +155,7 @@ pub struct EntityState {
     pub on_ground: Option<bool>,
     pub data_values: Vec<ProtocolEntityDataValue>,
     pub equipment: Vec<ProtocolEquipmentSlotUpdate>,
+    pub attributes: Vec<ProtocolAttributeSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -502,6 +504,9 @@ pub struct WorldCounters {
     pub entity_equipment_updates_received: usize,
     pub entity_equipment_slots_received: usize,
     pub entity_equipment_updates_applied: usize,
+    pub entity_attribute_updates_received: usize,
+    pub entity_attributes_received: usize,
+    pub entity_attribute_updates_applied: usize,
     pub entity_motion_updates_received: usize,
     pub entity_motion_updates_applied: usize,
     pub entity_head_rotations_received: usize,
@@ -948,6 +953,7 @@ impl WorldStore {
             on_ground: None,
             data_values: Vec::new(),
             equipment: Vec::new(),
+            attributes: Vec::new(),
         };
 
         if let Some(existing) = self
@@ -1094,6 +1100,35 @@ impl WorldStore {
         }
         entity.equipment.sort_by_key(|update| update.slot.ordinal());
         self.counters.entity_equipment_updates_applied += 1;
+        true
+    }
+
+    pub fn apply_update_attributes(&mut self, packet: ProtocolUpdateAttributes) -> bool {
+        self.counters.entity_attribute_updates_received += 1;
+        self.counters.entity_attributes_received += packet.attributes.len();
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.entity_id)
+        else {
+            return false;
+        };
+
+        for attribute in packet.attributes {
+            if let Some(existing) = entity
+                .attributes
+                .iter_mut()
+                .find(|existing| existing.attribute_id == attribute.attribute_id)
+            {
+                *existing = attribute;
+            } else {
+                entity.attributes.push(attribute);
+            }
+        }
+        entity
+            .attributes
+            .sort_by_key(|attribute| attribute.attribute_id);
+        self.counters.entity_attribute_updates_applied += 1;
         true
     }
 
@@ -2242,7 +2277,8 @@ mod tests {
     use super::*;
     use bbb_protocol::codec::Encoder;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, BlockEntityData as ProtocolBlockEntityData,
+        AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
+        AttributeSnapshot as ProtocolAttributeSnapshot, BlockEntityData as ProtocolBlockEntityData,
         BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
         ChunkBiomeData as ProtocolChunkBiomeData, ChunkPos as ProtocolChunkPos,
         ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
@@ -2257,7 +2293,8 @@ mod tests {
         SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
         SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
         SetEquipment as ProtocolSetEquipment, SetPlayerInventory as ProtocolSetPlayerInventory,
-        TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d,
+        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+        Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -2758,6 +2795,70 @@ mod tests {
             ]
         );
 
+        assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![
+                ProtocolAttributeSnapshot {
+                    attribute_id: 21,
+                    base: 20.0,
+                    modifiers: vec![ProtocolAttributeModifier {
+                        id: "minecraft:health_bonus".to_string(),
+                        amount: 4.0,
+                        operation_id: 0,
+                    }],
+                },
+                ProtocolAttributeSnapshot {
+                    attribute_id: 26,
+                    base: 0.7,
+                    modifiers: Vec::new(),
+                },
+            ],
+        }));
+        assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: 26,
+                base: 0.9,
+                modifiers: vec![ProtocolAttributeModifier {
+                    id: "minecraft:speed_bonus".to_string(),
+                    amount: 0.2,
+                    operation_id: 2,
+                }],
+            }],
+        }));
+        assert!(!store.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 999,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: 21,
+                base: 20.0,
+                modifiers: Vec::new(),
+            }],
+        }));
+        let entity = store.probe_entity(123).unwrap();
+        assert_eq!(
+            entity.attributes,
+            vec![
+                ProtocolAttributeSnapshot {
+                    attribute_id: 21,
+                    base: 20.0,
+                    modifiers: vec![ProtocolAttributeModifier {
+                        id: "minecraft:health_bonus".to_string(),
+                        amount: 4.0,
+                        operation_id: 0,
+                    }],
+                },
+                ProtocolAttributeSnapshot {
+                    attribute_id: 26,
+                    base: 0.9,
+                    modifiers: vec![ProtocolAttributeModifier {
+                        id: "minecraft:speed_bonus".to_string(),
+                        amount: 0.2,
+                        operation_id: 2,
+                    }],
+                },
+            ]
+        );
+
         assert!(
             !store.apply_entity_position_sync(ProtocolEntityPositionSync {
                 id: 999,
@@ -2780,6 +2881,9 @@ mod tests {
         assert_eq!(store.counters().entity_equipment_updates_received, 3);
         assert_eq!(store.counters().entity_equipment_slots_received, 4);
         assert_eq!(store.counters().entity_equipment_updates_applied, 2);
+        assert_eq!(store.counters().entity_attribute_updates_received, 3);
+        assert_eq!(store.counters().entity_attributes_received, 4);
+        assert_eq!(store.counters().entity_attribute_updates_applied, 2);
         assert_eq!(store.counters().entity_motion_updates_applied, 1);
         assert_eq!(store.counters().entity_head_rotations_applied, 1);
 
