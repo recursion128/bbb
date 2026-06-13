@@ -38,6 +38,9 @@ pub(super) fn outline_shape_for_block(
     if is_chain_block_name(block_name) {
         return chain_outline_shape(properties);
     }
+    if is_lantern_block_name(block_name) {
+        return lantern_outline_shape(properties);
+    }
     if block_name == "minecraft:ender_chest" {
         return Some(BlockOutlineShape::single(BlockOutlineBox::CHEST_SINGLE));
     }
@@ -284,6 +287,19 @@ fn chain_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOut
         _ => return None,
     };
     Some(BlockOutlineShape::single(outline))
+}
+
+fn lantern_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let hanging = match properties.get("hanging").map(String::as_str)? {
+        "true" => true,
+        "false" => false,
+        _ => return None,
+    };
+    let offset = if hanging { 1.0 } else { 0.0 };
+    Some(BlockOutlineShape::from_boxes(vec![
+        BlockOutlineBox::centered_column(4.0, 4.0, 7.0 + offset, 9.0 + offset),
+        BlockOutlineBox::centered_column(6.0, 6.0, offset, 7.0 + offset),
+    ]))
 }
 
 fn chest_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -831,6 +847,15 @@ fn is_chain_block_name(block_name: &str) -> bool {
             | "minecraft:waxed_weathered_copper_chain"
             | "minecraft:waxed_oxidized_copper_chain"
     )
+}
+
+fn is_lantern_block_name(block_name: &str) -> bool {
+    block_name.strip_prefix("minecraft:").is_some_and(|path| {
+        path == "lantern"
+            || path == "soul_lantern"
+            || path == "copper_lantern"
+            || path.ends_with("_copper_lantern")
+    })
 }
 
 fn is_candle_cake_block_name(block_name: &str) -> bool {

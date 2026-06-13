@@ -7,6 +7,7 @@ mod chains;
 mod chests;
 mod hoppers;
 mod interaction;
+mod lanterns;
 mod rails;
 mod shapes;
 mod support;
