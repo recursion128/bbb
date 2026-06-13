@@ -6,10 +6,12 @@ use serde::{Deserialize, Serialize};
 use crate::PackRoots;
 
 mod blockstates;
+mod raw_model;
 mod rotation;
 mod shape;
 
 use blockstates::RawBlockstate;
+use raw_model::{RawBlockElement, RawBlockModel};
 use rotation::{apply_variant_rotation, rotate_model_shape};
 use shape::{classify_model_shape, combine_model_shapes};
 
@@ -215,56 +217,6 @@ impl BlockModelCatalog {
             shape: combine_model_shapes(shapes),
         })
     }
-}
-
-#[derive(Debug, Clone, Default, Deserialize)]
-struct RawBlockModel {
-    #[serde(default)]
-    parent: Option<String>,
-    #[serde(default)]
-    textures: BTreeMap<String, RawTextureReference>,
-    #[serde(default)]
-    elements: Vec<RawBlockElement>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(untagged)]
-enum RawTextureReference {
-    String(String),
-    Object {
-        #[serde(default)]
-        sprite: Option<String>,
-    },
-}
-
-impl RawTextureReference {
-    fn texture_id(&self) -> Option<&str> {
-        match self {
-            Self::String(value) => Some(value),
-            Self::Object { sprite } => sprite.as_deref(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct RawBlockElement {
-    #[serde(default)]
-    from: Option<[f32; 3]>,
-    #[serde(default)]
-    to: Option<[f32; 3]>,
-    #[serde(default)]
-    faces: BTreeMap<String, RawBlockModelFace>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct RawBlockModelFace {
-    texture: String,
-    #[serde(default)]
-    uv: Option<[f32; 4]>,
-    #[serde(default)]
-    cullface: Option<String>,
-    #[serde(default)]
-    tintindex: Option<i32>,
 }
 
 #[derive(Debug, Clone, Default)]
