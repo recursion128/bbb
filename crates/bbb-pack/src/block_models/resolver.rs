@@ -150,18 +150,24 @@ fn resolve_texture_alias_with_force(
     let mut current = texture;
     let mut seen = HashSet::new();
     loop {
-        let Some(alias) = current.strip_prefix('#') else {
-            return Some(ResolvedTextureReference {
-                id: normalize_texture_id(current),
-                force_translucent,
-            });
-        };
-        if !seen.insert(alias.to_string()) {
+        let slot = current.strip_prefix('#').unwrap_or(current);
+        if let Some(texture) = textures.get(slot) {
+            if !seen.insert(slot.to_string()) {
+                return None;
+            }
+            force_translucent |= texture.force_translucent;
+            current = &texture.id;
+            continue;
+        }
+
+        if current.starts_with('#') {
             return None;
         }
-        let texture = textures.get(alias)?;
-        force_translucent |= texture.force_translucent;
-        current = &texture.id;
+
+        return Some(ResolvedTextureReference {
+            id: normalize_texture_id(current),
+            force_translucent,
+        });
     }
 }
 

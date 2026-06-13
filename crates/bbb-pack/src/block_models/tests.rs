@@ -152,6 +152,70 @@ fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {
 }
 
 #[test]
+fn block_model_catalog_resolves_unprefixed_face_texture_slots() {
+    let root = unique_temp_dir("block-model-unprefixed-face-texture");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("heavy_core.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/heavy_core" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("heavy_core.json"),
+        r##"{
+            "textures": {
+                "all": "block/heavy_core",
+                "particle": "block/heavy_core"
+            },
+            "elements": [{
+                "from": [4, 0, 4],
+                "to": [12, 8, 12],
+                "faces": {
+                    "down":  { "uv": [8, 0, 16, 8], "texture": "all" },
+                    "up":    { "uv": [0, 0, 8, 8], "texture": "all" },
+                    "north": { "uv": [0, 8, 8, 16], "texture": "all" },
+                    "south": { "uv": [0, 8, 8, 16], "texture": "all" },
+                    "west":  { "uv": [0, 8, 8, 16], "texture": "all" },
+                    "east":  { "uv": [0, 8, 8, 16], "texture": "all" }
+                }
+            }]
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let render_model = catalog
+        .block_render_model("minecraft:heavy_core", &BTreeMap::new())
+        .unwrap();
+    let BlockModelShape::Box(model_box) = render_model.shape else {
+        panic!("heavy_core should resolve to a box model");
+    };
+
+    assert_eq!(
+        render_model.face_textures.get(BlockModelFace::North),
+        "minecraft:block/heavy_core"
+    );
+    assert_eq!(
+        model_box.face_textures[BlockModelFace::North.index()].as_deref(),
+        Some("minecraft:block/heavy_core")
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_resolves_parent_ambient_occlusion() {
     let root = unique_temp_dir("block-model-ambient-occlusion");
     let asset_root = root
@@ -1240,6 +1304,21 @@ fn loads_local_vanilla_block_model_catalog() {
     assert!(lever_quads
         .iter()
         .any(|quad| quad.texture.as_deref() == Some("minecraft:block/lever")));
+
+    let heavy_core = catalog
+        .block_render_model("minecraft:heavy_core", &BTreeMap::new())
+        .unwrap();
+    let BlockModelShape::Box(heavy_core_box) = &heavy_core.shape else {
+        panic!("heavy_core should resolve unprefixed face texture slots as a box");
+    };
+    assert_eq!(
+        heavy_core.face_textures.get(BlockModelFace::North),
+        "minecraft:block/heavy_core"
+    );
+    assert_eq!(
+        heavy_core_box.face_textures[BlockModelFace::North.index()].as_deref(),
+        Some("minecraft:block/heavy_core")
+    );
 
     let flower = catalog
         .block_render_model("minecraft:dandelion", &BTreeMap::new())
