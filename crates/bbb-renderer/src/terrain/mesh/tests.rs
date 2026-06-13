@@ -85,6 +85,36 @@ fn fluid_box_extends_to_above_fluid_without_internal_top_face() {
 }
 
 #[test]
+fn fluid_faces_use_flat_vanilla_light_without_ambient_occlusion() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 3 * 16];
+    cells[cell_index(1, 1, 2, 3)] =
+        TerrainCell::with_shape(86, TerrainMaterialClass::Fluid, 0, fluid_box_shape(16))
+            .with_light(TerrainLight { sky: 4, block: 2 })
+            .with_ambient_occlusion(true);
+    cells[cell_index(1, 2, 2, 3)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 15, block: 1 });
+    cells[cell_index(1, 0, 2, 3)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 3, block: 10 });
+    cells[cell_index(0, 2, 2, 3)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 0, block: 15 });
+    cells[cell_index(1, 2, 1, 3)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 0, block: 15 });
+    cells[cell_index(0, 2, 1, 3)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 0, block: 15 });
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 3, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let mesh = &layers.translucent[0];
+
+    assert_face_light(mesh, 86, [0.0, 1.0, 0.0], [2.0 / 15.0, 1.0]);
+    assert_face_light(mesh, 86, [0.0, 0.0, -1.0], [2.0 / 15.0, 1.0]);
+    assert_face_light(mesh, 86, [0.0, -1.0, 0.0], [10.0 / 15.0, 4.0 / 15.0]);
+    assert!(face_vertices(mesh, 86, [0.0, 1.0, 0.0])
+        .iter()
+        .all(|vertex| vertex.ambient_occlusion == 1.0));
+}
+
+#[test]
 fn culls_faces_between_adjacent_chunk_snapshots() {
     let left = single_block_snapshot(0, 0, 15, 0, 2);
     let right = single_block_snapshot(1, 0, 0, 0, 2);
@@ -910,4 +940,18 @@ fn assert_face_shade(mesh: &TerrainMesh, normal: [f32; 3], expected: f32) {
     assert!(vertices
         .iter()
         .all(|vertex| (vertex.shade - expected).abs() < 0.0001));
+}
+
+fn assert_face_light(
+    mesh: &TerrainMesh,
+    block_state_id: i32,
+    normal: [f32; 3],
+    expected: [f32; 2],
+) {
+    let vertices = face_vertices(mesh, block_state_id, normal);
+    assert_eq!(vertices.len(), 4);
+    assert!(vertices.iter().all(|vertex| {
+        (vertex.light[0] - expected[0]).abs() < 0.0001
+            && (vertex.light[1] - expected[1]).abs() < 0.0001
+    }));
 }

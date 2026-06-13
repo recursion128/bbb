@@ -157,22 +157,38 @@ pub(super) fn emit_box(
             }
         }
 
-        let smooth_light = ambient_occlusion && face_light_emission[face_index] == 0;
+        let is_fluid = matches!(material, TerrainMaterialClass::Fluid);
+        let smooth_light = !is_fluid && ambient_occlusion && face_light_emission[face_index] == 0;
         let face_cubic = box_face_is_cubic(face.face, min, max);
-        let ambient_occlusion =
-            face_ambient_occlusion(smooth_light, face.face, x, y, z, face_cubic, lookup, mode);
-        let vertex_lights = face_vertex_lights(
-            smooth_light,
-            face.face,
-            x,
-            y,
-            z,
-            face_cubic,
-            light,
-            face_light_emission[face_index],
-            lookup,
-            mode,
-        );
+        let ambient_occlusion = if is_fluid {
+            [1.0; 4]
+        } else {
+            face_ambient_occlusion(smooth_light, face.face, x, y, z, face_cubic, lookup, mode)
+        };
+        let vertex_lights = if is_fluid {
+            fluid_face_vertex_lights(
+                face.face,
+                x,
+                y,
+                z,
+                light,
+                face_light_emission[face_index],
+                lookup,
+            )
+        } else {
+            face_vertex_lights(
+                smooth_light,
+                face.face,
+                x,
+                y,
+                z,
+                face_cubic,
+                light,
+                face_light_emission[face_index],
+                lookup,
+                mode,
+            )
+        };
         emit_custom_quad_with_uvs(
             mesh,
             x,
@@ -374,6 +390,27 @@ fn shader_light_with_emission(light: TerrainLight, light_emission: u8) -> [f32; 
     shader_light
 }
 
+fn fluid_face_vertex_lights(
+    face: TerrainFace,
+    x: i32,
+    y: i32,
+    z: i32,
+    light: TerrainLight,
+    light_emission: u8,
+    lookup: &TerrainChunkLookup<'_>,
+) -> [[f32; 2]; 4] {
+    let neighbor = match face {
+        TerrainFace::Down => sample_light(x, y - 1, z, lookup),
+        TerrainFace::Up
+        | TerrainFace::North
+        | TerrainFace::South
+        | TerrainFace::West
+        | TerrainFace::East => sample_light(x, y + 1, z, lookup),
+    }
+    .unwrap_or(TerrainLight { sky: 0, block: 0 });
+    [shader_light_with_emission(max_light(light, neighbor), light_emission); 4]
+}
+
 pub(super) fn face_vertex_lights(
     enabled: bool,
     face: TerrainFace,
@@ -490,6 +527,13 @@ fn fill_zero_light_channels(light: &mut TerrainLight, center: TerrainLight) {
     }
     if light.block == 0 {
         light.block = center.block;
+    }
+}
+
+fn max_light(left: TerrainLight, right: TerrainLight) -> TerrainLight {
+    TerrainLight {
+        sky: left.sky.max(right.sky),
+        block: left.block.max(right.block),
     }
 }
 
