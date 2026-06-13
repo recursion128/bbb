@@ -21,6 +21,9 @@ pub(super) fn outline_shape_for_block(
     if is_pressure_plate_block_name(block_name) {
         return pressure_plate_outline_shape(properties);
     }
+    if is_flower_pot_block_name(block_name) {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
+    }
     if is_wall_sign_block_name(block_name) {
         return wall_sign_outline_shape(properties);
     }
@@ -449,6 +452,12 @@ fn is_pressure_plate_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_pressure_plate"))
+}
+
+fn is_flower_pot_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "flower_pot" || path.starts_with("potted_"))
 }
 
 fn is_wall_sign_block_name(block_name: &str) -> bool {

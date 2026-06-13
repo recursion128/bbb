@@ -81,6 +81,10 @@ impl BlockOutlineBox {
         min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
         max: [15.0 / 16.0, 0.5 / 16.0, 15.0 / 16.0],
     };
+    pub(super) const FLOWER_POT: Self = Self {
+        min: [5.0 / 16.0, 0.0, 5.0 / 16.0],
+        max: [11.0 / 16.0, 6.0 / 16.0, 11.0 / 16.0],
+    };
     pub(super) const SIGN: Self = Self {
         min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
         max: [12.0 / 16.0, 1.0, 12.0 / 16.0],

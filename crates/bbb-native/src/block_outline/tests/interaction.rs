@@ -65,6 +65,28 @@ fn pressure_plate_outline_clip_uses_thin_shape() {
 }
 
 #[test]
+fn flower_pot_outline_clip_uses_small_column_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(Some("minecraft:potted_oak_sapling"), &BTreeMap::new()),
+    };
+
+    assert_eq!(
+        target.clip(
+            [-1.0, 0.25, 0.5],
+            [1.0, 0.0, 0.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.3125,
+            face: ProtocolDirection::West,
+            inside: false,
+        })
+    );
+}
+
+#[test]
 fn wall_sign_outline_clip_uses_thin_direction_shape() {
     let target = BlockOutlineTarget {
         material: TerrainMaterialClass::Opaque,

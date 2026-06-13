@@ -116,6 +116,21 @@ fn outline_shape_rejects_invalid_pressure_plate_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_flower_pot_shape() {
+    for block_name in [
+        "minecraft:flower_pot",
+        "minecraft:potted_oak_sapling",
+        "minecraft:potted_torchflower",
+        "minecraft:potted_open_eyeblossom",
+    ] {
+        assert_eq!(
+            outline_shape_for_block(Some(block_name), &BTreeMap::new()),
+            Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT))
+        );
+    }
+}
+
+#[test]
 fn outline_shape_uses_vanilla_standing_sign_shape() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:oak_sign"), &standing_sign_properties(0)),
