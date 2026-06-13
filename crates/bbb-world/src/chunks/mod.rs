@@ -15,3 +15,6 @@ pub use state::{
 
 #[cfg(test)]
 pub(crate) use light::LIGHT_ARRAY_BYTES;
+
+#[cfg(test)]
+mod tests;
