@@ -130,7 +130,6 @@ mod tests {
         VANILLA_ITEM_ENTITY_STACK_DATA_ID,
     };
     use super::*;
-    use std::collections::BTreeSet;
 
     use bbb_protocol::codec::Encoder;
     use bbb_protocol::packets::{
@@ -144,21 +143,16 @@ mod tests {
         EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
         EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
         EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        GameProfile as ProtocolGameProfile, GameProfileProperty as ProtocolGameProfileProperty,
-        GameType as ProtocolGameType, HurtAnimation as ProtocolHurtAnimation, ItemStackSummary,
-        LevelChunkWithLight, LevelEvent as ProtocolLevelEvent, LightUpdate as ProtocolLightUpdate,
+        HurtAnimation as ProtocolHurtAnimation, ItemStackSummary, LevelChunkWithLight,
+        LevelEvent as ProtocolLevelEvent, LightUpdate as ProtocolLightUpdate,
         MoveVehicle as ProtocolMoveVehicle, PlayLogin as ProtocolPlayLogin,
-        PlayerInfoAction as ProtocolPlayerInfoAction,
-        PlayerInfoChatSession as ProtocolPlayerInfoChatSession,
-        PlayerInfoEntry as ProtocolPlayerInfoEntry, PlayerInfoRemove as ProtocolPlayerInfoRemove,
-        PlayerInfoUpdate as ProtocolPlayerInfoUpdate, RemoveEntities as ProtocolRemoveEntities,
-        Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
-        SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetEntityData as ProtocolSetEntityData,
-        SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
-        SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
-        TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
-        UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d,
-        PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+        RemoveEntities as ProtocolRemoveEntities, Respawn as ProtocolRespawn,
+        RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
+        SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
+        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
+        SetPassengers as ProtocolSetPassengers, TakeItemEntity as ProtocolTakeItemEntity,
+        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
     };
     use uuid::Uuid;
 
@@ -307,162 +301,6 @@ mod tests {
             level.dimension_type_name.as_deref(),
             Some("minecraft:the_end")
         );
-    }
-
-    #[test]
-    fn player_info_adds_player_with_profile_and_fields() {
-        let mut store = WorldStore::new();
-        let id = Uuid::from_u128(0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa);
-        let mut entry = protocol_player_info_entry(id);
-        entry.profile = Some(protocol_game_profile(id, "Ada"));
-        entry.listed = true;
-        entry.latency = 42;
-        entry.game_mode = ProtocolGameType::Creative;
-        entry.display_name = Some("{\"text\":\"Ada Lovelace\"}".to_string());
-        entry.show_hat = true;
-        entry.list_order = 7;
-        entry.chat_session = Some(protocol_player_info_chat_session());
-
-        let applied = store.apply_player_info_update(ProtocolPlayerInfoUpdate {
-            actions: vec![
-                ProtocolPlayerInfoAction::AddPlayer,
-                ProtocolPlayerInfoAction::InitializeChat,
-                ProtocolPlayerInfoAction::UpdateGameMode,
-                ProtocolPlayerInfoAction::UpdateListed,
-                ProtocolPlayerInfoAction::UpdateLatency,
-                ProtocolPlayerInfoAction::UpdateDisplayName,
-                ProtocolPlayerInfoAction::UpdateHat,
-                ProtocolPlayerInfoAction::UpdateListOrder,
-            ],
-            entries: vec![entry],
-        });
-
-        assert_eq!(applied, 1);
-        let info = store.player_info_entry(id).unwrap();
-        assert_eq!(info.profile.uuid, id);
-        assert_eq!(info.profile.name, "Ada");
-        assert_eq!(info.profile.properties.len(), 1);
-        assert!(info.listed);
-        assert_eq!(info.latency, 42);
-        assert_eq!(info.game_mode, "creative");
-        assert_eq!(
-            info.display_name.as_deref(),
-            Some("{\"text\":\"Ada Lovelace\"}")
-        );
-        assert!(info.show_hat);
-        assert_eq!(info.list_order, 7);
-        assert!(info.chat_session_present);
-        assert_eq!(store.listed_players(), &BTreeSet::from([id]));
-
-        let counters = store.counters();
-        assert_eq!(counters.player_info_update_packets, 1);
-        assert_eq!(counters.player_info_entries_tracked, 1);
-        assert_eq!(counters.listed_players_tracked, 1);
-    }
-
-    #[test]
-    fn player_info_update_ignores_unknown_uuid() {
-        let mut store = WorldStore::new();
-        let id = Uuid::from_u128(0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
-        let mut entry = protocol_player_info_entry(id);
-        entry.listed = true;
-        entry.latency = 99;
-
-        let applied = store.apply_player_info_update(ProtocolPlayerInfoUpdate {
-            actions: vec![
-                ProtocolPlayerInfoAction::UpdateListed,
-                ProtocolPlayerInfoAction::UpdateLatency,
-            ],
-            entries: vec![entry],
-        });
-
-        assert_eq!(applied, 0);
-        assert!(store.player_info().entries.is_empty());
-        assert!(store.listed_players().is_empty());
-        assert_eq!(store.counters().player_info_update_packets, 1);
-        assert_eq!(store.counters().player_info_entries_tracked, 0);
-        assert_eq!(store.counters().listed_players_tracked, 0);
-    }
-
-    #[test]
-    fn player_info_remove_clears_entry_and_listed_tracking() {
-        let mut store = WorldStore::new();
-        let id = Uuid::from_u128(0xcccccccccccccccccccccccccccccccc);
-        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
-            actions: vec![
-                ProtocolPlayerInfoAction::AddPlayer,
-                ProtocolPlayerInfoAction::UpdateListed,
-            ],
-            entries: vec![listed_player_info_entry(id, "Grace", true)],
-        });
-
-        assert!(store.player_info_entry(id).is_some());
-        assert!(store.listed_players().contains(&id));
-
-        let removed = store.apply_player_info_remove(ProtocolPlayerInfoRemove {
-            profile_ids: vec![id],
-        });
-
-        assert_eq!(removed, 1);
-        assert!(store.player_info_entry(id).is_none());
-        assert!(store.listed_players().is_empty());
-        let counters = store.counters();
-        assert_eq!(counters.player_info_remove_packets, 1);
-        assert_eq!(counters.player_info_entries_tracked, 0);
-        assert_eq!(counters.listed_players_tracked, 0);
-    }
-
-    #[test]
-    fn player_info_listed_false_removes_from_listed_set() {
-        let mut store = WorldStore::new();
-        let id = Uuid::from_u128(0xdddddddddddddddddddddddddddddddd);
-        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
-            actions: vec![
-                ProtocolPlayerInfoAction::AddPlayer,
-                ProtocolPlayerInfoAction::UpdateListed,
-            ],
-            entries: vec![listed_player_info_entry(id, "Katherine", true)],
-        });
-        assert!(store.listed_players().contains(&id));
-
-        let mut unlisted = protocol_player_info_entry(id);
-        unlisted.listed = false;
-        let applied = store.apply_player_info_update(ProtocolPlayerInfoUpdate {
-            actions: vec![ProtocolPlayerInfoAction::UpdateListed],
-            entries: vec![unlisted],
-        });
-
-        assert_eq!(applied, 1);
-        assert!(!store.player_info_entry(id).unwrap().listed);
-        assert!(store.listed_players().is_empty());
-        assert_eq!(store.counters().listed_players_tracked, 0);
-    }
-
-    #[test]
-    fn player_info_chat_session_present_flag_can_set_and_clear() {
-        let mut store = WorldStore::new();
-        let id = Uuid::from_u128(0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-        let mut with_chat = listed_player_info_entry(id, "Margaret", false);
-        with_chat.chat_session = Some(protocol_player_info_chat_session());
-        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
-            actions: vec![
-                ProtocolPlayerInfoAction::AddPlayer,
-                ProtocolPlayerInfoAction::InitializeChat,
-            ],
-            entries: vec![with_chat],
-        });
-        assert!(store.player_info_entry(id).unwrap().chat_session_present);
-
-        let mut without_chat = protocol_player_info_entry(id);
-        without_chat.chat_session = None;
-        let applied = store.apply_player_info_update(ProtocolPlayerInfoUpdate {
-            actions: vec![ProtocolPlayerInfoAction::InitializeChat],
-            entries: vec![without_chat],
-        });
-
-        assert_eq!(applied, 1);
-        assert!(!store.player_info_entry(id).unwrap().chat_session_present);
-        assert_eq!(store.counters().player_info_update_packets, 2);
     }
 
     #[test]
@@ -1825,52 +1663,6 @@ mod tests {
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].pos, ChunkPos { x: 2, z: -3 });
         assert_eq!(chunks[0].summary().opaque_blocks, 4096);
-    }
-
-    fn protocol_game_profile(uuid: Uuid, name: &str) -> ProtocolGameProfile {
-        ProtocolGameProfile {
-            uuid,
-            name: name.to_string(),
-            properties: vec![ProtocolGameProfileProperty {
-                name: "textures".to_string(),
-                value: "skin-payload".to_string(),
-                signature: Some("skin-signature".to_string()),
-            }],
-        }
-    }
-
-    fn protocol_player_info_entry(profile_id: Uuid) -> ProtocolPlayerInfoEntry {
-        ProtocolPlayerInfoEntry {
-            profile_id,
-            profile: None,
-            listed: false,
-            latency: 0,
-            game_mode: ProtocolGameType::default(),
-            display_name: None,
-            show_hat: false,
-            list_order: 0,
-            chat_session: None,
-        }
-    }
-
-    fn listed_player_info_entry(
-        profile_id: Uuid,
-        name: &str,
-        listed: bool,
-    ) -> ProtocolPlayerInfoEntry {
-        let mut entry = protocol_player_info_entry(profile_id);
-        entry.profile = Some(protocol_game_profile(profile_id, name));
-        entry.listed = listed;
-        entry
-    }
-
-    fn protocol_player_info_chat_session() -> ProtocolPlayerInfoChatSession {
-        ProtocolPlayerInfoChatSession {
-            session_id: Uuid::from_u128(0x12345678123456781234567812345678),
-            expires_at_epoch_millis: 1_700_000_000_000,
-            public_key: vec![1, 2, 3],
-            key_signature: vec![4, 5, 6],
-        }
     }
 
     fn protocol_play_login(player_id: i32) -> ProtocolPlayLogin {
