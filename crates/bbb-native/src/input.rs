@@ -1,24 +1,25 @@
 use std::time::{Duration, Instant};
 
 use bbb_control::{NetCounters, NetVec3, PlayerPose};
-use bbb_net::{NetCommand, PlayerMoveCommand, VehicleMoveCommand};
+use bbb_net::{NetCommand, PlayerMoveCommand};
 use bbb_protocol::packets::{
-    CommandSuggestionRequest, Direction as ProtocolDirection, InteractionHand, PickItemFromBlock,
-    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem,
-    UseItemOn, Vec3d as ProtocolVec3d,
+    Direction as ProtocolDirection, InteractionHand, PlayerActionKind, PlayerCommandAction,
+    PlayerInput,
 };
-use bbb_world::{BlockPos, WorldStore};
+use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::{
     event::{ElementState, MouseButton},
     keyboard::{KeyCode, PhysicalKey},
 };
 
-use crate::crosshair::{
-    crosshair_block_hit_from_world, protocol_block_hit_result_from_crosshair_hit,
-    protocol_block_pos_from_world, CrosshairBlockHit,
-};
+use crate::crosshair::{crosshair_block_hit_from_world, CrosshairBlockHit};
 use crate::runtime::player_position_state_from_pose;
+
+mod commands;
+
+pub(crate) use commands::queue_vehicle_move_command;
+use commands::*;
 
 const INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 const INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
@@ -213,79 +214,6 @@ fn player_input_from_state(input: &ClientInputState) -> PlayerInput {
     }
 }
 
-fn queue_player_input_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    input: PlayerInput,
-) {
-    if let Some(tx) = net_commands {
-        if tx.try_send(NetCommand::PlayerInput(input)).is_ok() {
-            counters.player_input_commands_queued += 1;
-        }
-    }
-}
-
-fn queue_sprint_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    sprinting: bool,
-) {
-    let action = if sprinting {
-        PlayerCommandAction::StartSprinting
-    } else {
-        PlayerCommandAction::StopSprinting
-    };
-    queue_player_command_action(counters, net_commands, action, 0);
-}
-
-fn queue_player_command_action(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    action: PlayerCommandAction,
-    data: i32,
-) {
-    let (Some(tx), Some(entity_id)) = (net_commands, counters.player_entity_id) else {
-        return;
-    };
-    let command = PlayerCommand {
-        entity_id,
-        action,
-        data,
-    };
-    if tx.try_send(NetCommand::PlayerCommand(command)).is_ok() {
-        counters.player_command_commands_queued += 1;
-    }
-}
-
-fn hotbar_slot_for_key(code: KeyCode) -> Option<u8> {
-    match code {
-        KeyCode::Digit1 => Some(0),
-        KeyCode::Digit2 => Some(1),
-        KeyCode::Digit3 => Some(2),
-        KeyCode::Digit4 => Some(3),
-        KeyCode::Digit5 => Some(4),
-        KeyCode::Digit6 => Some(5),
-        KeyCode::Digit7 => Some(6),
-        KeyCode::Digit8 => Some(7),
-        KeyCode::Digit9 => Some(8),
-        _ => None,
-    }
-}
-
-fn select_hotbar_slot(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    slot: u8,
-) {
-    let slot = slot.min(8);
-    counters.selected_hotbar_slot = slot;
-    if let Some(tx) = net_commands {
-        if tx.try_send(NetCommand::SetHeldSlot(slot)).is_ok() {
-            counters.held_slot_commands_queued += 1;
-        }
-    }
-}
-
 pub(crate) fn handle_mouse_motion(input: &mut ClientInputState, delta: (f64, f64)) {
     if !input.focused {
         return;
@@ -364,154 +292,6 @@ pub(crate) fn handle_mouse_input(
             }
         }
         _ => {}
-    }
-}
-
-fn queue_player_action_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    action_kind: PlayerActionKind,
-    pos: BlockPos,
-    direction: ProtocolDirection,
-    sequence: i32,
-) {
-    let Some(tx) = net_commands else {
-        return;
-    };
-    let action = PlayerAction {
-        action: action_kind,
-        pos: protocol_block_pos_from_world(pos),
-        direction,
-        sequence,
-    };
-    if tx.try_send(NetCommand::PlayerAction(action)).is_ok() {
-        counters.player_action_commands_queued += 1;
-    }
-}
-
-fn queue_zero_pos_player_action_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    action_kind: PlayerActionKind,
-) {
-    queue_player_action_command(
-        counters,
-        net_commands,
-        action_kind,
-        BlockPos { x: 0, y: 0, z: 0 },
-        ProtocolDirection::Down,
-        0,
-    );
-}
-
-fn queue_swing_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    hand: InteractionHand,
-) {
-    if let Some(tx) = net_commands {
-        if tx.try_send(NetCommand::Swing(hand)).is_ok() {
-            counters.swing_commands_queued += 1;
-        }
-    }
-}
-
-fn queue_use_item_on_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    hit: CrosshairBlockHit,
-    sequence: i32,
-) {
-    if let Some(tx) = net_commands {
-        let packet = UseItemOn {
-            hand: InteractionHand::MainHand,
-            hit: protocol_block_hit_result_from_crosshair_hit(hit),
-            sequence,
-        };
-        if tx.try_send(NetCommand::UseItemOn(packet)).is_ok() {
-            counters.use_item_on_commands_queued += 1;
-        }
-    }
-}
-
-fn queue_use_item_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    hand: InteractionHand,
-    pose: PlayerPose,
-    sequence: i32,
-) -> bool {
-    if let Some(tx) = net_commands {
-        let packet = UseItem {
-            hand,
-            sequence,
-            y_rot: pose.y_rot,
-            x_rot: pose.x_rot,
-        };
-        if tx.try_send(NetCommand::UseItem(packet)).is_ok() {
-            counters.use_item_commands_queued += 1;
-            return true;
-        }
-    }
-    false
-}
-
-fn queue_pick_item_from_block_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    pos: BlockPos,
-    include_data: bool,
-) {
-    if let Some(tx) = net_commands {
-        let packet = PickItemFromBlock {
-            pos: protocol_block_pos_from_world(pos),
-            include_data,
-        };
-        if tx.try_send(NetCommand::PickItemFromBlock(packet)).is_ok() {
-            counters.pick_item_from_block_commands_queued += 1;
-        }
-    }
-}
-
-fn queue_command_suggestion_request(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    id: i32,
-    command: impl Into<String>,
-) {
-    if let Some(tx) = net_commands {
-        let request = CommandSuggestionRequest {
-            id,
-            command: command.into(),
-        };
-        if tx
-            .try_send(NetCommand::CommandSuggestionRequest(request))
-            .is_ok()
-        {
-            counters.command_suggestion_commands_queued += 1;
-        }
-    }
-}
-
-pub(crate) fn queue_vehicle_move_command(
-    counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    report: bbb_world::VehicleMoveReport,
-) {
-    if let Some(tx) = net_commands {
-        let command = VehicleMoveCommand {
-            position: ProtocolVec3d {
-                x: report.position.x,
-                y: report.position.y,
-                z: report.position.z,
-            },
-            y_rot: report.y_rot,
-            x_rot: report.x_rot,
-            on_ground: report.on_ground,
-        };
-        if tx.try_send(NetCommand::MoveVehicle(command)).is_ok() {
-            counters.move_vehicle_commands_queued += 1;
-        }
     }
 }
 
@@ -630,8 +410,10 @@ fn wrap_degrees(degrees: f32) -> f32 {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
+        BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos, PickItemFromBlock,
+        PlayerAction, PlayerCommand, UseItem, UseItemOn,
     };
+    use bbb_world::BlockPos;
 
     #[test]
     fn prediction_sequence_starts_at_one_and_wraps_positive() {
@@ -1178,24 +960,6 @@ mod tests {
                     z: 12,
                 },
                 include_data: true,
-            })
-        );
-    }
-
-    #[test]
-    fn queues_command_suggestion_request() {
-        let (tx, mut rx) = mpsc::channel(1);
-        let commands = Some(tx);
-        let mut counters = NetCounters::default();
-
-        queue_command_suggestion_request(&mut counters, &commands, 18, "/give @p minecraft:stone");
-
-        assert_eq!(counters.command_suggestion_commands_queued, 1);
-        assert_eq!(
-            rx.try_recv().unwrap(),
-            NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
-                id: 18,
-                command: "/give @p minecraft:stone".to_string(),
             })
         );
     }
