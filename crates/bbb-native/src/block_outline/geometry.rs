@@ -153,6 +153,10 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 1.0 / 16.0],
         max: [15.0 / 16.0, 14.0 / 16.0, 15.0 / 16.0],
     };
+    pub(super) const BED_PLATFORM: Self = Self {
+        min: [0.0, 3.0 / 16.0, 0.0],
+        max: [1.0, 9.0 / 16.0, 1.0],
+    };
     pub(super) const SIGN: Self = Self {
         min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
         max: [12.0 / 16.0, 1.0, 12.0 / 16.0],
@@ -557,6 +561,15 @@ impl HorizontalDirection {
             Self::East => Self::North,
             Self::South => Self::East,
             Self::West => Self::South,
+        }
+    }
+
+    pub(super) fn opposite(self) -> Self {
+        match self {
+            Self::North => Self::South,
+            Self::East => Self::West,
+            Self::South => Self::North,
+            Self::West => Self::East,
         }
     }
 

@@ -1,3 +1,4 @@
+mod beds;
 mod cauldrons;
 mod chests;
 mod interaction;

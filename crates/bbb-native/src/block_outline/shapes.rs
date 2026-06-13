@@ -33,6 +33,9 @@ pub(super) fn outline_shape_for_block(
     if is_standard_chest_block_name(block_name) {
         return chest_outline_shape(properties);
     }
+    if is_bed_block_name(block_name) {
+        return bed_outline_shape(properties);
+    }
     if is_flower_pot_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
     }
@@ -232,6 +235,38 @@ fn chest_connected_outline(connected: HorizontalDirection) -> BlockOutlineBox {
         HorizontalDirection::South => BlockOutlineBox::CHEST_CONNECTED_SOUTH,
         HorizontalDirection::West => BlockOutlineBox::CHEST_CONNECTED_WEST,
     }
+}
+
+fn bed_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let connected = match properties.get("part").map(String::as_str)? {
+        "head" => facing.opposite(),
+        "foot" => facing,
+        _ => return None,
+    };
+    Some(bed_shape_for_direction(connected.opposite()))
+}
+
+fn bed_shape_for_direction(direction: HorizontalDirection) -> BlockOutlineShape {
+    let (left_leg, right_leg) = match direction {
+        HorizontalDirection::North => (
+            BlockOutlineBox::from_pixels([0.0, 0.0, 0.0], [3.0, 3.0, 3.0]),
+            BlockOutlineBox::from_pixels([13.0, 0.0, 0.0], [16.0, 3.0, 3.0]),
+        ),
+        HorizontalDirection::East => (
+            BlockOutlineBox::from_pixels([13.0, 0.0, 0.0], [16.0, 3.0, 3.0]),
+            BlockOutlineBox::from_pixels([13.0, 0.0, 13.0], [16.0, 3.0, 16.0]),
+        ),
+        HorizontalDirection::South => (
+            BlockOutlineBox::from_pixels([13.0, 0.0, 13.0], [16.0, 3.0, 16.0]),
+            BlockOutlineBox::from_pixels([0.0, 0.0, 13.0], [3.0, 3.0, 16.0]),
+        ),
+        HorizontalDirection::West => (
+            BlockOutlineBox::from_pixels([0.0, 0.0, 13.0], [3.0, 3.0, 16.0]),
+            BlockOutlineBox::from_pixels([0.0, 0.0, 0.0], [3.0, 3.0, 3.0]),
+        ),
+    };
+    BlockOutlineShape::from_boxes(vec![BlockOutlineBox::BED_PLATFORM, left_leg, right_leg])
 }
 
 fn wall_sign_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -608,6 +643,12 @@ fn is_cauldron_block_name(block_name: &str) -> bool {
 
 fn is_standard_chest_block_name(block_name: &str) -> bool {
     matches!(block_name, "minecraft:chest" | "minecraft:trapped_chest")
+}
+
+fn is_bed_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_bed"))
 }
 
 fn is_flower_pot_block_name(block_name: &str) -> bool {
