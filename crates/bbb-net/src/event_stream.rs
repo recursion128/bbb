@@ -289,6 +289,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::ContainerSetSlot(update) => {
                     emit(&events, NetEvent::ContainerSetSlot(update)).await?;
                 }
+                PlayClientbound::MerchantOffers(update) => {
+                    emit(&events, NetEvent::MerchantOffers(update)).await?;
+                }
                 PlayClientbound::CookieRequest(request) => {
                     let payload = server_cookies.get(&request.key).map(Vec::as_slice);
                     let payload_present = payload.is_some();

@@ -1,8 +1,10 @@
 use bbb_protocol::packets::{
     ContainerClose as ProtocolContainerClose, ContainerSetContent as ProtocolContainerSetContent,
     ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
-    ItemStackSummary as ProtocolItemStackSummary, OpenScreen as ProtocolOpenScreen,
-    SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
+    ItemCostSummary as ProtocolItemCostSummary, ItemStackSummary as ProtocolItemStackSummary,
+    MerchantOffer as ProtocolMerchantOffer, MerchantOffers as ProtocolMerchantOffers,
+    OpenScreen as ProtocolOpenScreen, SetCursorItem as ProtocolSetCursorItem,
+    SetPlayerInventory as ProtocolSetPlayerInventory,
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +28,7 @@ pub struct ContainerDataValue {
     pub value: i16,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ContainerState {
     pub container_id: i32,
     pub menu_type_id: Option<i32>,
@@ -34,13 +36,38 @@ pub struct ContainerState {
     pub state_id: i32,
     pub slots: Vec<ContainerSlot>,
     pub data_values: Vec<ContainerDataValue>,
+    pub merchant_offers: Option<MerchantOffersState>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InventoryState {
     pub player_slots: Vec<InventorySlot>,
     pub cursor_item: ProtocolItemStackSummary,
     pub open_container: Option<ContainerState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MerchantOffersState {
+    pub container_id: i32,
+    pub offers: Vec<MerchantOfferState>,
+    pub villager_level: i32,
+    pub villager_xp: i32,
+    pub show_progress: bool,
+    pub can_restock: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MerchantOfferState {
+    pub buy_a: ProtocolItemCostSummary,
+    pub sell: ProtocolItemStackSummary,
+    pub buy_b: Option<ProtocolItemCostSummary>,
+    pub is_out_of_stock: bool,
+    pub uses: i32,
+    pub max_uses: i32,
+    pub xp: i32,
+    pub special_price_diff: i32,
+    pub price_multiplier: f32,
+    pub demand: i32,
 }
 
 impl Default for InventoryState {
@@ -89,7 +116,9 @@ impl WorldStore {
             state_id: existing.state_id,
             slots: existing.slots,
             data_values: existing.data_values,
+            merchant_offers: existing.merchant_offers,
         });
+        self.update_merchant_offer_count();
     }
 
     pub fn apply_container_set_content(&mut self, packet: ProtocolContainerSetContent) {
@@ -100,6 +129,9 @@ impl WorldStore {
             .open_container
             .take()
             .filter(|container| container.container_id == packet.container_id);
+        let merchant_offers = existing
+            .as_ref()
+            .and_then(|container| container.merchant_offers.clone());
         self.inventory.open_container = Some(ContainerState {
             container_id: packet.container_id,
             menu_type_id: existing
@@ -119,9 +151,31 @@ impl WorldStore {
                 })
                 .collect(),
             data_values: existing
-                .map(|container| container.data_values)
+                .as_ref()
+                .map(|container| container.data_values.clone())
                 .unwrap_or_default(),
+            merchant_offers,
         });
+        self.update_merchant_offer_count();
+    }
+
+    pub fn apply_merchant_offers(&mut self, packet: ProtocolMerchantOffers) -> bool {
+        self.counters.merchant_offer_packets_received += 1;
+        let Some(container) = self
+            .inventory
+            .open_container
+            .as_mut()
+            .filter(|container| container.container_id == packet.container_id)
+        else {
+            self.counters.merchant_offer_packets_ignored += 1;
+            return false;
+        };
+
+        let offer_count = packet.offers.len();
+        container.merchant_offers = Some(MerchantOffersState::from_packet(packet));
+        self.counters.merchant_offer_packets_applied += 1;
+        self.counters.merchant_offers_tracked = offer_count;
+        true
     }
 
     pub fn apply_container_set_slot(&mut self, packet: ProtocolContainerSetSlot) {
@@ -135,6 +189,7 @@ impl WorldStore {
                 item: packet.item,
             },
         );
+        self.update_merchant_offer_count();
     }
 
     pub fn apply_container_set_data(&mut self, packet: ProtocolContainerSetData) {
@@ -156,6 +211,7 @@ impl WorldStore {
             });
         }
         container.data_values.sort_by_key(|value| value.id);
+        self.update_merchant_offer_count();
     }
 
     pub fn apply_container_close(&mut self, packet: ProtocolContainerClose) -> bool {
@@ -167,6 +223,7 @@ impl WorldStore {
             .is_some_and(|container| container.container_id == packet.container_id)
         {
             self.inventory.open_container = None;
+            self.counters.merchant_offers_tracked = 0;
             true
         } else {
             false
@@ -198,6 +255,16 @@ impl WorldStore {
     fn update_inventory_slot_count(&mut self) {
         self.counters.inventory_slots_tracked = self.inventory.player_slots.len();
     }
+
+    fn update_merchant_offer_count(&mut self) {
+        self.counters.merchant_offers_tracked = self
+            .inventory
+            .open_container
+            .as_ref()
+            .and_then(|container| container.merchant_offers.as_ref())
+            .map(|offers| offers.offers.len())
+            .unwrap_or(0);
+    }
 }
 
 fn set_inventory_slot(slots: &mut Vec<InventorySlot>, update: InventorySlot) {
@@ -216,6 +283,40 @@ fn set_container_slot(slots: &mut Vec<ContainerSlot>, update: ContainerSlot) {
         slots.push(update);
     }
     slots.sort_by_key(|slot| slot.slot);
+}
+
+impl MerchantOffersState {
+    fn from_packet(packet: ProtocolMerchantOffers) -> Self {
+        Self {
+            container_id: packet.container_id,
+            offers: packet
+                .offers
+                .into_iter()
+                .map(MerchantOfferState::from_packet)
+                .collect(),
+            villager_level: packet.villager_level,
+            villager_xp: packet.villager_xp,
+            show_progress: packet.show_progress,
+            can_restock: packet.can_restock,
+        }
+    }
+}
+
+impl MerchantOfferState {
+    fn from_packet(packet: ProtocolMerchantOffer) -> Self {
+        Self {
+            buy_a: packet.buy_a,
+            sell: packet.sell,
+            buy_b: packet.buy_b,
+            is_out_of_stock: packet.is_out_of_stock,
+            uses: packet.uses,
+            max_uses: packet.max_uses,
+            xp: packet.xp,
+            special_price_diff: packet.special_price_diff,
+            price_multiplier: packet.price_multiplier,
+            demand: packet.demand,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -316,11 +417,84 @@ mod tests {
         assert_eq!(store.counters().container_close_updates_received, 2);
     }
 
+    #[test]
+    fn merchant_offers_apply_only_to_matching_open_container() {
+        let mut store = WorldStore::new();
+
+        assert!(!store.apply_merchant_offers(merchant_offers(7, 1)));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 18,
+            title: "Merchant".to_string(),
+        });
+        assert!(!store.apply_merchant_offers(merchant_offers(99, 1)));
+        assert!(store.apply_merchant_offers(merchant_offers(7, 2)));
+
+        let container = store.inventory().open_container.as_ref().unwrap();
+        let offers = container.merchant_offers.as_ref().unwrap();
+        assert_eq!(offers.container_id, 7);
+        assert_eq!(offers.offers.len(), 2);
+        assert_eq!(offers.villager_level, 3);
+        assert_eq!(offers.villager_xp, 120);
+        assert!(offers.show_progress);
+        assert!(!offers.can_restock);
+        assert_eq!(offers.offers[0].buy_a, item_cost(42, 3));
+        assert_eq!(offers.offers[0].sell, item_stack(99, 1));
+
+        assert_eq!(store.counters().merchant_offer_packets_received, 3);
+        assert_eq!(store.counters().merchant_offer_packets_applied, 1);
+        assert_eq!(store.counters().merchant_offer_packets_ignored, 2);
+        assert_eq!(store.counters().merchant_offers_tracked, 2);
+
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 5,
+            items: Vec::new(),
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert_eq!(store.counters().merchant_offers_tracked, 2);
+
+        assert!(store.apply_container_close(ProtocolContainerClose { container_id: 7 }));
+        assert_eq!(store.counters().merchant_offers_tracked, 0);
+    }
+
     fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
         ProtocolItemStackSummary {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn merchant_offers(container_id: i32, offer_count: usize) -> ProtocolMerchantOffers {
+        ProtocolMerchantOffers {
+            container_id,
+            offers: (0..offer_count)
+                .map(|index| ProtocolMerchantOffer {
+                    buy_a: item_cost(42 + index as i32, 3),
+                    sell: item_stack(99 + index as i32, 1),
+                    buy_b: None,
+                    is_out_of_stock: false,
+                    uses: 1,
+                    max_uses: 12,
+                    xp: 8,
+                    special_price_diff: -2,
+                    price_multiplier: 0.05,
+                    demand: 6,
+                })
+                .collect(),
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: false,
+        }
+    }
+
+    fn item_cost(item_id: i32, count: i32) -> ProtocolItemCostSummary {
+        ProtocolItemCostSummary {
+            item_id,
+            count,
+            component_predicate: Default::default(),
         }
     }
 }

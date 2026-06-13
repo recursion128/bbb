@@ -154,6 +154,14 @@ pub struct WorldCounters {
     pub container_slot_updates_received: usize,
     pub container_data_updates_received: usize,
     pub container_close_updates_received: usize,
+    #[serde(default)]
+    pub merchant_offer_packets_received: usize,
+    #[serde(default)]
+    pub merchant_offer_packets_applied: usize,
+    #[serde(default)]
+    pub merchant_offer_packets_ignored: usize,
+    #[serde(default)]
+    pub merchant_offers_tracked: usize,
     pub entities_tracked: usize,
     pub entities_received: usize,
     pub entity_position_syncs_received: usize,

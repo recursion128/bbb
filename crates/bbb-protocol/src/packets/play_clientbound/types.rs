@@ -56,6 +56,7 @@ pub enum PlayClientbound {
     Login(PlayLogin),
     LowDiskSpaceWarning,
     MapItemData(MapItemData),
+    MerchantOffers(MerchantOffers),
     MountScreenOpen(MountScreenOpen),
     MoveEntity(EntityMove),
     MoveVehicle(MoveVehicle),

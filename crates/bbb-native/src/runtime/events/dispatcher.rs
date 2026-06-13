@@ -354,6 +354,9 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::ContainerSetSlot(update) => {
                 world.apply_container_set_slot(update);
             }
+            NetEvent::MerchantOffers(update) => {
+                world.apply_merchant_offers(update);
+            }
             NetEvent::OpenScreen(update) => {
                 world.apply_open_screen(update);
             }

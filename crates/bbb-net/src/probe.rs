@@ -204,6 +204,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::ContainerSetSlot(update) => {
                     world.apply_container_set_slot(update);
                 }
+                PlayClientbound::MerchantOffers(update) => {
+                    world.apply_merchant_offers(update);
+                }
                 PlayClientbound::CookieRequest(request) => {
                     let payload = server_cookies.get(&request.key).map(Vec::as_slice);
                     let (id, response) =

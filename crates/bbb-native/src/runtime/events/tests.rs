@@ -7,8 +7,9 @@ use bbb_protocol::packets::{
     CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, DebugBlockValue,
     DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat, DialogHolder,
     DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind, GameRuleValue,
-    GameRuleValues, GameTestHighlightPos, InteractionHand, LevelParticles, MapColorPatch,
-    MapDecoration, MapItemData, MessageSignature, MountScreenOpen, OpenBook, OpenSignEditor,
+    GameRuleValues, GameTestHighlightPos, InteractionHand, ItemCostSummary, ItemStackSummary,
+    LevelParticles, MapColorPatch, MapDecoration, MapItemData, MerchantOffer, MerchantOffers,
+    MessageSignature, MountScreenOpen, OpenBook, OpenScreen, OpenSignEditor,
     PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat,
     PlayerCombatEnd, PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse,
     ProjectilePower, RecipeDisplayType, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab,
@@ -581,6 +582,62 @@ fn client_feature_events_update_snapshot_counters() {
             raw_nbt_len: 2,
         })
     );
+}
+
+#[test]
+fn merchant_offers_event_updates_world_inventory_state() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::OpenScreen(OpenScreen {
+        container_id: 7,
+        menu_type_id: 18,
+        title: "Merchant".to_string(),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::MerchantOffers(MerchantOffers {
+        container_id: 7,
+        offers: vec![MerchantOffer {
+            buy_a: item_cost(42, 3),
+            sell: item_stack(99, 1),
+            buy_b: Some(item_cost(43, 2)),
+            is_out_of_stock: true,
+            uses: 4,
+            max_uses: 12,
+            xp: 8,
+            special_price_diff: -2,
+            price_multiplier: 0.05,
+            demand: 6,
+        }],
+        villager_level: 3,
+        villager_xp: 120,
+        show_progress: true,
+        can_restock: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    let container = world.inventory().open_container.as_ref().unwrap();
+    let offers = container.merchant_offers.as_ref().unwrap();
+    assert_eq!(offers.container_id, 7);
+    assert_eq!(offers.offers.len(), 1);
+    assert_eq!(offers.offers[0].buy_a, item_cost(42, 3));
+    assert_eq!(offers.offers[0].sell, item_stack(99, 1));
+    assert_eq!(offers.villager_level, 3);
+    assert_eq!(offers.villager_xp, 120);
+    assert!(offers.show_progress);
+    assert!(!offers.can_restock);
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.container_open_updates_received, 1);
+    assert_eq!(world_counters.merchant_offer_packets_received, 1);
+    assert_eq!(world_counters.merchant_offer_packets_applied, 1);
+    assert_eq!(world_counters.merchant_offers_tracked, 1);
 }
 
 #[test]
@@ -1705,6 +1762,22 @@ fn world_time_and_weather_update_snapshot_and_clear_color() {
     assert!(storm.r < day.r);
     assert!(storm.g < day.g);
     assert!(storm.b < day.b);
+}
+
+fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
+    ItemStackSummary {
+        item_id: Some(item_id),
+        count,
+        component_patch: Default::default(),
+    }
+}
+
+fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {
+    ItemCostSummary {
+        item_id,
+        count,
+        component_predicate: Default::default(),
+    }
 }
 
 fn protocol_play_login(player_id: i32) -> PlayLogin {

@@ -4,8 +4,8 @@ use crate::{
     ids,
     packets::{
         chat, chunks, client_audio, client_common, client_features, client_state, client_ui,
-        command_suggestions, connection, debug_game, entities, inventory, maps, player_actions,
-        player_info, scoreboard, server_presentation, tags, waypoints,
+        command_suggestions, connection, debug_game, entities, inventory, maps, merchant,
+        player_actions, player_info, scoreboard, server_presentation, tags, waypoints,
         world_border::{
             InitializeBorder, SetBorderCenter, SetBorderLerpSize, SetBorderSize,
             SetBorderWarningDelay, SetBorderWarningDistance,
@@ -305,6 +305,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::MapItemData(maps::decode_map_item_data(
                 &mut decoder,
             )?))
+        }
+        ids::play::CLIENTBOUND_MERCHANT_OFFERS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::MerchantOffers(
+                merchant::decode_merchant_offers(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_MOUNT_SCREEN_OPEN => {
             let mut decoder = Decoder::new(payload);
