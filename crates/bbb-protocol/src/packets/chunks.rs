@@ -275,7 +275,7 @@ fn decode_section_pos(packed: i64) -> (i32, i32, i32) {
     )
 }
 
-fn decode_chunk_pos(packed: i64) -> ChunkPos {
+pub(crate) fn decode_chunk_pos(packed: i64) -> ChunkPos {
     ChunkPos {
         x: packed as i32,
         z: (packed >> 32) as i32,

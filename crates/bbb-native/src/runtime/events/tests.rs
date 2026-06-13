@@ -2,14 +2,17 @@ use super::*;
 use crate::runtime::clear_color_for_day_time;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, CustomChatCompletions,
-    CustomChatCompletionsAction, Explosion, InteractionHand, LevelParticles, MountScreenOpen,
-    OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PongResponse,
-    ProjectilePower, RecipeDisplayType, SelectAdvancementsTab, ServerLinkEntry,
+    AddEntity, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, CommonPlayerSpawnInfo,
+    CustomChatCompletions, CustomChatCompletionsAction, DebugBlockValue, DebugChunkValue,
+    DebugEntityValue, DebugEvent, DebugSample, Explosion, GameRuleValue, GameRuleValues,
+    GameTestHighlightPos, InteractionHand, LevelParticles, MountScreenOpen, OpenBook,
+    OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PongResponse, ProjectilePower,
+    RecipeDisplayType, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
     ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, SoundEntityEvent, SoundEvent,
-    SoundEventHolder, SoundSource, StopSound, TagQuery, Vec3d as ProtocolVec3d,
+    SoundEventHolder, SoundSource, StopSound, TagQuery, TestInstanceBlockStatus,
+    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
 };
-use bbb_world::{BlockPos, WorldStore};
+use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
 use uuid::Uuid;
@@ -592,6 +595,134 @@ fn world_effect_events_update_snapshot_counters() {
         Some(bbb_control::ProjectilePowerState {
             entity_id: 123,
             acceleration_power: 0.75,
+        })
+    );
+}
+
+#[test]
+fn debug_game_events_update_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(8);
+    tx.try_send(NetEvent::DebugBlockValue(DebugBlockValue {
+        pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
+        raw_update_payload: vec![5, 1, 0xaa],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::DebugChunkValue(DebugChunkValue {
+        pos: ProtocolChunkPos { x: 3, z: -4 },
+        raw_update_payload: vec![7, 0],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::DebugEntityValue(DebugEntityValue {
+        entity_id: 123,
+        raw_update_payload: vec![9, 1, 0xbb],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::DebugEvent(DebugEvent {
+        raw_event_payload: vec![4, 0xcc],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::DebugSample(DebugSample {
+        sample: vec![100, -50],
+        sample_type: RemoteDebugSampleType::TickTime,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::GameRuleValues(GameRuleValues {
+        values: vec![
+            GameRuleValue {
+                rule: "minecraft:do_daylight_cycle".to_string(),
+                value: "false".to_string(),
+            },
+            GameRuleValue {
+                rule: "minecraft:random_tick_speed".to_string(),
+                value: "3".to_string(),
+            },
+        ],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::GameTestHighlightPos(GameTestHighlightPos {
+        absolute_pos: ProtocolBlockPos {
+            x: -10,
+            y: 70,
+            z: 22,
+        },
+        relative_pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::TestInstanceBlockStatus(TestInstanceBlockStatus {
+        status: "Ready".to_string(),
+        size: Some(ProtocolVec3i { x: 3, y: 4, z: 5 }),
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        8
+    );
+    assert_eq!(counters.debug_block_value_packets, 1);
+    assert_eq!(
+        counters.last_debug_block_value,
+        Some(bbb_control::DebugBlockValueState {
+            pos: BlockPos { x: 1, y: 64, z: -2 },
+            raw_update_payload_len: 3,
+        })
+    );
+    assert_eq!(counters.debug_chunk_value_packets, 1);
+    assert_eq!(
+        counters.last_debug_chunk_value,
+        Some(bbb_control::DebugChunkValueState {
+            pos: ChunkPos { x: 3, z: -4 },
+            raw_update_payload_len: 2,
+        })
+    );
+    assert_eq!(counters.debug_entity_value_packets, 1);
+    assert_eq!(
+        counters.last_debug_entity_value,
+        Some(bbb_control::DebugEntityValueState {
+            entity_id: 123,
+            raw_update_payload_len: 3,
+        })
+    );
+    assert_eq!(counters.debug_event_packets, 1);
+    assert_eq!(
+        counters.last_debug_event,
+        Some(bbb_control::DebugEventState {
+            raw_event_payload_len: 2,
+        })
+    );
+    assert_eq!(counters.debug_sample_packets, 1);
+    assert_eq!(
+        counters.last_debug_sample,
+        Some(bbb_control::DebugSampleState {
+            sample_len: 2,
+            sample_type: "tick_time".to_string(),
+        })
+    );
+    assert_eq!(counters.game_rule_value_packets, 1);
+    assert_eq!(
+        counters.last_game_rule_values,
+        Some(bbb_control::GameRuleValuesState { values: 2 })
+    );
+    assert_eq!(counters.game_test_highlight_pos_packets, 1);
+    assert_eq!(
+        counters.last_game_test_highlight_pos,
+        Some(bbb_control::GameTestHighlightPosState {
+            absolute_pos: BlockPos {
+                x: -10,
+                y: 70,
+                z: 22,
+            },
+            relative_pos: BlockPos { x: 1, y: 2, z: 3 },
+        })
+    );
+    assert_eq!(counters.test_instance_block_status_packets, 1);
+    assert_eq!(
+        counters.last_test_instance_block_status,
+        Some(bbb_control::TestInstanceBlockStatusState {
+            status: "Ready".to_string(),
+            size: Some(bbb_control::NetVec3i { x: 3, y: 4, z: 5 }),
         })
     );
 }

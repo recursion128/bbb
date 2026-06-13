@@ -156,6 +156,36 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_state::decode_damage_event(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_DEBUG_BLOCK_VALUE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::DebugBlockValue(
+                debug_game::decode_debug_block_value(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_DEBUG_CHUNK_VALUE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::DebugChunkValue(
+                debug_game::decode_debug_chunk_value(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_DEBUG_ENTITY_VALUE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::DebugEntityValue(
+                debug_game::decode_debug_entity_value(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_DEBUG_EVENT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::DebugEvent(debug_game::decode_debug_event(
+                &mut decoder,
+            )?))
+        }
+        ids::play::CLIENTBOUND_DEBUG_SAMPLE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::DebugSample(
+                debug_game::decode_debug_sample(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_DISCONNECT => Ok(PlayClientbound::Disconnect(Disconnect {
             reason: decode_component_summary(payload)?,
             raw_reason: payload.to_vec(),
@@ -189,6 +219,18 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::GameEvent(client_state::decode_game_event(
                 &mut decoder,
             )?))
+        }
+        ids::play::CLIENTBOUND_GAME_RULE_VALUES => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::GameRuleValues(
+                debug_game::decode_game_rule_values(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_GAME_TEST_HIGHLIGHT_POS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::GameTestHighlightPos(
+                debug_game::decode_game_test_highlight_pos(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_HURT_ANIMATION => {
             let mut decoder = Decoder::new(payload);
@@ -631,6 +673,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::TeleportEntity(
                 entities::decode_teleport_entity(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_TEST_INSTANCE_BLOCK_STATUS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::TestInstanceBlockStatus(
+                debug_game::decode_test_instance_block_status(&mut decoder)?,
             ))
         }
         ids::play::CLIENTBOUND_TICKING_STATE => {

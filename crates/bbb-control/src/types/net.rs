@@ -44,6 +44,14 @@ pub struct NetCounters {
     pub last_explosion: Option<ExplosionState>,
     pub last_level_particles: Option<LevelParticlesState>,
     pub last_projectile_power: Option<ProjectilePowerState>,
+    pub last_debug_block_value: Option<DebugBlockValueState>,
+    pub last_debug_chunk_value: Option<DebugChunkValueState>,
+    pub last_debug_entity_value: Option<DebugEntityValueState>,
+    pub last_debug_event: Option<DebugEventState>,
+    pub last_debug_sample: Option<DebugSampleState>,
+    pub last_game_rule_values: Option<GameRuleValuesState>,
+    pub last_game_test_highlight_pos: Option<GameTestHighlightPosState>,
+    pub last_test_instance_block_status: Option<TestInstanceBlockStatusState>,
     pub selected_advancements_tab: Option<String>,
     pub last_tag_query: Option<TagQueryState>,
     pub player_position_packets: usize,
@@ -116,6 +124,14 @@ pub struct NetCounters {
     pub explosion_packets: usize,
     pub level_particles_packets: usize,
     pub projectile_power_packets: usize,
+    pub debug_block_value_packets: usize,
+    pub debug_chunk_value_packets: usize,
+    pub debug_entity_value_packets: usize,
+    pub debug_event_packets: usize,
+    pub debug_sample_packets: usize,
+    pub game_rule_value_packets: usize,
+    pub game_test_highlight_pos_packets: usize,
+    pub test_instance_block_status_packets: usize,
     pub select_advancements_tab_packets: usize,
     pub tag_query_packets: usize,
     pub last_block_changed_ack_sequence: Option<i32>,
@@ -365,6 +381,59 @@ pub struct LevelParticlesState {
 pub struct ProjectilePowerState {
     pub entity_id: i32,
     pub acceleration_power: f64,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NetVec3i {
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DebugBlockValueState {
+    pub pos: BlockPos,
+    pub raw_update_payload_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DebugChunkValueState {
+    pub pos: ChunkPos,
+    pub raw_update_payload_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DebugEntityValueState {
+    pub entity_id: i32,
+    pub raw_update_payload_len: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DebugEventState {
+    pub raw_event_payload_len: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DebugSampleState {
+    pub sample_len: usize,
+    pub sample_type: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameRuleValuesState {
+    pub values: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameTestHighlightPosState {
+    pub absolute_pos: BlockPos,
+    pub relative_pos: BlockPos,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TestInstanceBlockStatusState {
+    pub status: String,
+    pub size: Option<NetVec3i>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

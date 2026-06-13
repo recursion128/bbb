@@ -6,11 +6,13 @@ mod snapshot;
 pub use api::{ControlRequest, ControlResponse};
 pub use net::{
     ActionBarText, CameraState, ClientSoundEntityState, ClientSoundState, ClientTickingState,
-    CustomChatCompletionState, DefaultSpawn, ExplosionState, GhostRecipeState, LevelParticlesState,
-    MountScreenState, NetCounters, NetVec3, OpenSignEditorState, PlayerAbilities, PlayerExperience,
+    CustomChatCompletionState, DebugBlockValueState, DebugChunkValueState, DebugEntityValueState,
+    DebugEventState, DebugSampleState, DefaultSpawn, ExplosionState, GameRuleValuesState,
+    GameTestHighlightPosState, GhostRecipeState, LevelParticlesState, MountScreenState,
+    NetCounters, NetVec3, NetVec3i, OpenSignEditorState, PlayerAbilities, PlayerExperience,
     PlayerHealth, PlayerPose, ProjectilePowerState, ServerLinkState, SoundHolderState,
-    StopSoundState, SystemChatLine, TagQueryState, TitleState, TransferTarget, WeatherState,
-    WorldTime,
+    StopSoundState, SystemChatLine, TagQueryState, TestInstanceBlockStatusState, TitleState,
+    TransferTarget, WeatherState, WorldTime,
 };
 pub use renderer::RendererCounters;
 pub use snapshot::{AppStatus, ControlSnapshot, SharedSnapshot};

@@ -217,6 +217,21 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::DamageEvent(update) => {
                     emit(&events, NetEvent::DamageEvent(update)).await?;
                 }
+                PlayClientbound::DebugBlockValue(update) => {
+                    emit(&events, NetEvent::DebugBlockValue(update)).await?;
+                }
+                PlayClientbound::DebugChunkValue(update) => {
+                    emit(&events, NetEvent::DebugChunkValue(update)).await?;
+                }
+                PlayClientbound::DebugEntityValue(update) => {
+                    emit(&events, NetEvent::DebugEntityValue(update)).await?;
+                }
+                PlayClientbound::DebugEvent(update) => {
+                    emit(&events, NetEvent::DebugEvent(update)).await?;
+                }
+                PlayClientbound::DebugSample(update) => {
+                    emit(&events, NetEvent::DebugSample(update)).await?;
+                }
                 PlayClientbound::UpdateMobEffect(update) => {
                     emit(&events, NetEvent::UpdateMobEffect(update)).await?;
                 }
@@ -345,6 +360,12 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::GameEvent(event) => {
                     emit(&events, NetEvent::GameEvent(event)).await?;
+                }
+                PlayClientbound::GameRuleValues(update) => {
+                    emit(&events, NetEvent::GameRuleValues(update)).await?;
+                }
+                PlayClientbound::GameTestHighlightPos(update) => {
+                    emit(&events, NetEvent::GameTestHighlightPos(update)).await?;
                 }
                 PlayClientbound::SetTime(time) => {
                     emit(&events, NetEvent::SetTime(time)).await?;
@@ -540,6 +561,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::TagQuery(update) => {
                     emit(&events, NetEvent::TagQuery(update)).await?;
+                }
+                PlayClientbound::TestInstanceBlockStatus(update) => {
+                    emit(&events, NetEvent::TestInstanceBlockStatus(update)).await?;
                 }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     emit(&events, NetEvent::LevelChunkWithLight(chunk)).await?;

@@ -152,6 +152,11 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::DamageEvent(update) => {
                     world.apply_damage_event(update);
                 }
+                PlayClientbound::DebugBlockValue(_)
+                | PlayClientbound::DebugChunkValue(_)
+                | PlayClientbound::DebugEntityValue(_)
+                | PlayClientbound::DebugEvent(_)
+                | PlayClientbound::DebugSample(_) => {}
                 PlayClientbound::UpdateMobEffect(update) => {
                     world.apply_update_mob_effect(update);
                 }
@@ -325,7 +330,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::CommandSuggestions(update) => {
                     world.apply_command_suggestions(update);
                 }
-                PlayClientbound::SelectAdvancementsTab(_) | PlayClientbound::TagQuery(_) => {}
+                PlayClientbound::SelectAdvancementsTab(_)
+                | PlayClientbound::TagQuery(_)
+                | PlayClientbound::TestInstanceBlockStatus(_) => {}
                 PlayClientbound::TabList(update) => {
                     world.apply_tab_list(update);
                 }
@@ -339,7 +346,10 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::LevelEvent(event) => {
                     world.apply_level_event(event);
                 }
-                PlayClientbound::GameEvent(_) | PlayClientbound::SetTime(_) => {}
+                PlayClientbound::GameEvent(_)
+                | PlayClientbound::GameRuleValues(_)
+                | PlayClientbound::GameTestHighlightPos(_)
+                | PlayClientbound::SetTime(_) => {}
                 PlayClientbound::PlayerPosition(update) => {
                     player_position_state = update.apply_to_state(player_position_state);
                     let (id, payload) = packets::encode_play_accept_teleportation(update.id);
