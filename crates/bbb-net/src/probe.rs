@@ -287,6 +287,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 | PlayClientbound::PlayerCombatEnter
                 | PlayClientbound::PlayerCombatKill(_)
                 | PlayClientbound::PlayerLookAt(_) => {}
+                PlayClientbound::MapItemData(update) => {
+                    world.apply_map_item_data(update);
+                }
                 PlayClientbound::SetActionBarText(_)
                 | PlayClientbound::SetTitleText(_)
                 | PlayClientbound::SetSubtitleText(_)

@@ -6,14 +6,14 @@ use bbb_protocol::packets::{
     CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
     DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
     EntityAnchor, Explosion, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
-    LevelParticles, MountScreenOpen, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
-    PlayLogin, PlayerCombatEnd, PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse,
-    ProjectilePower, RecipeDisplayType, RemoteDebugSampleType, SelectAdvancementsTab,
-    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog,
-    SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StopSound, TagQuery,
-    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, Vec3d as ProtocolVec3d,
-    Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-    WaypointVec3i,
+    LevelParticles, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
+    OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerCombatEnd,
+    PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse, ProjectilePower,
+    RecipeDisplayType, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
+    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog, SoundEntityEvent,
+    SoundEvent, SoundEventHolder, SoundSource, StopSound, TagQuery, TestInstanceBlockStatus,
+    TrackedWaypoint, TrackedWaypointPacket, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -228,6 +228,52 @@ fn client_ui_events_update_snapshot_counters() {
     );
     assert_eq!(counters.pong_response_packets, 1);
     assert_eq!(counters.last_pong_response_time, Some(123456789));
+}
+
+#[test]
+fn map_item_data_event_updates_world_state() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::MapItemData(MapItemData {
+        map_id: 42,
+        scale: 2,
+        locked: true,
+        decorations: Some(vec![MapDecoration {
+            type_id: 4,
+            x: -20,
+            y: 30,
+            rot: 7,
+            name: Some("Village".to_string()),
+        }]),
+        color_patch: Some(MapColorPatch {
+            start_x: 3,
+            start_y: 4,
+            width: 2,
+            height: 2,
+            colors: vec![1, 2, 3, 4],
+        }),
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    let map = world.map_item(42).expect("map state is tracked");
+    assert_eq!(map.scale, 2);
+    assert!(map.locked);
+    assert_eq!(map.decorations.len(), 1);
+    assert_eq!(map.decorations[0].name.as_deref(), Some("Village"));
+    assert_eq!(map.colors[3 + 4 * 128], 1);
+    assert_eq!(map.colors[4 + 5 * 128], 4);
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.map_item_data_packets, 1);
+    assert_eq!(world_counters.maps_tracked, 1);
+    assert_eq!(world_counters.map_decorations_tracked, 1);
+    assert_eq!(world_counters.map_color_patches_applied, 1);
 }
 
 #[test]

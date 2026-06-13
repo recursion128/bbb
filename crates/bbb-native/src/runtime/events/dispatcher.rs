@@ -87,6 +87,9 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::LowDiskSpaceWarning => {
                 counters.low_disk_space_warnings += 1;
             }
+            NetEvent::MapItemData(update) => {
+                world.apply_map_item_data(update);
+            }
             NetEvent::MountScreenOpen(update) => {
                 counters.last_mount_screen = Some(bbb_control::MountScreenState {
                     container_id: update.container_id,

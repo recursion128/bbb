@@ -98,6 +98,16 @@ pub struct WorldCounters {
     pub command_suggestion_packets: usize,
     #[serde(default)]
     pub command_suggestion_entries_tracked: usize,
+    #[serde(default)]
+    pub map_item_data_packets: usize,
+    #[serde(default)]
+    pub maps_tracked: usize,
+    #[serde(default)]
+    pub map_decorations_tracked: usize,
+    #[serde(default)]
+    pub map_color_patches_applied: usize,
+    #[serde(default)]
+    pub map_color_patches_ignored: usize,
     pub chunk_forgets_received: usize,
     pub chunks_forgotten: usize,
     pub inventory_slot_updates_received: usize,

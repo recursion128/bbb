@@ -280,6 +280,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             }
             Ok(PlayClientbound::LowDiskSpaceWarning)
         }
+        ids::play::CLIENTBOUND_MAP_ITEM_DATA => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::MapItemData(maps::decode_map_item_data(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_MOUNT_SCREEN_OPEN => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::MountScreenOpen(

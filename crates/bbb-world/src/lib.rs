@@ -10,6 +10,7 @@ mod entity_status;
 mod error;
 mod inventory;
 mod level;
+mod maps;
 mod player_info;
 mod position;
 mod registries;
@@ -23,6 +24,7 @@ mod world_state;
 
 pub use client_state::*;
 pub use entity_state::*;
+pub use maps::*;
 pub use terrain_state::*;
 pub(crate) use terrain_state::{protocol_block_pos, section_biome_index, section_block_index};
 pub use world_state::*;

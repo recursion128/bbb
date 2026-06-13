@@ -254,6 +254,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::LowDiskSpaceWarning => {
                     emit(&events, NetEvent::LowDiskSpaceWarning).await?;
                 }
+                PlayClientbound::MapItemData(update) => {
+                    emit(&events, NetEvent::MapItemData(update)).await?;
+                }
                 PlayClientbound::MountScreenOpen(update) => {
                     emit(&events, NetEvent::MountScreenOpen(update)).await?;
                 }

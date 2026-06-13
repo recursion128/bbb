@@ -53,6 +53,7 @@ pub enum PlayClientbound {
     Ping { id: i32 },
     Login(PlayLogin),
     LowDiskSpaceWarning,
+    MapItemData(MapItemData),
     MountScreenOpen(MountScreenOpen),
     MoveEntity(EntityMove),
     MoveVehicle(MoveVehicle),
