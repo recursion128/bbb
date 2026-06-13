@@ -145,3 +145,161 @@ fn dimension_profile(dimension_type_id: i32, dimension: &str) -> DimensionProfil
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_protocol::packets::{AddEntity as ProtocolAddEntity, Vec3d as ProtocolVec3d};
+    use uuid::Uuid;
+
+    use crate::{ChunkColumn, ChunkPos, ChunkState, LightData};
+
+    #[test]
+    fn play_login_updates_world_dimension_and_level_info() {
+        let mut store = WorldStore::new();
+        store.chunks.push(stale_chunk());
+
+        store.apply_login(&ProtocolPlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec![
+                "minecraft:overworld".to_string(),
+                "minecraft:the_nether".to_string(),
+                "minecraft:the_end".to_string(),
+            ],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 1,
+                dimension: "minecraft:the_nether".to_string(),
+                seed: 12345,
+                game_type: 1,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 32,
+            },
+            enforces_secure_chat: true,
+        });
+
+        assert_eq!(
+            store.dimension(),
+            WorldDimension {
+                min_y: 0,
+                height: 256,
+            }
+        );
+        assert_eq!(store.chunk_count(), 0);
+        assert_eq!(store.counters().play_logins_received, 1);
+        let level = store.level_info().unwrap();
+        assert_eq!(level.dimension, "minecraft:the_nether");
+        assert_eq!(level.dimension_type_id, 1);
+        assert_eq!(
+            level.dimension_type_name.as_deref(),
+            Some("minecraft:the_nether")
+        );
+        assert_eq!(level.sea_level, 32);
+    }
+
+    #[test]
+    fn respawn_updates_dimension_and_clears_old_chunks() {
+        let mut store = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 256,
+        });
+        store.chunks.push(stale_chunk());
+        store.apply_add_entity(protocol_add_entity(123));
+
+        store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 1,
+                dimension: "minecraft:the_nether".to_string(),
+                seed: 12345,
+                game_type: 1,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 32,
+            },
+            data_to_keep: 3,
+        });
+        assert_eq!(store.chunk_count(), 1);
+        assert_eq!(store.entity_count(), 1);
+
+        store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 2,
+                dimension: "minecraft:the_end".to_string(),
+                seed: 98765,
+                game_type: 1,
+                previous_game_type: 1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            data_to_keep: 3,
+        });
+
+        assert_eq!(
+            store.dimension(),
+            WorldDimension {
+                min_y: 0,
+                height: 256,
+            }
+        );
+        assert_eq!(store.chunk_count(), 0);
+        assert_eq!(store.entity_count(), 0);
+        assert_eq!(store.counters().entities_tracked, 0);
+        assert_eq!(store.counters().respawns_received, 2);
+        let level = store.level_info().unwrap();
+        assert_eq!(level.dimension, "minecraft:the_end");
+        assert_eq!(level.dimension_type_id, 2);
+        assert_eq!(
+            level.dimension_type_name.as_deref(),
+            Some("minecraft:the_end")
+        );
+    }
+
+    fn stale_chunk() -> ChunkColumn {
+        ChunkColumn {
+            pos: ChunkPos { x: 1, z: -2 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: Vec::new(),
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        }
+    }
+
+    fn protocol_add_entity(id: i32) -> ProtocolAddEntity {
+        ProtocolAddEntity {
+            id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: 7,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: -10.0,
+            y_rot: 20.0,
+            y_head_rot: 30.0,
+            data: 99,
+        }
+    }
+}
