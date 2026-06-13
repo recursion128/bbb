@@ -242,6 +242,65 @@ mod tests {
     }
 
     #[test]
+    fn pack_roots_directory_atlas_sources_scan_all_namespaces() {
+        let root = unique_temp_dir("pack-roots-directory-namespaces");
+        let sources_dir = root.join("sources").join(MC_VERSION);
+        let assets_root = sources_dir.join("assets");
+        let minecraft_assets = assets_root.join("minecraft");
+        let example_assets = assets_root.join("example");
+        write_test_png(
+            &example_assets
+                .join("textures")
+                .join("block")
+                .join("gem.png"),
+            16,
+            16,
+        );
+        write_test_png(
+            &example_assets
+                .join("textures")
+                .join("block")
+                .join("sub")
+                .join("ore.png"),
+            8,
+            8,
+        );
+        write_test_png(
+            &minecraft_assets
+                .join("textures")
+                .join("block")
+                .join("stone.png"),
+            16,
+            16,
+        );
+        write_json(
+            &minecraft_assets.join("atlases").join("blocks.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "prefix": "block/",
+                  "source": "block"
+                }
+              ]
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let sources = roots.load_block_texture_sources().unwrap();
+        assert_eq!(
+            sources,
+            vec![
+                SpriteSource::new("example:block/gem", 16, 16),
+                SpriteSource::new("example:block/sub/ore", 8, 8),
+                SpriteSource::new("minecraft:block/stone", 16, 16),
+            ]
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn pack_roots_loads_gui_sprite_images_from_vanilla_atlas() {
         let root = unique_temp_dir("gui-atlas");
         let assets_dir = root

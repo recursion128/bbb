@@ -25,9 +25,9 @@ pub(crate) fn load_atlas_texture_entries(
     for source in atlas.sources {
         match source.source_type.as_str() {
             "minecraft:directory" => {
-                let source_location = source.required_location("source")?;
+                let source_path = source.required_path("source")?;
                 let prefix = source.required_field("prefix")?;
-                loader.append_directory_atlas_entries(&mut entries, &source_location, prefix)?;
+                loader.append_directory_atlas_entries(&mut entries, source_path, prefix)?;
             }
             "minecraft:single" => {
                 let resource = source.required_location("resource")?;
@@ -70,24 +70,29 @@ impl<'a> AtlasTextureLoader<'a> {
     fn append_directory_atlas_entries(
         &self,
         entries: &mut Vec<AtlasTextureEntry>,
-        source: &ResourceLocation,
+        source_path: &str,
         prefix: &str,
     ) -> Result<()> {
-        let dir = self.texture_dir(source);
-        let mut files = Vec::new();
-        collect_png_files(&dir, &mut files)
-            .with_context(|| format!("read atlas texture directory {}", dir.display()))?;
-        files.sort();
+        for (namespace, assets_dir) in self.namespace_assets_dirs()? {
+            let dir = assets_dir.join("textures").join(source_path);
+            if !dir.is_dir() {
+                continue;
+            }
+            let mut files = Vec::new();
+            collect_png_files(&dir, &mut files)
+                .with_context(|| format!("read atlas texture directory {}", dir.display()))?;
+            files.sort();
 
-        for path in files {
-            let relative = path
-                .strip_prefix(&dir)
-                .with_context(|| format!("strip texture directory {}", dir.display()))?;
-            let relative = texture_id_suffix(relative)?;
-            entries.push(AtlasTextureEntry::File {
-                id: format!("{}:{}{}", source.namespace, prefix, relative),
-                path,
-            });
+            for path in files {
+                let relative = path
+                    .strip_prefix(&dir)
+                    .with_context(|| format!("strip texture directory {}", dir.display()))?;
+                let relative = texture_id_suffix(relative)?;
+                entries.push(AtlasTextureEntry::File {
+                    id: format!("{namespace}:{prefix}{relative}"),
+                    path,
+                });
+            }
         }
         Ok(())
     }
@@ -124,14 +129,35 @@ impl<'a> AtlasTextureLoader<'a> {
         Ok(())
     }
 
-    fn namespace_assets_dir(&self, namespace: &str) -> PathBuf {
-        self.roots.sources_dir.join("assets").join(namespace)
+    fn namespace_assets_dirs(&self) -> Result<Vec<(String, PathBuf)>> {
+        let assets_root = self.roots.sources_dir.join("assets");
+        let mut dirs = Vec::new();
+        for entry in std::fs::read_dir(&assets_root)
+            .with_context(|| format!("read assets directory {}", assets_root.display()))?
+        {
+            let entry =
+                entry.with_context(|| format!("read assets entry in {}", assets_root.display()))?;
+            let path = entry.path();
+            if !entry
+                .file_type()
+                .with_context(|| format!("read file type {}", path.display()))?
+                .is_dir()
+            {
+                continue;
+            }
+            let namespace = entry
+                .file_name()
+                .into_string()
+                .map_err(|name| anyhow::anyhow!("non-utf8 asset namespace {name:?}"))?;
+            validate_resource_namespace(&namespace)?;
+            dirs.push((namespace, path));
+        }
+        dirs.sort_by(|left, right| left.0.cmp(&right.0));
+        Ok(dirs)
     }
 
-    fn texture_dir(&self, location: &ResourceLocation) -> PathBuf {
-        self.namespace_assets_dir(&location.namespace)
-            .join("textures")
-            .join(&location.path)
+    fn namespace_assets_dir(&self, namespace: &str) -> PathBuf {
+        self.roots.sources_dir.join("assets").join(namespace)
     }
 
     fn texture_path(&self, location: &ResourceLocation) -> PathBuf {
@@ -169,6 +195,16 @@ impl RawAtlasSource {
                 .ok_or_else(|| anyhow::anyhow!("missing atlas source prefix")),
             _ => bail!("unsupported required atlas field {field:?}"),
         }
+    }
+
+    fn required_path(&self, field: &str) -> Result<&str> {
+        let value = match field {
+            "source" => self.source.as_deref(),
+            _ => bail!("unsupported required atlas path field {field:?}"),
+        }
+        .ok_or_else(|| anyhow::anyhow!("missing atlas source {field}"))?;
+        validate_resource_path(value)?;
+        Ok(value)
     }
 
     fn required_location(&self, field: &str) -> Result<ResourceLocation> {
