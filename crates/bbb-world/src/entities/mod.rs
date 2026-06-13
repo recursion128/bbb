@@ -10,14 +10,17 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{EntityDamageEventState, MobEffectState, WorldStore};
+use crate::WorldStore;
 
 mod metadata;
 mod movement;
 mod passengers;
+pub(crate) mod state;
+mod status;
 mod updates;
 
 use movement::entity_vec3;
+use status::{EntityDamageEventState, MobEffectState};
 
 pub(crate) const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
 pub(crate) const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
