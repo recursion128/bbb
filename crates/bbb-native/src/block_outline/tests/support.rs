@@ -68,6 +68,18 @@ pub(super) fn redstone_wall_torch_properties(facing: &str, lit: bool) -> BTreeMa
     ])
 }
 
+pub(super) fn button_properties(
+    facing: &str,
+    face: &str,
+    powered: bool,
+) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("face".to_string(), face.to_string()),
+        ("powered".to_string(), powered.to_string()),
+    ])
+}
+
 pub(super) fn fence_properties<const N: usize>(connected: [&str; N]) -> BTreeMap<String, String> {
     let mut properties = BTreeMap::from([
         ("north".to_string(), "false".to_string()),

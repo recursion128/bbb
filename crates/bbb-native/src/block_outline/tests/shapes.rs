@@ -404,6 +404,89 @@ fn outline_shape_rejects_invalid_wall_torch_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_wall_button_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_button"),
+            &button_properties("north", "wall", false),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::BUTTON_WALL_NORTH
+        ))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:stone_button"),
+            &button_properties("east", "wall", true),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox {
+            min: [0.0, 6.0 / 16.0, 5.0 / 16.0],
+            max: [1.0 / 16.0, 10.0 / 16.0, 11.0 / 16.0],
+        }))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_floor_and_ceiling_button_shapes() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:birch_button"),
+            &button_properties("north", "floor", false),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::BUTTON_FLOOR_NORTH
+        ))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:polished_blackstone_button"),
+            &button_properties("east", "floor", true),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox {
+            min: [6.0 / 16.0, 15.0 / 16.0, 5.0 / 16.0],
+            max: [10.0 / 16.0, 1.0, 11.0 / 16.0],
+        }))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:spruce_button"),
+            &button_properties("west", "ceiling", false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox {
+            min: [6.0 / 16.0, 0.0, 5.0 / 16.0],
+            max: [10.0 / 16.0, 2.0 / 16.0, 11.0 / 16.0],
+        }))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_button_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_button"), &BTreeMap::new()),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_button"),
+            &button_properties("up", "wall", false),
+        ),
+        None
+    );
+
+    let mut properties = button_properties("north", "side", false);
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_button"), &properties),
+        None
+    );
+    properties.insert("face".to_string(), "wall".to_string());
+    properties.insert("powered".to_string(), "sometimes".to_string());
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_button"), &properties),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_disconnected_fence_post() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:oak_fence"), &fence_properties([])),

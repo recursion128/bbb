@@ -93,6 +93,30 @@ impl BlockOutlineBox {
         min: [11.0 / 16.0, 3.0 / 16.0, 5.5 / 16.0],
         max: [1.0, 13.0 / 16.0, 10.5 / 16.0],
     };
+    pub(super) const BUTTON_WALL_NORTH: Self = Self {
+        min: [5.0 / 16.0, 6.0 / 16.0, 14.0 / 16.0],
+        max: [11.0 / 16.0, 10.0 / 16.0, 1.0],
+    };
+    pub(super) const BUTTON_WALL_NORTH_PRESSED: Self = Self {
+        min: [5.0 / 16.0, 6.0 / 16.0, 15.0 / 16.0],
+        max: [11.0 / 16.0, 10.0 / 16.0, 1.0],
+    };
+    pub(super) const BUTTON_FLOOR_NORTH: Self = Self {
+        min: [5.0 / 16.0, 14.0 / 16.0, 6.0 / 16.0],
+        max: [11.0 / 16.0, 1.0, 10.0 / 16.0],
+    };
+    pub(super) const BUTTON_FLOOR_NORTH_PRESSED: Self = Self {
+        min: [5.0 / 16.0, 15.0 / 16.0, 6.0 / 16.0],
+        max: [11.0 / 16.0, 1.0, 10.0 / 16.0],
+    };
+    pub(super) const BUTTON_CEILING_NORTH: Self = Self {
+        min: [5.0 / 16.0, 0.0, 6.0 / 16.0],
+        max: [11.0 / 16.0, 2.0 / 16.0, 10.0 / 16.0],
+    };
+    pub(super) const BUTTON_CEILING_NORTH_PRESSED: Self = Self {
+        min: [5.0 / 16.0, 0.0, 6.0 / 16.0],
+        max: [11.0 / 16.0, 1.0 / 16.0, 10.0 / 16.0],
+    };
     pub(super) const FENCE_POST: Self = Self {
         min: [6.0 / 16.0, 0.0, 6.0 / 16.0],
         max: [10.0 / 16.0, 1.0, 10.0 / 16.0],

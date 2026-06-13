@@ -36,6 +36,9 @@ pub(super) fn outline_shape_for_block(
     if is_floor_torch_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::TORCH));
     }
+    if is_button_block_name(block_name) {
+        return button_outline_shape(properties);
+    }
     if is_fence_gate_block_name(block_name) {
         return fence_gate_outline_shape(properties);
     }
@@ -288,6 +291,29 @@ fn wall_torch_outline_shape(properties: &BTreeMap<String, String>) -> Option<Blo
     Some(BlockOutlineShape::single(outline))
 }
 
+fn button_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let powered = match properties.get("powered").map(String::as_str)? {
+        "true" => true,
+        "false" => false,
+        _ => return None,
+    };
+
+    let outline = match (properties.get("face").map(String::as_str)?, powered) {
+        ("wall", false) => BlockOutlineBox::BUTTON_WALL_NORTH,
+        ("wall", true) => BlockOutlineBox::BUTTON_WALL_NORTH_PRESSED,
+        ("floor", false) => BlockOutlineBox::BUTTON_FLOOR_NORTH,
+        ("floor", true) => BlockOutlineBox::BUTTON_FLOOR_NORTH_PRESSED,
+        ("ceiling", false) => BlockOutlineBox::BUTTON_CEILING_NORTH,
+        ("ceiling", true) => BlockOutlineBox::BUTTON_CEILING_NORTH_PRESSED,
+        _ => return None,
+    };
+
+    Some(BlockOutlineShape::single(
+        outline.rotate_to_direction(facing),
+    ))
+}
+
 fn pale_moss_carpet_outline_shape(
     properties: &BTreeMap<String, String>,
 ) -> Option<BlockOutlineShape> {
@@ -394,6 +420,12 @@ fn is_wall_torch_block_name(block_name: &str) -> bool {
             | "minecraft:soul_wall_torch"
             | "minecraft:copper_wall_torch"
     )
+}
+
+fn is_button_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_button"))
 }
 
 fn is_fence_block_name(block_name: &str) -> bool {
