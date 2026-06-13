@@ -39,6 +39,9 @@ pub(super) fn outline_shape_for_block(
     if block_name == "minecraft:brewing_stand" {
         return Some(brewing_stand_outline_shape());
     }
+    if is_anvil_block_name(block_name) {
+        return anvil_outline_shape(properties);
+    }
     if is_flower_pot_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
     }
@@ -277,6 +280,30 @@ fn brewing_stand_outline_shape() -> BlockOutlineShape {
         BlockOutlineBox::BREWING_STAND_ROD,
         BlockOutlineBox::BREWING_STAND_BASE,
     ])
+}
+
+fn anvil_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let x_axis = matches!(
+        facing,
+        HorizontalDirection::East | HorizontalDirection::West
+    );
+    let boxes = if x_axis {
+        vec![
+            BlockOutlineBox::centered_column(12.0, 12.0, 0.0, 4.0),
+            BlockOutlineBox::centered_column(10.0, 8.0, 4.0, 5.0),
+            BlockOutlineBox::centered_column(8.0, 4.0, 5.0, 10.0),
+            BlockOutlineBox::centered_column(16.0, 10.0, 10.0, 16.0),
+        ]
+    } else {
+        vec![
+            BlockOutlineBox::centered_column(12.0, 12.0, 0.0, 4.0),
+            BlockOutlineBox::centered_column(8.0, 10.0, 4.0, 5.0),
+            BlockOutlineBox::centered_column(4.0, 8.0, 5.0, 10.0),
+            BlockOutlineBox::centered_column(10.0, 16.0, 10.0, 16.0),
+        ]
+    };
+    Some(BlockOutlineShape::from_boxes(boxes))
 }
 
 fn wall_sign_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -659,6 +686,13 @@ fn is_bed_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_bed"))
+}
+
+fn is_anvil_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
+    )
 }
 
 fn is_flower_pot_block_name(block_name: &str) -> bool {
