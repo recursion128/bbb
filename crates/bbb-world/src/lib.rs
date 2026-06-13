@@ -53,9 +53,11 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
+mod entity_status;
 mod player_info;
 mod server_presentation;
 
+pub use entity_status::{EntityDamageEventState, ItemCooldownState, MobEffectState};
 pub use player_info::{PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState};
 pub use server_presentation::{ResourcePackState, ServerDataState, ServerPresentationState};
 
@@ -197,6 +199,10 @@ pub struct EntityState {
     pub last_animation_action: Option<u8>,
     pub last_event_id: Option<i8>,
     pub last_hurt_yaw: Option<f32>,
+    #[serde(default)]
+    pub mob_effects: BTreeMap<i32, MobEffectState>,
+    #[serde(default)]
+    pub last_damage: Option<EntityDamageEventState>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -707,6 +713,20 @@ pub struct WorldCounters {
     pub resource_pack_pop_packets: usize,
     #[serde(default)]
     pub resource_packs_tracked: usize,
+    #[serde(default)]
+    pub cooldown_packets: usize,
+    #[serde(default)]
+    pub cooldowns_tracked: usize,
+    #[serde(default)]
+    pub update_mob_effect_packets: usize,
+    #[serde(default)]
+    pub remove_mob_effect_packets: usize,
+    #[serde(default)]
+    pub active_mob_effects_tracked: usize,
+    #[serde(default)]
+    pub damage_event_packets: usize,
+    #[serde(default)]
+    pub damage_events_applied: usize,
     pub chunk_forgets_received: usize,
     pub chunks_forgotten: usize,
     pub inventory_slot_updates_received: usize,
@@ -927,6 +947,8 @@ pub struct WorldStore {
     #[serde(default)]
     presentation: ServerPresentationState,
     #[serde(default)]
+    cooldowns: BTreeMap<String, ItemCooldownState>,
+    #[serde(default)]
     local_player_id: Option<i32>,
     #[serde(default)]
     local_player_vehicle_id: Option<i32>,
@@ -989,6 +1011,7 @@ impl WorldStore {
             self.counters.block_destructions_tracked = 0;
             self.counters.block_events_tracked = 0;
             self.counters.level_events_tracked = 0;
+            self.update_active_mob_effect_count();
             self.update_entity_count();
         }
         self.dimension = profile.dimension;
@@ -1607,6 +1630,8 @@ impl WorldStore {
             last_animation_action: None,
             last_event_id: None,
             last_hurt_yaw: None,
+            mob_effects: BTreeMap::new(),
+            last_damage: None,
         };
 
         if let Some(existing) = self
@@ -1619,6 +1644,7 @@ impl WorldStore {
             self.entities.push(entity);
         }
         self.update_entity_count();
+        self.update_active_mob_effect_count();
     }
 
     pub fn apply_entity_animation(&mut self, packet: ProtocolEntityAnimation) -> bool {
@@ -2051,6 +2077,7 @@ impl WorldStore {
         }
         self.counters.entities_removed += removed;
         self.update_entity_count();
+        self.update_active_mob_effect_count();
         removed
     }
 

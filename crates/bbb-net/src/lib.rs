@@ -12,21 +12,22 @@ use bbb_protocol::{
         self, AddEntity, BlockChangedAck, BlockDestruction, BlockEntityData, BlockEvent,
         BlockUpdate, BossEvent, ChangeDifficulty, ChunksBiomes, ClientIntent,
         ConfigurationClientbound, ContainerClose, ContainerSetContent, ContainerSetData,
-        ContainerSetSlot, EntityAnimation, EntityEvent, EntityMove, EntityPositionSync,
-        ForgetLevelChunk, GameEvent, HurtAnimation, InitializeBorder, InteractionHand,
-        LevelChunkWithLight, LevelEvent, LightUpdate, LoginClientbound, MoveVehicle, OpenScreen,
-        PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction,
-        PlayerCommand, PlayerExperience, PlayerHealth, PlayerInfoRemove, PlayerInfoUpdate,
-        PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
-        RemoveEntities, ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
-        Respawn, RotateHead, SectionBlocksUpdate, ServerData, SetActionBarText, SetBorderCenter,
-        SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
-        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
-        SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetPassengers,
-        SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
-        SetTitleText, SetTitlesAnimation, SystemChat, TabList, TakeItemEntity, TeleportEntity,
-        TickingState, TickingStep, UpdateAttributes, UseItem, UseItemOn, Vec3d,
+        ContainerSetSlot, Cooldown, DamageEvent, EntityAnimation, EntityEvent, EntityMove,
+        EntityPositionSync, ForgetLevelChunk, GameEvent, HurtAnimation, InitializeBorder,
+        InteractionHand, LevelChunkWithLight, LevelEvent, LightUpdate, LoginClientbound,
+        MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime,
+        PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
+        PlayerInfoRemove, PlayerInfoUpdate, PlayerInput, PlayerPositionState, PlayerPositionUpdate,
+        PlayerRotationUpdate, RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop,
+        ResourcePackPush, ResourcePackResponseAction, Respawn, RotateHead, SectionBlocksUpdate,
+        ServerData, SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderSize,
+        SetBorderWarningDelay, SetBorderWarningDistance, SetCamera, SetChunkCacheCenter,
+        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective,
+        SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective,
+        SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance,
+        SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat, TabList, TakeItemEntity,
+        TeleportEntity, TickingState, TickingStep, UpdateAttributes, UpdateMobEffect, UseItem,
+        UseItemOn, Vec3d,
     },
 };
 use bbb_world::{
@@ -139,6 +140,10 @@ pub enum NetEvent {
     ServerData(ServerData),
     ResourcePackPush(ResourcePackPush),
     ResourcePackPop(ResourcePackPop),
+    Cooldown(Cooldown),
+    DamageEvent(DamageEvent),
+    UpdateMobEffect(UpdateMobEffect),
+    RemoveMobEffect(RemoveMobEffect),
     PlayerAbilities(PlayerAbilities),
     PlayerHealth(PlayerHealth),
     PlayerExperience(PlayerExperience),
@@ -452,6 +457,18 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::ChangeDifficulty(update) => {
                     emit(&events, NetEvent::ChangeDifficulty(update)).await?;
+                }
+                PlayClientbound::Cooldown(update) => {
+                    emit(&events, NetEvent::Cooldown(update)).await?;
+                }
+                PlayClientbound::DamageEvent(update) => {
+                    emit(&events, NetEvent::DamageEvent(update)).await?;
+                }
+                PlayClientbound::UpdateMobEffect(update) => {
+                    emit(&events, NetEvent::UpdateMobEffect(update)).await?;
+                }
+                PlayClientbound::RemoveMobEffect(update) => {
+                    emit(&events, NetEvent::RemoveMobEffect(update)).await?;
                 }
                 PlayClientbound::MoveEntity(update) => {
                     emit(&events, NetEvent::MoveEntity(update)).await?;
@@ -824,6 +841,18 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::ChangeDifficulty(update) => {
                     world.apply_change_difficulty(update);
+                }
+                PlayClientbound::Cooldown(update) => {
+                    world.apply_cooldown(update);
+                }
+                PlayClientbound::DamageEvent(update) => {
+                    world.apply_damage_event(update);
+                }
+                PlayClientbound::UpdateMobEffect(update) => {
+                    world.apply_update_mob_effect(update);
+                }
+                PlayClientbound::RemoveMobEffect(update) => {
+                    world.apply_remove_mob_effect(update);
                 }
                 PlayClientbound::MoveEntity(update) => {
                     world.apply_entity_move(update);

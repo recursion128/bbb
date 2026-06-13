@@ -1884,6 +1884,22 @@ fn drain_net_events(
                 counters.resource_pack_pop_packets += 1;
                 world.apply_resource_pack_pop(update);
             }
+            NetEvent::Cooldown(update) => {
+                counters.cooldown_packets += 1;
+                world.apply_cooldown(update);
+            }
+            NetEvent::DamageEvent(update) => {
+                counters.damage_event_packets += 1;
+                world.apply_damage_event(update);
+            }
+            NetEvent::UpdateMobEffect(update) => {
+                counters.update_mob_effect_packets += 1;
+                world.apply_update_mob_effect(update);
+            }
+            NetEvent::RemoveMobEffect(update) => {
+                counters.remove_mob_effect_packets += 1;
+                world.apply_remove_mob_effect(update);
+            }
             NetEvent::ContainerClose(update) => {
                 world.apply_container_close(update);
             }
@@ -3896,6 +3912,99 @@ mod tests {
         assert_eq!(world_counters.resource_pack_push_packets, 1);
         assert_eq!(world_counters.resource_pack_pop_packets, 1);
         assert_eq!(world_counters.resource_packs_tracked, 0);
+    }
+
+    #[test]
+    fn entity_status_events_update_world_and_counters() {
+        let entity_id = 55;
+        let (tx, mut rx) = mpsc::channel(4);
+        tx.try_send(NetEvent::Cooldown(bbb_protocol::packets::Cooldown {
+            cooldown_group: "minecraft:ender_pearl".to_string(),
+            duration: 20,
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::DamageEvent(bbb_protocol::packets::DamageEvent {
+            entity_id,
+            source_type_id: 5,
+            source_cause_id: -1,
+            source_direct_id: 42,
+            source_position: Some(bbb_protocol::packets::Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            }),
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::UpdateMobEffect(
+            bbb_protocol::packets::UpdateMobEffect {
+                entity_id,
+                effect_id: 3,
+                amplifier: 2,
+                duration_ticks: 400,
+                flags: bbb_protocol::packets::MobEffectFlags {
+                    raw: 0b1011,
+                    ambient: true,
+                    visible: true,
+                    show_icon: false,
+                    blend: true,
+                },
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::RemoveMobEffect(
+            bbb_protocol::packets::RemoveMobEffect {
+                entity_id,
+                effect_id: 99,
+            },
+        ))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(entity_id));
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            4
+        );
+        assert_eq!(counters.cooldown_packets, 1);
+        assert_eq!(counters.damage_event_packets, 1);
+        assert_eq!(counters.update_mob_effect_packets, 1);
+        assert_eq!(counters.remove_mob_effect_packets, 1);
+
+        let cooldown = world.cooldown("minecraft:ender_pearl").unwrap();
+        assert_eq!(cooldown.duration, 20);
+
+        let damage = world.entity_last_damage(entity_id).unwrap();
+        assert_eq!(damage.source_type_id, 5);
+        assert_eq!(damage.source_cause_id, -1);
+        assert_eq!(damage.source_direct_id, 42);
+        assert_eq!(
+            damage.source_position,
+            Some(bbb_protocol::packets::Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            })
+        );
+
+        let effect = world.entity_effect(entity_id, 3).unwrap();
+        assert_eq!(effect.amplifier, 2);
+        assert_eq!(effect.duration_ticks, 400);
+        assert!(effect.ambient);
+        assert!(effect.visible);
+        assert!(!effect.show_icon);
+        assert!(effect.blend);
+        assert!(world.entity_effect(entity_id, 99).is_none());
+
+        let world_counters = world.counters();
+        assert_eq!(world_counters.cooldown_packets, 1);
+        assert_eq!(world_counters.cooldowns_tracked, 1);
+        assert_eq!(world_counters.damage_event_packets, 1);
+        assert_eq!(world_counters.damage_events_applied, 1);
+        assert_eq!(world_counters.update_mob_effect_packets, 1);
+        assert_eq!(world_counters.remove_mob_effect_packets, 1);
+        assert_eq!(world_counters.active_mob_effects_tracked, 1);
     }
 
     #[test]

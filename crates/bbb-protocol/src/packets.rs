@@ -32,6 +32,10 @@ const PLAYER_INPUT_SPRINT: u8 = 64;
 const BOSS_EVENT_FLAG_DARKEN_SCREEN: u8 = 1;
 const BOSS_EVENT_FLAG_PLAY_MUSIC: u8 = 2;
 const BOSS_EVENT_FLAG_CREATE_WORLD_FOG: u8 = 4;
+const MOB_EFFECT_FLAG_AMBIENT: u8 = 1;
+const MOB_EFFECT_FLAG_VISIBLE: u8 = 2;
+const MOB_EFFECT_FLAG_SHOW_ICON: u8 = 4;
+const MOB_EFFECT_FLAG_BLEND: u8 = 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(i32)]
@@ -106,6 +110,8 @@ pub enum PlayClientbound {
     ContainerSetContent(ContainerSetContent),
     ContainerSetData(ContainerSetData),
     ContainerSetSlot(ContainerSetSlot),
+    Cooldown(Cooldown),
+    DamageEvent(DamageEvent),
     Disconnect(Disconnect),
     EntityEvent(EntityEvent),
     EntityPositionSync(EntityPositionSync),
@@ -126,6 +132,7 @@ pub enum PlayClientbound {
     PlayerInfoUpdate(PlayerInfoUpdate),
     PlayerRotation(PlayerRotationUpdate),
     RemoveEntities(RemoveEntities),
+    RemoveMobEffect(RemoveMobEffect),
     ResetScore(ResetScore),
     ResourcePackPop(ResourcePackPop),
     ResourcePackPush(ResourcePackPush),
@@ -170,6 +177,7 @@ pub enum PlayClientbound {
     TickingState(TickingState),
     TickingStep(TickingStep),
     UpdateAttributes(UpdateAttributes),
+    UpdateMobEffect(UpdateMobEffect),
     LevelChunkWithLight(LevelChunkWithLight),
     LightUpdate(LightUpdate),
     Unknown { packet_id: i32, len: usize },
@@ -296,6 +304,57 @@ pub struct MoveVehicle {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RemoveEntities {
     pub entity_ids: Vec<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Cooldown {
+    pub cooldown_group: String,
+    pub duration: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct DamageEvent {
+    pub entity_id: i32,
+    pub source_type_id: i32,
+    pub source_cause_id: i32,
+    pub source_direct_id: i32,
+    pub source_position: Option<Vec3d>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateMobEffect {
+    pub entity_id: i32,
+    pub effect_id: i32,
+    pub amplifier: i32,
+    pub duration_ticks: i32,
+    pub flags: MobEffectFlags,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RemoveMobEffect {
+    pub entity_id: i32,
+    pub effect_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MobEffectFlags {
+    pub raw: u8,
+    pub ambient: bool,
+    pub visible: bool,
+    pub show_icon: bool,
+    pub blend: bool,
+}
+
+impl MobEffectFlags {
+    fn from_bits(raw: u8) -> Self {
+        Self {
+            raw,
+            ambient: raw & MOB_EFFECT_FLAG_AMBIENT != 0,
+            visible: raw & MOB_EFFECT_FLAG_VISIBLE != 0,
+            show_icon: raw & MOB_EFFECT_FLAG_SHOW_ICON != 0,
+            blend: raw & MOB_EFFECT_FLAG_BLEND != 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -2115,6 +2174,16 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 decode_container_set_slot(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_COOLDOWN => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::Cooldown(decode_cooldown(&mut decoder)?))
+        }
+        ids::play::CLIENTBOUND_DAMAGE_EVENT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::DamageEvent(decode_damage_event(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_DISCONNECT => Ok(PlayClientbound::Disconnect(Disconnect {
             reason: decode_component_summary(payload)?,
             raw_reason: payload.to_vec(),
@@ -2251,6 +2320,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         ids::play::CLIENTBOUND_REMOVE_ENTITIES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::RemoveEntities(decode_remove_entities(
+                &mut decoder,
+            )?))
+        }
+        ids::play::CLIENTBOUND_REMOVE_MOB_EFFECT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::RemoveMobEffect(decode_remove_mob_effect(
                 &mut decoder,
             )?))
         }
@@ -2525,6 +2600,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::UpdateAttributes(decode_update_attributes(
+                &mut decoder,
+            )?))
+        }
+        ids::play::CLIENTBOUND_UPDATE_MOB_EFFECT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::UpdateMobEffect(decode_update_mob_effect(
                 &mut decoder,
             )?))
         }
@@ -2938,6 +3019,40 @@ fn decode_remove_entities(decoder: &mut Decoder<'_>) -> Result<RemoveEntities> {
         entity_ids.push(decoder.read_var_i32()?);
     }
     Ok(RemoveEntities { entity_ids })
+}
+
+fn decode_cooldown(decoder: &mut Decoder<'_>) -> Result<Cooldown> {
+    Ok(Cooldown {
+        cooldown_group: read_resource_key(decoder)?,
+        duration: decoder.read_var_i32()?,
+    })
+}
+
+fn decode_damage_event(decoder: &mut Decoder<'_>) -> Result<DamageEvent> {
+    Ok(DamageEvent {
+        entity_id: decoder.read_var_i32()?,
+        source_type_id: decoder.read_var_i32()?,
+        source_cause_id: decoder.read_var_i32()? - 1,
+        source_direct_id: decoder.read_var_i32()? - 1,
+        source_position: decode_optional_vec3d(decoder)?,
+    })
+}
+
+fn decode_update_mob_effect(decoder: &mut Decoder<'_>) -> Result<UpdateMobEffect> {
+    Ok(UpdateMobEffect {
+        entity_id: decoder.read_var_i32()?,
+        effect_id: decoder.read_var_i32()?,
+        amplifier: decoder.read_var_i32()?,
+        duration_ticks: decoder.read_var_i32()?,
+        flags: MobEffectFlags::from_bits(decoder.read_u8()?),
+    })
+}
+
+fn decode_remove_mob_effect(decoder: &mut Decoder<'_>) -> Result<RemoveMobEffect> {
+    Ok(RemoveMobEffect {
+        entity_id: decoder.read_var_i32()?,
+        effect_id: decoder.read_var_i32()?,
+    })
 }
 
 fn decode_set_passengers(decoder: &mut Decoder<'_>) -> Result<SetPassengers> {
@@ -3482,6 +3597,14 @@ fn decode_vec3d(decoder: &mut Decoder<'_>) -> Result<Vec3d> {
         y: decoder.read_f64()?,
         z: decoder.read_f64()?,
     })
+}
+
+fn decode_optional_vec3d(decoder: &mut Decoder<'_>) -> Result<Option<Vec3d>> {
+    if decoder.read_bool()? {
+        Ok(Some(decode_vec3d(decoder)?))
+    } else {
+        Ok(None)
+    }
 }
 
 fn decode_lp_vec3d(decoder: &mut Decoder<'_>) -> Result<Vec3d> {
@@ -5032,6 +5155,164 @@ mod tests {
                 ],
             })
         );
+    }
+
+    #[test]
+    fn decodes_cooldown_packet_wire_order() {
+        let mut payload = Encoder::new();
+        payload.write_string("minecraft:ender_pearl");
+        payload.write_var_i32(40);
+        let payload = payload.into_inner();
+
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_COOLDOWN, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::Cooldown(Cooldown {
+                cooldown_group: "minecraft:ender_pearl".to_string(),
+                duration: 40,
+            })
+        );
+
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:ender_pearl");
+        assert_eq!(decoder.read_var_i32().unwrap(), 40);
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_damage_event_without_source_position_wire_order() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_var_i32(7);
+        payload.write_var_i32(0);
+        payload.write_var_i32(35);
+        payload.write_bool(false);
+        let payload = payload.into_inner();
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_DAMAGE_EVENT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::DamageEvent(DamageEvent {
+                entity_id: 123,
+                source_type_id: 7,
+                source_cause_id: -1,
+                source_direct_id: 34,
+                source_position: None,
+            })
+        );
+
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 123);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 35);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_damage_event_with_source_position_wire_order() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(456);
+        payload.write_var_i32(12);
+        payload.write_var_i32(79);
+        payload.write_var_i32(0);
+        payload.write_bool(true);
+        payload.write_f64(1.25);
+        payload.write_f64(-2.5);
+        payload.write_f64(64.0);
+        let payload = payload.into_inner();
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_DAMAGE_EVENT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::DamageEvent(DamageEvent {
+                entity_id: 456,
+                source_type_id: 12,
+                source_cause_id: 78,
+                source_direct_id: -1,
+                source_position: Some(Vec3d {
+                    x: 1.25,
+                    y: -2.5,
+                    z: 64.0,
+                }),
+            })
+        );
+
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 456);
+        assert_eq!(decoder.read_var_i32().unwrap(), 12);
+        assert_eq!(decoder.read_var_i32().unwrap(), 79);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_f64().unwrap(), 1.25);
+        assert_eq!(decoder.read_f64().unwrap(), -2.5);
+        assert_eq!(decoder.read_f64().unwrap(), 64.0);
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_update_mob_effect_packet_wire_order_and_flags() {
+        let flags = MOB_EFFECT_FLAG_AMBIENT | MOB_EFFECT_FLAG_SHOW_ICON | MOB_EFFECT_FLAG_BLEND;
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_var_i32(5);
+        payload.write_var_i32(2);
+        payload.write_var_i32(600);
+        payload.write_u8(flags);
+        let payload = payload.into_inner();
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_MOB_EFFECT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::UpdateMobEffect(UpdateMobEffect {
+                entity_id: 123,
+                effect_id: 5,
+                amplifier: 2,
+                duration_ticks: 600,
+                flags: MobEffectFlags {
+                    raw: flags,
+                    ambient: true,
+                    visible: false,
+                    show_icon: true,
+                    blend: true,
+                },
+            })
+        );
+
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 123);
+        assert_eq!(decoder.read_var_i32().unwrap(), 5);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert_eq!(decoder.read_var_i32().unwrap(), 600);
+        assert_eq!(decoder.read_u8().unwrap(), flags);
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_remove_mob_effect_packet_wire_order() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_var_i32(5);
+        let payload = payload.into_inner();
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_REMOVE_MOB_EFFECT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::RemoveMobEffect(RemoveMobEffect {
+                entity_id: 123,
+                effect_id: 5,
+            })
+        );
+
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 123);
+        assert_eq!(decoder.read_var_i32().unwrap(), 5);
+        assert!(decoder.is_empty());
     }
 
     #[test]
