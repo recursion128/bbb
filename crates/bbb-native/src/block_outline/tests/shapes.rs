@@ -116,6 +116,51 @@ fn outline_shape_rejects_invalid_pressure_plate_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_standing_sign_shape() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_sign"), &standing_sign_properties(0)),
+        Some(BlockOutlineShape::single(BlockOutlineBox::SIGN))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:crimson_sign"),
+            &standing_sign_properties(12)
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::SIGN))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_wall_sign_direction_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_wall_sign"),
+            &wall_sign_properties("north"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::WALL_SIGN_NORTH))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:warped_wall_sign"),
+            &wall_sign_properties("east"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::WALL_SIGN_EAST))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_wall_sign_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_wall_sign"), &BTreeMap::new()),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_wall_sign"), &wall_sign_properties("up"),),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_stair_straight_boxes() {
     assert_eq!(
         outline_shape_for_block(

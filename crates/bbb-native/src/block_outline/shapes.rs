@@ -21,6 +21,12 @@ pub(super) fn outline_shape_for_block(
     if is_pressure_plate_block_name(block_name) {
         return pressure_plate_outline_shape(properties);
     }
+    if is_wall_sign_block_name(block_name) {
+        return wall_sign_outline_shape(properties);
+    }
+    if is_standing_sign_block_name(block_name) {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::SIGN));
+    }
     if is_stair_block_name(block_name) {
         return stair_outline_shape(properties);
     }
@@ -143,6 +149,16 @@ fn pressure_plate_outline_shape(
         BlockOutlineBox::PRESSURE_PLATE_PRESSED
     } else {
         BlockOutlineBox::PRESSURE_PLATE
+    };
+    Some(BlockOutlineShape::single(outline))
+}
+
+fn wall_sign_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let outline = match HorizontalDirection::parse(properties.get("facing")?)? {
+        HorizontalDirection::North => BlockOutlineBox::WALL_SIGN_NORTH,
+        HorizontalDirection::East => BlockOutlineBox::WALL_SIGN_EAST,
+        HorizontalDirection::South => BlockOutlineBox::WALL_SIGN_SOUTH,
+        HorizontalDirection::West => BlockOutlineBox::WALL_SIGN_WEST,
     };
     Some(BlockOutlineShape::single(outline))
 }
@@ -433,6 +449,18 @@ fn is_pressure_plate_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_pressure_plate"))
+}
+
+fn is_wall_sign_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_wall_sign"))
+}
+
+fn is_standing_sign_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_sign") && !path.ends_with("_hanging_sign"))
 }
 
 fn is_trapdoor_block_name(block_name: &str) -> bool {

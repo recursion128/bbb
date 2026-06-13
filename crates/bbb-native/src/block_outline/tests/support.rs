@@ -16,6 +16,20 @@ pub(super) fn weighted_pressure_plate_properties(power: u8) -> BTreeMap<String, 
     BTreeMap::from([("power".to_string(), power.to_string())])
 }
 
+pub(super) fn standing_sign_properties(rotation: u8) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("rotation".to_string(), rotation.to_string()),
+        ("waterlogged".to_string(), "false".to_string()),
+    ])
+}
+
+pub(super) fn wall_sign_properties(facing: &str) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("waterlogged".to_string(), "false".to_string()),
+    ])
+}
+
 pub(super) fn stair_properties(facing: &str, half: &str, shape: &str) -> BTreeMap<String, String> {
     BTreeMap::from([
         ("facing".to_string(), facing.to_string()),

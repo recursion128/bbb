@@ -65,6 +65,31 @@ fn pressure_plate_outline_clip_uses_thin_shape() {
 }
 
 #[test]
+fn wall_sign_outline_clip_uses_thin_direction_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(
+            Some("minecraft:oak_wall_sign"),
+            &wall_sign_properties("south"),
+        ),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 0.5, -1.0],
+            [0.0, 0.0, 1.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::North,
+            inside: false,
+        })
+    );
+}
+
+#[test]
 fn selection_outline_preserves_pale_moss_multi_box_shape() {
     let shape = outline_shape_for_block(
         Some("minecraft:pale_moss_carpet"),

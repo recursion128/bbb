@@ -81,6 +81,26 @@ impl BlockOutlineBox {
         min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
         max: [15.0 / 16.0, 0.5 / 16.0, 15.0 / 16.0],
     };
+    pub(super) const SIGN: Self = Self {
+        min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
+        max: [12.0 / 16.0, 1.0, 12.0 / 16.0],
+    };
+    pub(super) const WALL_SIGN_NORTH: Self = Self {
+        min: [0.0, 4.5 / 16.0, 14.0 / 16.0],
+        max: [1.0, 12.5 / 16.0, 1.0],
+    };
+    pub(super) const WALL_SIGN_EAST: Self = Self {
+        min: [0.0, 4.5 / 16.0, 0.0],
+        max: [2.0 / 16.0, 12.5 / 16.0, 1.0],
+    };
+    pub(super) const WALL_SIGN_SOUTH: Self = Self {
+        min: [0.0, 4.5 / 16.0, 0.0],
+        max: [1.0, 12.5 / 16.0, 2.0 / 16.0],
+    };
+    pub(super) const WALL_SIGN_WEST: Self = Self {
+        min: [14.0 / 16.0, 4.5 / 16.0, 0.0],
+        max: [1.0, 12.5 / 16.0, 1.0],
+    };
     pub(super) const TORCH: Self = Self {
         min: [6.0 / 16.0, 0.0, 6.0 / 16.0],
         max: [10.0 / 16.0, 10.0 / 16.0, 10.0 / 16.0],
