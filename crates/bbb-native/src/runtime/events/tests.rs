@@ -1096,7 +1096,16 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
     let world_counters = world.counters();
     assert_eq!(world_counters.clear_dialog_packets, 1);
     assert_eq!(world_counters.show_dialog_packets, 1);
+    assert_eq!(world_counters.waypoint_packets, 1);
+    assert_eq!(world_counters.waypoints_tracked, 1);
+    assert_eq!(world_counters.waypoint_updates_applied, 0);
+    assert_eq!(world_counters.waypoint_updates_ignored, 0);
+    assert_eq!(world_counters.waypoint_untracks_ignored, 0);
     assert_eq!(counters.waypoint_packets, 1);
+    assert_eq!(counters.waypoints_tracked, 1);
+    assert_eq!(counters.waypoint_updates_applied, 0);
+    assert_eq!(counters.waypoint_updates_ignored, 0);
+    assert_eq!(counters.waypoint_untracks_ignored, 0);
     assert_eq!(
         counters.last_waypoint,
         Some(bbb_control::WaypointState {
@@ -1113,6 +1122,36 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
             }),
             chunk: None,
             azimuth: None,
+        })
+    );
+    let waypoint_key = format!("uuid:{waypoint_id}");
+    let tracked_waypoint = world
+        .tracked_waypoints()
+        .get(&waypoint_key)
+        .expect("tracked waypoint is stored in world");
+    assert_eq!(tracked_waypoint.identifier_kind, "uuid");
+    assert_eq!(tracked_waypoint.identifier, waypoint_id.to_string());
+    assert_eq!(tracked_waypoint.icon_style, "minecraft:default");
+    assert_eq!(tracked_waypoint.icon_color_rgb, Some(0x112233));
+    assert_eq!(
+        tracked_waypoint.data,
+        bbb_world::WaypointDataState {
+            kind: "position".to_string(),
+            position: Some(bbb_world::WaypointVec3iState {
+                x: 10,
+                y: 64,
+                z: -5,
+            }),
+            chunk: None,
+            azimuth: None,
+        }
+    );
+    assert_eq!(
+        world.last_waypoint_event(),
+        Some(&bbb_world::WaypointEventState {
+            operation: "track".to_string(),
+            waypoint: tracked_waypoint.clone(),
+            applied: true,
         })
     );
 }

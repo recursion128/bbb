@@ -187,6 +187,14 @@ pub struct NetCounters {
     pub clear_dialog_packets: usize,
     pub show_dialog_packets: usize,
     pub waypoint_packets: usize,
+    #[serde(default)]
+    pub waypoints_tracked: usize,
+    #[serde(default)]
+    pub waypoint_updates_applied: usize,
+    #[serde(default)]
+    pub waypoint_updates_ignored: usize,
+    #[serde(default)]
+    pub waypoint_untracks_ignored: usize,
     pub low_disk_space_warnings: usize,
     pub mount_screen_open_packets: usize,
     pub open_book_packets: usize,

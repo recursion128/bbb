@@ -8,4 +8,5 @@ mod scoreboard;
 mod server_presentation;
 pub(crate) mod state;
 mod ui;
+mod waypoints;
 mod world_border;

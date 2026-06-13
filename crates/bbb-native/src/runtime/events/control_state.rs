@@ -111,8 +111,8 @@ pub(super) fn apply_control_projection_event(
             sync_client_ui_counters(counters, world);
         }
         NetEvent::Waypoint(update) => {
-            counters.last_waypoint = Some(waypoint_state(update));
-            counters.waypoint_packets += 1;
+            world.apply_waypoint(update);
+            sync_waypoint_counters(counters, world);
         }
         NetEvent::PlayerCombatEnd(update) => {
             counters.last_player_combat = Some(bbb_control::PlayerCombatState {
@@ -367,32 +367,6 @@ fn custom_payload_state(
     }
 }
 
-fn waypoint_state(
-    packet: bbb_protocol::packets::TrackedWaypointPacket,
-) -> bbb_control::WaypointState {
-    let data = packet.waypoint.data;
-    bbb_control::WaypointState {
-        operation: packet.operation.as_str().to_string(),
-        identifier_kind: packet.waypoint.identifier.kind().to_string(),
-        identifier: packet.waypoint.identifier.value_string(),
-        icon_style: packet.waypoint.icon.style,
-        icon_color_rgb: packet.waypoint.icon.color_rgb,
-        waypoint_kind: data.kind().to_string(),
-        position: match data {
-            bbb_protocol::packets::WaypointData::Position(pos) => Some(control_waypoint_vec3i(pos)),
-            _ => None,
-        },
-        chunk: match data {
-            bbb_protocol::packets::WaypointData::Chunk(pos) => Some(control_chunk_pos(pos)),
-            _ => None,
-        },
-        azimuth: match data {
-            bbb_protocol::packets::WaypointData::Azimuth(angle) => Some(angle),
-            _ => None,
-        },
-    }
-}
-
 fn net_vec3(vec: bbb_protocol::packets::Vec3d) -> bbb_control::NetVec3 {
     bbb_control::NetVec3 {
         x: vec.x,
@@ -421,7 +395,7 @@ fn control_vec3i(pos: bbb_protocol::packets::Vec3i) -> bbb_control::NetVec3i {
     }
 }
 
-fn control_waypoint_vec3i(pos: bbb_protocol::packets::WaypointVec3i) -> bbb_control::NetVec3i {
+fn control_waypoint_vec3i(pos: bbb_world::WaypointVec3iState) -> bbb_control::NetVec3i {
     bbb_control::NetVec3i {
         x: pos.x,
         y: pos.y,
@@ -507,6 +481,31 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
                 recipe_display_type: state.recipe_display_type.clone(),
                 recipe_display_body_len: state.recipe_display_body_len,
             });
+}
+
+fn sync_waypoint_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.waypoint_packets = world_counters.waypoint_packets;
+    counters.waypoints_tracked = world_counters.waypoints_tracked;
+    counters.waypoint_updates_applied = world_counters.waypoint_updates_applied;
+    counters.waypoint_updates_ignored = world_counters.waypoint_updates_ignored;
+    counters.waypoint_untracks_ignored = world_counters.waypoint_untracks_ignored;
+    counters.last_waypoint = world.last_waypoint_event().map(control_waypoint_event);
+}
+
+fn control_waypoint_event(event: &bbb_world::WaypointEventState) -> bbb_control::WaypointState {
+    let waypoint = &event.waypoint;
+    bbb_control::WaypointState {
+        operation: event.operation.clone(),
+        identifier_kind: waypoint.identifier_kind.clone(),
+        identifier: waypoint.identifier.clone(),
+        icon_style: waypoint.icon_style.clone(),
+        icon_color_rgb: waypoint.icon_color_rgb,
+        waypoint_kind: waypoint.data.kind.clone(),
+        position: waypoint.data.position.map(control_waypoint_vec3i),
+        chunk: waypoint.data.chunk,
+        azimuth: waypoint.data.azimuth,
+    }
 }
 
 fn sync_server_link_counters(counters: &mut NetCounters, world: &WorldStore) {
