@@ -44,7 +44,8 @@ mod terrain;
 mod world_border;
 
 pub use chunks::{
-    decode_level_chunk_with_light, LightData, PaletteDomain, PaletteKind, PaletteValue,
+    decode_level_chunk_with_light, BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState,
+    HeightmapData, LightData, NbtPayloadSummary, PaletteDomain, PaletteKind, PaletteValue,
     PalettedContainerData,
 };
 pub use client_hud::{BossBarState, ClientHudState, DifficultyState, TabListState};
@@ -149,31 +150,6 @@ pub struct WorldLevelInfo {
     pub is_flat: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ChunkState {
-    Missing,
-    Received,
-    Decoded,
-    NeighborsReady,
-    MeshPending,
-    MeshBuilding,
-    MeshReady,
-    GpuUploading,
-    GpuResidentHidden,
-    Visible,
-    Retiring,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChunkColumn {
-    pub pos: ChunkPos,
-    pub state: ChunkState,
-    pub heightmaps: Vec<HeightmapData>,
-    pub sections: Vec<ChunkSection>,
-    pub block_entities: Vec<BlockEntityRecord>,
-    pub light: LightData,
-}
-
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct EntityVec3 {
     pub x: f64,
@@ -240,35 +216,6 @@ pub struct VehicleMoveReport {
     pub x_rot: f32,
     pub on_ground: bool,
     pub snapped: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HeightmapData {
-    pub kind_id: i32,
-    pub data: Vec<i64>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ChunkSection {
-    pub non_empty_block_count: i16,
-    pub fluid_count: i16,
-    pub block_states: PalettedContainerData,
-    pub biomes: PalettedContainerData,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockEntityRecord {
-    pub local_x: u8,
-    pub y: i16,
-    pub local_z: u8,
-    pub type_id: i32,
-    pub nbt: Option<NbtPayloadSummary>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NbtPayloadSummary {
-    pub root_type: u8,
-    pub byte_len: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

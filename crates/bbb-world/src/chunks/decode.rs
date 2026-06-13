@@ -1,13 +1,13 @@
 use bbb_protocol::codec::Decoder;
 
-use crate::{
-    BlockEntityRecord, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData,
-    NbtPayloadSummary, Result, WorldDecodeError,
-};
+use crate::{ChunkPos, Result, WorldDecodeError};
 
 use super::{
     light::decode_light_data,
     palette::{packed_long_len, palette_kind, PaletteDomain, PaletteKind, PalettedContainerData},
+    state::{
+        BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, NbtPayloadSummary,
+    },
 };
 
 const MAX_CHUNK_SECTION_BUFFER: usize = 2 * 1024 * 1024;
