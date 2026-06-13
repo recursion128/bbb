@@ -41,22 +41,50 @@ Use Rust 2018 module file layout. Prefer `foo.rs` for the module entry and
 
 ## Splitting Decision Rules
 
-Do not split code just because it can be split. Module extraction must have a
-clear semantic boundary and a concrete maintenance payoff.
+Do not split code just because it can be split. A split is justified only when it
+creates a clearer ownership boundary for current or near-term work. Line count is
+a signal to inspect, not a target to optimize.
 
-- Files under 1000 lines should stay as-is by default. Split them only when the
-  current slice introduces or exposes a durable feature boundary, a focused test
-  boundary, or a repeated merge-conflict hotspot.
-- Files over 1000 lines are candidates for review, not automatic extraction
-  targets. A long file may remain intact when it is cohesive and easy to scan.
-- A valid extraction should answer: what concept owns this code, which callers
-  need the new API, which tests prove behavior stayed the same, and what future
-  work becomes easier.
-- Do not create one-function or bucket modules merely to reduce line count.
-  Avoid `utils`, `helpers`, `common`, and similar names unless they contain
-  genuinely shared primitives with a stable purpose.
-- Prefer leaving small, cohesive private helpers beside their only caller.
-- If the only rationale is "the file is long", do not split yet.
+Before extracting a module, the main agent or worker must be able to answer:
+
+- What stable concept owns this code?
+- Which callers need the new API, and can that API stay narrow?
+- Which tests prove behavior stayed the same?
+- What current or near-term feature work becomes easier after the split?
+
+Use these default thresholds and gates:
+
+- Files under 1000 lines should stay as-is by default.
+- Files over 1000 lines are review candidates, not automatic extraction targets.
+- A long file may remain intact when it is cohesive, has local tests, and is easy
+  to scan.
+- A small file may be split only when the current slice introduces a durable
+  feature boundary, a focused test boundary, or a repeated merge-conflict
+  hotspot.
+
+Valid reasons to split include:
+
+- A feature family has its own state, invariants, conversions, and tests.
+- A root file is acting as an index plus a large coherent implementation block.
+- New work would otherwise add another unrelated section to an already mixed
+  file.
+- Multiple agents repeatedly need to edit the same large semantic region.
+- A module boundary lets downstream crates depend on a narrow facade instead of
+  internal helpers.
+
+Invalid reasons to split include:
+
+- The file is long, and no other benefit is clear.
+- The change creates one-function modules or moves single-use private helpers
+  away from their only caller.
+- The extracted module would need a vague name such as `misc`, `helpers`,
+  `common`, `stuff`, or `new`.
+- The extraction forces broad `pub` exposure, circular dependencies, or facade
+  churn that is larger than the code being moved.
+- The slice mixes risky behavior changes with broad mechanical movement.
+
+Prefer leaving small, cohesive private helpers beside their only caller. If the
+only rationale is "the file is long", do not split yet.
 
 ## File Size And Growth
 
@@ -77,7 +105,8 @@ clear semantic boundary and a concrete maintenance payoff.
 
 The threshold is pragmatic: if a section needs its own heading in comments, has
 multiple tests, or becomes a likely worker ownership boundary, it may deserve a
-module. Apply the splitting decision rules first.
+module. Apply the splitting decision rules first, and keep the root file intact
+when the benefit is not concrete.
 
 ## Public APIs
 
@@ -119,8 +148,10 @@ module. Apply the splitting decision rules first.
   extract a coherent module.
 - When a worker adds a new feature family and a suitable module exists, it must
   use that module.
-- When no module exists and the slice would add meaningful size, the worker
-  should create the module and keep the root file as the index.
+- When no module exists, create one only if the slice passes the splitting
+  decision rules. Otherwise keep the code near its current owner.
+- Worker agents must not create split-only changes unless the main agent
+  explicitly assigned that extraction and its rationale.
 - Agents must not revert unrelated changes made by other agents or the user.
 - Agents must not rewrite git history unless the user explicitly requests it.
 
@@ -134,6 +165,8 @@ native rewrite easier to continue. Keep extractions mechanical and scoped:
 - Avoid mixing module extraction with unrelated behavior changes.
 - Do not extract files below 1000 lines unless the selected feature needs the
   boundary now.
+- Do not extract just to make every file smaller. The output should be easier to
+  understand, test, and assign than the input.
 - Run focused tests for the moved module and the full workspace gate before
   committing.
 

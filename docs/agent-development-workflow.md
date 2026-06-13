@@ -31,6 +31,16 @@ Do not create split-only slices unless the split satisfies
 `docs/code-organization-style.md`. Parallel worker ownership should follow real
 feature or semantic boundaries, not arbitrary line ranges.
 
+When a slice includes module extraction, the main agent should state the split
+rationale before workers start:
+
+- The semantic owner being created or clarified.
+- The files/modules each worker may edit.
+- The behavior-preserving tests that must still pass.
+- The current or near-term work made easier by the split.
+
+If that rationale is only line count or aesthetics, keep the file intact.
+
 ## Worker Contract
 
 Every worker prompt must include:

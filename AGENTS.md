@@ -82,9 +82,14 @@ workspace test suite. If a command cannot run, state the reason and the residual
 - Organize code by semantic modules and avoid growing catch-all `lib.rs` or
   `main.rs` sections; use `docs/code-organization-style.md` as the required
   module/layout policy.
-- Do not split files just to reduce line count. Files under 1000 lines should
-  stay intact by default unless the current slice needs a clear semantic,
-  testing, or merge-conflict boundary.
+- Do not split files just to reduce line count. Files under 1000 lines stay
+  intact by default, and files over 1000 lines are reviewed rather than
+  extracted automatically.
+- A split must have a named semantic owner, a narrow API, focused tests or a
+  clear test plan, and a concrete payoff for current or near-term work.
+- Keep cohesive single-caller helpers beside their caller. Avoid one-function
+  modules, vague bucket modules, and broad `pub` exposure created only to make a
+  split compile.
 - Use Rust 2018 module layout: `foo.rs` plus `foo/bar.rs`; do not add new
   `foo/mod.rs` files.
 - Prefer existing crate boundaries and local patterns over new abstractions.
