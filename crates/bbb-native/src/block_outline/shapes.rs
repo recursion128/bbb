@@ -36,6 +36,12 @@ pub(super) fn outline_shape_for_block(
     if is_bed_block_name(block_name) {
         return bed_outline_shape(properties);
     }
+    if block_name == "minecraft:cake" {
+        return cake_outline_shape(properties);
+    }
+    if is_candle_cake_block_name(block_name) {
+        return Some(candle_cake_outline_shape());
+    }
     if block_name == "minecraft:brewing_stand" {
         return Some(brewing_stand_outline_shape());
     }
@@ -282,6 +288,25 @@ fn brewing_stand_outline_shape() -> BlockOutlineShape {
     BlockOutlineShape::from_boxes(vec![
         BlockOutlineBox::BREWING_STAND_ROD,
         BlockOutlineBox::BREWING_STAND_BASE,
+    ])
+}
+
+fn cake_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let bites = properties.get("bites")?.parse::<u8>().ok()?;
+    if bites > 6 {
+        return None;
+    }
+
+    Some(BlockOutlineShape::single(BlockOutlineBox::from_pixels(
+        [1.0 + f64::from(bites) * 2.0, 0.0, 1.0],
+        [15.0, 8.0, 15.0],
+    )))
+}
+
+fn candle_cake_outline_shape() -> BlockOutlineShape {
+    BlockOutlineShape::from_boxes(vec![
+        BlockOutlineBox::centered_column(2.0, 2.0, 8.0, 14.0),
+        BlockOutlineBox::centered_column(14.0, 14.0, 0.0, 8.0),
     ])
 }
 
@@ -716,6 +741,12 @@ fn is_anvil_block_name(block_name: &str) -> bool {
         block_name,
         "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
     )
+}
+
+fn is_candle_cake_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "candle_cake" || path.ends_with("_candle_cake"))
 }
 
 fn is_flower_pot_block_name(block_name: &str) -> bool {

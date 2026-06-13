@@ -1,4 +1,5 @@
 mod beds;
+mod cakes;
 mod cauldrons;
 mod chests;
 mod interaction;
