@@ -17,18 +17,18 @@ use bbb_protocol::{
         EntityPositionSync as ProtocolEntityPositionSync,
         EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, HurtAnimation as ProtocolHurtAnimation,
         ItemStackSummary as ProtocolItemStackSummary, LevelChunkWithLight,
-        LightUpdate as ProtocolLightUpdate, OpenScreen as ProtocolOpenScreen,
-        PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
-        Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
-        SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
-        SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
-        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
-        SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-        TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
-        UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d,
-        PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z,
-        PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y,
-        PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
+        LightUpdate as ProtocolLightUpdate, MoveVehicle as ProtocolMoveVehicle,
+        OpenScreen as ProtocolOpenScreen, PlayLogin as ProtocolPlayLogin,
+        RemoveEntities as ProtocolRemoveEntities, Respawn as ProtocolRespawn,
+        RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
+        SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData,
+        SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
+        SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
+        SetPlayerInventory as ProtocolSetPlayerInventory, TakeItemEntity as ProtocolTakeItemEntity,
+        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
+        PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
+        PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -41,6 +41,7 @@ const VANILLA_BLOCK_STATES_JSON: &str = include_str!("../data/block_states_26_1.
 const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
 const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
+const MOVE_VEHICLE_SNAP_EPSILON_SQUARED: f64 = 1e-10;
 
 static VANILLA_BLOCK_STATES: OnceLock<Arc<Vec<Option<BlockStateInfo>>>> = OnceLock::new();
 
@@ -168,6 +169,16 @@ pub struct EntityState {
     pub last_animation_action: Option<u8>,
     pub last_event_id: Option<i8>,
     pub last_hurt_yaw: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct VehicleMoveReport {
+    pub vehicle_id: i32,
+    pub position: EntityVec3,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub on_ground: bool,
+    pub snapped: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -528,6 +539,14 @@ pub struct WorldCounters {
     pub entity_passenger_updates_received: usize,
     pub entity_passenger_ids_received: usize,
     pub entity_passenger_updates_applied: usize,
+    #[serde(default)]
+    pub vehicle_moves_received: usize,
+    #[serde(default)]
+    pub vehicle_moves_applied: usize,
+    #[serde(default)]
+    pub vehicle_moves_acked: usize,
+    #[serde(default)]
+    pub vehicle_moves_snapped: usize,
     pub entity_link_updates_received: usize,
     pub entity_link_updates_applied: usize,
     pub entity_motion_updates_received: usize,
@@ -646,6 +665,10 @@ pub struct WorldStore {
     registries: RegistrySet,
     chunks: Vec<ChunkColumn>,
     entities: Vec<EntityState>,
+    #[serde(default)]
+    local_player_id: Option<i32>,
+    #[serde(default)]
+    local_player_vehicle_id: Option<i32>,
     inventory: InventoryState,
     counters: WorldCounters,
 }
@@ -676,6 +699,12 @@ impl WorldStore {
 
     pub fn apply_login(&mut self, login: &ProtocolPlayLogin) {
         self.counters.play_logins_received += 1;
+        if let Some(local_player_id) = self.local_player_id {
+            self.clear_local_player_mount(local_player_id);
+        } else {
+            self.local_player_vehicle_id = None;
+        }
+        self.local_player_id = Some(login.player_id);
         self.apply_spawn_info(&login.common_spawn_info);
     }
 
@@ -1213,6 +1242,9 @@ impl WorldStore {
     pub fn apply_set_passengers(&mut self, packet: ProtocolSetPassengers) -> bool {
         self.counters.entity_passenger_updates_received += 1;
         self.counters.entity_passenger_ids_received += packet.passenger_ids.len();
+        let local_player_id = self.local_player_id;
+        let local_player_was_on_packet_vehicle =
+            self.local_player_vehicle_id == Some(packet.vehicle_id);
         let Some(vehicle_index) = self
             .entities
             .iter()
@@ -1229,15 +1261,29 @@ impl WorldStore {
         self.entities[vehicle_index].passengers.clear();
 
         let mut mounted = Vec::new();
+        let mut local_player_mounted_here = false;
         for passenger_id in packet.passenger_ids {
             if passenger_id == packet.vehicle_id || mounted.contains(&passenger_id) {
                 continue;
             }
-            let Some(passenger_index) = self
+            let is_local_player = local_player_id == Some(passenger_id);
+            if is_local_player {
+                if let Some(old_vehicle_id) = self.local_player_vehicle_id {
+                    if old_vehicle_id != packet.vehicle_id {
+                        self.remove_passenger_from_vehicle(old_vehicle_id, passenger_id);
+                    }
+                }
+                self.local_player_vehicle_id = Some(packet.vehicle_id);
+                local_player_mounted_here = true;
+            }
+            let passenger_index = self
                 .entities
                 .iter()
-                .position(|entity| entity.id == passenger_id)
-            else {
+                .position(|entity| entity.id == passenger_id);
+            let Some(passenger_index) = passenger_index else {
+                if is_local_player {
+                    mounted.push(passenger_id);
+                }
                 continue;
             };
             if let Some(old_vehicle_id) = self.entities[passenger_index].vehicle_id {
@@ -1255,9 +1301,46 @@ impl WorldStore {
             mounted.push(passenger_id);
         }
 
+        if local_player_was_on_packet_vehicle && !local_player_mounted_here {
+            self.local_player_vehicle_id = None;
+        }
         self.entities[vehicle_index].passengers = mounted;
         self.counters.entity_passenger_updates_applied += 1;
         true
+    }
+
+    pub fn apply_move_vehicle(&mut self, packet: ProtocolMoveVehicle) -> Option<VehicleMoveReport> {
+        self.counters.vehicle_moves_received += 1;
+        let root_vehicle_id = self.local_player_root_vehicle_id()?;
+        let root_vehicle_index = self
+            .entities
+            .iter()
+            .position(|entity| entity.id == root_vehicle_id)?;
+        let packet_position = entity_vec3(packet.position);
+        let snapped =
+            entity_distance_squared(self.entities[root_vehicle_index].position, packet_position)
+                > MOVE_VEHICLE_SNAP_EPSILON_SQUARED;
+
+        if snapped {
+            let vehicle = &mut self.entities[root_vehicle_index];
+            vehicle.position = packet_position;
+            vehicle.position_base = packet_position;
+            vehicle.y_rot = packet.y_rot;
+            vehicle.x_rot = packet.x_rot;
+            self.counters.vehicle_moves_snapped += 1;
+        }
+
+        self.counters.vehicle_moves_applied += 1;
+        self.counters.vehicle_moves_acked += 1;
+        let vehicle = &self.entities[root_vehicle_index];
+        Some(VehicleMoveReport {
+            vehicle_id: vehicle.id,
+            position: vehicle.position,
+            y_rot: vehicle.y_rot,
+            x_rot: vehicle.x_rot,
+            on_ground: vehicle.on_ground.unwrap_or(false),
+            snapped,
+        })
     }
 
     pub fn apply_set_entity_link(&mut self, packet: ProtocolSetEntityLink) -> bool {
@@ -1352,6 +1435,12 @@ impl WorldStore {
         self.entities
             .retain(|entity| !removed_ids.contains(&entity.id));
         let removed = before - self.entities.len();
+        if self
+            .local_player_vehicle_id
+            .is_some_and(|vehicle_id| removed_ids.contains(&vehicle_id))
+        {
+            self.local_player_vehicle_id = None;
+        }
         for entity in &mut self.entities {
             if entity
                 .vehicle_id
@@ -1496,6 +1585,18 @@ impl WorldStore {
         self.counters.clone()
     }
 
+    pub fn local_player_id(&self) -> Option<i32> {
+        self.local_player_id
+    }
+
+    pub fn local_player_vehicle_id(&self) -> Option<i32> {
+        self.local_player_vehicle_id
+    }
+
+    pub fn local_player_root_vehicle_id(&self) -> Option<i32> {
+        self.resolve_root_vehicle_id(self.local_player_vehicle_id?)
+    }
+
     pub fn inventory(&self) -> &InventoryState {
         &self.inventory
     }
@@ -1544,6 +1645,42 @@ impl WorldStore {
 
     fn update_entity_count(&mut self) {
         self.counters.entities_tracked = self.entities.len();
+    }
+
+    fn clear_local_player_mount(&mut self, local_player_id: i32) {
+        self.local_player_vehicle_id = None;
+        for entity in &mut self.entities {
+            if entity.id == local_player_id {
+                entity.vehicle_id = None;
+            }
+            entity
+                .passengers
+                .retain(|passenger_id| *passenger_id != local_player_id);
+        }
+    }
+
+    fn remove_passenger_from_vehicle(&mut self, vehicle_id: i32, passenger_id: i32) {
+        if let Some(vehicle) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == vehicle_id)
+        {
+            vehicle
+                .passengers
+                .retain(|existing| *existing != passenger_id);
+        }
+    }
+
+    fn resolve_root_vehicle_id(&self, vehicle_id: i32) -> Option<i32> {
+        let mut root_vehicle_id = vehicle_id;
+        for _ in 0..self.entities.len() {
+            let vehicle = self.probe_entity(root_vehicle_id)?;
+            let Some(parent_vehicle_id) = vehicle.vehicle_id else {
+                return Some(root_vehicle_id);
+            };
+            root_vehicle_id = parent_vehicle_id;
+        }
+        None
     }
 
     fn set_block_state_id(&mut self, pos: BlockPos, block_state_id: i32) -> bool {
@@ -1902,6 +2039,13 @@ fn entity_vec3(vec: ProtocolVec3d) -> EntityVec3 {
         y: vec.y,
         z: vec.z,
     }
+}
+
+fn entity_distance_squared(a: EntityVec3, b: EntityVec3) -> f64 {
+    let dx = a.x - b.x;
+    let dy = a.y - b.y;
+    let dz = a.z - b.z;
+    dx * dx + dy * dy + dz * dz
 }
 
 fn item_entity_stack_mut(entity: &mut EntityState) -> Option<&mut ProtocolItemStackSummary> {
@@ -2500,7 +2644,8 @@ mod tests {
         EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
         EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
         EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        HurtAnimation as ProtocolHurtAnimation, ItemStackSummary, OpenScreen as ProtocolOpenScreen,
+        HurtAnimation as ProtocolHurtAnimation, ItemStackSummary,
+        MoveVehicle as ProtocolMoveVehicle, OpenScreen as ProtocolOpenScreen,
         PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
         Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
         SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
@@ -3259,6 +3404,203 @@ mod tests {
     }
 
     #[test]
+    fn tracks_local_player_passenger_without_entity() {
+        let mut store = WorldStore::new();
+        store.apply_login(&protocol_play_login(99));
+        for id in [10, 20, 30] {
+            store.apply_add_entity(protocol_add_entity(id));
+        }
+
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99, 20],
+        }));
+        assert_eq!(store.local_player_id(), Some(99));
+        assert_eq!(store.local_player_vehicle_id(), Some(10));
+        assert!(store.probe_entity(99).is_none());
+        assert_eq!(store.probe_entity(10).unwrap().passengers, vec![99, 20]);
+        assert_eq!(store.probe_entity(20).unwrap().vehicle_id, Some(10));
+
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 30,
+            passenger_ids: vec![99],
+        }));
+        assert_eq!(store.local_player_vehicle_id(), Some(30));
+        assert_eq!(store.probe_entity(10).unwrap().passengers, vec![20]);
+        assert_eq!(store.probe_entity(30).unwrap().passengers, vec![99]);
+
+        assert!(!store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 999,
+            passenger_ids: Vec::new(),
+        }));
+        assert_eq!(store.local_player_vehicle_id(), Some(30));
+        assert_eq!(store.probe_entity(30).unwrap().passengers, vec![99]);
+
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 30,
+            passenger_ids: Vec::new(),
+        }));
+        assert_eq!(store.local_player_vehicle_id(), None);
+        assert!(store.probe_entity(30).unwrap().passengers.is_empty());
+
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99],
+        }));
+        store.apply_login(&protocol_play_login(100));
+        assert_eq!(store.local_player_id(), Some(100));
+        assert_eq!(store.local_player_vehicle_id(), None);
+        assert_eq!(
+            store.probe_entity(10).unwrap().passengers,
+            Vec::<i32>::new()
+        );
+    }
+
+    #[test]
+    fn move_vehicle_snaps_root_vehicle_and_returns_ack() {
+        let mut store = WorldStore::new();
+        store.apply_login(&protocol_play_login(99));
+        store.apply_add_entity(protocol_add_entity(10));
+        store.apply_add_entity(protocol_add_entity(20));
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 20,
+            passenger_ids: vec![99],
+        }));
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![20],
+        }));
+
+        let report = store
+            .apply_move_vehicle(ProtocolMoveVehicle {
+                position: ProtocolVec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                y_rot: 45.0,
+                x_rot: -5.0,
+            })
+            .unwrap();
+
+        assert_eq!(store.local_player_vehicle_id(), Some(20));
+        assert_eq!(store.local_player_root_vehicle_id(), Some(10));
+        assert_eq!(
+            report,
+            VehicleMoveReport {
+                vehicle_id: 10,
+                position: EntityVec3 {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                y_rot: 45.0,
+                x_rot: -5.0,
+                on_ground: false,
+                snapped: true,
+            }
+        );
+        let root = store.probe_entity(10).unwrap();
+        assert_eq!(root.position, report.position);
+        assert_eq!(root.position_base, report.position);
+        assert_eq!(root.y_rot, 45.0);
+        assert_eq!(root.x_rot, -5.0);
+        assert_eq!(
+            store.probe_entity(20).unwrap().position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            }
+        );
+        assert_eq!(store.counters().vehicle_moves_received, 1);
+        assert_eq!(store.counters().vehicle_moves_applied, 1);
+        assert_eq!(store.counters().vehicle_moves_acked, 1);
+        assert_eq!(store.counters().vehicle_moves_snapped, 1);
+    }
+
+    #[test]
+    fn move_vehicle_without_mount_is_noop() {
+        let mut store = WorldStore::new();
+        store.apply_login(&protocol_play_login(99));
+        store.apply_add_entity(protocol_add_entity(10));
+
+        assert_eq!(
+            store.apply_move_vehicle(ProtocolMoveVehicle {
+                position: ProtocolVec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                y_rot: 45.0,
+                x_rot: -5.0,
+            }),
+            None
+        );
+
+        let entity = store.probe_entity(10).unwrap();
+        assert_eq!(
+            entity.position,
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            }
+        );
+        assert_eq!(store.counters().vehicle_moves_received, 1);
+        assert_eq!(store.counters().vehicle_moves_applied, 0);
+        assert_eq!(store.counters().vehicle_moves_acked, 0);
+        assert_eq!(store.counters().vehicle_moves_snapped, 0);
+    }
+
+    #[test]
+    fn move_vehicle_small_delta_acks_without_snap() {
+        let mut store = WorldStore::new();
+        store.apply_login(&protocol_play_login(99));
+        store.apply_add_entity(protocol_add_entity(10));
+        assert!(store.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99],
+        }));
+
+        let report = store
+            .apply_move_vehicle(ProtocolMoveVehicle {
+                position: ProtocolVec3d {
+                    x: 1.000001,
+                    y: 64.0,
+                    z: -2.0,
+                },
+                y_rot: 80.0,
+                x_rot: 35.0,
+            })
+            .unwrap();
+
+        assert_eq!(
+            report,
+            VehicleMoveReport {
+                vehicle_id: 10,
+                position: EntityVec3 {
+                    x: 1.0,
+                    y: 64.0,
+                    z: -2.0,
+                },
+                y_rot: 20.0,
+                x_rot: -10.0,
+                on_ground: false,
+                snapped: false,
+            }
+        );
+        let entity = store.probe_entity(10).unwrap();
+        assert_eq!(entity.position, report.position);
+        assert_eq!(entity.y_rot, 20.0);
+        assert_eq!(entity.x_rot, -10.0);
+        assert_eq!(store.counters().vehicle_moves_received, 1);
+        assert_eq!(store.counters().vehicle_moves_applied, 1);
+        assert_eq!(store.counters().vehicle_moves_acked, 1);
+        assert_eq!(store.counters().vehicle_moves_snapped, 0);
+    }
+
+    #[test]
     fn tracks_entity_link_updates() {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(10));
@@ -3781,6 +4123,33 @@ mod tests {
             classify_terrain_material(Some("minecraft:water")),
             TerrainMaterialClass::Fluid
         );
+    }
+
+    fn protocol_play_login(player_id: i32) -> ProtocolPlayLogin {
+        ProtocolPlayLogin {
+            player_id,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        }
     }
 
     fn protocol_add_entity(id: i32) -> ProtocolAddEntity {

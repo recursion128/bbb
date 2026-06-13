@@ -13,7 +13,7 @@ use bbb_control::{
     PlayerAbilities, PlayerExperience, PlayerHealth, PlayerPose, RendererCounters, SharedSnapshot,
     SystemChatLine,
 };
-use bbb_net::{ConnectionOptions, NetCommand, NetEvent, PlayerMoveCommand};
+use bbb_net::{ConnectionOptions, NetCommand, NetEvent, PlayerMoveCommand, VehicleMoveCommand};
 use bbb_pack::{
     AtlasLayout, AtlasPacker, BiomeColorCatalog, BiomeColorProfile, BlockFaceTextures,
     BlockModelCatalog, BlockModelShape, GrassColorModifier, PackRoots, TerrainColorMaps,
@@ -23,7 +23,7 @@ use bbb_protocol::packets::{
     BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
     Direction as ProtocolDirection, InteractionHand, PickItemFromBlock, PlayerAction,
     PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, PlayerPositionState,
-    UseItem, UseItemOn,
+    UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_renderer::terrain::{
     build_terrain_mesh_layers_with_atlas, TerrainCell, TerrainChunkSnapshot, TerrainLight,
@@ -749,7 +749,7 @@ fn pump_network_and_terrain(
     snapshot: &SharedSnapshot,
 ) -> bool {
     if let Some(rx) = net_events.as_mut() {
-        drain_net_events(rx, world, net_counters);
+        drain_net_events(rx, world, net_counters, net_commands);
     }
     advance_player_input(input, net_counters, net_commands, Instant::now());
     renderer.set_hud_health(net_counters.player_health.map(|health| health.health));
@@ -1169,6 +1169,28 @@ fn queue_pick_item_from_block_command(
         };
         if tx.try_send(NetCommand::PickItemFromBlock(packet)).is_ok() {
             counters.pick_item_from_block_commands_queued += 1;
+        }
+    }
+}
+
+fn queue_vehicle_move_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    report: bbb_world::VehicleMoveReport,
+) {
+    if let Some(tx) = net_commands {
+        let command = VehicleMoveCommand {
+            position: ProtocolVec3d {
+                x: report.position.x,
+                y: report.position.y,
+                z: report.position.z,
+            },
+            y_rot: report.y_rot,
+            x_rot: report.x_rot,
+            on_ground: report.on_ground,
+        };
+        if tx.try_send(NetCommand::MoveVehicle(command)).is_ok() {
+            counters.move_vehicle_commands_queued += 1;
         }
     }
 }
@@ -1810,6 +1832,7 @@ fn drain_net_events(
     rx: &mut mpsc::Receiver<NetEvent>,
     world: &mut WorldStore,
     counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) -> usize {
     let mut drained = 0;
     while drained < 4096 {
@@ -1876,6 +1899,12 @@ fn drain_net_events(
             }
             NetEvent::MoveEntity(update) => {
                 world.apply_entity_move(update);
+            }
+            NetEvent::MoveVehicle(update) => {
+                counters.move_vehicle_packets += 1;
+                if let Some(report) = world.apply_move_vehicle(update) {
+                    queue_vehicle_move_command(counters, net_commands, report);
+                }
             }
             NetEvent::EntityPositionSync(update) => {
                 world.apply_entity_position_sync(update);
@@ -2577,8 +2606,10 @@ fn publish_snapshot(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y_ROT,
+        AddEntity, CommonPlayerSpawnInfo, PlayLogin, SetPassengers, PLAYER_RELATIVE_DELTA_X,
+        PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y_ROT,
     };
+    use uuid::Uuid;
 
     #[test]
     fn fluid_height_units_follow_vanilla_legacy_level_amounts() {
@@ -3303,10 +3334,69 @@ mod tests {
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        assert_eq!(drain_net_events(&mut rx, &mut world, &mut counters), 1);
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            1
+        );
         assert_eq!(counters.take_item_entity_packets, 1);
         assert_eq!(world.counters().take_item_entities_received, 1);
         assert_eq!(world.counters().take_item_entities_applied, 0);
+    }
+
+    #[test]
+    fn move_vehicle_event_updates_world_and_queues_ack() {
+        let (event_tx, mut event_rx) = mpsc::channel(1);
+        let (command_tx, mut command_rx) = mpsc::channel(1);
+        let commands = Some(command_tx);
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(99));
+        world.apply_add_entity(protocol_add_entity(10));
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99],
+        }));
+
+        event_tx
+            .try_send(NetEvent::MoveVehicle(bbb_protocol::packets::MoveVehicle {
+                position: ProtocolVec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                y_rot: 45.0,
+                x_rot: -5.0,
+            }))
+            .unwrap();
+
+        let mut counters = NetCounters::default();
+        assert_eq!(
+            drain_net_events(&mut event_rx, &mut world, &mut counters, &commands),
+            1
+        );
+
+        assert_eq!(counters.move_vehicle_packets, 1);
+        assert_eq!(counters.move_vehicle_commands_queued, 1);
+        assert_eq!(world.counters().vehicle_moves_snapped, 1);
+        let vehicle = world.probe_entity(10).unwrap();
+        assert_eq!(
+            vehicle.position,
+            bbb_world::EntityVec3 {
+                x: 5.0,
+                y: 66.0,
+                z: -7.0,
+            }
+        );
+        match command_rx.try_recv().unwrap() {
+            NetCommand::MoveVehicle(command) => {
+                assert_eq!(command.position.x, 5.0);
+                assert_eq!(command.position.y, 66.0);
+                assert_eq!(command.position.z, -7.0);
+                assert_eq!(command.y_rot, 45.0);
+                assert_eq!(command.x_rot, -5.0);
+                assert!(!command.on_ground);
+            }
+            other => panic!("expected move vehicle command, got {other:?}"),
+        }
     }
 
     #[test]
@@ -4127,6 +4217,7 @@ mod tests {
             NetCommand::UseItemOn(_) => panic!("expected move command"),
             NetCommand::UseItem(_) => panic!("expected move command"),
             NetCommand::PickItemFromBlock(_) => panic!("expected move command"),
+            NetCommand::MoveVehicle(_) => panic!("expected move command"),
             NetCommand::Disconnect => panic!("expected move command"),
         };
         assert_f64_near(first.state.position.y, 64.0, 0.000001);
@@ -4158,6 +4249,7 @@ mod tests {
             NetCommand::UseItemOn(_) => panic!("expected move command"),
             NetCommand::UseItem(_) => panic!("expected move command"),
             NetCommand::PickItemFromBlock(_) => panic!("expected move command"),
+            NetCommand::MoveVehicle(_) => panic!("expected move command"),
             NetCommand::Disconnect => panic!("expected move command"),
         };
         assert!(second.state.position.z > 0.0);
@@ -4191,6 +4283,55 @@ mod tests {
             }
         }
         bbb_pack::ColorMapImage::new(4, 4, rgba).unwrap()
+    }
+
+    fn protocol_play_login(player_id: i32) -> PlayLogin {
+        PlayLogin {
+            player_id,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        }
+    }
+
+    fn protocol_add_entity(id: i32) -> AddEntity {
+        AddEntity {
+            id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: 7,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: -10.0,
+            y_rot: 20.0,
+            y_head_rot: 30.0,
+            data: 99,
+        }
     }
 
     fn block_model_box_with_face_texture(

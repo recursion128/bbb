@@ -13,15 +13,15 @@ use bbb_protocol::{
         ConfigurationClientbound, ContainerClose, ContainerSetContent, ContainerSetData,
         ContainerSetSlot, EntityAnimation, EntityEvent, EntityMove, EntityPositionSync,
         ForgetLevelChunk, GameEvent, HurtAnimation, InteractionHand, LevelChunkWithLight,
-        LightUpdate, LoginClientbound, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin,
-        PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
-        PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
+        LightUpdate, LoginClientbound, MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound,
+        PlayLogin, PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience,
+        PlayerHealth, PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
         RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetActionBarText, SetCamera,
         SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
         SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers,
         SetPlayerInventory, SetSimulationDistance, SetSubtitleText, SetTitleText,
         SetTitlesAnimation, SystemChat, TakeItemEntity, TeleportEntity, TickingState, TickingStep,
-        UpdateAttributes, UseItem, UseItemOn,
+        UpdateAttributes, UseItem, UseItemOn, Vec3d,
     },
 };
 use bbb_world::{
@@ -108,6 +108,7 @@ pub enum NetEvent {
     EntityEvent(EntityEvent),
     HurtAnimation(HurtAnimation),
     MoveEntity(EntityMove),
+    MoveVehicle(MoveVehicle),
     EntityPositionSync(EntityPositionSync),
     RemoveEntities(RemoveEntities),
     RotateHead(RotateHead),
@@ -177,8 +178,30 @@ impl PlayerMoveCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct VehicleMoveCommand {
+    pub position: Vec3d,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub on_ground: bool,
+}
+
+impl VehicleMoveCommand {
+    fn encode_packet(self) -> (i32, Vec<u8>) {
+        packets::encode_play_move_vehicle(
+            self.position.x,
+            self.position.y,
+            self.position.z,
+            self.y_rot,
+            self.x_rot,
+            self.on_ground,
+        )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum NetCommand {
     MovePlayer(PlayerMoveCommand),
+    MoveVehicle(VehicleMoveCommand),
     PlayerAction(PlayerAction),
     PlayerCommand(PlayerCommand),
     PlayerInput(PlayerInput),
@@ -396,6 +419,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::AwardStats(_) => {}
                 PlayClientbound::MoveEntity(update) => {
                     emit(&events, NetEvent::MoveEntity(update)).await?;
+                }
+                PlayClientbound::MoveVehicle(update) => {
+                    emit(&events, NetEvent::MoveVehicle(update)).await?;
                 }
                 PlayClientbound::KeepAlive { id } => {
                     let (id, payload) = packets::encode_play_keep_alive(id);
@@ -695,6 +721,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::MoveEntity(update) => {
                     world.apply_entity_move(update);
                 }
+                PlayClientbound::MoveVehicle(update) => {
+                    world.apply_move_vehicle(update);
+                }
                 PlayClientbound::KeepAlive { id } => {
                     let (id, payload) = packets::encode_play_keep_alive(id);
                     conn.send_packet(id, &payload).await?;
@@ -940,6 +969,9 @@ async fn read_packet_or_drive_connection(
                     Some(NetCommand::MovePlayer(command)) => {
                         send_player_move_command(conn, command, player_position_state).await?;
                     }
+                    Some(NetCommand::MoveVehicle(command)) => {
+                        send_vehicle_move_command(conn, command).await?;
+                    }
                     Some(NetCommand::PlayerAction(action)) => {
                         send_player_action(conn, action).await?;
                     }
@@ -986,6 +1018,7 @@ async fn read_packet_or_disconnect_command(
             command = commands.recv() => {
                 match command {
                     Some(NetCommand::MovePlayer(_)) => {}
+                    Some(NetCommand::MoveVehicle(_)) => {}
                     Some(NetCommand::PlayerAction(_)) => {}
                     Some(NetCommand::PlayerCommand(_)) => {}
                     Some(NetCommand::PlayerInput(_)) => {}
@@ -1012,6 +1045,14 @@ async fn send_player_move_command(
     conn.send_packet(id, &payload).await?;
     *player_position_state = command.state;
     Ok(())
+}
+
+async fn send_vehicle_move_command(
+    conn: &mut RawConnection,
+    command: VehicleMoveCommand,
+) -> Result<()> {
+    let (id, payload) = command.encode_packet();
+    conn.send_packet(id, &payload).await
 }
 
 async fn send_player_action(conn: &mut RawConnection, action: PlayerAction) -> Result<()> {
@@ -1240,6 +1281,33 @@ mod tests {
         assert_eq!(decoder.read_f32().unwrap(), 90.0);
         assert_eq!(decoder.read_f32().unwrap(), -15.0);
         assert_eq!(decoder.read_u8().unwrap(), 0b11);
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn vehicle_move_command_encodes_move_vehicle_packet() {
+        let command = VehicleMoveCommand {
+            position: Vec3d {
+                x: 2.5,
+                y: 70.0,
+                z: -9.25,
+            },
+            y_rot: 180.0,
+            x_rot: 12.5,
+            on_ground: true,
+        };
+
+        let (packet_id, payload) = command.encode_packet();
+
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_VEHICLE);
+        assert_eq!(payload.len(), 33);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 2.5);
+        assert_eq!(decoder.read_f64().unwrap(), 70.0);
+        assert_eq!(decoder.read_f64().unwrap(), -9.25);
+        assert_eq!(decoder.read_f32().unwrap(), 180.0);
+        assert_eq!(decoder.read_f32().unwrap(), 12.5);
+        assert_eq!(decoder.read_bool().unwrap(), true);
         assert!(decoder.is_empty());
     }
 

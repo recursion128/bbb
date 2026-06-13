@@ -103,6 +103,7 @@ pub enum PlayClientbound {
     Ping { id: i32 },
     Login(PlayLogin),
     MoveEntity(EntityMove),
+    MoveVehicle(MoveVehicle),
     OpenScreen(OpenScreen),
     PlayerPosition(PlayerPositionUpdate),
     PlayerAbilities(PlayerAbilities),
@@ -212,6 +213,13 @@ pub struct EntityMove {
     pub y_rot: Option<f32>,
     pub x_rot: Option<f32>,
     pub on_ground: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct MoveVehicle {
+    pub position: Vec3d,
+    pub y_rot: f32,
+    pub x_rot: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1156,6 +1164,24 @@ pub fn encode_play_move_player_pos_rot(
     (ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT, out.into_inner())
 }
 
+pub fn encode_play_move_vehicle(
+    x: f64,
+    y: f64,
+    z: f64,
+    y_rot: f32,
+    x_rot: f32,
+    on_ground: bool,
+) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_f64(x);
+    out.write_f64(y);
+    out.write_f64(z);
+    out.write_f32(y_rot);
+    out.write_f32(x_rot);
+    out.write_bool(on_ground);
+    (ids::play::SERVERBOUND_MOVE_VEHICLE, out.into_inner())
+}
+
 pub fn encode_play_player_loaded() -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_PLAYER_LOADED, Vec::new())
 }
@@ -1416,6 +1442,14 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 false,
                 true,
             )?))
+        }
+        ids::play::CLIENTBOUND_MOVE_VEHICLE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::MoveVehicle(MoveVehicle {
+                position: decode_vec3d(&mut decoder)?,
+                y_rot: decoder.read_f32()?,
+                x_rot: decoder.read_f32()?,
+            }))
         }
         ids::play::CLIENTBOUND_OPEN_SCREEN => {
             let mut decoder = Decoder::new(payload);
@@ -4446,6 +4480,48 @@ mod tests {
                 overlay: true,
             })
         );
+    }
+
+    #[test]
+    fn decodes_and_encodes_move_vehicle_packets() {
+        let mut payload = Encoder::new();
+        payload.write_f64(12.5);
+        payload.write_f64(65.25);
+        payload.write_f64(-8.75);
+        payload.write_f32(135.0);
+        payload.write_f32(-12.5);
+        let payload = payload.into_inner();
+        assert_eq!(payload.len(), 32);
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_MOVE_VEHICLE, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::MoveVehicle(MoveVehicle {
+                position: Vec3d {
+                    x: 12.5,
+                    y: 65.25,
+                    z: -8.75,
+                },
+                y_rot: 135.0,
+                x_rot: -12.5,
+            })
+        );
+
+        let (id, payload) = encode_play_move_vehicle(12.5, 65.25, -8.75, 135.0, -12.5, true);
+        assert_eq!(id, ids::play::SERVERBOUND_MOVE_VEHICLE);
+        assert_eq!(id, 34);
+        assert_eq!(payload.len(), 33);
+        assert_eq!(payload[32], 1);
+
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 12.5);
+        assert_eq!(decoder.read_f64().unwrap(), 65.25);
+        assert_eq!(decoder.read_f64().unwrap(), -8.75);
+        assert_eq!(decoder.read_f32().unwrap(), 135.0);
+        assert_eq!(decoder.read_f32().unwrap(), -12.5);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
     }
 
     #[test]

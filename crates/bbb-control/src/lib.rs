@@ -52,6 +52,7 @@ pub struct NetCounters {
     pub system_chat_packets: usize,
     pub block_changed_ack_packets: usize,
     pub player_rotation_packets: usize,
+    pub move_vehicle_packets: usize,
     pub action_bar_packets: usize,
     pub title_text_packets: usize,
     pub subtitle_text_packets: usize,
@@ -72,6 +73,7 @@ pub struct NetCounters {
     pub world_time_packets: usize,
     pub game_event_packets: usize,
     pub player_move_commands_queued: usize,
+    pub move_vehicle_commands_queued: usize,
     pub last_error: Option<String>,
 }
 

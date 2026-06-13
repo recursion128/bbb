@@ -6,3 +6,24 @@
 /server.jar
 
 .DS_Store
+
+# Local environment and editor state
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Rust tooling output
+coverage/
+tarpaulin-report.html
+*.profraw
+*.profdata
+
+# Logs and crash dumps
+*.log
+*.pid
+*.dmp
