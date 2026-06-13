@@ -1885,6 +1885,10 @@ fn drain_net_events(
             NetEvent::SetPlayerInventory(update) => {
                 world.apply_set_player_inventory(update);
             }
+            NetEvent::BlockDestruction(update) => {
+                counters.block_destruction_packets += 1;
+                world.apply_block_destruction(update);
+            }
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
             }
@@ -3341,6 +3345,35 @@ mod tests {
         assert_eq!(counters.take_item_entity_packets, 1);
         assert_eq!(world.counters().take_item_entities_received, 1);
         assert_eq!(world.counters().take_item_entities_applied, 0);
+    }
+
+    #[test]
+    fn block_destruction_event_updates_world_and_counter() {
+        let (tx, mut rx) = mpsc::channel(1);
+        tx.try_send(NetEvent::BlockDestruction(
+            bbb_protocol::packets::BlockDestruction {
+                id: 4,
+                pos: ProtocolBlockPos {
+                    x: 12,
+                    y: 64,
+                    z: -5,
+                },
+                progress: 6,
+            },
+        ))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            1
+        );
+        assert_eq!(counters.block_destruction_packets, 1);
+        assert_eq!(world.counters().block_destructions_received, 1);
+        assert_eq!(world.counters().block_destructions_tracked, 1);
+        assert_eq!(world.block_destruction(4).unwrap().progress, 6);
     }
 
     #[test]

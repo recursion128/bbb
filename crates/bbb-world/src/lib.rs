@@ -7,9 +7,9 @@ use bbb_protocol::{
     codec::{Decoder, ProtocolError},
     packets::{
         AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
-        BlockEntityData as ProtocolBlockEntityData, BlockUpdate as ProtocolBlockUpdate,
-        ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
-        ContainerClose as ProtocolContainerClose,
+        BlockDestruction as ProtocolBlockDestruction, BlockEntityData as ProtocolBlockEntityData,
+        BlockUpdate as ProtocolBlockUpdate, ChunksBiomes as ProtocolChunksBiomes,
+        CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerClose as ProtocolContainerClose,
         ContainerSetContent as ProtocolContainerSetContent,
         ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
         EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
@@ -169,6 +169,13 @@ pub struct EntityState {
     pub last_animation_action: Option<u8>,
     pub last_event_id: Option<i8>,
     pub last_hurt_yaw: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockDestructionProgress {
+    pub id: i32,
+    pub pos: BlockPos,
+    pub progress: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -503,6 +510,12 @@ pub struct WorldCounters {
     pub biome_updates_applied: usize,
     pub block_updates_received: usize,
     pub block_updates_applied: usize,
+    #[serde(default)]
+    pub block_destructions_received: usize,
+    #[serde(default)]
+    pub block_destructions_tracked: usize,
+    #[serde(default)]
+    pub block_destructions_removed: usize,
     pub chunk_forgets_received: usize,
     pub chunks_forgotten: usize,
     pub inventory_slot_updates_received: usize,
@@ -664,6 +677,8 @@ pub struct WorldStore {
     level: Option<WorldLevelInfo>,
     registries: RegistrySet,
     chunks: Vec<ChunkColumn>,
+    #[serde(default)]
+    block_destructions: Vec<BlockDestructionProgress>,
     entities: Vec<EntityState>,
     #[serde(default)]
     local_player_id: Option<i32>,
@@ -771,6 +786,36 @@ impl WorldStore {
             self.counters.block_updates_applied += 1;
         }
         applied
+    }
+
+    pub fn apply_block_destruction(&mut self, update: ProtocolBlockDestruction) -> bool {
+        self.counters.block_destructions_received += 1;
+        if update.progress < 10 {
+            let progress = BlockDestructionProgress {
+                id: update.id,
+                pos: protocol_block_pos(update.pos),
+                progress: update.progress,
+            };
+            if let Some(existing) = self
+                .block_destructions
+                .iter_mut()
+                .find(|existing| existing.id == update.id)
+            {
+                *existing = progress;
+            } else {
+                self.block_destructions.push(progress);
+            }
+            self.counters.block_destructions_tracked = self.block_destructions.len();
+            return true;
+        }
+
+        let before = self.block_destructions.len();
+        self.block_destructions
+            .retain(|progress| progress.id != update.id);
+        let removed = before - self.block_destructions.len();
+        self.counters.block_destructions_removed += removed;
+        self.counters.block_destructions_tracked = self.block_destructions.len();
+        removed > 0
     }
 
     pub fn apply_section_blocks_update(&mut self, update: ProtocolSectionBlocksUpdate) -> usize {
@@ -1579,6 +1624,16 @@ impl WorldStore {
 
     pub fn chunk_positions(&self) -> Vec<ChunkPos> {
         self.chunks.iter().map(|chunk| chunk.pos).collect()
+    }
+
+    pub fn block_destructions(&self) -> &[BlockDestructionProgress] {
+        &self.block_destructions
+    }
+
+    pub fn block_destruction(&self, id: i32) -> Option<&BlockDestructionProgress> {
+        self.block_destructions
+            .iter()
+            .find(|progress| progress.id == id)
     }
 
     pub fn counters(&self) -> WorldCounters {
@@ -2634,7 +2689,8 @@ mod tests {
     use bbb_protocol::codec::Encoder;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
-        AttributeSnapshot as ProtocolAttributeSnapshot, BlockEntityData as ProtocolBlockEntityData,
+        AttributeSnapshot as ProtocolAttributeSnapshot,
+        BlockDestruction as ProtocolBlockDestruction, BlockEntityData as ProtocolBlockEntityData,
         BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
         ChunkBiomeData as ProtocolChunkBiomeData, ChunkPos as ProtocolChunkPos,
         ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
@@ -3922,6 +3978,81 @@ mod tests {
             .summary();
         assert_eq!(summary.empty_blocks, 1);
         assert_eq!(summary.opaque_blocks, 4095);
+    }
+
+    #[test]
+    fn tracks_block_destruction_progress_by_id() {
+        let mut store = WorldStore::new();
+
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 64,
+                z: -5,
+            },
+            progress: 3,
+        }));
+        assert_eq!(
+            store.block_destruction(7),
+            Some(&BlockDestructionProgress {
+                id: 7,
+                pos: BlockPos {
+                    x: 12,
+                    y: 64,
+                    z: -5,
+                },
+                progress: 3,
+            })
+        );
+        assert_eq!(store.counters().block_destructions_received, 1);
+        assert_eq!(store.counters().block_destructions_tracked, 1);
+        assert_eq!(store.counters().block_destructions_removed, 0);
+
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos {
+                x: 13,
+                y: 65,
+                z: -6,
+            },
+            progress: 9,
+        }));
+        assert_eq!(store.block_destructions().len(), 1);
+        assert_eq!(
+            store.block_destruction(7),
+            Some(&BlockDestructionProgress {
+                id: 7,
+                pos: BlockPos {
+                    x: 13,
+                    y: 65,
+                    z: -6,
+                },
+                progress: 9,
+            })
+        );
+
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos {
+                x: 13,
+                y: 65,
+                z: -6,
+            },
+            progress: 10,
+        }));
+        assert!(store.block_destructions().is_empty());
+        assert_eq!(store.counters().block_destructions_received, 3);
+        assert_eq!(store.counters().block_destructions_tracked, 0);
+        assert_eq!(store.counters().block_destructions_removed, 1);
+
+        assert!(!store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 99,
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            progress: 255,
+        }));
+        assert_eq!(store.counters().block_destructions_received, 4);
+        assert_eq!(store.counters().block_destructions_removed, 1);
     }
 
     #[test]

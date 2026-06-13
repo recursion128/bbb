@@ -84,6 +84,7 @@ pub enum PlayClientbound {
     EntityAnimation(EntityAnimation),
     AwardStats(AwardStats),
     BlockChangedAck(BlockChangedAck),
+    BlockDestruction(BlockDestruction),
     BlockEntityData(BlockEntityData),
     BlockUpdate(BlockUpdate),
     ChunkBatchStart,
@@ -474,6 +475,13 @@ pub struct BlockEntityData {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockChangedAck {
     pub sequence: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockDestruction {
+    pub id: i32,
+    pub pos: BlockPos,
+    pub progress: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1320,6 +1328,14 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK => {
             Ok(PlayClientbound::BlockChangedAck(BlockChangedAck {
                 sequence: Decoder::new(payload).read_var_i32()?,
+            }))
+        }
+        ids::play::CLIENTBOUND_BLOCK_DESTRUCTION => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::BlockDestruction(BlockDestruction {
+                id: decoder.read_var_i32()?,
+                pos: decode_block_pos(decoder.read_i64()?),
+                progress: decoder.read_u8()?,
             }))
         }
         ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA => {
@@ -4174,6 +4190,28 @@ mod tests {
         assert_eq!(
             packet,
             PlayClientbound::BlockChangedAck(BlockChangedAck { sequence: 17 })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1234);
+        payload.write_i64(encode_block_pos(34, -12, -45));
+        payload.write_u8(7);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_BLOCK_DESTRUCTION,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BlockDestruction(BlockDestruction {
+                id: 1234,
+                pos: BlockPos {
+                    x: 34,
+                    y: -12,
+                    z: -45,
+                },
+                progress: 7,
+            })
         );
 
         let mut payload = Encoder::new();

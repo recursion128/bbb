@@ -9,19 +9,19 @@ use bbb_protocol::{
     },
     ids,
     packets::{
-        self, AddEntity, BlockChangedAck, BlockEntityData, BlockUpdate, ChunksBiomes, ClientIntent,
-        ConfigurationClientbound, ContainerClose, ContainerSetContent, ContainerSetData,
-        ContainerSetSlot, EntityAnimation, EntityEvent, EntityMove, EntityPositionSync,
-        ForgetLevelChunk, GameEvent, HurtAnimation, InteractionHand, LevelChunkWithLight,
-        LightUpdate, LoginClientbound, MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound,
-        PlayLogin, PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience,
-        PlayerHealth, PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
-        RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetActionBarText, SetCamera,
-        SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
-        SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers,
-        SetPlayerInventory, SetSimulationDistance, SetSubtitleText, SetTitleText,
-        SetTitlesAnimation, SystemChat, TakeItemEntity, TeleportEntity, TickingState, TickingStep,
-        UpdateAttributes, UseItem, UseItemOn, Vec3d,
+        self, AddEntity, BlockChangedAck, BlockDestruction, BlockEntityData, BlockUpdate,
+        ChunksBiomes, ClientIntent, ConfigurationClientbound, ContainerClose, ContainerSetContent,
+        ContainerSetData, ContainerSetSlot, EntityAnimation, EntityEvent, EntityMove,
+        EntityPositionSync, ForgetLevelChunk, GameEvent, HurtAnimation, InteractionHand,
+        LevelChunkWithLight, LightUpdate, LoginClientbound, MoveVehicle, OpenScreen,
+        PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction,
+        PlayerCommand, PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState,
+        PlayerPositionUpdate, PlayerRotationUpdate, RemoveEntities, Respawn, RotateHead,
+        SectionBlocksUpdate, SetActionBarText, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
+        SetCursorItem, SetDefaultSpawnPosition, SetEntityData, SetEntityLink, SetEntityMotion,
+        SetEquipment, SetHeldSlot, SetPassengers, SetPlayerInventory, SetSimulationDistance,
+        SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat, TakeItemEntity,
+        TeleportEntity, TickingState, TickingStep, UpdateAttributes, UseItem, UseItemOn, Vec3d,
     },
 };
 use bbb_world::{
@@ -103,6 +103,7 @@ pub enum NetEvent {
     OpenScreen(OpenScreen),
     SetCursorItem(SetCursorItem),
     SetPlayerInventory(SetPlayerInventory),
+    BlockDestruction(BlockDestruction),
     AddEntity(AddEntity),
     EntityAnimation(EntityAnimation),
     EntityEvent(EntityEvent),
@@ -417,6 +418,9 @@ pub async fn run_offline_event_stream(
                     emit(&events, NetEvent::EntityAnimation(update)).await?;
                 }
                 PlayClientbound::AwardStats(_) => {}
+                PlayClientbound::BlockDestruction(update) => {
+                    emit(&events, NetEvent::BlockDestruction(update)).await?;
+                }
                 PlayClientbound::MoveEntity(update) => {
                     emit(&events, NetEvent::MoveEntity(update)).await?;
                 }
@@ -718,6 +722,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     world.apply_entity_animation(update);
                 }
                 PlayClientbound::AwardStats(_) => {}
+                PlayClientbound::BlockDestruction(update) => {
+                    world.apply_block_destruction(update);
+                }
                 PlayClientbound::MoveEntity(update) => {
                     world.apply_entity_move(update);
                 }
