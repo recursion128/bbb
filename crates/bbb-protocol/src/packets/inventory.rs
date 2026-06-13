@@ -1,0 +1,369 @@
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    codec::{Decoder, ProtocolError, Result},
+    component::decode_component_summary_from_decoder,
+};
+
+const MAX_CONTAINER_ITEMS: usize = 1024;
+const MAX_ITEM_COMPONENT_PATCH_ENTRIES: usize = 1024;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemStackSummary {
+    pub item_id: Option<i32>,
+    pub count: i32,
+    pub component_patch: DataComponentPatchSummary,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DataComponentPatchSummary {
+    pub added: usize,
+    pub removed_type_ids: Vec<i32>,
+}
+
+impl ItemStackSummary {
+    pub fn empty() -> Self {
+        Self {
+            item_id: None,
+            count: 0,
+            component_patch: DataComponentPatchSummary::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerClose {
+    pub container_id: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerSetContent {
+    pub container_id: i32,
+    pub state_id: i32,
+    pub items: Vec<ItemStackSummary>,
+    pub carried_item: ItemStackSummary,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerSetData {
+    pub container_id: i32,
+    pub id: i16,
+    pub value: i16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerSetSlot {
+    pub container_id: i32,
+    pub state_id: i32,
+    pub slot: i16,
+    pub item: ItemStackSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpenScreen {
+    pub container_id: i32,
+    pub menu_type_id: i32,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetCursorItem {
+    pub item: ItemStackSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetPlayerInventory {
+    pub slot: i32,
+    pub item: ItemStackSummary,
+}
+
+pub(super) fn decode_container_close(decoder: &mut Decoder<'_>) -> Result<ContainerClose> {
+    Ok(ContainerClose {
+        container_id: decoder.read_var_i32()?,
+    })
+}
+
+pub(super) fn decode_container_set_content(
+    decoder: &mut Decoder<'_>,
+) -> Result<ContainerSetContent> {
+    let container_id = decoder.read_var_i32()?;
+    let state_id = decoder.read_var_i32()?;
+    let item_count = decoder.read_len()?;
+    if item_count > MAX_CONTAINER_ITEMS {
+        return Err(ProtocolError::PacketTooLarge(
+            item_count,
+            MAX_CONTAINER_ITEMS,
+        ));
+    }
+    let mut items = Vec::with_capacity(item_count);
+    for _ in 0..item_count {
+        items.push(decode_item_stack_summary(decoder)?);
+    }
+    let carried_item = decode_item_stack_summary(decoder)?;
+    Ok(ContainerSetContent {
+        container_id,
+        state_id,
+        items,
+        carried_item,
+    })
+}
+
+pub(super) fn decode_container_set_data(decoder: &mut Decoder<'_>) -> Result<ContainerSetData> {
+    Ok(ContainerSetData {
+        container_id: decoder.read_var_i32()?,
+        id: decoder.read_i16()?,
+        value: decoder.read_i16()?,
+    })
+}
+
+pub(super) fn decode_container_set_slot(decoder: &mut Decoder<'_>) -> Result<ContainerSetSlot> {
+    Ok(ContainerSetSlot {
+        container_id: decoder.read_var_i32()?,
+        state_id: decoder.read_var_i32()?,
+        slot: decoder.read_i16()?,
+        item: decode_item_stack_summary(decoder)?,
+    })
+}
+
+pub(super) fn decode_open_screen(decoder: &mut Decoder<'_>) -> Result<OpenScreen> {
+    Ok(OpenScreen {
+        container_id: decoder.read_var_i32()?,
+        menu_type_id: decoder.read_var_i32()?,
+        title: decode_component_summary_from_decoder(decoder)?,
+    })
+}
+
+pub(super) fn decode_set_cursor_item(decoder: &mut Decoder<'_>) -> Result<SetCursorItem> {
+    Ok(SetCursorItem {
+        item: decode_item_stack_summary(decoder)?,
+    })
+}
+
+pub(super) fn decode_set_player_inventory(decoder: &mut Decoder<'_>) -> Result<SetPlayerInventory> {
+    Ok(SetPlayerInventory {
+        slot: decoder.read_var_i32()?,
+        item: decode_item_stack_summary(decoder)?,
+    })
+}
+
+pub(super) fn decode_item_stack_summary(decoder: &mut Decoder<'_>) -> Result<ItemStackSummary> {
+    let count = decoder.read_var_i32()?;
+    if count <= 0 {
+        return Ok(ItemStackSummary::empty());
+    }
+
+    let item_id = decoder.read_var_i32()?;
+    let component_patch = decode_data_component_patch_summary(decoder)?;
+    Ok(ItemStackSummary {
+        item_id: Some(item_id),
+        count,
+        component_patch,
+    })
+}
+
+pub(super) fn decode_data_component_patch_summary(
+    decoder: &mut Decoder<'_>,
+) -> Result<DataComponentPatchSummary> {
+    let added = decoder.read_len()?;
+    let removed = decoder.read_len()?;
+    if added + removed > MAX_ITEM_COMPONENT_PATCH_ENTRIES {
+        return Err(ProtocolError::PacketTooLarge(
+            added + removed,
+            MAX_ITEM_COMPONENT_PATCH_ENTRIES,
+        ));
+    }
+    if added != 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "unsupported item stack component patch with {added} added component(s)"
+        )));
+    }
+
+    let mut removed_type_ids = Vec::with_capacity(removed);
+    for _ in 0..removed {
+        removed_type_ids.push(decoder.read_var_i32()?);
+    }
+    Ok(DataComponentPatchSummary {
+        added,
+        removed_type_ids,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        codec::Encoder,
+        ids,
+        packets::{decode_play_clientbound, EquipmentSlot, PlayClientbound},
+    };
+
+    #[test]
+    fn rejects_set_equipment_item_stack_with_added_component_patch() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_u8(EquipmentSlot::MainHand.ordinal());
+        payload.write_var_i32(1);
+        payload.write_var_i32(42);
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        let error =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_EQUIPMENT, &payload.into_inner())
+                .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("unsupported item stack component patch"));
+    }
+
+    #[test]
+    fn decodes_container_and_inventory_item_updates() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_CLOSE,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ContainerClose(ContainerClose { container_id: 7 })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        payload.write_i16(3);
+        payload.write_i16(42);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_SET_DATA,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ContainerSetData(ContainerSetData {
+                container_id: 7,
+                id: 3,
+                value: 42,
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        payload.write_var_i32(2);
+        payload.write_bytes(&nbt_string_root("Chest"));
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_OPEN_SCREEN, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::OpenScreen(OpenScreen {
+                container_id: 7,
+                menu_type_id: 2,
+                title: "Chest".to_string(),
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        payload.write_var_i32(12);
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+        payload.write_var_i32(64);
+        payload.write_var_i32(42);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_SET_CONTENT,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ContainerSetContent(ContainerSetContent {
+                container_id: 7,
+                state_id: 12,
+                items: vec![
+                    ItemStackSummary::empty(),
+                    ItemStackSummary {
+                        item_id: Some(42),
+                        count: 64,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
+                ],
+                carried_item: ItemStackSummary::empty(),
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        payload.write_var_i32(13);
+        payload.write_i16(5);
+        payload.write_var_i32(1);
+        payload.write_var_i32(99);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_SET_SLOT,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ContainerSetSlot(ContainerSetSlot {
+                container_id: 7,
+                state_id: 13,
+                slot: 5,
+                item: ItemStackSummary {
+                    item_id: Some(99),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(0);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_CURSOR_ITEM,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetCursorItem(SetCursorItem {
+                item: ItemStackSummary::empty(),
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(36);
+        payload.write_var_i32(1);
+        payload.write_var_i32(42);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_PLAYER_INVENTORY,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetPlayerInventory(SetPlayerInventory {
+                slot: 36,
+                item: ItemStackSummary {
+                    item_id: Some(42),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+            })
+        );
+    }
+
+    fn nbt_string_root(text: &str) -> Vec<u8> {
+        let mut payload = vec![8];
+        payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
+        payload.extend_from_slice(text.as_bytes());
+        payload
+    }
+}
