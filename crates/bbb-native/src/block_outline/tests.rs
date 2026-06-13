@@ -274,6 +274,79 @@ fn outline_shape_rejects_invalid_fence_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_fence_gate_axis_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_fence_gate"),
+            &fence_gate_properties("north", false, false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::FENCE_GATE_Z))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:birch_fence_gate"),
+            &fence_gate_properties("east", false, false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::FENCE_GATE_X))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_fence_gate_in_wall_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:acacia_fence_gate"),
+            &fence_gate_properties("south", true, false),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::FENCE_GATE_Z_IN_WALL
+        ))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:dark_oak_fence_gate"),
+            &fence_gate_properties("west", true, false),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::FENCE_GATE_X_IN_WALL
+        ))
+    );
+}
+
+#[test]
+fn outline_shape_ignores_vanilla_fence_gate_open_for_selection_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_fence_gate"),
+            &fence_gate_properties("north", false, true),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::FENCE_GATE_Z))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_fence_gate_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_fence_gate"), &BTreeMap::new()),
+        None
+    );
+
+    let mut properties = fence_gate_properties("north", false, false);
+    properties.insert("in_wall".to_string(), "sometimes".to_string());
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_fence_gate"), &properties),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_fence_gate"),
+            &fence_gate_properties("up", false, false),
+        ),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_disconnected_wall_post() {
     assert_eq!(
         outline_shape_for_block(
@@ -571,6 +644,31 @@ fn fence_outline_clip_hits_connected_arm_before_post() {
 }
 
 #[test]
+fn fence_gate_outline_clip_uses_shape_even_when_open() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(
+            Some("minecraft:oak_fence_gate"),
+            &fence_gate_properties("north", false, true),
+        ),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 0.5, -1.0],
+            [0.0, 0.0, 1.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.375,
+            face: ProtocolDirection::North,
+            inside: false,
+        })
+    );
+}
+
+#[test]
 fn wall_outline_clip_hits_low_side_shape() {
     let target = BlockOutlineTarget {
         material: TerrainMaterialClass::Opaque,
@@ -634,6 +732,15 @@ fn fence_properties<const N: usize>(connected: [&str; N]) -> BTreeMap<String, St
         properties.insert(direction.to_string(), "true".to_string());
     }
     properties
+}
+
+fn fence_gate_properties(facing: &str, in_wall: bool, open: bool) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("in_wall".to_string(), in_wall.to_string()),
+        ("open".to_string(), open.to_string()),
+        ("powered".to_string(), "false".to_string()),
+    ])
 }
 
 fn wall_properties<const N: usize>(up: bool, sides: [(&str, &str); N]) -> BTreeMap<String, String> {

@@ -93,6 +93,22 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 6.0 / 16.0],
         max: [8.0 / 16.0, 1.0, 10.0 / 16.0],
     };
+    pub(super) const FENCE_GATE_Z: Self = Self {
+        min: [0.0, 0.0, 6.0 / 16.0],
+        max: [1.0, 1.0, 10.0 / 16.0],
+    };
+    pub(super) const FENCE_GATE_X: Self = Self {
+        min: [6.0 / 16.0, 0.0, 0.0],
+        max: [10.0 / 16.0, 1.0, 1.0],
+    };
+    pub(super) const FENCE_GATE_Z_IN_WALL: Self = Self {
+        min: [0.0, 0.0, 6.0 / 16.0],
+        max: [1.0, 13.0 / 16.0, 10.0 / 16.0],
+    };
+    pub(super) const FENCE_GATE_X_IN_WALL: Self = Self {
+        min: [6.0 / 16.0, 0.0, 0.0],
+        max: [10.0 / 16.0, 13.0 / 16.0, 1.0],
+    };
     pub(super) const WALL_POST: Self = Self {
         min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
         max: [12.0 / 16.0, 1.0, 12.0 / 16.0],

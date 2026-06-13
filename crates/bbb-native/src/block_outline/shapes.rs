@@ -24,6 +24,9 @@ pub(super) fn outline_shape_for_block(
     if is_trapdoor_block_name(block_name) {
         return trapdoor_outline_shape(properties);
     }
+    if is_fence_gate_block_name(block_name) {
+        return fence_gate_outline_shape(properties);
+    }
     if is_fence_block_name(block_name) {
         return fence_outline_shape(properties);
     }
@@ -113,6 +116,29 @@ fn fence_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOut
     }
 
     Some(BlockOutlineShape::from_boxes(boxes))
+}
+
+fn fence_gate_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let in_wall = match properties.get("in_wall").map(String::as_str)? {
+        "true" => true,
+        "false" => false,
+        _ => return None,
+    };
+
+    let outline = match (
+        matches!(
+            facing,
+            HorizontalDirection::East | HorizontalDirection::West
+        ),
+        in_wall,
+    ) {
+        (true, true) => BlockOutlineBox::FENCE_GATE_X_IN_WALL,
+        (true, false) => BlockOutlineBox::FENCE_GATE_X,
+        (false, true) => BlockOutlineBox::FENCE_GATE_Z_IN_WALL,
+        (false, false) => BlockOutlineBox::FENCE_GATE_Z,
+    };
+    Some(BlockOutlineShape::single(outline))
 }
 
 fn wall_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -255,6 +281,12 @@ fn is_trapdoor_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_trapdoor"))
+}
+
+fn is_fence_gate_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_fence_gate"))
 }
 
 fn is_fence_block_name(block_name: &str) -> bool {
