@@ -1,10 +1,17 @@
 use super::*;
 
 use bbb_protocol::packets::{
-    AttributeModifier as ProtocolAttributeModifier, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
-    EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, MoveVehicle as ProtocolMoveVehicle,
-    PlayLogin as ProtocolPlayLogin, SetPassengers as ProtocolSetPassengers, Vec3d as ProtocolVec3d,
-    PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
+    AttributeSnapshot as ProtocolAttributeSnapshot, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
+    EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
+    EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EquipmentSlot, EquipmentSlotUpdate,
+    HurtAnimation as ProtocolHurtAnimation, ItemStackSummary,
+    ItemStackSummary as ProtocolItemStackSummary, MoveVehicle as ProtocolMoveVehicle,
+    PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
+    SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
+    SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
+    TakeItemEntity as ProtocolTakeItemEntity, UpdateAttributes as ProtocolUpdateAttributes,
+    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
 };
 
 #[test]
