@@ -67,7 +67,7 @@ fn keeps_faces_between_different_fluid_kinds() {
 
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
 
-    assert_eq!(layers.translucent[0].translucent_faces, 12);
+    assert_eq!(layers.translucent[0].translucent_faces, 14);
     assert_eq!(layers.translucent[0].culled_faces, 0);
 }
 
@@ -165,7 +165,7 @@ fn fluid_top_height_uses_vanilla_own_height() {
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
     let top = face_vertices(&layers.translucent[0], 84, [0.0, 1.0, 0.0]);
 
-    assert_eq!(top.len(), 4);
+    assert_eq!(top.len(), 8);
     assert!(top
         .iter()
         .all(|vertex| { (vertex.position[1] - (8.0 / 9.0 - 0.001)).abs() < 0.0001 }));
@@ -237,6 +237,32 @@ fn fluid_static_top_uses_still_texture_uvs() {
     assert_eq!(vertex_at_xz(&top, 2.0, 2.0).uv, [0.25, 0.0]);
     assert_eq!(vertex_at_xz(&top, 2.0, 3.0).uv, [0.25, 0.25]);
     assert_eq!(vertex_at_xz(&top, 1.0, 3.0).uv, [0.0, 0.25]);
+}
+
+#[test]
+fn fluid_top_emits_backward_face_when_above_is_open() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let mesh = &layers.translucent[0];
+    let top = face_vertices(mesh, 86, [0.0, 1.0, 0.0]);
+
+    assert_eq!(top.len(), 8);
+    assert_eq!(mesh.translucent_faces, 7);
+    assert_eq!(
+        top.iter()
+            .filter(|vertex| vertex.position[0] == 1.0)
+            .count(),
+        4
+    );
+    assert_eq!(
+        top.iter()
+            .filter(|vertex| vertex.position[0] == 2.0)
+            .count(),
+        4
+    );
 }
 
 #[test]

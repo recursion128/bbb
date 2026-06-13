@@ -237,6 +237,16 @@ pub(super) fn emit_box(
                 mode,
             )
         };
+        let corners = fluid_heights
+            .map(|heights| fluid_face_corners(face.face, min, max, heights, fluid_bottom_offset))
+            .unwrap_or_else(|| box_face_corners(face.face, min, max));
+        let uvs = fluid_heights
+            .map(|heights| fluid_face_uvs(face.face, heights, fluid_flow))
+            .unwrap_or_else(|| {
+                face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index])
+            });
+        let uv_rect = atlas.rect(texture_index);
+        let shade = cardinal_shade(face_shade[face_index], face.face);
         emit_custom_quad_with_uvs(
             mesh,
             x,
@@ -245,22 +255,45 @@ pub(super) fn emit_box(
             block_state_id,
             face_material,
             tint[face_index],
-            atlas.rect(texture_index),
+            uv_rect,
             face.normal,
-            fluid_heights
-                .map(|heights| {
-                    fluid_face_corners(face.face, min, max, heights, fluid_bottom_offset)
-                })
-                .unwrap_or_else(|| box_face_corners(face.face, min, max)),
-            fluid_heights
-                .map(|heights| fluid_face_uvs(face.face, heights, fluid_flow))
-                .unwrap_or_else(|| {
-                    face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index])
-                }),
-            cardinal_shade(face_shade[face_index], face.face),
+            corners,
+            uvs,
+            shade,
             vertex_lights,
             ambient_occlusion,
         );
+        if matches!(face.face, TerrainFace::Up)
+            && fluid
+                .is_some_and(|fluid| fluid_should_render_backward_up_face(x, y, z, fluid, lookup))
+        {
+            emit_custom_quad_with_uvs(
+                mesh,
+                x,
+                y,
+                z,
+                block_state_id,
+                face_material,
+                tint[face_index],
+                uv_rect,
+                face.normal,
+                [corners[3], corners[2], corners[1], corners[0]],
+                [uvs[3], uvs[2], uvs[1], uvs[0]],
+                shade,
+                [
+                    vertex_lights[3],
+                    vertex_lights[2],
+                    vertex_lights[1],
+                    vertex_lights[0],
+                ],
+                [
+                    ambient_occlusion[3],
+                    ambient_occlusion[2],
+                    ambient_occlusion[1],
+                    ambient_occlusion[0],
+                ],
+            );
+        }
     }
 }
 
@@ -713,6 +746,34 @@ fn same_fluid_own_height(cell: &TerrainCell, kind: TerrainFluidKind) -> Option<f
     matches!(cell.material, TerrainMaterialClass::Fluid)
         .then(|| fluid_cell_height(cell))
         .flatten()
+}
+
+fn fluid_should_render_backward_up_face(
+    x: i32,
+    y: i32,
+    z: i32,
+    fluid: TerrainFluid,
+    lookup: &TerrainChunkLookup<'_>,
+) -> bool {
+    for dz in -1..=1 {
+        for dx in -1..=1 {
+            let cell = lookup.cell(x + dx, y + 1, z + dz);
+            let same_fluid = cell
+                .and_then(|cell| same_fluid_own_height(cell, fluid.kind))
+                .is_some();
+            let solid_render = cell
+                .map(|cell| material_solid_render(cell.material))
+                .unwrap_or(false);
+            if !same_fluid && !solid_render {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn material_solid_render(material: TerrainMaterialClass) -> bool {
+    matches!(material, TerrainMaterialClass::Opaque)
 }
 
 fn material_blocks_motion(material: TerrainMaterialClass) -> bool {
