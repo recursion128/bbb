@@ -118,6 +118,18 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 1.0 / 16.0, 1.0],
     };
+    const STAIR_NORTH_WEST_OCTET: Self = Self {
+        min: [0.0, 0.5, 0.0],
+        max: [0.5, 1.0, 0.5],
+    };
+    const STAIR_NORTH_HALF: Self = Self {
+        min: [0.0, 0.5, 0.0],
+        max: [1.0, 1.0, 0.5],
+    };
+    const STAIR_SOUTH_EAST_OCTET: Self = Self {
+        min: [0.5, 0.5, 0.5],
+        max: [1.0, 1.0, 1.0],
+    };
     const PALE_MOSS_NORTH_LOW: Self = Self {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 10.0 / 16.0, 1.0 / 16.0],
@@ -217,6 +229,28 @@ impl BlockOutlineBox {
             inside: false,
         })
     }
+
+    fn invert_y(self) -> Self {
+        Self {
+            min: [self.min[0], 1.0 - self.max[1], self.min[2]],
+            max: [self.max[0], 1.0 - self.min[1], self.max[2]],
+        }
+    }
+
+    fn rotate_y_90(self) -> Self {
+        Self {
+            min: [1.0 - self.max[2], self.min[1], self.min[0]],
+            max: [1.0 - self.min[2], self.max[1], self.max[0]],
+        }
+    }
+
+    fn rotate_to_direction(self, direction: HorizontalDirection) -> Self {
+        let mut rotated = self;
+        for _ in 0..direction.quarter_turns_from_north() {
+            rotated = rotated.rotate_y_90();
+        }
+        rotated
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -275,6 +309,9 @@ fn outline_shape_for_block(
             _ => None,
         };
     }
+    if is_stair_block_name(block_name) {
+        return stair_outline_shape(properties);
+    }
     if block_name == "minecraft:pale_moss_carpet" {
         return pale_moss_carpet_outline_shape(properties);
     }
@@ -282,6 +319,109 @@ fn outline_shape_for_block(
         return Some(BlockOutlineShape::single(BlockOutlineBox::CARPET));
     }
     Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HorizontalDirection {
+    North,
+    East,
+    South,
+    West,
+}
+
+impl HorizontalDirection {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "north" => Some(Self::North),
+            "east" => Some(Self::East),
+            "south" => Some(Self::South),
+            "west" => Some(Self::West),
+            _ => None,
+        }
+    }
+
+    fn clockwise(self) -> Self {
+        match self {
+            Self::North => Self::East,
+            Self::East => Self::South,
+            Self::South => Self::West,
+            Self::West => Self::North,
+        }
+    }
+
+    fn counter_clockwise(self) -> Self {
+        match self {
+            Self::North => Self::West,
+            Self::East => Self::North,
+            Self::South => Self::East,
+            Self::West => Self::South,
+        }
+    }
+
+    fn quarter_turns_from_north(self) -> usize {
+        match self {
+            Self::North => 0,
+            Self::East => 1,
+            Self::South => 2,
+            Self::West => 3,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StairShapeKind {
+    Straight,
+    Outer,
+    Inner,
+}
+
+fn stair_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let top = match properties.get("half").map(String::as_str)? {
+        "bottom" => false,
+        "top" => true,
+        _ => return None,
+    };
+    let (kind, direction) = match properties.get("shape").map(String::as_str)? {
+        "straight" => (StairShapeKind::Straight, facing),
+        "outer_left" => (StairShapeKind::Outer, facing),
+        "outer_right" => (StairShapeKind::Outer, facing.clockwise()),
+        "inner_left" => (StairShapeKind::Inner, facing.counter_clockwise()),
+        "inner_right" => (StairShapeKind::Inner, facing),
+        _ => return None,
+    };
+
+    Some(BlockOutlineShape::from_boxes(
+        stair_shape_boxes(kind, top)
+            .into_iter()
+            .map(|outline| outline.rotate_to_direction(direction))
+            .collect(),
+    ))
+}
+
+fn stair_shape_boxes(kind: StairShapeKind, top: bool) -> Vec<BlockOutlineBox> {
+    let mut boxes = match kind {
+        StairShapeKind::Straight => vec![
+            BlockOutlineBox::BOTTOM_SLAB,
+            BlockOutlineBox::STAIR_NORTH_HALF,
+        ],
+        StairShapeKind::Outer => vec![
+            BlockOutlineBox::BOTTOM_SLAB,
+            BlockOutlineBox::STAIR_NORTH_WEST_OCTET,
+        ],
+        StairShapeKind::Inner => vec![
+            BlockOutlineBox::BOTTOM_SLAB,
+            BlockOutlineBox::STAIR_NORTH_HALF,
+            BlockOutlineBox::STAIR_SOUTH_EAST_OCTET,
+        ],
+    };
+
+    if top {
+        for outline in &mut boxes {
+            *outline = outline.invert_y();
+        }
+    }
+    boxes
 }
 
 fn pale_moss_carpet_outline_shape(
@@ -346,6 +486,12 @@ fn is_slab_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_slab"))
+}
+
+fn is_stair_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_stairs"))
 }
 
 fn is_flat_carpet_block_name(block_name: &str) -> bool {
@@ -468,6 +614,106 @@ mod tests {
         );
         assert_eq!(
             outline_shape_for_block(Some("minecraft:snow"), &snow_properties(9)),
+            None
+        );
+    }
+
+    #[test]
+    fn outline_shape_uses_vanilla_stair_straight_boxes() {
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:oak_stairs"),
+                &stair_properties("north", "bottom", "straight"),
+            ),
+            Some(BlockOutlineShape::from_boxes(vec![
+                BlockOutlineBox::BOTTOM_SLAB,
+                BlockOutlineBox::STAIR_NORTH_HALF,
+            ]))
+        );
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:oak_stairs"),
+                &stair_properties("east", "bottom", "straight"),
+            ),
+            Some(BlockOutlineShape::from_boxes(vec![
+                BlockOutlineBox::BOTTOM_SLAB,
+                BlockOutlineBox {
+                    min: [0.5, 0.5, 0.0],
+                    max: [1.0, 1.0, 1.0],
+                },
+            ]))
+        );
+    }
+
+    #[test]
+    fn outline_shape_uses_vanilla_top_stair_boxes() {
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:oak_stairs"),
+                &stair_properties("north", "top", "straight"),
+            ),
+            Some(BlockOutlineShape::from_boxes(vec![
+                BlockOutlineBox::TOP_SLAB,
+                BlockOutlineBox {
+                    min: [0.0, 0.0, 0.0],
+                    max: [1.0, 0.5, 0.5],
+                },
+            ]))
+        );
+    }
+
+    #[test]
+    fn outline_shape_uses_vanilla_stair_corner_boxes() {
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:oak_stairs"),
+                &stair_properties("north", "bottom", "outer_right"),
+            ),
+            Some(BlockOutlineShape::from_boxes(vec![
+                BlockOutlineBox::BOTTOM_SLAB,
+                BlockOutlineBox {
+                    min: [0.5, 0.5, 0.0],
+                    max: [1.0, 1.0, 0.5],
+                },
+            ]))
+        );
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:oak_stairs"),
+                &stair_properties("north", "bottom", "inner_left"),
+            ),
+            Some(BlockOutlineShape::from_boxes(vec![
+                BlockOutlineBox::BOTTOM_SLAB,
+                BlockOutlineBox {
+                    min: [0.0, 0.5, 0.0],
+                    max: [0.5, 1.0, 1.0],
+                },
+                BlockOutlineBox {
+                    min: [0.5, 0.5, 0.0],
+                    max: [1.0, 1.0, 0.5],
+                },
+            ]))
+        );
+    }
+
+    #[test]
+    fn outline_shape_rejects_invalid_stair_properties() {
+        assert_eq!(
+            outline_shape_for_block(Some("minecraft:oak_stairs"), &BTreeMap::new()),
+            None
+        );
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:oak_stairs"),
+                &stair_properties("north", "middle", "straight"),
+            ),
+            None
+        );
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:oak_stairs"),
+                &stair_properties("north", "bottom", "sideways"),
+            ),
             None
         );
     }
@@ -641,12 +887,46 @@ mod tests {
         );
     }
 
+    #[test]
+    fn stair_outline_clip_hits_step_face_inside_block() {
+        let target = BlockOutlineTarget {
+            material: TerrainMaterialClass::Opaque,
+            outline: outline_shape_for_block(
+                Some("minecraft:oak_stairs"),
+                &stair_properties("south", "bottom", "straight"),
+            ),
+        };
+
+        assert_eq!(
+            target.clip(
+                [0.5, 0.62, -1.0],
+                [0.0, 0.0, 1.0],
+                4.5,
+                BlockPos { x: 0, y: 0, z: 0 },
+            ),
+            Some(BlockOutlineHit {
+                distance: 1.5,
+                face: ProtocolDirection::North,
+                inside: false,
+            })
+        );
+    }
+
     fn slab_properties(slab_type: &str) -> BTreeMap<String, String> {
         BTreeMap::from([("type".to_string(), slab_type.to_string())])
     }
 
     fn snow_properties(layers: u8) -> BTreeMap<String, String> {
         BTreeMap::from([("layers".to_string(), layers.to_string())])
+    }
+
+    fn stair_properties(facing: &str, half: &str, shape: &str) -> BTreeMap<String, String> {
+        BTreeMap::from([
+            ("facing".to_string(), facing.to_string()),
+            ("half".to_string(), half.to_string()),
+            ("shape".to_string(), shape.to_string()),
+            ("waterlogged".to_string(), "false".to_string()),
+        ])
     }
 
     fn pale_moss_properties(bottom: bool, sides: [(&str, &str); 4]) -> BTreeMap<String, String> {
