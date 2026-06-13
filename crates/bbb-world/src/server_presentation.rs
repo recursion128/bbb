@@ -7,7 +7,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{non_empty_component_string, WorldStore};
+use crate::WorldStore;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerPresentationState {
@@ -103,4 +103,8 @@ impl WorldStore {
     fn update_resource_pack_count(&mut self) {
         self.counters.resource_packs_tracked = self.presentation.resource_packs.len();
     }
+}
+
+fn non_empty_component_string(component: Option<String>) -> Option<String> {
+    component.filter(|value| !value.is_empty())
 }
