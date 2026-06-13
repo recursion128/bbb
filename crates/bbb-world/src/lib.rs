@@ -12,9 +12,10 @@ use bbb_protocol::{
         ContainerClose as ProtocolContainerClose,
         ContainerSetContent as ProtocolContainerSetContent,
         ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
-        EntityDataValue as ProtocolEntityDataValue, EntityMove as ProtocolEntityMove,
+        EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
+        EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
         EntityPositionSync as ProtocolEntityPositionSync,
-        EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+        EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, HurtAnimation as ProtocolHurtAnimation,
         ItemStackSummary as ProtocolItemStackSummary, LevelChunkWithLight,
         LightUpdate as ProtocolLightUpdate, OpenScreen as ProtocolOpenScreen,
         PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
@@ -160,6 +161,9 @@ pub struct EntityState {
     pub vehicle_id: Option<i32>,
     pub passengers: Vec<i32>,
     pub leash_holder_id: Option<i32>,
+    pub last_animation_action: Option<u8>,
+    pub last_event_id: Option<i8>,
+    pub last_hurt_yaw: Option<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -502,6 +506,12 @@ pub struct WorldCounters {
     pub entity_moves_applied: usize,
     pub entity_teleports_received: usize,
     pub entity_teleports_applied: usize,
+    pub entity_animation_updates_received: usize,
+    pub entity_animation_updates_applied: usize,
+    pub entity_events_received: usize,
+    pub entity_events_applied: usize,
+    pub entity_hurt_animations_received: usize,
+    pub entity_hurt_animations_applied: usize,
     pub entity_data_updates_received: usize,
     pub entity_data_values_received: usize,
     pub entity_data_updates_applied: usize,
@@ -966,6 +976,9 @@ impl WorldStore {
             vehicle_id: None,
             passengers: Vec::new(),
             leash_holder_id: None,
+            last_animation_action: None,
+            last_event_id: None,
+            last_hurt_yaw: None,
         };
 
         if let Some(existing) = self
@@ -978,6 +991,51 @@ impl WorldStore {
             self.entities.push(entity);
         }
         self.update_entity_count();
+    }
+
+    pub fn apply_entity_animation(&mut self, packet: ProtocolEntityAnimation) -> bool {
+        self.counters.entity_animation_updates_received += 1;
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.id)
+        else {
+            return false;
+        };
+
+        entity.last_animation_action = Some(packet.action);
+        self.counters.entity_animation_updates_applied += 1;
+        true
+    }
+
+    pub fn apply_entity_event(&mut self, packet: ProtocolEntityEvent) -> bool {
+        self.counters.entity_events_received += 1;
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.entity_id)
+        else {
+            return false;
+        };
+
+        entity.last_event_id = Some(packet.event_id);
+        self.counters.entity_events_applied += 1;
+        true
+    }
+
+    pub fn apply_hurt_animation(&mut self, packet: ProtocolHurtAnimation) -> bool {
+        self.counters.entity_hurt_animations_received += 1;
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.id)
+        else {
+            return false;
+        };
+
+        entity.last_hurt_yaw = Some(packet.yaw);
+        self.counters.entity_hurt_animations_applied += 1;
+        true
     }
 
     pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
@@ -2384,9 +2442,10 @@ mod tests {
         ContainerClose as ProtocolContainerClose,
         ContainerSetContent as ProtocolContainerSetContent,
         ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
-        EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
-        EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
-        EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, OpenScreen as ProtocolOpenScreen,
+        EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
+        EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
+        EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
+        HurtAnimation as ProtocolHurtAnimation, ItemStackSummary, OpenScreen as ProtocolOpenScreen,
         PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
         Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
         SectionBlocksUpdate as ProtocolSectionBlocksUpdate, SetCursorItem as ProtocolSetCursorItem,
@@ -2998,6 +3057,38 @@ mod tests {
         assert_eq!(store.counters().entity_removes_received, 2);
         assert_eq!(store.counters().entities_removed, 1);
         assert_eq!(store.counters().entities_tracked, 0);
+    }
+
+    #[test]
+    fn tracks_entity_transient_events() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity(123));
+
+        assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 123, action: 3 }));
+        assert!(store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 123,
+            event_id: 35,
+        }));
+        assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 123, yaw: 45.5 }));
+
+        let entity = store.probe_entity(123).unwrap();
+        assert_eq!(entity.last_animation_action, Some(3));
+        assert_eq!(entity.last_event_id, Some(35));
+        assert_eq!(entity.last_hurt_yaw, Some(45.5));
+
+        assert!(!store.apply_entity_animation(ProtocolEntityAnimation { id: 999, action: 4 }));
+        assert!(!store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 999,
+            event_id: 21,
+        }));
+        assert!(!store.apply_hurt_animation(ProtocolHurtAnimation { id: 999, yaw: 90.0 }));
+
+        assert_eq!(store.counters().entity_animation_updates_received, 2);
+        assert_eq!(store.counters().entity_animation_updates_applied, 1);
+        assert_eq!(store.counters().entity_events_received, 2);
+        assert_eq!(store.counters().entity_events_applied, 1);
+        assert_eq!(store.counters().entity_hurt_animations_received, 2);
+        assert_eq!(store.counters().entity_hurt_animations_applied, 1);
     }
 
     #[test]

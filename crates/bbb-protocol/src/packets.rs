@@ -81,6 +81,7 @@ pub enum ConfigurationClientbound {
 pub enum PlayClientbound {
     BundleDelimiter,
     AddEntity(AddEntity),
+    EntityAnimation(EntityAnimation),
     AwardStats(AwardStats),
     BlockChangedAck(BlockChangedAck),
     BlockEntityData(BlockEntityData),
@@ -93,9 +94,11 @@ pub enum PlayClientbound {
     ContainerSetData(ContainerSetData),
     ContainerSetSlot(ContainerSetSlot),
     Disconnect(Disconnect),
+    EntityEvent(EntityEvent),
     EntityPositionSync(EntityPositionSync),
     ForgetLevelChunk(ForgetLevelChunk),
     GameEvent(GameEvent),
+    HurtAnimation(HurtAnimation),
     KeepAlive { id: i64 },
     Ping { id: i32 },
     Login(PlayLogin),
@@ -161,6 +164,24 @@ pub struct StatUpdate {
     pub stat_type_id: i32,
     pub value_id: i32,
     pub amount: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityAnimation {
+    pub id: i32,
+    pub action: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityEvent {
+    pub entity_id: i32,
+    pub event_id: i8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct HurtAnimation {
+    pub id: i32,
+    pub yaw: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -1168,6 +1189,13 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::AddEntity(decode_add_entity(&mut decoder)?))
         }
+        ids::play::CLIENTBOUND_ANIMATE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::EntityAnimation(EntityAnimation {
+                id: decoder.read_var_i32()?,
+                action: decoder.read_u8()?,
+            }))
+        }
         ids::play::CLIENTBOUND_AWARD_STATS => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::AwardStats(decode_award_stats(
@@ -1233,6 +1261,13 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             reason: decode_component_summary(payload)?,
             raw_reason: payload.to_vec(),
         })),
+        ids::play::CLIENTBOUND_ENTITY_EVENT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: decoder.read_i32()?,
+                event_id: decoder.read_i8()?,
+            }))
+        }
         ids::play::CLIENTBOUND_ENTITY_POSITION_SYNC => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::EntityPositionSync(
@@ -1250,6 +1285,13 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::GameEvent(GameEvent {
                 event_id: decoder.read_u8()?,
                 param: decoder.read_f32()?,
+            }))
+        }
+        ids::play::CLIENTBOUND_HURT_ANIMATION => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::HurtAnimation(HurtAnimation {
+                id: decoder.read_var_i32()?,
+                yaw: decoder.read_f32()?,
             }))
         }
         ids::play::CLIENTBOUND_KEEP_ALIVE => Ok(PlayClientbound::KeepAlive {
@@ -3134,6 +3176,44 @@ mod tests {
                     },
                 ],
             })
+        );
+    }
+
+    #[test]
+    fn decodes_entity_transient_event_packets() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_u8(3);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_ANIMATE, &payload.into_inner()).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::EntityAnimation(EntityAnimation { id: 123, action: 3 })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_i32(123);
+        payload.write_i8(35);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_ENTITY_EVENT, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 123,
+                event_id: 35,
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(123);
+        payload.write_f32(45.5);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_HURT_ANIMATION, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::HurtAnimation(HurtAnimation { id: 123, yaw: 45.5 })
         );
     }
 

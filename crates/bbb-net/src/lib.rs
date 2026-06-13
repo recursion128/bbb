@@ -11,15 +11,15 @@ use bbb_protocol::{
     packets::{
         self, AddEntity, BlockChangedAck, BlockEntityData, BlockUpdate, ChunksBiomes, ClientIntent,
         ConfigurationClientbound, ContainerClose, ContainerSetContent, ContainerSetData,
-        ContainerSetSlot, EntityMove, EntityPositionSync, ForgetLevelChunk, GameEvent,
-        InteractionHand, LevelChunkWithLight, LightUpdate, LoginClientbound, OpenScreen,
-        PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction,
-        PlayerCommand, PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState,
-        PlayerPositionUpdate, RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate,
-        SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
-        SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers,
-        SetPlayerInventory, SetSimulationDistance, SystemChat, TeleportEntity, UpdateAttributes,
-        UseItem, UseItemOn,
+        ContainerSetSlot, EntityAnimation, EntityEvent, EntityMove, EntityPositionSync,
+        ForgetLevelChunk, GameEvent, HurtAnimation, InteractionHand, LevelChunkWithLight,
+        LightUpdate, LoginClientbound, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin,
+        PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
+        PlayerInput, PlayerPositionState, PlayerPositionUpdate, RemoveEntities, Respawn,
+        RotateHead, SectionBlocksUpdate, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
+        SetDefaultSpawnPosition, SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment,
+        SetHeldSlot, SetPassengers, SetPlayerInventory, SetSimulationDistance, SystemChat,
+        TeleportEntity, UpdateAttributes, UseItem, UseItemOn,
     },
 };
 use bbb_world::{
@@ -102,6 +102,9 @@ pub enum NetEvent {
     SetCursorItem(SetCursorItem),
     SetPlayerInventory(SetPlayerInventory),
     AddEntity(AddEntity),
+    EntityAnimation(EntityAnimation),
+    EntityEvent(EntityEvent),
+    HurtAnimation(HurtAnimation),
     MoveEntity(EntityMove),
     EntityPositionSync(EntityPositionSync),
     RemoveEntities(RemoveEntities),
@@ -376,6 +379,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::AddEntity(entity) => {
                     emit(&events, NetEvent::AddEntity(entity)).await?;
                 }
+                PlayClientbound::EntityAnimation(update) => {
+                    emit(&events, NetEvent::EntityAnimation(update)).await?;
+                }
                 PlayClientbound::AwardStats(_) => {}
                 PlayClientbound::MoveEntity(update) => {
                     emit(&events, NetEvent::MoveEntity(update)).await?;
@@ -476,6 +482,12 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::EntityPositionSync(update) => {
                     emit(&events, NetEvent::EntityPositionSync(update)).await?;
+                }
+                PlayClientbound::EntityEvent(update) => {
+                    emit(&events, NetEvent::EntityEvent(update)).await?;
+                }
+                PlayClientbound::HurtAnimation(update) => {
+                    emit(&events, NetEvent::HurtAnimation(update)).await?;
                 }
                 PlayClientbound::RemoveEntities(update) => {
                     emit(&events, NetEvent::RemoveEntities(update)).await?;
@@ -637,6 +649,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::AddEntity(entity) => {
                     world.apply_add_entity(entity);
                 }
+                PlayClientbound::EntityAnimation(update) => {
+                    world.apply_entity_animation(update);
+                }
                 PlayClientbound::AwardStats(_) => {}
                 PlayClientbound::MoveEntity(update) => {
                     world.apply_entity_move(update);
@@ -690,6 +705,12 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::EntityPositionSync(update) => {
                     world.apply_entity_position_sync(update);
+                }
+                PlayClientbound::EntityEvent(update) => {
+                    world.apply_entity_event(update);
+                }
+                PlayClientbound::HurtAnimation(update) => {
+                    world.apply_hurt_animation(update);
                 }
                 PlayClientbound::RemoveEntities(update) => {
                     world.apply_remove_entities(update);

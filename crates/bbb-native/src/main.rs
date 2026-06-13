@@ -1864,6 +1864,15 @@ fn drain_net_events(
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
             }
+            NetEvent::EntityAnimation(update) => {
+                world.apply_entity_animation(update);
+            }
+            NetEvent::EntityEvent(update) => {
+                world.apply_entity_event(update);
+            }
+            NetEvent::HurtAnimation(update) => {
+                world.apply_hurt_animation(update);
+            }
             NetEvent::MoveEntity(update) => {
                 world.apply_entity_move(update);
             }
