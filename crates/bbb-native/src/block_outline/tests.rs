@@ -1,4 +1,5 @@
 mod beds;
+mod bells;
 mod cakes;
 mod campfires;
 mod candles;

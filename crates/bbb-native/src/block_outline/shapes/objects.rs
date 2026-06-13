@@ -26,6 +26,9 @@ pub(super) fn object_outline_shape_for_block(
     if block_name == "minecraft:composter" {
         return Some(composter_outline_shape(properties));
     }
+    if block_name == "minecraft:bell" {
+        return Some(bell_outline_shape(properties));
+    }
     if block_name == "minecraft:ender_chest" {
         return Some(Some(BlockOutlineShape::single(
             BlockOutlineBox::CHEST_SINGLE,
@@ -148,6 +151,64 @@ fn composter_outline_shape(properties: &BTreeMap<String, String>) -> Option<Bloc
         BlockOutlineBox::from_pixels([0.0, hole_y, 2.0], [2.0, 16.0, 14.0]),
         BlockOutlineBox::from_pixels([14.0, hole_y, 2.0], [16.0, 16.0, 14.0]),
     ]))
+}
+
+fn bell_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    match properties.get("attachment").map(String::as_str)? {
+        "floor" => Some(BlockOutlineShape::single(bell_floor_outline(facing))),
+        "ceiling" => Some(bell_ceiling_outline_shape()),
+        "single_wall" => Some(bell_single_wall_outline_shape(facing)),
+        "double_wall" => Some(bell_double_wall_outline_shape(facing)),
+        _ => None,
+    }
+}
+
+fn bell_floor_outline(facing: HorizontalDirection) -> BlockOutlineBox {
+    if matches!(
+        facing,
+        HorizontalDirection::East | HorizontalDirection::West
+    ) {
+        BlockOutlineBox::from_pixels([4.0, 0.0, 0.0], [12.0, 16.0, 16.0])
+    } else {
+        BlockOutlineBox::from_pixels([0.0, 0.0, 4.0], [16.0, 16.0, 12.0])
+    }
+}
+
+fn bell_ceiling_outline_shape() -> BlockOutlineShape {
+    let mut boxes = bell_body_boxes();
+    boxes.push(BlockOutlineBox::centered_column(2.0, 2.0, 13.0, 16.0));
+    BlockOutlineShape::from_boxes(boxes)
+}
+
+fn bell_single_wall_outline_shape(facing: HorizontalDirection) -> BlockOutlineShape {
+    let mut boxes = bell_body_boxes();
+    boxes.push(
+        BlockOutlineBox::from_pixels([7.0, 13.0, 0.0], [9.0, 15.0, 13.0])
+            .rotate_to_direction(facing),
+    );
+    BlockOutlineShape::from_boxes(boxes)
+}
+
+fn bell_double_wall_outline_shape(facing: HorizontalDirection) -> BlockOutlineShape {
+    let mut boxes = bell_body_boxes();
+    let support = if matches!(
+        facing,
+        HorizontalDirection::East | HorizontalDirection::West
+    ) {
+        BlockOutlineBox::from_pixels([0.0, 13.0, 7.0], [16.0, 15.0, 9.0])
+    } else {
+        BlockOutlineBox::from_pixels([7.0, 13.0, 0.0], [9.0, 15.0, 16.0])
+    };
+    boxes.push(support);
+    BlockOutlineShape::from_boxes(boxes)
+}
+
+fn bell_body_boxes() -> Vec<BlockOutlineBox> {
+    vec![
+        BlockOutlineBox::centered_column(6.0, 6.0, 6.0, 13.0),
+        BlockOutlineBox::centered_column(8.0, 8.0, 4.0, 6.0),
+    ]
 }
 
 fn chest_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
