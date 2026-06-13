@@ -73,6 +73,30 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 1.0 / 16.0, 1.0],
     };
+    pub(super) const TRAPDOOR_BOTTOM: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 3.0 / 16.0, 1.0],
+    };
+    pub(super) const TRAPDOOR_TOP: Self = Self {
+        min: [0.0, 13.0 / 16.0, 0.0],
+        max: [1.0, 1.0, 1.0],
+    };
+    pub(super) const TRAPDOOR_NORTH_OPEN: Self = Self {
+        min: [0.0, 0.0, 13.0 / 16.0],
+        max: [1.0, 1.0, 1.0],
+    };
+    pub(super) const TRAPDOOR_EAST_OPEN: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [3.0 / 16.0, 1.0, 1.0],
+    };
+    pub(super) const TRAPDOOR_SOUTH_OPEN: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 1.0, 3.0 / 16.0],
+    };
+    pub(super) const TRAPDOOR_WEST_OPEN: Self = Self {
+        min: [13.0 / 16.0, 0.0, 0.0],
+        max: [1.0, 1.0, 1.0],
+    };
     pub(super) const STAIR_NORTH_WEST_OCTET: Self = Self {
         min: [0.0, 0.5, 0.0],
         max: [0.5, 1.0, 0.5],

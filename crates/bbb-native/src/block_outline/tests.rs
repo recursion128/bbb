@@ -157,6 +157,85 @@ fn outline_shape_rejects_invalid_stair_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_closed_trapdoor_boxes() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_trapdoor"),
+            &trapdoor_properties("north", "bottom", false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::TRAPDOOR_BOTTOM))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_trapdoor"),
+            &trapdoor_properties("south", "top", false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::TRAPDOOR_TOP))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_open_trapdoor_boxes() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_trapdoor"),
+            &trapdoor_properties("north", "bottom", true),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::TRAPDOOR_NORTH_OPEN,
+        ))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_trapdoor"),
+            &trapdoor_properties("east", "top", true),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::TRAPDOOR_EAST_OPEN
+        ))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_trapdoor"),
+            &trapdoor_properties("south", "bottom", true),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::TRAPDOOR_SOUTH_OPEN,
+        ))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_trapdoor"),
+            &trapdoor_properties("west", "top", true),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::TRAPDOOR_WEST_OPEN
+        ))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_trapdoor_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_trapdoor"), &BTreeMap::new()),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_trapdoor"),
+            &trapdoor_properties("north", "middle", false),
+        ),
+        None
+    );
+    let mut properties = trapdoor_properties("north", "bottom", true);
+    properties.insert("open".to_string(), "sometimes".to_string());
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_trapdoor"), &properties),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_flat_carpet_shape() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:white_carpet"), &BTreeMap::new()),
@@ -351,6 +430,31 @@ fn stair_outline_clip_hits_step_face_inside_block() {
     );
 }
 
+#[test]
+fn trapdoor_outline_clip_uses_thin_closed_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(
+            Some("minecraft:oak_trapdoor"),
+            &trapdoor_properties("north", "top", false),
+        ),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 2.0, 0.5],
+            [0.0, -1.0, 0.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::Up,
+            inside: false,
+        })
+    );
+}
+
 fn slab_properties(slab_type: &str) -> BTreeMap<String, String> {
     BTreeMap::from([("type".to_string(), slab_type.to_string())])
 }
@@ -364,6 +468,16 @@ fn stair_properties(facing: &str, half: &str, shape: &str) -> BTreeMap<String, S
         ("facing".to_string(), facing.to_string()),
         ("half".to_string(), half.to_string()),
         ("shape".to_string(), shape.to_string()),
+        ("waterlogged".to_string(), "false".to_string()),
+    ])
+}
+
+fn trapdoor_properties(facing: &str, half: &str, open: bool) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("half".to_string(), half.to_string()),
+        ("open".to_string(), open.to_string()),
+        ("powered".to_string(), "false".to_string()),
         ("waterlogged".to_string(), "false".to_string()),
     ])
 }
