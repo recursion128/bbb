@@ -290,12 +290,8 @@ pub(super) fn apply_control_projection_event(
                 world_counters.select_advancements_tab_packets;
         }
         NetEvent::TagQuery(update) => {
-            counters.last_tag_query = Some(bbb_control::TagQueryState {
-                transaction_id: update.transaction_id,
-                tag_present: update.tag_present,
-                raw_nbt_len: update.raw_nbt.len(),
-            });
-            counters.tag_query_packets += 1;
+            world.apply_tag_query(update);
+            sync_tag_query_counters(counters, world);
         }
         other => return Some(other),
     }
@@ -425,6 +421,18 @@ fn sync_custom_payload_counters(counters: &mut NetCounters, world: &WorldStore) 
     counters.last_custom_payload = world
         .last_custom_payload()
         .map(control_custom_payload_state);
+}
+
+fn sync_tag_query_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.tag_query_packets = world_counters.tag_query_packets;
+    counters.last_tag_query = world
+        .last_tag_query()
+        .map(|query| bbb_control::TagQueryState {
+            transaction_id: query.transaction_id,
+            tag_present: query.tag_present,
+            raw_nbt_len: query.raw_nbt_len(),
+        });
 }
 
 fn control_custom_payload_state(

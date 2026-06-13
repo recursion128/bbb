@@ -277,6 +277,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub waypoint_untracks_ignored: usize,
     #[serde(default)]
+    pub tag_query_packets: usize,
+    #[serde(default)]
     pub map_item_data_packets: usize,
     #[serde(default)]
     pub maps_tracked: usize,

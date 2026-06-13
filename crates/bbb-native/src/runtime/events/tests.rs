@@ -838,6 +838,15 @@ fn client_feature_events_update_world_and_snapshot_counters() {
     assert_eq!(world.counters().select_advancements_tab_packets, 1);
     assert_eq!(counters.tag_query_packets, 1);
     assert_eq!(
+        world.last_tag_query(),
+        Some(&bbb_world::TagQueryResponseState {
+            transaction_id: 12,
+            tag_present: true,
+            raw_nbt: vec![10, 0],
+        })
+    );
+    assert_eq!(world.counters().tag_query_packets, 1);
+    assert_eq!(
         counters.last_tag_query,
         Some(bbb_control::TagQueryState {
             transaction_id: 12,
