@@ -72,7 +72,7 @@ fn chunk_cache_events_update_world_and_snapshot_counters() {
 }
 
 #[test]
-fn transfer_event_updates_snapshot_counters() {
+fn transfer_event_updates_world_and_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Transfer(bbb_protocol::packets::Transfer {
         host: "next.example.com".to_string(),
@@ -95,6 +95,14 @@ fn transfer_event_updates_snapshot_counters() {
         })
     );
     assert_eq!(counters.transfer_packets, 1);
+    assert_eq!(
+        world.last_transfer(),
+        Some(&bbb_world::TransferTargetState {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        })
+    );
+    assert_eq!(world.counters().transfer_packets, 1);
 }
 
 #[test]

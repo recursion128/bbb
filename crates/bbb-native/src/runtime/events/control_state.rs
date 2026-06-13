@@ -275,11 +275,8 @@ pub(super) fn apply_control_projection_event(
             counters.stop_sound_packets += 1;
         }
         NetEvent::Transfer(transfer) => {
-            counters.last_transfer = Some(bbb_control::TransferTarget {
-                host: transfer.host,
-                port: transfer.port,
-            });
-            counters.transfer_packets += 1;
+            world.apply_transfer(transfer);
+            sync_transfer_counters(counters, world);
         }
         NetEvent::PacketSeen { .. } => {
             counters.packets_seen += 1;
@@ -503,6 +500,18 @@ fn control_waypoint_event(event: &bbb_world::WaypointEventState) -> bbb_control:
         position: waypoint.data.position.map(control_waypoint_vec3i),
         chunk: waypoint.data.chunk,
         azimuth: waypoint.data.azimuth,
+    }
+}
+
+fn sync_transfer_counters(counters: &mut NetCounters, world: &WorldStore) {
+    counters.transfer_packets = world.counters().transfer_packets;
+    counters.last_transfer = world.last_transfer().map(control_transfer_target);
+}
+
+fn control_transfer_target(state: &bbb_world::TransferTargetState) -> bbb_control::TransferTarget {
+    bbb_control::TransferTarget {
+        host: state.host.clone(),
+        port: state.port,
     }
 }
 

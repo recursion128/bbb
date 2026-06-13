@@ -5,6 +5,7 @@ use bbb_protocol::packets::{
     ResourcePackPop as ProtocolResourcePackPop, ResourcePackPush as ProtocolResourcePackPush,
     ServerData as ProtocolServerData, ServerLinkEntry as ProtocolServerLinkEntry,
     ServerLinkType as ProtocolServerLinkType, ServerLinks as ProtocolServerLinks,
+    Transfer as ProtocolTransfer,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -19,6 +20,8 @@ pub struct ServerPresentationState {
     pub server_brand: Option<String>,
     #[serde(default)]
     pub last_custom_payload: Option<CustomPayloadState>,
+    #[serde(default)]
+    pub last_transfer: Option<TransferTargetState>,
     #[serde(default)]
     pub resource_packs: BTreeMap<Uuid, ResourcePackState>,
     #[serde(default)]
@@ -43,6 +46,12 @@ pub struct CustomPayloadState {
     pub kind: String,
     pub brand: Option<String>,
     pub raw_payload_len: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransferTargetState {
+    pub host: String,
+    pub port: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +85,18 @@ impl WorldStore {
             .last_custom_payload
             .as_ref()
             .expect("last custom payload was just stored")
+    }
+
+    pub fn apply_transfer(&mut self, packet: ProtocolTransfer) -> &TransferTargetState {
+        self.counters.transfer_packets += 1;
+        self.presentation.last_transfer = Some(TransferTargetState {
+            host: packet.host,
+            port: packet.port,
+        });
+        self.presentation
+            .last_transfer
+            .as_ref()
+            .expect("last transfer was just stored")
     }
 
     pub fn apply_server_data(&mut self, packet: ProtocolServerData) {
@@ -163,6 +184,10 @@ impl WorldStore {
 
     pub fn last_custom_payload(&self) -> Option<&CustomPayloadState> {
         self.presentation.last_custom_payload.as_ref()
+    }
+
+    pub fn last_transfer(&self) -> Option<&TransferTargetState> {
+        self.presentation.last_transfer.as_ref()
     }
 
     pub fn resource_packs(&self) -> &BTreeMap<Uuid, ResourcePackState> {
@@ -302,6 +327,36 @@ mod tests {
         assert_eq!(counters.custom_payload_packets, 2);
         assert_eq!(counters.custom_payload_brand_packets, 1);
         assert_eq!(counters.custom_payload_unknown_packets, 1);
+    }
+
+    #[test]
+    fn transfer_stores_latest_server_target() {
+        let mut store = WorldStore::new();
+
+        store.apply_transfer(ProtocolTransfer {
+            host: "first.example.com".to_string(),
+            port: 25565,
+        });
+        let latest = store.apply_transfer(ProtocolTransfer {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        });
+
+        assert_eq!(
+            latest,
+            &TransferTargetState {
+                host: "next.example.com".to_string(),
+                port: 25566,
+            }
+        );
+        assert_eq!(
+            store.last_transfer(),
+            Some(&TransferTargetState {
+                host: "next.example.com".to_string(),
+                port: 25566,
+            })
+        );
+        assert_eq!(store.counters().transfer_packets, 2);
     }
 
     #[test]

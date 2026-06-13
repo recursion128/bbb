@@ -21,7 +21,7 @@ pub use crate::client::scoreboard::{
 };
 pub use crate::client::server_presentation::{
     CustomPayloadState, ResourcePackState, ServerDataState, ServerLinkState,
-    ServerPresentationState,
+    ServerPresentationState, TransferTargetState,
 };
 pub use crate::client::ui::{
     ClientUiState, DialogState, GhostRecipeState, MountScreenState, OpenBookState,
