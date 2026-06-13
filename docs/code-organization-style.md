@@ -45,12 +45,20 @@ Do not split code just because it can be split. A split is justified only when i
 creates a clearer ownership boundary for current or near-term work. Line count is
 a signal to inspect, not a target to optimize.
 
+Default to preserving locality. Code that is read, changed, and tested together
+should usually stay together, even if the file is not tiny. A new file must make
+the next change easier to review or test; otherwise it is churn.
+
 Before extracting a module, the main agent or worker must be able to answer:
 
 - What stable concept owns this code?
 - Which callers need the new API, and can that API stay narrow?
 - Which tests prove behavior stayed the same?
 - What current or near-term feature work becomes easier after the split?
+- What code becomes simpler after the split, rather than merely relocated?
+
+If any answer is vague, keep the code in place and revisit when the boundary is
+clearer.
 
 Use these default thresholds and gates:
 
@@ -61,6 +69,8 @@ Use these default thresholds and gates:
 - A small file may be split only when the current slice introduces a durable
   feature boundary, a focused test boundary, or a repeated merge-conflict
   hotspot.
+- Do not pre-split for hypothetical future work. Extract when a concrete slice
+  needs the boundary or when repeated edits prove the boundary already exists.
 
 Valid reasons to split include:
 
@@ -71,10 +81,16 @@ Valid reasons to split include:
 - Multiple agents repeatedly need to edit the same large semantic region.
 - A module boundary lets downstream crates depend on a narrow facade instead of
   internal helpers.
+- Moving a coherent block lets tests live next to the behavior they prove.
 
 Invalid reasons to split include:
 
 - The file is long, and no other benefit is clear.
+- A worker needs something to do, or parallelism would be easier after creating
+  artificial file ownership.
+- The directory tree would look more symmetrical.
+- Another crate has a similarly named module, but this crate does not yet have
+  the same semantic boundary.
 - The change creates one-function modules or moves single-use private helpers
   away from their only caller.
 - The extracted module would need a vague name such as `misc`, `helpers`,
@@ -85,6 +101,45 @@ Invalid reasons to split include:
 
 Prefer leaving small, cohesive private helpers beside their only caller. If the
 only rationale is "the file is long", do not split yet.
+
+### Split Checklist
+
+Use this checklist before creating a new module:
+
+1. Name the semantic owner in one short phrase, such as "client waypoints" or
+   "terrain mesh emission".
+2. List the exact types and functions moving into that owner.
+3. Confirm the extracted API can start as `pub(crate)` or narrower unless
+   another crate already needs it.
+4. Confirm tests will move with the behavior or new focused tests will be added.
+5. Confirm the current slice will use the new boundary immediately.
+6. Confirm the split can be reviewed mechanically, without unrelated behavior
+   changes hidden in the move.
+
+If the checklist does not pass, do not create the module. Add the current feature
+near the existing owner and leave a future extraction for when the boundary is
+obvious.
+
+### Extraction Shapes
+
+Prefer these extraction shapes:
+
+- Feature owner: move state, packet application, conversions, and tests for one
+  durable feature family together.
+- Root cleanup: move one coherent implementation block out of a root file while
+  keeping the root as declarations and re-exports.
+- Conflict relief: extract a section that multiple agents have repeatedly
+  touched, but only when the extracted module has a real semantic name.
+
+Avoid these extraction shapes:
+
+- Type dump: moving unrelated structs into `types.rs` only because they are
+  structs.
+- Utility dump: moving unrelated helpers into `utils.rs` or `helpers.rs`.
+- Mirror tree: creating files to match another crate's layout before this crate
+  has matching behavior.
+- Needle files: creating modules whose only content is one private helper and
+  one test.
 
 ## File Size And Growth
 

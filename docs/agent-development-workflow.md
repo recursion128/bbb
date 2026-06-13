@@ -40,6 +40,8 @@ rationale before workers start:
 - The current or near-term work made easier by the split.
 
 If that rationale is only line count or aesthetics, keep the file intact.
+If the rationale is only to create more parallel worker tasks, keep the file
+intact and choose a smaller feature slice instead.
 
 ## Worker Contract
 

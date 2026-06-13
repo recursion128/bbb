@@ -87,6 +87,12 @@ workspace test suite. If a command cannot run, state the reason and the residual
   extracted automatically.
 - A split must have a named semantic owner, a narrow API, focused tests or a
   clear test plan, and a concrete payoff for current or near-term work.
+- The default is to preserve locality. A new module must make the current slice
+  easier to review, test, or assign; line count, directory symmetry, and
+  artificial worker parallelism are not valid split reasons.
+- Before creating a module, pass the checklist in
+  `docs/code-organization-style.md`: semantic owner, exact moved items, narrow
+  visibility, colocated tests, immediate use, and mechanical reviewability.
 - Keep cohesive single-caller helpers beside their caller. Avoid one-function
   modules, vague bucket modules, and broad `pub` exposure created only to make a
   split compile.
