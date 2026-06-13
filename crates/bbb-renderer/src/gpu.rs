@@ -59,9 +59,6 @@ fn vs_main(input: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-    let light_dir = normalize(vec3<f32>(0.35, 0.82, 0.45));
-    let normal = normalize(input.normal);
-    let direct = max(dot(normal, light_dir), 0.0);
     let texel = textureSample(terrain_atlas, terrain_sampler, input.uv);
     if texel.a <= 0.01 {
         discard;
@@ -70,8 +67,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let block_light = input.light.x;
     let sky_light = input.light.y;
     let light_level = max(block_light, sky_light * 0.95);
-    let directional_shade = mix(1.0, 0.86 + direct * 0.14, input.shade);
-    let shade = (0.16 + light_level * 0.84) * directional_shade * input.ambient_occlusion;
+    let shade = (0.16 + light_level * 0.84) * input.shade * input.ambient_occlusion;
     return vec4<f32>(base * shade, texel.a);
 }
 "#;
@@ -379,6 +375,7 @@ mod tests {
     #[test]
     fn terrain_shader_multiplies_shade_by_vertex_ambient_occlusion() {
         assert!(TERRAIN_SHADER.contains("@location(6) ambient_occlusion: f32"));
-        assert!(TERRAIN_SHADER.contains("* input.ambient_occlusion"));
+        assert!(TERRAIN_SHADER.contains("* input.shade * input.ambient_occlusion"));
+        assert!(!TERRAIN_SHADER.contains("light_dir"));
     }
 }

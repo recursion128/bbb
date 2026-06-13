@@ -231,7 +231,7 @@ fn cross_cutout_mesh_emits_vanilla_cross_quads() {
     assert_eq!(mesh.culled_faces, 0);
     assert_eq!(mesh.vertices.len(), 16);
     assert_eq!(mesh.indices.len(), 24);
-    assert!(mesh.vertices.iter().all(|vertex| vertex.shade == 0.0));
+    assert!(mesh.vertices.iter().all(|vertex| vertex.shade == 1.0));
     assert!(mesh
         .vertices
         .iter()
@@ -303,7 +303,7 @@ fn cross_layers_preserve_emissive_light() {
     assert_eq!(mesh.vertices.len(), 32);
     assert_eq!(mesh.vertices[0].light, [2.0 / 15.0, 4.0 / 15.0]);
     assert_eq!(mesh.vertices[16].light, [1.0, 4.0 / 15.0]);
-    assert!(mesh.vertices.iter().all(|vertex| vertex.shade == 0.0));
+    assert!(mesh.vertices.iter().all(|vertex| vertex.shade == 1.0));
 }
 
 #[test]
@@ -363,7 +363,7 @@ fn box_model_mesh_rotates_face_uv_crop() {
         .unwrap();
 
     assert_eq!(mesh.vertices[0].uv, [0.5, 0.25]);
-    assert_eq!(mesh.vertices[0].shade, 0.0);
+    assert_eq!(mesh.vertices[0].shade, 1.0);
     assert_eq!(mesh.vertices[1].uv, [0.5, 0.75]);
     assert_eq!(mesh.vertices[2].uv, [0.25, 0.75]);
     assert_eq!(mesh.vertices[3].uv, [0.25, 0.25]);
@@ -580,6 +580,20 @@ fn mesh_vertices_carry_face_tint() {
 }
 
 #[test]
+fn cube_vertices_carry_vanilla_default_cardinal_shade() {
+    let snapshot = single_block_snapshot(0, 0, 1, 0, 2);
+
+    let mesh = build_opaque_chunk_mesh(&snapshot);
+
+    assert_face_shade(&mesh, [0.0, -1.0, 0.0], 0.5);
+    assert_face_shade(&mesh, [0.0, 1.0, 0.0], 1.0);
+    assert_face_shade(&mesh, [0.0, 0.0, -1.0], 0.8);
+    assert_face_shade(&mesh, [0.0, 0.0, 1.0], 0.8);
+    assert_face_shade(&mesh, [-1.0, 0.0, 0.0], 0.6);
+    assert_face_shade(&mesh, [1.0, 0.0, 0.0], 0.6);
+}
+
+#[test]
 fn ambient_occlusion_darkens_cubic_face_corners_from_outer_neighbors() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
     cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0);
@@ -720,7 +734,7 @@ fn quad_shape_emits_custom_vertices_in_texture_layer() {
     assert_eq!(layers.cutout[0].vertices[0].position, [1.0, 0.0, 2.0]);
     assert_eq!(layers.cutout[0].vertices[2].position, [2.0, 1.0, 2.0]);
     assert_eq!(layers.cutout[0].vertices[0].uv, [0.0, 0.0]);
-    assert_eq!(layers.cutout[0].vertices[0].shade, 0.0);
+    assert_eq!(layers.cutout[0].vertices[0].shade, 1.0);
     assert_eq!(layers.cutout[0].vertices[0].light[0], 1.0);
     assert_eq!(layers.translucent[0].vertices.len(), 0);
 }
@@ -836,4 +850,12 @@ fn assert_float_eq(actual: f32, expected: f32) {
         (actual - expected).abs() < 0.0001,
         "expected {expected}, got {actual}"
     );
+}
+
+fn assert_face_shade(mesh: &TerrainMesh, normal: [f32; 3], expected: f32) {
+    let vertices = face_vertices(mesh, 1, normal);
+    assert_eq!(vertices.len(), 4);
+    assert!(vertices
+        .iter()
+        .all(|vertex| (vertex.shade - expected).abs() < 0.0001));
 }

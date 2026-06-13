@@ -35,7 +35,7 @@ pub(super) fn emit_face(
             uv: uv_rect.map(uv),
             light: light.as_shader_light(),
             tint: tint.as_shader_tint(),
-            shade: 1.0,
+            shade: cardinal_shade(true, face.face),
             ambient_occlusion,
             block_state_id,
         });
@@ -85,7 +85,7 @@ pub(super) fn emit_cross(
             atlas.rect(texture_indices[face.index()]),
             normal,
             corners,
-            shade,
+            cardinal_shade(shade, face),
             light_emission,
         );
     }
@@ -177,7 +177,7 @@ pub(super) fn emit_box(
             face.normal,
             box_face_corners(face.face, min, max),
             face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
-            face_shade[face_index],
+            cardinal_shade(face_shade[face_index], face.face),
             face_light_emission[face_index],
             ambient_occlusion,
         );
@@ -234,7 +234,10 @@ pub(super) fn emit_quads(
             quad.corners
                 .map(|corner| [corner[0] / 16.0, corner[1] / 16.0, corner[2] / 16.0]),
             quad.uvs,
-            quad.shade,
+            cardinal_shade(
+                quad.shade,
+                quad.cull.unwrap_or_else(|| face_from_normal(quad.normal)),
+            ),
             quad.light_emission,
             ambient_occlusion,
         );
@@ -269,7 +272,7 @@ fn emit_custom_quad(
     uv_rect: TerrainUvRect,
     normal: [f32; 3],
     corners: [[f32; 3]; 4],
-    shade: bool,
+    shade: f32,
     light_emission: u8,
 ) {
     emit_custom_quad_with_uvs(
@@ -304,12 +307,11 @@ fn emit_custom_quad_with_uvs(
     normal: [f32; 3],
     corners: [[f32; 3]; 4],
     uvs: [[f32; 2]; 4],
-    shade: bool,
+    shade: f32,
     light_emission: u8,
     ambient_occlusion: [f32; 4],
 ) {
     let base = mesh.vertices.len() as u32;
-    let shade = if shade { 1.0 } else { 0.0 };
     let light = shader_light_with_emission(light, light_emission);
     for ((corner, uv), ambient_occlusion) in corners.into_iter().zip(uvs).zip(ambient_occlusion) {
         mesh.vertices.push(TerrainVertex {
@@ -343,6 +345,42 @@ fn shader_light_with_emission(light: TerrainLight, light_emission: u8) -> [f32; 
     let mut shader_light = light.as_shader_light();
     shader_light[0] = shader_light[0].max(light_emission.min(15) as f32 / 15.0);
     shader_light
+}
+
+fn cardinal_shade(enabled: bool, face: TerrainFace) -> f32 {
+    if !enabled {
+        return 1.0;
+    }
+    match face {
+        TerrainFace::Down => 0.5,
+        TerrainFace::Up => 1.0,
+        TerrainFace::North | TerrainFace::South => 0.8,
+        TerrainFace::West | TerrainFace::East => 0.6,
+    }
+}
+
+fn face_from_normal(normal: [f32; 3]) -> TerrainFace {
+    let [x, y, z] = normal;
+    let abs_x = x.abs();
+    let abs_y = y.abs();
+    let abs_z = z.abs();
+    if abs_y >= abs_x && abs_y >= abs_z {
+        if y < 0.0 {
+            TerrainFace::Down
+        } else {
+            TerrainFace::Up
+        }
+    } else if abs_z >= abs_x {
+        if z < 0.0 {
+            TerrainFace::North
+        } else {
+            TerrainFace::South
+        }
+    } else if x < 0.0 {
+        TerrainFace::West
+    } else {
+        TerrainFace::East
+    }
 }
 
 fn cull_offset(face: TerrainFace) -> (i32, i32, i32) {
