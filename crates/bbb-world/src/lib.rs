@@ -20,21 +20,17 @@ use bbb_protocol::{
         EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
         EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
         EntityPositionSync as ProtocolEntityPositionSync,
-        EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, GameProfile as ProtocolGameProfile,
-        GameProfileProperty as ProtocolGameProfileProperty, GameType as ProtocolGameType,
-        HurtAnimation as ProtocolHurtAnimation, InitializeBorder as ProtocolInitializeBorder,
-        ItemStackSummary as ProtocolItemStackSummary, LevelChunkWithLight,
-        LevelEvent as ProtocolLevelEvent, LightUpdate as ProtocolLightUpdate,
+        EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, HurtAnimation as ProtocolHurtAnimation,
+        InitializeBorder as ProtocolInitializeBorder, ItemStackSummary as ProtocolItemStackSummary,
+        LevelChunkWithLight, LevelEvent as ProtocolLevelEvent, LightUpdate as ProtocolLightUpdate,
         MoveVehicle as ProtocolMoveVehicle, ObjectiveRenderType as ProtocolObjectiveRenderType,
         OpenScreen as ProtocolOpenScreen, PlayLogin as ProtocolPlayLogin,
-        PlayerInfoAction as ProtocolPlayerInfoAction, PlayerInfoRemove as ProtocolPlayerInfoRemove,
-        PlayerInfoUpdate as ProtocolPlayerInfoUpdate, PlayerTeamMethod as ProtocolPlayerTeamMethod,
+        PlayerTeamMethod as ProtocolPlayerTeamMethod,
         PlayerTeamParameters as ProtocolPlayerTeamParameters,
         RemoveEntities as ProtocolRemoveEntities, ResetScore as ProtocolResetScore,
-        ResourcePackPop as ProtocolResourcePackPop, ResourcePackPush as ProtocolResourcePackPush,
         Respawn as ProtocolRespawn, RotateHead as ProtocolRotateHead,
         ScoreboardDisplaySlot as ProtocolScoreboardDisplaySlot,
-        SectionBlocksUpdate as ProtocolSectionBlocksUpdate, ServerData as ProtocolServerData,
+        SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
         SetBorderCenter as ProtocolSetBorderCenter, SetBorderLerpSize as ProtocolSetBorderLerpSize,
         SetBorderSize as ProtocolSetBorderSize,
         SetBorderWarningDelay as ProtocolSetBorderWarningDelay,
@@ -56,6 +52,12 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
+
+mod player_info;
+mod server_presentation;
+
+pub use player_info::{PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState};
+pub use server_presentation::{ResourcePackState, ServerDataState, ServerPresentationState};
 
 const MAX_CHUNK_SECTION_BUFFER: usize = 2 * 1024 * 1024;
 const LIGHT_ARRAY_BYTES: usize = 2048;
@@ -276,56 +278,6 @@ impl Default for InventoryState {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PlayerInfoState {
-    pub entries: BTreeMap<Uuid, PlayerInfoEntryState>,
-    pub listed_players: BTreeSet<Uuid>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PlayerInfoEntryState {
-    pub profile: PlayerInfoProfileState,
-    pub listed: bool,
-    pub latency: i32,
-    pub game_mode: String,
-    pub display_name: Option<String>,
-    pub show_hat: bool,
-    pub list_order: i32,
-    pub chat_session_present: bool,
-}
-
-impl PlayerInfoEntryState {
-    fn new(profile: &ProtocolGameProfile) -> Self {
-        Self {
-            profile: PlayerInfoProfileState::from(profile),
-            listed: false,
-            latency: 0,
-            game_mode: player_info_game_mode_name(ProtocolGameType::default()).to_string(),
-            display_name: None,
-            show_hat: false,
-            list_order: 0,
-            chat_session_present: false,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PlayerInfoProfileState {
-    pub uuid: Uuid,
-    pub name: String,
-    pub properties: Vec<ProtocolGameProfileProperty>,
-}
-
-impl From<&ProtocolGameProfile> for PlayerInfoProfileState {
-    fn from(profile: &ProtocolGameProfile) -> Self {
-        Self {
-            uuid: profile.uuid,
-            name: profile.name.clone(),
-            properties: profile.properties.clone(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoreboardState {
     pub objectives: BTreeMap<String, ScoreboardObjective>,
     pub display_slots: BTreeMap<String, String>,
@@ -416,33 +368,6 @@ impl Default for DifficultyState {
             difficulty_locked: false,
         }
     }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ServerPresentationState {
-    pub server_data: Option<ServerDataState>,
-    pub resource_packs: BTreeMap<Uuid, ResourcePackState>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ServerDataState {
-    pub motd: String,
-    pub icon_bytes: Option<Vec<u8>>,
-}
-
-impl ServerDataState {
-    pub fn icon_byte_len(&self) -> Option<usize> {
-        self.icon_bytes.as_ref().map(Vec::len)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ResourcePackState {
-    pub id: Uuid,
-    pub url: String,
-    pub hash: String,
-    pub required: bool,
-    pub prompt: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1347,127 +1272,6 @@ impl WorldStore {
             difficulty: difficulty_name(packet.difficulty).to_string(),
             difficulty_locked: packet.locked,
         };
-    }
-
-    pub fn apply_server_data(&mut self, packet: ProtocolServerData) {
-        self.counters.server_data_packets += 1;
-        let icon_bytes = packet.icon_bytes.or_else(|| {
-            self.presentation
-                .server_data
-                .as_ref()
-                .and_then(|server_data| server_data.icon_bytes.clone())
-        });
-        self.presentation.server_data = Some(ServerDataState {
-            motd: packet.motd,
-            icon_bytes,
-        });
-    }
-
-    pub fn apply_resource_pack_push(&mut self, packet: ProtocolResourcePackPush) {
-        self.counters.resource_pack_push_packets += 1;
-        let pack = ResourcePackState {
-            id: packet.id,
-            url: packet.url,
-            hash: packet.hash,
-            required: packet.required,
-            prompt: non_empty_component_string(packet.prompt),
-        };
-        self.presentation.resource_packs.insert(pack.id, pack);
-        self.update_resource_pack_count();
-    }
-
-    pub fn apply_resource_pack_pop(&mut self, packet: ProtocolResourcePackPop) -> usize {
-        self.counters.resource_pack_pop_packets += 1;
-        let removed = match packet.id {
-            Some(id) => {
-                if self.presentation.resource_packs.remove(&id).is_some() {
-                    1
-                } else {
-                    0
-                }
-            }
-            None => {
-                let removed = self.presentation.resource_packs.len();
-                self.presentation.resource_packs.clear();
-                removed
-            }
-        };
-        self.update_resource_pack_count();
-        removed
-    }
-
-    pub fn apply_player_info_update(&mut self, packet: ProtocolPlayerInfoUpdate) -> usize {
-        self.counters.player_info_update_packets += 1;
-
-        if packet
-            .actions
-            .contains(&ProtocolPlayerInfoAction::AddPlayer)
-        {
-            for entry in &packet.entries {
-                let Some(profile) = &entry.profile else {
-                    continue;
-                };
-                self.player_info
-                    .entries
-                    .entry(entry.profile_id)
-                    .or_insert_with(|| PlayerInfoEntryState::new(profile));
-            }
-        }
-
-        let mut applied = 0;
-        for entry in packet.entries {
-            let Some(info) = self.player_info.entries.get_mut(&entry.profile_id) else {
-                continue;
-            };
-            applied += 1;
-            for action in &packet.actions {
-                match action {
-                    ProtocolPlayerInfoAction::AddPlayer => {}
-                    ProtocolPlayerInfoAction::InitializeChat => {
-                        info.chat_session_present = entry.chat_session.is_some();
-                    }
-                    ProtocolPlayerInfoAction::UpdateGameMode => {
-                        info.game_mode = player_info_game_mode_name(entry.game_mode).to_string();
-                    }
-                    ProtocolPlayerInfoAction::UpdateListed => {
-                        info.listed = entry.listed;
-                        if entry.listed {
-                            self.player_info.listed_players.insert(entry.profile_id);
-                        } else {
-                            self.player_info.listed_players.remove(&entry.profile_id);
-                        }
-                    }
-                    ProtocolPlayerInfoAction::UpdateLatency => {
-                        info.latency = entry.latency;
-                    }
-                    ProtocolPlayerInfoAction::UpdateDisplayName => {
-                        info.display_name = entry.display_name.clone();
-                    }
-                    ProtocolPlayerInfoAction::UpdateHat => {
-                        info.show_hat = entry.show_hat;
-                    }
-                    ProtocolPlayerInfoAction::UpdateListOrder => {
-                        info.list_order = entry.list_order;
-                    }
-                }
-            }
-        }
-
-        self.update_player_info_counts();
-        applied
-    }
-
-    pub fn apply_player_info_remove(&mut self, packet: ProtocolPlayerInfoRemove) -> usize {
-        self.counters.player_info_remove_packets += 1;
-        let mut removed = 0;
-        for profile_id in packet.profile_ids {
-            if self.player_info.entries.remove(&profile_id).is_some() {
-                removed += 1;
-            }
-            self.player_info.listed_players.remove(&profile_id);
-        }
-        self.update_player_info_counts();
-        removed
     }
 
     pub fn insert_level_chunk_with_light(
@@ -2398,18 +2202,6 @@ impl WorldStore {
         &self.client_hud
     }
 
-    pub fn player_info(&self) -> &PlayerInfoState {
-        &self.player_info
-    }
-
-    pub fn player_info_entry(&self, profile_id: Uuid) -> Option<&PlayerInfoEntryState> {
-        self.player_info.entries.get(&profile_id)
-    }
-
-    pub fn listed_players(&self) -> &BTreeSet<Uuid> {
-        &self.player_info.listed_players
-    }
-
     pub fn boss_bars(&self) -> &BTreeMap<Uuid, BossBarState> {
         &self.client_hud.boss_bars
     }
@@ -2420,22 +2212,6 @@ impl WorldStore {
 
     pub fn difficulty(&self) -> &DifficultyState {
         &self.client_hud.difficulty
-    }
-
-    pub fn presentation(&self) -> &ServerPresentationState {
-        &self.presentation
-    }
-
-    pub fn server_data(&self) -> Option<&ServerDataState> {
-        self.presentation.server_data.as_ref()
-    }
-
-    pub fn resource_packs(&self) -> &BTreeMap<Uuid, ResourcePackState> {
-        &self.presentation.resource_packs
-    }
-
-    pub fn resource_pack(&self, id: Uuid) -> Option<&ResourcePackState> {
-        self.presentation.resource_packs.get(&id)
     }
 
     pub fn counters(&self) -> WorldCounters {
@@ -2506,15 +2282,6 @@ impl WorldStore {
 
     fn update_boss_bar_count(&mut self) {
         self.counters.boss_bars_tracked = self.client_hud.boss_bars.len();
-    }
-
-    fn update_player_info_counts(&mut self) {
-        self.counters.player_info_entries_tracked = self.player_info.entries.len();
-        self.counters.listed_players_tracked = self.player_info.listed_players.len();
-    }
-
-    fn update_resource_pack_count(&mut self) {
-        self.counters.resource_packs_tracked = self.presentation.resource_packs.len();
     }
 
     fn remove_scoreboard_objective(&mut self, objective_name: &str) -> bool {
@@ -2644,15 +2411,6 @@ impl WorldStore {
 
 fn non_empty_component_string(component: Option<String>) -> Option<String> {
     component.filter(|value| !value.is_empty())
-}
-
-fn player_info_game_mode_name(game_mode: ProtocolGameType) -> &'static str {
-    match game_mode {
-        ProtocolGameType::Survival => "survival",
-        ProtocolGameType::Creative => "creative",
-        ProtocolGameType::Adventure => "adventure",
-        ProtocolGameType::Spectator => "spectator",
-    }
 }
 
 fn boss_bar_color_name(color: ProtocolBossBarColor) -> &'static str {
@@ -3687,6 +3445,7 @@ mod tests {
         EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
         EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
         EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
+        GameProfile as ProtocolGameProfile, GameProfileProperty as ProtocolGameProfileProperty,
         GameType as ProtocolGameType, HurtAnimation as ProtocolHurtAnimation,
         InitializeBorder as ProtocolInitializeBorder, ItemStackSummary,
         LevelEvent as ProtocolLevelEvent, MoveVehicle as ProtocolMoveVehicle, ObjectiveRenderType,
