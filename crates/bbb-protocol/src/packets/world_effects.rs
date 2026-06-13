@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
-use super::Vec3d;
+use super::{data_components, Vec3d};
 
 const MAX_EFFECT_PAYLOAD: usize = 2 * 1024 * 1024;
 
@@ -127,20 +127,48 @@ fn decode_particle_options(decoder: &mut Decoder<'_>, particle_type_id: i32) -> 
         105 => {
             decoder.read_var_i32()?;
         }
-        47 => {
-            return Err(ProtocolError::InvalidData(
-                "unsupported particle options for item particle".to_string(),
-            ));
-        }
-        48 => {
-            return Err(ProtocolError::InvalidData(
-                "unsupported particle options for vibration particle".to_string(),
-            ));
-        }
+        47 => decode_item_particle_options(decoder)?,
+        48 => decode_vibration_particle_options(decoder)?,
         other if is_simple_particle_type(other) => {}
         other => {
             return Err(ProtocolError::InvalidData(format!(
                 "unknown particle type id {other}"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn decode_item_particle_options(decoder: &mut Decoder<'_>) -> Result<()> {
+    let item_id = decoder.read_var_i32()?;
+    if item_id < 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid item particle item id {item_id}"
+        )));
+    }
+    decoder.read_var_i32()?;
+    data_components::decode_data_component_patch_summary(decoder)?;
+    Ok(())
+}
+
+fn decode_vibration_particle_options(decoder: &mut Decoder<'_>) -> Result<()> {
+    decode_position_source(decoder)?;
+    decoder.read_var_i32()?;
+    Ok(())
+}
+
+fn decode_position_source(decoder: &mut Decoder<'_>) -> Result<()> {
+    match decoder.read_var_i32()? {
+        0 => {
+            decoder.read_i64()?;
+        }
+        1 => {
+            decoder.read_var_i32()?;
+            decoder.read_f32()?;
+        }
+        other => {
+            return Err(ProtocolError::InvalidData(format!(
+                "unknown position source type id {other}"
             )));
         }
     }

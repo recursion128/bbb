@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     codec::{Decoder, Encoder},
     ids,
-    packets::{decode_play_clientbound, PlayClientbound},
+    packets::{chunks, decode_play_clientbound, BlockPos, PlayClientbound},
 };
 
 #[test]
@@ -151,6 +151,70 @@ fn decodes_level_particles_packet_wire_order() {
 }
 
 #[test]
+fn decodes_item_particle_options_from_item_stack_template() {
+    let mut particle_options = Encoder::new();
+    particle_options.write_var_i32(42);
+    particle_options.write_var_i32(3);
+    particle_options.write_var_i32(0);
+    particle_options.write_var_i32(0);
+    let particle_options = particle_options.into_inner();
+
+    let packet = decode_level_particles_with_options(47, &particle_options);
+
+    assert_eq!(
+        packet.particle,
+        ParticlePayload {
+            particle_type_id: 47,
+            raw_options: particle_options,
+        }
+    );
+}
+
+#[test]
+fn decodes_vibration_particle_options_with_block_position_source() {
+    let mut particle_options = Encoder::new();
+    particle_options.write_var_i32(0);
+    particle_options.write_i64(chunks::encode_block_pos(BlockPos { x: 1, y: 64, z: -2 }));
+    particle_options.write_var_i32(20);
+    let particle_options = particle_options.into_inner();
+
+    let packet = decode_level_particles_with_options(48, &particle_options);
+
+    assert_eq!(
+        packet.particle,
+        ParticlePayload {
+            particle_type_id: 48,
+            raw_options: particle_options,
+        }
+    );
+}
+
+#[test]
+fn decodes_vibration_particle_options_with_entity_position_source() {
+    let mut particle_options = Encoder::new();
+    particle_options.write_var_i32(1);
+    particle_options.write_var_i32(123);
+    particle_options.write_f32(1.25);
+    particle_options.write_var_i32(9);
+    let particle_options = particle_options.into_inner();
+
+    let mut payload = Encoder::new();
+    payload.write_var_i32(48);
+    payload.write_bytes(&particle_options);
+    let payload = payload.into_inner();
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(
+        decode_particle_payload(&mut decoder).unwrap(),
+        ParticlePayload {
+            particle_type_id: 48,
+            raw_options: particle_options,
+        }
+    );
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn decodes_projectile_power_packet() {
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
@@ -171,4 +235,33 @@ fn decodes_projectile_power_packet() {
     assert_eq!(decoder.read_var_i32().unwrap(), 123);
     assert_eq!(decoder.read_f64().unwrap(), 0.75);
     assert!(decoder.is_empty());
+}
+
+fn decode_level_particles_with_options(
+    particle_type_id: i32,
+    particle_options: &[u8],
+) -> LevelParticles {
+    let mut payload = Encoder::new();
+    payload.write_bool(false);
+    payload.write_bool(false);
+    payload.write_f64(0.0);
+    payload.write_f64(0.0);
+    payload.write_f64(0.0);
+    payload.write_f32(0.0);
+    payload.write_f32(0.0);
+    payload.write_f32(0.0);
+    payload.write_f32(0.0);
+    payload.write_i32(1);
+    payload.write_var_i32(particle_type_id);
+    payload.write_bytes(particle_options);
+
+    match decode_play_clientbound(
+        ids::play::CLIENTBOUND_LEVEL_PARTICLES,
+        &payload.into_inner(),
+    )
+    .unwrap()
+    {
+        PlayClientbound::LevelParticles(packet) => packet,
+        other => panic!("expected level particles packet, got {other:?}"),
+    }
 }
