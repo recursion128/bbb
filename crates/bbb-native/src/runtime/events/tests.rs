@@ -3,11 +3,11 @@ use crate::runtime::clear_color_for_day_time;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, CustomChatCompletions,
-    CustomChatCompletionsAction, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
-    PlaceGhostRecipe, PlayLogin, PongResponse, RecipeDisplayType, SelectAdvancementsTab,
-    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers,
-    SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StopSound, TagQuery,
-    Vec3d as ProtocolVec3d,
+    CustomChatCompletionsAction, Explosion, InteractionHand, LevelParticles, MountScreenOpen,
+    OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PongResponse,
+    ProjectilePower, RecipeDisplayType, SelectAdvancementsTab, ServerLinkEntry,
+    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, SoundEntityEvent, SoundEvent,
+    SoundEventHolder, SoundSource, StopSound, TagQuery, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use std::collections::BTreeMap;
@@ -488,6 +488,110 @@ fn client_audio_events_update_snapshot_counters() {
         Some(bbb_control::StopSoundState {
             source: Some("music".to_string()),
             name: Some("minecraft:music.menu".to_string()),
+        })
+    );
+}
+
+#[test]
+fn world_effect_events_update_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::Explosion(Explosion {
+        center: ProtocolVec3d {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        },
+        radius: 4.5,
+        block_count: 7,
+        player_knockback: Some(ProtocolVec3d {
+            x: 0.25,
+            y: -0.5,
+            z: 1.5,
+        }),
+        raw_effect_payload: vec![0x2d, 0x2a, 0x01, 0x00],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelParticles(LevelParticles {
+        override_limiter: true,
+        always_show: false,
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 64.5,
+            z: -3.25,
+        },
+        offset: ProtocolVec3d {
+            x: f64::from(0.1_f32),
+            y: f64::from(0.2_f32),
+            z: f64::from(0.3_f32),
+        },
+        max_speed: 1.5,
+        count: 16,
+        particle: ParticlePayload {
+            particle_type_id: 45,
+            raw_options: vec![0xaa, 0xbb],
+        },
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ProjectilePower(ProjectilePower {
+        entity_id: 123,
+        acceleration_power: 0.75,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+    assert_eq!(counters.explosion_packets, 1);
+    assert_eq!(
+        counters.last_explosion,
+        Some(bbb_control::ExplosionState {
+            center: bbb_control::NetVec3 {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            radius: 4.5,
+            block_count: 7,
+            player_knockback: Some(bbb_control::NetVec3 {
+                x: 0.25,
+                y: -0.5,
+                z: 1.5,
+            }),
+            raw_effect_payload_len: 4,
+        })
+    );
+    assert_eq!(counters.level_particles_packets, 1);
+    assert_eq!(
+        counters.last_level_particles,
+        Some(bbb_control::LevelParticlesState {
+            override_limiter: true,
+            always_show: false,
+            position: bbb_control::NetVec3 {
+                x: 10.0,
+                y: 64.5,
+                z: -3.25,
+            },
+            offset: bbb_control::NetVec3 {
+                x: f64::from(0.1_f32),
+                y: f64::from(0.2_f32),
+                z: f64::from(0.3_f32),
+            },
+            max_speed: 1.5,
+            count: 16,
+            particle_type_id: 45,
+            raw_options_len: 2,
+        })
+    );
+    assert_eq!(counters.projectile_power_packets, 1);
+    assert_eq!(
+        counters.last_projectile_power,
+        Some(bbb_control::ProjectilePowerState {
+            entity_id: 123,
+            acceleration_power: 0.75,
         })
     );
 }

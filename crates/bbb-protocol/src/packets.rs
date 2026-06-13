@@ -20,6 +20,7 @@ pub mod scoreboard;
 pub mod server_presentation;
 pub mod serverbound;
 pub mod world_border;
+pub mod world_effects;
 pub use chunks::*;
 pub use client_audio::*;
 pub use client_features::*;
@@ -36,6 +37,7 @@ pub use scoreboard::*;
 pub use server_presentation::*;
 pub use serverbound::*;
 pub use world_border::*;
+pub use world_effects::*;
 
 const MAX_SERVER_ICON_BYTES: usize = 2 * 1024 * 1024;
 

@@ -41,6 +41,9 @@ pub struct NetCounters {
     pub last_sound: Option<ClientSoundState>,
     pub last_sound_entity: Option<ClientSoundEntityState>,
     pub last_stop_sound: Option<StopSoundState>,
+    pub last_explosion: Option<ExplosionState>,
+    pub last_level_particles: Option<LevelParticlesState>,
+    pub last_projectile_power: Option<ProjectilePowerState>,
     pub selected_advancements_tab: Option<String>,
     pub last_tag_query: Option<TagQueryState>,
     pub player_position_packets: usize,
@@ -110,6 +113,9 @@ pub struct NetCounters {
     pub sound_packets: usize,
     pub sound_entity_packets: usize,
     pub stop_sound_packets: usize,
+    pub explosion_packets: usize,
+    pub level_particles_packets: usize,
+    pub projectile_power_packets: usize,
     pub select_advancements_tab_packets: usize,
     pub tag_query_packets: usize,
     pub last_block_changed_ack_sequence: Option<i32>,
@@ -332,6 +338,33 @@ pub struct ClientSoundEntityState {
 pub struct StopSoundState {
     pub source: Option<String>,
     pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExplosionState {
+    pub center: NetVec3,
+    pub radius: f32,
+    pub block_count: i32,
+    pub player_knockback: Option<NetVec3>,
+    pub raw_effect_payload_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LevelParticlesState {
+    pub override_limiter: bool,
+    pub always_show: bool,
+    pub position: NetVec3,
+    pub offset: NetVec3,
+    pub max_speed: f32,
+    pub count: i32,
+    pub particle_type_id: i32,
+    pub raw_options_len: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ProjectilePowerState {
+    pub entity_id: i32,
+    pub acceleration_power: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

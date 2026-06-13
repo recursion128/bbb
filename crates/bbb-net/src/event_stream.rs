@@ -409,6 +409,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::EntityPositionSync(update) => {
                     emit(&events, NetEvent::EntityPositionSync(update)).await?;
                 }
+                PlayClientbound::Explosion(update) => {
+                    emit(&events, NetEvent::Explosion(update)).await?;
+                }
                 PlayClientbound::EntityEvent(update) => {
                     emit(&events, NetEvent::EntityEvent(update)).await?;
                 }
@@ -541,6 +544,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     emit(&events, NetEvent::LevelChunkWithLight(chunk)).await?;
                 }
+                PlayClientbound::LevelParticles(update) => {
+                    emit(&events, NetEvent::LevelParticles(update)).await?;
+                }
                 PlayClientbound::LightUpdate(update) => {
                     emit(&events, NetEvent::LightUpdate(update)).await?;
                 }
@@ -561,6 +567,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::SetChunkCacheRadius(update) => {
                     emit(&events, NetEvent::SetChunkCacheRadius(update)).await?;
+                }
+                PlayClientbound::ProjectilePower(update) => {
+                    emit(&events, NetEvent::ProjectilePower(update)).await?;
                 }
                 PlayClientbound::Unknown { .. } => {}
             },

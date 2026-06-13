@@ -228,6 +228,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::EntityPositionSync(update) => {
                     world.apply_entity_position_sync(update);
                 }
+                PlayClientbound::Explosion(_) => {}
                 PlayClientbound::EntityEvent(update) => {
                     world.apply_entity_event(update);
                 }
@@ -386,6 +387,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     let pos = world.insert_level_chunk_with_light(chunk)?;
                     break pos;
                 }
+                PlayClientbound::LevelParticles(_) => {}
                 PlayClientbound::LightUpdate(update) => {
                     world.apply_light_update(update)?;
                 }
@@ -405,7 +407,8 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     world.apply_section_blocks_update(update);
                 }
                 PlayClientbound::SetChunkCacheCenter(_)
-                | PlayClientbound::SetChunkCacheRadius(_) => {}
+                | PlayClientbound::SetChunkCacheRadius(_)
+                | PlayClientbound::ProjectilePower(_) => {}
                 PlayClientbound::Unknown { .. } => {}
             },
             ConnectionState::Handshake | ConnectionState::Status => {

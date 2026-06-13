@@ -172,6 +172,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 entities::decode_entity_position_sync(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_EXPLODE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::Explosion(world_effects::decode_explosion(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_FORGET_LEVEL_CHUNK => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::ForgetLevelChunk(
@@ -206,6 +212,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         ids::play::CLIENTBOUND_KEEP_ALIVE => Ok(PlayClientbound::KeepAlive {
             id: Decoder::new(payload).read_i64()?,
         }),
+        ids::play::CLIENTBOUND_LEVEL_PARTICLES => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::LevelParticles(
+                world_effects::decode_level_particles(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_LOW_DISK_SPACE_WARNING => {
             let decoder = Decoder::new(payload);
             if !decoder.is_empty() {
@@ -320,6 +332,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 x_rot: decoder.read_f32()?,
                 relative_x: decoder.read_bool()?,
             }))
+        }
+        ids::play::CLIENTBOUND_PROJECTILE_POWER => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::ProjectilePower(
+                world_effects::decode_projectile_power(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_REMOVE_ENTITIES => {
             let mut decoder = Decoder::new(payload);

@@ -125,6 +125,36 @@ pub(in crate::runtime) fn drain_net_events(
                 counters.last_pong_response_time = Some(update.time);
                 counters.pong_response_packets += 1;
             }
+            NetEvent::Explosion(update) => {
+                counters.last_explosion = Some(bbb_control::ExplosionState {
+                    center: net_vec3(update.center),
+                    radius: update.radius,
+                    block_count: update.block_count,
+                    player_knockback: update.player_knockback.map(net_vec3),
+                    raw_effect_payload_len: update.raw_effect_payload.len(),
+                });
+                counters.explosion_packets += 1;
+            }
+            NetEvent::LevelParticles(update) => {
+                counters.last_level_particles = Some(bbb_control::LevelParticlesState {
+                    override_limiter: update.override_limiter,
+                    always_show: update.always_show,
+                    position: net_vec3(update.position),
+                    offset: net_vec3(update.offset),
+                    max_speed: update.max_speed,
+                    count: update.count,
+                    particle_type_id: update.particle.particle_type_id,
+                    raw_options_len: update.particle.raw_options.len(),
+                });
+                counters.level_particles_packets += 1;
+            }
+            NetEvent::ProjectilePower(update) => {
+                counters.last_projectile_power = Some(bbb_control::ProjectilePowerState {
+                    entity_id: update.entity_id,
+                    acceleration_power: update.acceleration_power,
+                });
+                counters.projectile_power_packets += 1;
+            }
             NetEvent::Sound(update) => {
                 counters.last_sound = Some(bbb_control::ClientSoundState {
                     sound: sound_holder_state(update.sound),
