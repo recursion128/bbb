@@ -173,7 +173,7 @@ fn element_box_shape(
         face_uvs[face.index()] = raw_face
             .uv
             .and_then(quantize_uv_0_16)
-            .unwrap_or([0, 0, 16, 16]);
+            .unwrap_or_else(|| default_face_uv(from, to, face));
         face_uv_rotations[face.index()] = raw_face
             .rotation
             .map(quantize_face_uv_rotation)
@@ -217,6 +217,17 @@ fn quantize_uv_0_16(values: [f32; 4]) -> Option<[u8; 4]> {
         quantize_0_16(values[2])?,
         quantize_0_16(values[3])?,
     ])
+}
+
+fn default_face_uv(from: [u8; 3], to: [u8; 3], face: BlockModelFace) -> [u8; 4] {
+    match face {
+        BlockModelFace::Down => [from[0], 16 - to[2], to[0], 16 - from[2]],
+        BlockModelFace::Up => [from[0], from[2], to[0], to[2]],
+        BlockModelFace::North => [16 - to[0], 16 - to[1], 16 - from[0], 16 - from[1]],
+        BlockModelFace::South => [from[0], 16 - to[1], to[0], 16 - from[1]],
+        BlockModelFace::West => [from[2], 16 - to[1], to[2], 16 - from[1]],
+        BlockModelFace::East => [16 - to[2], 16 - to[1], 16 - from[2], 16 - from[1]],
+    }
 }
 
 fn quantize_face_uv_rotation(degrees: i32) -> Option<u8> {

@@ -461,6 +461,81 @@ fn block_model_catalog_extracts_single_box_geometry() {
 }
 
 #[test]
+fn block_model_catalog_uses_vanilla_default_face_uvs() {
+    let root = unique_temp_dir("block-model-default-face-uvs");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("cobblestone_wall.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/cobblestone_wall_side" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("cobblestone_wall_side.json"),
+        r##"{
+            "textures": {
+                "particle": "#wall",
+                "wall": "minecraft:block/cobblestone"
+            },
+            "elements": [{
+                "from": [5, 0, 0],
+                "to": [11, 14, 8],
+                "faces": {
+                    "down":  { "texture": "#wall", "cullface": "down" },
+                    "up":    { "texture": "#wall" },
+                    "north": { "texture": "#wall", "cullface": "north" },
+                    "west":  { "texture": "#wall" },
+                    "east":  { "texture": "#wall" }
+                }
+            }]
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let render_model = catalog
+        .block_render_model("minecraft:cobblestone_wall", &BTreeMap::new())
+        .unwrap();
+    let BlockModelShape::Box(model_box) = render_model.shape else {
+        panic!("cobblestone_wall_side should resolve to a box model");
+    };
+
+    assert_eq!(
+        model_box.face_uvs[BlockModelFace::Down.index()],
+        [5, 8, 11, 16]
+    );
+    assert_eq!(
+        model_box.face_uvs[BlockModelFace::Up.index()],
+        [5, 0, 11, 8]
+    );
+    assert_eq!(
+        model_box.face_uvs[BlockModelFace::North.index()],
+        [5, 2, 11, 16]
+    );
+    assert_eq!(
+        model_box.face_uvs[BlockModelFace::West.index()],
+        [0, 2, 8, 16]
+    );
+    assert_eq!(
+        model_box.face_uvs[BlockModelFace::East.index()],
+        [8, 2, 16, 16]
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_keeps_rotated_elements_custom() {
     let root = unique_temp_dir("block-model-rotated-element");
     let asset_root = root
