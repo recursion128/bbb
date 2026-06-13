@@ -53,6 +53,21 @@ pub(super) fn ladder_properties(facing: &str) -> BTreeMap<String, String> {
     ])
 }
 
+pub(super) fn wall_torch_properties(facing: &str) -> BTreeMap<String, String> {
+    BTreeMap::from([("facing".to_string(), facing.to_string())])
+}
+
+pub(super) fn redstone_torch_properties(lit: bool) -> BTreeMap<String, String> {
+    BTreeMap::from([("lit".to_string(), lit.to_string())])
+}
+
+pub(super) fn redstone_wall_torch_properties(facing: &str, lit: bool) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("lit".to_string(), lit.to_string()),
+    ])
+}
+
 pub(super) fn fence_properties<const N: usize>(connected: [&str; N]) -> BTreeMap<String, String> {
     let mut properties = BTreeMap::from([
         ("north".to_string(), "false".to_string()),

@@ -1,6 +1,7 @@
 use bbb_protocol::packets::Direction as ProtocolDirection;
 use bbb_renderer::{SelectionBox, SelectionOutline};
 use bbb_world::{BlockPos, TerrainMaterialClass};
+use std::collections::BTreeMap;
 
 use super::super::*;
 use super::support::*;
@@ -178,6 +179,53 @@ fn ladder_outline_clip_uses_thin_direction_shape() {
     let target = BlockOutlineTarget {
         material: TerrainMaterialClass::Opaque,
         outline: outline_shape_for_block(Some("minecraft:ladder"), &ladder_properties("south")),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 0.5, -1.0],
+            [0.0, 0.0, 1.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::North,
+            inside: false,
+        })
+    );
+}
+
+#[test]
+fn floor_torch_outline_clip_uses_center_column_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(Some("minecraft:torch"), &BTreeMap::new()),
+    };
+
+    assert_eq!(
+        target.clip(
+            [-1.0, 0.5, 0.5],
+            [1.0, 0.0, 0.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.375,
+            face: ProtocolDirection::West,
+            inside: false,
+        })
+    );
+}
+
+#[test]
+fn wall_torch_outline_clip_uses_direction_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(
+            Some("minecraft:wall_torch"),
+            &wall_torch_properties("south"),
+        ),
     };
 
     assert_eq!(

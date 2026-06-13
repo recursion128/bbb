@@ -337,6 +337,73 @@ fn outline_shape_rejects_invalid_ladder_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_floor_torch_shape() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:torch"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::TORCH))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:soul_torch"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::TORCH))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:copper_torch"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::TORCH))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:redstone_torch"),
+            &redstone_torch_properties(false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::TORCH))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_wall_torch_direction_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:wall_torch"),
+            &wall_torch_properties("north")
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::WALL_TORCH_NORTH))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:soul_wall_torch"),
+            &wall_torch_properties("east"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::WALL_TORCH_EAST))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:copper_wall_torch"),
+            &wall_torch_properties("south"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::WALL_TORCH_SOUTH))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:redstone_wall_torch"),
+            &redstone_wall_torch_properties("west", false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::WALL_TORCH_WEST))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_wall_torch_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:wall_torch"), &BTreeMap::new()),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:wall_torch"), &wall_torch_properties("up")),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_disconnected_fence_post() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:oak_fence"), &fence_properties([])),

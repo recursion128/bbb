@@ -30,6 +30,12 @@ pub(super) fn outline_shape_for_block(
     if block_name == "minecraft:ladder" {
         return ladder_outline_shape(properties);
     }
+    if is_wall_torch_block_name(block_name) {
+        return wall_torch_outline_shape(properties);
+    }
+    if is_floor_torch_block_name(block_name) {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::TORCH));
+    }
     if is_fence_gate_block_name(block_name) {
         return fence_gate_outline_shape(properties);
     }
@@ -272,6 +278,16 @@ fn ladder_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOu
     Some(BlockOutlineShape::single(outline))
 }
 
+fn wall_torch_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let outline = match HorizontalDirection::parse(properties.get("facing")?)? {
+        HorizontalDirection::North => BlockOutlineBox::WALL_TORCH_NORTH,
+        HorizontalDirection::East => BlockOutlineBox::WALL_TORCH_EAST,
+        HorizontalDirection::South => BlockOutlineBox::WALL_TORCH_SOUTH,
+        HorizontalDirection::West => BlockOutlineBox::WALL_TORCH_WEST,
+    };
+    Some(BlockOutlineShape::single(outline))
+}
+
 fn pale_moss_carpet_outline_shape(
     properties: &BTreeMap<String, String>,
 ) -> Option<BlockOutlineShape> {
@@ -358,6 +374,26 @@ fn is_fence_gate_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_fence_gate"))
+}
+
+fn is_floor_torch_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:torch"
+            | "minecraft:redstone_torch"
+            | "minecraft:soul_torch"
+            | "minecraft:copper_torch"
+    )
+}
+
+fn is_wall_torch_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:wall_torch"
+            | "minecraft:redstone_wall_torch"
+            | "minecraft:soul_wall_torch"
+            | "minecraft:copper_wall_torch"
+    )
 }
 
 fn is_fence_block_name(block_name: &str) -> bool {
