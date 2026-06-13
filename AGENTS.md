@@ -14,6 +14,8 @@ that explicitly.
 
 - Use local vanilla 26.1 sources first:
   `/Users/zhangguyu/Work/mc-code/sources/26.1/`
+- Follow the repo code organization and style rules in:
+  `docs/code-organization-style.md`
 - For packet ids and wire formats, prefer vanilla `GameProtocols.java` and the
   relevant `Clientbound*Packet` / `Serverbound*Packet` class.
 - For client behavior, inspect `ClientPacketListener`, `ClientLevel`,
@@ -77,6 +79,9 @@ workspace test suite. If a command cannot run, state the reason and the residual
 ## Implementation Guidance
 
 - Keep changes scoped to the selected slice.
+- Organize code by semantic modules and avoid growing catch-all `lib.rs` or
+  `main.rs` sections; use `docs/code-organization-style.md` as the required
+  module/layout policy.
 - Prefer existing crate boundaries and local patterns over new abstractions.
 - Add structured packet/state types rather than ad hoc byte or string handling.
 - Keep counters and query APIs useful for native snapshots and future renderer work.
