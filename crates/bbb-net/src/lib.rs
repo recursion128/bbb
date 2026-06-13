@@ -372,6 +372,7 @@ pub async fn run_offline_event_stream(
                 }
             }
             ConnectionState::Play => match packets::decode_play_clientbound(packet_id, &payload)? {
+                PlayClientbound::BundleDelimiter => {}
                 PlayClientbound::AddEntity(entity) => {
                     emit(&events, NetEvent::AddEntity(entity)).await?;
                 }
@@ -632,6 +633,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
             }
             ConnectionState::Play => match packets::decode_play_clientbound(packet_id, &payload)? {
+                PlayClientbound::BundleDelimiter => {}
                 PlayClientbound::AddEntity(entity) => {
                     world.apply_add_entity(entity);
                 }
