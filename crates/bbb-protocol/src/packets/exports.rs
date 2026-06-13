@@ -6,6 +6,7 @@ pub use super::client_features::*;
 pub use super::client_state::*;
 pub use super::client_ui::*;
 pub use super::command_suggestions::*;
+pub use super::commands::*;
 pub use super::connection::*;
 pub use super::debug_game::*;
 pub use super::entities::*;

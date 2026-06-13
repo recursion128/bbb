@@ -432,6 +432,41 @@ fn command_suggestions_event_updates_world_and_counters() {
 }
 
 #[test]
+fn commands_event_updates_world_and_counters() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Commands(command_tree_packet("say")))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(counters.command_tree_packets, 1);
+    assert_eq!(world.counters().command_tree_packets, 1);
+    assert_eq!(world.counters().command_nodes_tracked, 3);
+    assert_eq!(world.counters().command_literal_nodes_tracked, 1);
+    assert_eq!(world.counters().command_argument_nodes_tracked, 1);
+    assert_eq!(world.counters().command_executable_nodes_tracked, 1);
+    assert_eq!(world.counters().command_restricted_nodes_tracked, 1);
+
+    let commands = world.commands();
+    assert_eq!(commands.root_index, 0);
+    assert_eq!(commands.nodes[1].name.as_deref(), Some("say"));
+    assert_eq!(commands.nodes[2].name.as_deref(), Some("message"));
+    assert_eq!(
+        commands.nodes[2].parser.as_ref().unwrap().name,
+        "brigadier:string"
+    );
+    assert_eq!(
+        commands.nodes[2].suggestions.as_deref(),
+        Some("minecraft:ask_server")
+    );
+}
+
+#[test]
 fn client_chat_events_update_world_and_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     let sender = Uuid::from_u128(0x1234);
@@ -2030,6 +2065,51 @@ fn protocol_play_login(player_id: i32) -> PlayLogin {
             sea_level: 63,
         },
         enforces_secure_chat: false,
+    }
+}
+
+fn command_tree_packet(literal: &str) -> bbb_protocol::packets::Commands {
+    bbb_protocol::packets::Commands {
+        root_index: 0,
+        nodes: vec![
+            bbb_protocol::packets::CommandNode {
+                node_type: bbb_protocol::packets::CommandNodeType::Root,
+                flags: 0,
+                children: vec![1],
+                redirect: None,
+                name: None,
+                parser: None,
+                suggestions: None,
+                executable: false,
+                restricted: false,
+            },
+            bbb_protocol::packets::CommandNode {
+                node_type: bbb_protocol::packets::CommandNodeType::Literal,
+                flags: 1,
+                children: vec![2],
+                redirect: None,
+                name: Some(literal.to_string()),
+                parser: None,
+                suggestions: None,
+                executable: false,
+                restricted: false,
+            },
+            bbb_protocol::packets::CommandNode {
+                node_type: bbb_protocol::packets::CommandNodeType::Argument,
+                flags: 54,
+                children: Vec::new(),
+                redirect: None,
+                name: Some("message".to_string()),
+                parser: Some(bbb_protocol::packets::CommandArgumentParser {
+                    type_id: 5,
+                    name: "brigadier:string".to_string(),
+                    properties: vec![2],
+                }),
+                suggestions: Some("minecraft:ask_server".to_string()),
+                executable: true,
+                restricted: true,
+            },
+        ],
     }
 }
 

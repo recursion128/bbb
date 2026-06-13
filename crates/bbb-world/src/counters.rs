@@ -95,6 +95,22 @@ pub struct WorldCounters {
     #[serde(default)]
     pub damage_events_applied: usize,
     #[serde(default)]
+    pub command_tree_packets: usize,
+    #[serde(default)]
+    pub command_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_literal_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_argument_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_redirect_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_executable_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_restricted_nodes_tracked: usize,
+    #[serde(default)]
+    pub last_command_root_index: Option<i32>,
+    #[serde(default)]
     pub command_suggestion_packets: usize,
     #[serde(default)]
     pub command_suggestion_entries_tracked: usize,

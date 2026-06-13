@@ -445,6 +445,10 @@ pub(in crate::runtime) fn drain_net_events(
                 counters.set_score_packets += 1;
                 world.apply_set_score(update);
             }
+            NetEvent::Commands(update) => {
+                counters.command_tree_packets += 1;
+                world.apply_commands(update);
+            }
             NetEvent::CommandSuggestions(update) => {
                 counters.command_suggestion_packets += 1;
                 world.apply_command_suggestions(update);

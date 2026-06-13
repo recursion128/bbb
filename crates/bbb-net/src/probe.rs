@@ -356,6 +356,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::SetScore(update) => {
                     world.apply_set_score(update);
                 }
+                PlayClientbound::Commands(update) => {
+                    world.apply_commands(update);
+                }
                 PlayClientbound::CommandSuggestions(update) => {
                     world.apply_command_suggestions(update);
                 }

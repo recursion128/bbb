@@ -131,6 +131,8 @@ pub struct NetCounters {
     pub set_objective_packets: usize,
     pub set_player_team_packets: usize,
     pub set_score_packets: usize,
+    #[serde(default)]
+    pub command_tree_packets: usize,
     pub command_suggestion_packets: usize,
     pub player_combat_end_packets: usize,
     pub player_combat_enter_packets: usize,

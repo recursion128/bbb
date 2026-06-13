@@ -5,6 +5,7 @@ mod client_chat;
 mod client_hud;
 mod client_state;
 mod command_suggestions;
+mod commands;
 mod counters;
 mod entities;
 mod entity_state;

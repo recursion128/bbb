@@ -20,6 +20,7 @@ pub enum PlayClientbound {
     ChunksBiomes(ChunksBiomes),
     ClearDialog,
     ClearTitles(ClearTitles),
+    Commands(Commands),
     CommandSuggestions(CommandSuggestions),
     ContainerClose(ContainerClose),
     ContainerSetContent(ContainerSetContent),

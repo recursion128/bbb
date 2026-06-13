@@ -6,6 +6,7 @@ pub mod client_features;
 pub mod client_state;
 pub mod client_ui;
 pub mod command_suggestions;
+pub mod commands;
 pub mod connection;
 pub mod debug_game;
 pub mod entities;

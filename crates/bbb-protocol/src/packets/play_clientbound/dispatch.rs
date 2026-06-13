@@ -4,7 +4,7 @@ use crate::{
     ids,
     packets::{
         chat, chunks, client_audio, client_common, client_features, client_state, client_ui,
-        command_suggestions, connection, debug_game, entities, inventory, maps, merchant,
+        command_suggestions, commands, connection, debug_game, entities, inventory, maps, merchant,
         player_actions, player_info, scoreboard, server_presentation, tags, waypoints,
         world_border::{
             InitializeBorder, SetBorderCenter, SetBorderLerpSize, SetBorderSize,
@@ -102,6 +102,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::ClearTitles(
                 client_state::decode_clear_titles(&mut decoder)?,
             ))
+        }
+        ids::play::CLIENTBOUND_COMMANDS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::Commands(commands::decode_commands(
+                &mut decoder,
+            )?))
         }
         ids::play::CLIENTBOUND_COMMAND_SUGGESTIONS => {
             let mut decoder = Decoder::new(payload);

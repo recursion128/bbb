@@ -601,6 +601,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetScore(update) => {
                     emit(&events, NetEvent::SetScore(update)).await?;
                 }
+                PlayClientbound::Commands(update) => {
+                    emit(&events, NetEvent::Commands(update)).await?;
+                }
                 PlayClientbound::CommandSuggestions(update) => {
                     emit(&events, NetEvent::CommandSuggestions(update)).await?;
                 }
