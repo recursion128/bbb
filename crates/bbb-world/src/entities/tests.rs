@@ -4,14 +4,17 @@ use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
     EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
-    EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EquipmentSlot, EquipmentSlotUpdate,
+    EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
+    EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
     HurtAnimation as ProtocolHurtAnimation, ItemStackSummary,
     ItemStackSummary as ProtocolItemStackSummary, MoveVehicle as ProtocolMoveVehicle,
     PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
-    SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
+    RotateHead as ProtocolRotateHead, SetEntityData as ProtocolSetEntityData,
+    SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
     SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
-    TakeItemEntity as ProtocolTakeItemEntity, UpdateAttributes as ProtocolUpdateAttributes,
-    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
+    UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y,
+    PLAYER_RELATIVE_X,
 };
 
 #[test]
