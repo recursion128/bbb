@@ -93,6 +93,42 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 6.0 / 16.0],
         max: [8.0 / 16.0, 1.0, 10.0 / 16.0],
     };
+    pub(super) const WALL_POST: Self = Self {
+        min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
+        max: [12.0 / 16.0, 1.0, 12.0 / 16.0],
+    };
+    pub(super) const WALL_NORTH_LOW: Self = Self {
+        min: [5.0 / 16.0, 0.0, 0.0],
+        max: [11.0 / 16.0, 14.0 / 16.0, 11.0 / 16.0],
+    };
+    pub(super) const WALL_EAST_LOW: Self = Self {
+        min: [5.0 / 16.0, 0.0, 5.0 / 16.0],
+        max: [1.0, 14.0 / 16.0, 11.0 / 16.0],
+    };
+    pub(super) const WALL_SOUTH_LOW: Self = Self {
+        min: [5.0 / 16.0, 0.0, 5.0 / 16.0],
+        max: [11.0 / 16.0, 14.0 / 16.0, 1.0],
+    };
+    pub(super) const WALL_WEST_LOW: Self = Self {
+        min: [0.0, 0.0, 5.0 / 16.0],
+        max: [11.0 / 16.0, 14.0 / 16.0, 11.0 / 16.0],
+    };
+    pub(super) const WALL_NORTH_TALL: Self = Self {
+        min: [5.0 / 16.0, 0.0, 0.0],
+        max: [11.0 / 16.0, 1.0, 11.0 / 16.0],
+    };
+    pub(super) const WALL_EAST_TALL: Self = Self {
+        min: [5.0 / 16.0, 0.0, 5.0 / 16.0],
+        max: [1.0, 1.0, 11.0 / 16.0],
+    };
+    pub(super) const WALL_SOUTH_TALL: Self = Self {
+        min: [5.0 / 16.0, 0.0, 5.0 / 16.0],
+        max: [11.0 / 16.0, 1.0, 1.0],
+    };
+    pub(super) const WALL_WEST_TALL: Self = Self {
+        min: [0.0, 0.0, 5.0 / 16.0],
+        max: [11.0 / 16.0, 1.0, 11.0 / 16.0],
+    };
     pub(super) const TRAPDOOR_BOTTOM: Self = Self {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 3.0 / 16.0, 1.0],

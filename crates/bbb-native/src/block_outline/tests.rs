@@ -274,6 +274,61 @@ fn outline_shape_rejects_invalid_fence_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_disconnected_wall_post() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:cobblestone_wall"),
+            &wall_properties(true, [])
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::WALL_POST))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_wall_side_boxes() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:mossy_cobblestone_wall"),
+            &wall_properties(true, [("north", "low"), ("east", "tall")]),
+        ),
+        Some(BlockOutlineShape::from_boxes(vec![
+            BlockOutlineBox::WALL_POST,
+            BlockOutlineBox::WALL_NORTH_LOW,
+            BlockOutlineBox::WALL_EAST_TALL,
+        ]))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_wall_without_post() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:cobblestone_wall"),
+            &wall_properties(false, [("south", "low"), ("west", "tall")]),
+        ),
+        Some(BlockOutlineShape::from_boxes(vec![
+            BlockOutlineBox::WALL_SOUTH_LOW,
+            BlockOutlineBox::WALL_WEST_TALL,
+        ]))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_wall_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:cobblestone_wall"), &BTreeMap::new()),
+        None
+    );
+
+    let mut properties = wall_properties(true, [("north", "low")]);
+    properties.insert("north".to_string(), "medium".to_string());
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:cobblestone_wall"), &properties),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_flat_carpet_shape() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:white_carpet"), &BTreeMap::new()),
@@ -515,6 +570,31 @@ fn fence_outline_clip_hits_connected_arm_before_post() {
     );
 }
 
+#[test]
+fn wall_outline_clip_hits_low_side_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(
+            Some("minecraft:cobblestone_wall"),
+            &wall_properties(true, [("north", "low")]),
+        ),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 0.5, -1.0],
+            [0.0, 0.0, 1.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::North,
+            inside: false,
+        })
+    );
+}
+
 fn slab_properties(slab_type: &str) -> BTreeMap<String, String> {
     BTreeMap::from([("type".to_string(), slab_type.to_string())])
 }
@@ -552,6 +632,21 @@ fn fence_properties<const N: usize>(connected: [&str; N]) -> BTreeMap<String, St
     ]);
     for direction in connected {
         properties.insert(direction.to_string(), "true".to_string());
+    }
+    properties
+}
+
+fn wall_properties<const N: usize>(up: bool, sides: [(&str, &str); N]) -> BTreeMap<String, String> {
+    let mut properties = BTreeMap::from([
+        ("up".to_string(), up.to_string()),
+        ("north".to_string(), "none".to_string()),
+        ("east".to_string(), "none".to_string()),
+        ("south".to_string(), "none".to_string()),
+        ("west".to_string(), "none".to_string()),
+        ("waterlogged".to_string(), "false".to_string()),
+    ]);
+    for (direction, side) in sides {
+        properties.insert(direction.to_string(), side.to_string());
     }
     properties
 }

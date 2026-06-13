@@ -27,6 +27,9 @@ pub(super) fn outline_shape_for_block(
     if is_fence_block_name(block_name) {
         return fence_outline_shape(properties);
     }
+    if is_wall_block_name(block_name) {
+        return wall_outline_shape(properties);
+    }
     if block_name == "minecraft:pale_moss_carpet" {
         return pale_moss_carpet_outline_shape(properties);
     }
@@ -105,6 +108,47 @@ fn fence_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOut
         match properties.get(property).map(String::as_str)? {
             "true" => boxes.push(outline),
             "false" => {}
+            _ => return None,
+        }
+    }
+
+    Some(BlockOutlineShape::from_boxes(boxes))
+}
+
+fn wall_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let mut boxes = Vec::with_capacity(5);
+    match properties.get("up").map(String::as_str)? {
+        "true" => boxes.push(BlockOutlineBox::WALL_POST),
+        "false" => {}
+        _ => return None,
+    }
+
+    for (property, low, tall) in [
+        (
+            "north",
+            BlockOutlineBox::WALL_NORTH_LOW,
+            BlockOutlineBox::WALL_NORTH_TALL,
+        ),
+        (
+            "east",
+            BlockOutlineBox::WALL_EAST_LOW,
+            BlockOutlineBox::WALL_EAST_TALL,
+        ),
+        (
+            "south",
+            BlockOutlineBox::WALL_SOUTH_LOW,
+            BlockOutlineBox::WALL_SOUTH_TALL,
+        ),
+        (
+            "west",
+            BlockOutlineBox::WALL_WEST_LOW,
+            BlockOutlineBox::WALL_WEST_TALL,
+        ),
+    ] {
+        match properties.get(property).map(String::as_str)? {
+            "none" => {}
+            "low" => boxes.push(low),
+            "tall" => boxes.push(tall),
             _ => return None,
         }
     }
@@ -217,6 +261,12 @@ fn is_fence_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_fence"))
+}
+
+fn is_wall_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_wall"))
 }
 
 fn is_flat_carpet_block_name(block_name: &str) -> bool {
