@@ -3,10 +3,9 @@ use std::collections::BTreeMap;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
-    EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
     EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
     ItemStackSummary as ProtocolItemStackSummary, RemoveEntities as ProtocolRemoveEntities,
-    TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
+    TakeItemEntity as ProtocolTakeItemEntity,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -18,7 +17,7 @@ mod movement;
 mod passengers;
 mod updates;
 
-use movement::{decode_entity_delta_position, entity_absolute_move_rotation, entity_vec3};
+use movement::entity_vec3;
 
 pub(crate) const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
 pub(crate) const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
@@ -108,87 +107,6 @@ impl WorldStore {
         }
         self.update_entity_count();
         self.update_active_mob_effect_count();
-    }
-
-    pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
-        self.counters.entity_position_syncs_received += 1;
-        let Some(entity) = self
-            .entities
-            .iter_mut()
-            .find(|entity| entity.id == packet.id)
-        else {
-            return false;
-        };
-
-        entity.position = entity_vec3(packet.position);
-        entity.position_base = entity_vec3(packet.position);
-        entity.delta_movement = entity_vec3(packet.delta_movement);
-        entity.y_rot = packet.y_rot;
-        entity.x_rot = packet.x_rot;
-        entity.on_ground = Some(packet.on_ground);
-        self.counters.entity_position_syncs_applied += 1;
-        true
-    }
-
-    pub fn apply_entity_move(&mut self, packet: ProtocolEntityMove) -> bool {
-        self.counters.entity_moves_received += 1;
-        let Some(entity) = self
-            .entities
-            .iter_mut()
-            .find(|entity| entity.id == packet.id)
-        else {
-            return false;
-        };
-
-        if packet.delta_x != 0 || packet.delta_y != 0 || packet.delta_z != 0 {
-            let position = decode_entity_delta_position(
-                entity.position_base,
-                packet.delta_x,
-                packet.delta_y,
-                packet.delta_z,
-            );
-            entity.position = position;
-            entity.position_base = position;
-        }
-        if let Some(y_rot) = packet.y_rot {
-            entity.y_rot = y_rot;
-        }
-        if let Some(x_rot) = packet.x_rot {
-            entity.x_rot = x_rot;
-        }
-        entity.on_ground = Some(packet.on_ground);
-        self.counters.entity_moves_applied += 1;
-        true
-    }
-
-    pub fn apply_teleport_entity(&mut self, packet: ProtocolTeleportEntity) -> bool {
-        self.counters.entity_teleports_received += 1;
-        let Some(entity) = self
-            .entities
-            .iter_mut()
-            .find(|entity| entity.id == packet.id)
-        else {
-            return false;
-        };
-
-        let absolute = entity_absolute_move_rotation(
-            entity.position,
-            entity.delta_movement,
-            entity.y_rot,
-            entity.x_rot,
-            packet.position,
-            packet.delta_movement,
-            packet.y_rot,
-            packet.x_rot,
-            packet.relatives_mask,
-        );
-        entity.position = absolute.position;
-        entity.delta_movement = absolute.delta_movement;
-        entity.y_rot = absolute.y_rot;
-        entity.x_rot = absolute.x_rot;
-        entity.on_ground = Some(packet.on_ground);
-        self.counters.entity_teleports_applied += 1;
-        true
     }
 
     pub fn apply_take_item_entity(&mut self, packet: ProtocolTakeItemEntity) -> bool {

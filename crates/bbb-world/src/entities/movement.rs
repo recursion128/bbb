@@ -1,10 +1,97 @@
 use bbb_protocol::packets::{
-    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
-    PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
-    PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
+    EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
+    TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X,
+    PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA,
+    PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT,
+    PLAYER_RELATIVE_Z,
 };
 
+use crate::WorldStore;
+
 use super::EntityVec3;
+
+impl WorldStore {
+    pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
+        self.counters.entity_position_syncs_received += 1;
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.id)
+        else {
+            return false;
+        };
+
+        entity.position = entity_vec3(packet.position);
+        entity.position_base = entity_vec3(packet.position);
+        entity.delta_movement = entity_vec3(packet.delta_movement);
+        entity.y_rot = packet.y_rot;
+        entity.x_rot = packet.x_rot;
+        entity.on_ground = Some(packet.on_ground);
+        self.counters.entity_position_syncs_applied += 1;
+        true
+    }
+
+    pub fn apply_entity_move(&mut self, packet: ProtocolEntityMove) -> bool {
+        self.counters.entity_moves_received += 1;
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.id)
+        else {
+            return false;
+        };
+
+        if packet.delta_x != 0 || packet.delta_y != 0 || packet.delta_z != 0 {
+            let position = decode_entity_delta_position(
+                entity.position_base,
+                packet.delta_x,
+                packet.delta_y,
+                packet.delta_z,
+            );
+            entity.position = position;
+            entity.position_base = position;
+        }
+        if let Some(y_rot) = packet.y_rot {
+            entity.y_rot = y_rot;
+        }
+        if let Some(x_rot) = packet.x_rot {
+            entity.x_rot = x_rot;
+        }
+        entity.on_ground = Some(packet.on_ground);
+        self.counters.entity_moves_applied += 1;
+        true
+    }
+
+    pub fn apply_teleport_entity(&mut self, packet: ProtocolTeleportEntity) -> bool {
+        self.counters.entity_teleports_received += 1;
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.id)
+        else {
+            return false;
+        };
+
+        let absolute = entity_absolute_move_rotation(
+            entity.position,
+            entity.delta_movement,
+            entity.y_rot,
+            entity.x_rot,
+            packet.position,
+            packet.delta_movement,
+            packet.y_rot,
+            packet.x_rot,
+            packet.relatives_mask,
+        );
+        entity.position = absolute.position;
+        entity.delta_movement = absolute.delta_movement;
+        entity.y_rot = absolute.y_rot;
+        entity.x_rot = absolute.x_rot;
+        entity.on_ground = Some(packet.on_ground);
+        self.counters.entity_teleports_applied += 1;
+        true
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct EntityMoveRotation {
