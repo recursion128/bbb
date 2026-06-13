@@ -59,6 +59,7 @@ impl BlockModelFace {
 pub struct BlockFaceTextures {
     pub textures: [String; 6],
     pub tint_indices: [Option<i32>; 6],
+    pub force_translucent: [bool; 6],
 }
 
 impl BlockFaceTextures {
@@ -68,6 +69,10 @@ impl BlockFaceTextures {
 
     pub fn tint_index(&self, face: BlockModelFace) -> Option<i32> {
         self.tint_indices[face.index()]
+    }
+
+    pub fn force_translucent(&self, face: BlockModelFace) -> bool {
+        self.force_translucent[face.index()]
     }
 }
 
@@ -105,12 +110,14 @@ pub struct BlockModelBox {
     pub face_cull: [Option<BlockModelFace>; 6],
     pub face_tint_indices: [Option<i32>; 6],
     pub face_textures: [Option<String>; 6],
+    pub face_force_translucent: [bool; 6],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockModelCross {
     pub face_textures: [Option<String>; 6],
     pub face_tint_indices: [Option<i32>; 6],
+    pub face_force_translucent: [bool; 6],
     pub shade: bool,
     pub light_emission: u8,
 }

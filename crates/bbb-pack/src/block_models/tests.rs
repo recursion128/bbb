@@ -132,6 +132,7 @@ fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {
     assert_eq!(textures.tint_index(BlockModelFace::Down), None);
     assert_eq!(textures.tint_index(BlockModelFace::Up), Some(0));
     assert_eq!(textures.tint_index(BlockModelFace::North), Some(0));
+    assert!(!textures.force_translucent(BlockModelFace::Up));
 
     properties.insert("snowy".to_string(), "true".to_string());
     let snowy = catalog
@@ -143,6 +144,8 @@ fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {
         "minecraft:block/snow"
     );
     assert_eq!(snowy.face_textures.tint_index(BlockModelFace::Up), Some(0));
+    assert!(snowy.face_textures.force_translucent(BlockModelFace::Up));
+    assert!(!snowy.face_textures.force_translucent(BlockModelFace::North));
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -343,7 +346,10 @@ fn block_model_catalog_preserves_emissive_cross_layers() {
         r##"{
             "textures": {
                 "cross": "minecraft:block/test_flower",
-                "cross_emissive": "minecraft:block/test_flower_emissive"
+                "cross_emissive": {
+                    "sprite": "minecraft:block/test_flower_emissive",
+                    "force_translucent": true
+                }
             },
             "elements": [
                 {
@@ -416,6 +422,8 @@ fn block_model_catalog_preserves_emissive_cross_layers() {
         crosses[1].face_textures[BlockModelFace::East.index()].as_deref(),
         Some("minecraft:block/test_flower_emissive")
     );
+    assert!(crosses[1].face_force_translucent[BlockModelFace::East.index()]);
+    assert!(!crosses[0].face_force_translucent[BlockModelFace::North.index()]);
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -510,7 +518,10 @@ fn block_model_catalog_extracts_single_box_geometry() {
             "textures": {
                 "bottom": "minecraft:block/oak_planks",
                 "side": "minecraft:block/oak_planks",
-                "top": "minecraft:block/oak_planks"
+                "top": {
+                    "sprite": "minecraft:block/oak_planks",
+                    "force_translucent": true
+                }
             }
         }"##,
     );
@@ -541,10 +552,15 @@ fn block_model_catalog_extracts_single_box_geometry() {
         Some(BlockModelFace::South)
     );
     assert_eq!(model_box.face_cull[BlockModelFace::Up.index()], None);
+    assert!(model_box.face_force_translucent[BlockModelFace::Up.index()]);
+    assert!(!model_box.face_force_translucent[BlockModelFace::North.index()]);
     assert_eq!(
         render_model.face_textures.get(BlockModelFace::North),
         "minecraft:block/oak_planks"
     );
+    assert!(render_model
+        .face_textures
+        .force_translucent(BlockModelFace::Up));
 
     std::fs::remove_dir_all(root).unwrap();
 }

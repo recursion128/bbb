@@ -172,12 +172,14 @@ fn model_crosses_preserve_per_layer_textures_tints_and_light() {
             bbb_pack::BlockModelCross {
                 face_textures: base_textures,
                 face_tint_indices: [None; 6],
+                face_force_translucent: [false; 6],
                 shade: false,
                 light_emission: 0,
             },
             bbb_pack::BlockModelCross {
                 face_textures: emissive_textures,
                 face_tint_indices: emissive_tints,
+                face_force_translucent: [false; 6],
                 shade: false,
                 light_emission: 15,
             },
@@ -463,5 +465,6 @@ fn block_model_box_with_face_texture(
         face_cull: [None; 6],
         face_tint_indices,
         face_textures,
+        face_force_translucent: [false; 6],
     }
 }

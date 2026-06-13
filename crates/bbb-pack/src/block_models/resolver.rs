@@ -2,14 +2,21 @@ use std::collections::{BTreeMap, HashSet};
 
 use super::{
     classify_model_shape, BlockFaceTextures, BlockModelCatalog, BlockModelFace, BlockModelShape,
-    RawBlockModel,
+    RawBlockElement, RawBlockModel,
 };
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct ResolvedBlockModel {
-    textures: BTreeMap<String, String>,
+    textures: BTreeMap<String, ResolvedTextureReference>,
     faces: [Option<ResolvedModelFace>; 6],
+    elements: Vec<RawBlockElement>,
     pub(super) shape: BlockModelShape,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ResolvedTextureReference {
+    pub(super) id: String,
+    pub(super) force_translucent: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,7 +27,7 @@ struct ResolvedModelFace {
 
 impl ResolvedBlockModel {
     pub(super) fn face_textures(&self) -> Option<BlockFaceTextures> {
-        let resolved_faces: [Option<String>; 6] = std::array::from_fn(|index| {
+        let resolved_faces: [Option<ResolvedTextureReference>; 6] = std::array::from_fn(|index| {
             self.faces[index]
                 .as_ref()
                 .and_then(|face| resolve_texture_alias(&self.textures, &face.texture))
@@ -28,13 +35,21 @@ impl ResolvedBlockModel {
         let fallback = self
             .textures
             .get("particle")
-            .and_then(|texture| resolve_texture_alias(&self.textures, texture))
+            .and_then(|texture| resolve_texture_reference(&self.textures, texture))
             .or_else(|| resolved_faces.iter().find_map(Clone::clone))?;
         Some(BlockFaceTextures {
             textures: std::array::from_fn(|index| {
                 resolved_faces[index]
+                    .as_ref()
+                    .unwrap_or(&fallback)
+                    .id
                     .clone()
-                    .unwrap_or_else(|| fallback.clone())
+            }),
+            force_translucent: std::array::from_fn(|index| {
+                resolved_faces[index]
+                    .as_ref()
+                    .unwrap_or(&fallback)
+                    .force_translucent
             }),
             tint_indices: std::array::from_fn(|index| {
                 self.faces[index].as_ref().and_then(|face| face.tint_index)
@@ -65,15 +80,24 @@ fn resolve_model_inner(
         .and_then(|parent| resolve_model_inner(models, parent, seen))
         .unwrap_or_default();
 
+    let mut textures_changed = false;
     for (key, value) in &raw.textures {
-        if let Some(value) = value.texture_id() {
-            resolved.textures.insert(key.clone(), value.to_string());
+        if let Some(id) = value.texture_id() {
+            resolved.textures.insert(
+                key.clone(),
+                ResolvedTextureReference {
+                    id: id.to_string(),
+                    force_translucent: value.force_translucent(),
+                },
+            );
+            textures_changed = true;
         }
     }
 
     if !raw.elements.is_empty() {
+        resolved.elements = raw.elements.clone();
         resolved.faces = std::array::from_fn(|_| None);
-        resolved.shape = classify_model_shape(&raw.elements, &resolved.textures);
+        resolved.shape = classify_model_shape(&resolved.elements, &resolved.textures);
         for element in &raw.elements {
             for (face_name, face) in &element.faces {
                 let Some(face_kind) = BlockModelFace::from_name(face_name) else {
@@ -88,6 +112,8 @@ fn resolve_model_inner(
                 }
             }
         }
+    } else if textures_changed && !resolved.elements.is_empty() {
+        resolved.shape = classify_model_shape(&resolved.elements, &resolved.textures);
     }
 
     seen.remove(&model_id);
@@ -95,19 +121,39 @@ fn resolve_model_inner(
 }
 
 pub(super) fn resolve_texture_alias(
-    textures: &BTreeMap<String, String>,
+    textures: &BTreeMap<String, ResolvedTextureReference>,
     texture: &str,
-) -> Option<String> {
+) -> Option<ResolvedTextureReference> {
+    resolve_texture_alias_with_force(textures, texture, false)
+}
+
+fn resolve_texture_reference(
+    textures: &BTreeMap<String, ResolvedTextureReference>,
+    texture: &ResolvedTextureReference,
+) -> Option<ResolvedTextureReference> {
+    resolve_texture_alias_with_force(textures, &texture.id, texture.force_translucent)
+}
+
+fn resolve_texture_alias_with_force(
+    textures: &BTreeMap<String, ResolvedTextureReference>,
+    texture: &str,
+    mut force_translucent: bool,
+) -> Option<ResolvedTextureReference> {
     let mut current = texture;
     let mut seen = HashSet::new();
     loop {
         let Some(alias) = current.strip_prefix('#') else {
-            return Some(normalize_texture_id(current));
+            return Some(ResolvedTextureReference {
+                id: normalize_texture_id(current),
+                force_translucent,
+            });
         };
         if !seen.insert(alias.to_string()) {
             return None;
         }
-        current = textures.get(alias)?;
+        let texture = textures.get(alias)?;
+        force_translucent |= texture.force_translucent;
+        current = &texture.id;
     }
 }
 

@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use super::{
     resolve_texture_alias, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelShape,
-    RawBlockElement,
+    RawBlockElement, ResolvedTextureReference,
 };
 
 pub(super) fn classify_model_shape(
     elements: &[RawBlockElement],
-    textures: &BTreeMap<String, String>,
+    textures: &BTreeMap<String, ResolvedTextureReference>,
 ) -> BlockModelShape {
     let has_element_rotation = elements.iter().any(|element| element.rotation.is_some());
     let has_box_metadata_transforms = elements.iter().any(has_box_metadata_transform);
@@ -126,7 +126,7 @@ fn is_full_cube_element(element: &RawBlockElement) -> bool {
 
 fn single_box_shape(
     elements: &[RawBlockElement],
-    textures: &BTreeMap<String, String>,
+    textures: &BTreeMap<String, ResolvedTextureReference>,
 ) -> Option<BlockModelBox> {
     let [element] = elements else {
         return None;
@@ -136,7 +136,7 @@ fn single_box_shape(
 
 fn multi_box_shape(
     elements: &[RawBlockElement],
-    textures: &BTreeMap<String, String>,
+    textures: &BTreeMap<String, ResolvedTextureReference>,
 ) -> Option<Vec<BlockModelBox>> {
     if elements.len() <= 1 {
         return None;
@@ -149,7 +149,7 @@ fn multi_box_shape(
 
 fn element_box_shape(
     element: &RawBlockElement,
-    textures: &BTreeMap<String, String>,
+    textures: &BTreeMap<String, ResolvedTextureReference>,
 ) -> Option<BlockModelBox> {
     let from = element.from.and_then(quantize_vec3_0_16)?;
     let to = element.to.and_then(quantize_vec3_0_16)?;
@@ -165,27 +165,34 @@ fn element_box_shape(
     let mut face_cull = [None; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
+    let mut face_force_translucent = [false; 6];
     let element_shade = element_shade(element);
     let element_light_emission = element_light_emission(element)?;
     for (face_name, raw_face) in &element.faces {
         let face = BlockModelFace::from_name(face_name)?;
+        let index = face.index();
         face_present[face.index()] = true;
-        face_uvs[face.index()] = raw_face
+        face_uvs[index] = raw_face
             .uv
             .and_then(quantize_uv_0_16)
             .unwrap_or_else(|| default_face_uv(from, to, face));
-        face_uv_rotations[face.index()] = raw_face
+        face_uv_rotations[index] = raw_face
             .rotation
             .map(quantize_face_uv_rotation)
             .unwrap_or(Some(0))?;
-        face_shade[face.index()] = element_shade;
-        face_light_emission[face.index()] = element_light_emission;
-        face_cull[face.index()] = raw_face
+        face_shade[index] = element_shade;
+        face_light_emission[index] = element_light_emission;
+        face_cull[index] = raw_face
             .cullface
             .as_deref()
             .and_then(BlockModelFace::from_name);
-        face_tint_indices[face.index()] = raw_face.tintindex;
-        face_textures[face.index()] = resolve_texture_alias(textures, &raw_face.texture);
+        face_tint_indices[index] = raw_face.tintindex;
+        let resolved_texture = resolve_texture_alias(textures, &raw_face.texture);
+        face_force_translucent[index] = resolved_texture
+            .as_ref()
+            .map(|texture| texture.force_translucent)
+            .unwrap_or(false);
+        face_textures[index] = resolved_texture.map(|texture| texture.id);
     }
 
     Some(BlockModelBox {
@@ -199,6 +206,7 @@ fn element_box_shape(
         face_cull,
         face_tint_indices,
         face_textures,
+        face_force_translucent,
     })
 }
 
@@ -263,7 +271,7 @@ fn single_cross_shape(elements: &[RawBlockElement]) -> Option<BlockModelShape> {
 
 fn multi_cross_shape(
     elements: &[RawBlockElement],
-    textures: &BTreeMap<String, String>,
+    textures: &BTreeMap<String, ResolvedTextureReference>,
 ) -> Option<Vec<BlockModelCross>> {
     if elements.len() <= 2 {
         return None;
@@ -286,7 +294,12 @@ fn multi_cross_shape(
             }
             element_faces[index] = true;
             element_face_count += 1;
-            current.face_textures[index] = resolve_texture_alias(textures, &raw_face.texture);
+            let resolved_texture = resolve_texture_alias(textures, &raw_face.texture);
+            current.face_force_translucent[index] = resolved_texture
+                .as_ref()
+                .map(|texture| texture.force_translucent)
+                .unwrap_or(false);
+            current.face_textures[index] = resolved_texture.map(|texture| texture.id);
             current.face_tint_indices[index] = raw_face.tintindex;
         }
 
@@ -316,6 +329,7 @@ fn empty_cross() -> BlockModelCross {
     BlockModelCross {
         face_textures: std::array::from_fn(|_| None),
         face_tint_indices: [None; 6],
+        face_force_translucent: [false; 6],
         shade: true,
         light_emission: 0,
     }

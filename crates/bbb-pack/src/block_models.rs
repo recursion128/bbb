@@ -13,7 +13,7 @@ mod types;
 
 use blockstates::RawBlockstate;
 use raw_model::{RawBlockElement, RawBlockModel};
-use resolver::resolve_texture_alias;
+use resolver::{resolve_texture_alias, ResolvedTextureReference};
 use rotation::{apply_variant_rotation, rotate_model_shape};
 use shape::{classify_model_shape, combine_model_shapes};
 pub use types::{

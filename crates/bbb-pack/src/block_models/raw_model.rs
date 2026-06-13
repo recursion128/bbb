@@ -19,6 +19,8 @@ pub(super) enum RawTextureReference {
     Object {
         #[serde(default)]
         sprite: Option<String>,
+        #[serde(default)]
+        force_translucent: bool,
     },
 }
 
@@ -26,7 +28,16 @@ impl RawTextureReference {
     pub(super) fn texture_id(&self) -> Option<&str> {
         match self {
             Self::String(value) => Some(value),
-            Self::Object { sprite } => sprite.as_deref(),
+            Self::Object { sprite, .. } => sprite.as_deref(),
+        }
+    }
+
+    pub(super) fn force_translucent(&self) -> bool {
+        match self {
+            Self::String(_) => false,
+            Self::Object {
+                force_translucent, ..
+            } => *force_translucent,
         }
     }
 }

@@ -17,6 +17,7 @@ pub(super) fn apply_variant_rotation(
                 .unwrap_or_else(|| local.textures[index].clone())
         }),
         tint_indices: rotate_face_values(local.tint_indices, x_degrees, y_degrees),
+        force_translucent: rotate_face_values(local.force_translucent, x_degrees, y_degrees),
     }
 }
 
@@ -104,6 +105,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
     let mut face_cull = [None; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
+    let mut face_force_translucent = [false; 6];
     for face in BlockModelFace::ALL {
         let target = face.rotate(x_degrees, y_degrees);
         face_present[target.index()] = model_box.face_present[face.index()];
@@ -115,6 +117,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
             .map(|cull_face| cull_face.rotate(x_degrees, y_degrees));
         face_tint_indices[target.index()] = model_box.face_tint_indices[face.index()];
         face_textures[target.index()] = model_box.face_textures[face.index()].clone();
+        face_force_translucent[target.index()] = model_box.face_force_translucent[face.index()];
     }
 
     BlockModelBox {
@@ -128,6 +131,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
         face_cull,
         face_tint_indices,
         face_textures,
+        face_force_translucent,
     }
 }
 
@@ -138,15 +142,18 @@ fn rotate_model_cross(
 ) -> BlockModelCross {
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
     let mut face_tint_indices = [None; 6];
+    let mut face_force_translucent = [false; 6];
     for face in BlockModelFace::ALL {
         let target = face.rotate(x_degrees, y_degrees);
         face_textures[target.index()] = model_cross.face_textures[face.index()].clone();
         face_tint_indices[target.index()] = model_cross.face_tint_indices[face.index()];
+        face_force_translucent[target.index()] = model_cross.face_force_translucent[face.index()];
     }
 
     BlockModelCross {
         face_textures,
         face_tint_indices,
+        face_force_translucent,
         shade: model_cross.shade,
         light_emission: model_cross.light_emission,
     }
