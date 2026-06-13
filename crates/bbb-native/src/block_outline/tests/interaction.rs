@@ -174,6 +174,28 @@ fn door_outline_clip_uses_thin_direction_shape() {
 }
 
 #[test]
+fn ladder_outline_clip_uses_thin_direction_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(Some("minecraft:ladder"), &ladder_properties("south")),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 0.5, -1.0],
+            [0.0, 0.0, 1.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::North,
+            inside: false,
+        })
+    );
+}
+
+#[test]
 fn fence_outline_clip_hits_connected_arm_before_post() {
     let target = BlockOutlineTarget {
         material: TerrainMaterialClass::Opaque,

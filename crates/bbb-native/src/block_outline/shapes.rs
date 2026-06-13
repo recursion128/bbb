@@ -27,6 +27,9 @@ pub(super) fn outline_shape_for_block(
     if is_door_block_name(block_name) {
         return door_outline_shape(properties);
     }
+    if block_name == "minecraft:ladder" {
+        return ladder_outline_shape(properties);
+    }
     if is_fence_gate_block_name(block_name) {
         return fence_gate_outline_shape(properties);
     }
@@ -255,6 +258,16 @@ fn door_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutl
         HorizontalDirection::East => BlockOutlineBox::DOOR_EAST,
         HorizontalDirection::South => BlockOutlineBox::DOOR_SOUTH,
         HorizontalDirection::West => BlockOutlineBox::DOOR_WEST,
+    };
+    Some(BlockOutlineShape::single(outline))
+}
+
+fn ladder_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let outline = match HorizontalDirection::parse(properties.get("facing")?)? {
+        HorizontalDirection::North => BlockOutlineBox::LADDER_NORTH,
+        HorizontalDirection::East => BlockOutlineBox::LADDER_EAST,
+        HorizontalDirection::South => BlockOutlineBox::LADDER_SOUTH,
+        HorizontalDirection::West => BlockOutlineBox::LADDER_WEST,
     };
     Some(BlockOutlineShape::single(outline))
 }

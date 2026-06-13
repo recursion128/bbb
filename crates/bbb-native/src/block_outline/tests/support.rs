@@ -46,6 +46,13 @@ pub(super) fn door_properties(
     ])
 }
 
+pub(super) fn ladder_properties(facing: &str) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("waterlogged".to_string(), "false".to_string()),
+    ])
+}
+
 pub(super) fn fence_properties<const N: usize>(connected: [&str; N]) -> BTreeMap<String, String> {
     let mut properties = BTreeMap::from([
         ("north".to_string(), "false".to_string()),

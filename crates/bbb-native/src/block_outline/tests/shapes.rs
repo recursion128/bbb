@@ -305,6 +305,38 @@ fn outline_shape_rejects_invalid_door_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_ladder_direction_shape() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:ladder"), &ladder_properties("north")),
+        Some(BlockOutlineShape::single(BlockOutlineBox::LADDER_NORTH))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:ladder"), &ladder_properties("east")),
+        Some(BlockOutlineShape::single(BlockOutlineBox::LADDER_EAST))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:ladder"), &ladder_properties("south")),
+        Some(BlockOutlineShape::single(BlockOutlineBox::LADDER_SOUTH))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:ladder"), &ladder_properties("west")),
+        Some(BlockOutlineShape::single(BlockOutlineBox::LADDER_WEST))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_ladder_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:ladder"), &BTreeMap::new()),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:ladder"), &ladder_properties("up")),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_disconnected_fence_post() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:oak_fence"), &fence_properties([])),
