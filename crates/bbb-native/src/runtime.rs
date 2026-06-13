@@ -83,13 +83,11 @@ pub(crate) fn pump_network_and_terrain(
     publish_snapshot(snapshot, renderer.counters(), net_counters, world)
 }
 
-pub(crate) fn clear_color_for_world(counters: &NetCounters) -> ClearColor {
-    let day_time = counters
-        .world_time
-        .map(|time| time.day_time)
-        .unwrap_or(6000);
-    let rain = counters.weather.rain_level.clamp(0.0, 1.0) as f64;
-    let thunder = counters.weather.thunder_level.clamp(0.0, 1.0) as f64;
+pub(crate) fn clear_color_for_world(world: &WorldStore) -> ClearColor {
+    let day_time = world.world_time().map(|time| time.day_time).unwrap_or(6000);
+    let weather = world.weather();
+    let rain = weather.rain_level.clamp(0.0, 1.0) as f64;
+    let thunder = weather.thunder_level.clamp(0.0, 1.0) as f64;
     clear_color_for_day_time(day_time, rain, thunder)
 }
 

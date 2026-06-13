@@ -145,6 +145,16 @@ pub(super) fn apply_ticking_step_update(
     counters.ticking_step_packets += 1;
 }
 
+pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let ticking = world.ticking();
+    counters.ticking.tick_rate = ticking.tick_rate;
+    counters.ticking.frozen = ticking.frozen;
+    counters.ticking.frozen_ticks_to_run = ticking.frozen_ticks_to_run;
+    let world_counters = world.counters();
+    counters.ticking_state_packets = world_counters.ticking_state_packets;
+    counters.ticking_step_packets = world_counters.ticking_step_packets;
+}
+
 pub(super) fn apply_set_camera_update(
     counters: &mut NetCounters,
     world: &WorldStore,

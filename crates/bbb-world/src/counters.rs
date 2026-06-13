@@ -29,6 +29,14 @@ pub struct WorldCounters {
     pub last_registry_data_entry_count: usize,
     pub play_logins_received: usize,
     pub respawns_received: usize,
+    #[serde(default)]
+    pub world_time_packets: usize,
+    #[serde(default)]
+    pub game_event_packets: usize,
+    #[serde(default)]
+    pub ticking_state_packets: usize,
+    #[serde(default)]
+    pub ticking_step_packets: usize,
     pub chunks_received: usize,
     pub chunks_decoded: usize,
     pub sections_decoded: usize,

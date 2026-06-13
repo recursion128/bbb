@@ -1,6 +1,8 @@
 use bbb_protocol::packets::{
-    CommonPlayerSpawnInfo as ProtocolSpawnInfo, PlayLogin as ProtocolPlayLogin,
-    Respawn as ProtocolRespawn,
+    ClockUpdate as ProtocolClockUpdate, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
+    GameEvent as ProtocolGameEvent, PlayLogin as ProtocolPlayLogin, PlayTime as ProtocolPlayTime,
+    Respawn as ProtocolRespawn, TickingState as ProtocolTickingState,
+    TickingStep as ProtocolTickingStep,
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +43,70 @@ pub struct WorldLevelInfo {
     pub is_flat: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WorldTimeState {
+    pub game_time: i64,
+    pub day_time: i64,
+    pub clock_updates: Vec<ClockUpdateState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ClockUpdateState {
+    pub clock_id: i32,
+    pub total_ticks: i64,
+    pub partial_tick: f32,
+    pub rate: f32,
+}
+
+impl From<ProtocolClockUpdate> for ClockUpdateState {
+    fn from(update: ProtocolClockUpdate) -> Self {
+        Self {
+            clock_id: update.clock_id,
+            total_ticks: update.total_ticks,
+            partial_tick: update.partial_tick,
+            rate: update.rate,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WorldWeatherState {
+    pub raining: bool,
+    pub rain_level: f32,
+    pub thunder_level: f32,
+    pub last_game_event_id: Option<u8>,
+    pub last_game_event_param: f32,
+}
+
+impl Default for WorldWeatherState {
+    fn default() -> Self {
+        Self {
+            raining: false,
+            rain_level: 0.0,
+            thunder_level: 0.0,
+            last_game_event_id: None,
+            last_game_event_param: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WorldTickingState {
+    pub tick_rate: f32,
+    pub frozen: bool,
+    pub frozen_ticks_to_run: i32,
+}
+
+impl Default for WorldTickingState {
+    fn default() -> Self {
+        Self {
+            tick_rate: 20.0,
+            frozen: false,
+            frozen_ticks_to_run: 0,
+        }
+    }
+}
+
 impl WorldStore {
     pub fn with_dimension(dimension: WorldDimension) -> Self {
         Self {
@@ -64,6 +130,67 @@ impl WorldStore {
     pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) {
         self.counters.respawns_received += 1;
         self.apply_spawn_info(&respawn.common_spawn_info);
+    }
+
+    pub fn apply_world_time(&mut self, time: ProtocolPlayTime) -> &WorldTimeState {
+        self.counters.world_time_packets += 1;
+        let clock_updates: Vec<_> = time
+            .clock_updates
+            .into_iter()
+            .map(ClockUpdateState::from)
+            .collect();
+        let day_time = clock_updates
+            .first()
+            .map(|clock| clock.total_ticks)
+            .unwrap_or(time.game_time);
+        self.world_time = Some(WorldTimeState {
+            game_time: time.game_time,
+            day_time,
+            clock_updates,
+        });
+        self.world_time
+            .as_ref()
+            .expect("world time was just updated")
+    }
+
+    pub fn apply_game_event(&mut self, event: ProtocolGameEvent) -> WorldWeatherState {
+        self.counters.game_event_packets += 1;
+        self.weather.last_game_event_id = Some(event.event_id);
+        self.weather.last_game_event_param = event.param;
+
+        match event.event_id {
+            1 => {
+                self.weather.rain_level = 0.0;
+                self.weather.raining = false;
+            }
+            2 => {
+                self.weather.rain_level = 1.0;
+                self.weather.raining = true;
+            }
+            7 => {
+                self.weather.rain_level = event.param.clamp(0.0, 1.0);
+                self.weather.raining = self.weather.rain_level > 0.0;
+            }
+            8 => {
+                self.weather.thunder_level = event.param.clamp(0.0, 1.0);
+            }
+            _ => {}
+        }
+
+        self.weather
+    }
+
+    pub fn apply_ticking_state(&mut self, ticking: ProtocolTickingState) -> WorldTickingState {
+        self.counters.ticking_state_packets += 1;
+        self.ticking.tick_rate = ticking.clamped_tick_rate();
+        self.ticking.frozen = ticking.frozen;
+        self.ticking
+    }
+
+    pub fn apply_ticking_step(&mut self, step: ProtocolTickingStep) -> WorldTickingState {
+        self.counters.ticking_step_packets += 1;
+        self.ticking.frozen_ticks_to_run = step.tick_steps;
+        self.ticking
     }
 
     fn apply_spawn_info(&mut self, spawn_info: &ProtocolSpawnInfo) {
@@ -101,6 +228,18 @@ impl WorldStore {
 
     pub fn level_info(&self) -> Option<&WorldLevelInfo> {
         self.level.as_ref()
+    }
+
+    pub fn world_time(&self) -> Option<&WorldTimeState> {
+        self.world_time.as_ref()
+    }
+
+    pub fn weather(&self) -> WorldWeatherState {
+        self.weather
+    }
+
+    pub fn ticking(&self) -> WorldTickingState {
+        self.ticking
     }
 }
 
@@ -268,6 +407,72 @@ mod tests {
             level.dimension_type_name.as_deref(),
             Some("minecraft:the_end")
         );
+    }
+
+    #[test]
+    fn world_time_weather_and_ticking_are_canonical_state() {
+        let mut store = WorldStore::new();
+
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 123,
+            clock_updates: vec![ProtocolClockUpdate {
+                clock_id: 0,
+                total_ticks: 6000,
+                partial_tick: 0.25,
+                rate: 1.0,
+            }],
+        });
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: 7,
+            param: 0.5,
+        });
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: 8,
+            param: 0.75,
+        });
+        store.apply_ticking_state(ProtocolTickingState {
+            tick_rate: 0.25,
+            frozen: true,
+        });
+        store.apply_ticking_step(ProtocolTickingStep { tick_steps: 7 });
+
+        let time = store.world_time().unwrap();
+        assert_eq!(time.game_time, 123);
+        assert_eq!(time.day_time, 6000);
+        assert_eq!(
+            time.clock_updates,
+            vec![ClockUpdateState {
+                clock_id: 0,
+                total_ticks: 6000,
+                partial_tick: 0.25,
+                rate: 1.0,
+            }]
+        );
+
+        assert_eq!(
+            store.weather(),
+            WorldWeatherState {
+                raining: true,
+                rain_level: 0.5,
+                thunder_level: 0.75,
+                last_game_event_id: Some(8),
+                last_game_event_param: 0.75,
+            }
+        );
+        assert_eq!(
+            store.ticking(),
+            WorldTickingState {
+                tick_rate: 1.0,
+                frozen: true,
+                frozen_ticks_to_run: 7,
+            }
+        );
+
+        let counters = store.counters();
+        assert_eq!(counters.world_time_packets, 1);
+        assert_eq!(counters.game_event_packets, 2);
+        assert_eq!(counters.ticking_state_packets, 1);
+        assert_eq!(counters.ticking_step_packets, 1);
     }
 
     fn stale_chunk() -> ChunkColumn {

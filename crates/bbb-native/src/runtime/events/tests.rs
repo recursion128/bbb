@@ -1,5 +1,5 @@
 use super::*;
-use crate::runtime::clear_color_for_day_time;
+use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
@@ -2061,26 +2061,64 @@ fn minecart_along_track_event_updates_world_state() {
 
 #[test]
 fn world_time_and_weather_update_snapshot_and_clear_color() {
-    let mut counters = NetCounters::default();
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::SetTime(bbb_protocol::packets::PlayTime {
+        game_time: 123,
+        clock_updates: vec![bbb_protocol::packets::ClockUpdate {
+            clock_id: 0,
+            total_ticks: 6000,
+            partial_tick: 0.0,
+            rate: 1.0,
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
+        event_id: 7,
+        param: 0.5,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::TickingState(
+        bbb_protocol::packets::TickingState {
+            tick_rate: 0.25,
+            frozen: true,
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::TickingStep(bbb_protocol::packets::TickingStep {
+        tick_steps: 7,
+    }))
+    .unwrap();
 
-    apply_world_time_update(
-        &mut counters,
-        bbb_protocol::packets::PlayTime {
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        4
+    );
+
+    assert_eq!(
+        world.world_time(),
+        Some(&bbb_world::WorldTimeState {
             game_time: 123,
             clock_updates: vec![bbb_protocol::packets::ClockUpdate {
                 clock_id: 0,
                 total_ticks: 6000,
                 partial_tick: 0.0,
                 rate: 1.0,
-            }],
-        },
+            }
+            .into()],
+            day_time: 6000,
+        })
     );
-    apply_game_event(
-        &mut counters,
-        bbb_protocol::packets::GameEvent {
-            event_id: 7,
-            param: 0.5,
-        },
+    assert_eq!(world.weather().rain_level, 0.5);
+    assert_eq!(
+        world.ticking(),
+        bbb_world::WorldTickingState {
+            tick_rate: 1.0,
+            frozen: true,
+            frozen_ticks_to_run: 7,
+        }
     );
 
     assert_eq!(
@@ -2093,8 +2131,17 @@ fn world_time_and_weather_update_snapshot_and_clear_color() {
     );
     assert!(counters.weather.raining);
     assert_eq!(counters.weather.rain_level, 0.5);
+    assert_eq!(counters.ticking.tick_rate, 1.0);
+    assert!(counters.ticking.frozen);
+    assert_eq!(counters.ticking.frozen_ticks_to_run, 7);
     assert_eq!(counters.world_time_packets, 1);
     assert_eq!(counters.game_event_packets, 1);
+    assert_eq!(counters.ticking_state_packets, 1);
+    assert_eq!(counters.ticking_step_packets, 1);
+
+    let world_color = clear_color_for_world(&world);
+    let expected_world_color = clear_color_for_day_time(6000, 0.5, 0.0);
+    assert_eq!(world_color, expected_world_color);
 
     let day = clear_color_for_day_time(6000, 0.0, 0.0);
     let night = clear_color_for_day_time(18000, 0.0, 0.0);

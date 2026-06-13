@@ -108,7 +108,7 @@ fn main() -> Result<()> {
                         target.exit();
                         return;
                     }
-                    renderer.set_clear_color(clear_color_for_world(&net_counters));
+                    renderer.set_clear_color(clear_color_for_world(&world));
 
                     let terrain_ready_for_screenshot =
                         !screenshot_after_terrain || terrain_upload.has_uploaded_chunks();

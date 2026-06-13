@@ -16,6 +16,12 @@ pub struct WorldStore {
     pub(crate) level: Option<WorldLevelInfo>,
     #[serde(default)]
     pub(crate) world_border: WorldBorderState,
+    #[serde(default)]
+    pub(crate) world_time: Option<crate::WorldTimeState>,
+    #[serde(default)]
+    pub(crate) weather: crate::WorldWeatherState,
+    #[serde(default)]
+    pub(crate) ticking: crate::WorldTickingState,
     pub(crate) registries: RegistrySet,
     pub(crate) chunks: Vec<ChunkColumn>,
     #[serde(default)]

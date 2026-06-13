@@ -7,7 +7,7 @@ use crate::input::queue_vehicle_move_command;
 
 use super::client_state::*;
 use super::control_state::{apply_control_projection_event, sync_registry_counters};
-use super::{apply_block_changed_ack, apply_game_event, apply_world_time_update};
+use super::{apply_block_changed_ack, sync_weather_counters, sync_world_time_counters};
 
 pub(in crate::runtime) fn drain_net_events(
     rx: &mut mpsc::Receiver<NetEvent>,
@@ -309,10 +309,12 @@ pub(in crate::runtime) fn drain_net_events(
                 apply_titles_animation_update(counters, animation);
             }
             NetEvent::TickingState(ticking) => {
-                apply_ticking_state_update(counters, ticking);
+                world.apply_ticking_state(ticking);
+                sync_ticking_counters(counters, world);
             }
             NetEvent::TickingStep(step) => {
-                apply_ticking_step_update(counters, step);
+                world.apply_ticking_step(step);
+                sync_ticking_counters(counters, world);
             }
             NetEvent::SetCamera(camera) => {
                 apply_set_camera_update(counters, world, camera);
@@ -327,10 +329,12 @@ pub(in crate::runtime) fn drain_net_events(
                 }
             },
             NetEvent::GameEvent(event) => {
-                apply_game_event(counters, event);
+                world.apply_game_event(event);
+                sync_weather_counters(counters, world);
             }
             NetEvent::SetTime(time) => {
-                apply_world_time_update(counters, time);
+                world.apply_world_time(time);
+                sync_world_time_counters(counters, world);
             }
             NetEvent::LevelChunkWithLight(chunk) => {
                 match world.insert_level_chunk_with_light(chunk) {
