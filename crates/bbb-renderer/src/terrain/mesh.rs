@@ -1,4 +1,5 @@
 mod emitter;
+mod fluid;
 mod geometry;
 
 use std::collections::HashMap;
