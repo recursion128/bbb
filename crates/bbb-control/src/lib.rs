@@ -43,6 +43,8 @@ pub struct NetCounters {
     pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub player_position_packets: usize,
+    pub player_info_update_packets: usize,
+    pub player_info_remove_packets: usize,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,

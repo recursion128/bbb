@@ -16,16 +16,16 @@ use bbb_protocol::{
         ForgetLevelChunk, GameEvent, HurtAnimation, InitializeBorder, InteractionHand,
         LevelChunkWithLight, LevelEvent, LightUpdate, LoginClientbound, MoveVehicle, OpenScreen,
         PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction,
-        PlayerCommand, PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState,
-        PlayerPositionUpdate, PlayerRotationUpdate, RemoveEntities, ResetScore, Respawn,
-        RotateHead, SectionBlocksUpdate, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
-        SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance, SetCamera,
-        SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
-        SetDisplayObjective, SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment,
-        SetHeldSlot, SetObjective, SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore,
-        SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat,
-        TabList, TakeItemEntity, TeleportEntity, TickingState, TickingStep, UpdateAttributes,
-        UseItem, UseItemOn, Vec3d,
+        PlayerCommand, PlayerExperience, PlayerHealth, PlayerInfoRemove, PlayerInfoUpdate,
+        PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
+        RemoveEntities, ResetScore, Respawn, RotateHead, SectionBlocksUpdate, SetActionBarText,
+        SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
+        SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
+        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
+        SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetPassengers,
+        SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
+        SetTitleText, SetTitlesAnimation, SystemChat, TabList, TakeItemEntity, TeleportEntity,
+        TickingState, TickingStep, UpdateAttributes, UseItem, UseItemOn, Vec3d,
     },
 };
 use bbb_world::{
@@ -133,6 +133,8 @@ pub enum NetEvent {
     Respawn(Respawn),
     PlayerPosition(PlayerPositionUpdate),
     PlayerRotation(PlayerRotationUpdate),
+    PlayerInfoUpdate(PlayerInfoUpdate),
+    PlayerInfoRemove(PlayerInfoRemove),
     PlayerAbilities(PlayerAbilities),
     PlayerHealth(PlayerHealth),
     PlayerExperience(PlayerExperience),
@@ -557,6 +559,12 @@ pub async fn run_offline_event_stream(
                     player_position_state = update.apply_to_state(player_position_state);
                     emit(&events, NetEvent::PlayerRotation(update)).await?;
                 }
+                PlayClientbound::PlayerInfoUpdate(update) => {
+                    emit(&events, NetEvent::PlayerInfoUpdate(update)).await?;
+                }
+                PlayClientbound::PlayerInfoRemove(update) => {
+                    emit(&events, NetEvent::PlayerInfoRemove(update)).await?;
+                }
                 PlayClientbound::EntityPositionSync(update) => {
                     emit(&events, NetEvent::EntityPositionSync(update)).await?;
                 }
@@ -979,6 +987,12 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::PlayerRotation(update) => {
                     player_position_state = update.apply_to_state(player_position_state);
+                }
+                PlayClientbound::PlayerInfoUpdate(update) => {
+                    world.apply_player_info_update(update);
+                }
+                PlayClientbound::PlayerInfoRemove(update) => {
+                    world.apply_player_info_remove(update);
                 }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     let pos = world.insert_level_chunk_with_light(chunk)?;

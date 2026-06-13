@@ -1864,6 +1864,14 @@ fn drain_net_events(
             NetEvent::PacketSeen { .. } => {
                 counters.packets_seen += 1;
             }
+            NetEvent::PlayerInfoUpdate(update) => {
+                counters.player_info_update_packets += 1;
+                world.apply_player_info_update(update);
+            }
+            NetEvent::PlayerInfoRemove(update) => {
+                counters.player_info_remove_packets += 1;
+                world.apply_player_info_remove(update);
+            }
             NetEvent::ContainerClose(update) => {
                 world.apply_container_close(update);
             }
@@ -3729,6 +3737,106 @@ mod tests {
         assert_eq!(world_counters.boss_bars_tracked, 1);
         assert_eq!(world_counters.tab_list_packets, 1);
         assert_eq!(world_counters.change_difficulty_packets, 1);
+    }
+
+    #[test]
+    fn player_info_events_update_world_and_counters() {
+        let profile_id = Uuid::from_u128(1);
+        let removed_profile_id = Uuid::from_u128(2);
+        let (tx, mut rx) = mpsc::channel(2);
+        tx.try_send(NetEvent::PlayerInfoUpdate(
+            bbb_protocol::packets::PlayerInfoUpdate {
+                actions: vec![
+                    bbb_protocol::packets::PlayerInfoAction::AddPlayer,
+                    bbb_protocol::packets::PlayerInfoAction::InitializeChat,
+                    bbb_protocol::packets::PlayerInfoAction::UpdateGameMode,
+                    bbb_protocol::packets::PlayerInfoAction::UpdateListed,
+                    bbb_protocol::packets::PlayerInfoAction::UpdateLatency,
+                    bbb_protocol::packets::PlayerInfoAction::UpdateDisplayName,
+                    bbb_protocol::packets::PlayerInfoAction::UpdateListOrder,
+                    bbb_protocol::packets::PlayerInfoAction::UpdateHat,
+                ],
+                entries: vec![
+                    bbb_protocol::packets::PlayerInfoEntry {
+                        profile_id,
+                        profile: Some(bbb_protocol::packets::GameProfile {
+                            uuid: profile_id,
+                            name: "Ada".to_string(),
+                            properties: vec![bbb_protocol::packets::GameProfileProperty {
+                                name: "textures".to_string(),
+                                value: "skin".to_string(),
+                                signature: Some("signature".to_string()),
+                            }],
+                        }),
+                        listed: true,
+                        latency: 42,
+                        game_mode: bbb_protocol::packets::GameType::Creative,
+                        display_name: Some("Ada Lovelace".to_string()),
+                        show_hat: true,
+                        list_order: 3,
+                        chat_session: Some(bbb_protocol::packets::PlayerInfoChatSession {
+                            session_id: Uuid::from_u128(3),
+                            expires_at_epoch_millis: 99,
+                            public_key: vec![1, 2],
+                            key_signature: vec![3, 4],
+                        }),
+                    },
+                    bbb_protocol::packets::PlayerInfoEntry {
+                        profile_id: removed_profile_id,
+                        profile: Some(bbb_protocol::packets::GameProfile {
+                            uuid: removed_profile_id,
+                            name: "Removed".to_string(),
+                            properties: Vec::new(),
+                        }),
+                        listed: true,
+                        latency: 7,
+                        game_mode: bbb_protocol::packets::GameType::Survival,
+                        display_name: None,
+                        show_hat: false,
+                        list_order: 0,
+                        chat_session: None,
+                    },
+                ],
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::PlayerInfoRemove(
+            bbb_protocol::packets::PlayerInfoRemove {
+                profile_ids: vec![removed_profile_id],
+            },
+        ))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            2
+        );
+        assert_eq!(counters.player_info_update_packets, 1);
+        assert_eq!(counters.player_info_remove_packets, 1);
+
+        let entry = world.player_info_entry(profile_id).unwrap();
+        assert_eq!(entry.profile.uuid, profile_id);
+        assert_eq!(entry.profile.name, "Ada");
+        assert_eq!(entry.profile.properties.len(), 1);
+        assert!(entry.listed);
+        assert_eq!(entry.latency, 42);
+        assert_eq!(entry.game_mode, "creative");
+        assert_eq!(entry.display_name.as_deref(), Some("Ada Lovelace"));
+        assert!(entry.show_hat);
+        assert_eq!(entry.list_order, 3);
+        assert!(entry.chat_session_present);
+        assert!(world.listed_players().contains(&profile_id));
+        assert!(world.player_info_entry(removed_profile_id).is_none());
+        assert!(!world.listed_players().contains(&removed_profile_id));
+
+        let world_counters = world.counters();
+        assert_eq!(world_counters.player_info_update_packets, 1);
+        assert_eq!(world_counters.player_info_remove_packets, 1);
+        assert_eq!(world_counters.player_info_entries_tracked, 1);
+        assert_eq!(world_counters.listed_players_tracked, 1);
     }
 
     #[test]
