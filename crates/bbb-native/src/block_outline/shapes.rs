@@ -27,6 +27,12 @@ pub(super) fn outline_shape_for_block(
     if is_cauldron_block_name(block_name) {
         return Some(cauldron_outline_shape());
     }
+    if block_name == "minecraft:ender_chest" {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::CHEST_SINGLE));
+    }
+    if is_standard_chest_block_name(block_name) {
+        return chest_outline_shape(properties);
+    }
     if is_flower_pot_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
     }
@@ -200,6 +206,32 @@ fn cauldron_outline_shape() -> BlockOutlineShape {
         BlockOutlineBox::from_pixels([2.0, 4.0, 0.0], [14.0, 16.0, 2.0]),
         BlockOutlineBox::from_pixels([2.0, 4.0, 14.0], [14.0, 16.0, 16.0]),
     ])
+}
+
+fn chest_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let outline = match properties.get("type").map(String::as_str)? {
+        "single" => BlockOutlineBox::CHEST_SINGLE,
+        "left" => {
+            let connected = HorizontalDirection::parse(properties.get("facing")?)?.clockwise();
+            chest_connected_outline(connected)
+        }
+        "right" => {
+            let connected =
+                HorizontalDirection::parse(properties.get("facing")?)?.counter_clockwise();
+            chest_connected_outline(connected)
+        }
+        _ => return None,
+    };
+    Some(BlockOutlineShape::single(outline))
+}
+
+fn chest_connected_outline(connected: HorizontalDirection) -> BlockOutlineBox {
+    match connected {
+        HorizontalDirection::North => BlockOutlineBox::CHEST_CONNECTED_NORTH,
+        HorizontalDirection::East => BlockOutlineBox::CHEST_CONNECTED_EAST,
+        HorizontalDirection::South => BlockOutlineBox::CHEST_CONNECTED_SOUTH,
+        HorizontalDirection::West => BlockOutlineBox::CHEST_CONNECTED_WEST,
+    }
 }
 
 fn wall_sign_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -572,6 +604,10 @@ fn is_cauldron_block_name(block_name: &str) -> bool {
             | "minecraft:lava_cauldron"
             | "minecraft:powder_snow_cauldron"
     )
+}
+
+fn is_standard_chest_block_name(block_name: &str) -> bool {
+    matches!(block_name, "minecraft:chest" | "minecraft:trapped_chest")
 }
 
 fn is_flower_pot_block_name(block_name: &str) -> bool {

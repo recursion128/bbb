@@ -133,6 +133,26 @@ impl BlockOutlineBox {
         min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
         max: [15.0 / 16.0, 1.5 / 16.0, 15.0 / 16.0],
     };
+    pub(super) const CHEST_SINGLE: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 14.0 / 16.0, 15.0 / 16.0],
+    };
+    pub(super) const CHEST_CONNECTED_NORTH: Self = Self {
+        min: [1.0 / 16.0, 0.0, 0.0],
+        max: [15.0 / 16.0, 14.0 / 16.0, 15.0 / 16.0],
+    };
+    pub(super) const CHEST_CONNECTED_EAST: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [1.0, 14.0 / 16.0, 15.0 / 16.0],
+    };
+    pub(super) const CHEST_CONNECTED_SOUTH: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 14.0 / 16.0, 1.0],
+    };
+    pub(super) const CHEST_CONNECTED_WEST: Self = Self {
+        min: [0.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 14.0 / 16.0, 15.0 / 16.0],
+    };
     pub(super) const SIGN: Self = Self {
         min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
         max: [12.0 / 16.0, 1.0, 12.0 / 16.0],
