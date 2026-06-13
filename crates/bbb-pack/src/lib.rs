@@ -1,4 +1,5 @@
 mod atlas;
+mod atlas_sources;
 mod block_models;
 mod colors;
 mod exports;
