@@ -6,8 +6,7 @@ use bbb_protocol::packets::{
 use bbb_renderer::{CameraPose, SelectionOutline};
 use bbb_world::{BlockPos, WorldStore};
 
-const SELECTION_MAX_DISTANCE: f64 = 5.0;
-const SELECTION_RAY_STEP: f64 = 0.05;
+const SELECTION_MAX_DISTANCE: f64 = 4.5;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct CrosshairBlockHit {
@@ -29,7 +28,7 @@ pub(crate) fn crosshair_block_hit_from_world(
     world: &WorldStore,
     pose: Option<PlayerPose>,
 ) -> Option<CrosshairBlockHit> {
-    raycast_crosshair_block_hit(pose?, SELECTION_MAX_DISTANCE, SELECTION_RAY_STEP, |pos| {
+    raycast_crosshair_block_hit(pose?, SELECTION_MAX_DISTANCE, |pos| {
         world.probe_block(pos).map(|probe| probe.material)
     })
 }
@@ -37,25 +36,23 @@ pub(crate) fn crosshair_block_hit_from_world(
 fn raycast_crosshair_block<F>(
     pose: PlayerPose,
     max_distance: f64,
-    step: f64,
     material_at: F,
 ) -> Option<BlockPos>
 where
     F: FnMut(BlockPos) -> Option<bbb_world::TerrainMaterialClass>,
 {
-    raycast_crosshair_block_hit(pose, max_distance, step, material_at).map(|hit| hit.pos)
+    raycast_crosshair_block_hit(pose, max_distance, material_at).map(|hit| hit.pos)
 }
 
 fn raycast_crosshair_block_hit<F>(
     pose: PlayerPose,
     max_distance: f64,
-    step: f64,
     mut material_at: F,
 ) -> Option<CrosshairBlockHit>
 where
     F: FnMut(BlockPos) -> Option<bbb_world::TerrainMaterialClass>,
 {
-    if max_distance <= 0.0 || step <= 0.0 {
+    if max_distance <= 0.0 {
         return None;
     }
 
@@ -69,55 +66,153 @@ where
         return None;
     }
 
-    let mut distance = 0.0;
-    let mut last_pos = None;
-    while distance <= max_distance {
-        let pos = BlockPos {
-            x: (eye[0] + direction[0] * distance).floor() as i32,
-            y: (eye[1] + direction[1] * distance).floor() as i32,
-            z: (eye[2] + direction[2] * distance).floor() as i32,
-        };
-        if last_pos != Some(pos) {
-            if material_at(pos).is_some_and(is_selectable_crosshair_material) {
-                return Some(CrosshairBlockHit {
-                    pos,
-                    face: block_hit_face(last_pos, pos, direction),
-                    cursor: block_hit_cursor(eye, direction, distance, pos),
-                    inside: last_pos.is_none(),
-                });
-            }
-            last_pos = Some(pos);
+    let mut pos = block_pos_containing(eye);
+    if material_at(pos).is_some_and(is_selectable_crosshair_material) {
+        return Some(CrosshairBlockHit {
+            pos,
+            face: face_opposing_dominant_direction(direction),
+            cursor: block_hit_cursor(eye, direction, 0.0, pos),
+            inside: true,
+        });
+    }
+
+    let mut cursor = RayGridCursor::new(eye, direction);
+    while let Some(step) = cursor.next_step(max_distance) {
+        pos = offset_block_pos_axis(pos, step.axis, step.delta);
+        if material_at(pos).is_some_and(is_selectable_crosshair_material) {
+            let face = face_for_axis_delta(step.axis, step.delta);
+            return Some(CrosshairBlockHit {
+                pos,
+                face,
+                cursor: block_hit_cursor(eye, direction, step.distance, pos),
+                inside: false,
+            });
         }
-        distance += step;
     }
 
     None
 }
 
-fn block_hit_face(
-    previous: Option<BlockPos>,
-    current: BlockPos,
-    direction: [f64; 3],
-) -> ProtocolDirection {
-    if let Some(previous) = previous {
-        let dx = current.x - previous.x;
-        let dy = current.y - previous.y;
-        let dz = current.z - previous.z;
-        let mut axis = None;
-        if dx != 0 {
-            axis = Some((0, direction[0].abs(), dx));
-        }
-        if dy != 0 && axis.is_none_or(|(_, best, _)| direction[1].abs() > best) {
-            axis = Some((1, direction[1].abs(), dy));
-        }
-        if dz != 0 && axis.is_none_or(|(_, best, _)| direction[2].abs() > best) {
-            axis = Some((2, direction[2].abs(), dz));
-        }
-        if let Some((axis, _, delta)) = axis {
-            return face_for_axis_delta(axis, delta);
+#[derive(Debug, Clone, Copy)]
+struct RayGridCursor {
+    x: AxisStep,
+    y: AxisStep,
+    z: AxisStep,
+}
+
+impl RayGridCursor {
+    fn new(origin: [f64; 3], direction: [f64; 3]) -> Self {
+        Self {
+            x: AxisStep::new(origin[0], direction[0]),
+            y: AxisStep::new(origin[1], direction[1]),
+            z: AxisStep::new(origin[2], direction[2]),
         }
     }
-    face_opposing_dominant_direction(direction)
+
+    fn next_step(&mut self, max_distance: f64) -> Option<GridStep> {
+        let axis = if self.x.next_distance < self.y.next_distance {
+            if self.x.next_distance < self.z.next_distance {
+                0
+            } else {
+                2
+            }
+        } else if self.y.next_distance < self.z.next_distance {
+            1
+        } else {
+            2
+        };
+
+        let step = match axis {
+            0 => self.x.advance(axis),
+            1 => self.y.advance(axis),
+            _ => self.z.advance(axis),
+        };
+        if step.distance <= max_distance {
+            Some(step)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AxisStep {
+    delta: i32,
+    next_distance: f64,
+    distance_delta: f64,
+}
+
+impl AxisStep {
+    fn new(origin: f64, direction: f64) -> Self {
+        let delta = if direction > 0.0 {
+            1
+        } else if direction < 0.0 {
+            -1
+        } else {
+            0
+        };
+        if delta == 0 {
+            return Self {
+                delta,
+                next_distance: f64::INFINITY,
+                distance_delta: f64::INFINITY,
+            };
+        }
+
+        let boundary = if delta > 0 {
+            origin.floor() + 1.0
+        } else {
+            origin.floor()
+        };
+        let next_distance = (boundary - origin) / direction;
+        Self {
+            delta,
+            next_distance: next_distance.max(0.0),
+            distance_delta: 1.0 / direction.abs(),
+        }
+    }
+
+    fn advance(&mut self, axis: u8) -> GridStep {
+        let step = GridStep {
+            axis,
+            delta: self.delta,
+            distance: self.next_distance,
+        };
+        self.next_distance += self.distance_delta;
+        step
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct GridStep {
+    axis: u8,
+    delta: i32,
+    distance: f64,
+}
+
+fn offset_block_pos_axis(pos: BlockPos, axis: u8, delta: i32) -> BlockPos {
+    match axis {
+        0 => BlockPos {
+            x: pos.x + delta,
+            ..pos
+        },
+        1 => BlockPos {
+            y: pos.y + delta,
+            ..pos
+        },
+        _ => BlockPos {
+            z: pos.z + delta,
+            ..pos
+        },
+    }
+}
+
+fn block_pos_containing(point: [f64; 3]) -> BlockPos {
+    BlockPos {
+        x: point[0].floor() as i32,
+        y: point[1].floor() as i32,
+        z: point[2].floor() as i32,
+    }
 }
 
 fn face_for_axis_delta(axis: u8, delta: i32) -> ProtocolDirection {
@@ -224,7 +319,7 @@ mod tests {
     #[test]
     fn crosshair_raycast_hits_first_selectable_block() {
         let pose = player_pose(0.0, 0.0, 0.0);
-        let hit = raycast_crosshair_block(pose, 5.0, 0.05, |pos| {
+        let hit = raycast_crosshair_block(pose, 5.0, |pos| {
             if pos == (BlockPos { x: 0, y: 1, z: 3 }) {
                 Some(bbb_world::TerrainMaterialClass::Opaque)
             } else {
@@ -239,7 +334,7 @@ mod tests {
     fn crosshair_raycast_reports_hit_face() {
         let pose = player_pose(0.0, 0.0, 0.0);
 
-        let hit = raycast_crosshair_block_hit(pose, 5.0, 1.0, |pos| {
+        let hit = raycast_crosshair_block_hit(pose, 5.0, |pos| {
             if pos == (BlockPos { x: 0, y: 1, z: 3 }) {
                 Some(bbb_world::TerrainMaterialClass::Opaque)
             } else {
@@ -259,9 +354,23 @@ mod tests {
     }
 
     #[test]
+    fn crosshair_raycast_visits_blocks_by_grid_boundary() {
+        let pose = player_pose(0.0, 0.0, 0.0);
+        let hit = raycast_crosshair_block(pose, 5.0, |pos| {
+            if pos == (BlockPos { x: 0, y: 1, z: 1 }) {
+                Some(bbb_world::TerrainMaterialClass::Opaque)
+            } else {
+                Some(bbb_world::TerrainMaterialClass::Empty)
+            }
+        });
+
+        assert_eq!(hit, Some(BlockPos { x: 0, y: 1, z: 1 }));
+    }
+
+    #[test]
     fn crosshair_raycast_ignores_fluid_blocks() {
         let pose = player_pose(0.0, 0.0, 0.0);
-        let hit = raycast_crosshair_block(pose, 5.0, 0.05, |pos| {
+        let hit = raycast_crosshair_block(pose, 5.0, |pos| {
             if pos == (BlockPos { x: 0, y: 1, z: 2 }) {
                 Some(bbb_world::TerrainMaterialClass::Fluid)
             } else if pos == (BlockPos { x: 0, y: 1, z: 3 }) {
@@ -272,6 +381,21 @@ mod tests {
         });
 
         assert_eq!(hit, Some(BlockPos { x: 0, y: 1, z: 3 }));
+    }
+
+    #[test]
+    fn crosshair_raycast_uses_vanilla_default_block_interaction_range() {
+        let pose = player_pose(0.0, 0.0, 0.0);
+        let hit = raycast_crosshair_block(pose, SELECTION_MAX_DISTANCE, |pos| {
+            if pos == (BlockPos { x: 0, y: 1, z: 5 }) {
+                Some(bbb_world::TerrainMaterialClass::Opaque)
+            } else {
+                Some(bbb_world::TerrainMaterialClass::Empty)
+            }
+        });
+
+        assert_eq!(SELECTION_MAX_DISTANCE, 4.5);
+        assert_eq!(hit, None);
     }
 
     #[test]
