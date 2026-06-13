@@ -3,7 +3,7 @@ use std::mem;
 use anyhow::{anyhow, bail, Result};
 use wgpu::util::DeviceExt;
 
-use crate::{terrain, CameraUniform};
+use crate::{camera::CameraUniform, terrain};
 
 pub(super) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
