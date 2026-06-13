@@ -110,9 +110,10 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         10 | 35 | 71 => {
             decoder.read_string(MAX_IDENTIFIER_CHARS)?;
         }
-        // rarity, dye, map_post_processing, base_color, wolf/cat collars,
+        // rarity, dye, map_post_processing, animal variant enums, collars,
         // tropical fish colors, sheep_color, shulker_color.
-        12 | 43 | 48 | 73 | 84 | 89 | 90 | 107 | 108 | 109 => {
+        12 | 43 | 48 | 73 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 91 | 92 | 101 | 103 | 104 | 107
+        | 108 | 109 => {
             decoder.read_var_i32()?;
         }
         // enchantments and stored_enchantments: map(enchantment holder id -> level).
@@ -1036,6 +1037,32 @@ mod tests {
             DataComponentPatchSummary {
                 added: 4,
                 added_type_ids: vec![36, 37, 38, 39],
+                removed_type_ids: Vec::new(),
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_animal_variant_data_components() {
+        let mut payload = Encoder::new();
+        let component_ids = [85, 86, 87, 88, 91, 92, 101, 103, 104];
+        payload.write_var_i32(component_ids.len() as i32);
+        payload.write_var_i32(0);
+
+        for (index, component_id) in component_ids.iter().enumerate() {
+            payload.write_var_i32(*component_id);
+            payload.write_var_i32(index as i32);
+        }
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: component_ids.len(),
+                added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
             }
         );
