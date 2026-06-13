@@ -581,6 +581,83 @@ fn decodes_additional_entity_data_serializers() {
 }
 
 #[test]
+fn decodes_registered_entity_variant_data_serializers() {
+    let registry_cases = [
+        (21, EntityDataRegistryHolder::CatVariant),
+        (22, EntityDataRegistryHolder::CatSoundVariant),
+        (23, EntityDataRegistryHolder::CowVariant),
+        (24, EntityDataRegistryHolder::CowSoundVariant),
+        (25, EntityDataRegistryHolder::WolfVariant),
+        (26, EntityDataRegistryHolder::WolfSoundVariant),
+        (27, EntityDataRegistryHolder::FrogVariant),
+        (28, EntityDataRegistryHolder::PigVariant),
+        (29, EntityDataRegistryHolder::PigSoundVariant),
+        (30, EntityDataRegistryHolder::ChickenVariant),
+        (31, EntityDataRegistryHolder::ChickenSoundVariant),
+        (32, EntityDataRegistryHolder::ZombieNautilusVariant),
+    ];
+    let enum_cases = [
+        (35, EntityDataEnumSerializer::SnifferState),
+        (36, EntityDataEnumSerializer::ArmadilloState),
+        (37, EntityDataEnumSerializer::CopperGolemState),
+        (38, EntityDataEnumSerializer::WeatheringCopperState),
+    ];
+
+    let mut payload = Encoder::new();
+    payload.write_var_i32(321);
+    let mut data_id = 0u8;
+    for (serializer_id, _) in registry_cases {
+        payload.write_u8(data_id);
+        payload.write_var_i32(serializer_id);
+        payload.write_var_i32(100 + serializer_id);
+        data_id += 1;
+    }
+    for (serializer_id, _) in enum_cases {
+        payload.write_u8(data_id);
+        payload.write_var_i32(serializer_id);
+        payload.write_var_i32(200 + serializer_id);
+        data_id += 1;
+    }
+    payload.write_u8(0xff);
+
+    let packet = decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_ENTITY_DATA,
+        &payload.into_inner(),
+    )
+    .unwrap();
+    let PlayClientbound::SetEntityData(packet) = packet else {
+        panic!("expected set entity data packet");
+    };
+    assert_eq!(packet.id, 321);
+    assert_eq!(packet.values.len(), registry_cases.len() + enum_cases.len());
+
+    for ((serializer_id, serializer), value) in registry_cases.iter().zip(packet.values.iter()) {
+        assert_eq!(value.serializer_id, *serializer_id);
+        assert_eq!(
+            value.value,
+            EntityDataValueKind::RegistryId {
+                serializer: *serializer,
+                id: 100 + serializer_id,
+            }
+        );
+    }
+
+    let enum_offset = registry_cases.len();
+    for ((serializer_id, serializer), value) in
+        enum_cases.iter().zip(packet.values[enum_offset..].iter())
+    {
+        assert_eq!(value.serializer_id, *serializer_id);
+        assert_eq!(
+            value.value,
+            EntityDataValueKind::EnumId {
+                serializer: *serializer,
+                id: 200 + serializer_id,
+            }
+        );
+    }
+}
+
+#[test]
 fn decodes_entity_transient_event_packets() {
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
