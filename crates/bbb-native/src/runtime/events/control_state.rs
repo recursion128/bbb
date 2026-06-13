@@ -57,8 +57,8 @@ pub(super) fn apply_control_projection_event(
             counters.last_deleted_chat = None;
         }
         NetEvent::UpdateEnabledFeatures(update) => {
-            counters.enabled_features = update.features;
-            counters.update_enabled_features_packets += 1;
+            world.apply_update_enabled_features(update);
+            sync_enabled_feature_counters(counters, world);
         }
         NetEvent::CodeOfConduct { text } => {
             counters.last_code_of_conduct_len = text.len();
@@ -312,6 +312,12 @@ pub(super) fn sync_registry_counters(counters: &mut NetCounters, world: &WorldSt
         world_counters.registry_duplicate_entry_ids_tracked;
     counters.last_registry_data_registry = world_counters.last_registry_data_registry.clone();
     counters.last_registry_data_entry_count = world_counters.last_registry_data_entry_count;
+}
+
+fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.update_enabled_features_packets = world_counters.update_enabled_features_packets;
+    counters.enabled_features = world.enabled_feature_list();
 }
 
 fn sound_holder_state(

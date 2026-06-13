@@ -34,6 +34,12 @@ pub struct WorldCounters {
     #[serde(default)]
     pub game_event_packets: usize,
     #[serde(default)]
+    pub update_enabled_features_packets: usize,
+    #[serde(default)]
+    pub enabled_features_tracked: usize,
+    #[serde(default)]
+    pub enabled_features_ignored: usize,
+    #[serde(default)]
     pub ticking_state_packets: usize,
     #[serde(default)]
     pub ticking_step_packets: usize,

@@ -47,7 +47,9 @@ impl ProbeContext {
             ConfigurationClientbound::ResourcePackPop(update) => {
                 self.world.apply_resource_pack_pop(update);
             }
-            ConfigurationClientbound::UpdateEnabledFeatures(_) => {}
+            ConfigurationClientbound::UpdateEnabledFeatures(update) => {
+                self.world.apply_update_enabled_features(update);
+            }
             ConfigurationClientbound::SelectKnownPacks { .. } => {
                 let (id, payload) = packets::encode_select_known_packs_empty();
                 self.conn.send_packet(id, &payload).await?;

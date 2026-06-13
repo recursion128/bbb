@@ -172,7 +172,7 @@ fn configuration_state_events_update_snapshot_counters() {
     tx.try_send(NetEvent::UpdateEnabledFeatures(
         bbb_protocol::packets::UpdateEnabledFeatures {
             features: vec![
-                "minecraft:update_1_21".to_string(),
+                "minecraft:minecart_improvements".to_string(),
                 "minecraft:vanilla".to_string(),
             ],
         },
@@ -201,10 +201,14 @@ fn configuration_state_events_update_snapshot_counters() {
     assert_eq!(
         counters.enabled_features,
         vec![
-            "minecraft:update_1_21".to_string(),
+            "minecraft:minecart_improvements".to_string(),
             "minecraft:vanilla".to_string(),
         ]
     );
+    assert_eq!(world.enabled_feature_list(), counters.enabled_features);
+    assert!(world.is_feature_enabled("minecraft:vanilla"));
+    assert_eq!(world.counters().update_enabled_features_packets, 1);
+    assert_eq!(world.counters().enabled_features_tracked, 2);
     assert_eq!(counters.reset_chat_packets, 1);
     assert!(counters.last_player_chat.is_none());
     assert_eq!(counters.code_of_conduct_packets, 1);

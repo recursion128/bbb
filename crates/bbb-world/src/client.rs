@@ -1,6 +1,7 @@
 mod chat;
 mod command_suggestions;
 mod debug_query;
+mod features;
 mod hud;
 mod inventory;
 mod local_player;
