@@ -164,6 +164,9 @@ fn custom_report_details_event_updates_snapshot_counters() {
     );
     assert_eq!(counters.custom_report_details, details);
     assert_eq!(counters.custom_report_detail_packets, 1);
+    assert_eq!(world.custom_report_details(), &details);
+    assert_eq!(world.counters().custom_report_detail_packets, 1);
+    assert_eq!(world.counters().custom_report_details_tracked, 2);
 }
 
 #[test]

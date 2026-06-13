@@ -32,8 +32,10 @@ impl ProbeContext {
             }
             PlayClientbound::CustomChatCompletions(_)
             | PlayClientbound::CustomPayload(_)
-            | PlayClientbound::CustomReportDetails(_)
             | PlayClientbound::ServerLinks(_) => {}
+            PlayClientbound::CustomReportDetails(details) => {
+                self.world.apply_custom_report_details(details);
+            }
             PlayClientbound::DamageEvent(update) => {
                 self.world.apply_damage_event(update);
             }

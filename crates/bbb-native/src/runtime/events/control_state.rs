@@ -47,8 +47,8 @@ pub(super) fn apply_control_projection_event(
             counters.stored_cookie_bytes = counters.stored_cookie_bytes.saturating_add(payload_len);
         }
         NetEvent::CustomReportDetails(details) => {
-            counters.custom_report_details = details.details;
-            counters.custom_report_detail_packets += 1;
+            world.apply_custom_report_details(details);
+            sync_custom_report_detail_counters(counters, world);
         }
         NetEvent::ResetChat => {
             counters.reset_chat_packets += 1;
@@ -424,6 +424,12 @@ fn sync_custom_payload_counters(counters: &mut NetCounters, world: &WorldStore) 
     counters.last_custom_payload = world
         .last_custom_payload()
         .map(control_custom_payload_state);
+}
+
+fn sync_custom_report_detail_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.custom_report_detail_packets = world_counters.custom_report_detail_packets;
+    counters.custom_report_details = world.custom_report_details().clone();
 }
 
 fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &WorldStore) {

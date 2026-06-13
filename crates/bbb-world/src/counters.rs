@@ -147,6 +147,10 @@ pub struct WorldCounters {
     #[serde(default)]
     pub custom_payload_unknown_packets: usize,
     #[serde(default)]
+    pub custom_report_detail_packets: usize,
+    #[serde(default)]
+    pub custom_report_details_tracked: usize,
+    #[serde(default)]
     pub transfer_packets: usize,
     #[serde(default)]
     pub cooldown_packets: usize,

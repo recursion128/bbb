@@ -63,8 +63,10 @@ impl ProbeContext {
             ConfigurationClientbound::StoreCookie(cookie) => {
                 self.server_cookies.insert(cookie.key, cookie.payload);
             }
-            ConfigurationClientbound::CustomReportDetails(_)
-            | ConfigurationClientbound::ServerLinks(_) => {}
+            ConfigurationClientbound::CustomReportDetails(details) => {
+                self.world.apply_custom_report_details(details);
+            }
+            ConfigurationClientbound::ServerLinks(_) => {}
             ConfigurationClientbound::Transfer(_) => {}
             ConfigurationClientbound::ClearDialog | ConfigurationClientbound::ShowDialog(_) => {}
             ConfigurationClientbound::CodeOfConduct { .. } => {

@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::packets::{
     CustomPayload as ProtocolCustomPayload, CustomPayloadBody as ProtocolCustomPayloadBody,
-    ResourcePackPop as ProtocolResourcePackPop, ResourcePackPush as ProtocolResourcePackPush,
-    ServerData as ProtocolServerData, ServerLinkEntry as ProtocolServerLinkEntry,
-    ServerLinkType as ProtocolServerLinkType, ServerLinks as ProtocolServerLinks,
-    Transfer as ProtocolTransfer,
+    CustomReportDetails as ProtocolCustomReportDetails, ResourcePackPop as ProtocolResourcePackPop,
+    ResourcePackPush as ProtocolResourcePackPush, ServerData as ProtocolServerData,
+    ServerLinkEntry as ProtocolServerLinkEntry, ServerLinkType as ProtocolServerLinkType,
+    ServerLinks as ProtocolServerLinks, Transfer as ProtocolTransfer,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -26,6 +26,8 @@ pub struct ServerPresentationState {
     pub resource_packs: BTreeMap<Uuid, ResourcePackState>,
     #[serde(default)]
     pub server_links: Vec<ServerLinkState>,
+    #[serde(default)]
+    pub custom_report_details: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -170,6 +172,12 @@ impl WorldStore {
         invalid_entries
     }
 
+    pub fn apply_custom_report_details(&mut self, packet: ProtocolCustomReportDetails) {
+        self.counters.custom_report_detail_packets += 1;
+        self.presentation.custom_report_details = packet.details;
+        self.update_custom_report_detail_count();
+    }
+
     pub fn presentation(&self) -> &ServerPresentationState {
         &self.presentation
     }
@@ -202,12 +210,20 @@ impl WorldStore {
         &self.presentation.server_links
     }
 
+    pub fn custom_report_details(&self) -> &BTreeMap<String, String> {
+        &self.presentation.custom_report_details
+    }
+
     fn update_resource_pack_count(&mut self) {
         self.counters.resource_packs_tracked = self.presentation.resource_packs.len();
     }
 
     fn update_server_link_count(&mut self) {
         self.counters.server_links_tracked = self.presentation.server_links.len();
+    }
+
+    fn update_custom_report_detail_count(&mut self) {
+        self.counters.custom_report_details_tracked = self.presentation.custom_report_details.len();
     }
 }
 
@@ -280,7 +296,9 @@ fn is_allowed_untrusted_uri(uri: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{CustomPayloadBody, ServerLinkKnownType, ServerLinkType};
+    use bbb_protocol::packets::{
+        CustomPayloadBody, CustomReportDetails, ServerLinkKnownType, ServerLinkType,
+    };
 
     #[test]
     fn custom_payload_tracks_server_brand_and_unknown_payloads() {
@@ -532,6 +550,33 @@ mod tests {
         assert_eq!(counters.server_link_packets, 2);
         assert_eq!(counters.server_links_tracked, 1);
         assert_eq!(counters.server_link_invalid_entries, 1);
+    }
+
+    #[test]
+    fn custom_report_details_replace_current_details() {
+        let mut store = WorldStore::new();
+        let details = BTreeMap::from([
+            ("Region".to_string(), "local".to_string()),
+            ("Server".to_string(), "bbb test shard".to_string()),
+        ]);
+
+        store.apply_custom_report_details(CustomReportDetails {
+            details: details.clone(),
+        });
+
+        assert_eq!(store.custom_report_details(), &details);
+        let counters = store.counters();
+        assert_eq!(counters.custom_report_detail_packets, 1);
+        assert_eq!(counters.custom_report_details_tracked, 2);
+
+        store.apply_custom_report_details(CustomReportDetails {
+            details: BTreeMap::new(),
+        });
+
+        assert!(store.custom_report_details().is_empty());
+        let counters = store.counters();
+        assert_eq!(counters.custom_report_detail_packets, 2);
+        assert_eq!(counters.custom_report_details_tracked, 0);
     }
 
     fn protocol_resource_pack_push(
