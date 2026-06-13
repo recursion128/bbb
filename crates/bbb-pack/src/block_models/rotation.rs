@@ -35,7 +35,7 @@ pub(super) fn rotate_model_shape(
                 .map(|model_box| rotate_model_box(model_box, x_degrees, y_degrees))
                 .collect(),
         ),
-        BlockModelShape::Cube | BlockModelShape::Cross | BlockModelShape::Custom => shape,
+        BlockModelShape::Cube | BlockModelShape::Cross { .. } | BlockModelShape::Custom => shape,
     }
 }
 
@@ -93,6 +93,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
     let mut face_present = [false; 6];
     let mut face_uvs = [[0, 0, 16, 16]; 6];
     let mut face_uv_rotations = [0; 6];
+    let mut face_shade = [true; 6];
     let mut face_cull = [false; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
@@ -101,6 +102,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
         face_present[target.index()] = model_box.face_present[face.index()];
         face_uvs[target.index()] = model_box.face_uvs[face.index()];
         face_uv_rotations[target.index()] = model_box.face_uv_rotations[face.index()];
+        face_shade[target.index()] = model_box.face_shade[face.index()];
         face_cull[target.index()] = model_box.face_cull[face.index()];
         face_tint_indices[target.index()] = model_box.face_tint_indices[face.index()];
         face_textures[target.index()] = model_box.face_textures[face.index()].clone();
@@ -112,6 +114,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
         face_present,
         face_uvs,
         face_uv_rotations,
+        face_shade,
         face_cull,
         face_tint_indices,
         face_textures,

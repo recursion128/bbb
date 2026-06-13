@@ -32,6 +32,7 @@ pub(super) fn emit_face(
             uv: uv_rect.map(uv),
             light: light.as_shader_light(),
             tint: tint.as_shader_tint(),
+            shade: 1.0,
             block_state_id,
         });
     }
@@ -57,6 +58,7 @@ pub(super) fn emit_cross(
     light: TerrainLight,
     tint: [TerrainTint; 6],
     texture_indices: [u32; 6],
+    shade: bool,
     atlas: &TerrainTextureAtlas,
 ) {
     for (face, normal, corners) in CROSS_FACES {
@@ -72,6 +74,7 @@ pub(super) fn emit_cross(
             atlas.rect(texture_indices[face.index()]),
             normal,
             corners,
+            shade,
         );
     }
 }
@@ -92,6 +95,7 @@ pub(super) fn emit_box(
     face_present: [bool; 6],
     face_uvs: [[u8; 4]; 6],
     face_uv_rotations: [u8; 6],
+    face_shade: [bool; 6],
     face_cull: [bool; 6],
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
@@ -143,6 +147,7 @@ pub(super) fn emit_box(
             face.normal,
             box_face_corners(face.face, min, max),
             face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
+            face_shade[face_index],
         );
     }
 }
@@ -159,6 +164,7 @@ fn emit_custom_quad(
     uv_rect: TerrainUvRect,
     normal: [f32; 3],
     corners: [[f32; 3]; 4],
+    shade: bool,
 ) {
     emit_custom_quad_with_uvs(
         mesh,
@@ -173,6 +179,7 @@ fn emit_custom_quad(
         normal,
         corners,
         [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
+        shade,
     );
 }
 
@@ -189,8 +196,10 @@ fn emit_custom_quad_with_uvs(
     normal: [f32; 3],
     corners: [[f32; 3]; 4],
     uvs: [[f32; 2]; 4],
+    shade: bool,
 ) {
     let base = mesh.vertices.len() as u32;
+    let shade = if shade { 1.0 } else { 0.0 };
     for (corner, uv) in corners.into_iter().zip(uvs) {
         mesh.vertices.push(TerrainVertex {
             position: [
@@ -202,6 +211,7 @@ fn emit_custom_quad_with_uvs(
             uv: uv_rect.map(uv),
             light: light.as_shader_light(),
             tint: tint.as_shader_tint(),
+            shade,
             block_state_id,
         });
     }

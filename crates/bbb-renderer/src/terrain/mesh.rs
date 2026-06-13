@@ -74,7 +74,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                 let world_y = snapshot.min_y + y;
                 let world_z = snapshot.chunk_z * 16 + z;
                 match &cell.render_shape {
-                    TerrainRenderShape::Cross => {
+                    TerrainRenderShape::Cross { shade } => {
                         emit_cross(
                             &mut mesh,
                             world_x,
@@ -85,6 +85,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             cell.light,
                             cell.tint,
                             cell.texture_indices,
+                            *shade,
                             atlas,
                         );
                         continue;
@@ -95,6 +96,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         face_present,
                         face_uvs,
                         face_uv_rotations,
+                        face_shade,
                         face_cull,
                     } => {
                         emit_box(
@@ -113,6 +115,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             *face_present,
                             *face_uvs,
                             *face_uv_rotations,
+                            *face_shade,
                             *face_cull,
                             lookup,
                             mode,
@@ -137,6 +140,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 model_box.face_present,
                                 model_box.face_uvs,
                                 model_box.face_uv_rotations,
+                                model_box.face_shade,
                                 model_box.face_cull,
                                 lookup,
                                 mode,

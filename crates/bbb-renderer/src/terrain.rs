@@ -40,13 +40,16 @@ impl TerrainMaterialClass {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerrainRenderShape {
     Cube,
-    Cross,
+    Cross {
+        shade: bool,
+    },
     Box {
         from: [u8; 3],
         to: [u8; 3],
         face_present: [bool; 6],
         face_uvs: [[u8; 4]; 6],
         face_uv_rotations: [u8; 6],
+        face_shade: [bool; 6],
         face_cull: [bool; 6],
     },
     Boxes(Vec<TerrainBox>),
@@ -59,6 +62,7 @@ pub struct TerrainBox {
     pub face_present: [bool; 6],
     pub face_uvs: [[u8; 4]; 6],
     pub face_uv_rotations: [u8; 6],
+    pub face_shade: [bool; 6],
     pub face_cull: [bool; 6],
     pub texture_indices: [u32; 6],
     pub tint: [TerrainTint; 6],
@@ -243,6 +247,7 @@ pub struct TerrainVertex {
     pub uv: [f32; 2],
     pub light: [f32; 2],
     pub tint: [f32; 3],
+    pub shade: f32,
     pub block_state_id: i32,
 }
 

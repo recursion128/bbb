@@ -200,13 +200,14 @@ impl TerrainTextureState {
         position: Option<BlockRenderPosition>,
     ) -> TerrainRenderShape {
         match shape {
-            BlockModelShape::Cross => TerrainRenderShape::Cross,
+            BlockModelShape::Cross { shade } => TerrainRenderShape::Cross { shade },
             BlockModelShape::Box(model_box) => TerrainRenderShape::Box {
                 from: model_box.from,
                 to: model_box.to,
                 face_present: model_box.face_present,
                 face_uvs: model_box.face_uvs,
                 face_uv_rotations: model_box.face_uv_rotations,
+                face_shade: model_box.face_shade,
                 face_cull: model_box.face_cull,
             },
             BlockModelShape::Boxes(model_boxes) => TerrainRenderShape::Boxes(
@@ -218,6 +219,7 @@ impl TerrainTextureState {
                         face_present: model_box.face_present,
                         face_uvs: model_box.face_uvs,
                         face_uv_rotations: model_box.face_uv_rotations,
+                        face_shade: model_box.face_shade,
                         face_cull: model_box.face_cull,
                         texture_indices: self
                             .model_box_texture_indices(&model_box, fallback_texture_indices),
@@ -492,6 +494,7 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         face_present: [true; 6],
         face_uvs,
         face_uv_rotations: [0; 6],
+        face_shade: [true; 6],
         face_cull: [true; 6],
     }
 }

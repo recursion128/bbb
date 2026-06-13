@@ -172,6 +172,7 @@ fn block_model_catalog_classifies_cross_models() {
                     "from": [0.8, 0, 8],
                     "to": [15.2, 16, 8],
                     "rotation": { "origin": [8, 8, 8], "axis": "y", "angle": 45, "rescale": true },
+                    "shade": false,
                     "faces": {
                         "north": { "texture": "#cross" },
                         "south": { "texture": "#cross" }
@@ -181,6 +182,7 @@ fn block_model_catalog_classifies_cross_models() {
                     "from": [8, 0, 0.8],
                     "to": [8, 16, 15.2],
                     "rotation": { "origin": [8, 8, 8], "axis": "y", "angle": 45, "rescale": true },
+                    "shade": false,
                     "faces": {
                         "west": { "texture": "#cross" },
                         "east": { "texture": "#cross" }
@@ -209,7 +211,7 @@ fn block_model_catalog_classifies_cross_models() {
         .block_render_model("minecraft:dandelion", &properties)
         .unwrap();
 
-    assert_eq!(render_model.shape, BlockModelShape::Cross);
+    assert_eq!(render_model.shape, BlockModelShape::Cross { shade: false });
     assert_eq!(
         render_model.face_textures.get(BlockModelFace::North),
         "minecraft:block/dandelion"
@@ -290,6 +292,7 @@ fn block_model_catalog_extracts_single_box_geometry() {
             "elements": [{
                 "from": [0, 0, 0],
                 "to": [16, 8, 16],
+                "shade": false,
                 "faces": {
                     "down":  { "uv": [0, 0, 16, 16], "texture": "#bottom", "cullface": "down" },
                     "up":    { "uv": [0, 0, 16, 16], "rotation": 90, "texture": "#top" },
@@ -336,6 +339,7 @@ fn block_model_catalog_extracts_single_box_geometry() {
         [0, 8, 16, 16]
     );
     assert_eq!(model_box.face_uv_rotations[BlockModelFace::Up.index()], 1);
+    assert!(!model_box.face_shade[BlockModelFace::North.index()]);
     assert!(model_box.face_cull[BlockModelFace::North.index()]);
     assert!(!model_box.face_cull[BlockModelFace::Up.index()]);
     assert_eq!(
@@ -773,7 +777,7 @@ fn loads_local_vanilla_block_model_catalog() {
     let flower = catalog
         .block_render_model("minecraft:dandelion", &BTreeMap::new())
         .unwrap();
-    assert_eq!(flower.shape, BlockModelShape::Cross);
+    assert_eq!(flower.shape, BlockModelShape::Cross { shade: false });
     assert_eq!(
         flower.face_textures.get(BlockModelFace::North),
         "minecraft:block/dandelion"

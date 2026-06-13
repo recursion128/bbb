@@ -74,7 +74,7 @@ impl BlockFaceTextures {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BlockModelShape {
     Cube,
-    Cross,
+    Cross { shade: bool },
     Box(BlockModelBox),
     Boxes(Vec<BlockModelBox>),
     Custom,
@@ -99,6 +99,7 @@ pub struct BlockModelBox {
     pub face_present: [bool; 6],
     pub face_uvs: [[u8; 4]; 6],
     pub face_uv_rotations: [u8; 6],
+    pub face_shade: [bool; 6],
     pub face_cull: [bool; 6],
     pub face_tint_indices: [Option<i32>; 6],
     pub face_textures: [Option<String>; 6],

@@ -213,7 +213,7 @@ fn cross_cutout_mesh_emits_vanilla_cross_quads() {
         2,
         TerrainMaterialClass::Cutout,
         0,
-        TerrainRenderShape::Cross,
+        TerrainRenderShape::Cross { shade: false },
     );
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
@@ -227,6 +227,7 @@ fn cross_cutout_mesh_emits_vanilla_cross_quads() {
     assert_eq!(mesh.culled_faces, 0);
     assert_eq!(mesh.vertices.len(), 16);
     assert_eq!(mesh.indices.len(), 24);
+    assert!(mesh.vertices.iter().all(|vertex| vertex.shade == 0.0));
     assert!(mesh
         .vertices
         .iter()
@@ -244,7 +245,7 @@ fn cross_cutout_faces_are_not_neighbor_culled() {
         2,
         TerrainMaterialClass::Cutout,
         0,
-        TerrainRenderShape::Cross,
+        TerrainRenderShape::Cross { shade: true },
     );
     cells[cell_index(2, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
@@ -297,6 +298,7 @@ fn box_model_mesh_rotates_face_uv_crop() {
         face_present: [true; 6],
         face_uvs,
         face_uv_rotations,
+        face_shade: [false; 6],
         face_cull: [false; 6],
     };
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
@@ -310,6 +312,7 @@ fn box_model_mesh_rotates_face_uv_crop() {
         .unwrap();
 
     assert_eq!(mesh.vertices[0].uv, [0.5, 0.25]);
+    assert_eq!(mesh.vertices[0].shade, 0.0);
     assert_eq!(mesh.vertices[1].uv, [0.5, 0.75]);
     assert_eq!(mesh.vertices[2].uv, [0.25, 0.75]);
     assert_eq!(mesh.vertices[3].uv, [0.25, 0.25]);
@@ -341,6 +344,7 @@ fn multi_box_model_skips_absent_faces() {
         face_present: [true; 6],
         face_uvs: [[0, 0, 16, 16]; 6],
         face_uv_rotations: [0; 6],
+        face_shade: [true; 6],
         face_cull: [false; 6],
         texture_indices: [0; 6],
         tint: [TerrainTint::WHITE; 6],
@@ -360,6 +364,7 @@ fn multi_box_model_skips_absent_faces() {
                 face_present: [true; 6],
                 face_uvs: [[0, 0, 16, 16]; 6],
                 face_uv_rotations: [0; 6],
+                face_shade: [true; 6],
                 face_cull: [false; 6],
                 texture_indices: [0; 6],
                 tint: [TerrainTint::WHITE; 6],
@@ -397,6 +402,7 @@ fn boxes_use_per_box_texture_and_tint() {
                 face_present: [true; 6],
                 face_uvs: [[0, 0, 16, 16]; 6],
                 face_uv_rotations: [0; 6],
+                face_shade: [true; 6],
                 face_cull: [false; 6],
                 texture_indices: [1; 6],
                 tint: [grass_tint; 6],
@@ -407,6 +413,7 @@ fn boxes_use_per_box_texture_and_tint() {
                 face_present: [true; 6],
                 face_uvs: [[0, 0, 16, 16]; 6],
                 face_uv_rotations: [0; 6],
+                face_shade: [true; 6],
                 face_cull: [false; 6],
                 texture_indices: [2; 6],
                 tint: [foliage_tint; 6],
@@ -538,6 +545,7 @@ fn slab_box_shape() -> TerrainRenderShape {
         face_present: [true; 6],
         face_uvs,
         face_uv_rotations: [0; 6],
+        face_shade: [true; 6],
         face_cull,
     }
 }
@@ -555,6 +563,7 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         face_present: [true; 6],
         face_uvs,
         face_uv_rotations: [0; 6],
+        face_shade: [true; 6],
         face_cull: [true; 6],
     }
 }

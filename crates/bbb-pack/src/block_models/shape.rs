@@ -9,7 +9,7 @@ pub(super) fn classify_model_shape(
     textures: &BTreeMap<String, String>,
 ) -> BlockModelShape {
     let has_element_rotation = elements.iter().any(|element| element.rotation.is_some());
-    let has_face_uv_transforms = elements.iter().any(has_face_uv_transform);
+    let has_box_metadata_transforms = elements.iter().any(has_box_metadata_transform);
     let mut face_counts = [0usize; 6];
     let mut total_faces = 0usize;
     for element in elements {
@@ -32,7 +32,9 @@ pub(super) fn classify_model_shape(
 
     if has_element_rotation {
         if has_cross_faces {
-            return BlockModelShape::Cross;
+            return BlockModelShape::Cross {
+                shade: cross_shade(elements),
+            };
         }
         return BlockModelShape::Custom;
     }
@@ -48,7 +50,9 @@ pub(super) fn classify_model_shape(
     }
 
     if has_cross_faces {
-        return BlockModelShape::Cross;
+        return BlockModelShape::Cross {
+            shade: cross_shade(elements),
+        };
     }
 
     if let Some(model_box) = single_box_shape(elements, textures) {
@@ -58,7 +62,7 @@ pub(super) fn classify_model_shape(
         return BlockModelShape::Boxes(model_boxes);
     }
 
-    let has_cube_faces = !has_face_uv_transforms && face_counts.iter().all(|count| *count > 0);
+    let has_cube_faces = !has_box_metadata_transforms && face_counts.iter().all(|count| *count > 0);
     if has_cube_faces {
         return BlockModelShape::Cube;
     }
@@ -84,7 +88,9 @@ pub(super) fn combine_model_shapes(shapes: Vec<BlockModelShape>) -> BlockModelSh
             BlockModelShape::Box(model_box) => boxes.push(model_box),
             BlockModelShape::Boxes(model_boxes) => boxes.extend(model_boxes),
             BlockModelShape::Cube => return BlockModelShape::Cube,
-            BlockModelShape::Cross | BlockModelShape::Custom => return BlockModelShape::Custom,
+            BlockModelShape::Cross { .. } | BlockModelShape::Custom => {
+                return BlockModelShape::Custom;
+            }
         }
     }
 
@@ -96,7 +102,7 @@ pub(super) fn combine_model_shapes(shapes: Vec<BlockModelShape>) -> BlockModelSh
 }
 
 fn is_full_cube_element(element: &RawBlockElement) -> bool {
-    if has_face_uv_transform(element) {
+    if has_box_metadata_transform(element) {
         return false;
     }
     let Some(from) = element.from.and_then(quantize_vec3_0_16) else {
@@ -148,9 +154,11 @@ fn element_box_shape(
     let mut face_present = [false; 6];
     let mut face_uvs = [[0, 0, 16, 16]; 6];
     let mut face_uv_rotations = [0; 6];
+    let mut face_shade = [true; 6];
     let mut face_cull = [false; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
+    let element_shade = element_shade(element);
     for (face_name, raw_face) in &element.faces {
         let face = BlockModelFace::from_name(face_name)?;
         face_present[face.index()] = true;
@@ -162,6 +170,7 @@ fn element_box_shape(
             .rotation
             .map(quantize_face_uv_rotation)
             .unwrap_or(Some(0))?;
+        face_shade[face.index()] = element_shade;
         face_cull[face.index()] = raw_face
             .cullface
             .as_deref()
@@ -177,6 +186,7 @@ fn element_box_shape(
         face_present,
         face_uvs,
         face_uv_rotations,
+        face_shade,
         face_cull,
         face_tint_indices,
         face_textures,
@@ -208,6 +218,18 @@ fn quantize_face_uv_rotation(degrees: i32) -> Option<u8> {
         270 => Some(3),
         _ => None,
     }
+}
+
+fn has_box_metadata_transform(element: &RawBlockElement) -> bool {
+    !element_shade(element) || has_face_uv_transform(element)
+}
+
+fn cross_shade(elements: &[RawBlockElement]) -> bool {
+    elements.iter().all(element_shade)
+}
+
+fn element_shade(element: &RawBlockElement) -> bool {
+    element.shade.unwrap_or(true)
 }
 
 fn has_face_uv_transform(element: &RawBlockElement) -> bool {
