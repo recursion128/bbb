@@ -1,7 +1,8 @@
 use bbb_protocol::packets::{
     DialogHolder, InteractionHand, MountScreenOpen as ProtocolMountScreenOpen,
     OpenBook as ProtocolOpenBook, OpenSignEditor as ProtocolOpenSignEditor,
-    PlaceGhostRecipe as ProtocolPlaceGhostRecipe, ShowDialog as ProtocolShowDialog,
+    PlaceGhostRecipe as ProtocolPlaceGhostRecipe, PongResponse as ProtocolPongResponse,
+    ShowDialog as ProtocolShowDialog,
 };
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +22,8 @@ pub struct ClientUiState {
     pub last_open_sign_editor: Option<OpenSignEditorState>,
     #[serde(default)]
     pub last_ghost_recipe: Option<GhostRecipeState>,
+    #[serde(default)]
+    pub last_pong_response: Option<PongResponseState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -54,6 +57,11 @@ pub struct GhostRecipeState {
     pub recipe_display_type_id: i32,
     pub recipe_display_type: String,
     pub recipe_display_body_len: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PongResponseState {
+    pub time: i64,
 }
 
 impl WorldStore {
@@ -106,6 +114,11 @@ impl WorldStore {
         });
     }
 
+    pub fn apply_pong_response(&mut self, packet: ProtocolPongResponse) {
+        self.counters.pong_response_packets += 1;
+        self.client_ui.last_pong_response = Some(PongResponseState { time: packet.time });
+    }
+
     pub fn client_ui(&self) -> &ClientUiState {
         &self.client_ui
     }
@@ -132,6 +145,10 @@ impl WorldStore {
 
     pub fn last_ghost_recipe(&self) -> Option<&GhostRecipeState> {
         self.client_ui.last_ghost_recipe.as_ref()
+    }
+
+    pub fn last_pong_response(&self) -> Option<&PongResponseState> {
+        self.client_ui.last_pong_response.as_ref()
     }
 }
 
@@ -258,6 +275,19 @@ mod tests {
         assert_eq!(counters.mount_screen_open_packets, 1);
         assert_eq!(counters.open_book_packets, 1);
         assert_eq!(counters.open_sign_editor_packets, 1);
+    }
+
+    #[test]
+    fn tracks_client_ui_pong_response() {
+        let mut store = WorldStore::new();
+
+        store.apply_pong_response(ProtocolPongResponse { time: 123456789 });
+
+        assert_eq!(
+            store.last_pong_response(),
+            Some(&PongResponseState { time: 123456789 })
+        );
+        assert_eq!(store.counters().pong_response_packets, 1);
     }
 
     #[test]

@@ -263,6 +263,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub ghost_recipe_packets: usize,
     #[serde(default)]
+    pub pong_response_packets: usize,
+    #[serde(default)]
     pub waypoint_packets: usize,
     #[serde(default)]
     pub waypoints_tracked: usize,

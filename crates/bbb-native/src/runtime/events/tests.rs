@@ -454,12 +454,17 @@ fn client_ui_events_update_world_and_snapshot_counters() {
     );
     assert_eq!(counters.pong_response_packets, 1);
     assert_eq!(counters.last_pong_response_time, Some(123456789));
+    assert_eq!(
+        world.last_pong_response(),
+        Some(&bbb_world::PongResponseState { time: 123456789 })
+    );
 
     let world_counters = world.counters();
     assert_eq!(world_counters.low_disk_space_warnings, 1);
     assert_eq!(world_counters.mount_screen_open_packets, 1);
     assert_eq!(world_counters.open_book_packets, 1);
     assert_eq!(world_counters.open_sign_editor_packets, 1);
+    assert_eq!(world_counters.pong_response_packets, 1);
 }
 
 #[test]

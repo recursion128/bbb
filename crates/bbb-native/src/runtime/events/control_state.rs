@@ -145,8 +145,8 @@ pub(super) fn apply_control_projection_event(
             apply_player_look_at_update(counters, update);
         }
         NetEvent::PongResponse(update) => {
-            counters.last_pong_response_time = Some(update.time);
-            counters.pong_response_packets += 1;
+            world.apply_pong_response(update);
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::Explosion(update) => {
             counters.last_explosion = Some(bbb_control::ExplosionState {
@@ -443,6 +443,7 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.open_book_packets = world_counters.open_book_packets;
     counters.open_sign_editor_packets = world_counters.open_sign_editor_packets;
     counters.ghost_recipe_packets = world_counters.ghost_recipe_packets;
+    counters.pong_response_packets = world_counters.pong_response_packets;
 
     counters.last_mount_screen =
         world
@@ -476,6 +477,7 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
                 recipe_display_type: state.recipe_display_type.clone(),
                 recipe_display_body_len: state.recipe_display_body_len,
             });
+    counters.last_pong_response_time = world.last_pong_response().map(|state| state.time);
 }
 
 fn sync_waypoint_counters(counters: &mut NetCounters, world: &WorldStore) {
