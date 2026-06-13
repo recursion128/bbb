@@ -53,10 +53,14 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
+mod command_suggestions;
 mod entity_status;
 mod player_info;
 mod server_presentation;
 
+pub use command_suggestions::{
+    CommandSuggestionState, CommandSuggestionsResultState, CommandSuggestionsState,
+};
 pub use entity_status::{EntityDamageEventState, ItemCooldownState, MobEffectState};
 pub use player_info::{PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState};
 pub use server_presentation::{ResourcePackState, ServerDataState, ServerPresentationState};
@@ -727,6 +731,10 @@ pub struct WorldCounters {
     pub damage_event_packets: usize,
     #[serde(default)]
     pub damage_events_applied: usize,
+    #[serde(default)]
+    pub command_suggestion_packets: usize,
+    #[serde(default)]
+    pub command_suggestion_entries_tracked: usize,
     pub chunk_forgets_received: usize,
     pub chunks_forgotten: usize,
     pub inventory_slot_updates_received: usize,
@@ -948,6 +956,8 @@ pub struct WorldStore {
     presentation: ServerPresentationState,
     #[serde(default)]
     cooldowns: BTreeMap<String, ItemCooldownState>,
+    #[serde(default)]
+    command_suggestions: CommandSuggestionsState,
     #[serde(default)]
     local_player_id: Option<i32>,
     #[serde(default)]

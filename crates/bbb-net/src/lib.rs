@@ -11,23 +11,23 @@ use bbb_protocol::{
     packets::{
         self, AddEntity, BlockChangedAck, BlockDestruction, BlockEntityData, BlockEvent,
         BlockUpdate, BossEvent, ChangeDifficulty, ChunksBiomes, ClientIntent,
-        ConfigurationClientbound, ContainerClose, ContainerSetContent, ContainerSetData,
-        ContainerSetSlot, Cooldown, DamageEvent, EntityAnimation, EntityEvent, EntityMove,
-        EntityPositionSync, ForgetLevelChunk, GameEvent, HurtAnimation, InitializeBorder,
-        InteractionHand, LevelChunkWithLight, LevelEvent, LightUpdate, LoginClientbound,
-        MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime,
-        PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
-        PlayerInfoRemove, PlayerInfoUpdate, PlayerInput, PlayerPositionState, PlayerPositionUpdate,
-        PlayerRotationUpdate, RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop,
-        ResourcePackPush, ResourcePackResponseAction, Respawn, RotateHead, SectionBlocksUpdate,
-        ServerData, SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderSize,
-        SetBorderWarningDelay, SetBorderWarningDistance, SetCamera, SetChunkCacheCenter,
-        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective,
-        SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective,
-        SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance,
-        SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat, TabList, TakeItemEntity,
-        TeleportEntity, TickingState, TickingStep, UpdateAttributes, UpdateMobEffect, UseItem,
-        UseItemOn, Vec3d,
+        CommandSuggestionRequest, CommandSuggestions, ConfigurationClientbound, ContainerClose,
+        ContainerSetContent, ContainerSetData, ContainerSetSlot, Cooldown, DamageEvent,
+        EntityAnimation, EntityEvent, EntityMove, EntityPositionSync, ForgetLevelChunk, GameEvent,
+        HurtAnimation, InitializeBorder, InteractionHand, LevelChunkWithLight, LevelEvent,
+        LightUpdate, LoginClientbound, MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound,
+        PlayLogin, PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience,
+        PlayerHealth, PlayerInfoRemove, PlayerInfoUpdate, PlayerInput, PlayerPositionState,
+        PlayerPositionUpdate, PlayerRotationUpdate, RemoveEntities, RemoveMobEffect, ResetScore,
+        ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, Respawn, RotateHead,
+        SectionBlocksUpdate, ServerData, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
+        SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance, SetCamera,
+        SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
+        SetDisplayObjective, SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment,
+        SetHeldSlot, SetObjective, SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore,
+        SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat,
+        TabList, TakeItemEntity, TeleportEntity, TickingState, TickingStep, UpdateAttributes,
+        UpdateMobEffect, UseItem, UseItemOn, Vec3d,
     },
 };
 use bbb_world::{
@@ -169,6 +169,7 @@ pub enum NetEvent {
     SetObjective(SetObjective),
     SetPlayerTeam(SetPlayerTeam),
     SetScore(SetScore),
+    CommandSuggestions(CommandSuggestions),
     BossEvent(BossEvent),
     ChangeDifficulty(ChangeDifficulty),
     TabList(TabList),
@@ -230,7 +231,7 @@ impl VehicleMoveCommand {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NetCommand {
     MovePlayer(PlayerMoveCommand),
     MoveVehicle(VehicleMoveCommand),
@@ -242,6 +243,7 @@ pub enum NetCommand {
     UseItemOn(UseItemOn),
     UseItem(UseItem),
     PickItemFromBlock(PickItemFromBlock),
+    CommandSuggestionRequest(CommandSuggestionRequest),
     Disconnect,
 }
 
@@ -705,6 +707,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetScore(update) => {
                     emit(&events, NetEvent::SetScore(update)).await?;
                 }
+                PlayClientbound::CommandSuggestions(update) => {
+                    emit(&events, NetEvent::CommandSuggestions(update)).await?;
+                }
                 PlayClientbound::TabList(update) => {
                     emit(&events, NetEvent::TabList(update)).await?;
                 }
@@ -998,6 +1003,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::SetScore(update) => {
                     world.apply_set_score(update);
                 }
+                PlayClientbound::CommandSuggestions(update) => {
+                    world.apply_command_suggestions(update);
+                }
                 PlayClientbound::TabList(update) => {
                     world.apply_tab_list(update);
                 }
@@ -1194,6 +1202,9 @@ async fn read_packet_or_drive_connection(
                     Some(NetCommand::PickItemFromBlock(packet)) => {
                         send_pick_item_from_block(conn, packet).await?;
                     }
+                    Some(NetCommand::CommandSuggestionRequest(request)) => {
+                        send_command_suggestion_request(conn, request).await?;
+                    }
                     Some(NetCommand::Disconnect) | None => {
                         return Ok(ConnectionDrive::Disconnect);
                     }
@@ -1225,6 +1236,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::UseItemOn(_)) => {}
                     Some(NetCommand::UseItem(_)) => {}
                     Some(NetCommand::PickItemFromBlock(_)) => {}
+                    Some(NetCommand::CommandSuggestionRequest(_)) => {}
                     Some(NetCommand::Disconnect) | None => {
                         return Ok(ConnectionDrive::Disconnect);
                     }
@@ -1293,6 +1305,14 @@ async fn send_pick_item_from_block(
     packet: PickItemFromBlock,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_pick_item_from_block(packet);
+    conn.send_packet(id, &payload).await
+}
+
+async fn send_command_suggestion_request(
+    conn: &mut RawConnection,
+    request: CommandSuggestionRequest,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_command_suggestion_request(request);
     conn.send_packet(id, &payload).await
 }
 
@@ -1859,6 +1879,47 @@ mod tests {
                     z: 12,
                 },
                 include_data: true,
+            },
+        )
+        .await
+        .unwrap();
+
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn send_command_suggestion_request_encodes_command_suggestion_packet() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut conn = RawConnection {
+                stream,
+                read_buf: BytesMut::new(),
+                compression_threshold: None,
+            };
+            let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+                .await
+                .expect("command suggestion request should be sent")
+                .unwrap();
+            assert_eq!(packet_id, ids::play::SERVERBOUND_COMMAND_SUGGESTION);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_var_i32().unwrap(), 44);
+            assert_eq!(
+                decoder.read_string(32500).unwrap(),
+                "/give @p minecraft:stone"
+            );
+            assert!(decoder.is_empty());
+        });
+        let mut conn = RawConnection::connect(&addr.to_string(), None)
+            .await
+            .unwrap();
+
+        send_command_suggestion_request(
+            &mut conn,
+            CommandSuggestionRequest {
+                id: 44,
+                command: "/give @p minecraft:stone".to_string(),
             },
         )
         .await

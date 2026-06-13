@@ -21,9 +21,9 @@ use bbb_pack::{
 use bbb_platform::WindowConfig;
 use bbb_protocol::packets::{
     BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
-    Direction as ProtocolDirection, InteractionHand, PickItemFromBlock, PlayerAction,
-    PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, PlayerPositionState,
-    UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    CommandSuggestionRequest, Direction as ProtocolDirection, InteractionHand, PickItemFromBlock,
+    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
+    PlayerPositionState, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_renderer::terrain::{
     build_terrain_mesh_layers_with_atlas, TerrainCell, TerrainChunkSnapshot, TerrainLight,
@@ -1173,6 +1173,26 @@ fn queue_pick_item_from_block_command(
     }
 }
 
+fn queue_command_suggestion_request(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    id: i32,
+    command: impl Into<String>,
+) {
+    if let Some(tx) = net_commands {
+        let request = CommandSuggestionRequest {
+            id,
+            command: command.into(),
+        };
+        if tx
+            .try_send(NetCommand::CommandSuggestionRequest(request))
+            .is_ok()
+        {
+            counters.command_suggestion_commands_queued += 1;
+        }
+    }
+}
+
 fn queue_vehicle_move_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -1984,6 +2004,10 @@ fn drain_net_events(
             NetEvent::SetScore(update) => {
                 counters.set_score_packets += 1;
                 world.apply_set_score(update);
+            }
+            NetEvent::CommandSuggestions(update) => {
+                counters.command_suggestion_packets += 1;
+                world.apply_command_suggestions(update);
             }
             NetEvent::TabList(update) => {
                 counters.tab_list_packets += 1;
@@ -3448,6 +3472,48 @@ mod tests {
     }
 
     #[test]
+    fn command_suggestions_event_updates_world_and_counters() {
+        let (tx, mut rx) = mpsc::channel(1);
+        tx.try_send(NetEvent::CommandSuggestions(
+            bbb_protocol::packets::CommandSuggestions {
+                id: 7,
+                start: 1,
+                length: 4,
+                suggestions: vec![
+                    bbb_protocol::packets::CommandSuggestion {
+                        text: "give".to_string(),
+                        tooltip: Some("Run give".to_string()),
+                    },
+                    bbb_protocol::packets::CommandSuggestion {
+                        text: "gamemode".to_string(),
+                        tooltip: None,
+                    },
+                ],
+            },
+        ))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            1
+        );
+        assert_eq!(counters.command_suggestion_packets, 1);
+        assert_eq!(world.counters().command_suggestion_packets, 1);
+        assert_eq!(world.counters().command_suggestion_entries_tracked, 2);
+
+        let result = world.command_suggestions_by_id(7).unwrap();
+        assert_eq!(result.start, 1);
+        assert_eq!(result.length, 4);
+        assert_eq!(result.suggestions.len(), 2);
+        assert_eq!(result.suggestions[0].text, "give");
+        assert_eq!(result.suggestions[0].tooltip.as_deref(), Some("Run give"));
+        assert_eq!(world.last_command_suggestions(), Some(result));
+    }
+
+    #[test]
     fn block_destruction_event_updates_world_and_counter() {
         let (tx, mut rx) = mpsc::channel(1);
         tx.try_send(NetEvent::BlockDestruction(
@@ -4613,6 +4679,24 @@ mod tests {
     }
 
     #[test]
+    fn queues_command_suggestion_request() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_command_suggestion_request(&mut counters, &commands, 18, "/give @p minecraft:stone");
+
+        assert_eq!(counters.command_suggestion_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+                id: 18,
+                command: "/give @p minecraft:stone".to_string(),
+            })
+        );
+    }
+
+    #[test]
     fn right_mouse_press_without_block_queues_use_item() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
@@ -4882,6 +4966,7 @@ mod tests {
             NetCommand::UseItem(_) => panic!("expected move command"),
             NetCommand::PickItemFromBlock(_) => panic!("expected move command"),
             NetCommand::MoveVehicle(_) => panic!("expected move command"),
+            NetCommand::CommandSuggestionRequest(_) => panic!("expected move command"),
             NetCommand::Disconnect => panic!("expected move command"),
         };
         assert_f64_near(first.state.position.y, 64.0, 0.000001);
@@ -4914,6 +4999,7 @@ mod tests {
             NetCommand::UseItem(_) => panic!("expected move command"),
             NetCommand::PickItemFromBlock(_) => panic!("expected move command"),
             NetCommand::MoveVehicle(_) => panic!("expected move command"),
+            NetCommand::CommandSuggestionRequest(_) => panic!("expected move command"),
             NetCommand::Disconnect => panic!("expected move command"),
         };
         assert!(second.state.position.z > 0.0);
