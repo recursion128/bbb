@@ -17,13 +17,14 @@ use bbb_protocol::{
         LoginClientbound, MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin,
         PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
         PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
-        RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetActionBarText,
+        RemoveEntities, ResetScore, Respawn, RotateHead, SectionBlocksUpdate, SetActionBarText,
         SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
         SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
-        SetCursorItem, SetDefaultSpawnPosition, SetEntityData, SetEntityLink, SetEntityMotion,
-        SetEquipment, SetHeldSlot, SetPassengers, SetPlayerInventory, SetSimulationDistance,
-        SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat, TakeItemEntity,
-        TeleportEntity, TickingState, TickingStep, UpdateAttributes, UseItem, UseItemOn, Vec3d,
+        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
+        SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetPassengers,
+        SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
+        SetTitleText, SetTitlesAnimation, SystemChat, TakeItemEntity, TeleportEntity, TickingState,
+        TickingStep, UpdateAttributes, UseItem, UseItemOn, Vec3d,
     },
 };
 use bbb_world::{
@@ -151,6 +152,11 @@ pub enum NetEvent {
     SetBorderSize(SetBorderSize),
     SetBorderWarningDelay(SetBorderWarningDelay),
     SetBorderWarningDistance(SetBorderWarningDistance),
+    ResetScore(ResetScore),
+    SetDisplayObjective(SetDisplayObjective),
+    SetObjective(SetObjective),
+    SetPlayerTeam(SetPlayerTeam),
+    SetScore(SetScore),
     GameEvent(GameEvent),
     SetTime(PlayTime),
     BlockEntityData(BlockEntityData),
@@ -631,6 +637,21 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetBorderWarningDistance(update) => {
                     emit(&events, NetEvent::SetBorderWarningDistance(update)).await?;
                 }
+                PlayClientbound::ResetScore(update) => {
+                    emit(&events, NetEvent::ResetScore(update)).await?;
+                }
+                PlayClientbound::SetDisplayObjective(update) => {
+                    emit(&events, NetEvent::SetDisplayObjective(update)).await?;
+                }
+                PlayClientbound::SetObjective(update) => {
+                    emit(&events, NetEvent::SetObjective(update)).await?;
+                }
+                PlayClientbound::SetPlayerTeam(update) => {
+                    emit(&events, NetEvent::SetPlayerTeam(update)).await?;
+                }
+                PlayClientbound::SetScore(update) => {
+                    emit(&events, NetEvent::SetScore(update)).await?;
+                }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     emit(&events, NetEvent::LevelChunkWithLight(chunk)).await?;
                 }
@@ -887,6 +908,21 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::SetBorderWarningDistance(update) => {
                     world.apply_set_border_warning_distance(update);
+                }
+                PlayClientbound::ResetScore(update) => {
+                    world.apply_reset_score(update);
+                }
+                PlayClientbound::SetDisplayObjective(update) => {
+                    world.apply_set_display_objective(update);
+                }
+                PlayClientbound::SetObjective(update) => {
+                    world.apply_set_objective(update);
+                }
+                PlayClientbound::SetPlayerTeam(update) => {
+                    world.apply_set_player_team(update);
+                }
+                PlayClientbound::SetScore(update) => {
+                    world.apply_set_score(update);
                 }
                 PlayClientbound::BlockChangedAck(_) => {}
                 PlayClientbound::BlockEntityData(update) => {

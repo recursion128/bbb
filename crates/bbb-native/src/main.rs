@@ -1921,6 +1921,26 @@ fn drain_net_events(
                 counters.set_border_warning_distance_packets += 1;
                 world.apply_set_border_warning_distance(update);
             }
+            NetEvent::ResetScore(update) => {
+                counters.reset_score_packets += 1;
+                world.apply_reset_score(update);
+            }
+            NetEvent::SetDisplayObjective(update) => {
+                counters.set_display_objective_packets += 1;
+                world.apply_set_display_objective(update);
+            }
+            NetEvent::SetObjective(update) => {
+                counters.set_objective_packets += 1;
+                world.apply_set_objective(update);
+            }
+            NetEvent::SetPlayerTeam(update) => {
+                counters.set_player_team_packets += 1;
+                world.apply_set_player_team(update);
+            }
+            NetEvent::SetScore(update) => {
+                counters.set_score_packets += 1;
+                world.apply_set_score(update);
+            }
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
             }
@@ -3533,6 +3553,103 @@ mod tests {
         assert_eq!(border.absolute_max_size, 500);
         assert_eq!(border.warning_blocks, 8);
         assert_eq!(border.warning_time, 9);
+    }
+
+    #[test]
+    fn scoreboard_events_update_world_and_counters() {
+        let (tx, mut rx) = mpsc::channel(6);
+        tx.try_send(NetEvent::SetObjective(
+            bbb_protocol::packets::SetObjective {
+                objective_name: "kills".to_string(),
+                method: bbb_protocol::packets::SetObjectiveMethod::Add,
+                parameters: Some(bbb_protocol::packets::SetObjectiveParameters {
+                    display_name: "Kills".to_string(),
+                    render_type: bbb_protocol::packets::ObjectiveRenderType::Integer,
+                    number_format: Some(vec![9]),
+                }),
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::SetDisplayObjective(
+            bbb_protocol::packets::SetDisplayObjective {
+                slot: bbb_protocol::packets::ScoreboardDisplaySlot::Sidebar,
+                objective_name: Some("kills".to_string()),
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::SetScore(bbb_protocol::packets::SetScore {
+            owner: "Steve".to_string(),
+            objective_name: "kills".to_string(),
+            score: 4,
+            display: Some("Four".to_string()),
+            number_format: None,
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::SetScore(bbb_protocol::packets::SetScore {
+            owner: "Alex".to_string(),
+            objective_name: "kills".to_string(),
+            score: 1,
+            display: None,
+            number_format: None,
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::SetPlayerTeam(
+            bbb_protocol::packets::SetPlayerTeam {
+                name: "red".to_string(),
+                method: bbb_protocol::packets::PlayerTeamMethod::Add,
+                parameters: Some(bbb_protocol::packets::PlayerTeamParameters {
+                    display_name: "Red Team".to_string(),
+                    options: 0b11,
+                    nametag_visibility: bbb_protocol::packets::TeamVisibility::Always,
+                    collision_rule: bbb_protocol::packets::TeamCollisionRule::Never,
+                    color: bbb_protocol::packets::ChatFormatting::Red,
+                    player_prefix: "[R]".to_string(),
+                    player_suffix: "!".to_string(),
+                }),
+                players: vec!["Steve".to_string()],
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::ResetScore(bbb_protocol::packets::ResetScore {
+            owner: "Alex".to_string(),
+            objective_name: Some("kills".to_string()),
+        }))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            6
+        );
+        assert_eq!(counters.set_objective_packets, 1);
+        assert_eq!(counters.set_display_objective_packets, 1);
+        assert_eq!(counters.set_score_packets, 2);
+        assert_eq!(counters.set_player_team_packets, 1);
+        assert_eq!(counters.reset_score_packets, 1);
+
+        let scoreboard = world.scoreboard();
+        let objective = scoreboard.objectives.get("kills").unwrap();
+        assert_eq!(objective.display_name, "Kills");
+        assert_eq!(objective.render_type, "integer");
+        assert_eq!(objective.number_format, Some(vec![9]));
+        assert_eq!(
+            scoreboard.display_slots.get("sidebar").map(String::as_str),
+            Some("kills")
+        );
+
+        let steve_scores = scoreboard.scores.get("Steve").unwrap();
+        let steve_kills = steve_scores.get("kills").unwrap();
+        assert_eq!(steve_kills.value, 4);
+        assert_eq!(steve_kills.display.as_deref(), Some("Four"));
+        assert!(!scoreboard.scores.contains_key("Alex"));
+
+        let team = scoreboard.teams.get("red").unwrap();
+        assert!(team.players.contains("Steve"));
+        let parameters = team.parameters.as_ref().unwrap();
+        assert_eq!(parameters.display_name, "Red Team");
+        assert_eq!(parameters.color, "red");
     }
 
     #[test]
