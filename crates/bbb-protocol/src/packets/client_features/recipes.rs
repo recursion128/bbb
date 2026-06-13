@@ -464,9 +464,13 @@ fn skip_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
 fn skip_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<()> {
     let holder_id = decoder.read_var_i32()?;
     if holder_id == 0 {
-        return Err(ProtocolError::InvalidData(
-            "unsupported direct trim pattern in slot display".to_string(),
-        ));
+        decoder.read_string(32767)?;
+        super::super::decode_component_summary_from_decoder(decoder)?;
+        decoder.read_bool()?;
+    } else if holder_id < 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid trim pattern holder id {holder_id}"
+        )));
     }
     Ok(())
 }

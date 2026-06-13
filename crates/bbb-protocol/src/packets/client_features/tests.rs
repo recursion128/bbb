@@ -247,6 +247,44 @@ fn decodes_update_recipes_packet_wire_order() {
 }
 
 #[test]
+fn decodes_update_recipes_with_direct_trim_pattern_slot_display() {
+    let mut option_display = Encoder::new();
+    option_display.write_var_i32(8);
+    option_display.write_var_i32(0);
+    option_display.write_var_i32(0);
+    option_display.write_var_i32(0);
+    option_display.write_string("minecraft:test_trim");
+    option_display.write_bytes(&nbt_string_root("Test Trim"));
+    option_display.write_bool(true);
+    let option_display = option_display.into_inner();
+
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_var_i32(1);
+    payload.write_var_i32(2);
+    payload.write_var_i32(11);
+    payload.write_bytes(&option_display);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_RECIPES, &payload.into_inner())
+            .unwrap(),
+        PlayClientbound::UpdateRecipes(UpdateRecipes {
+            property_sets: Vec::new(),
+            stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
+                input: IngredientSummary {
+                    tag: None,
+                    item_ids: vec![11],
+                },
+                option_display: SlotDisplaySummary {
+                    display_type_id: 8,
+                    raw_payload: option_display,
+                },
+            }],
+        })
+    );
+}
+
+#[test]
 fn decodes_select_advancements_tab_present_and_absent() {
     let mut present = Encoder::new();
     present.write_bool(true);
