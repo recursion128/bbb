@@ -36,6 +36,9 @@ pub(super) fn outline_shape_for_block(
     if is_bed_block_name(block_name) {
         return bed_outline_shape(properties);
     }
+    if block_name == "minecraft:brewing_stand" {
+        return Some(brewing_stand_outline_shape());
+    }
     if is_flower_pot_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
     }
@@ -267,6 +270,13 @@ fn bed_shape_for_direction(direction: HorizontalDirection) -> BlockOutlineShape 
         ),
     };
     BlockOutlineShape::from_boxes(vec![BlockOutlineBox::BED_PLATFORM, left_leg, right_leg])
+}
+
+fn brewing_stand_outline_shape() -> BlockOutlineShape {
+    BlockOutlineShape::from_boxes(vec![
+        BlockOutlineBox::BREWING_STAND_ROD,
+        BlockOutlineBox::BREWING_STAND_BASE,
+    ])
 }
 
 fn wall_sign_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {

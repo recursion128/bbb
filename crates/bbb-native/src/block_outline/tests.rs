@@ -6,3 +6,4 @@ mod rails;
 mod shapes;
 mod support;
 mod vegetation;
+mod workstations;

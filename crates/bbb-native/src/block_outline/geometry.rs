@@ -157,6 +157,14 @@ impl BlockOutlineBox {
         min: [0.0, 3.0 / 16.0, 0.0],
         max: [1.0, 9.0 / 16.0, 1.0],
     };
+    pub(super) const BREWING_STAND_ROD: Self = Self {
+        min: [7.0 / 16.0, 2.0 / 16.0, 7.0 / 16.0],
+        max: [9.0 / 16.0, 14.0 / 16.0, 9.0 / 16.0],
+    };
+    pub(super) const BREWING_STAND_BASE: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 2.0 / 16.0, 15.0 / 16.0],
+    };
     pub(super) const SIGN: Self = Self {
         min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
         max: [12.0 / 16.0, 1.0, 12.0 / 16.0],
