@@ -1,16 +1,9 @@
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, thread, time::Duration};
-
-use anyhow::{Context, Result};
+use anyhow::Result;
 use bbb_control::{shared_snapshot, NetCounters};
-use bbb_net::{ConnectionOptions, NetEvent};
-use bbb_platform::WindowConfig;
 use bbb_world::WorldStore;
-use clap::Parser;
-use tokio::sync::mpsc;
 use winit::{
     event::{DeviceEvent, Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    event_loop::ControlFlow,
 };
 
 mod biome_tint;
@@ -18,6 +11,7 @@ mod crosshair;
 mod hud_assets;
 mod input;
 mod runtime;
+mod startup;
 mod terrain_runtime;
 
 use hud_assets::load_hud_textures;
@@ -29,39 +23,18 @@ use runtime::{
     clear_color_for_world, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
     snapshot_is_running, take_control_screenshot,
 };
+use startup::{
+    build_window, create_event_loop, init_tracing, parse_args, run_probe_if_requested,
+    spawn_frame_tick, start_control_api, start_network_if_requested, NetworkHandles,
+};
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 
-#[derive(Debug, Parser)]
-#[command(name = "bbb-native")]
-struct Args {
-    #[arg(long, default_value = "127.0.0.1:25565")]
-    server: String,
-    #[arg(long, default_value = "bbb-client")]
-    username: String,
-    #[arg(long)]
-    probe_server: bool,
-    #[arg(long)]
-    connect_server: bool,
-    #[arg(long)]
-    control: Option<SocketAddr>,
-    #[arg(long)]
-    screenshot: Option<PathBuf>,
-    #[arg(long)]
-    exit_after_screenshot: bool,
-}
-
 fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
-
-    let args = Args::parse();
+    init_tracing();
+    let args = parse_args();
     let runtime = tokio::runtime::Runtime::new()?;
 
-    if args.probe_server {
-        let options = ConnectionOptions::offline(&args.server, &args.username)?;
-        let report = runtime.block_on(bbb_net::run_offline_probe(options))?;
-        println!("{}", serde_json::to_string_pretty(&report)?);
+    if run_probe_if_requested(&runtime, &args)? {
         return Ok(());
     }
 
@@ -72,48 +45,16 @@ fn main() -> Result<()> {
     ));
     let mut world = WorldStore::new();
     let mut net_counters = NetCounters::default();
-    let mut net_events = None;
-    let mut net_commands = None;
+    let NetworkHandles {
+        events: mut net_events,
+        commands: net_commands,
+    } = start_network_if_requested(&runtime, &args)?;
+    start_control_api(&runtime, args.control, &snapshot);
 
-    if args.connect_server {
-        let options = ConnectionOptions::offline(&args.server, &args.username)?;
-        let (tx, rx) = mpsc::channel(8192);
-        let (command_tx, command_rx) = mpsc::channel(256);
-        let disconnect_tx = tx.clone();
-        runtime.spawn(async move {
-            let reason = match bbb_net::run_offline_event_stream(options, tx, command_rx).await {
-                Ok(()) => None,
-                Err(err) => Some(err.to_string()),
-            };
-            let _ = disconnect_tx.send(NetEvent::Disconnected { reason }).await;
-        });
-        net_events = Some(rx);
-        net_commands = Some(command_tx);
-    }
-
-    if let Some(addr) = args.control {
-        let snapshot = Arc::clone(&snapshot);
-        runtime.spawn(async move {
-            if let Err(err) = bbb_control::serve(addr, snapshot).await {
-                tracing::error!(?err, "control API stopped");
-            }
-        });
-    }
-
-    let event_loop = EventLoop::new()?;
-    let config = WindowConfig::default();
-    let window = WindowBuilder::new()
-        .with_title(config.title.clone())
-        .with_inner_size(config.physical_size())
-        .build(&event_loop)
-        .context("create native window")?;
+    let event_loop = create_event_loop()?;
+    let window = build_window(&event_loop)?;
     let mut input = ClientInputState::new(window.has_focus());
-    let event_proxy = event_loop.create_proxy();
-    thread::spawn(move || {
-        while event_proxy.send_event(()).is_ok() {
-            thread::sleep(Duration::from_millis(16));
-        }
-    });
+    spawn_frame_tick(&event_loop);
 
     let mut renderer = pollster::block_on(bbb_renderer::Renderer::new(&window))?;
     let terrain_textures = load_terrain_textures(&mut renderer);
