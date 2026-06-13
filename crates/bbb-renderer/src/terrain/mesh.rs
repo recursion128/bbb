@@ -11,8 +11,8 @@ use self::{
     geometry::FACES,
 };
 use super::{
-    TerrainCell, TerrainChunkSnapshot, TerrainMaterialClass, TerrainMesh, TerrainRenderShape,
-    TerrainTextureAtlas,
+    TerrainCell, TerrainChunkSnapshot, TerrainFluid, TerrainMaterialClass, TerrainMesh,
+    TerrainRenderShape, TerrainTextureAtlas,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -138,6 +138,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             world_z,
                             cell.block_state_id,
                             cell.material,
+                            cell.fluid,
                             cell.light,
                             cell.tint,
                             cell.texture_indices,
@@ -166,6 +167,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 world_z,
                                 cell.block_state_id,
                                 cell.material,
+                                cell.fluid,
                                 cell.light,
                                 model_box.tint,
                                 model_box.texture_indices,
@@ -216,7 +218,9 @@ pub(super) fn build_chunk_mesh_with_lookup(
                     let neighbor =
                         lookup.cell(world_x + face.dx, world_y + face.dy, world_z + face.dz);
                     if neighbor
-                        .map(|neighbor| mode.culls_face_between(face_material, neighbor.material))
+                        .map(|neighbor| {
+                            culls_face_between_cells(mode, face_material, cell.fluid, neighbor)
+                        })
                         .unwrap_or(false)
                     {
                         mesh.culled_faces += 1;
@@ -289,6 +293,23 @@ fn has_texture_layer_overrides(cell: &TerrainCell) -> bool {
                 .any(|model_quad| !is_opaque_transparency(model_quad.transparency)),
             TerrainRenderShape::Cube | TerrainRenderShape::Cross { .. } => false,
         }
+}
+
+pub(super) fn culls_face_between_cells(
+    mode: TerrainMeshMode,
+    current: TerrainMaterialClass,
+    current_fluid: Option<TerrainFluid>,
+    neighbor: &TerrainCell,
+) -> bool {
+    if matches!(current, TerrainMaterialClass::Fluid)
+        && matches!(neighbor.material, TerrainMaterialClass::Fluid)
+    {
+        return match (current_fluid, neighbor.fluid) {
+            (Some(current), Some(neighbor)) => current.kind == neighbor.kind,
+            _ => true,
+        };
+    }
+    mode.culls_face_between(current, neighbor.material)
 }
 
 fn is_opaque_transparency(transparency: super::TerrainTransparency) -> bool {

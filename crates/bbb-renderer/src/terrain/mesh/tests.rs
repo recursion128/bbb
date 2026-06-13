@@ -1,8 +1,8 @@
 use super::super::{
     build_opaque_chunk_mesh, build_opaque_terrain_meshes, build_opaque_terrain_meshes_with_atlas,
     build_terrain_mesh_layers_with_atlas, build_terrain_meshes_with_atlas, TerrainBox,
-    TerrainCross, TerrainFace, TerrainLight, TerrainMesh, TerrainQuad, TerrainTint,
-    TerrainTransparency, TerrainUvRect, TerrainVertex,
+    TerrainCross, TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMesh,
+    TerrainQuad, TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::*;
 
@@ -56,6 +56,19 @@ fn culls_internal_faces_between_fluid_blocks() {
     assert_eq!(layers.translucent[0].culled_faces, 2);
     assert_eq!(layers.translucent[0].vertices.len(), 40);
     assert_eq!(layers.translucent[0].indices.len(), 60);
+}
+
+#[test]
+fn keeps_faces_between_different_fluid_kinds() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
+    cells[cell_index(2, 0, 2, 1)] = lava_cell(87, 8);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.translucent[0].translucent_faces, 12);
+    assert_eq!(layers.translucent[0].culled_faces, 0);
 }
 
 #[test]
@@ -156,6 +169,95 @@ fn fluid_side_uvs_follow_corner_heights() {
     assert_float_eq(east_top.uv[1], 5.0 / 12.0);
     assert_eq!(west_top.uv, [0.0, 0.0]);
     assert_eq!(west_bottom.uv, [0.0, 0.5]);
+}
+
+#[test]
+fn fluid_static_top_uses_still_texture_uvs() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+    let atlas = TerrainTextureAtlas {
+        rects: vec![
+            TerrainUvRect::UNIT,
+            TerrainUvRect {
+                min: [0.0, 0.0],
+                max: [0.25, 0.25],
+            },
+            TerrainUvRect {
+                min: [0.5, 0.25],
+                max: [1.0, 0.75],
+            },
+        ],
+        fallback_index: 0,
+    };
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &atlas);
+    let top = face_vertices(&layers.translucent[0], 86, [0.0, 1.0, 0.0]);
+
+    assert_eq!(vertex_at_xz(&top, 1.0, 2.0).uv, [0.0, 0.0]);
+    assert_eq!(vertex_at_xz(&top, 2.0, 2.0).uv, [0.25, 0.0]);
+    assert_eq!(vertex_at_xz(&top, 2.0, 3.0).uv, [0.25, 0.25]);
+    assert_eq!(vertex_at_xz(&top, 1.0, 3.0).uv, [0.0, 0.25]);
+}
+
+#[test]
+fn fluid_flowing_top_uses_flowing_texture_and_rotated_uvs() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
+    cells[cell_index(2, 0, 2, 1)] = water_cell(87, 4);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+    let atlas = TerrainTextureAtlas {
+        rects: vec![
+            TerrainUvRect::UNIT,
+            TerrainUvRect {
+                min: [0.0, 0.0],
+                max: [0.25, 0.25],
+            },
+            TerrainUvRect {
+                min: [0.5, 0.25],
+                max: [1.0, 0.75],
+            },
+        ],
+        fallback_index: 0,
+    };
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &atlas);
+    let top = face_vertices(&layers.translucent[0], 86, [0.0, 1.0, 0.0]);
+
+    assert_uv_eq(vertex_at_xz(&top, 1.0, 2.0).uv, [0.875, 0.375]);
+    assert_uv_eq(vertex_at_xz(&top, 2.0, 2.0).uv, [0.875, 0.625]);
+    assert_uv_eq(vertex_at_xz(&top, 2.0, 3.0).uv, [0.625, 0.625]);
+    assert_uv_eq(vertex_at_xz(&top, 1.0, 3.0).uv, [0.625, 0.375]);
+}
+
+#[test]
+fn fluid_top_flow_ignores_different_fluid_kind() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
+    cells[cell_index(2, 0, 2, 1)] = lava_cell(87, 4);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+    let atlas = TerrainTextureAtlas {
+        rects: vec![
+            TerrainUvRect::UNIT,
+            TerrainUvRect {
+                min: [0.0, 0.0],
+                max: [0.25, 0.25],
+            },
+            TerrainUvRect {
+                min: [0.5, 0.25],
+                max: [1.0, 0.75],
+            },
+        ],
+        fallback_index: 0,
+    };
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &atlas);
+    let top = face_vertices(&layers.translucent[0], 86, [0.0, 1.0, 0.0]);
+
+    assert_eq!(vertex_at_xz(&top, 1.0, 2.0).uv, [0.0, 0.0]);
+    assert_eq!(vertex_at_xz(&top, 2.0, 2.0).uv, [0.25, 0.0]);
+    assert_eq!(vertex_at_xz(&top, 2.0, 3.0).uv, [0.25, 0.25]);
+    assert_eq!(vertex_at_xz(&top, 1.0, 3.0).uv, [0.0, 0.25]);
 }
 
 #[test]
@@ -344,6 +446,7 @@ fn cross_layers_preserve_emissive_light() {
     cells[cell_index(1, 0, 2, 1)] = TerrainCell {
         block_state_id: 2,
         material: TerrainMaterialClass::Cutout,
+        fluid: None,
         texture_indices: [0; 6],
         ambient_occlusion: true,
         light: TerrainLight { sky: 4, block: 2 },
@@ -516,6 +619,7 @@ fn multi_box_model_skips_absent_faces() {
     cells[cell_index(1, 0, 2, 1)] = TerrainCell {
         block_state_id: 4,
         material: TerrainMaterialClass::Opaque,
+        fluid: None,
         texture_indices: [0; 6],
         ambient_occlusion: true,
         light: TerrainLight::FULL_BRIGHT,
@@ -558,6 +662,7 @@ fn boxes_use_per_box_texture_and_tint() {
     cells[cell_index(1, 0, 2, 1)] = TerrainCell {
         block_state_id: 4,
         material: TerrainMaterialClass::Opaque,
+        fluid: None,
         texture_indices: [0; 6],
         ambient_occlusion: true,
         light: TerrainLight::FULL_BRIGHT,
@@ -951,6 +1056,28 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
     }
 }
 
+fn water_cell(block_state_id: i32, amount: u8) -> TerrainCell {
+    fluid_cell(block_state_id, TerrainFluidKind::Water, amount)
+}
+
+fn lava_cell(block_state_id: i32, amount: u8) -> TerrainCell {
+    fluid_cell(block_state_id, TerrainFluidKind::Lava, amount)
+}
+
+fn fluid_cell(block_state_id: i32, kind: TerrainFluidKind, amount: u8) -> TerrainCell {
+    let amount = amount.clamp(1, 8);
+    let height = ((amount as u16 * 16 + 4) / 9).clamp(1, 16) as u8;
+    let mut cell = TerrainCell::with_shape(
+        block_state_id,
+        TerrainMaterialClass::Fluid,
+        0,
+        fluid_box_shape(height),
+    )
+    .with_fluid(TerrainFluid::new(kind, amount, false));
+    cell.texture_indices = [1, 1, 2, 2, 2, 2];
+    cell
+}
+
 fn all_face_cull() -> [Option<TerrainFace>; 6] {
     TerrainFace::ALL.map(Some)
 }
@@ -998,6 +1125,11 @@ fn assert_float_eq(actual: f32, expected: f32) {
         (actual - expected).abs() < 0.0001,
         "expected {expected}, got {actual}"
     );
+}
+
+fn assert_uv_eq(actual: [f32; 2], expected: [f32; 2]) {
+    assert_float_eq(actual[0], expected[0]);
+    assert_float_eq(actual[1], expected[1]);
 }
 
 fn assert_face_shade(mesh: &TerrainMesh, normal: [f32; 3], expected: f32) {

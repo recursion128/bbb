@@ -97,10 +97,38 @@ pub struct TerrainQuad {
     pub light_emission: u8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TerrainFluidKind {
+    Water,
+    Lava,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainFluid {
+    pub kind: TerrainFluidKind,
+    pub amount: u8,
+    pub falling: bool,
+}
+
+impl TerrainFluid {
+    pub fn new(kind: TerrainFluidKind, amount: u8, falling: bool) -> Self {
+        Self {
+            kind,
+            amount: amount.clamp(1, 8),
+            falling,
+        }
+    }
+
+    fn own_height(self) -> f32 {
+        self.amount as f32 / 9.0
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TerrainCell {
     pub block_state_id: i32,
     pub material: TerrainMaterialClass,
+    pub fluid: Option<TerrainFluid>,
     pub texture_indices: [u32; 6],
     pub render_shape: TerrainRenderShape,
     pub ambient_occlusion: bool,
@@ -182,6 +210,7 @@ impl TerrainCell {
     pub const EMPTY: Self = Self {
         block_state_id: 0,
         material: TerrainMaterialClass::Empty,
+        fluid: None,
         texture_indices: [0; 6],
         render_shape: TerrainRenderShape::Cube,
         ambient_occlusion: true,
@@ -198,6 +227,7 @@ impl TerrainCell {
         Self {
             block_state_id,
             material,
+            fluid: None,
             texture_indices: [texture_index; 6],
             render_shape: TerrainRenderShape::Cube,
             ambient_occlusion: true,
@@ -216,6 +246,7 @@ impl TerrainCell {
         Self {
             block_state_id,
             material,
+            fluid: None,
             texture_indices: [texture_index; 6],
             render_shape,
             ambient_occlusion: true,
@@ -227,6 +258,11 @@ impl TerrainCell {
 
     pub fn with_light(mut self, light: TerrainLight) -> Self {
         self.light = light;
+        self
+    }
+
+    pub fn with_fluid(mut self, fluid: TerrainFluid) -> Self {
+        self.fluid = Some(fluid);
         self
     }
 

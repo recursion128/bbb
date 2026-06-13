@@ -1,9 +1,10 @@
 use super::super::{
-    TerrainCell, TerrainFace, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainQuad,
-    TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
-    TerrainVertex,
+    TerrainCell, TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMaterialClass,
+    TerrainMesh, TerrainQuad, TerrainRenderShape, TerrainTextureAtlas, TerrainTint,
+    TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::{
+    culls_face_between_cells,
     geometry::{box_face_corners, face_uvs_from_crop, FaceDef, CROSS_FACES, FACES},
     TerrainChunkLookup, TerrainMeshMode,
 };
@@ -102,6 +103,7 @@ pub(super) fn emit_box(
     z: i32,
     block_state_id: i32,
     material: TerrainMaterialClass,
+    fluid: Option<TerrainFluid>,
     light: TerrainLight,
     tint: [TerrainTint; 6],
     texture_indices: [u32; 6],
@@ -129,13 +131,19 @@ pub(super) fn emit_box(
         to[1] as f32 / 16.0,
         to[2] as f32 / 16.0,
     ];
-    if matches!(material, TerrainMaterialClass::Fluid)
+    let is_fluid = matches!(material, TerrainMaterialClass::Fluid);
+    if is_fluid
         && lookup
             .cell(x, y + 1, z)
-            .is_some_and(|neighbor| matches!(neighbor.material, TerrainMaterialClass::Fluid))
+            .is_some_and(|neighbor| cell_is_same_fluid(neighbor, fluid))
     {
         max[1] = 1.0;
     }
+    let fluid_flow = if is_fluid {
+        fluid.and_then(|fluid| fluid_top_flow(x, y, z, fluid, lookup))
+    } else {
+        None
+    };
 
     for face in FACES {
         let face_index = face.face.index();
@@ -150,7 +158,7 @@ pub(super) fn emit_box(
             let (dx, dy, dz) = cull_offset(cull_face);
             let neighbor = lookup.cell(x + dx, y + dy, z + dz);
             if neighbor
-                .map(|neighbor| mode.culls_face_between(face_material, neighbor.material))
+                .map(|neighbor| culls_face_between_cells(mode, face_material, fluid, neighbor))
                 .unwrap_or(false)
             {
                 mesh.culled_faces += 1;
@@ -158,10 +166,11 @@ pub(super) fn emit_box(
             }
         }
 
-        let is_fluid = matches!(material, TerrainMaterialClass::Fluid);
         let smooth_light = !is_fluid && ambient_occlusion && face_light_emission[face_index] == 0;
         let face_cubic = box_face_is_cubic(face.face, min, max);
         let fluid_heights = is_fluid.then(|| fluid_corner_heights(x, y, z, max[1], lookup));
+        let texture_index =
+            fluid_face_texture_index(face.face, texture_indices, fluid_flow.is_some());
         let ambient_occlusion = if is_fluid {
             [1.0; 4]
         } else {
@@ -199,13 +208,13 @@ pub(super) fn emit_box(
             block_state_id,
             face_material,
             tint[face_index],
-            atlas.rect(texture_indices[face_index]),
+            atlas.rect(texture_index),
             face.normal,
             fluid_heights
                 .map(|heights| fluid_face_corners(face.face, min, max, heights))
                 .unwrap_or_else(|| box_face_corners(face.face, min, max)),
             fluid_heights
-                .map(|heights| fluid_face_uvs(face.face, heights))
+                .map(|heights| fluid_face_uvs(face.face, heights, fluid_flow))
                 .unwrap_or_else(|| {
                     face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index])
                 }),
@@ -517,9 +526,133 @@ fn fluid_face_corners(
     }
 }
 
-fn fluid_face_uvs(face: TerrainFace, heights: FluidCornerHeights) -> [[f32; 2]; 4] {
+#[derive(Debug, Clone, Copy)]
+struct FluidFlow {
+    x: f32,
+    z: f32,
+}
+
+fn fluid_face_texture_index(
+    face: TerrainFace,
+    texture_indices: [u32; 6],
+    has_top_flow: bool,
+) -> u32 {
+    if matches!(face, TerrainFace::Up) && has_top_flow {
+        texture_indices[TerrainFace::North.index()]
+    } else {
+        texture_indices[face.index()]
+    }
+}
+
+fn fluid_top_flow(
+    x: i32,
+    y: i32,
+    z: i32,
+    fluid: TerrainFluid,
+    lookup: &TerrainChunkLookup<'_>,
+) -> Option<FluidFlow> {
+    let own_height = fluid.own_height();
+    let mut flow_x = 0.0;
+    let mut flow_z = 0.0;
+    for (dx, dz) in [(0, -1), (0, 1), (-1, 0), (1, 0)] {
+        let Some(distance) = fluid_flow_distance(own_height, fluid.kind, x + dx, y, z + dz, lookup)
+        else {
+            continue;
+        };
+        if distance != 0.0 {
+            flow_x += dx as f32 * distance;
+            flow_z += dz as f32 * distance;
+        }
+    }
+    normalized_fluid_flow(flow_x, flow_z)
+}
+
+fn fluid_flow_distance(
+    own_height: f32,
+    kind: TerrainFluidKind,
+    x: i32,
+    y: i32,
+    z: i32,
+    lookup: &TerrainChunkLookup<'_>,
+) -> Option<f32> {
+    let neighbor = lookup.cell(x, y, z);
+    let neighbor_height = match neighbor {
+        Some(cell) if matches!(cell.material, TerrainMaterialClass::Fluid) => {
+            same_fluid_own_height(cell, kind)?
+        }
+        Some(cell) if material_blocks_motion(cell.material) => return None,
+        Some(_) | None => 0.0,
+    };
+
+    if neighbor_height == 0.0 {
+        let blocks_motion = neighbor
+            .map(|cell| material_blocks_motion(cell.material))
+            .unwrap_or(false);
+        if blocks_motion {
+            return Some(0.0);
+        }
+        return same_fluid_own_height_at(x, y - 1, z, kind, lookup)
+            .filter(|height| *height > 0.0)
+            .map(|height| own_height - (height - 0.888_888_9))
+            .or(Some(0.0));
+    }
+
+    Some(own_height - neighbor_height)
+}
+
+fn same_fluid_own_height_at(
+    x: i32,
+    y: i32,
+    z: i32,
+    kind: TerrainFluidKind,
+    lookup: &TerrainChunkLookup<'_>,
+) -> Option<f32> {
+    lookup
+        .cell(x, y, z)
+        .and_then(|cell| same_fluid_own_height(cell, kind))
+}
+
+fn same_fluid_own_height(cell: &TerrainCell, kind: TerrainFluidKind) -> Option<f32> {
+    if let Some(fluid) = cell.fluid {
+        return (fluid.kind == kind).then(|| fluid.own_height());
+    }
+    matches!(cell.material, TerrainMaterialClass::Fluid)
+        .then(|| fluid_cell_height(cell))
+        .flatten()
+}
+
+fn cell_is_same_fluid(cell: &TerrainCell, fluid: Option<TerrainFluid>) -> bool {
+    match (fluid, cell.fluid) {
+        (Some(current), Some(neighbor)) => current.kind == neighbor.kind,
+        _ => matches!(cell.material, TerrainMaterialClass::Fluid),
+    }
+}
+
+fn material_blocks_motion(material: TerrainMaterialClass) -> bool {
+    matches!(material, TerrainMaterialClass::Opaque)
+}
+
+fn normalized_fluid_flow(x: f32, z: f32) -> Option<FluidFlow> {
+    let length = (x * x + z * z).sqrt();
+    (length > 0.0001).then(|| FluidFlow {
+        x: x / length,
+        z: z / length,
+    })
+}
+
+fn fluid_face_uvs(
+    face: TerrainFace,
+    heights: FluidCornerHeights,
+    top_flow: Option<FluidFlow>,
+) -> [[f32; 2]; 4] {
     match face {
-        TerrainFace::Down | TerrainFace::Up => [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+        TerrainFace::Up => top_flow.map(fluid_top_flow_uvs).unwrap_or([
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [1.0, 1.0],
+            [0.0, 1.0],
+        ]),
+        TerrainFace::Down => [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
         TerrainFace::North => [
             [0.5, 0.5],
             [0.5, fluid_side_v(heights.north_east)],
@@ -545,6 +678,22 @@ fn fluid_face_uvs(face: TerrainFace, heights: FluidCornerHeights) -> [[f32; 2]; 
             [0.0, 0.5],
         ],
     }
+}
+
+fn fluid_top_flow_uvs(flow: FluidFlow) -> [[f32; 2]; 4] {
+    let angle = flow.z.atan2(flow.x) - std::f32::consts::FRAC_PI_2;
+    let s = angle.sin() * 0.25;
+    let c = angle.cos() * 0.25;
+    let u00 = 0.5 + (-c - s);
+    let v00 = 0.5 + (-c + s);
+    let u01 = 0.5 + (-c + s);
+    let v01 = 0.5 + (c + s);
+    let u10 = 0.5 + (c + s);
+    let v10 = 0.5 + (c - s);
+    let u11 = 0.5 + (c - s);
+    let v11 = 0.5 + (-c - s);
+
+    [[u00, v00], [u11, v11], [u10, v10], [u01, v01]]
 }
 
 fn fluid_side_v(height: f32) -> f32 {

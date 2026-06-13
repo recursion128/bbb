@@ -2,8 +2,8 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_renderer::terrain::{
-    build_terrain_mesh_layers_with_atlas, TerrainCell, TerrainChunkSnapshot, TerrainLight,
-    TerrainMaterialClass,
+    build_terrain_mesh_layers_with_atlas, TerrainCell, TerrainChunkSnapshot, TerrainFluid,
+    TerrainFluidKind, TerrainLight, TerrainMaterialClass,
 };
 use bbb_world::{ChunkPos, WorldStore};
 
@@ -142,6 +142,7 @@ fn convert_terrain_snapshot(
                 );
             TerrainCell {
                 block_state_id: cell.block_state_id,
+                fluid: terrain_fluid(cell.block_name.as_deref(), &cell.block_properties),
                 texture_indices,
                 render_shape,
                 ambient_occlusion,
@@ -170,4 +171,63 @@ fn convert_terrain_snapshot(
         snapshot.height,
         cells,
     )
+}
+
+fn terrain_fluid(
+    block_name: Option<&str>,
+    properties: &std::collections::BTreeMap<String, String>,
+) -> Option<TerrainFluid> {
+    let kind = match block_name? {
+        "minecraft:water" => TerrainFluidKind::Water,
+        "minecraft:lava" => TerrainFluidKind::Lava,
+        _ => return None,
+    };
+    let level = properties
+        .get("level")
+        .and_then(|value| value.parse::<u8>().ok())
+        .unwrap_or(0);
+    let (amount, falling) = match level {
+        0 => (8, false),
+        1..=7 => (8 - level, false),
+        _ => (8, true),
+    };
+    Some(TerrainFluid::new(kind, amount, falling))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terrain_fluid_maps_liquid_block_level_to_vanilla_amount() {
+        assert_eq!(
+            terrain_fluid(Some("minecraft:water"), &properties([("level", "0")])),
+            Some(TerrainFluid::new(TerrainFluidKind::Water, 8, false))
+        );
+        assert_eq!(
+            terrain_fluid(Some("minecraft:water"), &properties([("level", "3")])),
+            Some(TerrainFluid::new(TerrainFluidKind::Water, 5, false))
+        );
+        assert_eq!(
+            terrain_fluid(Some("minecraft:lava"), &properties([("level", "8")])),
+            Some(TerrainFluid::new(TerrainFluidKind::Lava, 8, true))
+        );
+        assert_eq!(
+            terrain_fluid(Some("minecraft:lava"), &properties([("level", "15")])),
+            Some(TerrainFluid::new(TerrainFluidKind::Lava, 8, true))
+        );
+        assert_eq!(
+            terrain_fluid(Some("minecraft:stone"), &properties([("level", "0")])),
+            None
+        );
+    }
+
+    fn properties<const N: usize>(
+        entries: [(&str, &str); N],
+    ) -> std::collections::BTreeMap<String, String> {
+        entries
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .collect()
+    }
 }
