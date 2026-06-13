@@ -169,12 +169,18 @@ fn block_model_catalog_classifies_cross_models() {
             "textures": { "particle": "#cross" },
             "elements": [
                 {
+                    "from": [0.8, 0, 8],
+                    "to": [15.2, 16, 8],
+                    "rotation": { "origin": [8, 8, 8], "axis": "y", "angle": 45, "rescale": true },
                     "faces": {
                         "north": { "texture": "#cross" },
                         "south": { "texture": "#cross" }
                     }
                 },
                 {
+                    "from": [8, 0, 0.8],
+                    "to": [8, 16, 15.2],
+                    "rotation": { "origin": [8, 8, 8], "axis": "y", "angle": 45, "rescale": true },
                     "faces": {
                         "west": { "texture": "#cross" },
                         "east": { "texture": "#cross" }
@@ -331,6 +337,59 @@ fn block_model_catalog_extracts_single_box_geometry() {
     );
     assert!(model_box.face_cull[BlockModelFace::North.index()]);
     assert!(!model_box.face_cull[BlockModelFace::Up.index()]);
+    assert_eq!(
+        render_model.face_textures.get(BlockModelFace::North),
+        "minecraft:block/oak_planks"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_keeps_rotated_elements_custom() {
+    let root = unique_temp_dir("block-model-rotated-element");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("lever.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/lever" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root.join("models").join("block").join("lever.json"),
+        r##"{
+            "textures": { "texture": "minecraft:block/oak_planks" },
+            "elements": [{
+                "from": [7, 0, 7],
+                "to": [9, 10, 9],
+                "rotation": { "origin": [8, 1, 8], "axis": "x", "angle": 45 },
+                "faces": {
+                    "down":  { "texture": "#texture" },
+                    "up":    { "texture": "#texture" },
+                    "north": { "texture": "#texture" },
+                    "south": { "texture": "#texture" },
+                    "west":  { "texture": "#texture" },
+                    "east":  { "texture": "#texture" }
+                }
+            }]
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let render_model = catalog
+        .block_render_model("minecraft:lever", &BTreeMap::new())
+        .unwrap();
+
+    assert_eq!(render_model.shape, BlockModelShape::Custom);
     assert_eq!(
         render_model.face_textures.get(BlockModelFace::North),
         "minecraft:block/oak_planks"

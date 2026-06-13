@@ -38,6 +38,8 @@ pub(super) struct RawBlockElement {
     #[serde(default)]
     pub(super) to: Option<[f32; 3]>,
     #[serde(default)]
+    pub(super) rotation: Option<serde_json::Value>,
+    #[serde(default)]
     pub(super) faces: BTreeMap<String, RawBlockModelFace>,
 }
 

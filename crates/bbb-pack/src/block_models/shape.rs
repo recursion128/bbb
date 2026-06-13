@@ -8,6 +8,7 @@ pub(super) fn classify_model_shape(
     elements: &[RawBlockElement],
     textures: &BTreeMap<String, String>,
 ) -> BlockModelShape {
+    let has_element_rotation = elements.iter().any(|element| element.rotation.is_some());
     let mut face_counts = [0usize; 6];
     let mut total_faces = 0usize;
     for element in elements {
@@ -20,6 +21,21 @@ pub(super) fn classify_model_shape(
         }
     }
 
+    let has_cross_faces = total_faces == 4
+        && face_counts[BlockModelFace::North.index()] == 1
+        && face_counts[BlockModelFace::South.index()] == 1
+        && face_counts[BlockModelFace::West.index()] == 1
+        && face_counts[BlockModelFace::East.index()] == 1
+        && face_counts[BlockModelFace::Down.index()] == 0
+        && face_counts[BlockModelFace::Up.index()] == 0;
+
+    if has_element_rotation {
+        if has_cross_faces {
+            return BlockModelShape::Cross;
+        }
+        return BlockModelShape::Custom;
+    }
+
     if elements.len() > 1 {
         if let Some(model_boxes) = multi_box_shape(elements, textures) {
             return BlockModelShape::Boxes(model_boxes);
@@ -30,13 +46,6 @@ pub(super) fn classify_model_shape(
         return BlockModelShape::Cube;
     }
 
-    let has_cross_faces = total_faces == 4
-        && face_counts[BlockModelFace::North.index()] == 1
-        && face_counts[BlockModelFace::South.index()] == 1
-        && face_counts[BlockModelFace::West.index()] == 1
-        && face_counts[BlockModelFace::East.index()] == 1
-        && face_counts[BlockModelFace::Down.index()] == 0
-        && face_counts[BlockModelFace::Up.index()] == 0;
     if has_cross_faces {
         return BlockModelShape::Cross;
     }
