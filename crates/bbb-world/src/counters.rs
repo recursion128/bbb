@@ -99,6 +99,24 @@ pub struct WorldCounters {
     #[serde(default)]
     pub command_suggestion_entries_tracked: usize,
     #[serde(default)]
+    pub recipe_book_add_packets: usize,
+    #[serde(default)]
+    pub recipe_book_remove_packets: usize,
+    #[serde(default)]
+    pub recipe_book_settings_packets: usize,
+    #[serde(default)]
+    pub recipe_book_replace_packets: usize,
+    #[serde(default)]
+    pub recipe_book_entries_received: usize,
+    #[serde(default)]
+    pub recipe_book_removed_entries_received: usize,
+    #[serde(default)]
+    pub recipe_book_entries_tracked: usize,
+    #[serde(default)]
+    pub recipe_book_highlights_tracked: usize,
+    #[serde(default)]
+    pub recipe_book_notifications_received: usize,
+    #[serde(default)]
     pub player_chat_packets: usize,
     #[serde(default)]
     pub disguised_chat_packets: usize,

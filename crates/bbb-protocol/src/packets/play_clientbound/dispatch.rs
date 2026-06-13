@@ -453,6 +453,24 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 world_effects::decode_projectile_power(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_RECIPE_BOOK_ADD => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::RecipeBookAdd(
+                client_features::decode_recipe_book_add(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_RECIPE_BOOK_REMOVE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::RecipeBookRemove(
+                client_features::decode_recipe_book_remove(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_RECIPE_BOOK_SETTINGS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::RecipeBookSettings(
+                client_features::decode_recipe_book_settings(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_REMOVE_ENTITIES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::RemoveEntities(

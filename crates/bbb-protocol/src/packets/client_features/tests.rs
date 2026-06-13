@@ -92,6 +92,114 @@ fn rejects_unknown_recipe_display_type() {
 }
 
 #[test]
+fn decodes_recipe_book_add_packet_wire_order() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(1);
+    payload.write_var_i32(123);
+    payload.write_var_i32(3);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(8);
+    payload.write_var_i32(10);
+    payload.write_bool(true);
+    payload.write_var_i32(1);
+    payload.write_var_i32(3);
+    payload.write_var_i32(42);
+    payload.write_var_i32(43);
+    payload.write_u8(3);
+    payload.write_bool(true);
+    let payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_RECIPE_BOOK_ADD, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::RecipeBookAdd(RecipeBookAdd {
+            entries: vec![RecipeBookAddEntry {
+                contents: RecipeDisplayEntry {
+                    id: RecipeDisplayId { index: 123 },
+                    display: RecipeDisplaySummary {
+                        display_type: RecipeDisplayType::Stonecutter,
+                        raw_body: vec![3, 0, 0, 0],
+                    },
+                    group: Some(7),
+                    category_id: 10,
+                    crafting_requirements: Some(vec![IngredientSummary {
+                        tag: None,
+                        item_ids: vec![42, 43],
+                    }]),
+                },
+                flags: 3,
+                notification: true,
+                highlight: true,
+            }],
+            replace: true,
+        })
+    );
+}
+
+#[test]
+fn decodes_recipe_book_remove_packet_wire_order() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(2);
+    payload.write_var_i32(123);
+    payload.write_var_i32(124);
+
+    assert_eq!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_RECIPE_BOOK_REMOVE,
+            &payload.into_inner()
+        )
+        .unwrap(),
+        PlayClientbound::RecipeBookRemove(RecipeBookRemove {
+            recipe_ids: vec![
+                RecipeDisplayId { index: 123 },
+                RecipeDisplayId { index: 124 },
+            ],
+        })
+    );
+}
+
+#[test]
+fn decodes_recipe_book_settings_packet_wire_order() {
+    let mut payload = Encoder::new();
+    payload.write_bool(true);
+    payload.write_bool(false);
+    payload.write_bool(false);
+    payload.write_bool(true);
+    payload.write_bool(true);
+    payload.write_bool(true);
+    payload.write_bool(false);
+    payload.write_bool(false);
+
+    assert_eq!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_RECIPE_BOOK_SETTINGS,
+            &payload.into_inner()
+        )
+        .unwrap(),
+        PlayClientbound::RecipeBookSettings(RecipeBookSettings {
+            crafting: RecipeBookTypeSettings {
+                open: true,
+                filtering: false,
+            },
+            furnace: RecipeBookTypeSettings {
+                open: false,
+                filtering: true,
+            },
+            blast_furnace: RecipeBookTypeSettings {
+                open: true,
+                filtering: true,
+            },
+            smoker: RecipeBookTypeSettings {
+                open: false,
+                filtering: false,
+            },
+        })
+    );
+}
+
+#[test]
 fn decodes_select_advancements_tab_present_and_absent() {
     let mut present = Encoder::new();
     present.write_bool(true);

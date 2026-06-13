@@ -203,6 +203,15 @@ pub(in crate::runtime) fn drain_net_events(
                 });
                 counters.projectile_power_packets += 1;
             }
+            NetEvent::RecipeBookAdd(update) => {
+                world.apply_recipe_book_add(update);
+            }
+            NetEvent::RecipeBookRemove(update) => {
+                world.apply_recipe_book_remove(update);
+            }
+            NetEvent::RecipeBookSettings(update) => {
+                world.apply_recipe_book_settings(update);
+            }
             NetEvent::DebugBlockValue(update) => {
                 counters.last_debug_block_value = Some(bbb_control::DebugBlockValueState {
                     pos: control_block_pos(update.pos),

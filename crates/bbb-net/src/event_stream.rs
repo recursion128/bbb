@@ -640,6 +640,15 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::ProjectilePower(update) => {
                     emit(&events, NetEvent::ProjectilePower(update)).await?;
                 }
+                PlayClientbound::RecipeBookAdd(update) => {
+                    emit(&events, NetEvent::RecipeBookAdd(update)).await?;
+                }
+                PlayClientbound::RecipeBookRemove(update) => {
+                    emit(&events, NetEvent::RecipeBookRemove(update)).await?;
+                }
+                PlayClientbound::RecipeBookSettings(update) => {
+                    emit(&events, NetEvent::RecipeBookSettings(update)).await?;
+                }
                 PlayClientbound::Unknown { .. } => {}
             },
             ConnectionState::Handshake | ConnectionState::Status => {

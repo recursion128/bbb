@@ -7,17 +7,19 @@ use bbb_protocol::packets::{
     CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, DebugBlockValue,
     DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat, DialogHolder,
     DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind, GameRuleValue,
-    GameRuleValues, GameTestHighlightPos, InteractionHand, ItemCostSummary, ItemStackSummary,
-    LevelParticles, MapColorPatch, MapDecoration, MapItemData, MerchantOffer, MerchantOffers,
-    MessageSignature, MountScreenOpen, OpenBook, OpenScreen, OpenSignEditor,
+    GameRuleValues, GameTestHighlightPos, IngredientSummary, InteractionHand, ItemCostSummary,
+    ItemStackSummary, LevelParticles, MapColorPatch, MapDecoration, MapItemData, MerchantOffer,
+    MerchantOffers, MessageSignature, MountScreenOpen, OpenBook, OpenScreen, OpenSignEditor,
     PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat,
     PlayerCombatEnd, PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse,
-    ProjectilePower, RecipeDisplayType, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab,
-    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog,
-    SignedMessageBody, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StopSound,
-    TagNetworkPayload, TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
-    UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
-    WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
+    RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
+    RecipeDisplayType, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
+    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog, SignedMessageBody,
+    SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StopSound, TagNetworkPayload,
+    TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateTags,
+    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
+    WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -638,6 +640,66 @@ fn merchant_offers_event_updates_world_inventory_state() {
     assert_eq!(world_counters.merchant_offer_packets_received, 1);
     assert_eq!(world_counters.merchant_offer_packets_applied, 1);
     assert_eq!(world_counters.merchant_offers_tracked, 1);
+}
+
+#[test]
+fn recipe_book_events_update_world_state() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::RecipeBookAdd(RecipeBookAdd {
+        replace: true,
+        entries: vec![
+            recipe_book_entry(7, true, true),
+            recipe_book_entry(8, false, false),
+        ],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::RecipeBookRemove(RecipeBookRemove {
+        recipe_ids: vec![RecipeDisplayId { index: 8 }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::RecipeBookSettings(RecipeBookSettings {
+        crafting: RecipeBookTypeSettings {
+            open: true,
+            filtering: false,
+        },
+        furnace: RecipeBookTypeSettings {
+            open: false,
+            filtering: true,
+        },
+        blast_furnace: RecipeBookTypeSettings {
+            open: true,
+            filtering: true,
+        },
+        smoker: RecipeBookTypeSettings {
+            open: false,
+            filtering: false,
+        },
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+    assert!(world.recipe_book().known.contains_key(&7));
+    assert!(!world.recipe_book().known.contains_key(&8));
+    assert!(world.recipe_book().highlights.contains(&7));
+    assert_eq!(world.recipe_book().notification_ids, vec![7]);
+    assert!(world.recipe_book().settings.crafting.open);
+    assert!(world.recipe_book().settings.furnace.filtering);
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.recipe_book_add_packets, 1);
+    assert_eq!(world_counters.recipe_book_remove_packets, 1);
+    assert_eq!(world_counters.recipe_book_settings_packets, 1);
+    assert_eq!(world_counters.recipe_book_entries_received, 2);
+    assert_eq!(world_counters.recipe_book_removed_entries_received, 1);
+    assert_eq!(world_counters.recipe_book_entries_tracked, 1);
+    assert_eq!(world_counters.recipe_book_highlights_tracked, 1);
+    assert_eq!(world_counters.recipe_book_notifications_received, 1);
 }
 
 #[test]
@@ -1777,6 +1839,27 @@ fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {
         item_id,
         count,
         component_predicate: Default::default(),
+    }
+}
+
+fn recipe_book_entry(id: i32, notification: bool, highlight: bool) -> RecipeBookAddEntry {
+    RecipeBookAddEntry {
+        contents: RecipeDisplayEntry {
+            id: RecipeDisplayId { index: id },
+            display: RecipeDisplaySummary {
+                display_type: RecipeDisplayType::Stonecutter,
+                raw_body: vec![3, 0, 0, 0],
+            },
+            group: None,
+            category_id: 10,
+            crafting_requirements: Some(vec![IngredientSummary {
+                tag: None,
+                item_ids: vec![42],
+            }]),
+        },
+        flags: (u8::from(notification)) | (u8::from(highlight) << 1),
+        notification,
+        highlight,
     }
 }
 

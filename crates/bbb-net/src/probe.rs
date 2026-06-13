@@ -448,6 +448,15 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 | PlayClientbound::SetChunkCacheRadius(_)
                 | PlayClientbound::ProjectilePower(_)
                 | PlayClientbound::Waypoint(_) => {}
+                PlayClientbound::RecipeBookAdd(update) => {
+                    world.apply_recipe_book_add(update);
+                }
+                PlayClientbound::RecipeBookRemove(update) => {
+                    world.apply_recipe_book_remove(update);
+                }
+                PlayClientbound::RecipeBookSettings(update) => {
+                    world.apply_recipe_book_settings(update);
+                }
                 PlayClientbound::Unknown { .. } => {}
             },
             ConnectionState::Handshake | ConnectionState::Status => {

@@ -39,6 +39,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) command_suggestions: CommandSuggestionsState,
     #[serde(default)]
+    pub(crate) recipe_book: crate::ClientRecipeBookState,
+    #[serde(default)]
     pub(crate) maps: BTreeMap<i32, MapItemState>,
     #[serde(default)]
     pub(crate) local_player_id: Option<i32>,
