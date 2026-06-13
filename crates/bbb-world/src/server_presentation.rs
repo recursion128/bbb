@@ -108,3 +108,137 @@ impl WorldStore {
 fn non_empty_component_string(component: Option<String>) -> Option<String> {
     component.filter(|value| !value.is_empty())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn server_data_stores_motd_icon_and_counter() {
+        let mut store = WorldStore::new();
+
+        store.apply_server_data(ProtocolServerData {
+            motd: "Welcome to BBB".to_string(),
+            icon_bytes: Some(vec![137, 80, 78, 71]),
+        });
+
+        let server_data = store.server_data().expect("server data is stored");
+        assert_eq!(server_data.motd, "Welcome to BBB");
+        assert_eq!(server_data.icon_byte_len(), Some(4));
+        assert_eq!(
+            server_data.icon_bytes.as_deref(),
+            Some(&[137, 80, 78, 71][..])
+        );
+        assert_eq!(store.counters().server_data_packets, 1);
+    }
+
+    #[test]
+    fn resource_pack_push_stores_and_upserts_by_id() {
+        let mut store = WorldStore::new();
+        let id = Uuid::from_u128(0x11111111111111111111111111111111);
+
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            id,
+            "https://example.test/first.zip",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            false,
+            Some("Use server pack?"),
+        ));
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            id,
+            "https://example.test/second.zip",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            true,
+            None,
+        ));
+
+        let pack = store.resource_pack(id).expect("pack is tracked");
+        assert_eq!(pack.url, "https://example.test/second.zip");
+        assert_eq!(pack.hash, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+        assert!(pack.required);
+        assert_eq!(pack.prompt, None);
+        assert_eq!(store.resource_packs().len(), 1);
+        let counters = store.counters();
+        assert_eq!(counters.resource_pack_push_packets, 2);
+        assert_eq!(counters.resource_packs_tracked, 1);
+    }
+
+    #[test]
+    fn resource_pack_pop_removes_one_pack_by_id() {
+        let mut store = WorldStore::new();
+        let first = Uuid::from_u128(0x11111111111111111111111111111111);
+        let second = Uuid::from_u128(0x22222222222222222222222222222222);
+
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            first,
+            "https://example.test/first.zip",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            false,
+            None,
+        ));
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            second,
+            "https://example.test/second.zip",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            false,
+            None,
+        ));
+
+        assert_eq!(
+            store.apply_resource_pack_pop(ProtocolResourcePackPop { id: Some(first) }),
+            1
+        );
+        assert!(store.resource_pack(first).is_none());
+        assert!(store.resource_pack(second).is_some());
+        let counters = store.counters();
+        assert_eq!(counters.resource_pack_pop_packets, 1);
+        assert_eq!(counters.resource_packs_tracked, 1);
+    }
+
+    #[test]
+    fn resource_pack_pop_without_id_clears_all_packs() {
+        let mut store = WorldStore::new();
+        let first = Uuid::from_u128(0x11111111111111111111111111111111);
+        let second = Uuid::from_u128(0x22222222222222222222222222222222);
+
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            first,
+            "https://example.test/first.zip",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            false,
+            None,
+        ));
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            second,
+            "https://example.test/second.zip",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            true,
+            Some("Required pack"),
+        ));
+
+        assert_eq!(
+            store.apply_resource_pack_pop(ProtocolResourcePackPop { id: None }),
+            2
+        );
+        assert!(store.resource_packs().is_empty());
+        let counters = store.counters();
+        assert_eq!(counters.resource_pack_pop_packets, 1);
+        assert_eq!(counters.resource_packs_tracked, 0);
+    }
+
+    fn protocol_resource_pack_push(
+        id: Uuid,
+        url: &str,
+        hash: &str,
+        required: bool,
+        prompt: Option<&str>,
+    ) -> ProtocolResourcePackPush {
+        ProtocolResourcePackPush {
+            id,
+            url: url.to_string(),
+            hash: hash.to_string(),
+            required,
+            prompt: prompt.map(str::to_string),
+        }
+    }
+}
