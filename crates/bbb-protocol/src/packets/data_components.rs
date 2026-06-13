@@ -15,6 +15,7 @@ const MAX_CONTAINER_ITEMS: usize = 256;
 const MAX_FIREWORK_EXPLOSIONS: usize = 256;
 const MAX_LORE_LINES: usize = 256;
 const MAX_MOB_EFFECT_DETAILS_DEPTH: usize = 16;
+const MAX_PARTIAL_DATA_COMPONENT_PREDICATES: usize = 64;
 const MAX_STRING_CHARS: usize = 32767;
 const MAX_WRITABLE_BOOK_PAGE_CHARS: usize = 1024;
 const MAX_WRITTEN_BOOK_TITLE_CHARS: usize = 32;
@@ -116,6 +117,10 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         }
         // enchantments and stored_enchantments: map(enchantment holder id -> level).
         13 | 42 => decode_varint_map(decoder)?,
+        // can_place_on and can_break.
+        14 | 15 => decode_adventure_mode_predicate(decoder)?,
+        // attribute_modifiers.
+        16 => decode_attribute_modifiers(decoder)?,
         // custom_model_data: floats, flags, strings, colors.
         17 => decode_custom_model_data(decoder)?,
         // tooltip_display: bool + collection of data component type ids.
@@ -262,6 +267,85 @@ fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<()> {
         decoder.read_var_i32()?;
     }
     Ok(())
+}
+
+fn decode_adventure_mode_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
+    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..count {
+        decode_block_predicate(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_block_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decode_holder_set(decoder)?;
+    }
+    if decoder.read_bool()? {
+        decode_state_properties_predicate(decoder)?;
+    }
+    if decoder.read_bool()? {
+        skip_nbt_tag_from_decoder(decoder)?;
+    }
+    decode_data_component_matchers(decoder)
+}
+
+fn decode_state_properties_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
+    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..count {
+        decoder.read_string(MAX_STRING_CHARS)?;
+        decode_state_property_value_matcher(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_state_property_value_matcher(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decoder.read_string(MAX_STRING_CHARS)?;
+    } else {
+        decode_optional_string(decoder, MAX_STRING_CHARS)?;
+        decode_optional_string(decoder, MAX_STRING_CHARS)?;
+    }
+    Ok(())
+}
+
+fn decode_data_component_matchers(decoder: &mut Decoder<'_>) -> Result<()> {
+    let exact_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_PREDICATE_ENTRIES)?;
+    decode_typed_data_component_list(decoder, exact_count)?;
+
+    let partial_count = read_bounded_len(decoder, MAX_PARTIAL_DATA_COMPONENT_PREDICATES)?;
+    for _ in 0..partial_count {
+        decoder.read_bool()?;
+        decoder.read_var_i32()?;
+        skip_nbt_tag_from_decoder(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<()> {
+    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..count {
+        decode_holder_registry(decoder)?;
+        decode_identifier(decoder)?;
+        decoder.read_f64()?;
+        decoder.read_var_i32()?;
+        decoder.read_var_i32()?;
+        decode_attribute_modifier_display(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_attribute_modifier_display(decoder: &mut Decoder<'_>) -> Result<()> {
+    match decoder.read_var_i32()? {
+        0 | 1 => Ok(()),
+        2 => {
+            decode_component_summary_from_decoder(decoder)?;
+            Ok(())
+        }
+        other => Err(ProtocolError::InvalidData(format!(
+            "invalid attribute modifier display type id {other}"
+        ))),
+    }
 }
 
 fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -748,6 +832,67 @@ mod tests {
     }
 
     #[test]
+    fn decodes_interaction_and_attribute_data_components() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(3);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(14);
+        payload.write_var_i32(1);
+        payload.write_bool(true);
+        payload.write_var_i32(2);
+        payload.write_var_i32(1);
+        payload.write_bool(true);
+        payload.write_var_i32(2);
+        payload.write_string("facing");
+        payload.write_bool(true);
+        payload.write_string("north");
+        payload.write_string("age");
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_string("1");
+        payload.write_bool(true);
+        payload.write_string("3");
+        payload.write_bool(true);
+        payload.write_bytes(&empty_nbt_compound_root());
+        payload.write_var_i32(1);
+        payload.write_var_i32(1);
+        payload.write_var_i32(64);
+        payload.write_var_i32(1);
+        payload.write_bool(false);
+        payload.write_var_i32(6);
+        payload.write_bytes(&empty_nbt_compound_root());
+
+        payload.write_var_i32(15);
+        payload.write_var_i32(1);
+        write_empty_block_predicate(&mut payload);
+
+        payload.write_var_i32(16);
+        payload.write_var_i32(3);
+        write_attribute_modifier_entry(&mut payload, "minecraft:test/default", 0, None);
+        write_attribute_modifier_entry(&mut payload, "minecraft:test/hidden", 1, None);
+        write_attribute_modifier_entry(
+            &mut payload,
+            "minecraft:test/override",
+            2,
+            Some("Override"),
+        );
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 3,
+                added_type_ids: vec![14, 15, 16],
+                removed_type_ids: Vec::new(),
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_additional_item_data_components() {
         let mut payload = Encoder::new();
         let component_ids = [
@@ -1014,6 +1159,31 @@ mod tests {
         payload.write_var_i32(count);
         payload.write_var_i32(0);
         payload.write_var_i32(0);
+    }
+
+    fn write_empty_block_predicate(payload: &mut Encoder) {
+        payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+    }
+
+    fn write_attribute_modifier_entry(
+        payload: &mut Encoder,
+        id: &str,
+        display_type: i32,
+        display_text: Option<&str>,
+    ) {
+        payload.write_var_i32(7);
+        payload.write_string(id);
+        payload.write_f64(1.5);
+        payload.write_var_i32(0);
+        payload.write_var_i32(1);
+        payload.write_var_i32(display_type);
+        if let Some(text) = display_text {
+            payload.write_bytes(&nbt_string_root(text));
+        }
     }
 
     fn write_direct_sound_event(payload: &mut Encoder, id: &str, fixed_range: Option<f32>) {
