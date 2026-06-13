@@ -20,6 +20,11 @@ const MAX_ENTITY_ID_LIST: usize = 8192;
 const MAX_EQUIPMENT_SLOTS: usize = 8;
 const MAX_ATTRIBUTE_MODIFIERS: usize = 1024;
 const MAX_ENTITY_DATA_PARTICLES: usize = 65_536;
+const MAX_GAME_PROFILE_PROPERTIES: usize = 16;
+const MAX_GAME_PROFILE_PROPERTY_NAME_CHARS: usize = 64;
+const MAX_GAME_PROFILE_PROPERTY_SIGNATURE_CHARS: usize = 1024;
+const MAX_PLAYER_NAME_CHARS: usize = 16;
+const MAX_RESOURCE_LOCATION_CHARS: usize = 32767;
 // Vanilla uses ByteBufCodecs.list() without an explicit wire cap. Keep a repo-side
 // allocation guard so malformed packets cannot request unbounded step storage.
 const MAX_MINECART_LERP_STEPS: usize = 65_536;
@@ -252,6 +257,7 @@ pub enum EntityDataValueKind {
         serializer: EntityDataRegistryHolder,
         id: i32,
     },
+    PaintingVariant(PaintingVariantData),
     EnumId {
         serializer: EntityDataEnumSerializer,
         id: i32,
@@ -275,7 +281,51 @@ pub enum EntityDataValueKind {
         z: f32,
         w: f32,
     },
+    ResolvableProfile(ResolvableProfileData),
     HumanoidArm(i32),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PaintingVariantData {
+    pub registry_id: Option<i32>,
+    pub direct: Option<DirectPaintingVariantData>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DirectPaintingVariantData {
+    pub width: i32,
+    pub height: i32,
+    pub asset_id: String,
+    pub title: Option<String>,
+    pub author: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResolvableProfileData {
+    pub profile: ResolvableProfileKind,
+    pub skin_patch: PlayerSkinPatchData,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ResolvableProfileKind {
+    GameProfile {
+        id: Uuid,
+        name: String,
+        properties: usize,
+    },
+    Partial {
+        name: Option<String>,
+        id: Option<Uuid>,
+        properties: usize,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerSkinPatchData {
+    pub body: Option<String>,
+    pub cape: Option<String>,
+    pub elytra: Option<String>,
+    pub slim_model: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -292,7 +342,6 @@ pub enum EntityDataRegistryHolder {
     ChickenVariant,
     ChickenSoundVariant,
     ZombieNautilusVariant,
-    PaintingVariant,
 }
 
 impl EntityDataRegistryHolder {
@@ -310,7 +359,6 @@ impl EntityDataRegistryHolder {
             30 => Self::ChickenVariant,
             31 => Self::ChickenSoundVariant,
             32 => Self::ZombieNautilusVariant,
-            34 => Self::PaintingVariant,
             _ => return None,
         })
     }
@@ -655,6 +703,7 @@ fn decode_entity_data_value(
         } else {
             None
         }),
+        34 => EntityDataValueKind::PaintingVariant(decode_painting_variant_data(decoder)?),
         39 => EntityDataValueKind::Vector3f {
             x: decoder.read_f32()?,
             y: decoder.read_f32()?,
@@ -666,6 +715,7 @@ fn decode_entity_data_value(
             z: decoder.read_f32()?,
             w: decoder.read_f32()?,
         },
+        41 => EntityDataValueKind::ResolvableProfile(decode_resolvable_profile_data(decoder)?),
         42 => EntityDataValueKind::HumanoidArm(decoder.read_var_i32()?),
         other if let Some(serializer) = EntityDataRegistryHolder::from_serializer_id(other) => {
             EntityDataValueKind::RegistryId {
@@ -685,6 +735,111 @@ fn decode_entity_data_value(
             )))
         }
     })
+}
+
+fn decode_painting_variant_data(decoder: &mut Decoder<'_>) -> Result<PaintingVariantData> {
+    let encoded_id = decoder.read_var_i32()?;
+    if encoded_id < 0 {
+        return Err(ProtocolError::NegativeLength(encoded_id));
+    }
+    if encoded_id == 0 {
+        return Ok(PaintingVariantData {
+            registry_id: None,
+            direct: Some(decode_direct_painting_variant_data(decoder)?),
+        });
+    }
+
+    Ok(PaintingVariantData {
+        registry_id: Some(encoded_id - 1),
+        direct: None,
+    })
+}
+
+fn decode_direct_painting_variant_data(
+    decoder: &mut Decoder<'_>,
+) -> Result<DirectPaintingVariantData> {
+    Ok(DirectPaintingVariantData {
+        width: decoder.read_var_i32()?,
+        height: decoder.read_var_i32()?,
+        asset_id: decoder.read_string(MAX_RESOURCE_LOCATION_CHARS)?,
+        title: decode_optional_component(decoder)?,
+        author: decode_optional_component(decoder)?,
+    })
+}
+
+fn decode_optional_component(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
+    if decoder.read_bool()? {
+        Ok(Some(decode_component_summary_from_decoder(decoder)?))
+    } else {
+        Ok(None)
+    }
+}
+
+fn decode_resolvable_profile_data(decoder: &mut Decoder<'_>) -> Result<ResolvableProfileData> {
+    let profile = if decoder.read_bool()? {
+        let id = decoder.read_uuid()?;
+        let name = decoder.read_string(MAX_PLAYER_NAME_CHARS)?;
+        let properties = decode_game_profile_properties(decoder)?;
+        ResolvableProfileKind::GameProfile {
+            id,
+            name,
+            properties,
+        }
+    } else {
+        let name = decode_optional_string(decoder, MAX_PLAYER_NAME_CHARS)?;
+        let id = if decoder.read_bool()? {
+            Some(decoder.read_uuid()?)
+        } else {
+            None
+        };
+        let properties = decode_game_profile_properties(decoder)?;
+        ResolvableProfileKind::Partial {
+            name,
+            id,
+            properties,
+        }
+    };
+    Ok(ResolvableProfileData {
+        profile,
+        skin_patch: decode_player_skin_patch(decoder)?,
+    })
+}
+
+fn decode_game_profile_properties(decoder: &mut Decoder<'_>) -> Result<usize> {
+    let count = decoder.read_len()?;
+    if count > MAX_GAME_PROFILE_PROPERTIES {
+        return Err(ProtocolError::PacketTooLarge(
+            count,
+            MAX_GAME_PROFILE_PROPERTIES,
+        ));
+    }
+    for _ in 0..count {
+        decoder.read_string(MAX_GAME_PROFILE_PROPERTY_NAME_CHARS)?;
+        decoder.read_string(MAX_RESOURCE_LOCATION_CHARS)?;
+        decode_optional_string(decoder, MAX_GAME_PROFILE_PROPERTY_SIGNATURE_CHARS)?;
+    }
+    Ok(count)
+}
+
+fn decode_player_skin_patch(decoder: &mut Decoder<'_>) -> Result<PlayerSkinPatchData> {
+    Ok(PlayerSkinPatchData {
+        body: decode_optional_string(decoder, MAX_RESOURCE_LOCATION_CHARS)?,
+        cape: decode_optional_string(decoder, MAX_RESOURCE_LOCATION_CHARS)?,
+        elytra: decode_optional_string(decoder, MAX_RESOURCE_LOCATION_CHARS)?,
+        slim_model: if decoder.read_bool()? {
+            Some(decoder.read_bool()?)
+        } else {
+            None
+        },
+    })
+}
+
+fn decode_optional_string(decoder: &mut Decoder<'_>, max_chars: usize) -> Result<Option<String>> {
+    if decoder.read_bool()? {
+        Ok(Some(decoder.read_string(max_chars)?))
+    } else {
+        Ok(None)
+    }
 }
 
 pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<UpdateAttributes> {

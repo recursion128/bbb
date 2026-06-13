@@ -358,6 +358,7 @@ fn decodes_entity_lifecycle_packets() {
 #[test]
 fn decodes_additional_entity_data_serializers() {
     let owner = Uuid::from_u128(0xaaaaaaaa11111111bbbbbbbb22222222);
+    let profile_id = Uuid::from_u128(0xbbbbbbbb22222222cccccccc33333333);
     let mut dust_options = Encoder::new();
     dust_options.write_i32(0x00ff00);
     dust_options.write_f32(0.5);
@@ -406,11 +407,38 @@ fn decodes_additional_entity_data_serializers() {
     payload.write_var_i32(2);
 
     payload.write_u8(16);
+    payload.write_var_i32(34);
+    payload.write_var_i32(13);
+
+    payload.write_u8(17);
+    payload.write_var_i32(34);
+    payload.write_var_i32(0);
+    payload.write_var_i32(16);
+    payload.write_var_i32(16);
+    payload.write_string("minecraft:kebab");
+    payload.write_bool(true);
+    payload.write_bytes(&nbt_string_root("Kebab"));
+    payload.write_bool(true);
+    payload.write_bytes(&nbt_string_root("Artist"));
+
+    payload.write_u8(18);
+    payload.write_var_i32(41);
+    payload.write_bool(true);
+    payload.write_uuid(profile_id);
+    payload.write_string("Player");
+    payload.write_var_i32(1);
+    payload.write_string("textures");
+    payload.write_string("texture-value");
+    payload.write_bool(true);
+    payload.write_string("signature");
+    write_skin_patch(&mut payload);
+
+    payload.write_u8(19);
     payload.write_var_i32(16);
     payload.write_var_i32(14);
     payload.write_bytes(&dust_options);
 
-    payload.write_u8(17);
+    payload.write_u8(20);
     payload.write_var_i32(17);
     payload.write_var_i32(2);
     payload.write_var_i32(45);
@@ -488,6 +516,45 @@ fn decodes_additional_entity_data_serializers() {
                 },
                 EntityDataValue {
                     data_id: 16,
+                    serializer_id: 34,
+                    value: EntityDataValueKind::PaintingVariant(PaintingVariantData {
+                        registry_id: Some(12),
+                        direct: None,
+                    }),
+                },
+                EntityDataValue {
+                    data_id: 17,
+                    serializer_id: 34,
+                    value: EntityDataValueKind::PaintingVariant(PaintingVariantData {
+                        registry_id: None,
+                        direct: Some(DirectPaintingVariantData {
+                            width: 16,
+                            height: 16,
+                            asset_id: "minecraft:kebab".to_string(),
+                            title: Some("Kebab".to_string()),
+                            author: Some("Artist".to_string()),
+                        }),
+                    }),
+                },
+                EntityDataValue {
+                    data_id: 18,
+                    serializer_id: 41,
+                    value: EntityDataValueKind::ResolvableProfile(ResolvableProfileData {
+                        profile: ResolvableProfileKind::GameProfile {
+                            id: profile_id,
+                            name: "Player".to_string(),
+                            properties: 1,
+                        },
+                        skin_patch: PlayerSkinPatchData {
+                            body: Some("minecraft:entity/player/wide/steve".to_string()),
+                            cape: None,
+                            elytra: Some("minecraft:entity/elytra".to_string()),
+                            slim_model: Some(true),
+                        },
+                    }),
+                },
+                EntityDataValue {
+                    data_id: 19,
                     serializer_id: 16,
                     value: EntityDataValueKind::Particle(ParticlePayload {
                         particle_type_id: 14,
@@ -495,7 +562,7 @@ fn decodes_additional_entity_data_serializers() {
                     }),
                 },
                 EntityDataValue {
-                    data_id: 17,
+                    data_id: 20,
                     serializer_id: 17,
                     value: EntityDataValueKind::Particles(vec![
                         ParticlePayload {
@@ -677,6 +744,16 @@ fn nbt_string_root(text: &str) -> Vec<u8> {
     payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
     payload.extend_from_slice(text.as_bytes());
     payload
+}
+
+fn write_skin_patch(payload: &mut Encoder) {
+    payload.write_bool(true);
+    payload.write_string("minecraft:entity/player/wide/steve");
+    payload.write_bool(false);
+    payload.write_bool(true);
+    payload.write_string("minecraft:entity/elytra");
+    payload.write_bool(true);
+    payload.write_bool(true);
 }
 
 fn lp_vec3_axis_x() -> [u8; 6] {
