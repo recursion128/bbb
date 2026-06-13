@@ -6,5 +6,5 @@ pub use types::{
     ActionBarText, AppStatus, CameraState, ClientTickingState, ControlRequest, ControlResponse,
     ControlSnapshot, DefaultSpawn, NetCounters, NetVec3, PlayerAbilities, PlayerExperience,
     PlayerHealth, PlayerPose, RendererCounters, SharedSnapshot, SystemChatLine, TitleState,
-    WeatherState, WorldTime,
+    TransferTarget, WeatherState, WorldTime,
 };

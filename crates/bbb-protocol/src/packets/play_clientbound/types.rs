@@ -90,6 +90,7 @@ pub enum PlayClientbound {
     TeleportEntity(TeleportEntity),
     TickingState(TickingState),
     TickingStep(TickingStep),
+    Transfer(Transfer),
     UpdateAttributes(UpdateAttributes),
     UpdateMobEffect(UpdateMobEffect),
     LevelChunkWithLight(LevelChunkWithLight),

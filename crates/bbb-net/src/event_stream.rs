@@ -131,6 +131,9 @@ pub async fn run_offline_event_stream(
                         let (id, payload) = packets::encode_select_known_packs_empty();
                         conn.send_packet(id, &payload).await?;
                     }
+                    ConfigurationClientbound::Transfer(transfer) => {
+                        emit(&events, NetEvent::Transfer(transfer)).await?;
+                    }
                     ConfigurationClientbound::Unknown { .. } => {}
                 }
             }
@@ -365,6 +368,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::TickingStep(step) => {
                     emit(&events, NetEvent::TickingStep(step)).await?;
+                }
+                PlayClientbound::Transfer(transfer) => {
+                    emit(&events, NetEvent::Transfer(transfer)).await?;
                 }
                 PlayClientbound::SetCamera(camera) => {
                     emit(&events, NetEvent::SetCamera(camera)).await?;

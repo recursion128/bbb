@@ -528,6 +528,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_state::decode_ticking_step(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_TRANSFER => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::Transfer(connection::decode_transfer(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::UpdateAttributes(

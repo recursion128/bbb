@@ -53,10 +53,17 @@ pub enum ConfigurationClientbound {
     SelectKnownPacks {
         offered: usize,
     },
+    Transfer(Transfer),
     Unknown {
         packet_id: i32,
         len: usize,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Transfer {
+    pub host: String,
+    pub port: i32,
 }
 
 pub fn encode_handshake(host: &str, port: u16, intent: ClientIntent) -> (i32, Vec<u8>) {
@@ -198,11 +205,24 @@ pub fn decode_configuration_clientbound(
             let offered = decoder.read_len()?;
             Ok(ConfigurationClientbound::SelectKnownPacks { offered })
         }
+        ids::configuration::CLIENTBOUND_TRANSFER => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::Transfer(decode_transfer(
+                &mut decoder,
+            )?))
+        }
         id => Ok(ConfigurationClientbound::Unknown {
             packet_id: id,
             len: payload.len(),
         }),
     }
+}
+
+pub(super) fn decode_transfer(decoder: &mut Decoder<'_>) -> Result<Transfer> {
+    Ok(Transfer {
+        host: decoder.read_string(32767)?,
+        port: decoder.read_var_i32()?,
+    })
 }
 
 fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<GameProfile> {

@@ -37,6 +37,7 @@ pub mod configuration {
     pub const CLIENTBOUND_KEEP_ALIVE: i32 = 0x04;
     pub const CLIENTBOUND_PING: i32 = 0x05;
     pub const CLIENTBOUND_REGISTRY_DATA: i32 = 0x07;
+    pub const CLIENTBOUND_TRANSFER: i32 = 0x0b;
     pub const CLIENTBOUND_SELECT_KNOWN_PACKS: i32 = 0x0e;
 }
 

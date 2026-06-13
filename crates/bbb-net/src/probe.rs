@@ -101,6 +101,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                         let (id, payload) = packets::encode_select_known_packs_empty();
                         conn.send_packet(id, &payload).await?;
                     }
+                    ConfigurationClientbound::Transfer(_) => {}
                     ConfigurationClientbound::Unknown { .. } => {}
                 }
             }
@@ -245,6 +246,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 | PlayClientbound::SetTitlesAnimation(_)
                 | PlayClientbound::TickingState(_)
                 | PlayClientbound::TickingStep(_)
+                | PlayClientbound::Transfer(_)
                 | PlayClientbound::SetCamera(_) => {}
                 PlayClientbound::InitializeBorder(border) => {
                     world.apply_initialize_border(border);

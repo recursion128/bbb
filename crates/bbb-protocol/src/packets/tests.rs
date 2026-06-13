@@ -1106,6 +1106,30 @@ fn decodes_chunk_batch_and_encodes_client_play_status_packets() {
     assert_eq!(decoder.read_i8().unwrap(), 10);
 }
 
+#[test]
+fn decodes_transfer_packets_in_configuration_and_play() {
+    let mut payload = Encoder::new();
+    payload.write_string("next.example.com");
+    payload.write_var_i32(25566);
+    let payload = payload.into_inner();
+
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_TRANSFER, &payload)
+            .unwrap(),
+        ConfigurationClientbound::Transfer(Transfer {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        })
+    );
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_TRANSFER, &payload).unwrap(),
+        PlayClientbound::Transfer(Transfer {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        })
+    );
+}
+
 fn encode_block_pos(x: i32, y: i32, z: i32) -> i64 {
     (((x as i64) & 0x3ffffff) << 38) | (((z as i64) & 0x3ffffff) << 12) | ((y as i64) & 0xfff)
 }

@@ -41,6 +41,13 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::CompressionSet { threshold } => {
                 counters.compression_threshold = Some(threshold);
             }
+            NetEvent::Transfer(transfer) => {
+                counters.last_transfer = Some(bbb_control::TransferTarget {
+                    host: transfer.host,
+                    port: transfer.port,
+                });
+                counters.transfer_packets += 1;
+            }
             NetEvent::PacketSeen { .. } => {
                 counters.packets_seen += 1;
             }

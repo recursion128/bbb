@@ -23,6 +23,32 @@ fn block_changed_ack_updates_snapshot_counters() {
 }
 
 #[test]
+fn transfer_event_updates_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Transfer(bbb_protocol::packets::Transfer {
+        host: "next.example.com".to_string(),
+        port: 25566,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(
+        counters.last_transfer,
+        Some(bbb_control::TransferTarget {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        })
+    );
+    assert_eq!(counters.transfer_packets, 1);
+}
+
+#[test]
 fn take_item_entity_event_updates_snapshot_counter() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::TakeItemEntity(

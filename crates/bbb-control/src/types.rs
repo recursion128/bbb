@@ -34,6 +34,7 @@ pub struct NetCounters {
     pub title: TitleState,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
+    pub last_transfer: Option<TransferTarget>,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
     pub player_info_remove_packets: usize,
@@ -80,6 +81,7 @@ pub struct NetCounters {
     pub ticking_state_packets: usize,
     pub ticking_step_packets: usize,
     pub set_camera_packets: usize,
+    pub transfer_packets: usize,
     pub take_item_entity_packets: usize,
     pub last_block_changed_ack_sequence: Option<i32>,
     pub held_slot_commands_queued: usize,
@@ -220,6 +222,12 @@ impl Default for CameraState {
             entity_known: true,
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransferTarget {
+    pub host: String,
+    pub port: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
