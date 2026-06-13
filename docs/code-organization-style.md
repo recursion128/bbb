@@ -45,6 +45,11 @@ Avoid modules named by implementation accident such as `misc`, `helpers`,
   area.
 - Keep root `lib.rs` files focused on `mod` declarations, public re-exports,
   crate-level types, and small glue.
+- When a crate-level re-export list grows beyond a quick scan, move it into
+  semantic facade modules such as `world_state`, `terrain_state`, or
+  `client_state`, then keep `lib.rs` as `mod` declarations plus `pub use`
+  facade exports. Use `src/exports.rs` only when the crate has no clearer
+  semantic grouping.
 - Keep `main.rs` focused on startup and top-level runtime orchestration. Move
   reusable runtime behavior into modules.
 
