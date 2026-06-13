@@ -16,10 +16,12 @@ use bbb_protocol::{
         LightUpdate, LoginClientbound, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin,
         PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
         PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
-        RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetChunkCacheCenter,
-        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetEntityData, SetEntityLink,
-        SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers, SetPlayerInventory,
-        SetSimulationDistance, SystemChat, TeleportEntity, UpdateAttributes, UseItem, UseItemOn,
+        RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetActionBarText, SetCamera,
+        SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
+        SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers,
+        SetPlayerInventory, SetSimulationDistance, SetSubtitleText, SetTitleText,
+        SetTitlesAnimation, SystemChat, TeleportEntity, TickingState, TickingStep,
+        UpdateAttributes, UseItem, UseItemOn,
     },
 };
 use bbb_world::{
@@ -131,6 +133,13 @@ pub enum NetEvent {
     SetDefaultSpawnPosition(SetDefaultSpawnPosition),
     SetSimulationDistance(SetSimulationDistance),
     SystemChat(SystemChat),
+    SetActionBarText(SetActionBarText),
+    SetTitleText(SetTitleText),
+    SetSubtitleText(SetSubtitleText),
+    SetTitlesAnimation(SetTitlesAnimation),
+    TickingState(TickingState),
+    TickingStep(TickingStep),
+    SetCamera(SetCamera),
     GameEvent(GameEvent),
     SetTime(PlayTime),
     BlockEntityData(BlockEntityData),
@@ -533,6 +542,27 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SystemChat(chat) => {
                     emit(&events, NetEvent::SystemChat(chat)).await?;
                 }
+                PlayClientbound::SetActionBarText(text) => {
+                    emit(&events, NetEvent::SetActionBarText(text)).await?;
+                }
+                PlayClientbound::SetTitleText(text) => {
+                    emit(&events, NetEvent::SetTitleText(text)).await?;
+                }
+                PlayClientbound::SetSubtitleText(text) => {
+                    emit(&events, NetEvent::SetSubtitleText(text)).await?;
+                }
+                PlayClientbound::SetTitlesAnimation(animation) => {
+                    emit(&events, NetEvent::SetTitlesAnimation(animation)).await?;
+                }
+                PlayClientbound::TickingState(ticking) => {
+                    emit(&events, NetEvent::TickingState(ticking)).await?;
+                }
+                PlayClientbound::TickingStep(step) => {
+                    emit(&events, NetEvent::TickingStep(step)).await?;
+                }
+                PlayClientbound::SetCamera(camera) => {
+                    emit(&events, NetEvent::SetCamera(camera)).await?;
+                }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     emit(&events, NetEvent::LevelChunkWithLight(chunk)).await?;
                 }
@@ -756,6 +786,13 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::SetDefaultSpawnPosition(_) => {}
                 PlayClientbound::SetSimulationDistance(_) => {}
                 PlayClientbound::SystemChat(_) => {}
+                PlayClientbound::SetActionBarText(_)
+                | PlayClientbound::SetTitleText(_)
+                | PlayClientbound::SetSubtitleText(_)
+                | PlayClientbound::SetTitlesAnimation(_)
+                | PlayClientbound::TickingState(_)
+                | PlayClientbound::TickingStep(_)
+                | PlayClientbound::SetCamera(_) => {}
                 PlayClientbound::BlockChangedAck(_) => {}
                 PlayClientbound::BlockEntityData(update) => {
                     world.apply_block_entity_data(update)?;

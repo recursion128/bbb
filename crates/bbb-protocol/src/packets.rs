@@ -110,6 +110,8 @@ pub enum PlayClientbound {
     RemoveEntities(RemoveEntities),
     Respawn(Respawn),
     RotateHead(RotateHead),
+    SetActionBarText(SetActionBarText),
+    SetCamera(SetCamera),
     SetCursorItem(SetCursorItem),
     SetDefaultSpawnPosition(SetDefaultSpawnPosition),
     SetEntityData(SetEntityData),
@@ -125,10 +127,15 @@ pub enum PlayClientbound {
     SetChunkCacheCenter(SetChunkCacheCenter),
     SetChunkCacheRadius(SetChunkCacheRadius),
     SetSimulationDistance(SetSimulationDistance),
+    SetSubtitleText(SetSubtitleText),
     StartConfiguration,
     SetTime(PlayTime),
+    SetTitleText(SetTitleText),
+    SetTitlesAnimation(SetTitlesAnimation),
     SystemChat(SystemChat),
     TeleportEntity(TeleportEntity),
+    TickingState(TickingState),
+    TickingStep(TickingStep),
     UpdateAttributes(UpdateAttributes),
     LevelChunkWithLight(LevelChunkWithLight),
     LightUpdate(LightUpdate),
@@ -581,6 +588,50 @@ pub struct SetDefaultSpawnPosition {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetSimulationDistance {
     pub distance: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetActionBarText {
+    pub content: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetTitleText {
+    pub content: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetSubtitleText {
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetTitlesAnimation {
+    pub fade_in: i32,
+    pub stay: i32,
+    pub fade_out: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct TickingState {
+    pub tick_rate: f32,
+    pub frozen: bool,
+}
+
+impl TickingState {
+    pub fn clamped_tick_rate(&self) -> f32 {
+        self.tick_rate.max(1.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TickingStep {
+    pub tick_steps: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetCamera {
+    pub camera_id: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1403,6 +1454,18 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 y_head_rot: unpack_degrees(decoder.read_i8()?),
             }))
         }
+        ids::play::CLIENTBOUND_SET_ACTION_BAR_TEXT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetActionBarText(SetActionBarText {
+                content: decode_component_summary_from_decoder(&mut decoder)?,
+            }))
+        }
+        ids::play::CLIENTBOUND_SET_CAMERA => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetCamera(SetCamera {
+                camera_id: decoder.read_var_i32()?,
+            }))
+        }
         ids::play::CLIENTBOUND_SET_HEALTH => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SetHealth(PlayerHealth {
@@ -1502,9 +1565,29 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 },
             ))
         }
+        ids::play::CLIENTBOUND_SET_SUBTITLE_TEXT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetSubtitleText(SetSubtitleText {
+                content: decode_component_summary_from_decoder(&mut decoder)?,
+            }))
+        }
         ids::play::CLIENTBOUND_SET_TIME => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SetTime(decode_play_time(&mut decoder)?))
+        }
+        ids::play::CLIENTBOUND_SET_TITLE_TEXT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetTitleText(SetTitleText {
+                content: decode_component_summary_from_decoder(&mut decoder)?,
+            }))
+        }
+        ids::play::CLIENTBOUND_SET_TITLES_ANIMATION => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetTitlesAnimation(SetTitlesAnimation {
+                fade_in: decoder.read_i32()?,
+                stay: decoder.read_i32()?,
+                fade_out: decoder.read_i32()?,
+            }))
         }
         ids::play::CLIENTBOUND_START_CONFIGURATION => Ok(PlayClientbound::StartConfiguration),
         ids::play::CLIENTBOUND_SYSTEM_CHAT => {
@@ -1519,6 +1602,19 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::TeleportEntity(decode_teleport_entity(
                 &mut decoder,
             )?))
+        }
+        ids::play::CLIENTBOUND_TICKING_STATE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::TickingState(TickingState {
+                tick_rate: decoder.read_f32()?,
+                frozen: decoder.read_bool()?,
+            }))
+        }
+        ids::play::CLIENTBOUND_TICKING_STEP => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::TickingStep(TickingStep {
+                tick_steps: decoder.read_var_i32()?,
+            }))
         }
         ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES => {
             let mut decoder = Decoder::new(payload);
@@ -4124,6 +4220,109 @@ mod tests {
         assert_eq!(
             packet,
             PlayClientbound::SetChunkCacheRadius(SetChunkCacheRadius { radius: 10 })
+        );
+    }
+
+    #[test]
+    fn decodes_title_camera_and_ticking_packets() {
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_ACTION_BAR_TEXT,
+            &nbt_string_root("Action"),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetActionBarText(SetActionBarText {
+                content: "Action".to_string(),
+            })
+        );
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_TITLE_TEXT,
+            &nbt_string_root("Title"),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetTitleText(SetTitleText {
+                content: "Title".to_string(),
+            })
+        );
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_SUBTITLE_TEXT,
+            &nbt_string_root("Subtitle"),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetSubtitleText(SetSubtitleText {
+                content: "Subtitle".to_string(),
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_i32(10);
+        payload.write_i32(70);
+        payload.write_i32(-5);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_TITLES_ANIMATION,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetTitlesAnimation(SetTitlesAnimation {
+                fade_in: 10,
+                stay: 70,
+                fade_out: -5,
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_f32(0.25);
+        payload.write_bool(true);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_TICKING_STATE, &payload.into_inner())
+                .unwrap();
+        let PlayClientbound::TickingState(ticking_state) = packet else {
+            panic!("wrong packet");
+        };
+        assert_eq!(
+            ticking_state,
+            TickingState {
+                tick_rate: 0.25,
+                frozen: true,
+            }
+        );
+        assert_eq!(ticking_state.clamped_tick_rate(), 1.0);
+        assert_eq!(
+            TickingState {
+                tick_rate: 2.5,
+                frozen: false,
+            }
+            .clamped_tick_rate(),
+            2.5
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(40);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_TICKING_STEP, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::TickingStep(TickingStep { tick_steps: 40 })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_var_i32(12345);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SET_CAMERA, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetCamera(SetCamera { camera_id: 12345 })
         );
     }
 

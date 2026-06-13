@@ -9,8 +9,9 @@ use std::{
 
 use anyhow::{Context, Result};
 use bbb_control::{
-    shared_snapshot, DefaultSpawn, NetCounters, NetVec3, PlayerAbilities, PlayerExperience,
-    PlayerHealth, PlayerPose, RendererCounters, SharedSnapshot, SystemChatLine,
+    shared_snapshot, ActionBarText, CameraState, DefaultSpawn, NetCounters, NetVec3,
+    PlayerAbilities, PlayerExperience, PlayerHealth, PlayerPose, RendererCounters, SharedSnapshot,
+    SystemChatLine,
 };
 use bbb_net::{ConnectionOptions, NetCommand, NetEvent, PlayerMoveCommand};
 use bbb_pack::{
@@ -1947,6 +1948,27 @@ fn drain_net_events(
             NetEvent::SystemChat(chat) => {
                 apply_system_chat_update(counters, chat);
             }
+            NetEvent::SetActionBarText(text) => {
+                apply_action_bar_update(counters, text);
+            }
+            NetEvent::SetTitleText(text) => {
+                apply_title_text_update(counters, text);
+            }
+            NetEvent::SetSubtitleText(text) => {
+                apply_subtitle_text_update(counters, text);
+            }
+            NetEvent::SetTitlesAnimation(animation) => {
+                apply_titles_animation_update(counters, animation);
+            }
+            NetEvent::TickingState(ticking) => {
+                apply_ticking_state_update(counters, ticking);
+            }
+            NetEvent::TickingStep(step) => {
+                apply_ticking_step_update(counters, step);
+            }
+            NetEvent::SetCamera(camera) => {
+                apply_set_camera_update(counters, world, camera);
+            }
             NetEvent::BlockChangedAck(ack) => {
                 apply_block_changed_ack(counters, ack);
             }
@@ -2104,6 +2126,87 @@ fn apply_system_chat_update(counters: &mut NetCounters, chat: bbb_protocol::pack
         overlay: chat.overlay,
     });
     counters.system_chat_packets += 1;
+}
+
+fn apply_action_bar_update(
+    counters: &mut NetCounters,
+    text: bbb_protocol::packets::SetActionBarText,
+) {
+    counters.last_action_bar = Some(ActionBarText {
+        content: text.content,
+        display_ticks: 60,
+    });
+    counters.action_bar_packets += 1;
+}
+
+fn apply_title_text_update(counters: &mut NetCounters, text: bbb_protocol::packets::SetTitleText) {
+    counters.title.title = Some(text.content);
+    counters.title.title_time = title_total_ticks(&counters.title);
+    counters.title_text_packets += 1;
+}
+
+fn apply_subtitle_text_update(
+    counters: &mut NetCounters,
+    text: bbb_protocol::packets::SetSubtitleText,
+) {
+    counters.title.subtitle = Some(text.content);
+    counters.subtitle_text_packets += 1;
+}
+
+fn apply_titles_animation_update(
+    counters: &mut NetCounters,
+    animation: bbb_protocol::packets::SetTitlesAnimation,
+) {
+    if animation.fade_in >= 0 {
+        counters.title.fade_in = animation.fade_in;
+    }
+    if animation.stay >= 0 {
+        counters.title.stay = animation.stay;
+    }
+    if animation.fade_out >= 0 {
+        counters.title.fade_out = animation.fade_out;
+    }
+    if counters.title.title_time > 0 {
+        counters.title.title_time = title_total_ticks(&counters.title);
+    }
+    counters.titles_animation_packets += 1;
+}
+
+fn title_total_ticks(title: &bbb_control::TitleState) -> i32 {
+    title
+        .fade_in
+        .saturating_add(title.stay)
+        .saturating_add(title.fade_out)
+}
+
+fn apply_ticking_state_update(
+    counters: &mut NetCounters,
+    ticking: bbb_protocol::packets::TickingState,
+) {
+    counters.ticking.tick_rate = ticking.clamped_tick_rate();
+    counters.ticking.frozen = ticking.frozen;
+    counters.ticking_state_packets += 1;
+}
+
+fn apply_ticking_step_update(counters: &mut NetCounters, step: bbb_protocol::packets::TickingStep) {
+    counters.ticking.frozen_ticks_to_run = step.tick_steps;
+    counters.ticking_step_packets += 1;
+}
+
+fn apply_set_camera_update(
+    counters: &mut NetCounters,
+    world: &WorldStore,
+    camera: bbb_protocol::packets::SetCamera,
+) {
+    counters.set_camera_packets += 1;
+    let follows_player = counters.player_entity_id == Some(camera.camera_id);
+    if follows_player || world.probe_entity(camera.camera_id).is_some() {
+        counters.camera = CameraState {
+            entity_id: Some(camera.camera_id),
+            follows_player,
+            entity_known: true,
+        };
+    }
 }
 
 fn clear_color_for_world(counters: &NetCounters) -> ClearColor {
@@ -3042,6 +3145,129 @@ mod tests {
         assert_eq!(counters.default_spawn_position_packets, 1);
         assert_eq!(counters.simulation_distance_packets, 1);
         assert_eq!(counters.system_chat_packets, 1);
+    }
+
+    #[test]
+    fn hud_text_and_ticking_updates_snapshot_counters() {
+        let mut counters = NetCounters::default();
+
+        apply_titles_animation_update(
+            &mut counters,
+            bbb_protocol::packets::SetTitlesAnimation {
+                fade_in: 5,
+                stay: -1,
+                fade_out: 15,
+            },
+        );
+        assert_eq!(counters.title.fade_in, 5);
+        assert_eq!(counters.title.stay, 70);
+        assert_eq!(counters.title.fade_out, 15);
+        assert_eq!(counters.title.title_time, 0);
+
+        apply_title_text_update(
+            &mut counters,
+            bbb_protocol::packets::SetTitleText {
+                content: "Quest complete".to_string(),
+            },
+        );
+        apply_subtitle_text_update(
+            &mut counters,
+            bbb_protocol::packets::SetSubtitleText {
+                content: "Return to camp".to_string(),
+            },
+        );
+        apply_action_bar_update(
+            &mut counters,
+            bbb_protocol::packets::SetActionBarText {
+                content: "+12 XP".to_string(),
+            },
+        );
+        apply_titles_animation_update(
+            &mut counters,
+            bbb_protocol::packets::SetTitlesAnimation {
+                fade_in: -1,
+                stay: 40,
+                fade_out: -1,
+            },
+        );
+        apply_ticking_state_update(
+            &mut counters,
+            bbb_protocol::packets::TickingState {
+                tick_rate: 0.25,
+                frozen: true,
+            },
+        );
+        apply_ticking_step_update(
+            &mut counters,
+            bbb_protocol::packets::TickingStep { tick_steps: 7 },
+        );
+
+        assert_eq!(counters.title.title.as_deref(), Some("Quest complete"));
+        assert_eq!(counters.title.subtitle.as_deref(), Some("Return to camp"));
+        assert_eq!(counters.title.fade_in, 5);
+        assert_eq!(counters.title.stay, 40);
+        assert_eq!(counters.title.fade_out, 15);
+        assert_eq!(counters.title.title_time, 60);
+        assert_eq!(
+            counters.last_action_bar,
+            Some(ActionBarText {
+                content: "+12 XP".to_string(),
+                display_ticks: 60,
+            })
+        );
+        assert_eq!(counters.ticking.tick_rate, 1.0);
+        assert!(counters.ticking.frozen);
+        assert_eq!(counters.ticking.frozen_ticks_to_run, 7);
+        assert_eq!(counters.titles_animation_packets, 2);
+        assert_eq!(counters.title_text_packets, 1);
+        assert_eq!(counters.subtitle_text_packets, 1);
+        assert_eq!(counters.action_bar_packets, 1);
+        assert_eq!(counters.ticking_state_packets, 1);
+        assert_eq!(counters.ticking_step_packets, 1);
+    }
+
+    #[test]
+    fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
+        let mut counters = NetCounters {
+            player_entity_id: Some(9),
+            camera: CameraState {
+                entity_id: Some(42),
+                follows_player: false,
+                entity_known: true,
+            },
+            ..NetCounters::default()
+        };
+        let world = WorldStore::new();
+
+        apply_set_camera_update(
+            &mut counters,
+            &world,
+            bbb_protocol::packets::SetCamera { camera_id: 123 },
+        );
+        assert_eq!(
+            counters.camera,
+            CameraState {
+                entity_id: Some(42),
+                follows_player: false,
+                entity_known: true,
+            }
+        );
+
+        apply_set_camera_update(
+            &mut counters,
+            &world,
+            bbb_protocol::packets::SetCamera { camera_id: 9 },
+        );
+
+        assert_eq!(
+            counters.camera,
+            CameraState {
+                entity_id: Some(9),
+                follows_player: true,
+                entity_known: true,
+            }
+        );
+        assert_eq!(counters.set_camera_packets, 2);
     }
 
     #[test]

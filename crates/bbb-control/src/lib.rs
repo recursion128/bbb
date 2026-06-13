@@ -38,6 +38,10 @@ pub struct NetCounters {
     pub world_time: Option<WorldTime>,
     pub weather: WeatherState,
     pub last_system_chat: Option<SystemChatLine>,
+    pub last_action_bar: Option<ActionBarText>,
+    pub title: TitleState,
+    pub ticking: ClientTickingState,
+    pub camera: CameraState,
     pub player_position_packets: usize,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
@@ -48,6 +52,13 @@ pub struct NetCounters {
     pub system_chat_packets: usize,
     pub block_changed_ack_packets: usize,
     pub player_rotation_packets: usize,
+    pub action_bar_packets: usize,
+    pub title_text_packets: usize,
+    pub subtitle_text_packets: usize,
+    pub titles_animation_packets: usize,
+    pub ticking_state_packets: usize,
+    pub ticking_step_packets: usize,
+    pub set_camera_packets: usize,
     pub last_block_changed_ack_sequence: Option<i32>,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,
@@ -122,6 +133,69 @@ pub struct WorldTime {
 pub struct SystemChatLine {
     pub content: String,
     pub overlay: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActionBarText {
+    pub content: String,
+    pub display_ticks: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TitleState {
+    pub title: Option<String>,
+    pub subtitle: Option<String>,
+    pub fade_in: i32,
+    pub stay: i32,
+    pub fade_out: i32,
+    pub title_time: i32,
+}
+
+impl Default for TitleState {
+    fn default() -> Self {
+        Self {
+            title: None,
+            subtitle: None,
+            fade_in: 10,
+            stay: 70,
+            fade_out: 20,
+            title_time: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ClientTickingState {
+    pub tick_rate: f32,
+    pub frozen: bool,
+    pub frozen_ticks_to_run: i32,
+}
+
+impl Default for ClientTickingState {
+    fn default() -> Self {
+        Self {
+            tick_rate: 20.0,
+            frozen: false,
+            frozen_ticks_to_run: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CameraState {
+    pub entity_id: Option<i32>,
+    pub follows_player: bool,
+    pub entity_known: bool,
+}
+
+impl Default for CameraState {
+    fn default() -> Self {
+        Self {
+            entity_id: None,
+            follows_player: true,
+            entity_known: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
