@@ -1,9 +1,11 @@
+mod geometry;
+
 use std::collections::HashMap;
 
+use self::geometry::{box_face_corners, face_uvs_from_crop, FaceDef, CROSS_FACES, FACES};
 use super::{
-    TerrainCell, TerrainChunkSnapshot, TerrainFace, TerrainLight, TerrainMaterialClass,
-    TerrainMesh, TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainUvRect,
-    TerrainVertex,
+    TerrainCell, TerrainChunkSnapshot, TerrainLight, TerrainMaterialClass, TerrainMesh,
+    TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainUvRect, TerrainVertex,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -193,97 +195,6 @@ impl<'a> TerrainChunkLookup<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct FaceDef {
-    face: TerrainFace,
-    normal: [f32; 3],
-    dx: i32,
-    dy: i32,
-    dz: i32,
-    corners: [[f32; 3]; 4],
-}
-
-const FACES: [FaceDef; 6] = [
-    FaceDef {
-        face: TerrainFace::Down,
-        normal: [0.0, -1.0, 0.0],
-        dx: 0,
-        dy: -1,
-        dz: 0,
-        corners: [
-            [0.0, 0.0, 1.0],
-            [1.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-        ],
-    },
-    FaceDef {
-        face: TerrainFace::Up,
-        normal: [0.0, 1.0, 0.0],
-        dx: 0,
-        dy: 1,
-        dz: 0,
-        corners: [
-            [0.0, 1.0, 0.0],
-            [1.0, 1.0, 0.0],
-            [1.0, 1.0, 1.0],
-            [0.0, 1.0, 1.0],
-        ],
-    },
-    FaceDef {
-        face: TerrainFace::North,
-        normal: [0.0, 0.0, -1.0],
-        dx: 0,
-        dy: 0,
-        dz: -1,
-        corners: [
-            [1.0, 0.0, 0.0],
-            [1.0, 1.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0],
-        ],
-    },
-    FaceDef {
-        face: TerrainFace::South,
-        normal: [0.0, 0.0, 1.0],
-        dx: 0,
-        dy: 0,
-        dz: 1,
-        corners: [
-            [0.0, 0.0, 1.0],
-            [0.0, 1.0, 1.0],
-            [1.0, 1.0, 1.0],
-            [1.0, 0.0, 1.0],
-        ],
-    },
-    FaceDef {
-        face: TerrainFace::West,
-        normal: [-1.0, 0.0, 0.0],
-        dx: -1,
-        dy: 0,
-        dz: 0,
-        corners: [
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 1.0, 1.0],
-            [0.0, 0.0, 1.0],
-        ],
-    },
-    FaceDef {
-        face: TerrainFace::East,
-        normal: [1.0, 0.0, 0.0],
-        dx: 1,
-        dy: 0,
-        dz: 0,
-        corners: [
-            [1.0, 0.0, 1.0],
-            [1.0, 1.0, 1.0],
-            [1.0, 1.0, 0.0],
-            [1.0, 0.0, 0.0],
-        ],
-    },
-];
-
 fn emit_face(
     mesh: &mut TerrainMesh,
     x: i32,
@@ -336,49 +247,6 @@ fn emit_cross(
     texture_indices: [u32; 6],
     atlas: &TerrainTextureAtlas,
 ) {
-    const CROSS_FACES: [(TerrainFace, [f32; 3], [[f32; 3]; 4]); 4] = [
-        (
-            TerrainFace::North,
-            [-0.70710677, 0.0, 0.70710677],
-            [
-                [0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-                [1.0, 1.0, 1.0],
-                [1.0, 0.0, 1.0],
-            ],
-        ),
-        (
-            TerrainFace::South,
-            [0.70710677, 0.0, -0.70710677],
-            [
-                [1.0, 0.0, 1.0],
-                [1.0, 1.0, 1.0],
-                [0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0],
-            ],
-        ),
-        (
-            TerrainFace::West,
-            [-0.70710677, 0.0, -0.70710677],
-            [
-                [1.0, 0.0, 0.0],
-                [1.0, 1.0, 0.0],
-                [0.0, 1.0, 1.0],
-                [0.0, 0.0, 1.0],
-            ],
-        ),
-        (
-            TerrainFace::East,
-            [0.70710677, 0.0, 0.70710677],
-            [
-                [0.0, 0.0, 1.0],
-                [0.0, 1.0, 1.0],
-                [1.0, 1.0, 0.0],
-                [1.0, 0.0, 0.0],
-            ],
-        ),
-    ];
-
     for (face, normal, corners) in CROSS_FACES {
         emit_custom_quad(
             mesh,
@@ -466,60 +334,6 @@ fn emit_box(
     }
 }
 
-fn box_face_corners(face: TerrainFace, min: [f32; 3], max: [f32; 3]) -> [[f32; 3]; 4] {
-    match face {
-        TerrainFace::Down => [
-            [min[0], min[1], max[2]],
-            [max[0], min[1], max[2]],
-            [max[0], min[1], min[2]],
-            [min[0], min[1], min[2]],
-        ],
-        TerrainFace::Up => [
-            [min[0], max[1], min[2]],
-            [max[0], max[1], min[2]],
-            [max[0], max[1], max[2]],
-            [min[0], max[1], max[2]],
-        ],
-        TerrainFace::North => [
-            [max[0], min[1], min[2]],
-            [max[0], max[1], min[2]],
-            [min[0], max[1], min[2]],
-            [min[0], min[1], min[2]],
-        ],
-        TerrainFace::South => [
-            [min[0], min[1], max[2]],
-            [min[0], max[1], max[2]],
-            [max[0], max[1], max[2]],
-            [max[0], min[1], max[2]],
-        ],
-        TerrainFace::West => [
-            [min[0], min[1], min[2]],
-            [min[0], max[1], min[2]],
-            [min[0], max[1], max[2]],
-            [min[0], min[1], max[2]],
-        ],
-        TerrainFace::East => [
-            [max[0], min[1], max[2]],
-            [max[0], max[1], max[2]],
-            [max[0], max[1], min[2]],
-            [max[0], min[1], min[2]],
-        ],
-    }
-}
-
-fn face_uvs_from_crop(uv: [u8; 4]) -> [[f32; 2]; 4] {
-    let min_u = uv[0] as f32 / 16.0;
-    let min_v = uv[1] as f32 / 16.0;
-    let max_u = uv[2] as f32 / 16.0;
-    let max_v = uv[3] as f32 / 16.0;
-    [
-        [min_u, min_v],
-        [max_u, min_v],
-        [max_u, max_v],
-        [min_u, max_v],
-    ]
-}
-
 fn emit_custom_quad(
     mesh: &mut TerrainMesh,
     x: i32,
@@ -602,7 +416,7 @@ mod tests {
     use super::super::{
         build_opaque_chunk_mesh, build_opaque_terrain_meshes,
         build_opaque_terrain_meshes_with_atlas, build_terrain_mesh_layers_with_atlas,
-        build_terrain_meshes_with_atlas, TerrainBox,
+        build_terrain_meshes_with_atlas, TerrainBox, TerrainFace,
     };
     use super::*;
 
