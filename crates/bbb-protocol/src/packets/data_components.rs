@@ -8,6 +8,9 @@ use crate::{
 pub(crate) const MAX_DATA_COMPONENT_PATCH_ENTRIES: usize = 1024;
 pub(crate) const MAX_DATA_COMPONENT_PREDICATE_ENTRIES: usize = 1024;
 const MAX_IDENTIFIER_CHARS: usize = 32767;
+const MAX_DATA_COMPONENT_LIST_ITEMS: usize = 4096;
+const MAX_LORE_LINES: usize = 256;
+const MAX_STRING_CHARS: usize = 32767;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DataComponentPatchSummary {
@@ -78,6 +81,8 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         6 | 9 => {
             decode_component_summary_from_decoder(decoder)?;
         }
+        // lore: list(256) of ComponentSerialization.STREAM_CODEC.
+        11 => decode_lore(decoder)?,
         // minimum_attack_charge and potion_duration_scale.
         7 | 52 => {
             decoder.read_f32()?;
@@ -91,6 +96,12 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         12 | 43 | 48 | 73 | 84 | 89 | 90 | 107 | 108 | 109 => {
             decoder.read_var_i32()?;
         }
+        // enchantments and stored_enchantments: map(enchantment holder id -> level).
+        13 | 42 => decode_varint_map(decoder)?,
+        // custom_model_data: floats, flags, strings, colors.
+        17 => decode_custom_model_data(decoder)?,
+        // tooltip_display: bool + collection of data component type ids.
+        18 => decode_tooltip_display(decoder)?,
         // enchantment_glint_override.
         21 => {
             decoder.read_bool()?;
@@ -102,6 +113,64 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         }
     }
     Ok(())
+}
+
+fn decode_lore(decoder: &mut Decoder<'_>) -> Result<()> {
+    let line_count = read_bounded_len(decoder, MAX_LORE_LINES)?;
+    for _ in 0..line_count {
+        decode_component_summary_from_decoder(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<()> {
+    let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..count {
+        decoder.read_var_i32()?;
+        decoder.read_var_i32()?;
+    }
+    Ok(())
+}
+
+fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<()> {
+    let floats = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..floats {
+        decoder.read_f32()?;
+    }
+
+    let flags = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..flags {
+        decoder.read_bool()?;
+    }
+
+    let strings = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..strings {
+        decoder.read_string(MAX_STRING_CHARS)?;
+    }
+
+    let colors = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..colors {
+        decoder.read_i32()?;
+    }
+
+    Ok(())
+}
+
+fn decode_tooltip_display(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_bool()?;
+    let hidden_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..hidden_count {
+        decoder.read_var_i32()?;
+    }
+    Ok(())
+}
+
+fn read_bounded_len(decoder: &mut Decoder<'_>, max: usize) -> Result<usize> {
+    let len = decoder.read_len()?;
+    if len > max {
+        return Err(ProtocolError::PacketTooLarge(len, max));
+    }
+    Ok(len)
 }
 
 #[cfg(test)]
@@ -135,6 +204,57 @@ mod tests {
                 added: 5,
                 added_type_ids: vec![1, 4, 6, 10, 21],
                 removed_type_ids: vec![3, 12],
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_common_complex_data_components() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(4);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(11);
+        payload.write_var_i32(2);
+        payload.write_bytes(&nbt_string_root("Line one"));
+        payload.write_bytes(&nbt_string_root("Line two"));
+
+        payload.write_var_i32(13);
+        payload.write_var_i32(2);
+        payload.write_var_i32(5);
+        payload.write_var_i32(3);
+        payload.write_var_i32(9);
+        payload.write_var_i32(1);
+
+        payload.write_var_i32(17);
+        payload.write_var_i32(2);
+        payload.write_f32(1.0);
+        payload.write_f32(2.5);
+        payload.write_var_i32(2);
+        payload.write_bool(true);
+        payload.write_bool(false);
+        payload.write_var_i32(1);
+        payload.write_string("variant");
+        payload.write_var_i32(2);
+        payload.write_i32(0x112233);
+        payload.write_i32(0x445566);
+
+        payload.write_var_i32(18);
+        payload.write_bool(true);
+        payload.write_var_i32(2);
+        payload.write_var_i32(11);
+        payload.write_var_i32(13);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 4,
+                added_type_ids: vec![11, 13, 17, 18],
+                removed_type_ids: Vec::new(),
             }
         );
         assert!(decoder.is_empty());
