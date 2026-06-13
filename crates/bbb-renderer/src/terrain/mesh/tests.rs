@@ -135,6 +135,30 @@ fn fluid_top_face_averages_corner_heights_from_adjacent_fluids() {
 }
 
 #[test]
+fn fluid_side_uvs_follow_corner_heights() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_shape(86, TerrainMaterialClass::Fluid, 0, fluid_box_shape(8));
+    cells[cell_index(0, 0, 2, 1)] =
+        TerrainCell::with_shape(88, TerrainMaterialClass::Fluid, 0, fluid_box_shape(16));
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let north = face_vertices(&layers.translucent[0], 86, [0.0, 0.0, -1.0]);
+
+    let east_bottom = vertex_at(&north, [2.0, 0.0, 2.0]);
+    let east_top = vertex_at_approx(&north, [2.0, 1.0 / 6.0, 2.0]);
+    let west_top = vertex_at(&north, [1.0, 1.0, 2.0]);
+    let west_bottom = vertex_at(&north, [1.0, 0.0, 2.0]);
+
+    assert_eq!(east_bottom.uv, [0.5, 0.5]);
+    assert_float_eq(east_top.uv[0], 0.5);
+    assert_float_eq(east_top.uv[1], 5.0 / 12.0);
+    assert_eq!(west_top.uv, [0.0, 0.0]);
+    assert_eq!(west_bottom.uv, [0.0, 0.5]);
+}
+
+#[test]
 fn culls_faces_between_adjacent_chunk_snapshots() {
     let left = single_block_snapshot(0, 0, 15, 0, 2);
     let right = single_block_snapshot(1, 0, 0, 0, 2);
@@ -945,6 +969,20 @@ fn vertex_at(vertices: &[TerrainVertex], position: [f32; 3]) -> TerrainVertex {
         .copied()
         .find(|vertex| vertex.position == position)
         .expect("vertex exists at position")
+}
+
+fn vertex_at_approx(vertices: &[TerrainVertex], position: [f32; 3]) -> TerrainVertex {
+    vertices
+        .iter()
+        .copied()
+        .find(|vertex| {
+            vertex
+                .position
+                .iter()
+                .zip(position)
+                .all(|(actual, expected)| (*actual - expected).abs() < 0.0001)
+        })
+        .expect("vertex exists near position")
 }
 
 fn vertex_at_xz(vertices: &[TerrainVertex], x: f32, z: f32) -> TerrainVertex {

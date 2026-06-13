@@ -180,6 +180,17 @@ impl TerrainTextureState {
             .unwrap_or(TerrainTransparency::OPAQUE)
     }
 
+    fn fluid_texture_indices(&self, block_name: &str) -> Option<[u32; 6]> {
+        let (still, flowing) = match block_name {
+            "minecraft:water" => ("minecraft:block/water_still", "minecraft:block/water_flow"),
+            "minecraft:lava" => ("minecraft:block/lava_still", "minecraft:block/lava_flow"),
+            _ => return None,
+        };
+        let still = self.texture_index(still);
+        let flowing = self.texture_index(flowing);
+        Some([still, still, flowing, flowing, flowing, flowing])
+    }
+
     pub(super) fn block_render_data(
         &self,
         block_name: Option<&str>,
@@ -211,7 +222,9 @@ impl TerrainTextureState {
                 position.map(block_model_seed),
             )
         }) {
-            let texture_indices = self.face_texture_indices(&model.face_textures);
+            let texture_indices = self
+                .fluid_texture_indices(block_name)
+                .unwrap_or_else(|| self.face_texture_indices(&model.face_textures));
             let tint = self.face_tints(
                 block_name,
                 material,
@@ -240,7 +253,7 @@ impl TerrainTextureState {
         }
 
         let all = self.texture_index(&block_fallback_texture_id(block_name));
-        let texture_indices = [all; 6];
+        let texture_indices = self.fluid_texture_indices(block_name).unwrap_or([all; 6]);
         let tint = self.fallback_face_tints(block_name, material, biome_id, position);
         (
             texture_indices,

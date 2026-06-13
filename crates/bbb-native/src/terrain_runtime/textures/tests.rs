@@ -43,6 +43,47 @@ fn water_level_shape_uses_cropped_fluid_box() {
 }
 
 #[test]
+fn fluid_render_data_uses_still_top_and_flowing_sides() {
+    let images = vec![
+        sprite("minecraft:block/water_still"),
+        sprite("minecraft:block/water_flow"),
+        sprite("minecraft:block/lava_still"),
+        sprite("minecraft:block/lava_flow"),
+    ];
+    let atlas = bbb_pack::AtlasPacker::new(16, 1)
+        .unwrap()
+        .stitch(&images)
+        .unwrap();
+    let textures = TerrainTextureState::from_layout(&atlas.layout, None, None, None);
+
+    let (water, _, _, _, _) = textures.block_render_data(
+        Some("minecraft:water"),
+        &properties([("level", "0")]),
+        bbb_world::TerrainMaterialClass::Fluid,
+        None,
+        None,
+    );
+    let water_still = textures.texture_index("minecraft:block/water_still");
+    let water_flow = textures.texture_index("minecraft:block/water_flow");
+    assert_eq!(water[0], water_still);
+    assert_eq!(water[1], water_still);
+    assert_eq!(water[2..], [water_flow; 4]);
+
+    let (lava, _, _, _, _) = textures.block_render_data(
+        Some("minecraft:lava"),
+        &properties([("level", "0")]),
+        bbb_world::TerrainMaterialClass::Fluid,
+        None,
+        None,
+    );
+    let lava_still = textures.texture_index("minecraft:block/lava_still");
+    let lava_flow = textures.texture_index("minecraft:block/lava_flow");
+    assert_eq!(lava[0], lava_still);
+    assert_eq!(lava[1], lava_still);
+    assert_eq!(lava[2..], [lava_flow; 4]);
+}
+
+#[test]
 fn block_model_seed_matches_vanilla_position_seed() {
     assert_eq!(
         block_model_seed(BlockRenderPosition { x: 0, y: 0, z: 0 }),
@@ -639,6 +680,10 @@ fn properties<const N: usize>(entries: [(&str, &str); N]) -> BTreeMap<String, St
         .into_iter()
         .map(|(key, value)| (key.to_string(), value.to_string()))
         .collect()
+}
+
+fn sprite(id: &str) -> bbb_pack::SpriteImage {
+    bbb_pack::SpriteImage::new(id, 1, 1, vec![255, 255, 255, 255]).unwrap()
 }
 
 fn write_json(path: &std::path::Path, contents: &str) {

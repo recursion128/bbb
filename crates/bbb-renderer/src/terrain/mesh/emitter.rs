@@ -204,7 +204,11 @@ pub(super) fn emit_box(
             fluid_heights
                 .map(|heights| fluid_face_corners(face.face, min, max, heights))
                 .unwrap_or_else(|| box_face_corners(face.face, min, max)),
-            face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
+            fluid_heights
+                .map(|heights| fluid_face_uvs(face.face, heights))
+                .unwrap_or_else(|| {
+                    face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index])
+                }),
             cardinal_shade(face_shade[face_index], face.face),
             vertex_lights,
             ambient_occlusion,
@@ -511,6 +515,40 @@ fn fluid_face_corners(
             [max[0], min[1], min[2]],
         ],
     }
+}
+
+fn fluid_face_uvs(face: TerrainFace, heights: FluidCornerHeights) -> [[f32; 2]; 4] {
+    match face {
+        TerrainFace::Down | TerrainFace::Up => [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+        TerrainFace::North => [
+            [0.5, 0.5],
+            [0.5, fluid_side_v(heights.north_east)],
+            [0.0, fluid_side_v(heights.north_west)],
+            [0.0, 0.5],
+        ],
+        TerrainFace::South => [
+            [0.5, 0.5],
+            [0.5, fluid_side_v(heights.south_west)],
+            [0.0, fluid_side_v(heights.south_east)],
+            [0.0, 0.5],
+        ],
+        TerrainFace::West => [
+            [0.5, 0.5],
+            [0.5, fluid_side_v(heights.north_west)],
+            [0.0, fluid_side_v(heights.south_west)],
+            [0.0, 0.5],
+        ],
+        TerrainFace::East => [
+            [0.5, 0.5],
+            [0.5, fluid_side_v(heights.south_east)],
+            [0.0, fluid_side_v(heights.north_east)],
+            [0.0, 0.5],
+        ],
+    }
+}
+
+fn fluid_side_v(height: f32) -> f32 {
+    (1.0 - height) * 0.5
 }
 
 fn fluid_height_at(x: i32, y: i32, z: i32, lookup: &TerrainChunkLookup<'_>) -> f32 {
