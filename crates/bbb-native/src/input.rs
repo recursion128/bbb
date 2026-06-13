@@ -18,7 +18,7 @@ use crate::crosshair::{
     crosshair_block_hit_from_world, protocol_block_hit_result_from_crosshair_hit,
     protocol_block_pos_from_world, CrosshairBlockHit,
 };
-use crate::player_position_state_from_pose;
+use crate::runtime::player_position_state_from_pose;
 
 const INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 const INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
