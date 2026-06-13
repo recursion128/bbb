@@ -5,6 +5,7 @@ use crate::{
 use uuid::Uuid;
 
 pub mod chunks;
+pub mod client_audio;
 pub mod client_features;
 pub mod client_state;
 pub mod client_ui;
@@ -20,6 +21,7 @@ pub mod server_presentation;
 pub mod serverbound;
 pub mod world_border;
 pub use chunks::*;
+pub use client_audio::*;
 pub use client_features::*;
 pub use client_state::*;
 pub use client_ui::*;

@@ -5,7 +5,8 @@ use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, CustomChatCompletions,
     CustomChatCompletionsAction, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
     PlaceGhostRecipe, PlayLogin, PongResponse, RecipeDisplayType, SelectAdvancementsTab,
-    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, TagQuery,
+    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers,
+    SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StopSound, TagQuery,
     Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
@@ -398,6 +399,95 @@ fn client_feature_events_update_snapshot_counters() {
             transaction_id: 12,
             tag_present: true,
             raw_nbt_len: 2,
+        })
+    );
+}
+
+#[test]
+fn client_audio_events_update_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::Sound(SoundEvent {
+        sound: SoundEventHolder::Reference { registry_id: 41 },
+        source: SoundSource::Blocks,
+        position: ProtocolVec3d {
+            x: 2.5,
+            y: -1.0,
+            z: 0.0,
+        },
+        volume: 0.75,
+        pitch: 1.25,
+        seed: 123456789,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SoundEntity(SoundEntityEvent {
+        sound: SoundEventHolder::Direct {
+            location: "minecraft:entity.cat.ambient".to_string(),
+            fixed_range: Some(32.0),
+        },
+        source: SoundSource::Neutral,
+        entity_id: 123,
+        volume: 1.0,
+        pitch: 0.5,
+        seed: -9,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::StopSound(StopSound {
+        source: Some(SoundSource::Music),
+        name: Some("minecraft:music.menu".to_string()),
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+    assert_eq!(counters.sound_packets, 1);
+    assert_eq!(
+        counters.last_sound,
+        Some(bbb_control::ClientSoundState {
+            sound: bbb_control::SoundHolderState {
+                kind: "reference".to_string(),
+                registry_id: Some(41),
+                location: None,
+                fixed_range: None,
+            },
+            source: "block".to_string(),
+            position: bbb_control::NetVec3 {
+                x: 2.5,
+                y: -1.0,
+                z: 0.0,
+            },
+            volume: 0.75,
+            pitch: 1.25,
+            seed: 123456789,
+        })
+    );
+    assert_eq!(counters.sound_entity_packets, 1);
+    assert_eq!(
+        counters.last_sound_entity,
+        Some(bbb_control::ClientSoundEntityState {
+            sound: bbb_control::SoundHolderState {
+                kind: "direct".to_string(),
+                registry_id: None,
+                location: Some("minecraft:entity.cat.ambient".to_string()),
+                fixed_range: Some(32.0),
+            },
+            source: "neutral".to_string(),
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
+        })
+    );
+    assert_eq!(counters.stop_sound_packets, 1);
+    assert_eq!(
+        counters.last_stop_sound,
+        Some(bbb_control::StopSoundState {
+            source: Some("music".to_string()),
+            name: Some("minecraft:music.menu".to_string()),
         })
     );
 }

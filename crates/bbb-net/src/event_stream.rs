@@ -472,6 +472,15 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetTitlesAnimation(animation) => {
                     emit(&events, NetEvent::SetTitlesAnimation(animation)).await?;
                 }
+                PlayClientbound::Sound(sound) => {
+                    emit(&events, NetEvent::Sound(sound)).await?;
+                }
+                PlayClientbound::SoundEntity(sound) => {
+                    emit(&events, NetEvent::SoundEntity(sound)).await?;
+                }
+                PlayClientbound::StopSound(stop) => {
+                    emit(&events, NetEvent::StopSound(stop)).await?;
+                }
                 PlayClientbound::TickingState(ticking) => {
                     emit(&events, NetEvent::TickingState(ticking)).await?;
                 }

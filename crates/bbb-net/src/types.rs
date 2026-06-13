@@ -22,9 +22,9 @@ use bbb_protocol::{
         SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
         SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetPassengers,
         SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
-        SetTitleText, SetTitlesAnimation, SystemChat, TabList, TagQuery, TakeItemEntity,
-        TeleportEntity, TickingState, TickingStep, Transfer, UpdateAttributes, UpdateMobEffect,
-        UseItem, UseItemOn, Vec3d,
+        SetTitleText, SetTitlesAnimation, SoundEntityEvent, SoundEvent, StopSound, SystemChat,
+        TabList, TagQuery, TakeItemEntity, TeleportEntity, TickingState, TickingStep, Transfer,
+        UpdateAttributes, UpdateMobEffect, UseItem, UseItemOn, Vec3d,
     },
 };
 use bbb_world::{BlockProbe, ChunkColumn, ChunkPos, ChunkState, WorldCounters, WorldStore};
@@ -162,6 +162,9 @@ pub enum NetEvent {
     SetSubtitleText(SetSubtitleText),
     ClearTitles(ClearTitles),
     SetTitlesAnimation(SetTitlesAnimation),
+    Sound(SoundEvent),
+    SoundEntity(SoundEntityEvent),
+    StopSound(StopSound),
     TickingState(TickingState),
     TickingStep(TickingStep),
     Transfer(Transfer),

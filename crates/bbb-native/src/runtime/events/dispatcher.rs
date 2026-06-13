@@ -125,6 +125,35 @@ pub(in crate::runtime) fn drain_net_events(
                 counters.last_pong_response_time = Some(update.time);
                 counters.pong_response_packets += 1;
             }
+            NetEvent::Sound(update) => {
+                counters.last_sound = Some(bbb_control::ClientSoundState {
+                    sound: sound_holder_state(update.sound),
+                    source: update.source.as_str().to_string(),
+                    position: net_vec3(update.position),
+                    volume: update.volume,
+                    pitch: update.pitch,
+                    seed: update.seed,
+                });
+                counters.sound_packets += 1;
+            }
+            NetEvent::SoundEntity(update) => {
+                counters.last_sound_entity = Some(bbb_control::ClientSoundEntityState {
+                    sound: sound_holder_state(update.sound),
+                    source: update.source.as_str().to_string(),
+                    entity_id: update.entity_id,
+                    volume: update.volume,
+                    pitch: update.pitch,
+                    seed: update.seed,
+                });
+                counters.sound_entity_packets += 1;
+            }
+            NetEvent::StopSound(update) => {
+                counters.last_stop_sound = Some(bbb_control::StopSoundState {
+                    source: update.source.map(|source| source.as_str().to_string()),
+                    name: update.name,
+                });
+                counters.stop_sound_packets += 1;
+            }
             NetEvent::Transfer(transfer) => {
                 counters.last_transfer = Some(bbb_control::TransferTarget {
                     host: transfer.host,
@@ -496,6 +525,38 @@ fn server_link_state(entry: ServerLinkEntry) -> bbb_control::ServerLinkState {
             url: entry.url,
             known_type: None,
         },
+    }
+}
+
+fn sound_holder_state(
+    sound: bbb_protocol::packets::SoundEventHolder,
+) -> bbb_control::SoundHolderState {
+    match sound {
+        bbb_protocol::packets::SoundEventHolder::Reference { registry_id } => {
+            bbb_control::SoundHolderState {
+                kind: "reference".to_string(),
+                registry_id: Some(registry_id),
+                location: None,
+                fixed_range: None,
+            }
+        }
+        bbb_protocol::packets::SoundEventHolder::Direct {
+            location,
+            fixed_range,
+        } => bbb_control::SoundHolderState {
+            kind: "direct".to_string(),
+            registry_id: None,
+            location: Some(location),
+            fixed_range,
+        },
+    }
+}
+
+fn net_vec3(vec: bbb_protocol::packets::Vec3d) -> bbb_control::NetVec3 {
+    bbb_control::NetVec3 {
+        x: vec.x,
+        y: vec.y,
+        z: vec.z,
     }
 }
 

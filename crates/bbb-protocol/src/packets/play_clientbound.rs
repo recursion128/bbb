@@ -560,7 +560,25 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_state::decode_set_titles_animation(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_SOUND_ENTITY => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SoundEntity(
+                client_audio::decode_sound_entity_event(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_SOUND => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::Sound(client_audio::decode_sound_event(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_START_CONFIGURATION => Ok(PlayClientbound::StartConfiguration),
+        ids::play::CLIENTBOUND_STOP_SOUND => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::StopSound(client_audio::decode_stop_sound(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_STORE_COOKIE => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::StoreCookie(
