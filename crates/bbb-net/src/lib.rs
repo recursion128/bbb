@@ -18,10 +18,11 @@ use bbb_protocol::{
         PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction,
         PlayerCommand, PlayerExperience, PlayerHealth, PlayerInfoRemove, PlayerInfoUpdate,
         PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
-        RemoveEntities, ResetScore, Respawn, RotateHead, SectionBlocksUpdate, SetActionBarText,
-        SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
-        SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
-        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
+        RemoveEntities, ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
+        Respawn, RotateHead, SectionBlocksUpdate, ServerData, SetActionBarText, SetBorderCenter,
+        SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
+        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
         SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetPassengers,
         SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
         SetTitleText, SetTitlesAnimation, SystemChat, TabList, TakeItemEntity, TeleportEntity,
@@ -135,6 +136,9 @@ pub enum NetEvent {
     PlayerRotation(PlayerRotationUpdate),
     PlayerInfoUpdate(PlayerInfoUpdate),
     PlayerInfoRemove(PlayerInfoRemove),
+    ServerData(ServerData),
+    ResourcePackPush(ResourcePackPush),
+    ResourcePackPop(ResourcePackPop),
     PlayerAbilities(PlayerAbilities),
     PlayerHealth(PlayerHealth),
     PlayerExperience(PlayerExperience),
@@ -565,6 +569,20 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::PlayerInfoRemove(update) => {
                     emit(&events, NetEvent::PlayerInfoRemove(update)).await?;
                 }
+                PlayClientbound::ServerData(update) => {
+                    emit(&events, NetEvent::ServerData(update)).await?;
+                }
+                PlayClientbound::ResourcePackPush(update) => {
+                    let (id, payload) = packets::encode_play_resource_pack_response(
+                        update.id,
+                        ResourcePackResponseAction::Declined,
+                    );
+                    conn.send_packet(id, &payload).await?;
+                    emit(&events, NetEvent::ResourcePackPush(update)).await?;
+                }
+                PlayClientbound::ResourcePackPop(update) => {
+                    emit(&events, NetEvent::ResourcePackPop(update)).await?;
+                }
                 PlayClientbound::EntityPositionSync(update) => {
                     emit(&events, NetEvent::EntityPositionSync(update)).await?;
                 }
@@ -993,6 +1011,20 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::PlayerInfoRemove(update) => {
                     world.apply_player_info_remove(update);
+                }
+                PlayClientbound::ServerData(update) => {
+                    world.apply_server_data(update);
+                }
+                PlayClientbound::ResourcePackPush(update) => {
+                    let (id, payload) = packets::encode_play_resource_pack_response(
+                        update.id,
+                        ResourcePackResponseAction::Declined,
+                    );
+                    conn.send_packet(id, &payload).await?;
+                    world.apply_resource_pack_push(update);
+                }
+                PlayClientbound::ResourcePackPop(update) => {
+                    world.apply_resource_pack_pop(update);
                 }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     let pos = world.insert_level_chunk_with_light(chunk)?;

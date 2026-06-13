@@ -21,6 +21,7 @@ const MAX_PLAYER_INFO_ENTRIES: usize = 8192;
 const MAX_GAME_PROFILE_PROPERTIES: usize = 1024;
 const MAX_PROFILE_PUBLIC_KEY_BYTES: usize = 512;
 const MAX_PROFILE_PUBLIC_KEY_SIGNATURE_BYTES: usize = 4096;
+const MAX_SERVER_ICON_BYTES: usize = 2 * 1024 * 1024;
 const PLAYER_INPUT_FORWARD: u8 = 1;
 const PLAYER_INPUT_BACKWARD: u8 = 2;
 const PLAYER_INPUT_LEFT: u8 = 4;
@@ -126,8 +127,11 @@ pub enum PlayClientbound {
     PlayerRotation(PlayerRotationUpdate),
     RemoveEntities(RemoveEntities),
     ResetScore(ResetScore),
+    ResourcePackPop(ResourcePackPop),
+    ResourcePackPush(ResourcePackPush),
     Respawn(Respawn),
     RotateHead(RotateHead),
+    ServerData(ServerData),
     SetActionBarText(SetActionBarText),
     SetBorderCenter(SetBorderCenter),
     SetBorderLerpSize(SetBorderLerpSize),
@@ -1295,6 +1299,53 @@ pub struct TabList {
     pub footer: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourcePackPush {
+    pub id: Uuid,
+    pub url: String,
+    pub hash: String,
+    pub required: bool,
+    pub prompt: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourcePackPop {
+    pub id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerData {
+    pub motd: String,
+    pub icon_bytes: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ResourcePackResponseAction {
+    SuccessfullyLoaded,
+    Declined,
+    FailedDownload,
+    Accepted,
+    Downloaded,
+    InvalidUrl,
+    FailedReload,
+    Discarded,
+}
+
+impl ResourcePackResponseAction {
+    pub fn ordinal(self) -> i32 {
+        match self {
+            Self::SuccessfullyLoaded => 0,
+            Self::Declined => 1,
+            Self::FailedDownload => 2,
+            Self::Accepted => 3,
+            Self::Downloaded => 4,
+            Self::InvalidUrl => 5,
+            Self::FailedReload => 6,
+            Self::Discarded => 7,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PlayerHealth {
     pub health: f32,
@@ -1712,6 +1763,16 @@ pub fn encode_configuration_pong(id: i32) -> (i32, Vec<u8>) {
     (ids::configuration::SERVERBOUND_PONG, out.into_inner())
 }
 
+pub fn encode_configuration_resource_pack_response(
+    id: Uuid,
+    action: ResourcePackResponseAction,
+) -> (i32, Vec<u8>) {
+    (
+        ids::configuration::SERVERBOUND_RESOURCE_PACK,
+        encode_resource_pack_response_payload(id, action),
+    )
+}
+
 pub fn encode_select_known_packs_empty() -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(0);
@@ -1765,6 +1826,23 @@ pub fn encode_play_pong(id: i32) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_i32(id);
     (ids::play::SERVERBOUND_PONG, out.into_inner())
+}
+
+pub fn encode_play_resource_pack_response(
+    id: Uuid,
+    action: ResourcePackResponseAction,
+) -> (i32, Vec<u8>) {
+    (
+        ids::play::SERVERBOUND_RESOURCE_PACK,
+        encode_resource_pack_response_payload(id, action),
+    )
+}
+
+fn encode_resource_pack_response_payload(id: Uuid, action: ResourcePackResponseAction) -> Vec<u8> {
+    let mut out = Encoder::new();
+    out.write_uuid(id);
+    out.write_var_i32(action.ordinal());
+    out.into_inner()
 }
 
 pub fn encode_play_client_information_default() -> (i32, Vec<u8>) {
@@ -2182,6 +2260,18 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
+        ids::play::CLIENTBOUND_RESOURCE_PACK_POP => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::ResourcePackPop(decode_resource_pack_pop(
+                &mut decoder,
+            )?))
+        }
+        ids::play::CLIENTBOUND_RESOURCE_PACK_PUSH => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::ResourcePackPush(
+                decode_resource_pack_push(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_RESPAWN => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::Respawn(decode_respawn(&mut decoder)?))
@@ -2192,6 +2282,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 id: decoder.read_var_i32()?,
                 y_head_rot: unpack_degrees(decoder.read_i8()?),
             }))
+        }
+        ids::play::CLIENTBOUND_SERVER_DATA => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::ServerData(decode_server_data(
+                &mut decoder,
+            )?))
         }
         ids::play::CLIENTBOUND_SET_ACTION_BAR_TEXT => {
             let mut decoder = Decoder::new(payload);
@@ -2529,6 +2625,29 @@ fn decode_reset_score(decoder: &mut Decoder<'_>) -> Result<ResetScore> {
     })
 }
 
+fn decode_resource_pack_pop(decoder: &mut Decoder<'_>) -> Result<ResourcePackPop> {
+    Ok(ResourcePackPop {
+        id: decode_optional_uuid(decoder)?,
+    })
+}
+
+fn decode_resource_pack_push(decoder: &mut Decoder<'_>) -> Result<ResourcePackPush> {
+    Ok(ResourcePackPush {
+        id: decoder.read_uuid()?,
+        url: decoder.read_string(32767)?,
+        hash: decoder.read_string(40)?,
+        required: decoder.read_bool()?,
+        prompt: decode_optional_component_summary_from_decoder(decoder)?,
+    })
+}
+
+fn decode_server_data(decoder: &mut Decoder<'_>) -> Result<ServerData> {
+    Ok(ServerData {
+        motd: decode_component_summary_from_decoder(decoder)?,
+        icon_bytes: decode_optional_byte_array(decoder, MAX_SERVER_ICON_BYTES, "server icon")?,
+    })
+}
+
 fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> {
     let id = decoder.read_uuid()?;
     let operation = match decoder.read_var_i32()? {
@@ -2691,11 +2810,31 @@ fn decode_nullable_string(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
     }
 }
 
+fn decode_optional_uuid(decoder: &mut Decoder<'_>) -> Result<Option<Uuid>> {
+    if decoder.read_bool()? {
+        Ok(Some(decoder.read_uuid()?))
+    } else {
+        Ok(None)
+    }
+}
+
 fn decode_optional_component_summary_from_decoder(
     decoder: &mut Decoder<'_>,
 ) -> Result<Option<String>> {
     if decoder.read_bool()? {
         Ok(Some(decode_component_summary_from_decoder(decoder)?))
+    } else {
+        Ok(None)
+    }
+}
+
+fn decode_optional_byte_array(
+    decoder: &mut Decoder<'_>,
+    max_len: usize,
+    what: &'static str,
+) -> Result<Option<Vec<u8>>> {
+    if decoder.read_bool()? {
+        Ok(Some(decode_byte_array(decoder, max_len, what)?))
     } else {
         Ok(None)
     }
@@ -4293,6 +4432,112 @@ mod tests {
                 header: None,
                 footer: Some("Welcome".to_string()),
             })
+        );
+    }
+
+    #[test]
+    fn decodes_resource_pack_push_packet() {
+        let pack_id = Uuid::from_u128(0x11111111_2222_3333_4444_555555555555);
+        let mut payload = Encoder::new();
+        payload.write_uuid(pack_id);
+        payload.write_string("https://example.invalid/server-pack.zip");
+        payload.write_string("0123456789abcdef0123456789abcdef01234567");
+        payload.write_bool(true);
+        payload.write_bool(true);
+        payload.write_bytes(&nbt_string_root("Install this pack"));
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_RESOURCE_PACK_PUSH,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ResourcePackPush(ResourcePackPush {
+                id: pack_id,
+                url: "https://example.invalid/server-pack.zip".to_string(),
+                hash: "0123456789abcdef0123456789abcdef01234567".to_string(),
+                required: true,
+                prompt: Some("Install this pack".to_string()),
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_resource_pack_pop_packet() {
+        let pack_id = Uuid::from_u128(0xaaaaaaaa_bbbb_cccc_dddd_eeeeeeeeeeee);
+        let mut payload = Encoder::new();
+        payload.write_bool(true);
+        payload.write_uuid(pack_id);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_RESOURCE_PACK_POP,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ResourcePackPop(ResourcePackPop { id: Some(pack_id) })
+        );
+    }
+
+    #[test]
+    fn decodes_server_data_packet_with_icon() {
+        let icon_bytes = vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+        let mut payload = Encoder::new();
+        payload.write_bytes(&nbt_string_root("A native test server"));
+        payload.write_bool(true);
+        payload.write_var_i32(icon_bytes.len() as i32);
+        payload.write_bytes(&icon_bytes);
+
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_SERVER_DATA, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ServerData(ServerData {
+                motd: "A native test server".to_string(),
+                icon_bytes: Some(icon_bytes),
+            })
+        );
+    }
+
+    #[test]
+    fn encodes_resource_pack_response_packets() {
+        let pack_id = Uuid::from_u128(0x22222222_3333_4444_5555_666666666666);
+        let expected_ordinals = [
+            (ResourcePackResponseAction::SuccessfullyLoaded, 0),
+            (ResourcePackResponseAction::Declined, 1),
+            (ResourcePackResponseAction::FailedDownload, 2),
+            (ResourcePackResponseAction::Accepted, 3),
+            (ResourcePackResponseAction::Downloaded, 4),
+            (ResourcePackResponseAction::InvalidUrl, 5),
+            (ResourcePackResponseAction::FailedReload, 6),
+            (ResourcePackResponseAction::Discarded, 7),
+        ];
+        for (action, expected) in expected_ordinals {
+            assert_eq!(action.ordinal(), expected);
+        }
+
+        let (id, payload) = encode_configuration_resource_pack_response(
+            pack_id,
+            ResourcePackResponseAction::Accepted,
+        );
+        assert_eq!(id, ids::configuration::SERVERBOUND_RESOURCE_PACK);
+        assert_resource_pack_response_payload(
+            &payload,
+            pack_id,
+            ResourcePackResponseAction::Accepted,
+        );
+
+        let (id, payload) =
+            encode_play_resource_pack_response(pack_id, ResourcePackResponseAction::FailedReload);
+        assert_eq!(id, ids::play::SERVERBOUND_RESOURCE_PACK);
+        assert_eq!(id, 49);
+        assert_resource_pack_response_payload(
+            &payload,
+            pack_id,
+            ResourcePackResponseAction::FailedReload,
         );
     }
 
@@ -6536,6 +6781,17 @@ mod tests {
         payload.extend_from_slice(value.as_bytes());
         payload.push(0);
         payload
+    }
+
+    fn assert_resource_pack_response_payload(
+        payload: &[u8],
+        expected_id: Uuid,
+        expected_action: ResourcePackResponseAction,
+    ) {
+        let mut decoder = Decoder::new(payload);
+        assert_eq!(decoder.read_uuid().unwrap(), expected_id);
+        assert_eq!(decoder.read_var_i32().unwrap(), expected_action.ordinal());
+        assert!(decoder.is_empty());
     }
 
     fn section_relative_pos(x: i64, y: i64, z: i64) -> i64 {

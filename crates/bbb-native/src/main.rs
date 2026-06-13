@@ -1872,6 +1872,18 @@ fn drain_net_events(
                 counters.player_info_remove_packets += 1;
                 world.apply_player_info_remove(update);
             }
+            NetEvent::ServerData(update) => {
+                counters.server_data_packets += 1;
+                world.apply_server_data(update);
+            }
+            NetEvent::ResourcePackPush(update) => {
+                counters.resource_pack_push_packets += 1;
+                world.apply_resource_pack_push(update);
+            }
+            NetEvent::ResourcePackPop(update) => {
+                counters.resource_pack_pop_packets += 1;
+                world.apply_resource_pack_pop(update);
+            }
             NetEvent::ContainerClose(update) => {
                 world.apply_container_close(update);
             }
@@ -3837,6 +3849,53 @@ mod tests {
         assert_eq!(world_counters.player_info_remove_packets, 1);
         assert_eq!(world_counters.player_info_entries_tracked, 1);
         assert_eq!(world_counters.listed_players_tracked, 1);
+    }
+
+    #[test]
+    fn server_presentation_events_update_world_and_counters() {
+        let pack_id = Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
+        let (tx, mut rx) = mpsc::channel(3);
+        tx.try_send(NetEvent::ServerData(bbb_protocol::packets::ServerData {
+            motd: "Native test server".to_string(),
+            icon_bytes: Some(vec![1, 2, 3, 4]),
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::ResourcePackPush(
+            bbb_protocol::packets::ResourcePackPush {
+                id: pack_id,
+                url: "https://example.invalid/pack.zip".to_string(),
+                hash: "0123456789abcdef0123456789abcdef01234567".to_string(),
+                required: true,
+                prompt: Some("Install pack?".to_string()),
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::ResourcePackPop(
+            bbb_protocol::packets::ResourcePackPop { id: None },
+        ))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            3
+        );
+        assert_eq!(counters.server_data_packets, 1);
+        assert_eq!(counters.resource_pack_push_packets, 1);
+        assert_eq!(counters.resource_pack_pop_packets, 1);
+
+        let server_data = world.server_data().unwrap();
+        assert_eq!(server_data.motd, "Native test server");
+        assert_eq!(server_data.icon_byte_len(), Some(4));
+        assert!(world.resource_packs().is_empty());
+
+        let world_counters = world.counters();
+        assert_eq!(world_counters.server_data_packets, 1);
+        assert_eq!(world_counters.resource_pack_push_packets, 1);
+        assert_eq!(world_counters.resource_pack_pop_packets, 1);
+        assert_eq!(world_counters.resource_packs_tracked, 0);
     }
 
     #[test]
