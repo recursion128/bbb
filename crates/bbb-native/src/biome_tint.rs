@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 use bbb_pack::{BiomeColorProfile, GrassColorModifier};
 use bbb_renderer::terrain::TerrainTint;
 
-use crate::BlockRenderPosition;
+use crate::terrain_runtime::BlockRenderPosition;
 
 const SWAMP_GRASS_DARK: [u8; 3] = [0x4c, 0x76, 0x3c];
 const SWAMP_GRASS_LIGHT: [u8; 3] = [0x6a, 0x70, 0x39];
