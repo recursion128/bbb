@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    codec::{offline_player_uuid, Encoder},
+    codec::{offline_player_uuid, Decoder, Encoder},
     ids,
 };
 use std::collections::BTreeMap;
