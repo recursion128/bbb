@@ -93,6 +93,16 @@ pub struct NetCounters {
     pub stored_cookie_count: usize,
     pub stored_cookie_bytes: usize,
     pub custom_report_detail_packets: usize,
+    #[serde(default)]
+    pub reset_chat_packets: usize,
+    #[serde(default)]
+    pub update_enabled_features_packets: usize,
+    #[serde(default)]
+    pub enabled_features: Vec<String>,
+    #[serde(default)]
+    pub code_of_conduct_packets: usize,
+    #[serde(default)]
+    pub last_code_of_conduct_len: usize,
     pub server_link_packets: usize,
     pub server_link_invalid_entries: usize,
     pub player_abilities_packets: usize,

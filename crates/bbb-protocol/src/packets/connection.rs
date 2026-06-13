@@ -3,7 +3,11 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::tags::UpdateTags;
+use super::{
+    client_common::{self, CustomPayload, ShowDialog},
+    server_presentation::{self, ResourcePackPop, ResourcePackPush},
+    tags::UpdateTags,
+};
 
 use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
@@ -49,6 +53,11 @@ pub enum LoginClientbound {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConfigurationClientbound {
+    Disconnect {
+        reason: String,
+        raw_reason: Vec<u8>,
+    },
+    CustomPayload(CustomPayload),
     Finish,
     KeepAlive {
         id: i64,
@@ -56,19 +65,28 @@ pub enum ConfigurationClientbound {
     Ping {
         id: i32,
     },
+    ResetChat,
     RegistryData {
         registry: String,
         raw_payload_len: usize,
     },
+    ResourcePackPop(ResourcePackPop),
+    ResourcePackPush(ResourcePackPush),
     SelectKnownPacks {
-        offered: usize,
+        known_packs: Vec<KnownPack>,
     },
+    UpdateEnabledFeatures(UpdateEnabledFeatures),
     CookieRequest(CookieRequest),
     StoreCookie(StoreCookie),
     Transfer(Transfer),
     UpdateTags(UpdateTags),
     CustomReportDetails(CustomReportDetails),
     ServerLinks(ServerLinks),
+    ClearDialog,
+    ShowDialog(ShowDialog),
+    CodeOfConduct {
+        text: String,
+    },
     Unknown {
         packet_id: i32,
         len: usize,
@@ -90,6 +108,18 @@ pub struct CookieRequest {
 pub struct StoreCookie {
     pub key: String,
     pub payload: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KnownPack {
+    pub namespace: String,
+    pub id: String,
+    pub version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateEnabledFeatures {
+    pub features: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -303,6 +333,19 @@ pub fn decode_configuration_clientbound(
                 decode_cookie_request(&mut decoder)?,
             ))
         }
+        ids::configuration::CLIENTBOUND_CUSTOM_PAYLOAD => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::CustomPayload(
+                client_common::decode_custom_payload(&mut decoder)?,
+            ))
+        }
+        ids::configuration::CLIENTBOUND_DISCONNECT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::Disconnect {
+                reason: decode_component_summary_from_decoder(&mut decoder)?,
+                raw_reason: payload.to_vec(),
+            })
+        }
         ids::configuration::CLIENTBOUND_FINISH_CONFIGURATION => {
             Ok(ConfigurationClientbound::Finish)
         }
@@ -312,6 +355,7 @@ pub fn decode_configuration_clientbound(
         ids::configuration::CLIENTBOUND_PING => Ok(ConfigurationClientbound::Ping {
             id: Decoder::new(payload).read_i32()?,
         }),
+        ids::configuration::CLIENTBOUND_RESET_CHAT => Ok(ConfigurationClientbound::ResetChat),
         ids::configuration::CLIENTBOUND_REGISTRY_DATA => {
             let mut decoder = Decoder::new(payload);
             let registry = decoder.read_string(32767)?;
@@ -320,10 +364,29 @@ pub fn decode_configuration_clientbound(
                 raw_payload_len: payload.len(),
             })
         }
+        ids::configuration::CLIENTBOUND_RESOURCE_PACK_POP => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::ResourcePackPop(
+                server_presentation::decode_resource_pack_pop(&mut decoder)?,
+            ))
+        }
+        ids::configuration::CLIENTBOUND_RESOURCE_PACK_PUSH => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::ResourcePackPush(
+                server_presentation::decode_resource_pack_push(&mut decoder)?,
+            ))
+        }
         ids::configuration::CLIENTBOUND_SELECT_KNOWN_PACKS => {
             let mut decoder = Decoder::new(payload);
-            let offered = decoder.read_len()?;
-            Ok(ConfigurationClientbound::SelectKnownPacks { offered })
+            Ok(ConfigurationClientbound::SelectKnownPacks {
+                known_packs: decode_known_packs(&mut decoder)?,
+            })
+        }
+        ids::configuration::CLIENTBOUND_UPDATE_ENABLED_FEATURES => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::UpdateEnabledFeatures(
+                decode_update_enabled_features(&mut decoder)?,
+            ))
         }
         ids::configuration::CLIENTBOUND_STORE_COOKIE => {
             let mut decoder = Decoder::new(payload);
@@ -355,11 +418,51 @@ pub fn decode_configuration_clientbound(
                 &mut decoder,
             )?))
         }
+        ids::configuration::CLIENTBOUND_CLEAR_DIALOG => {
+            let decoder = Decoder::new(payload);
+            client_common::decode_clear_dialog(&decoder)?;
+            Ok(ConfigurationClientbound::ClearDialog)
+        }
+        ids::configuration::CLIENTBOUND_SHOW_DIALOG => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::ShowDialog(
+                client_common::decode_context_free_show_dialog(&mut decoder)?,
+            ))
+        }
+        ids::configuration::CLIENTBOUND_CODE_OF_CONDUCT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::CodeOfConduct {
+                text: decoder.read_string(32767)?,
+            })
+        }
         id => Ok(ConfigurationClientbound::Unknown {
             packet_id: id,
             len: payload.len(),
         }),
     }
+}
+
+fn decode_known_packs(decoder: &mut Decoder<'_>) -> Result<Vec<KnownPack>> {
+    let count = decoder.read_len()?;
+    let mut packs = Vec::with_capacity(count);
+    for _ in 0..count {
+        packs.push(KnownPack {
+            namespace: decoder.read_string(32767)?,
+            id: decoder.read_string(32767)?,
+            version: decoder.read_string(32767)?,
+        });
+    }
+    Ok(packs)
+}
+
+fn decode_update_enabled_features(decoder: &mut Decoder<'_>) -> Result<UpdateEnabledFeatures> {
+    let count = decoder.read_len()?;
+    let mut features = Vec::with_capacity(count);
+    for _ in 0..count {
+        features.push(decoder.read_string(32767)?);
+    }
+    features.sort();
+    Ok(UpdateEnabledFeatures { features })
 }
 
 pub(super) fn decode_cookie_request(decoder: &mut Decoder<'_>) -> Result<CookieRequest> {

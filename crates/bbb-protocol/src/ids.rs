@@ -34,18 +34,29 @@ pub mod configuration {
     pub const SERVERBOUND_PONG: i32 = 0x05;
     pub const SERVERBOUND_RESOURCE_PACK: i32 = 0x06;
     pub const SERVERBOUND_SELECT_KNOWN_PACKS: i32 = 0x07;
+    pub const SERVERBOUND_CUSTOM_CLICK_ACTION: i32 = 0x08;
+    pub const SERVERBOUND_ACCEPT_CODE_OF_CONDUCT: i32 = 0x09;
 
     pub const CLIENTBOUND_COOKIE_REQUEST: i32 = 0x00;
+    pub const CLIENTBOUND_CUSTOM_PAYLOAD: i32 = 0x01;
+    pub const CLIENTBOUND_DISCONNECT: i32 = 0x02;
     pub const CLIENTBOUND_FINISH_CONFIGURATION: i32 = 0x03;
     pub const CLIENTBOUND_KEEP_ALIVE: i32 = 0x04;
     pub const CLIENTBOUND_PING: i32 = 0x05;
+    pub const CLIENTBOUND_RESET_CHAT: i32 = 0x06;
     pub const CLIENTBOUND_REGISTRY_DATA: i32 = 0x07;
+    pub const CLIENTBOUND_RESOURCE_PACK_POP: i32 = 0x08;
+    pub const CLIENTBOUND_RESOURCE_PACK_PUSH: i32 = 0x09;
     pub const CLIENTBOUND_STORE_COOKIE: i32 = 0x0a;
     pub const CLIENTBOUND_TRANSFER: i32 = 0x0b;
+    pub const CLIENTBOUND_UPDATE_ENABLED_FEATURES: i32 = 0x0c;
     pub const CLIENTBOUND_UPDATE_TAGS: i32 = 0x0d;
     pub const CLIENTBOUND_SELECT_KNOWN_PACKS: i32 = 0x0e;
     pub const CLIENTBOUND_CUSTOM_REPORT_DETAILS: i32 = 0x0f;
     pub const CLIENTBOUND_SERVER_LINKS: i32 = 0x10;
+    pub const CLIENTBOUND_CLEAR_DIALOG: i32 = 0x11;
+    pub const CLIENTBOUND_SHOW_DIALOG: i32 = 0x12;
+    pub const CLIENTBOUND_CODE_OF_CONDUCT: i32 = 0x13;
 }
 
 pub mod play {

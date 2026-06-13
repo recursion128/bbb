@@ -129,6 +129,54 @@ fn custom_report_details_event_updates_snapshot_counters() {
 }
 
 #[test]
+fn configuration_state_events_update_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::UpdateEnabledFeatures(
+        bbb_protocol::packets::UpdateEnabledFeatures {
+            features: vec![
+                "minecraft:update_1_21".to_string(),
+                "minecraft:vanilla".to_string(),
+            ],
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::ResetChat).unwrap();
+    tx.try_send(NetEvent::CodeOfConduct {
+        text: "Keep the server friendly.".to_string(),
+    })
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters {
+        last_player_chat: Some(bbb_control::ClientChatLine {
+            content: "previous".to_string(),
+            ..bbb_control::ClientChatLine::default()
+        }),
+        ..NetCounters::default()
+    };
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+    assert_eq!(counters.update_enabled_features_packets, 1);
+    assert_eq!(
+        counters.enabled_features,
+        vec![
+            "minecraft:update_1_21".to_string(),
+            "minecraft:vanilla".to_string(),
+        ]
+    );
+    assert_eq!(counters.reset_chat_packets, 1);
+    assert!(counters.last_player_chat.is_none());
+    assert_eq!(counters.code_of_conduct_packets, 1);
+    assert_eq!(
+        counters.last_code_of_conduct_len,
+        "Keep the server friendly.".len()
+    );
+}
+
+#[test]
 fn update_tags_event_updates_world_state_and_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::UpdateTags(UpdateTags {

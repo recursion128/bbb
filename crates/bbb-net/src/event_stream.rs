@@ -124,6 +124,12 @@ pub async fn run_offline_event_stream(
                         conn.send_packet(id, &payload).await?;
                         play_tick = Some(play_tick_interval());
                     }
+                    ConfigurationClientbound::Disconnect { reason, .. } => {
+                        bail!("configuration disconnected: {reason}");
+                    }
+                    ConfigurationClientbound::CustomPayload(update) => {
+                        emit(&events, NetEvent::CustomPayload(update)).await?;
+                    }
                     ConfigurationClientbound::KeepAlive { id } => {
                         let (id, payload) = packets::encode_configuration_keep_alive(id);
                         conn.send_packet(id, &payload).await?;
@@ -147,6 +153,23 @@ pub async fn run_offline_event_stream(
                     }
                     ConfigurationClientbound::UpdateTags(update) => {
                         emit(&events, NetEvent::UpdateTags(update)).await?;
+                    }
+                    ConfigurationClientbound::ResetChat => {
+                        emit(&events, NetEvent::ResetChat).await?;
+                    }
+                    ConfigurationClientbound::ResourcePackPush(update) => {
+                        let (id, payload) = packets::encode_configuration_resource_pack_response(
+                            update.id,
+                            ResourcePackResponseAction::Declined,
+                        );
+                        conn.send_packet(id, &payload).await?;
+                        emit(&events, NetEvent::ResourcePackPush(update)).await?;
+                    }
+                    ConfigurationClientbound::ResourcePackPop(update) => {
+                        emit(&events, NetEvent::ResourcePackPop(update)).await?;
+                    }
+                    ConfigurationClientbound::UpdateEnabledFeatures(update) => {
+                        emit(&events, NetEvent::UpdateEnabledFeatures(update)).await?;
                     }
                     ConfigurationClientbound::SelectKnownPacks { .. } => {
                         let (id, payload) = packets::encode_select_known_packs_empty();
@@ -189,6 +212,15 @@ pub async fn run_offline_event_stream(
                     }
                     ConfigurationClientbound::Transfer(transfer) => {
                         emit(&events, NetEvent::Transfer(transfer)).await?;
+                    }
+                    ConfigurationClientbound::ClearDialog => {
+                        emit(&events, NetEvent::ClearDialog).await?;
+                    }
+                    ConfigurationClientbound::ShowDialog(update) => {
+                        emit(&events, NetEvent::ShowDialog(update)).await?;
+                    }
+                    ConfigurationClientbound::CodeOfConduct { text } => {
+                        emit(&events, NetEvent::CodeOfConduct { text }).await?;
                     }
                     ConfigurationClientbound::Unknown { .. } => {}
                 }

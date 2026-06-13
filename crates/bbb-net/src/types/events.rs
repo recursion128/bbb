@@ -21,7 +21,8 @@ use bbb_protocol::packets::{
     SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
     SoundEntityEvent, SoundEvent, StopSound, SystemChat, TabList, TagQuery, TakeItemEntity,
     TeleportEntity, TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypointPacket,
-    Transfer, UpdateAdvancements, UpdateAttributes, UpdateMobEffect, UpdateRecipes, UpdateTags,
+    Transfer, UpdateAdvancements, UpdateAttributes, UpdateEnabledFeatures, UpdateMobEffect,
+    UpdateRecipes, UpdateTags,
 };
 
 use super::ConnectionState;
@@ -51,6 +52,11 @@ pub enum NetEvent {
     },
     CustomReportDetails(CustomReportDetails),
     ServerLinks(ServerLinks),
+    ResetChat,
+    UpdateEnabledFeatures(UpdateEnabledFeatures),
+    CodeOfConduct {
+        text: String,
+    },
     ClearDialog,
     ShowDialog(ShowDialog),
     Waypoint(TrackedWaypointPacket),

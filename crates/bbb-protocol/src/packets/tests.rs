@@ -4,6 +4,7 @@ use crate::{
     ids,
 };
 use std::collections::BTreeMap;
+use uuid::Uuid;
 
 #[test]
 fn play_clientbound_packet_ids_match_vanilla_26_1_registration_order() {
@@ -673,6 +674,112 @@ fn play_clientbound_packet_ids_match_vanilla_26_1_registration_order() {
 }
 
 #[test]
+fn configuration_clientbound_packet_ids_match_vanilla_26_1_registration_order() {
+    let ids = [
+        (
+            "CLIENTBOUND_COOKIE_REQUEST",
+            ids::configuration::CLIENTBOUND_COOKIE_REQUEST,
+            0,
+        ),
+        (
+            "CLIENTBOUND_CUSTOM_PAYLOAD",
+            ids::configuration::CLIENTBOUND_CUSTOM_PAYLOAD,
+            1,
+        ),
+        (
+            "CLIENTBOUND_DISCONNECT",
+            ids::configuration::CLIENTBOUND_DISCONNECT,
+            2,
+        ),
+        (
+            "CLIENTBOUND_FINISH_CONFIGURATION",
+            ids::configuration::CLIENTBOUND_FINISH_CONFIGURATION,
+            3,
+        ),
+        (
+            "CLIENTBOUND_KEEP_ALIVE",
+            ids::configuration::CLIENTBOUND_KEEP_ALIVE,
+            4,
+        ),
+        ("CLIENTBOUND_PING", ids::configuration::CLIENTBOUND_PING, 5),
+        (
+            "CLIENTBOUND_RESET_CHAT",
+            ids::configuration::CLIENTBOUND_RESET_CHAT,
+            6,
+        ),
+        (
+            "CLIENTBOUND_REGISTRY_DATA",
+            ids::configuration::CLIENTBOUND_REGISTRY_DATA,
+            7,
+        ),
+        (
+            "CLIENTBOUND_RESOURCE_PACK_POP",
+            ids::configuration::CLIENTBOUND_RESOURCE_PACK_POP,
+            8,
+        ),
+        (
+            "CLIENTBOUND_RESOURCE_PACK_PUSH",
+            ids::configuration::CLIENTBOUND_RESOURCE_PACK_PUSH,
+            9,
+        ),
+        (
+            "CLIENTBOUND_STORE_COOKIE",
+            ids::configuration::CLIENTBOUND_STORE_COOKIE,
+            10,
+        ),
+        (
+            "CLIENTBOUND_TRANSFER",
+            ids::configuration::CLIENTBOUND_TRANSFER,
+            11,
+        ),
+        (
+            "CLIENTBOUND_UPDATE_ENABLED_FEATURES",
+            ids::configuration::CLIENTBOUND_UPDATE_ENABLED_FEATURES,
+            12,
+        ),
+        (
+            "CLIENTBOUND_UPDATE_TAGS",
+            ids::configuration::CLIENTBOUND_UPDATE_TAGS,
+            13,
+        ),
+        (
+            "CLIENTBOUND_SELECT_KNOWN_PACKS",
+            ids::configuration::CLIENTBOUND_SELECT_KNOWN_PACKS,
+            14,
+        ),
+        (
+            "CLIENTBOUND_CUSTOM_REPORT_DETAILS",
+            ids::configuration::CLIENTBOUND_CUSTOM_REPORT_DETAILS,
+            15,
+        ),
+        (
+            "CLIENTBOUND_SERVER_LINKS",
+            ids::configuration::CLIENTBOUND_SERVER_LINKS,
+            16,
+        ),
+        (
+            "CLIENTBOUND_CLEAR_DIALOG",
+            ids::configuration::CLIENTBOUND_CLEAR_DIALOG,
+            17,
+        ),
+        (
+            "CLIENTBOUND_SHOW_DIALOG",
+            ids::configuration::CLIENTBOUND_SHOW_DIALOG,
+            18,
+        ),
+        (
+            "CLIENTBOUND_CODE_OF_CONDUCT",
+            ids::configuration::CLIENTBOUND_CODE_OF_CONDUCT,
+            19,
+        ),
+    ];
+
+    for (name, actual, expected) in ids {
+        assert_eq!(actual, expected, "{name}");
+    }
+}
+
+#[test]
 fn decodes_bundle_delimiter_packet() {
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BUNDLE_DELIMITER, &[]).unwrap();
     assert_eq!(packet, PlayClientbound::BundleDelimiter);
@@ -1194,6 +1301,149 @@ fn decodes_and_encodes_cookie_packets() {
     let (id, payload) = encode_play_cookie_response("bbb:session", Some(&[4, 5]));
     assert_eq!(id, ids::play::SERVERBOUND_COOKIE_RESPONSE);
     assert_cookie_response_payload(&payload, "bbb:session", Some(&[4, 5]));
+}
+
+#[test]
+fn decodes_configuration_common_packets() {
+    let mut custom_payload = Encoder::new();
+    custom_payload.write_string("minecraft:brand");
+    custom_payload.write_string("bbb-native");
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_CUSTOM_PAYLOAD,
+            &custom_payload.into_inner(),
+        )
+        .unwrap(),
+        ConfigurationClientbound::CustomPayload(CustomPayload {
+            id: "minecraft:brand".to_string(),
+            payload: CustomPayloadBody::Brand {
+                brand: "bbb-native".to_string(),
+            },
+        })
+    );
+
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_DISCONNECT,
+            &nbt_string_root("Configuration closed"),
+        )
+        .unwrap(),
+        ConfigurationClientbound::Disconnect {
+            reason: "Configuration closed".to_string(),
+            raw_reason: nbt_string_root("Configuration closed"),
+        }
+    );
+
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_RESET_CHAT, &[]).unwrap(),
+        ConfigurationClientbound::ResetChat
+    );
+
+    let pack_id = Uuid::from_u128(0x11111111_2222_3333_4444_555555555555);
+    let mut push_payload = Encoder::new();
+    push_payload.write_uuid(pack_id);
+    push_payload.write_string("https://example.invalid/server-pack.zip");
+    push_payload.write_string("0123456789abcdef0123456789abcdef01234567");
+    push_payload.write_bool(true);
+    push_payload.write_bool(false);
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_RESOURCE_PACK_PUSH,
+            &push_payload.into_inner(),
+        )
+        .unwrap(),
+        ConfigurationClientbound::ResourcePackPush(ResourcePackPush {
+            id: pack_id,
+            url: "https://example.invalid/server-pack.zip".to_string(),
+            hash: "0123456789abcdef0123456789abcdef01234567".to_string(),
+            required: true,
+            prompt: None,
+        })
+    );
+
+    let mut pop_payload = Encoder::new();
+    pop_payload.write_bool(true);
+    pop_payload.write_uuid(pack_id);
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_RESOURCE_PACK_POP,
+            &pop_payload.into_inner(),
+        )
+        .unwrap(),
+        ConfigurationClientbound::ResourcePackPop(ResourcePackPop { id: Some(pack_id) })
+    );
+
+    let mut features_payload = Encoder::new();
+    features_payload.write_var_i32(2);
+    features_payload.write_string("minecraft:update_1_21");
+    features_payload.write_string("minecraft:vanilla");
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_UPDATE_ENABLED_FEATURES,
+            &features_payload.into_inner(),
+        )
+        .unwrap(),
+        ConfigurationClientbound::UpdateEnabledFeatures(UpdateEnabledFeatures {
+            features: vec![
+                "minecraft:update_1_21".to_string(),
+                "minecraft:vanilla".to_string(),
+            ],
+        })
+    );
+
+    let mut known_packs_payload = Encoder::new();
+    known_packs_payload.write_var_i32(1);
+    known_packs_payload.write_string("minecraft");
+    known_packs_payload.write_string("core");
+    known_packs_payload.write_string("26.1");
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_SELECT_KNOWN_PACKS,
+            &known_packs_payload.into_inner(),
+        )
+        .unwrap(),
+        ConfigurationClientbound::SelectKnownPacks {
+            known_packs: vec![KnownPack {
+                namespace: "minecraft".to_string(),
+                id: "core".to_string(),
+                version: "26.1".to_string(),
+            }],
+        }
+    );
+
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_CLEAR_DIALOG, &[])
+            .unwrap(),
+        ConfigurationClientbound::ClearDialog
+    );
+
+    let mut show_dialog_payload = Encoder::new();
+    show_dialog_payload.write_bytes(&[1, 2, 3, 4]);
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_SHOW_DIALOG,
+            &show_dialog_payload.into_inner(),
+        )
+        .unwrap(),
+        ConfigurationClientbound::ShowDialog(ShowDialog {
+            dialog: DialogHolder::Direct {
+                raw_dialog_payload: vec![1, 2, 3, 4],
+            },
+        })
+    );
+
+    let mut code_payload = Encoder::new();
+    code_payload.write_string("Keep the server friendly.");
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_CODE_OF_CONDUCT,
+            &code_payload.into_inner(),
+        )
+        .unwrap(),
+        ConfigurationClientbound::CodeOfConduct {
+            text: "Keep the server friendly.".to_string(),
+        }
+    );
 }
 
 #[test]

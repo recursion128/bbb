@@ -69,6 +69,20 @@ pub(in crate::runtime) fn drain_net_events(
                 counters.custom_report_details = details.details;
                 counters.custom_report_detail_packets += 1;
             }
+            NetEvent::ResetChat => {
+                counters.reset_chat_packets += 1;
+                counters.last_player_chat = None;
+                counters.last_disguised_chat = None;
+                counters.last_deleted_chat = None;
+            }
+            NetEvent::UpdateEnabledFeatures(update) => {
+                counters.enabled_features = update.features;
+                counters.update_enabled_features_packets += 1;
+            }
+            NetEvent::CodeOfConduct { text } => {
+                counters.last_code_of_conduct_len = text.len();
+                counters.code_of_conduct_packets += 1;
+            }
             NetEvent::CustomChatCompletions(update) => {
                 counters.last_custom_chat_completion =
                     Some(bbb_control::CustomChatCompletionState {

@@ -85,6 +85,18 @@ pub(crate) fn decode_show_dialog(decoder: &mut Decoder<'_>) -> Result<ShowDialog
     Ok(ShowDialog { dialog })
 }
 
+pub(crate) fn decode_context_free_show_dialog(decoder: &mut Decoder<'_>) -> Result<ShowDialog> {
+    Ok(ShowDialog {
+        dialog: DialogHolder::Direct {
+            raw_dialog_payload: decode_remaining_payload(
+                decoder,
+                MAX_DIALOG_PAYLOAD,
+                "context-free dialog payload",
+            )?,
+        },
+    })
+}
+
 fn decode_remaining_payload(
     decoder: &mut Decoder<'_>,
     max_len: usize,

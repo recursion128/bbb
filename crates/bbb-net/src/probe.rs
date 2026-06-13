@@ -92,6 +92,10 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                         conn.send_packet(id, &payload).await?;
                         play_tick = Some(play_tick_interval());
                     }
+                    ConfigurationClientbound::Disconnect { reason, .. } => {
+                        bail!("configuration disconnected: {reason}");
+                    }
+                    ConfigurationClientbound::CustomPayload(_) => {}
                     ConfigurationClientbound::KeepAlive { id } => {
                         let (id, payload) = packets::encode_configuration_keep_alive(id);
                         conn.send_packet(id, &payload).await?;
@@ -109,6 +113,19 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     ConfigurationClientbound::UpdateTags(update) => {
                         world.apply_update_tags(update);
                     }
+                    ConfigurationClientbound::ResetChat => {}
+                    ConfigurationClientbound::ResourcePackPush(update) => {
+                        let (id, payload) = packets::encode_configuration_resource_pack_response(
+                            update.id,
+                            ResourcePackResponseAction::Declined,
+                        );
+                        conn.send_packet(id, &payload).await?;
+                        world.apply_resource_pack_push(update);
+                    }
+                    ConfigurationClientbound::ResourcePackPop(update) => {
+                        world.apply_resource_pack_pop(update);
+                    }
+                    ConfigurationClientbound::UpdateEnabledFeatures(_) => {}
                     ConfigurationClientbound::SelectKnownPacks { .. } => {
                         let (id, payload) = packets::encode_select_known_packs_empty();
                         conn.send_packet(id, &payload).await?;
@@ -125,6 +142,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     ConfigurationClientbound::CustomReportDetails(_)
                     | ConfigurationClientbound::ServerLinks(_) => {}
                     ConfigurationClientbound::Transfer(_) => {}
+                    ConfigurationClientbound::ClearDialog
+                    | ConfigurationClientbound::ShowDialog(_)
+                    | ConfigurationClientbound::CodeOfConduct { .. } => {}
                     ConfigurationClientbound::Unknown { .. } => {}
                 }
             }
