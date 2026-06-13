@@ -1,5 +1,7 @@
-use anyhow::Result;
-use bbb_pack::PackRoots;
+use std::collections::HashMap;
+
+use anyhow::{Context, Result};
+use bbb_pack::{PackRoots, SpriteImage};
 
 pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer) {
     if let Err(err) = try_load_hud_textures(renderer) {
@@ -9,43 +11,44 @@ pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer) {
 
 fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer) -> Result<()> {
     let roots = PackRoots::discover()?;
-    let crosshair = roots.load_gui_sprite_image("hud/crosshair")?;
+    let sprites = load_gui_sprites(&roots)?;
+    let crosshair = hud_sprite(&sprites, "hud/crosshair")?;
     renderer.upload_hud_crosshair(crosshair.width, crosshair.height, &crosshair.rgba)?;
-    let hotbar = roots.load_gui_sprite_image("hud/hotbar")?;
+    let hotbar = hud_sprite(&sprites, "hud/hotbar")?;
     renderer.upload_hud_hotbar(hotbar.width, hotbar.height, &hotbar.rgba)?;
-    let hotbar_selection = roots.load_gui_sprite_image("hud/hotbar_selection")?;
+    let hotbar_selection = hud_sprite(&sprites, "hud/hotbar_selection")?;
     renderer.upload_hud_hotbar_selection(
         hotbar_selection.width,
         hotbar_selection.height,
         &hotbar_selection.rgba,
     )?;
-    let experience_background = roots.load_gui_sprite_image("hud/experience_bar_background")?;
+    let experience_background = hud_sprite(&sprites, "hud/experience_bar_background")?;
     renderer.upload_hud_experience_background(
         experience_background.width,
         experience_background.height,
         &experience_background.rgba,
     )?;
-    let experience_progress = roots.load_gui_sprite_image("hud/experience_bar_progress")?;
+    let experience_progress = hud_sprite(&sprites, "hud/experience_bar_progress")?;
     renderer.upload_hud_experience_progress(
         experience_progress.width,
         experience_progress.height,
         &experience_progress.rgba,
     )?;
-    let heart_container = roots.load_gui_sprite_image("hud/heart/container")?;
+    let heart_container = hud_sprite(&sprites, "hud/heart/container")?;
     renderer.upload_hud_heart_container(
         heart_container.width,
         heart_container.height,
         &heart_container.rgba,
     )?;
-    let heart_full = roots.load_gui_sprite_image("hud/heart/full")?;
+    let heart_full = hud_sprite(&sprites, "hud/heart/full")?;
     renderer.upload_hud_heart_full(heart_full.width, heart_full.height, &heart_full.rgba)?;
-    let heart_half = roots.load_gui_sprite_image("hud/heart/half")?;
+    let heart_half = hud_sprite(&sprites, "hud/heart/half")?;
     renderer.upload_hud_heart_half(heart_half.width, heart_half.height, &heart_half.rgba)?;
-    let food_empty = roots.load_gui_sprite_image("hud/food_empty")?;
+    let food_empty = hud_sprite(&sprites, "hud/food_empty")?;
     renderer.upload_hud_food_empty(food_empty.width, food_empty.height, &food_empty.rgba)?;
-    let food_full = roots.load_gui_sprite_image("hud/food_full")?;
+    let food_full = hud_sprite(&sprites, "hud/food_full")?;
     renderer.upload_hud_food_full(food_full.width, food_full.height, &food_full.rgba)?;
-    let food_half = roots.load_gui_sprite_image("hud/food_half")?;
+    let food_half = hud_sprite(&sprites, "hud/food_half")?;
     renderer.upload_hud_food_half(food_half.width, food_half.height, &food_half.rgba)?;
     tracing::info!(
         crosshair = ?(crosshair.width, crosshair.height),
@@ -56,4 +59,43 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer) -> Result<()> {
         "loaded vanilla HUD sprites"
     );
     Ok(())
+}
+
+fn load_gui_sprites(roots: &PackRoots) -> Result<HashMap<String, SpriteImage>> {
+    Ok(roots
+        .load_atlas_texture_images("gui")?
+        .into_iter()
+        .map(|image| (image.id.clone(), image))
+        .collect())
+}
+
+fn hud_sprite<'a>(
+    sprites: &'a HashMap<String, SpriteImage>,
+    path: &str,
+) -> Result<&'a SpriteImage> {
+    let id = format!("minecraft:{path}");
+    sprites
+        .get(&id)
+        .with_context(|| format!("missing HUD sprite {id} in vanilla GUI atlas"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hud_sprite_uses_vanilla_gui_atlas_ids() {
+        let image =
+            SpriteImage::new("minecraft:hud/crosshair", 1, 1, vec![255, 255, 255, 255]).unwrap();
+        let mut sprites = HashMap::new();
+        sprites.insert(image.id.clone(), image);
+
+        let crosshair = hud_sprite(&sprites, "hud/crosshair").unwrap();
+        assert_eq!(crosshair.id, "minecraft:hud/crosshair");
+
+        let err = hud_sprite(&sprites, "gui/sprites/hud/crosshair").unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("minecraft:gui/sprites/hud/crosshair"));
+    }
 }

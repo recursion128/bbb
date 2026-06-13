@@ -93,10 +93,19 @@ impl PackRoots {
     }
 
     pub fn load_gui_sprite_image(&self, name: &str) -> Result<SpriteImage> {
-        SpriteImage::from_png_file(
-            format!("minecraft:gui/sprites/{name}"),
-            self.gui_sprite_texture(name),
-        )
+        self.load_atlas_texture_image("gui", &ResourceLocation::parse(name)?.id())
+    }
+
+    pub fn load_atlas_texture_image(
+        &self,
+        atlas_name: &str,
+        sprite_id: &str,
+    ) -> Result<SpriteImage> {
+        let sprite_id = ResourceLocation::parse(sprite_id)?.id();
+        self.load_atlas_texture_images(atlas_name)?
+            .into_iter()
+            .find(|image| image.id == sprite_id)
+            .ok_or_else(|| anyhow::anyhow!("missing sprite {sprite_id} in atlas {atlas_name}"))
     }
 
     pub fn load_atlas_texture_sources(&self, atlas_name: &str) -> Result<Vec<SpriteSource>> {
@@ -591,6 +600,67 @@ mod tests {
     }
 
     #[test]
+    fn pack_roots_loads_gui_sprite_images_from_vanilla_atlas() {
+        let root = unique_temp_dir("gui-atlas");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        write_test_png(
+            &assets_dir
+                .join("textures")
+                .join("gui")
+                .join("sprites")
+                .join("hud")
+                .join("crosshair.png"),
+            15,
+            15,
+        );
+        write_test_png(
+            &assets_dir
+                .join("textures")
+                .join("mob_effect")
+                .join("speed.png"),
+            18,
+            18,
+        );
+        write_json(
+            &assets_dir.join("atlases").join("gui.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "prefix": "",
+                  "source": "gui/sprites"
+                },
+                {
+                  "type": "minecraft:directory",
+                  "prefix": "mob_effect/",
+                  "source": "mob_effect"
+                }
+              ]
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let images = roots.load_atlas_texture_images("gui").unwrap();
+        let ids = images
+            .iter()
+            .map(|image| image.id.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            ids,
+            vec!["minecraft:hud/crosshair", "minecraft:mob_effect/speed"]
+        );
+        let crosshair = roots.load_gui_sprite_image("hud/crosshair").unwrap();
+        assert_eq!(crosshair.id, "minecraft:hud/crosshair");
+        assert_eq!((crosshair.width, crosshair.height), (15, 15));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn pack_roots_loads_paletted_permutation_atlas_images() {
         let root = unique_temp_dir("paletted-permutations");
         let assets_dir = root
@@ -856,6 +926,33 @@ mod tests {
             .find(|source| source.id == "minecraft:trims/entity/humanoid/sentry_diamond")
             .unwrap();
         assert_eq!((sentry.width, sentry.height), (64, 32));
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 sources"]
+    fn loads_local_vanilla_gui_atlas() {
+        let roots = PackRoots::discover().unwrap();
+        let gui_sources = roots.load_atlas_texture_sources("gui").unwrap();
+        assert_eq!(gui_sources.len(), 486);
+        let crosshair = gui_sources
+            .iter()
+            .find(|source| source.id == "minecraft:hud/crosshair")
+            .unwrap();
+        assert_eq!((crosshair.width, crosshair.height), (15, 15));
+        let hotbar = gui_sources
+            .iter()
+            .find(|source| source.id == "minecraft:hud/hotbar")
+            .unwrap();
+        assert_eq!((hotbar.width, hotbar.height), (182, 22));
+        let speed = gui_sources
+            .iter()
+            .find(|source| source.id == "minecraft:mob_effect/speed")
+            .unwrap();
+        assert_eq!((speed.width, speed.height), (18, 18));
+
+        let crosshair_image = roots.load_gui_sprite_image("hud/crosshair").unwrap();
+        assert_eq!(crosshair_image.id, "minecraft:hud/crosshair");
+        assert_eq!((crosshair_image.width, crosshair_image.height), (15, 15));
     }
 
     fn write_test_png(path: &Path, width: u32, height: u32) {
