@@ -53,6 +53,9 @@ pub(super) fn outline_shape_for_block(
     if is_candle_cake_block_name(block_name) {
         return Some(candle_cake_outline_shape());
     }
+    if is_candle_block_name(block_name) {
+        return candle_outline_shape(properties);
+    }
     if block_name == "minecraft:brewing_stand" {
         return Some(brewing_stand_outline_shape());
     }
@@ -365,6 +368,17 @@ fn candle_cake_outline_shape() -> BlockOutlineShape {
         BlockOutlineBox::centered_column(2.0, 2.0, 8.0, 14.0),
         BlockOutlineBox::centered_column(14.0, 14.0, 0.0, 8.0),
     ])
+}
+
+fn candle_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let outline = match properties.get("candles")?.parse::<u8>().ok()? {
+        1 => BlockOutlineBox::centered_column(2.0, 2.0, 0.0, 6.0),
+        2 => BlockOutlineBox::from_pixels([5.0, 0.0, 6.0], [11.0, 6.0, 9.0]),
+        3 => BlockOutlineBox::from_pixels([5.0, 0.0, 6.0], [10.0, 6.0, 11.0]),
+        4 => BlockOutlineBox::from_pixels([5.0, 0.0, 5.0], [11.0, 6.0, 10.0]),
+        _ => return None,
+    };
+    Some(BlockOutlineShape::single(outline))
 }
 
 fn anvil_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -823,6 +837,12 @@ fn is_candle_cake_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path == "candle_cake" || path.ends_with("_candle_cake"))
+}
+
+fn is_candle_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "candle" || path.ends_with("_candle"))
 }
 
 fn is_flower_pot_block_name(block_name: &str) -> bool {
