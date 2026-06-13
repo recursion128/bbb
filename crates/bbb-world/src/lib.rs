@@ -14,6 +14,7 @@ mod entity_status;
 mod inventory;
 mod level;
 mod player_info;
+mod position;
 mod registries;
 mod scoreboard;
 mod server_presentation;
@@ -38,6 +39,7 @@ pub use inventory::{
 };
 pub use level::{WorldDimension, WorldLevelInfo};
 pub use player_info::{PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState};
+pub use position::{BlockPos, ChunkPos};
 pub use registries::{BlockStateInfo, BlockStateRegistry, RegistryPacket, RegistrySet};
 pub use scoreboard::{
     ScoreboardObjective, ScoreboardScore, ScoreboardState, ScoreboardTeam, ScoreboardTeamParameters,
@@ -48,6 +50,8 @@ pub use terrain::{
     TerrainMaterialClass,
 };
 pub use world_border::WorldBorderState;
+
+pub(crate) use position::{protocol_block_pos, section_biome_index, section_block_index};
 
 #[cfg(test)]
 use chunks::sample_terrain_light;
@@ -73,19 +77,6 @@ pub enum WorldDecodeError {
 }
 
 pub type Result<T> = std::result::Result<T, WorldDecodeError>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ChunkPos {
-    pub x: i32,
-    pub z: i32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct BlockPos {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32,
-}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WorldStore {
@@ -128,22 +119,6 @@ impl WorldStore {
             registries: RegistrySet::vanilla_26_1(),
             ..Self::default()
         }
-    }
-}
-
-pub(crate) fn section_block_index(x: u8, y: u8, z: u8) -> usize {
-    ((y as usize) << 8) | ((z as usize) << 4) | x as usize
-}
-
-pub(crate) fn section_biome_index(x: u8, y: u8, z: u8) -> usize {
-    ((y as usize) << 4) | ((z as usize) << 2) | x as usize
-}
-
-pub(crate) fn protocol_block_pos(pos: bbb_protocol::packets::BlockPos) -> BlockPos {
-    BlockPos {
-        x: pos.x,
-        y: pos.y,
-        z: pos.z,
     }
 }
 
