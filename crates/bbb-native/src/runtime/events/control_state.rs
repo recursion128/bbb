@@ -72,8 +72,8 @@ pub(super) fn apply_control_projection_event(
             counters.custom_chat_completion_packets += 1;
         }
         NetEvent::CustomPayload(update) => {
-            counters.last_custom_payload = Some(custom_payload_state(update));
-            counters.custom_payload_packets += 1;
+            world.apply_custom_payload(update);
+            sync_custom_payload_counters(counters, world);
         }
         NetEvent::ServerLinks(links) => {
             world.apply_server_links(links);
@@ -344,29 +344,6 @@ fn sound_holder_state(
     }
 }
 
-fn custom_payload_state(
-    payload: bbb_protocol::packets::CustomPayload,
-) -> bbb_control::CustomPayloadState {
-    match payload.payload {
-        bbb_protocol::packets::CustomPayloadBody::Brand { brand } => {
-            bbb_control::CustomPayloadState {
-                id: payload.id,
-                kind: "brand".to_string(),
-                brand: Some(brand),
-                raw_payload_len: 0,
-            }
-        }
-        bbb_protocol::packets::CustomPayloadBody::Unknown { raw_payload } => {
-            bbb_control::CustomPayloadState {
-                id: payload.id,
-                kind: "unknown".to_string(),
-                brand: None,
-                raw_payload_len: raw_payload.len(),
-            }
-        }
-    }
-}
-
 fn net_vec3(vec: bbb_protocol::packets::Vec3d) -> bbb_control::NetVec3 {
     bbb_control::NetVec3 {
         x: vec.x,
@@ -437,6 +414,27 @@ fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
         .deleted_messages
         .last()
         .map(control_deleted_chat_line);
+}
+
+fn sync_custom_payload_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.custom_payload_packets = world_counters.custom_payload_packets;
+    counters.custom_payload_brand_packets = world_counters.custom_payload_brand_packets;
+    counters.custom_payload_unknown_packets = world_counters.custom_payload_unknown_packets;
+    counters.last_custom_payload = world
+        .last_custom_payload()
+        .map(control_custom_payload_state);
+}
+
+fn control_custom_payload_state(
+    state: &bbb_world::CustomPayloadState,
+) -> bbb_control::CustomPayloadState {
+    bbb_control::CustomPayloadState {
+        id: state.id.clone(),
+        kind: state.kind.clone(),
+        brand: state.brand.clone(),
+        raw_payload_len: state.raw_payload_len,
+    }
 }
 
 fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {

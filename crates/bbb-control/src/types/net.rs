@@ -184,6 +184,10 @@ pub struct NetCounters {
     pub take_item_entity_packets: usize,
     pub custom_chat_completion_packets: usize,
     pub custom_payload_packets: usize,
+    #[serde(default)]
+    pub custom_payload_brand_packets: usize,
+    #[serde(default)]
+    pub custom_payload_unknown_packets: usize,
     pub clear_dialog_packets: usize,
     pub show_dialog_packets: usize,
     pub waypoint_packets: usize,

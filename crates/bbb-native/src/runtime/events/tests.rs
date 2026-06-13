@@ -1066,9 +1066,21 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
         4
     );
     assert_eq!(counters.custom_payload_packets, 1);
+    assert_eq!(counters.custom_payload_brand_packets, 1);
+    assert_eq!(counters.custom_payload_unknown_packets, 0);
     assert_eq!(
         counters.last_custom_payload,
         Some(bbb_control::CustomPayloadState {
+            id: "minecraft:brand".to_string(),
+            kind: "brand".to_string(),
+            brand: Some("vanilla".to_string()),
+            raw_payload_len: 0,
+        })
+    );
+    assert_eq!(world.server_brand(), Some("vanilla"));
+    assert_eq!(
+        world.last_custom_payload(),
+        Some(&bbb_world::CustomPayloadState {
             id: "minecraft:brand".to_string(),
             kind: "brand".to_string(),
             brand: Some("vanilla".to_string()),
@@ -1094,6 +1106,9 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
         })
     );
     let world_counters = world.counters();
+    assert_eq!(world_counters.custom_payload_packets, 1);
+    assert_eq!(world_counters.custom_payload_brand_packets, 1);
+    assert_eq!(world_counters.custom_payload_unknown_packets, 0);
     assert_eq!(world_counters.clear_dialog_packets, 1);
     assert_eq!(world_counters.show_dialog_packets, 1);
     assert_eq!(world_counters.waypoint_packets, 1);

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::packets::{
+    CustomPayload as ProtocolCustomPayload, CustomPayloadBody as ProtocolCustomPayloadBody,
     ResourcePackPop as ProtocolResourcePackPop, ResourcePackPush as ProtocolResourcePackPush,
     ServerData as ProtocolServerData, ServerLinkEntry as ProtocolServerLinkEntry,
     ServerLinkType as ProtocolServerLinkType, ServerLinks as ProtocolServerLinks,
@@ -14,6 +15,10 @@ use crate::WorldStore;
 pub struct ServerPresentationState {
     #[serde(default)]
     pub server_data: Option<ServerDataState>,
+    #[serde(default)]
+    pub server_brand: Option<String>,
+    #[serde(default)]
+    pub last_custom_payload: Option<CustomPayloadState>,
     #[serde(default)]
     pub resource_packs: BTreeMap<Uuid, ResourcePackState>,
     #[serde(default)]
@@ -30,6 +35,14 @@ impl ServerDataState {
     pub fn icon_byte_len(&self) -> Option<usize> {
         self.icon_bytes.as_ref().map(Vec::len)
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomPayloadState {
+    pub id: String,
+    pub kind: String,
+    pub brand: Option<String>,
+    pub raw_payload_len: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,6 +62,22 @@ pub struct ServerLinkState {
 }
 
 impl WorldStore {
+    pub fn apply_custom_payload(&mut self, packet: ProtocolCustomPayload) -> &CustomPayloadState {
+        self.counters.custom_payload_packets += 1;
+        let state = CustomPayloadState::from_packet(packet);
+        if let Some(brand) = &state.brand {
+            self.counters.custom_payload_brand_packets += 1;
+            self.presentation.server_brand = Some(brand.clone());
+        } else {
+            self.counters.custom_payload_unknown_packets += 1;
+        }
+        self.presentation.last_custom_payload = Some(state);
+        self.presentation
+            .last_custom_payload
+            .as_ref()
+            .expect("last custom payload was just stored")
+    }
+
     pub fn apply_server_data(&mut self, packet: ProtocolServerData) {
         self.counters.server_data_packets += 1;
         let icon_bytes = packet.icon_bytes.or_else(|| {
@@ -128,6 +157,14 @@ impl WorldStore {
         self.presentation.server_data.as_ref()
     }
 
+    pub fn server_brand(&self) -> Option<&str> {
+        self.presentation.server_brand.as_deref()
+    }
+
+    pub fn last_custom_payload(&self) -> Option<&CustomPayloadState> {
+        self.presentation.last_custom_payload.as_ref()
+    }
+
     pub fn resource_packs(&self) -> &BTreeMap<Uuid, ResourcePackState> {
         &self.presentation.resource_packs
     }
@@ -146,6 +183,25 @@ impl WorldStore {
 
     fn update_server_link_count(&mut self) {
         self.counters.server_links_tracked = self.presentation.server_links.len();
+    }
+}
+
+impl CustomPayloadState {
+    fn from_packet(packet: ProtocolCustomPayload) -> Self {
+        match packet.payload {
+            ProtocolCustomPayloadBody::Brand { brand } => Self {
+                id: packet.id,
+                kind: "brand".to_string(),
+                brand: Some(brand),
+                raw_payload_len: 0,
+            },
+            ProtocolCustomPayloadBody::Unknown { raw_payload } => Self {
+                id: packet.id,
+                kind: "unknown".to_string(),
+                brand: None,
+                raw_payload_len: raw_payload.len(),
+            },
+        }
     }
 }
 
@@ -199,7 +255,54 @@ fn is_allowed_untrusted_uri(uri: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{ServerLinkKnownType, ServerLinkType};
+    use bbb_protocol::packets::{CustomPayloadBody, ServerLinkKnownType, ServerLinkType};
+
+    #[test]
+    fn custom_payload_tracks_server_brand_and_unknown_payloads() {
+        let mut store = WorldStore::new();
+
+        let brand = store
+            .apply_custom_payload(ProtocolCustomPayload {
+                id: "minecraft:brand".to_string(),
+                payload: CustomPayloadBody::Brand {
+                    brand: "vanilla".to_string(),
+                },
+            })
+            .clone();
+
+        assert_eq!(
+            brand,
+            CustomPayloadState {
+                id: "minecraft:brand".to_string(),
+                kind: "brand".to_string(),
+                brand: Some("vanilla".to_string()),
+                raw_payload_len: 0,
+            }
+        );
+        assert_eq!(store.server_brand(), Some("vanilla"));
+
+        store.apply_custom_payload(ProtocolCustomPayload {
+            id: "example:diagnostic".to_string(),
+            payload: CustomPayloadBody::Unknown {
+                raw_payload: vec![1, 2, 3, 4],
+            },
+        });
+
+        assert_eq!(store.server_brand(), Some("vanilla"));
+        assert_eq!(
+            store.last_custom_payload(),
+            Some(&CustomPayloadState {
+                id: "example:diagnostic".to_string(),
+                kind: "unknown".to_string(),
+                brand: None,
+                raw_payload_len: 4,
+            })
+        );
+        let counters = store.counters();
+        assert_eq!(counters.custom_payload_packets, 2);
+        assert_eq!(counters.custom_payload_brand_packets, 1);
+        assert_eq!(counters.custom_payload_unknown_packets, 1);
+    }
 
     #[test]
     fn server_data_stores_motd_icon_and_counter() {
