@@ -294,7 +294,7 @@ fn update_tags_event_updates_world_state_and_snapshot_counters() {
 }
 
 #[test]
-fn server_links_event_updates_snapshot_counters() {
+fn server_links_event_updates_world_and_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::ServerLinks(ServerLinks {
         links: vec![
@@ -326,6 +326,21 @@ fn server_links_event_updates_snapshot_counters() {
     assert_eq!(counters.server_link_packets, 1);
     assert_eq!(counters.server_link_invalid_entries, 1);
     assert_eq!(
+        world.server_links(),
+        &[
+            bbb_world::ServerLinkState {
+                label: "known_server_link.support".to_string(),
+                url: "https://example.invalid/support".to_string(),
+                known_type: Some("support".to_string()),
+            },
+            bbb_world::ServerLinkState {
+                label: "Rules".to_string(),
+                url: "http://example.invalid/rules".to_string(),
+                known_type: None,
+            },
+        ]
+    );
+    assert_eq!(
         counters.server_links,
         vec![
             bbb_control::ServerLinkState {
@@ -340,6 +355,10 @@ fn server_links_event_updates_snapshot_counters() {
             },
         ]
     );
+    let world_counters = world.counters();
+    assert_eq!(world_counters.server_link_packets, 1);
+    assert_eq!(world_counters.server_link_invalid_entries, 1);
+    assert_eq!(world_counters.server_links_tracked, 2);
 }
 
 #[test]

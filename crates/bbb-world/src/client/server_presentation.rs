@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::packets::{
     ResourcePackPop as ProtocolResourcePackPop, ResourcePackPush as ProtocolResourcePackPush,
-    ServerData as ProtocolServerData,
+    ServerData as ProtocolServerData, ServerLinkEntry as ProtocolServerLinkEntry,
+    ServerLinkType as ProtocolServerLinkType, ServerLinks as ProtocolServerLinks,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -11,8 +12,12 @@ use crate::WorldStore;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerPresentationState {
+    #[serde(default)]
     pub server_data: Option<ServerDataState>,
+    #[serde(default)]
     pub resource_packs: BTreeMap<Uuid, ResourcePackState>,
+    #[serde(default)]
+    pub server_links: Vec<ServerLinkState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,6 +39,13 @@ pub struct ResourcePackState {
     pub hash: String,
     pub required: bool,
     pub prompt: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerLinkState {
+    pub label: String,
+    pub url: String,
+    pub known_type: Option<String>,
 }
 
 impl WorldStore {
@@ -84,6 +96,30 @@ impl WorldStore {
         removed
     }
 
+    pub fn apply_server_links(&mut self, packet: ProtocolServerLinks) -> usize {
+        self.counters.server_link_packets += 1;
+        let mut invalid_entries = 0usize;
+        let server_links = packet
+            .links
+            .into_iter()
+            .filter_map(|entry| {
+                if is_allowed_untrusted_uri(&entry.url) {
+                    Some(ServerLinkState::from_entry(entry))
+                } else {
+                    invalid_entries += 1;
+                    None
+                }
+            })
+            .collect();
+        self.presentation.server_links = server_links;
+        self.counters.server_link_invalid_entries = self
+            .counters
+            .server_link_invalid_entries
+            .saturating_add(invalid_entries);
+        self.update_server_link_count();
+        invalid_entries
+    }
+
     pub fn presentation(&self) -> &ServerPresentationState {
         &self.presentation
     }
@@ -100,8 +136,36 @@ impl WorldStore {
         self.presentation.resource_packs.get(&id)
     }
 
+    pub fn server_links(&self) -> &[ServerLinkState] {
+        &self.presentation.server_links
+    }
+
     fn update_resource_pack_count(&mut self) {
         self.counters.resource_packs_tracked = self.presentation.resource_packs.len();
+    }
+
+    fn update_server_link_count(&mut self) {
+        self.counters.server_links_tracked = self.presentation.server_links.len();
+    }
+}
+
+impl ServerLinkState {
+    fn from_entry(entry: ProtocolServerLinkEntry) -> Self {
+        match entry.link_type {
+            ProtocolServerLinkType::Known(kind) => {
+                let known_type = kind.vanilla_name();
+                Self {
+                    label: format!("known_server_link.{known_type}"),
+                    url: entry.url,
+                    known_type: Some(known_type.to_string()),
+                }
+            }
+            ProtocolServerLinkType::Custom { label } => Self {
+                label,
+                url: entry.url,
+                known_type: None,
+            },
+        }
     }
 }
 
@@ -109,9 +173,33 @@ fn non_empty_component_string(component: Option<String>) -> Option<String> {
     component.filter(|value| !value.is_empty())
 }
 
+fn is_allowed_untrusted_uri(uri: &str) -> bool {
+    if uri
+        .chars()
+        .any(|ch| ch.is_ascii_control() || ch.is_whitespace())
+    {
+        return false;
+    }
+    let Some((scheme, _)) = uri.split_once(':') else {
+        return false;
+    };
+    if scheme.is_empty() {
+        return false;
+    }
+    let mut chars = scheme.chars();
+    if !chars.next().is_some_and(|ch| ch.is_ascii_alphabetic()) {
+        return false;
+    }
+    if !chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '+' | '-' | '.')) {
+        return false;
+    }
+    matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::packets::{ServerLinkKnownType, ServerLinkType};
 
     #[test]
     fn server_data_stores_motd_icon_and_counter() {
@@ -224,6 +312,68 @@ mod tests {
         let counters = store.counters();
         assert_eq!(counters.resource_pack_pop_packets, 1);
         assert_eq!(counters.resource_packs_tracked, 0);
+    }
+
+    #[test]
+    fn server_links_replace_trusted_links_and_count_invalid_entries() {
+        let mut store = WorldStore::new();
+
+        let invalid = store.apply_server_links(ProtocolServerLinks {
+            links: vec![
+                ProtocolServerLinkEntry {
+                    link_type: ServerLinkType::Known(ServerLinkKnownType::Support),
+                    url: "https://example.invalid/support".to_string(),
+                },
+                ProtocolServerLinkEntry {
+                    link_type: ServerLinkType::Custom {
+                        label: "Rules".to_string(),
+                    },
+                    url: "http://example.invalid/rules".to_string(),
+                },
+                ProtocolServerLinkEntry {
+                    link_type: ServerLinkType::Known(ServerLinkKnownType::Website),
+                    url: "ftp://example.invalid/file".to_string(),
+                },
+            ],
+        });
+
+        assert_eq!(invalid, 1);
+        assert_eq!(
+            store.server_links(),
+            &[
+                ServerLinkState {
+                    label: "known_server_link.support".to_string(),
+                    url: "https://example.invalid/support".to_string(),
+                    known_type: Some("support".to_string()),
+                },
+                ServerLinkState {
+                    label: "Rules".to_string(),
+                    url: "http://example.invalid/rules".to_string(),
+                    known_type: None,
+                },
+            ]
+        );
+        let counters = store.counters();
+        assert_eq!(counters.server_link_packets, 1);
+        assert_eq!(counters.server_links_tracked, 2);
+        assert_eq!(counters.server_link_invalid_entries, 1);
+
+        store.apply_server_links(ProtocolServerLinks {
+            links: vec![ProtocolServerLinkEntry {
+                link_type: ServerLinkType::Known(ServerLinkKnownType::BugReport),
+                url: "https://example.invalid/bug".to_string(),
+            }],
+        });
+
+        assert_eq!(store.server_links().len(), 1);
+        assert_eq!(
+            store.server_links()[0].known_type.as_deref(),
+            Some("report_bug")
+        );
+        let counters = store.counters();
+        assert_eq!(counters.server_link_packets, 2);
+        assert_eq!(counters.server_links_tracked, 1);
+        assert_eq!(counters.server_link_invalid_entries, 1);
     }
 
     fn protocol_resource_pack_push(

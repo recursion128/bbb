@@ -20,7 +20,7 @@ pub use crate::client::scoreboard::{
     ScoreboardObjective, ScoreboardScore, ScoreboardState, ScoreboardTeam, ScoreboardTeamParameters,
 };
 pub use crate::client::server_presentation::{
-    ResourcePackState, ServerDataState, ServerPresentationState,
+    ResourcePackState, ServerDataState, ServerLinkState, ServerPresentationState,
 };
 pub use crate::client::ui::{
     ClientUiState, DialogState, GhostRecipeState, MountScreenState, OpenBookState,

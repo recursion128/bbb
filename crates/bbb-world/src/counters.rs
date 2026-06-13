@@ -129,6 +129,12 @@ pub struct WorldCounters {
     #[serde(default)]
     pub resource_packs_tracked: usize,
     #[serde(default)]
+    pub server_link_packets: usize,
+    #[serde(default)]
+    pub server_link_invalid_entries: usize,
+    #[serde(default)]
+    pub server_links_tracked: usize,
+    #[serde(default)]
     pub cooldown_packets: usize,
     #[serde(default)]
     pub cooldowns_tracked: usize,

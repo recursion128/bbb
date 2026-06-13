@@ -1,6 +1,5 @@
 use bbb_control::NetCounters;
 use bbb_net::NetEvent;
-use bbb_protocol::packets::{ServerLinkEntry, ServerLinkType, ServerLinks};
 use bbb_world::WorldStore;
 
 use super::client_state::apply_player_look_at_update;
@@ -77,7 +76,8 @@ pub(super) fn apply_control_projection_event(
             counters.custom_payload_packets += 1;
         }
         NetEvent::ServerLinks(links) => {
-            apply_server_links_update(counters, links);
+            world.apply_server_links(links);
+            sync_server_link_counters(counters, world);
         }
         NetEvent::LowDiskSpaceWarning => {
             world.apply_low_disk_space_warning();
@@ -320,46 +320,6 @@ pub(super) fn sync_registry_counters(counters: &mut NetCounters, world: &WorldSt
     counters.last_registry_data_entry_count = world_counters.last_registry_data_entry_count;
 }
 
-fn apply_server_links_update(counters: &mut NetCounters, links: ServerLinks) {
-    let mut invalid_entries = 0usize;
-    let server_links = links
-        .links
-        .into_iter()
-        .filter_map(|entry| {
-            if is_allowed_untrusted_uri(&entry.url) {
-                Some(server_link_state(entry))
-            } else {
-                invalid_entries += 1;
-                None
-            }
-        })
-        .collect();
-
-    counters.server_links = server_links;
-    counters.server_link_packets += 1;
-    counters.server_link_invalid_entries = counters
-        .server_link_invalid_entries
-        .saturating_add(invalid_entries);
-}
-
-fn server_link_state(entry: ServerLinkEntry) -> bbb_control::ServerLinkState {
-    match entry.link_type {
-        ServerLinkType::Known(kind) => {
-            let known_type = kind.vanilla_name();
-            bbb_control::ServerLinkState {
-                label: format!("known_server_link.{known_type}"),
-                url: entry.url,
-                known_type: Some(known_type.to_string()),
-            }
-        }
-        ServerLinkType::Custom { label } => bbb_control::ServerLinkState {
-            label,
-            url: entry.url,
-            known_type: None,
-        },
-    }
-}
-
 fn sound_holder_state(
     sound: bbb_protocol::packets::SoundEventHolder,
 ) -> bbb_control::SoundHolderState {
@@ -549,6 +509,21 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
             });
 }
 
+fn sync_server_link_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.server_link_packets = world_counters.server_link_packets;
+    counters.server_link_invalid_entries = world_counters.server_link_invalid_entries;
+    counters.server_links = world
+        .server_links()
+        .iter()
+        .map(|link| bbb_control::ServerLinkState {
+            label: link.label.clone(),
+            url: link.url.clone(),
+            known_type: link.known_type.clone(),
+        })
+        .collect();
+}
+
 fn control_chat_line(message: &bbb_world::ChatMessageState) -> bbb_control::ClientChatLine {
     bbb_control::ClientChatLine {
         kind: message.kind.as_str().to_string(),
@@ -580,27 +555,4 @@ fn control_deleted_chat_line(
         cache_id: deleted.cache_id,
         resolved: deleted.resolved,
     }
-}
-
-fn is_allowed_untrusted_uri(uri: &str) -> bool {
-    if uri
-        .chars()
-        .any(|ch| ch.is_ascii_control() || ch.is_whitespace())
-    {
-        return false;
-    }
-    let Some((scheme, _)) = uri.split_once(':') else {
-        return false;
-    };
-    if scheme.is_empty() {
-        return false;
-    }
-    let mut chars = scheme.chars();
-    if !chars.next().is_some_and(|ch| ch.is_ascii_alphabetic()) {
-        return false;
-    }
-    if !chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '+' | '-' | '.')) {
-        return false;
-    }
-    matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https")
 }
