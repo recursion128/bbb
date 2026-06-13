@@ -27,6 +27,10 @@ This repo is advanced by small, verified native-client slices.
 - Native/control: drain handling, snapshot counters, focused runtime tests.
 - Renderer/input: only when the slice has a visible or interactive client behavior.
 
+Do not create split-only slices unless the split satisfies
+`docs/code-organization-style.md`. Parallel worker ownership should follow real
+feature or semantic boundaries, not arbitrary line ranges.
+
 ## Worker Contract
 
 Every worker prompt must include:

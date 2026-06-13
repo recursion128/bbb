@@ -30,7 +30,8 @@ Feature behavior belongs in semantic modules with local tests.
 ## Rewrite Phases
 
 1. Establish maintainable module boundaries.
-   - Split large root files by semantic ownership.
+   - Split large root files only when a clear semantic boundary improves the
+     current or near-term feature work.
    - Keep public API stable unless a downstream crate is updated in the same
      verified slice.
    - Move tests next to the module that owns the behavior.
@@ -86,5 +87,5 @@ deterministic renderer test or manually compared with the official client.
 - Main agent owns planning, task split, review, full test gate, and commits.
 - Worker agents get disjoint file/module ownership and do not commit.
 - No agent rewrites git history unless the user explicitly asks for it.
-- Prefer mechanical module extraction before large feature additions in files
-  that are already difficult to scan.
+- Consider mechanical module extraction before large feature additions only when
+  `docs/code-organization-style.md` says the split is justified.

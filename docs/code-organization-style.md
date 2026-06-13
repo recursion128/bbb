@@ -39,6 +39,25 @@ Avoid modules named by implementation accident such as `misc`, `helpers`,
 Use Rust 2018 module file layout. Prefer `foo.rs` for the module entry and
 `foo/bar.rs` for child modules; do not add new `foo/mod.rs` files.
 
+## Splitting Decision Rules
+
+Do not split code just because it can be split. Module extraction must have a
+clear semantic boundary and a concrete maintenance payoff.
+
+- Files under 1000 lines should stay as-is by default. Split them only when the
+  current slice introduces or exposes a durable feature boundary, a focused test
+  boundary, or a repeated merge-conflict hotspot.
+- Files over 1000 lines are candidates for review, not automatic extraction
+  targets. A long file may remain intact when it is cohesive and easy to scan.
+- A valid extraction should answer: what concept owns this code, which callers
+  need the new API, which tests prove behavior stayed the same, and what future
+  work becomes easier.
+- Do not create one-function or bucket modules merely to reduce line count.
+  Avoid `utils`, `helpers`, `common`, and similar names unless they contain
+  genuinely shared primitives with a stable purpose.
+- Prefer leaving small, cohesive private helpers beside their only caller.
+- If the only rationale is "the file is long", do not split yet.
+
 ## File Size And Growth
 
 - New feature slices should not add large unrelated sections to existing root
@@ -57,8 +76,8 @@ Use Rust 2018 module file layout. Prefer `foo.rs` for the module entry and
   reusable runtime behavior into modules.
 
 The threshold is pragmatic: if a section needs its own heading in comments, has
-multiple tests, or becomes a likely worker ownership boundary, it should usually
-be a module.
+multiple tests, or becomes a likely worker ownership boundary, it may deserve a
+module. Apply the splitting decision rules first.
 
 ## Public APIs
 
@@ -113,6 +132,8 @@ native rewrite easier to continue. Keep extractions mechanical and scoped:
 - Move one semantic family at a time.
 - Preserve public behavior and tests.
 - Avoid mixing module extraction with unrelated behavior changes.
+- Do not extract files below 1000 lines unless the selected feature needs the
+  boundary now.
 - Run focused tests for the moved module and the full workspace gate before
   committing.
 
