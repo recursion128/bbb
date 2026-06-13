@@ -4,6 +4,7 @@ use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary as ProtocolAdvancementCriterionProgressSummary,
     AdvancementProgressSummary as ProtocolAdvancementProgressSummary,
     AdvancementSummary as ProtocolAdvancementSummary,
+    SelectAdvancementsTab as ProtocolSelectAdvancementsTab,
     UpdateAdvancements as ProtocolUpdateAdvancements,
 };
 use serde::{Deserialize, Serialize};
@@ -14,9 +15,18 @@ use crate::WorldStore;
 pub struct ClientAdvancementsState {
     pub advancements: BTreeMap<String, ProtocolAdvancementSummary>,
     pub progress: BTreeMap<String, ProtocolAdvancementProgressSummary>,
+    #[serde(default)]
+    pub selected_tab: Option<String>,
 }
 
 impl WorldStore {
+    pub fn apply_select_advancements_tab(&mut self, packet: ProtocolSelectAdvancementsTab) {
+        self.counters.select_advancements_tab_packets += 1;
+        self.advancements.selected_tab = packet
+            .tab
+            .filter(|tab| self.advancements.advancements.contains_key(tab));
+    }
+
     pub fn apply_update_advancements(&mut self, packet: ProtocolUpdateAdvancements) {
         self.counters.update_advancements_packets += 1;
         if packet.reset {
@@ -60,6 +70,10 @@ impl WorldStore {
 
     pub fn advancements(&self) -> &ClientAdvancementsState {
         &self.advancements
+    }
+
+    pub fn selected_advancements_tab(&self) -> Option<&str> {
+        self.advancements.selected_tab.as_deref()
     }
 
     fn remove_advancement_and_children(&mut self, id: &str) -> usize {
@@ -165,8 +179,51 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
-        UpdateAdvancements,
+        SelectAdvancementsTab, UpdateAdvancements,
     };
+
+    #[test]
+    fn select_advancements_tab_tracks_nullable_tab_and_counter() {
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added: vec![advancement("minecraft:story/root", None)],
+            removed: Vec::new(),
+            progress: Vec::new(),
+            show_advancements: false,
+        });
+
+        store.apply_select_advancements_tab(SelectAdvancementsTab {
+            tab: Some("minecraft:story/root".to_string()),
+        });
+
+        assert_eq!(
+            store.advancements().selected_tab.as_deref(),
+            Some("minecraft:story/root")
+        );
+        assert_eq!(
+            store.selected_advancements_tab(),
+            Some("minecraft:story/root")
+        );
+        assert_eq!(store.counters().select_advancements_tab_packets, 1);
+
+        store.apply_select_advancements_tab(SelectAdvancementsTab {
+            tab: Some("minecraft:missing".to_string()),
+        });
+
+        assert_eq!(store.advancements().selected_tab, None);
+        assert_eq!(store.selected_advancements_tab(), None);
+        assert_eq!(store.counters().select_advancements_tab_packets, 2);
+
+        store.apply_select_advancements_tab(SelectAdvancementsTab {
+            tab: Some("minecraft:story/root".to_string()),
+        });
+        store.apply_select_advancements_tab(SelectAdvancementsTab { tab: None });
+
+        assert_eq!(store.advancements().selected_tab, None);
+        assert_eq!(store.selected_advancements_tab(), None);
+        assert_eq!(store.counters().select_advancements_tab_packets, 4);
+    }
 
     #[test]
     fn update_advancements_applies_reset_removal_and_known_progress_only() {

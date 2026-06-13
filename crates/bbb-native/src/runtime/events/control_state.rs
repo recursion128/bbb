@@ -282,8 +282,12 @@ pub(super) fn apply_control_projection_event(
             counters.packets_seen += 1;
         }
         NetEvent::SelectAdvancementsTab(update) => {
-            counters.selected_advancements_tab = update.tab;
-            counters.select_advancements_tab_packets += 1;
+            world.apply_select_advancements_tab(update);
+            let world_counters = world.counters();
+            counters.selected_advancements_tab =
+                world.selected_advancements_tab().map(str::to_string);
+            counters.select_advancements_tab_packets =
+                world_counters.select_advancements_tab_packets;
         }
         NetEvent::TagQuery(update) => {
             counters.last_tag_query = Some(bbb_control::TagQueryState {

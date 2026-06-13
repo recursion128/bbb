@@ -203,6 +203,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub stonecutter_recipes_tracked: usize,
     #[serde(default)]
+    pub select_advancements_tab_packets: usize,
+    #[serde(default)]
     pub update_advancements_packets: usize,
     #[serde(default)]
     pub update_advancements_reset_packets: usize,

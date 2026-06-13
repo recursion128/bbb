@@ -754,7 +754,7 @@ fn client_chat_events_update_world_and_snapshot_counters() {
 
 #[test]
 fn client_feature_events_update_world_and_snapshot_counters() {
-    let (tx, mut rx) = mpsc::channel(4);
+    let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::CustomChatCompletions(CustomChatCompletions {
         action: CustomChatCompletionsAction::Set,
         entries: vec!["/warp".to_string(), "/spawn".to_string()],
@@ -764,6 +764,20 @@ fn client_feature_events_update_world_and_snapshot_counters() {
         container_id: 9,
         recipe_display_type: RecipeDisplayType::Stonecutter,
         recipe_display_body: vec![1, 2, 3],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::UpdateAdvancements(UpdateAdvancements {
+        reset: true,
+        added: vec![AdvancementSummary {
+            id: "minecraft:story/root".to_string(),
+            parent: None,
+            display: None,
+            requirements: Vec::new(),
+            sends_telemetry_event: false,
+        }],
+        removed: Vec::new(),
+        progress: Vec::new(),
+        show_advancements: false,
     }))
     .unwrap();
     tx.try_send(NetEvent::SelectAdvancementsTab(SelectAdvancementsTab {
@@ -782,7 +796,7 @@ fn client_feature_events_update_world_and_snapshot_counters() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        4
+        5
     );
     assert_eq!(counters.custom_chat_completion_packets, 1);
     assert_eq!(
@@ -817,6 +831,11 @@ fn client_feature_events_update_world_and_snapshot_counters() {
         counters.selected_advancements_tab.as_deref(),
         Some("minecraft:story/root")
     );
+    assert_eq!(
+        world.selected_advancements_tab(),
+        Some("minecraft:story/root")
+    );
+    assert_eq!(world.counters().select_advancements_tab_packets, 1);
     assert_eq!(counters.tag_query_packets, 1);
     assert_eq!(
         counters.last_tag_query,
