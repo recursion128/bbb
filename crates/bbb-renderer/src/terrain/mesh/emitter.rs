@@ -9,6 +9,8 @@ use super::{
     TerrainChunkLookup, TerrainMeshMode,
 };
 
+const FLUID_FACE_OFFSET: f32 = 0.001;
+
 pub(super) fn emit_face(
     mesh: &mut TerrainMesh,
     x: i32,
@@ -144,6 +146,42 @@ pub(super) fn emit_box(
     } else {
         None
     };
+    let fluid_top_offset = if is_fluid
+        && box_face_will_render(
+            TerrainFace::Up,
+            x,
+            y,
+            z,
+            face_present,
+            face_transparency,
+            face_cull,
+            material,
+            fluid,
+            mode,
+            lookup,
+        ) {
+        FLUID_FACE_OFFSET
+    } else {
+        0.0
+    };
+    let fluid_bottom_offset = if is_fluid
+        && box_face_will_render(
+            TerrainFace::Down,
+            x,
+            y,
+            z,
+            face_present,
+            face_transparency,
+            face_cull,
+            material,
+            fluid,
+            mode,
+            lookup,
+        ) {
+        FLUID_FACE_OFFSET
+    } else {
+        0.0
+    };
 
     for face in FACES {
         let face_index = face.face.index();
@@ -168,7 +206,9 @@ pub(super) fn emit_box(
 
         let smooth_light = !is_fluid && ambient_occlusion && face_light_emission[face_index] == 0;
         let face_cubic = box_face_is_cubic(face.face, min, max);
-        let fluid_heights = is_fluid.then(|| fluid_corner_heights(x, y, z, max[1], lookup));
+        let fluid_heights = is_fluid.then(|| {
+            fluid_corner_heights(x, y, z, max[1], lookup).with_top_offset(fluid_top_offset)
+        });
         let texture_index =
             fluid_face_texture_index(face.face, texture_indices, fluid_flow.is_some());
         let ambient_occlusion = if is_fluid {
@@ -211,7 +251,9 @@ pub(super) fn emit_box(
             atlas.rect(texture_index),
             face.normal,
             fluid_heights
-                .map(|heights| fluid_face_corners(face.face, min, max, heights))
+                .map(|heights| {
+                    fluid_face_corners(face.face, min, max, heights, fluid_bottom_offset)
+                })
                 .unwrap_or_else(|| box_face_corners(face.face, min, max)),
             fluid_heights
                 .map(|heights| fluid_face_uvs(face.face, heights, fluid_flow))
@@ -223,6 +265,39 @@ pub(super) fn emit_box(
             ambient_occlusion,
         );
     }
+}
+
+fn box_face_will_render(
+    face: TerrainFace,
+    x: i32,
+    y: i32,
+    z: i32,
+    face_present: [bool; 6],
+    face_transparency: [TerrainTransparency; 6],
+    face_cull: [Option<TerrainFace>; 6],
+    material: TerrainMaterialClass,
+    fluid: Option<TerrainFluid>,
+    mode: TerrainMeshMode,
+    lookup: &TerrainChunkLookup<'_>,
+) -> bool {
+    let face_index = face.index();
+    if !face_present[face_index] {
+        return false;
+    }
+    let face_material = effective_face_material(material, face_transparency[face_index]);
+    if !mode.is_meshed(face_material) {
+        return false;
+    }
+    if let Some(cull_face) = face_cull[face_index] {
+        let (dx, dy, dz) = cull_offset(cull_face);
+        if lookup
+            .cell(x + dx, y + dy, z + dz)
+            .is_some_and(|neighbor| culls_face_between_cells(mode, face_material, fluid, neighbor))
+        {
+            return false;
+        }
+    }
+    true
 }
 
 pub(super) fn emit_quads(
@@ -436,6 +511,20 @@ struct FluidCornerHeights {
     south_west: f32,
 }
 
+impl FluidCornerHeights {
+    fn with_top_offset(self, offset: f32) -> Self {
+        if offset == 0.0 {
+            return self;
+        }
+        Self {
+            north_west: (self.north_west - offset).max(0.0),
+            north_east: (self.north_east - offset).max(0.0),
+            south_east: (self.south_east - offset).max(0.0),
+            south_west: (self.south_west - offset).max(0.0),
+        }
+    }
+}
+
 fn fluid_corner_heights(
     x: i32,
     y: i32,
@@ -490,9 +579,16 @@ fn fluid_face_corners(
     min: [f32; 3],
     max: [f32; 3],
     heights: FluidCornerHeights,
+    bottom_offset: f32,
 ) -> [[f32; 3]; 4] {
+    let bottom = min[1] + bottom_offset;
     match face {
-        TerrainFace::Down => box_face_corners(face, min, max),
+        TerrainFace::Down => [
+            [min[0], bottom, max[2]],
+            [max[0], bottom, max[2]],
+            [max[0], bottom, min[2]],
+            [min[0], bottom, min[2]],
+        ],
         TerrainFace::Up => [
             [min[0], heights.north_west, min[2]],
             [max[0], heights.north_east, min[2]],
@@ -500,28 +596,28 @@ fn fluid_face_corners(
             [min[0], heights.south_west, max[2]],
         ],
         TerrainFace::North => [
-            [max[0], min[1], min[2]],
-            [max[0], heights.north_east, min[2]],
-            [min[0], heights.north_west, min[2]],
-            [min[0], min[1], min[2]],
+            [max[0], bottom, min[2] + FLUID_FACE_OFFSET],
+            [max[0], heights.north_east, min[2] + FLUID_FACE_OFFSET],
+            [min[0], heights.north_west, min[2] + FLUID_FACE_OFFSET],
+            [min[0], bottom, min[2] + FLUID_FACE_OFFSET],
         ],
         TerrainFace::South => [
-            [min[0], min[1], max[2]],
-            [min[0], heights.south_west, max[2]],
-            [max[0], heights.south_east, max[2]],
-            [max[0], min[1], max[2]],
+            [min[0], bottom, max[2] - FLUID_FACE_OFFSET],
+            [min[0], heights.south_west, max[2] - FLUID_FACE_OFFSET],
+            [max[0], heights.south_east, max[2] - FLUID_FACE_OFFSET],
+            [max[0], bottom, max[2] - FLUID_FACE_OFFSET],
         ],
         TerrainFace::West => [
-            [min[0], min[1], min[2]],
-            [min[0], heights.north_west, min[2]],
-            [min[0], heights.south_west, max[2]],
-            [min[0], min[1], max[2]],
+            [min[0] + FLUID_FACE_OFFSET, bottom, min[2]],
+            [min[0] + FLUID_FACE_OFFSET, heights.north_west, min[2]],
+            [min[0] + FLUID_FACE_OFFSET, heights.south_west, max[2]],
+            [min[0] + FLUID_FACE_OFFSET, bottom, max[2]],
         ],
         TerrainFace::East => [
-            [max[0], min[1], max[2]],
-            [max[0], heights.south_east, max[2]],
-            [max[0], heights.north_east, min[2]],
-            [max[0], min[1], min[2]],
+            [max[0] - FLUID_FACE_OFFSET, bottom, max[2]],
+            [max[0] - FLUID_FACE_OFFSET, heights.south_east, max[2]],
+            [max[0] - FLUID_FACE_OFFSET, heights.north_east, min[2]],
+            [max[0] - FLUID_FACE_OFFSET, bottom, min[2]],
         ],
     }
 }

@@ -141,10 +141,13 @@ fn fluid_top_face_averages_corner_heights_from_adjacent_fluids() {
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
     let top_vertices = face_vertices(&layers.translucent[0], 86, [0.0, 1.0, 0.0]);
 
-    assert_float_eq(vertex_at_xz(&top_vertices, 1.0, 2.0).position[1], 1.0);
-    assert_float_eq(vertex_at_xz(&top_vertices, 2.0, 2.0).position[1], 1.0);
-    assert_float_eq(vertex_at_xz(&top_vertices, 1.0, 3.0).position[1], 1.0);
-    assert_float_eq(vertex_at_xz(&top_vertices, 2.0, 3.0).position[1], 1.0 / 6.0);
+    assert_float_eq(vertex_at_xz(&top_vertices, 1.0, 2.0).position[1], 0.999);
+    assert_float_eq(vertex_at_xz(&top_vertices, 2.0, 2.0).position[1], 0.999);
+    assert_float_eq(vertex_at_xz(&top_vertices, 1.0, 3.0).position[1], 0.999);
+    assert_float_eq(
+        vertex_at_xz(&top_vertices, 2.0, 3.0).position[1],
+        1.0 / 6.0 - 0.001,
+    );
 }
 
 #[test]
@@ -159,16 +162,31 @@ fn fluid_side_uvs_follow_corner_heights() {
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
     let north = face_vertices(&layers.translucent[0], 86, [0.0, 0.0, -1.0]);
 
-    let east_bottom = vertex_at(&north, [2.0, 0.0, 2.0]);
-    let east_top = vertex_at_approx(&north, [2.0, 1.0 / 6.0, 2.0]);
-    let west_top = vertex_at(&north, [1.0, 1.0, 2.0]);
-    let west_bottom = vertex_at(&north, [1.0, 0.0, 2.0]);
+    let east_bottom = vertex_at_approx(&north, [2.0, 0.001, 2.001]);
+    let east_top = vertex_at_approx(&north, [2.0, 1.0 / 6.0 - 0.001, 2.001]);
+    let west_top = vertex_at_approx(&north, [1.0, 0.999, 2.001]);
+    let west_bottom = vertex_at_approx(&north, [1.0, 0.001, 2.001]);
 
     assert_eq!(east_bottom.uv, [0.5, 0.5]);
     assert_float_eq(east_top.uv[0], 0.5);
-    assert_float_eq(east_top.uv[1], 5.0 / 12.0);
-    assert_eq!(west_top.uv, [0.0, 0.0]);
+    assert_float_eq(east_top.uv[1], 5.0 / 12.0 + 0.0005);
+    assert_uv_eq(west_top.uv, [0.0, 0.0005]);
     assert_eq!(west_bottom.uv, [0.0, 0.5]);
+}
+
+#[test]
+fn fluid_down_face_uses_vanilla_bottom_offset() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = water_cell(86, 8);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let down = face_vertices(&layers.translucent[0], 86, [0.0, -1.0, 0.0]);
+
+    assert_eq!(down.len(), 4);
+    assert!(down
+        .iter()
+        .all(|vertex| (vertex.position[1] - 0.001).abs() < 0.0001));
 }
 
 #[test]
