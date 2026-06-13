@@ -1,6 +1,7 @@
 use bbb_control::NetCounters;
 
 mod client_state;
+mod control_state;
 mod dispatcher;
 
 pub(crate) use client_state::player_position_state_from_pose;
