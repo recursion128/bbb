@@ -106,6 +106,7 @@ pub enum PlayClientbound {
     OpenScreen(OpenScreen),
     PlayerPosition(PlayerPositionUpdate),
     PlayerAbilities(PlayerAbilities),
+    PlayerRotation(PlayerRotationUpdate),
     RemoveEntities(RemoveEntities),
     Respawn(Respawn),
     RotateHead(RotateHead),
@@ -780,6 +781,14 @@ pub struct PlayerPositionState {
     pub x_rot: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PlayerRotationUpdate {
+    pub y_rot: f32,
+    pub relative_y: bool,
+    pub x_rot: f32,
+    pub relative_x: bool,
+}
+
 impl PlayerPositionUpdate {
     pub fn apply_to_state(self, current: PlayerPositionState) -> PlayerPositionState {
         let mut current_delta = current.delta_movement;
@@ -846,6 +855,26 @@ impl PlayerPositionUpdate {
             delta_movement,
             y_rot,
             x_rot,
+        }
+    }
+}
+
+impl PlayerRotationUpdate {
+    pub fn apply_to_state(self, current: PlayerPositionState) -> PlayerPositionState {
+        PlayerPositionState {
+            position: current.position,
+            delta_movement: current.delta_movement,
+            y_rot: if self.relative_y {
+                current.y_rot + self.y_rot
+            } else {
+                self.y_rot
+            },
+            x_rot: (if self.relative_x {
+                current.x_rot + self.x_rot
+            } else {
+                self.x_rot
+            })
+            .clamp(-90.0, 90.0),
         }
     }
 }
@@ -1347,6 +1376,15 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::PlayerPosition(decode_player_position(
                 &mut decoder,
             )?))
+        }
+        ids::play::CLIENTBOUND_PLAYER_ROTATION => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::PlayerRotation(PlayerRotationUpdate {
+                y_rot: decoder.read_f32()?,
+                relative_y: decoder.read_bool()?,
+                x_rot: decoder.read_f32()?,
+                relative_x: decoder.read_bool()?,
+            }))
         }
         ids::play::CLIENTBOUND_REMOVE_ENTITIES => {
             let mut decoder = Decoder::new(payload);
@@ -4203,6 +4241,30 @@ mod tests {
     }
 
     #[test]
+    fn decodes_player_rotation_packet() {
+        let mut payload = Encoder::new();
+        payload.write_f32(15.0);
+        payload.write_bool(true);
+        payload.write_f32(-120.0);
+        payload.write_bool(false);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_PLAYER_ROTATION,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::PlayerRotation(PlayerRotationUpdate {
+                y_rot: 15.0,
+                relative_y: true,
+                x_rot: -120.0,
+                relative_x: false,
+            })
+        );
+    }
+
+    #[test]
     fn player_position_update_applies_relative_state() {
         let current = PlayerPositionState {
             position: Vec3d {
@@ -4256,6 +4318,37 @@ mod tests {
                 z: 0.75,
             }
         );
+        assert_eq!(state.y_rot, 110.0);
+        assert_eq!(state.x_rot, -90.0);
+    }
+
+    #[test]
+    fn player_rotation_update_applies_relative_state() {
+        let current = PlayerPositionState {
+            position: Vec3d {
+                x: 10.0,
+                y: 64.0,
+                z: -5.0,
+            },
+            delta_movement: Vec3d {
+                x: 0.125,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 90.0,
+            x_rot: 15.0,
+        };
+        let update = PlayerRotationUpdate {
+            y_rot: 20.0,
+            relative_y: true,
+            x_rot: -120.0,
+            relative_x: false,
+        };
+
+        let state = update.apply_to_state(current);
+
+        assert_eq!(state.position, current.position);
+        assert_eq!(state.delta_movement, current.delta_movement);
         assert_eq!(state.y_rot, 110.0);
         assert_eq!(state.x_rot, -90.0);
     }

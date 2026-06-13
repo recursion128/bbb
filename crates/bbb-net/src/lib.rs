@@ -15,11 +15,11 @@ use bbb_protocol::{
         ForgetLevelChunk, GameEvent, HurtAnimation, InteractionHand, LevelChunkWithLight,
         LightUpdate, LoginClientbound, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin,
         PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
-        PlayerInput, PlayerPositionState, PlayerPositionUpdate, RemoveEntities, Respawn,
-        RotateHead, SectionBlocksUpdate, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
-        SetDefaultSpawnPosition, SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment,
-        SetHeldSlot, SetPassengers, SetPlayerInventory, SetSimulationDistance, SystemChat,
-        TeleportEntity, UpdateAttributes, UseItem, UseItemOn,
+        PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
+        RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetChunkCacheCenter,
+        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetEntityData, SetEntityLink,
+        SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers, SetPlayerInventory,
+        SetSimulationDistance, SystemChat, TeleportEntity, UpdateAttributes, UseItem, UseItemOn,
     },
 };
 use bbb_world::{
@@ -123,6 +123,7 @@ pub enum NetEvent {
     Login(PlayLogin),
     Respawn(Respawn),
     PlayerPosition(PlayerPositionUpdate),
+    PlayerRotation(PlayerRotationUpdate),
     PlayerAbilities(PlayerAbilities),
     PlayerHealth(PlayerHealth),
     PlayerExperience(PlayerExperience),
@@ -480,6 +481,10 @@ pub async fn run_offline_event_stream(
                         player_loaded_sent = true;
                     }
                 }
+                PlayClientbound::PlayerRotation(update) => {
+                    player_position_state = update.apply_to_state(player_position_state);
+                    emit(&events, NetEvent::PlayerRotation(update)).await?;
+                }
                 PlayClientbound::EntityPositionSync(update) => {
                     emit(&events, NetEvent::EntityPositionSync(update)).await?;
                 }
@@ -775,6 +780,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                         conn.send_packet(id, &payload).await?;
                         player_loaded_sent = true;
                     }
+                }
+                PlayClientbound::PlayerRotation(update) => {
+                    player_position_state = update.apply_to_state(player_position_state);
                 }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     let pos = world.insert_level_chunk_with_light(chunk)?;

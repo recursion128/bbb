@@ -47,6 +47,7 @@ pub struct NetCounters {
     pub simulation_distance_packets: usize,
     pub system_chat_packets: usize,
     pub block_changed_ack_packets: usize,
+    pub player_rotation_packets: usize,
     pub last_block_changed_ack_sequence: Option<i32>,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,

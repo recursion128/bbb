@@ -1923,6 +1923,9 @@ fn drain_net_events(
             NetEvent::PlayerPosition(update) => {
                 apply_player_position_update(counters, update);
             }
+            NetEvent::PlayerRotation(update) => {
+                apply_player_rotation_update(counters, update);
+            }
             NetEvent::PlayerAbilities(abilities) => {
                 apply_player_abilities_update(counters, abilities);
             }
@@ -2177,6 +2180,30 @@ fn apply_player_position_update(
         last_teleport_id: update.id,
     });
     counters.player_position_packets += 1;
+}
+
+fn apply_player_rotation_update(
+    counters: &mut NetCounters,
+    update: bbb_protocol::packets::PlayerRotationUpdate,
+) {
+    let current = counters
+        .player_pose
+        .map(player_position_state_from_pose)
+        .unwrap_or_default();
+    let state = update.apply_to_state(current);
+    let last_teleport_id = counters
+        .player_pose
+        .map(|pose| pose.last_teleport_id)
+        .unwrap_or_default();
+
+    counters.player_pose = Some(PlayerPose {
+        position: net_vec3_from_protocol(state.position),
+        delta_movement: net_vec3_from_protocol(state.delta_movement),
+        y_rot: state.y_rot,
+        x_rot: state.x_rot,
+        last_teleport_id,
+    });
+    counters.player_rotation_packets += 1;
 }
 
 fn player_position_state_from_pose(player: PlayerPose) -> PlayerPositionState {
@@ -2836,6 +2863,38 @@ mod tests {
         assert_eq!(pose.x_rot, -90.0);
         assert_eq!(pose.last_teleport_id, 2);
         assert_eq!(counters.player_position_packets, 2);
+    }
+
+    #[test]
+    fn player_rotation_updates_pose_orientation() {
+        let mut counters = NetCounters {
+            player_pose: Some(PlayerPose {
+                position: vec3(10.0, 64.0, -5.0),
+                delta_movement: vec3(0.125, 0.0, 0.0),
+                y_rot: 90.0,
+                x_rot: 15.0,
+                last_teleport_id: 7,
+            }),
+            ..NetCounters::default()
+        };
+
+        apply_player_rotation_update(
+            &mut counters,
+            bbb_protocol::packets::PlayerRotationUpdate {
+                y_rot: 20.0,
+                relative_y: true,
+                x_rot: -120.0,
+                relative_x: false,
+            },
+        );
+
+        let pose = counters.player_pose.unwrap();
+        assert_eq!(pose.position, vec3(10.0, 64.0, -5.0));
+        assert_eq!(pose.delta_movement, vec3(0.125, 0.0, 0.0));
+        assert_eq!(pose.y_rot, 110.0);
+        assert_eq!(pose.x_rot, -90.0);
+        assert_eq!(pose.last_teleport_id, 7);
+        assert_eq!(counters.player_rotation_packets, 1);
     }
 
     #[test]
