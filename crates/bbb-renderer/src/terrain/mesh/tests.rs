@@ -151,6 +151,27 @@ fn fluid_top_face_averages_corner_heights_from_adjacent_fluids() {
 }
 
 #[test]
+fn fluid_top_height_uses_vanilla_own_height() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    let mut block_state_id = 80;
+    for z in 1..=3 {
+        for x in 0..=2 {
+            cells[cell_index(x, 0, z, 1)] = water_cell(block_state_id, 8);
+            block_state_id += 1;
+        }
+    }
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let top = face_vertices(&layers.translucent[0], 84, [0.0, 1.0, 0.0]);
+
+    assert_eq!(top.len(), 4);
+    assert!(top
+        .iter()
+        .all(|vertex| { (vertex.position[1] - (8.0 / 9.0 - 0.001)).abs() < 0.0001 }));
+}
+
+#[test]
 fn fluid_side_uvs_follow_corner_heights() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =

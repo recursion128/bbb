@@ -134,12 +134,8 @@ pub(super) fn emit_box(
         to[2] as f32 / 16.0,
     ];
     let is_fluid = matches!(material, TerrainMaterialClass::Fluid);
-    if is_fluid
-        && lookup
-            .cell(x, y + 1, z)
-            .is_some_and(|neighbor| cell_is_same_fluid(neighbor, fluid))
-    {
-        max[1] = 1.0;
+    if is_fluid {
+        max[1] = fluid_self_height(fluid, max[1], x, y, z, lookup);
     }
     let fluid_flow = if is_fluid {
         fluid.and_then(|fluid| fluid_top_flow(x, y, z, fluid, lookup))
@@ -207,7 +203,8 @@ pub(super) fn emit_box(
         let smooth_light = !is_fluid && ambient_occlusion && face_light_emission[face_index] == 0;
         let face_cubic = box_face_is_cubic(face.face, min, max);
         let fluid_heights = is_fluid.then(|| {
-            fluid_corner_heights(x, y, z, max[1], lookup).with_top_offset(fluid_top_offset)
+            fluid_corner_heights(x, y, z, max[1], fluid.map(|fluid| fluid.kind), lookup)
+                .with_top_offset(fluid_top_offset)
         });
         let texture_index =
             fluid_face_texture_index(face.face, texture_indices, fluid_flow.is_some());
@@ -530,6 +527,7 @@ fn fluid_corner_heights(
     y: i32,
     z: i32,
     self_height: f32,
+    kind: Option<TerrainFluidKind>,
     lookup: &TerrainChunkLookup<'_>,
 ) -> FluidCornerHeights {
     if self_height >= 1.0 {
@@ -541,35 +539,35 @@ fn fluid_corner_heights(
         };
     }
 
-    let north = fluid_height_at(x, y, z - 1, lookup);
-    let south = fluid_height_at(x, y, z + 1, lookup);
-    let west = fluid_height_at(x - 1, y, z, lookup);
-    let east = fluid_height_at(x + 1, y, z, lookup);
+    let north = fluid_height_at(x, y, z - 1, kind, lookup);
+    let south = fluid_height_at(x, y, z + 1, kind, lookup);
+    let west = fluid_height_at(x - 1, y, z, kind, lookup);
+    let east = fluid_height_at(x + 1, y, z, kind, lookup);
 
     FluidCornerHeights {
         north_west: average_fluid_corner_height(
             self_height,
             north,
             west,
-            fluid_height_at(x - 1, y, z - 1, lookup),
+            fluid_height_at(x - 1, y, z - 1, kind, lookup),
         ),
         north_east: average_fluid_corner_height(
             self_height,
             north,
             east,
-            fluid_height_at(x + 1, y, z - 1, lookup),
+            fluid_height_at(x + 1, y, z - 1, kind, lookup),
         ),
         south_east: average_fluid_corner_height(
             self_height,
             south,
             east,
-            fluid_height_at(x + 1, y, z + 1, lookup),
+            fluid_height_at(x + 1, y, z + 1, kind, lookup),
         ),
         south_west: average_fluid_corner_height(
             self_height,
             south,
             west,
-            fluid_height_at(x - 1, y, z + 1, lookup),
+            fluid_height_at(x - 1, y, z + 1, kind, lookup),
         ),
     }
 }
@@ -717,13 +715,6 @@ fn same_fluid_own_height(cell: &TerrainCell, kind: TerrainFluidKind) -> Option<f
         .flatten()
 }
 
-fn cell_is_same_fluid(cell: &TerrainCell, fluid: Option<TerrainFluid>) -> bool {
-    match (fluid, cell.fluid) {
-        (Some(current), Some(neighbor)) => current.kind == neighbor.kind,
-        _ => matches!(cell.material, TerrainMaterialClass::Fluid),
-    }
-}
-
 fn material_blocks_motion(material: TerrainMaterialClass) -> bool {
     matches!(material, TerrainMaterialClass::Opaque)
 }
@@ -796,20 +787,62 @@ fn fluid_side_v(height: f32) -> f32 {
     (1.0 - height) * 0.5
 }
 
-fn fluid_height_at(x: i32, y: i32, z: i32, lookup: &TerrainChunkLookup<'_>) -> f32 {
+fn fluid_self_height(
+    fluid: Option<TerrainFluid>,
+    fallback_height: f32,
+    x: i32,
+    y: i32,
+    z: i32,
+    lookup: &TerrainChunkLookup<'_>,
+) -> f32 {
+    let Some(fluid) = fluid else {
+        return if lookup
+            .cell(x, y + 1, z)
+            .is_some_and(|above| matches!(above.material, TerrainMaterialClass::Fluid))
+        {
+            1.0
+        } else {
+            fallback_height
+        };
+    };
+    if lookup
+        .cell(x, y + 1, z)
+        .is_some_and(|above| same_fluid_own_height(above, fluid.kind).is_some())
+    {
+        1.0
+    } else {
+        fluid.own_height()
+    }
+}
+
+fn fluid_height_at(
+    x: i32,
+    y: i32,
+    z: i32,
+    kind: Option<TerrainFluidKind>,
+    lookup: &TerrainChunkLookup<'_>,
+) -> f32 {
     let Some(cell) = lookup.cell(x, y, z) else {
         return 0.0;
     };
     match cell.material {
         TerrainMaterialClass::Fluid => {
+            if let Some(kind) = kind {
+                if lookup
+                    .cell(x, y + 1, z)
+                    .is_some_and(|above| same_fluid_own_height(above, kind).is_some())
+                {
+                    return 1.0;
+                }
+                return same_fluid_own_height(cell, kind).unwrap_or(0.0);
+            }
             if lookup
                 .cell(x, y + 1, z)
                 .is_some_and(|above| matches!(above.material, TerrainMaterialClass::Fluid))
             {
-                1.0
-            } else {
-                fluid_cell_height(cell).unwrap_or(1.0)
+                return 1.0;
             }
+            fluid_cell_height(cell).unwrap_or(1.0)
         }
         TerrainMaterialClass::Opaque => -1.0,
         TerrainMaterialClass::Empty
