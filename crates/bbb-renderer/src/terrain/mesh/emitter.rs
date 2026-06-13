@@ -91,6 +91,7 @@ pub(super) fn emit_box(
     to: [u8; 3],
     face_present: [bool; 6],
     face_uvs: [[u8; 4]; 6],
+    face_uv_rotations: [u8; 6],
     face_cull: [bool; 6],
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
@@ -141,7 +142,7 @@ pub(super) fn emit_box(
             atlas.rect(texture_indices[face_index]),
             face.normal,
             box_face_corners(face.face, min, max),
-            face_uvs_from_crop(face_uvs[face_index]),
+            face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
         );
     }
 }

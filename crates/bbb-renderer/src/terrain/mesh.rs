@@ -94,6 +94,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         to,
                         face_present,
                         face_uvs,
+                        face_uv_rotations,
                         face_cull,
                     } => {
                         emit_box(
@@ -111,6 +112,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             *to,
                             *face_present,
                             *face_uvs,
+                            *face_uv_rotations,
                             *face_cull,
                             lookup,
                             mode,
@@ -134,6 +136,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 model_box.to,
                                 model_box.face_present,
                                 model_box.face_uvs,
+                                model_box.face_uv_rotations,
                                 model_box.face_cull,
                                 lookup,
                                 mode,

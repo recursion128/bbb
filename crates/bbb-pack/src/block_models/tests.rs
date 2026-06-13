@@ -292,7 +292,7 @@ fn block_model_catalog_extracts_single_box_geometry() {
                 "to": [16, 8, 16],
                 "faces": {
                     "down":  { "uv": [0, 0, 16, 16], "texture": "#bottom", "cullface": "down" },
-                    "up":    { "uv": [0, 0, 16, 16], "texture": "#top" },
+                    "up":    { "uv": [0, 0, 16, 16], "rotation": 90, "texture": "#top" },
                     "north": { "uv": [0, 8, 16, 16], "texture": "#side", "cullface": "north" },
                     "south": { "uv": [0, 8, 16, 16], "texture": "#side", "cullface": "south" },
                     "west":  { "uv": [0, 8, 16, 16], "texture": "#side", "cullface": "west" },
@@ -335,6 +335,7 @@ fn block_model_catalog_extracts_single_box_geometry() {
         model_box.face_uvs[BlockModelFace::North.index()],
         [0, 8, 16, 16]
     );
+    assert_eq!(model_box.face_uv_rotations[BlockModelFace::Up.index()], 1);
     assert!(model_box.face_cull[BlockModelFace::North.index()]);
     assert!(!model_box.face_cull[BlockModelFace::Up.index()]);
     assert_eq!(
@@ -394,6 +395,65 @@ fn block_model_catalog_keeps_rotated_elements_custom() {
         render_model.face_textures.get(BlockModelFace::North),
         "minecraft:block/oak_planks"
     );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_preserves_full_cube_face_uv_rotation_as_box() {
+    let root = unique_temp_dir("block-model-full-cube-face-rotation");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("oak_log.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/oak_log_horizontal" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("oak_log_horizontal.json"),
+        r##"{
+            "textures": {
+                "end": "minecraft:block/oak_log_top",
+                "side": "minecraft:block/oak_log"
+            },
+            "elements": [{
+                "from": [0, 0, 0],
+                "to": [16, 16, 16],
+                "faces": {
+                    "down":  { "texture": "#end", "cullface": "down" },
+                    "up":    { "texture": "#end", "rotation": 180, "cullface": "up" },
+                    "north": { "texture": "#side", "cullface": "north" },
+                    "south": { "texture": "#side", "cullface": "south" },
+                    "west":  { "texture": "#side", "cullface": "west" },
+                    "east":  { "texture": "#side", "cullface": "east" }
+                }
+            }]
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let render_model = catalog
+        .block_render_model("minecraft:oak_log", &BTreeMap::new())
+        .unwrap();
+    let BlockModelShape::Box(model_box) = render_model.shape else {
+        panic!("full cube with face rotation should preserve box metadata");
+    };
+
+    assert_eq!(model_box.from, [0, 0, 0]);
+    assert_eq!(model_box.to, [16, 16, 16]);
+    assert_eq!(model_box.face_uv_rotations[BlockModelFace::Up.index()], 2);
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -658,7 +718,12 @@ fn loads_local_vanilla_block_model_catalog() {
     let log_model = catalog
         .block_render_model("minecraft:oak_log", &log)
         .unwrap();
-    assert_eq!(log_model.shape, BlockModelShape::Cube);
+    let BlockModelShape::Box(log_box) = &log_model.shape else {
+        panic!("oak_log x-axis should preserve full-cube face UV rotation as a box");
+    };
+    assert_eq!(log_box.from, [0, 0, 0]);
+    assert_eq!(log_box.to, [16, 16, 16]);
+    assert_eq!(log_box.face_uv_rotations[BlockModelFace::East.index()], 2);
     assert_eq!(
         log_model.face_textures.get(BlockModelFace::West),
         "minecraft:block/oak_log_top"

@@ -9,6 +9,7 @@ pub(super) fn classify_model_shape(
     textures: &BTreeMap<String, String>,
 ) -> BlockModelShape {
     let has_element_rotation = elements.iter().any(|element| element.rotation.is_some());
+    let has_face_uv_transforms = elements.iter().any(has_face_uv_transform);
     let mut face_counts = [0usize; 6];
     let mut total_faces = 0usize;
     for element in elements {
@@ -57,7 +58,7 @@ pub(super) fn classify_model_shape(
         return BlockModelShape::Boxes(model_boxes);
     }
 
-    let has_cube_faces = face_counts.iter().all(|count| *count > 0);
+    let has_cube_faces = !has_face_uv_transforms && face_counts.iter().all(|count| *count > 0);
     if has_cube_faces {
         return BlockModelShape::Cube;
     }
@@ -95,6 +96,9 @@ pub(super) fn combine_model_shapes(shapes: Vec<BlockModelShape>) -> BlockModelSh
 }
 
 fn is_full_cube_element(element: &RawBlockElement) -> bool {
+    if has_face_uv_transform(element) {
+        return false;
+    }
     let Some(from) = element.from.and_then(quantize_vec3_0_16) else {
         return false;
     };
@@ -143,6 +147,7 @@ fn element_box_shape(
 
     let mut face_present = [false; 6];
     let mut face_uvs = [[0, 0, 16, 16]; 6];
+    let mut face_uv_rotations = [0; 6];
     let mut face_cull = [false; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
@@ -153,6 +158,10 @@ fn element_box_shape(
             .uv
             .and_then(quantize_uv_0_16)
             .unwrap_or([0, 0, 16, 16]);
+        face_uv_rotations[face.index()] = raw_face
+            .rotation
+            .map(quantize_face_uv_rotation)
+            .unwrap_or(Some(0))?;
         face_cull[face.index()] = raw_face
             .cullface
             .as_deref()
@@ -167,6 +176,7 @@ fn element_box_shape(
         to,
         face_present,
         face_uvs,
+        face_uv_rotations,
         face_cull,
         face_tint_indices,
         face_textures,
@@ -188,6 +198,25 @@ fn quantize_uv_0_16(values: [f32; 4]) -> Option<[u8; 4]> {
         quantize_0_16(values[2])?,
         quantize_0_16(values[3])?,
     ])
+}
+
+fn quantize_face_uv_rotation(degrees: i32) -> Option<u8> {
+    match degrees.rem_euclid(360) {
+        0 => Some(0),
+        90 => Some(1),
+        180 => Some(2),
+        270 => Some(3),
+        _ => None,
+    }
+}
+
+fn has_face_uv_transform(element: &RawBlockElement) -> bool {
+    element.faces.values().any(|face| {
+        face.uv.is_some()
+            || face
+                .rotation
+                .is_some_and(|degrees| quantize_face_uv_rotation(degrees) != Some(0))
+    })
 }
 
 fn quantize_0_16(value: f32) -> Option<u8> {

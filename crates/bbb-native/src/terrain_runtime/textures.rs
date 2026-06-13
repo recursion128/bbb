@@ -206,6 +206,7 @@ impl TerrainTextureState {
                 to: model_box.to,
                 face_present: model_box.face_present,
                 face_uvs: model_box.face_uvs,
+                face_uv_rotations: model_box.face_uv_rotations,
                 face_cull: model_box.face_cull,
             },
             BlockModelShape::Boxes(model_boxes) => TerrainRenderShape::Boxes(
@@ -216,6 +217,7 @@ impl TerrainTextureState {
                         to: model_box.to,
                         face_present: model_box.face_present,
                         face_uvs: model_box.face_uvs,
+                        face_uv_rotations: model_box.face_uv_rotations,
                         face_cull: model_box.face_cull,
                         texture_indices: self
                             .model_box_texture_indices(&model_box, fallback_texture_indices),
@@ -489,6 +491,7 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         to: [16, height, 16],
         face_present: [true; 6],
         face_uvs,
+        face_uv_rotations: [0; 6],
         face_cull: [true; 6],
     }
 }

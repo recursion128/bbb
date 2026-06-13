@@ -286,6 +286,36 @@ fn box_model_mesh_uses_bounds_and_face_uv_crop() {
 }
 
 #[test]
+fn box_model_mesh_rotates_face_uv_crop() {
+    let mut face_uvs = [[0, 0, 16, 16]; 6];
+    face_uvs[TerrainFace::Down.index()] = [4, 4, 8, 12];
+    let mut face_uv_rotations = [0; 6];
+    face_uv_rotations[TerrainFace::Down.index()] = 1;
+    let shape = TerrainRenderShape::Box {
+        from: [0, 0, 0],
+        to: [16, 16, 16],
+        face_present: [true; 6],
+        face_uvs,
+        face_uv_rotations,
+        face_cull: [false; 6],
+    };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 1, shape);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    assert_eq!(mesh.vertices[0].uv, [0.5, 0.25]);
+    assert_eq!(mesh.vertices[1].uv, [0.5, 0.75]);
+    assert_eq!(mesh.vertices[2].uv, [0.25, 0.75]);
+    assert_eq!(mesh.vertices[3].uv, [0.25, 0.25]);
+}
+
+#[test]
 fn box_model_culls_only_faces_marked_by_cullface() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =
@@ -310,6 +340,7 @@ fn multi_box_model_skips_absent_faces() {
         to: [16, 16, 16],
         face_present: [true; 6],
         face_uvs: [[0, 0, 16, 16]; 6],
+        face_uv_rotations: [0; 6],
         face_cull: [false; 6],
         texture_indices: [0; 6],
         tint: [TerrainTint::WHITE; 6],
@@ -328,6 +359,7 @@ fn multi_box_model_skips_absent_faces() {
                 to: [16, 8, 16],
                 face_present: [true; 6],
                 face_uvs: [[0, 0, 16, 16]; 6],
+                face_uv_rotations: [0; 6],
                 face_cull: [false; 6],
                 texture_indices: [0; 6],
                 tint: [TerrainTint::WHITE; 6],
@@ -364,6 +396,7 @@ fn boxes_use_per_box_texture_and_tint() {
                 to: [16, 8, 16],
                 face_present: [true; 6],
                 face_uvs: [[0, 0, 16, 16]; 6],
+                face_uv_rotations: [0; 6],
                 face_cull: [false; 6],
                 texture_indices: [1; 6],
                 tint: [grass_tint; 6],
@@ -373,6 +406,7 @@ fn boxes_use_per_box_texture_and_tint() {
                 to: [16, 16, 16],
                 face_present: [true; 6],
                 face_uvs: [[0, 0, 16, 16]; 6],
+                face_uv_rotations: [0; 6],
                 face_cull: [false; 6],
                 texture_indices: [2; 6],
                 tint: [foliage_tint; 6],
@@ -503,6 +537,7 @@ fn slab_box_shape() -> TerrainRenderShape {
         to: [16, 8, 16],
         face_present: [true; 6],
         face_uvs,
+        face_uv_rotations: [0; 6],
         face_cull,
     }
 }
@@ -519,6 +554,7 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         to: [16, height, 16],
         face_present: [true; 6],
         face_uvs,
+        face_uv_rotations: [0; 6],
         face_cull: [true; 6],
     }
 }

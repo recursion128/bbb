@@ -175,15 +175,16 @@ pub(super) fn box_face_corners(face: TerrainFace, min: [f32; 3], max: [f32; 3]) 
     }
 }
 
-pub(super) fn face_uvs_from_crop(uv: [u8; 4]) -> [[f32; 2]; 4] {
+pub(super) fn face_uvs_from_crop(uv: [u8; 4], rotation: u8) -> [[f32; 2]; 4] {
     let min_u = uv[0] as f32 / 16.0;
     let min_v = uv[1] as f32 / 16.0;
     let max_u = uv[2] as f32 / 16.0;
     let max_v = uv[3] as f32 / 16.0;
-    [
+    let uvs = [
         [min_u, min_v],
         [max_u, min_v],
         [max_u, max_v],
         [min_u, max_v],
-    ]
+    ];
+    std::array::from_fn(|index| uvs[(index + rotation as usize) % uvs.len()])
 }

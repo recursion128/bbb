@@ -49,6 +49,8 @@ pub(super) struct RawBlockModelFace {
     #[serde(default)]
     pub(super) uv: Option<[f32; 4]>,
     #[serde(default)]
+    pub(super) rotation: Option<i32>,
+    #[serde(default)]
     pub(super) cullface: Option<String>,
     #[serde(default)]
     pub(super) tintindex: Option<i32>,

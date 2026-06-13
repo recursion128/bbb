@@ -33,6 +33,7 @@ fn water_level_shape_uses_cropped_fluid_box() {
                 [0, 7, 16, 16],
                 [0, 7, 16, 16],
             ],
+            face_uv_rotations: [0; 6],
             face_cull: [true; 6],
         }
     );
@@ -372,6 +373,7 @@ fn block_model_box_with_face_texture(
         to: [16, 16, 16],
         face_present,
         face_uvs: [[0, 0, 16, 16]; 6],
+        face_uv_rotations: [0; 6],
         face_cull: [false; 6],
         face_tint_indices,
         face_textures,

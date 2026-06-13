@@ -92,6 +92,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
 
     let mut face_present = [false; 6];
     let mut face_uvs = [[0, 0, 16, 16]; 6];
+    let mut face_uv_rotations = [0; 6];
     let mut face_cull = [false; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
@@ -99,6 +100,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
         let target = face.rotate(x_degrees, y_degrees);
         face_present[target.index()] = model_box.face_present[face.index()];
         face_uvs[target.index()] = model_box.face_uvs[face.index()];
+        face_uv_rotations[target.index()] = model_box.face_uv_rotations[face.index()];
         face_cull[target.index()] = model_box.face_cull[face.index()];
         face_tint_indices[target.index()] = model_box.face_tint_indices[face.index()];
         face_textures[target.index()] = model_box.face_textures[face.index()].clone();
@@ -109,6 +111,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
         to: max,
         face_present,
         face_uvs,
+        face_uv_rotations,
         face_cull,
         face_tint_indices,
         face_textures,
