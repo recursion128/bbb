@@ -117,6 +117,14 @@ pub struct WorldCounters {
     #[serde(default)]
     pub recipe_book_notifications_received: usize,
     #[serde(default)]
+    pub update_recipes_packets: usize,
+    #[serde(default)]
+    pub recipe_property_sets_tracked: usize,
+    #[serde(default)]
+    pub recipe_property_set_items_tracked: usize,
+    #[serde(default)]
+    pub stonecutter_recipes_tracked: usize,
+    #[serde(default)]
     pub player_chat_packets: usize,
     #[serde(default)]
     pub disguised_chat_packets: usize,

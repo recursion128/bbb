@@ -134,6 +134,7 @@ pub enum PlayClientbound {
     TickingStep(TickingStep),
     Transfer(Transfer),
     StopSound(StopSound),
+    UpdateRecipes(UpdateRecipes),
     UpdateTags(UpdateTags),
     Waypoint(TrackedWaypointPacket),
     UpdateAttributes(UpdateAttributes),

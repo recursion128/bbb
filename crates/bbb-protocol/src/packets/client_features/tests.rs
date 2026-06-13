@@ -200,6 +200,53 @@ fn decodes_recipe_book_settings_packet_wire_order() {
 }
 
 #[test]
+fn decodes_update_recipes_packet_wire_order() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(2);
+    payload.write_string("minecraft:furnace_input");
+    payload.write_var_i32(2);
+    payload.write_var_i32(42);
+    payload.write_var_i32(43);
+    payload.write_string("minecraft:smithing_base");
+    payload.write_var_i32(1);
+    payload.write_var_i32(99);
+
+    payload.write_var_i32(1);
+    payload.write_var_i32(3);
+    payload.write_var_i32(11);
+    payload.write_var_i32(12);
+    payload.write_var_i32(4);
+    payload.write_var_i32(77);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_RECIPES, &payload.into_inner())
+            .unwrap(),
+        PlayClientbound::UpdateRecipes(UpdateRecipes {
+            property_sets: vec![
+                RecipePropertySetSummary {
+                    key: "minecraft:furnace_input".to_string(),
+                    item_ids: vec![42, 43],
+                },
+                RecipePropertySetSummary {
+                    key: "minecraft:smithing_base".to_string(),
+                    item_ids: vec![99],
+                },
+            ],
+            stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
+                input: IngredientSummary {
+                    tag: None,
+                    item_ids: vec![11, 12],
+                },
+                option_display: SlotDisplaySummary {
+                    display_type_id: 4,
+                    raw_payload: vec![4, 77],
+                },
+            }],
+        })
+    );
+}
+
+#[test]
 fn decodes_select_advancements_tab_present_and_absent() {
     let mut present = Encoder::new();
     present.write_bool(true);

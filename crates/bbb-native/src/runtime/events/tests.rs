@@ -14,12 +14,14 @@ use bbb_protocol::packets::{
     PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill, PlayerLookAt,
     PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry,
     RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
-    RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RegistryTags, RemoteDebugSampleType,
-    SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
-    SetPassengers, ShowDialog, SignedMessageBody, SoundEntityEvent, SoundEvent, SoundEventHolder,
-    SoundSource, StopSound, TagNetworkPayload, TagQuery, TestInstanceBlockStatus, TrackedWaypoint,
-    TrackedWaypointPacket, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
-    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
+    RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
+    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog, SignedMessageBody,
+    SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
+    StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload, TagQuery,
+    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateRecipes, UpdateTags,
+    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
+    WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -700,6 +702,47 @@ fn recipe_book_events_update_world_state() {
     assert_eq!(world_counters.recipe_book_entries_tracked, 1);
     assert_eq!(world_counters.recipe_book_highlights_tracked, 1);
     assert_eq!(world_counters.recipe_book_notifications_received, 1);
+}
+
+#[test]
+fn update_recipes_event_replaces_world_recipe_access_state() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::UpdateRecipes(UpdateRecipes {
+        property_sets: vec![RecipePropertySetSummary {
+            key: "minecraft:furnace_input".to_string(),
+            item_ids: vec![42, 43],
+        }],
+        stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
+            input: IngredientSummary {
+                tag: None,
+                item_ids: vec![11, 12],
+            },
+            option_display: SlotDisplaySummary {
+                display_type_id: 4,
+                raw_payload: vec![4, 77],
+            },
+        }],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(
+        world.recipes().property_sets.get("minecraft:furnace_input"),
+        Some(&vec![42, 43])
+    );
+    assert_eq!(world.recipes().stonecutter_recipes.len(), 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.update_recipes_packets, 1);
+    assert_eq!(world_counters.recipe_property_sets_tracked, 1);
+    assert_eq!(world_counters.recipe_property_set_items_tracked, 2);
+    assert_eq!(world_counters.stonecutter_recipes_tracked, 1);
 }
 
 #[test]

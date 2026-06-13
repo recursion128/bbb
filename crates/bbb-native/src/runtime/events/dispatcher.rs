@@ -212,6 +212,9 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::RecipeBookSettings(update) => {
                 world.apply_recipe_book_settings(update);
             }
+            NetEvent::UpdateRecipes(update) => {
+                world.apply_update_recipes(update);
+            }
             NetEvent::DebugBlockValue(update) => {
                 counters.last_debug_block_value = Some(bbb_control::DebugBlockValueState {
                     pos: control_block_pos(update.pos),
