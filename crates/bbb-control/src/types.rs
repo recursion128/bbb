@@ -34,6 +34,7 @@ pub struct NetCounters {
     pub weather: WeatherState,
     pub last_cookie_key: Option<String>,
     pub custom_report_details: BTreeMap<String, String>,
+    pub server_links: Vec<ServerLinkState>,
     pub last_system_chat: Option<SystemChatLine>,
     pub last_action_bar: Option<ActionBarText>,
     pub title: TitleState,
@@ -57,6 +58,8 @@ pub struct NetCounters {
     pub stored_cookie_count: usize,
     pub stored_cookie_bytes: usize,
     pub custom_report_detail_packets: usize,
+    pub server_link_packets: usize,
+    pub server_link_invalid_entries: usize,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,
@@ -240,6 +243,13 @@ impl Default for CameraState {
 pub struct TransferTarget {
     pub host: String,
     pub port: i32,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerLinkState {
+    pub label: String,
+    pub url: String,
+    pub known_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

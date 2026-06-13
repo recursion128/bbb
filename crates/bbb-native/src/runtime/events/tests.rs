@@ -2,8 +2,8 @@ use super::*;
 use crate::runtime::clear_color_for_day_time;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, PlayLogin, SetPassengers,
-    Vec3d as ProtocolVec3d,
+    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, PlayLogin, ServerLinkEntry,
+    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use std::collections::BTreeMap;
@@ -108,6 +108,55 @@ fn custom_report_details_event_updates_snapshot_counters() {
     );
     assert_eq!(counters.custom_report_details, details);
     assert_eq!(counters.custom_report_detail_packets, 1);
+}
+
+#[test]
+fn server_links_event_updates_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::ServerLinks(ServerLinks {
+        links: vec![
+            ServerLinkEntry {
+                link_type: ServerLinkType::Known(ServerLinkKnownType::Support),
+                url: "https://example.invalid/support".to_string(),
+            },
+            ServerLinkEntry {
+                link_type: ServerLinkType::Custom {
+                    label: "Rules".to_string(),
+                },
+                url: "http://example.invalid/rules".to_string(),
+            },
+            ServerLinkEntry {
+                link_type: ServerLinkType::Known(ServerLinkKnownType::Website),
+                url: "ftp://example.invalid/file".to_string(),
+            },
+        ],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(counters.server_link_packets, 1);
+    assert_eq!(counters.server_link_invalid_entries, 1);
+    assert_eq!(
+        counters.server_links,
+        vec![
+            bbb_control::ServerLinkState {
+                label: "known_server_link.support".to_string(),
+                url: "https://example.invalid/support".to_string(),
+                known_type: Some("support".to_string()),
+            },
+            bbb_control::ServerLinkState {
+                label: "Rules".to_string(),
+                url: "http://example.invalid/rules".to_string(),
+                known_type: None,
+            },
+        ]
+    );
 }
 
 #[test]

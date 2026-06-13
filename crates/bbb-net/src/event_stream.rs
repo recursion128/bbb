@@ -181,6 +181,9 @@ pub async fn run_offline_event_stream(
                     ConfigurationClientbound::CustomReportDetails(details) => {
                         emit(&events, NetEvent::CustomReportDetails(details)).await?;
                     }
+                    ConfigurationClientbound::ServerLinks(links) => {
+                        emit(&events, NetEvent::ServerLinks(links)).await?;
+                    }
                     ConfigurationClientbound::Transfer(transfer) => {
                         emit(&events, NetEvent::Transfer(transfer)).await?;
                     }
@@ -261,6 +264,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::CustomReportDetails(details) => {
                     emit(&events, NetEvent::CustomReportDetails(details)).await?;
+                }
+                PlayClientbound::ServerLinks(links) => {
+                    emit(&events, NetEvent::ServerLinks(links)).await?;
                 }
                 PlayClientbound::OpenScreen(update) => {
                     emit(&events, NetEvent::OpenScreen(update)).await?;

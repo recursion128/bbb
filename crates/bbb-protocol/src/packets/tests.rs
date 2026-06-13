@@ -1226,6 +1226,44 @@ fn decodes_custom_report_details_in_configuration_and_play() {
     );
 }
 
+#[test]
+fn decodes_server_links_in_configuration_and_play() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(2);
+    payload.write_bool(true);
+    payload.write_var_i32(0);
+    payload.write_string("https://example.invalid/bugs");
+    payload.write_bool(false);
+    payload.write_bytes(&nbt_string_root("Rules"));
+    payload.write_string("https://example.invalid/rules");
+    let payload = payload.into_inner();
+
+    let expected = ServerLinks {
+        links: vec![
+            ServerLinkEntry {
+                link_type: ServerLinkType::Known(ServerLinkKnownType::BugReport),
+                url: "https://example.invalid/bugs".to_string(),
+            },
+            ServerLinkEntry {
+                link_type: ServerLinkType::Custom {
+                    label: "Rules".to_string(),
+                },
+                url: "https://example.invalid/rules".to_string(),
+            },
+        ],
+    };
+
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_SERVER_LINKS, &payload)
+            .unwrap(),
+        ConfigurationClientbound::ServerLinks(expected.clone())
+    );
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SERVER_LINKS, &payload).unwrap(),
+        PlayClientbound::ServerLinks(expected)
+    );
+}
+
 fn assert_cookie_response_payload(payload: &[u8], key: &str, expected: Option<&[u8]>) {
     let mut decoder = Decoder::new(payload);
     assert_eq!(decoder.read_string(32767).unwrap(), key);
@@ -1245,4 +1283,11 @@ fn assert_cookie_response_payload(payload: &[u8], key: &str, expected: Option<&[
 
 fn encode_block_pos(x: i32, y: i32, z: i32) -> i64 {
     (((x as i64) & 0x3ffffff) << 38) | (((z as i64) & 0x3ffffff) << 12) | ((y as i64) & 0xfff)
+}
+
+fn nbt_string_root(text: &str) -> Vec<u8> {
+    let mut payload = vec![8];
+    payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
+    payload.extend_from_slice(text.as_bytes());
+    payload
 }

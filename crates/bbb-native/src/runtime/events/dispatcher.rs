@@ -1,5 +1,6 @@
 use bbb_control::NetCounters;
 use bbb_net::{NetCommand, NetEvent};
+use bbb_protocol::packets::{ServerLinkEntry, ServerLinkType, ServerLinks};
 use bbb_world::{ChunkPos, WorldStore};
 use tokio::sync::mpsc;
 
@@ -67,6 +68,9 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::CustomReportDetails(details) => {
                 counters.custom_report_details = details.details;
                 counters.custom_report_detail_packets += 1;
+            }
+            NetEvent::ServerLinks(links) => {
+                apply_server_links_update(counters, links);
             }
             NetEvent::Transfer(transfer) => {
                 counters.last_transfer = Some(bbb_control::TransferTarget {
@@ -388,4 +392,67 @@ pub(in crate::runtime) fn drain_net_events(
         }
     }
     drained
+}
+
+fn apply_server_links_update(counters: &mut NetCounters, links: ServerLinks) {
+    let mut invalid_entries = 0usize;
+    let server_links = links
+        .links
+        .into_iter()
+        .filter_map(|entry| {
+            if is_allowed_untrusted_uri(&entry.url) {
+                Some(server_link_state(entry))
+            } else {
+                invalid_entries += 1;
+                None
+            }
+        })
+        .collect();
+
+    counters.server_links = server_links;
+    counters.server_link_packets += 1;
+    counters.server_link_invalid_entries = counters
+        .server_link_invalid_entries
+        .saturating_add(invalid_entries);
+}
+
+fn server_link_state(entry: ServerLinkEntry) -> bbb_control::ServerLinkState {
+    match entry.link_type {
+        ServerLinkType::Known(kind) => {
+            let known_type = kind.vanilla_name();
+            bbb_control::ServerLinkState {
+                label: format!("known_server_link.{known_type}"),
+                url: entry.url,
+                known_type: Some(known_type.to_string()),
+            }
+        }
+        ServerLinkType::Custom { label } => bbb_control::ServerLinkState {
+            label,
+            url: entry.url,
+            known_type: None,
+        },
+    }
+}
+
+fn is_allowed_untrusted_uri(uri: &str) -> bool {
+    if uri
+        .chars()
+        .any(|ch| ch.is_ascii_control() || ch.is_whitespace())
+    {
+        return false;
+    }
+    let Some((scheme, _)) = uri.split_once(':') else {
+        return false;
+    };
+    if scheme.is_empty() {
+        return false;
+    }
+    let mut chars = scheme.chars();
+    if !chars.next().is_some_and(|ch| ch.is_ascii_alphabetic()) {
+        return false;
+    }
+    if !chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '+' | '-' | '.')) {
+        return false;
+    }
+    matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https")
 }

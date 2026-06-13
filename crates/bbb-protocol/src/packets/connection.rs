@@ -5,11 +5,13 @@ use uuid::Uuid;
 
 use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
+    component::decode_component_summary_from_decoder,
     ids, PROTOCOL_VERSION,
 };
 
 const MAX_COOKIE_PAYLOAD_SIZE: usize = 5120;
 const MAX_CUSTOM_REPORT_DETAILS: usize = 32;
+const MAX_SERVER_LINKS_INITIAL_CAPACITY: usize = 65_536;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(i32)]
@@ -63,6 +65,7 @@ pub enum ConfigurationClientbound {
     StoreCookie(StoreCookie),
     Transfer(Transfer),
     CustomReportDetails(CustomReportDetails),
+    ServerLinks(ServerLinks),
     Unknown {
         packet_id: i32,
         len: usize,
@@ -89,6 +92,69 @@ pub struct StoreCookie {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CustomReportDetails {
     pub details: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerLinks {
+    pub links: Vec<ServerLinkEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerLinkEntry {
+    pub link_type: ServerLinkType,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ServerLinkType {
+    Known(ServerLinkKnownType),
+    Custom { label: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ServerLinkKnownType {
+    BugReport,
+    CommunityGuidelines,
+    Support,
+    Status,
+    Feedback,
+    Community,
+    Website,
+    Forums,
+    News,
+    Announcements,
+}
+
+impl ServerLinkKnownType {
+    pub fn vanilla_name(self) -> &'static str {
+        match self {
+            Self::BugReport => "report_bug",
+            Self::CommunityGuidelines => "community_guidelines",
+            Self::Support => "support",
+            Self::Status => "status",
+            Self::Feedback => "feedback",
+            Self::Community => "community",
+            Self::Website => "website",
+            Self::Forums => "forums",
+            Self::News => "news",
+            Self::Announcements => "announcements",
+        }
+    }
+
+    fn from_vanilla_id(id: i32) -> Self {
+        match id {
+            1 => Self::CommunityGuidelines,
+            2 => Self::Support,
+            3 => Self::Status,
+            4 => Self::Feedback,
+            5 => Self::Community,
+            6 => Self::Website,
+            7 => Self::Forums,
+            8 => Self::News,
+            9 => Self::Announcements,
+            _ => Self::BugReport,
+        }
+    }
 }
 
 pub fn encode_handshake(host: &str, port: u16, intent: ClientIntent) -> (i32, Vec<u8>) {
@@ -274,6 +340,12 @@ pub fn decode_configuration_clientbound(
                 decode_custom_report_details(&mut decoder)?,
             ))
         }
+        ids::configuration::CLIENTBOUND_SERVER_LINKS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::ServerLinks(decode_server_links(
+                &mut decoder,
+            )?))
+        }
         id => Ok(ConfigurationClientbound::Unknown {
             packet_id: id,
             len: payload.len(),
@@ -324,6 +396,31 @@ pub(super) fn decode_custom_report_details(
         details.insert(key, value);
     }
     Ok(CustomReportDetails { details })
+}
+
+pub(super) fn decode_server_links(decoder: &mut Decoder<'_>) -> Result<ServerLinks> {
+    let count = decoder.read_len()?;
+    let mut links = Vec::with_capacity(count.min(MAX_SERVER_LINKS_INITIAL_CAPACITY));
+    for _ in 0..count {
+        links.push(decode_server_link_entry(decoder)?);
+    }
+    Ok(ServerLinks { links })
+}
+
+fn decode_server_link_entry(decoder: &mut Decoder<'_>) -> Result<ServerLinkEntry> {
+    let link_type = if decoder.read_bool()? {
+        ServerLinkType::Known(ServerLinkKnownType::from_vanilla_id(
+            decoder.read_var_i32()?,
+        ))
+    } else {
+        ServerLinkType::Custom {
+            label: decode_component_summary_from_decoder(decoder)?,
+        }
+    };
+    Ok(ServerLinkEntry {
+        link_type,
+        url: decoder.read_string(32767)?,
+    })
 }
 
 pub(super) fn encode_cookie_response_payload(key: &str, payload: Option<&[u8]>) -> Vec<u8> {

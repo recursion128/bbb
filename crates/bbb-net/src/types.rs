@@ -14,8 +14,8 @@ use bbb_protocol::{
         PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
         PlayerInfoRemove, PlayerInfoUpdate, PlayerInput, PlayerPositionState, PlayerPositionUpdate,
         PlayerRotationUpdate, RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop,
-        ResourcePackPush, Respawn, RotateHead, SectionBlocksUpdate, ServerData, SetActionBarText,
-        SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
+        ResourcePackPush, Respawn, RotateHead, SectionBlocksUpdate, ServerData, ServerLinks,
+        SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
         SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
         SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
         SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetPassengers,
@@ -93,6 +93,7 @@ pub enum NetEvent {
         stored_cookie_count: usize,
     },
     CustomReportDetails(CustomReportDetails),
+    ServerLinks(ServerLinks),
     PacketSeen {
         state: ConnectionState,
         packet_id: i32,
