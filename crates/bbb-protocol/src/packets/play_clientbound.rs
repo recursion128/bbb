@@ -132,6 +132,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
+        ids::play::CLIENTBOUND_CUSTOM_CHAT_COMPLETIONS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::CustomChatCompletions(
+                client_features::decode_custom_chat_completions(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_CUSTOM_REPORT_DETAILS => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::CustomReportDetails(
@@ -294,6 +300,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_ui::decode_play_pong_response(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_PLACE_GHOST_RECIPE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::PlaceGhostRecipe(
+                client_features::decode_place_ghost_recipe(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_PLAYER_POSITION => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::PlayerPosition(decode_player_position(
@@ -434,6 +446,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 chunks::decode_section_blocks_update(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_SELECT_ADVANCEMENTS_TAB => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SelectAdvancementsTab(
+                client_features::decode_select_advancements_tab(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_SET_CHUNK_CACHE_CENTER => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SetChunkCacheCenter(
@@ -559,6 +577,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::TabList(
                 server_presentation::decode_tab_list(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_TAG_QUERY => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::TagQuery(
+                client_features::decode_tag_query(&mut decoder)?,
             ))
         }
         ids::play::CLIENTBOUND_TAKE_ITEM_ENTITY => {

@@ -211,6 +211,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::Cooldown(update) => {
                     emit(&events, NetEvent::Cooldown(update)).await?;
                 }
+                PlayClientbound::CustomChatCompletions(update) => {
+                    emit(&events, NetEvent::CustomChatCompletions(update)).await?;
+                }
                 PlayClientbound::DamageEvent(update) => {
                     emit(&events, NetEvent::DamageEvent(update)).await?;
                 }
@@ -292,6 +295,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::PongResponse(update) => {
                     emit(&events, NetEvent::PongResponse(update)).await?;
+                }
+                PlayClientbound::PlaceGhostRecipe(update) => {
+                    emit(&events, NetEvent::PlaceGhostRecipe(update)).await?;
                 }
                 PlayClientbound::StartConfiguration => {
                     let (id, payload) = packets::encode_play_configuration_acknowledged();
@@ -514,8 +520,14 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::CommandSuggestions(update) => {
                     emit(&events, NetEvent::CommandSuggestions(update)).await?;
                 }
+                PlayClientbound::SelectAdvancementsTab(update) => {
+                    emit(&events, NetEvent::SelectAdvancementsTab(update)).await?;
+                }
                 PlayClientbound::TabList(update) => {
                     emit(&events, NetEvent::TabList(update)).await?;
+                }
+                PlayClientbound::TagQuery(update) => {
+                    emit(&events, NetEvent::TagQuery(update)).await?;
                 }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     emit(&events, NetEvent::LevelChunkWithLight(chunk)).await?;

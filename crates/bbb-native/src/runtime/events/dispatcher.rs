@@ -69,6 +69,14 @@ pub(in crate::runtime) fn drain_net_events(
                 counters.custom_report_details = details.details;
                 counters.custom_report_detail_packets += 1;
             }
+            NetEvent::CustomChatCompletions(update) => {
+                counters.last_custom_chat_completion =
+                    Some(bbb_control::CustomChatCompletionState {
+                        action: update.action.as_str().to_string(),
+                        entries: update.entries.len(),
+                    });
+                counters.custom_chat_completion_packets += 1;
+            }
             NetEvent::ServerLinks(links) => {
                 apply_server_links_update(counters, links);
             }
@@ -103,6 +111,15 @@ pub(in crate::runtime) fn drain_net_events(
                     is_front_text: update.is_front_text,
                 });
                 counters.open_sign_editor_packets += 1;
+            }
+            NetEvent::PlaceGhostRecipe(update) => {
+                counters.last_ghost_recipe = Some(bbb_control::GhostRecipeState {
+                    container_id: update.container_id,
+                    recipe_display_type_id: update.recipe_display_type.id(),
+                    recipe_display_type: update.recipe_display_type.as_str().to_string(),
+                    recipe_display_body_len: update.recipe_display_body.len(),
+                });
+                counters.ghost_recipe_packets += 1;
             }
             NetEvent::PongResponse(update) => {
                 counters.last_pong_response_time = Some(update.time);
@@ -242,6 +259,18 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::CommandSuggestions(update) => {
                 counters.command_suggestion_packets += 1;
                 world.apply_command_suggestions(update);
+            }
+            NetEvent::SelectAdvancementsTab(update) => {
+                counters.selected_advancements_tab = update.tab;
+                counters.select_advancements_tab_packets += 1;
+            }
+            NetEvent::TagQuery(update) => {
+                counters.last_tag_query = Some(bbb_control::TagQueryState {
+                    transaction_id: update.transaction_id,
+                    tag_present: update.tag_present,
+                    raw_nbt_len: update.raw_nbt.len(),
+                });
+                counters.tag_query_packets += 1;
             }
             NetEvent::TabList(update) => {
                 counters.tab_list_packets += 1;

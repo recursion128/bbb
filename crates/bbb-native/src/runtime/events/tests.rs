@@ -2,9 +2,11 @@ use super::*;
 use crate::runtime::clear_color_for_day_time;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, InteractionHand,
-    MountScreenOpen, OpenBook, OpenSignEditor, PlayLogin, PongResponse, ServerLinkEntry,
-    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, Vec3d as ProtocolVec3d,
+    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, CustomChatCompletions,
+    CustomChatCompletionsAction, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
+    PlaceGhostRecipe, PlayLogin, PongResponse, RecipeDisplayType, SelectAdvancementsTab,
+    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, TagQuery,
+    Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use std::collections::BTreeMap;
@@ -332,6 +334,72 @@ fn command_suggestions_event_updates_world_and_counters() {
     assert_eq!(result.suggestions[0].text, "give");
     assert_eq!(result.suggestions[0].tooltip.as_deref(), Some("Run give"));
     assert_eq!(world.last_command_suggestions(), Some(result));
+}
+
+#[test]
+fn client_feature_events_update_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::CustomChatCompletions(CustomChatCompletions {
+        action: CustomChatCompletionsAction::Set,
+        entries: vec!["/warp".to_string(), "/spawn".to_string()],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::PlaceGhostRecipe(PlaceGhostRecipe {
+        container_id: 9,
+        recipe_display_type: RecipeDisplayType::Stonecutter,
+        recipe_display_body: vec![1, 2, 3],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SelectAdvancementsTab(SelectAdvancementsTab {
+        tab: Some("minecraft:story/root".to_string()),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::TagQuery(TagQuery {
+        transaction_id: 12,
+        tag_present: true,
+        raw_nbt: vec![10, 0],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        4
+    );
+    assert_eq!(counters.custom_chat_completion_packets, 1);
+    assert_eq!(
+        counters.last_custom_chat_completion,
+        Some(bbb_control::CustomChatCompletionState {
+            action: "set".to_string(),
+            entries: 2,
+        })
+    );
+    assert_eq!(counters.ghost_recipe_packets, 1);
+    assert_eq!(
+        counters.last_ghost_recipe,
+        Some(bbb_control::GhostRecipeState {
+            container_id: 9,
+            recipe_display_type_id: 3,
+            recipe_display_type: "stonecutter".to_string(),
+            recipe_display_body_len: 3,
+        })
+    );
+    assert_eq!(counters.select_advancements_tab_packets, 1);
+    assert_eq!(
+        counters.selected_advancements_tab.as_deref(),
+        Some("minecraft:story/root")
+    );
+    assert_eq!(counters.tag_query_packets, 1);
+    assert_eq!(
+        counters.last_tag_query,
+        Some(bbb_control::TagQueryState {
+            transaction_id: 12,
+            tag_present: true,
+            raw_nbt_len: 2,
+        })
+    );
 }
 
 #[test]

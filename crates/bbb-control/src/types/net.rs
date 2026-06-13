@@ -32,10 +32,14 @@ pub struct NetCounters {
     pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub last_transfer: Option<TransferTarget>,
+    pub last_custom_chat_completion: Option<CustomChatCompletionState>,
     pub last_mount_screen: Option<MountScreenState>,
     pub last_open_book_hand: Option<String>,
     pub last_open_sign_editor: Option<OpenSignEditorState>,
+    pub last_ghost_recipe: Option<GhostRecipeState>,
     pub last_pong_response_time: Option<i64>,
+    pub selected_advancements_tab: Option<String>,
+    pub last_tag_query: Option<TagQueryState>,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
     pub player_info_remove_packets: usize,
@@ -93,11 +97,15 @@ pub struct NetCounters {
     pub set_camera_packets: usize,
     pub transfer_packets: usize,
     pub take_item_entity_packets: usize,
+    pub custom_chat_completion_packets: usize,
     pub low_disk_space_warnings: usize,
     pub mount_screen_open_packets: usize,
     pub open_book_packets: usize,
     pub open_sign_editor_packets: usize,
+    pub ghost_recipe_packets: usize,
     pub pong_response_packets: usize,
+    pub select_advancements_tab_packets: usize,
+    pub tag_query_packets: usize,
     pub last_block_changed_ack_sequence: Option<i32>,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,
@@ -253,6 +261,12 @@ pub struct ServerLinkState {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomChatCompletionState {
+    pub action: String,
+    pub entries: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MountScreenState {
     pub container_id: i32,
     pub inventory_columns: i32,
@@ -263,6 +277,21 @@ pub struct MountScreenState {
 pub struct OpenSignEditorState {
     pub pos: BlockPos,
     pub is_front_text: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GhostRecipeState {
+    pub container_id: i32,
+    pub recipe_display_type_id: i32,
+    pub recipe_display_type: String,
+    pub recipe_display_body_len: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagQueryState {
+    pub transaction_id: i32,
+    pub tag_present: bool,
+    pub raw_nbt_len: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

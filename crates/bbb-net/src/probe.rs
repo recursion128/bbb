@@ -146,7 +146,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::Cooldown(update) => {
                     world.apply_cooldown(update);
                 }
-                PlayClientbound::CustomReportDetails(_) | PlayClientbound::ServerLinks(_) => {}
+                PlayClientbound::CustomChatCompletions(_)
+                | PlayClientbound::CustomReportDetails(_)
+                | PlayClientbound::ServerLinks(_) => {}
                 PlayClientbound::DamageEvent(update) => {
                     world.apply_damage_event(update);
                 }
@@ -195,6 +197,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::OpenBook(_)
                 | PlayClientbound::OpenSignEditor(_)
+                | PlayClientbound::PlaceGhostRecipe(_)
                 | PlayClientbound::PongResponse(_) => {}
                 PlayClientbound::Disconnect(disconnect) => {
                     bail!("play disconnected: {}", disconnect.reason)
@@ -318,6 +321,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::CommandSuggestions(update) => {
                     world.apply_command_suggestions(update);
                 }
+                PlayClientbound::SelectAdvancementsTab(_) | PlayClientbound::TagQuery(_) => {}
                 PlayClientbound::TabList(update) => {
                     world.apply_tab_list(update);
                 }
