@@ -237,7 +237,14 @@ pub(crate) fn queue_vehicle_move_command(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::CommandSuggestionRequest;
+    use bbb_protocol::packets::{
+        BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
+        CommandSuggestionRequest, Direction as ProtocolDirection, InteractionHand,
+        PickItemFromBlock, PlayerAction, PlayerActionKind, UseItemOn,
+    };
+    use bbb_world::BlockPos;
+
+    use crate::crosshair::CrosshairBlockHit;
 
     #[test]
     fn queues_command_suggestion_request() {
@@ -253,6 +260,111 @@ mod tests {
             NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
                 id: 18,
                 command: "/give @p minecraft:stone".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn queues_start_destroy_block_for_crosshair_hit() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let hit = CrosshairBlockHit {
+            pos: BlockPos { x: 1, y: 64, z: -2 },
+            face: ProtocolDirection::West,
+            cursor: [0.0, 0.5, 0.5],
+            inside: false,
+        };
+
+        queue_player_action_command(
+            &mut counters,
+            &commands,
+            PlayerActionKind::StartDestroyBlock,
+            hit.pos,
+            hit.face,
+            3,
+        );
+
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
+                direction: ProtocolDirection::West,
+                sequence: 3,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_use_item_on_for_crosshair_hit() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let hit = CrosshairBlockHit {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            face: ProtocolDirection::South,
+            cursor: [0.25, 0.5, 0.75],
+            inside: false,
+        };
+
+        queue_use_item_on_command(&mut counters, &commands, hit, 5);
+
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: ProtocolBlockHitResult {
+                    pos: ProtocolBlockPos {
+                        x: -5,
+                        y: 70,
+                        z: 12
+                    },
+                    direction: ProtocolDirection::South,
+                    cursor_x: 0.25,
+                    cursor_y: 0.5,
+                    cursor_z: 0.75,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 5,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_pick_item_from_block_for_crosshair_hit() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_pick_item_from_block_command(
+            &mut counters,
+            &commands,
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            true,
+        );
+
+        assert_eq!(counters.pick_item_from_block_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PickItemFromBlock(PickItemFromBlock {
+                pos: ProtocolBlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+                include_data: true,
             })
         );
     }
