@@ -14,6 +14,7 @@ impl RawBlockstate {
     pub(super) fn select_variants(
         &self,
         properties: &BTreeMap<String, String>,
+        seed: Option<i64>,
     ) -> Option<Vec<RawModelVariant>> {
         let mut best_variant = None;
         let mut best_score = 0usize;
@@ -23,18 +24,19 @@ impl RawBlockstate {
             };
             if best_variant.is_none() || score >= best_score {
                 best_score = score;
-                best_variant = variant.first_model();
+                best_variant = variant.select_model(seed);
             }
         }
         if best_variant.is_some() {
             return best_variant.map(|variant| vec![variant]);
         }
 
+        let multipart_seed = seed.map(legacy_random_next_long);
         let variants: Vec<_> = self
             .multipart
             .iter()
             .filter(|case| case.matches(properties))
-            .filter_map(|case| case.apply.first_model())
+            .filter_map(|case| case.apply.select_model(multipart_seed))
             .collect();
         (!variants.is_empty()).then_some(variants)
     }
@@ -48,10 +50,10 @@ enum RawBlockstateVariant {
 }
 
 impl RawBlockstateVariant {
-    fn first_model(&self) -> Option<RawModelVariant> {
+    fn select_model(&self, seed: Option<i64>) -> Option<RawModelVariant> {
         match self {
             Self::One(model) => Some(model.clone()),
-            Self::Many(models) => models.first().cloned(),
+            Self::Many(models) => select_weighted_model(models, seed),
         }
     }
 }
@@ -79,6 +81,83 @@ pub(super) struct RawModelVariant {
     pub(super) x: i32,
     #[serde(default)]
     pub(super) y: i32,
+    #[serde(default = "default_model_weight")]
+    weight: u32,
+}
+
+fn default_model_weight() -> u32 {
+    1
+}
+
+fn select_weighted_model(models: &[RawModelVariant], seed: Option<i64>) -> Option<RawModelVariant> {
+    let Some(seed) = seed else {
+        return models.first().cloned();
+    };
+    let total_weight = models
+        .iter()
+        .try_fold(0u32, |total, model| total.checked_add(model.weight))?;
+    if total_weight == 0 {
+        return models.first().cloned();
+    }
+    let mut selected = legacy_random_next_int(seed, total_weight);
+    for model in models {
+        if selected < model.weight {
+            return Some(model.clone());
+        }
+        selected -= model.weight;
+    }
+    models.last().cloned()
+}
+
+fn legacy_random_next_int(seed: i64, bound: u32) -> u32 {
+    debug_assert!(bound > 0);
+    let mut random = LegacyRandom::new(seed);
+    if bound.is_power_of_two() {
+        return ((u64::from(bound) * u64::from(random.next_bits(31))) >> 31) as u32;
+    }
+
+    loop {
+        let sample = random.next_bits(31) as u32;
+        let modulo = sample % bound;
+        let java_overflow_check = (sample as i32)
+            .wrapping_sub(modulo as i32)
+            .wrapping_add((bound - 1) as i32);
+        if java_overflow_check >= 0 {
+            return modulo;
+        }
+    }
+}
+
+fn legacy_random_next_long(seed: i64) -> i64 {
+    let mut random = LegacyRandom::new(seed);
+    let upper = random.next_bits(32) as i32 as i64;
+    let lower = random.next_bits(32) as i32 as i64;
+    (upper << 32).wrapping_add(lower)
+}
+
+struct LegacyRandom {
+    seed: u64,
+}
+
+impl LegacyRandom {
+    const MULTIPLIER: u64 = 25_214_903_917;
+    const INCREMENT: u64 = 11;
+    const MODULUS_MASK: u64 = (1 << 48) - 1;
+
+    fn new(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ Self::MULTIPLIER) & Self::MODULUS_MASK,
+        }
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u64 {
+        self.seed = self
+            .seed
+            .wrapping_mul(Self::MULTIPLIER)
+            .wrapping_add(Self::INCREMENT)
+            & Self::MODULUS_MASK;
+        self.seed >> (48 - bits)
+    }
 }
 
 fn variant_key_match_score(key: &str, properties: &BTreeMap<String, String>) -> Option<usize> {

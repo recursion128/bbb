@@ -102,8 +102,17 @@ impl BlockModelCatalog {
         block_name: &str,
         properties: &BTreeMap<String, String>,
     ) -> Option<BlockRenderModel> {
+        self.block_render_model_with_seed(block_name, properties, None)
+    }
+
+    pub fn block_render_model_with_seed(
+        &self,
+        block_name: &str,
+        properties: &BTreeMap<String, String>,
+        seed: Option<i64>,
+    ) -> Option<BlockRenderModel> {
         let blockstate = self.blockstates.get(&normalize_block_id(block_name))?;
-        let variants = blockstate.select_variants(properties)?;
+        let variants = blockstate.select_variants(properties, seed)?;
         let mut face_textures = None;
         let mut shapes = Vec::with_capacity(variants.len());
         for variant in variants {

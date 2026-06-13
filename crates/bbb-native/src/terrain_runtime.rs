@@ -124,9 +124,11 @@ fn convert_terrain_snapshot(
         .enumerate()
         .map(|(index, cell)| {
             let local_x = (index % 16) as i32;
+            let local_y = (index / (16 * 16)) as i32;
             let local_z = ((index / 16) % 16) as i32;
             let position = BlockRenderPosition {
                 x: chunk_origin_x + local_x,
+                y: snapshot.min_y + local_y,
                 z: chunk_origin_z + local_z,
             };
             let world_material = cell.material;

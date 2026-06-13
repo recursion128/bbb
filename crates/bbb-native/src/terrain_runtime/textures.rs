@@ -41,6 +41,7 @@ impl Default for TerrainTextureState {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct BlockRenderPosition {
     pub(crate) x: i32,
+    pub(crate) y: i32,
     pub(crate) z: i32,
 }
 
@@ -94,11 +95,13 @@ impl TerrainTextureState {
             );
         };
 
-        if let Some(model) = self
-            .block_models
-            .as_ref()
-            .and_then(|models| models.block_render_model(block_name, properties))
-        {
+        if let Some(model) = self.block_models.as_ref().and_then(|models| {
+            models.block_render_model_with_seed(
+                block_name,
+                properties,
+                position.map(block_model_seed),
+            )
+        }) {
             let texture_indices = self.face_texture_indices(&model.face_textures);
             let tint = self.face_tints(
                 block_name,
@@ -516,6 +519,16 @@ fn terrain_uv_rect(layout: &AtlasLayout, sprite: &bbb_pack::AtlasSprite) -> Terr
         min: [(x0 + 0.5) / width, (y0 + 0.5) / height],
         max: [(x1 - 0.5) / width, (y1 - 0.5) / height],
     }
+}
+
+fn block_model_seed(position: BlockRenderPosition) -> i64 {
+    let seed = i64::from(position.x).wrapping_mul(3_129_871)
+        ^ i64::from(position.z).wrapping_mul(116_129_781)
+        ^ i64::from(position.y);
+    seed.wrapping_mul(seed)
+        .wrapping_mul(42_317_861)
+        .wrapping_add(seed.wrapping_mul(11))
+        >> 16
 }
 
 fn block_fallback_texture_id(block_name: &str) -> String {

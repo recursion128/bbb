@@ -37,7 +37,7 @@ pub(crate) fn apply_grass_color_modifier(
             u24_to_rgb(((base & 0xfe_fe_fe) + 0x28_34_0a) >> 1)
         }
         GrassColorModifier::Swamp => {
-            let position = position.unwrap_or(BlockRenderPosition { x: 0, z: 0 });
+            let position = position.unwrap_or(BlockRenderPosition { x: 0, y: 0, z: 0 });
             if biome_info_noise(position.x as f64, position.z as f64) < -0.1 {
                 SWAMP_GRASS_DARK
             } else {
@@ -251,7 +251,7 @@ mod tests {
             apply_grass_color_modifier(
                 GrassColorModifier::Swamp,
                 [1, 2, 3],
-                Some(BlockRenderPosition { x: 0, z: 0 })
+                Some(BlockRenderPosition { x: 0, y: 0, z: 0 })
             ),
             SWAMP_GRASS_LIGHT
         );
@@ -259,7 +259,11 @@ mod tests {
             apply_grass_color_modifier(
                 GrassColorModifier::Swamp,
                 [1, 2, 3],
-                Some(BlockRenderPosition { x: -496, z: -512 })
+                Some(BlockRenderPosition {
+                    x: -496,
+                    y: 0,
+                    z: -512,
+                })
             ),
             SWAMP_GRASS_DARK
         );

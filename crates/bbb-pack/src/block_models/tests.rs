@@ -148,6 +148,95 @@ fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {
 }
 
 #[test]
+fn block_model_catalog_selects_weighted_variants_from_seed() {
+    let root = unique_temp_dir("block-model-weighted-variants");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "": [
+                    { "model": "minecraft:block/red_model", "weight": 2 },
+                    { "model": "minecraft:block/blue_model" }
+                ]
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("cube_all.json"),
+        r##"{
+            "textures": { "particle": "#all" },
+            "elements": [{
+                "faces": {
+                    "down": { "texture": "#all" },
+                    "up": { "texture": "#all" },
+                    "north": { "texture": "#all" },
+                    "south": { "texture": "#all" },
+                    "west": { "texture": "#all" },
+                    "east": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("red_model.json"),
+        r##"{
+            "parent": "minecraft:block/cube_all",
+            "textures": { "all": "minecraft:block/red" }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("blue_model.json"),
+        r##"{
+            "parent": "minecraft:block/cube_all",
+            "textures": { "all": "minecraft:block/blue" }
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let unseeded = catalog
+        .block_render_model("minecraft:test_block", &BTreeMap::new())
+        .unwrap();
+    let red = catalog
+        .block_render_model_with_seed("minecraft:test_block", &BTreeMap::new(), Some(0))
+        .unwrap();
+    let blue = catalog
+        .block_render_model_with_seed("minecraft:test_block", &BTreeMap::new(), Some(3))
+        .unwrap();
+
+    assert_eq!(
+        unseeded.face_textures.get(BlockModelFace::North),
+        "minecraft:block/red"
+    );
+    assert_eq!(
+        red.face_textures.get(BlockModelFace::North),
+        "minecraft:block/red"
+    );
+    assert_eq!(
+        blue.face_textures.get(BlockModelFace::North),
+        "minecraft:block/blue"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_classifies_cross_models() {
     let root = unique_temp_dir("block-model-cross");
     let asset_root = root

@@ -42,6 +42,30 @@ fn water_level_shape_uses_cropped_fluid_box() {
 }
 
 #[test]
+fn block_model_seed_matches_vanilla_position_seed() {
+    assert_eq!(
+        block_model_seed(BlockRenderPosition { x: 0, y: 0, z: 0 }),
+        0
+    );
+    assert_eq!(
+        block_model_seed(BlockRenderPosition { x: 1, y: 2, z: 3 }),
+        -33_674_130_277_896
+    );
+    assert_eq!(
+        block_model_seed(BlockRenderPosition { x: -5, y: 64, z: 7 }),
+        100_748_096_222_042
+    );
+    assert_eq!(
+        block_model_seed(BlockRenderPosition {
+            x: 16,
+            y: -64,
+            z: -32,
+        }),
+        100_430_790_140_967
+    );
+}
+
+#[test]
 fn fluid_material_overrides_particle_only_model_shape() {
     let textures = TerrainTextureState::default();
     let shape = textures.terrain_render_shape_for_block(
@@ -320,7 +344,7 @@ fn block_tint_uses_loaded_biome_color_profiles() {
             bbb_world::TerrainMaterialClass::Opaque,
             Some(0),
             Some(42),
-            Some(BlockRenderPosition { x: 0, z: 0 })
+            Some(BlockRenderPosition { x: 0, y: 0, z: 0 })
         ),
         TerrainTint::from_rgb_u8(1, 2, 3)
     );
