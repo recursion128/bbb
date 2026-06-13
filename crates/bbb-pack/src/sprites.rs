@@ -95,3 +95,38 @@ impl SpriteImage {
         SpriteSource::new(self.id.clone(), self.width, self.height)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::SpriteSource;
+
+    #[test]
+    fn sprite_source_reads_png_dimensions() {
+        let dir = unique_temp_dir("png-dimensions");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sprite.png");
+        write_test_png(&path, 7, 11);
+
+        let source = SpriteSource::from_png_file("test:sprite", &path).unwrap();
+        assert_eq!(source, SpriteSource::new("test:sprite", 7, 11));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn write_test_png(path: &Path, width: u32, height: u32) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let image = image::RgbaImage::from_pixel(width, height, image::Rgba([1, 2, 3, 255]));
+        image.save(path).unwrap();
+    }
+
+    fn unique_temp_dir(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("bbb-pack-{name}-{}-{nonce}", std::process::id()))
+    }
+}

@@ -290,3 +290,23 @@ pub(crate) const VANILLA_BIOME_ORDER: &[&str] = &[
     "small_end_islands",
     "end_barrens",
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::ColorMapImage;
+
+    #[test]
+    fn colormap_samples_temperature_downfall_coordinates() {
+        let mut rgba = Vec::new();
+        for y in 0u8..4 {
+            for x in 0u8..4 {
+                rgba.extend([x * 10, y * 20, x + y, 255]);
+            }
+        }
+        let colormap = ColorMapImage::new(4, 4, rgba).unwrap();
+
+        assert_eq!(colormap.sample_temperature_downfall(1.0, 1.0), [0, 0, 0]);
+        assert_eq!(colormap.sample_temperature_downfall(0.5, 1.0), [10, 20, 2]);
+        assert_eq!(colormap.sample_temperature_downfall(0.0, 1.0), [30, 60, 6]);
+    }
+}

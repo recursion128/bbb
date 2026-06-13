@@ -172,3 +172,165 @@ fn copy_sprite_with_gutter(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{AtlasPacker, AtlasRect};
+    use crate::{SpriteImage, SpriteSource};
+
+    #[test]
+    fn atlas_rects_preserve_content_dimensions_inside_padding() {
+        let layout = AtlasPacker::new(128, 2)
+            .unwrap()
+            .pack(&[
+                SpriteSource::new("minecraft:block/stone", 16, 16),
+                SpriteSource::new("pack:block/hd_overlay", 64, 32),
+            ])
+            .unwrap();
+
+        assert_eq!(layout.width, 88);
+        assert_eq!(layout.height, 36);
+        assert_eq!(layout.padding, 2);
+
+        let stone = &layout.sprites[0];
+        assert_eq!(stone.source_width, 16);
+        assert_eq!(stone.source_height, 16);
+        assert_eq!(
+            stone.padded,
+            AtlasRect {
+                x: 0,
+                y: 0,
+                width: 20,
+                height: 20
+            }
+        );
+        assert_eq!(
+            stone.content,
+            AtlasRect {
+                x: 2,
+                y: 2,
+                width: 16,
+                height: 16
+            }
+        );
+
+        let overlay = &layout.sprites[1];
+        assert_eq!(
+            overlay.padded,
+            AtlasRect {
+                x: 20,
+                y: 0,
+                width: 68,
+                height: 36
+            }
+        );
+        assert_eq!(
+            overlay.content,
+            AtlasRect {
+                x: 22,
+                y: 2,
+                width: 64,
+                height: 32
+            }
+        );
+    }
+
+    #[test]
+    fn atlas_packer_wraps_rows_for_mixed_resolution_sprites() {
+        let layout = AtlasPacker::new(300, 1)
+            .unwrap()
+            .pack(&[
+                SpriteSource::new("pack:block/large", 256, 256),
+                SpriteSource::new("pack:block/medium", 64, 64),
+                SpriteSource::new("minecraft:block/small", 16, 16),
+            ])
+            .unwrap();
+
+        assert_eq!(layout.width, 258);
+        assert_eq!(layout.height, 324);
+        assert_eq!(
+            layout.sprites[0].content,
+            AtlasRect {
+                x: 1,
+                y: 1,
+                width: 256,
+                height: 256
+            }
+        );
+        assert_eq!(
+            layout.sprites[1].content,
+            AtlasRect {
+                x: 1,
+                y: 259,
+                width: 64,
+                height: 64
+            }
+        );
+        assert_eq!(
+            layout.sprites[2].content,
+            AtlasRect {
+                x: 67,
+                y: 259,
+                width: 16,
+                height: 16
+            }
+        );
+    }
+
+    #[test]
+    fn atlas_packer_rejects_invalid_sprite_dimensions() {
+        let zero = AtlasPacker::new(128, 1)
+            .unwrap()
+            .pack(&[SpriteSource::new("bad", 0, 16)]);
+        assert!(zero.is_err());
+
+        let too_wide = AtlasPacker::new(16, 1)
+            .unwrap()
+            .pack(&[SpriteSource::new("wide", 16, 16)]);
+        assert!(too_wide.is_err());
+    }
+
+    #[test]
+    fn atlas_stitcher_extends_sprite_edges_into_padding() {
+        let image = SpriteImage::new(
+            "test:quad",
+            2,
+            2,
+            vec![10, 0, 0, 255, 20, 0, 0, 255, 30, 0, 0, 255, 40, 0, 0, 255],
+        )
+        .unwrap();
+        let atlas = AtlasPacker::new(8, 1).unwrap().stitch(&[image]).unwrap();
+
+        assert_eq!(atlas.layout.width, 4);
+        assert_eq!(atlas.layout.height, 4);
+        assert_eq!(
+            pixel(&atlas.rgba, atlas.layout.width, 0, 0),
+            [10, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&atlas.rgba, atlas.layout.width, 3, 0),
+            [20, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&atlas.rgba, atlas.layout.width, 0, 3),
+            [30, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&atlas.rgba, atlas.layout.width, 3, 3),
+            [40, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&atlas.rgba, atlas.layout.width, 1, 1),
+            [10, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&atlas.rgba, atlas.layout.width, 2, 2),
+            [40, 0, 0, 255]
+        );
+    }
+
+    fn pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
+        let offset = ((y * width + x) * 4) as usize;
+        rgba[offset..offset + 4].try_into().unwrap()
+    }
+}
