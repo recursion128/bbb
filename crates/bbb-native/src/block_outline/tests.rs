@@ -1,5 +1,6 @@
 mod beds;
 mod cakes;
+mod campfires;
 mod cauldrons;
 mod chests;
 mod hoppers;

@@ -30,6 +30,11 @@ pub(super) fn outline_shape_for_block(
     if block_name == "minecraft:hopper" {
         return hopper_outline_shape(properties);
     }
+    if is_campfire_block_name(block_name) {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            16.0, 16.0, 0.0, 7.0,
+        )));
+    }
     if block_name == "minecraft:ender_chest" {
         return Some(BlockOutlineShape::single(BlockOutlineBox::CHEST_SINGLE));
     }
@@ -47,6 +52,16 @@ pub(super) fn outline_shape_for_block(
     }
     if block_name == "minecraft:brewing_stand" {
         return Some(brewing_stand_outline_shape());
+    }
+    if block_name == "minecraft:enchanting_table" {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            16.0, 16.0, 0.0, 12.0,
+        )));
+    }
+    if block_name == "minecraft:stonecutter" {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::centered_column(
+            16.0, 16.0, 0.0, 9.0,
+        )));
     }
     if is_anvil_block_name(block_name) {
         return anvil_outline_shape(properties);
@@ -770,6 +785,10 @@ fn is_anvil_block_name(block_name: &str) -> bool {
         block_name,
         "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
     )
+}
+
+fn is_campfire_block_name(block_name: &str) -> bool {
+    matches!(block_name, "minecraft:campfire" | "minecraft:soul_campfire")
 }
 
 fn is_candle_cake_block_name(block_name: &str) -> bool {
