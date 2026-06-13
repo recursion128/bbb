@@ -108,6 +108,20 @@ pub struct WorldCounters {
     pub map_color_patches_applied: usize,
     #[serde(default)]
     pub map_color_patches_ignored: usize,
+    #[serde(default)]
+    pub update_tags_packets: usize,
+    #[serde(default)]
+    pub last_update_tags_registry_count: usize,
+    #[serde(default)]
+    pub last_update_tags_total_tag_count: usize,
+    #[serde(default)]
+    pub last_update_tags_total_value_count: usize,
+    #[serde(default)]
+    pub tag_registries_tracked: usize,
+    #[serde(default)]
+    pub tags_tracked: usize,
+    #[serde(default)]
+    pub tag_entries_tracked: usize,
     pub chunk_forgets_received: usize,
     pub chunks_forgotten: usize,
     pub inventory_slot_updates_received: usize,

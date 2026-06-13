@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::tags::UpdateTags;
+
 use crate::{
     codec::{Decoder, Encoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
@@ -64,6 +66,7 @@ pub enum ConfigurationClientbound {
     CookieRequest(CookieRequest),
     StoreCookie(StoreCookie),
     Transfer(Transfer),
+    UpdateTags(UpdateTags),
     CustomReportDetails(CustomReportDetails),
     ServerLinks(ServerLinks),
     Unknown {
@@ -333,6 +336,12 @@ pub fn decode_configuration_clientbound(
             Ok(ConfigurationClientbound::Transfer(decode_transfer(
                 &mut decoder,
             )?))
+        }
+        ids::configuration::CLIENTBOUND_UPDATE_TAGS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::UpdateTags(
+                super::tags::decode_update_tags(&mut decoder)?,
+            ))
         }
         ids::configuration::CLIENTBOUND_CUSTOM_REPORT_DETAILS => {
             let mut decoder = Decoder::new(payload);

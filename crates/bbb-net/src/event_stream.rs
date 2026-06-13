@@ -145,6 +145,9 @@ pub async fn run_offline_event_stream(
                         )
                         .await?;
                     }
+                    ConfigurationClientbound::UpdateTags(update) => {
+                        emit(&events, NetEvent::UpdateTags(update)).await?;
+                    }
                     ConfigurationClientbound::SelectKnownPacks { .. } => {
                         let (id, payload) = packets::encode_select_known_packs_empty();
                         conn.send_packet(id, &payload).await?;
@@ -237,6 +240,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::UpdateMobEffect(update) => {
                     emit(&events, NetEvent::UpdateMobEffect(update)).await?;
+                }
+                PlayClientbound::UpdateTags(update) => {
+                    emit(&events, NetEvent::UpdateTags(update)).await?;
                 }
                 PlayClientbound::RemoveMobEffect(update) => {
                     emit(&events, NetEvent::RemoveMobEffect(update)).await?;

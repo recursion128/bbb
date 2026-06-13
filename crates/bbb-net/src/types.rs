@@ -28,7 +28,7 @@ use bbb_protocol::{
         SetTitleText, SetTitlesAnimation, ShowDialog, SoundEntityEvent, SoundEvent, StopSound,
         SystemChat, TabList, TagQuery, TakeItemEntity, TeleportEntity, TestInstanceBlockStatus,
         TickingState, TickingStep, TrackedWaypointPacket, Transfer, UpdateAttributes,
-        UpdateMobEffect, UseItem, UseItemOn, Vec3d,
+        UpdateMobEffect, UpdateTags, UseItem, UseItemOn, Vec3d,
     },
 };
 use bbb_world::{BlockProbe, ChunkColumn, ChunkPos, ChunkState, WorldCounters, WorldStore};
@@ -155,6 +155,7 @@ pub enum NetEvent {
         registry: String,
         raw_payload_len: usize,
     },
+    UpdateTags(UpdateTags),
     Login(PlayLogin),
     Respawn(Respawn),
     PlayerCombatEnd(PlayerCombatEnd),

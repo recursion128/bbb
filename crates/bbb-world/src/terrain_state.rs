@@ -5,7 +5,9 @@ pub use crate::chunks::{
     PalettedContainerData,
 };
 pub use crate::position::{BlockPos, ChunkPos};
-pub use crate::registries::{BlockStateInfo, BlockStateRegistry, RegistryPacket, RegistrySet};
+pub use crate::registries::{
+    BlockStateInfo, BlockStateRegistry, RegistryPacket, RegistrySet, RegistryTagState,
+};
 pub use crate::terrain::{
     BlockProbe, TerrainBlockCell, TerrainChunkSnapshot, TerrainChunkSummary, TerrainLight,
     TerrainMaterialClass,

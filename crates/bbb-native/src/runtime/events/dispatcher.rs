@@ -501,6 +501,20 @@ pub(in crate::runtime) fn drain_net_events(
                 world.record_registry(registry, raw_payload_len);
                 counters.registries_seen = world.counters().registries_seen;
             }
+            NetEvent::UpdateTags(update) => {
+                world.apply_update_tags(update);
+                let world_counters = world.counters();
+                counters.update_tags_packets = world_counters.update_tags_packets;
+                counters.last_update_tags_registry_count =
+                    world_counters.last_update_tags_registry_count;
+                counters.last_update_tags_total_tag_count =
+                    world_counters.last_update_tags_total_tag_count;
+                counters.last_update_tags_total_value_count =
+                    world_counters.last_update_tags_total_value_count;
+                counters.tag_registries_tracked = world_counters.tag_registries_tracked;
+                counters.tags_tracked = world_counters.tags_tracked;
+                counters.tag_entries_tracked = world_counters.tag_entries_tracked;
+            }
             NetEvent::Login(login) => {
                 counters.player_entity_id = Some(login.player_id);
                 world.apply_login(&login);

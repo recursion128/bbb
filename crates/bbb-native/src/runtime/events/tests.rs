@@ -9,11 +9,12 @@ use bbb_protocol::packets::{
     LevelParticles, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
     OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerCombatEnd,
     PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse, ProjectilePower,
-    RecipeDisplayType, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
+    RecipeDisplayType, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
     ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog, SoundEntityEvent,
-    SoundEvent, SoundEventHolder, SoundSource, StopSound, TagQuery, TestInstanceBlockStatus,
-    TrackedWaypoint, TrackedWaypointPacket, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
-    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    SoundEvent, SoundEventHolder, SoundSource, StopSound, TagNetworkPayload, TagQuery,
+    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateTags,
+    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
+    WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -118,6 +119,40 @@ fn custom_report_details_event_updates_snapshot_counters() {
     );
     assert_eq!(counters.custom_report_details, details);
     assert_eq!(counters.custom_report_detail_packets, 1);
+}
+
+#[test]
+fn update_tags_event_updates_world_state_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::UpdateTags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:logs".to_string(),
+                entries: vec![5, 6, 7],
+            }],
+        }],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(
+        world.registry_tags("minecraft:item").unwrap().tags["minecraft:logs"],
+        vec![5, 6, 7]
+    );
+    assert_eq!(counters.update_tags_packets, 1);
+    assert_eq!(counters.last_update_tags_registry_count, 1);
+    assert_eq!(counters.last_update_tags_total_tag_count, 1);
+    assert_eq!(counters.last_update_tags_total_value_count, 3);
+    assert_eq!(counters.tag_registries_tracked, 1);
+    assert_eq!(counters.tags_tracked, 1);
+    assert_eq!(counters.tag_entries_tracked, 3);
 }
 
 #[test]

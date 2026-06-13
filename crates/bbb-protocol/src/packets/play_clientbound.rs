@@ -763,6 +763,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_state::decode_update_mob_effect(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_UPDATE_TAGS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::UpdateTags(tags::decode_update_tags(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_LEVEL_EVENT => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::LevelEvent(chunks::decode_level_event(

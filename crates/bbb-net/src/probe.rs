@@ -106,6 +106,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     } => {
                         world.record_registry(registry, raw_payload_len);
                     }
+                    ConfigurationClientbound::UpdateTags(update) => {
+                        world.apply_update_tags(update);
+                    }
                     ConfigurationClientbound::SelectKnownPacks { .. } => {
                         let (id, payload) = packets::encode_select_known_packs_empty();
                         conn.send_packet(id, &payload).await?;
@@ -160,6 +163,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 | PlayClientbound::DebugSample(_) => {}
                 PlayClientbound::UpdateMobEffect(update) => {
                     world.apply_update_mob_effect(update);
+                }
+                PlayClientbound::UpdateTags(update) => {
+                    world.apply_update_tags(update);
                 }
                 PlayClientbound::RemoveMobEffect(update) => {
                     world.apply_remove_mob_effect(update);
