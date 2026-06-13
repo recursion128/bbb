@@ -120,7 +120,12 @@ impl BlockModelCatalog {
             let local = model.face_textures()?;
             face_textures
                 .get_or_insert_with(|| apply_variant_rotation(local, variant.x, variant.y));
-            shapes.push(rotate_model_shape(model.shape, variant.x, variant.y));
+            shapes.push(rotate_model_shape(
+                model.shape,
+                variant.x,
+                variant.y,
+                variant.uvlock,
+            ));
         }
 
         Some(BlockRenderModel {

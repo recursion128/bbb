@@ -753,6 +753,72 @@ fn block_model_catalog_preserves_full_cube_face_uv_rotation_as_box() {
 }
 
 #[test]
+fn block_model_catalog_applies_variant_uvlock_to_box_face_uvs() {
+    let root = unique_temp_dir("block-model-uvlock");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "locked=false": { "model": "minecraft:block/test_model", "y": 90 },
+                "locked=true": { "model": "minecraft:block/test_model", "y": 90, "uvlock": true }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("test_model.json"),
+        r##"{
+            "textures": {
+                "particle": "minecraft:block/oak_planks",
+                "top": "minecraft:block/oak_planks"
+            },
+            "elements": [{
+                "from": [0, 0, 0],
+                "to": [16, 16, 16],
+                "faces": {
+                    "up": { "uv": [0, 0, 8, 16], "texture": "#top" }
+                }
+            }]
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let mut properties = BTreeMap::new();
+    properties.insert("locked".to_string(), "false".to_string());
+    let unlocked = catalog
+        .block_render_model("minecraft:test_block", &properties)
+        .unwrap();
+    properties.insert("locked".to_string(), "true".to_string());
+    let locked = catalog
+        .block_render_model("minecraft:test_block", &properties)
+        .unwrap();
+
+    let BlockModelShape::Box(unlocked_box) = unlocked.shape else {
+        panic!("unlocked model should stay a box");
+    };
+    let BlockModelShape::Box(locked_box) = locked.shape else {
+        panic!("uvlocked model should stay a box");
+    };
+    let up = BlockModelFace::Up.index();
+    assert_eq!(unlocked_box.face_uvs[up], [0, 0, 8, 16]);
+    assert_eq!(unlocked_box.face_uv_rotations[up], 0);
+    assert_eq!(locked_box.face_uvs[up], [0, 8, 16, 16]);
+    assert_eq!(locked_box.face_uv_rotations[up], 3);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_combines_multipart_boxes() {
     let root = unique_temp_dir("block-model-multipart-boxes");
     let asset_root = root
