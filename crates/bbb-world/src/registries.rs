@@ -38,6 +38,8 @@ pub struct RegistryPacketEntry {
     pub has_data: bool,
     #[serde(default)]
     pub raw_data_len: usize,
+    #[serde(skip)]
+    pub raw_data: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,11 +92,21 @@ impl Default for RegistrySet {
 }
 
 impl RegistryPacketEntry {
+    pub fn with_raw_data(id: impl Into<String>, raw_data: Vec<u8>) -> Self {
+        Self {
+            id: id.into(),
+            has_data: true,
+            raw_data_len: raw_data.len(),
+            raw_data: Some(raw_data),
+        }
+    }
+
     pub fn with_data_len(id: impl Into<String>, raw_data_len: usize) -> Self {
         Self {
             id: id.into(),
             has_data: true,
             raw_data_len,
+            raw_data: None,
         }
     }
 
@@ -103,18 +115,24 @@ impl RegistryPacketEntry {
             id: id.into(),
             has_data: false,
             raw_data_len: 0,
+            raw_data: None,
         }
+    }
+
+    pub fn raw_data(&self) -> Option<&[u8]> {
+        self.raw_data.as_deref()
     }
 }
 
 impl From<ProtocolRegistryDataEntry> for RegistryPacketEntry {
     fn from(entry: ProtocolRegistryDataEntry) -> Self {
-        let has_data = entry.has_data();
-        let raw_data_len = entry.raw_data_len();
+        let ProtocolRegistryDataEntry { id, raw_data } = entry;
+        let raw_data_len = raw_data.as_ref().map_or(0, Vec::len);
         Self {
-            id: entry.id,
-            has_data,
+            id,
+            has_data: raw_data.is_some(),
             raw_data_len,
+            raw_data,
         }
     }
 }
@@ -212,6 +230,13 @@ impl WorldStore {
             .registries
             .iter()
             .map(RegistryPacket::stub_entries)
+            .sum();
+        self.counters.registry_entry_payload_bytes = self
+            .registries
+            .registries
+            .iter()
+            .flat_map(|registry| registry.entries.iter())
+            .map(|entry| entry.raw_data_len)
             .sum();
     }
 
@@ -314,14 +339,17 @@ mod tests {
             "minecraft:chat_type",
             128,
             vec![
-                RegistryPacketEntry::with_data_len("minecraft:chat", 24),
+                RegistryPacketEntry::with_raw_data("minecraft:chat", vec![10; 24]),
                 RegistryPacketEntry::stub("minecraft:raw"),
             ],
         );
         store.record_registry_entries(
             "minecraft:damage_type",
             64,
-            vec![RegistryPacketEntry::with_data_len("minecraft:in_fire", 17)],
+            vec![RegistryPacketEntry::with_raw_data(
+                "minecraft:in_fire",
+                vec![8; 17],
+            )],
         );
 
         let registries = &store.registries().registries;
@@ -330,17 +358,19 @@ mod tests {
         assert_eq!(
             registries[0].entries,
             vec![
-                RegistryPacketEntry::with_data_len("minecraft:chat", 24),
+                RegistryPacketEntry::with_raw_data("minecraft:chat", vec![10; 24]),
                 RegistryPacketEntry::stub("minecraft:raw"),
             ]
         );
         assert_eq!(registries[1].entries[0].id, "minecraft:in_fire");
+        assert_eq!(registries[1].entries[0].raw_data(), Some(&[8; 17][..]));
 
         let counters = store.counters();
         assert_eq!(counters.registries_seen, 2);
         assert_eq!(counters.registry_entries_seen, 3);
         assert_eq!(counters.registry_entries_with_data, 2);
         assert_eq!(counters.registry_entry_stubs, 1);
+        assert_eq!(counters.registry_entry_payload_bytes, 41);
     }
 
     #[test]

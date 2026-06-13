@@ -11,6 +11,8 @@ pub struct WorldCounters {
     pub registry_entries_with_data: usize,
     #[serde(default)]
     pub registry_entry_stubs: usize,
+    #[serde(default)]
+    pub registry_entry_payload_bytes: usize,
     pub play_logins_received: usize,
     pub respawns_received: usize,
     pub chunks_received: usize,

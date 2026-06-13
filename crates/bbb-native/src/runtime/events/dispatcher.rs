@@ -730,6 +730,7 @@ fn sync_registry_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.registry_entries_seen = world_counters.registry_entries_seen;
     counters.registry_entries_with_data = world_counters.registry_entries_with_data;
     counters.registry_entry_stubs = world_counters.registry_entry_stubs;
+    counters.registry_entry_payload_bytes = world_counters.registry_entry_payload_bytes;
 }
 
 fn sound_holder_state(

@@ -208,7 +208,7 @@ fn registry_data_event_updates_world_state_and_snapshot_counters() {
     assert_eq!(
         packet.entries,
         vec![
-            RegistryPacketEntry::with_data_len("minecraft:chat", 24),
+            RegistryPacketEntry::with_raw_data("minecraft:chat", vec![10; 24]),
             RegistryPacketEntry::stub("minecraft:raw"),
         ]
     );
@@ -216,6 +216,7 @@ fn registry_data_event_updates_world_state_and_snapshot_counters() {
     assert_eq!(counters.registry_entries_seen, 2);
     assert_eq!(counters.registry_entries_with_data, 1);
     assert_eq!(counters.registry_entry_stubs, 1);
+    assert_eq!(counters.registry_entry_payload_bytes, 24);
 }
 
 #[test]
