@@ -162,7 +162,7 @@ fn element_box_shape(
     let mut face_uv_rotations = [0; 6];
     let mut face_shade = [true; 6];
     let mut face_light_emission = [0; 6];
-    let mut face_cull = [false; 6];
+    let mut face_cull = [None; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
     let element_shade = element_shade(element);
@@ -183,8 +183,7 @@ fn element_box_shape(
         face_cull[face.index()] = raw_face
             .cullface
             .as_deref()
-            .and_then(BlockModelFace::from_name)
-            .is_some();
+            .and_then(BlockModelFace::from_name);
         face_tint_indices[face.index()] = raw_face.tintindex;
         face_textures[face.index()] = resolve_texture_alias(textures, &raw_face.texture);
     }

@@ -1,5 +1,5 @@
 use super::super::{
-    TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainTextureAtlas, TerrainTint,
+    TerrainFace, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainTextureAtlas, TerrainTint,
     TerrainUvRect, TerrainVertex,
 };
 use super::{
@@ -99,7 +99,7 @@ pub(super) fn emit_box(
     face_uv_rotations: [u8; 6],
     face_shade: [bool; 6],
     face_light_emission: [u8; 6],
-    face_cull: [bool; 6],
+    face_cull: [Option<TerrainFace>; 6],
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
 ) {
@@ -126,8 +126,9 @@ pub(super) fn emit_box(
         if !face_present[face_index] {
             continue;
         }
-        if face_cull[face_index] {
-            let neighbor = lookup.cell(x + face.dx, y + face.dy, z + face.dz);
+        if let Some(cull_face) = face_cull[face_index] {
+            let (dx, dy, dz) = cull_offset(cull_face);
+            let neighbor = lookup.cell(x + dx, y + dy, z + dz);
             if neighbor
                 .map(|neighbor| mode.culls_face_between(material, neighbor.material))
                 .unwrap_or(false)
@@ -239,4 +240,15 @@ fn shader_light_with_emission(light: TerrainLight, light_emission: u8) -> [f32; 
     let mut shader_light = light.as_shader_light();
     shader_light[0] = shader_light[0].max(light_emission.min(15) as f32 / 15.0);
     shader_light
+}
+
+fn cull_offset(face: TerrainFace) -> (i32, i32, i32) {
+    match face {
+        TerrainFace::Down => (0, -1, 0),
+        TerrainFace::Up => (0, 1, 0),
+        TerrainFace::North => (0, 0, -1),
+        TerrainFace::South => (0, 0, 1),
+        TerrainFace::West => (-1, 0, 0),
+        TerrainFace::East => (1, 0, 0),
+    }
 }

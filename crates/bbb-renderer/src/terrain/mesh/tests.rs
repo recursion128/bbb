@@ -344,7 +344,7 @@ fn box_model_mesh_rotates_face_uv_crop() {
         face_uv_rotations,
         face_shade: [false; 6],
         face_light_emission: [0; 6],
-        face_cull: [false; 6],
+        face_cull: [None; 6],
     };
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =
@@ -382,6 +382,40 @@ fn box_model_culls_only_faces_marked_by_cullface() {
 }
 
 #[test]
+fn box_model_uses_cullface_direction_not_rendered_face_direction() {
+    let mut face_present = [false; 6];
+    face_present[TerrainFace::North.index()] = true;
+    let mut face_cull = [None; 6];
+    face_cull[TerrainFace::North.index()] = Some(TerrainFace::South);
+    let shape = TerrainRenderShape::Box {
+        from: [0, 0, 0],
+        to: [16, 16, 16],
+        face_present,
+        face_uvs: [[0, 0, 16, 16]; 6],
+        face_uv_rotations: [0; 6],
+        face_shade: [true; 6],
+        face_light_emission: [0; 6],
+        face_cull,
+    };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 0, shape);
+    cells[cell_index(1, 0, 3, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    assert_eq!(mesh.culled_faces, 2);
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.block_state_id != 3));
+}
+
+#[test]
 fn multi_box_model_skips_absent_faces() {
     let mut upper = TerrainBox {
         from: [8, 8, 0],
@@ -391,7 +425,7 @@ fn multi_box_model_skips_absent_faces() {
         face_uv_rotations: [0; 6],
         face_shade: [true; 6],
         face_light_emission: [0; 6],
-        face_cull: [false; 6],
+        face_cull: [None; 6],
         texture_indices: [0; 6],
         tint: [TerrainTint::WHITE; 6],
     };
@@ -412,7 +446,7 @@ fn multi_box_model_skips_absent_faces() {
                 face_uv_rotations: [0; 6],
                 face_shade: [true; 6],
                 face_light_emission: [0; 6],
-                face_cull: [false; 6],
+                face_cull: [None; 6],
                 texture_indices: [0; 6],
                 tint: [TerrainTint::WHITE; 6],
             },
@@ -451,7 +485,7 @@ fn boxes_use_per_box_texture_and_tint() {
                 face_uv_rotations: [0; 6],
                 face_shade: [true; 6],
                 face_light_emission: [0; 6],
-                face_cull: [false; 6],
+                face_cull: [None; 6],
                 texture_indices: [1; 6],
                 tint: [grass_tint; 6],
             },
@@ -463,7 +497,7 @@ fn boxes_use_per_box_texture_and_tint() {
                 face_uv_rotations: [0; 6],
                 face_shade: [true; 6],
                 face_light_emission: [0; 6],
-                face_cull: [false; 6],
+                face_cull: [None; 6],
                 texture_indices: [2; 6],
                 tint: [foliage_tint; 6],
             },
@@ -586,8 +620,8 @@ fn slab_box_shape() -> TerrainRenderShape {
     face_uvs[TerrainFace::South.index()] = [0, 8, 16, 16];
     face_uvs[TerrainFace::West.index()] = [0, 8, 16, 16];
     face_uvs[TerrainFace::East.index()] = [0, 8, 16, 16];
-    let mut face_cull = [true; 6];
-    face_cull[TerrainFace::Up.index()] = false;
+    let mut face_cull = all_face_cull();
+    face_cull[TerrainFace::Up.index()] = None;
     TerrainRenderShape::Box {
         from: [0, 0, 0],
         to: [16, 8, 16],
@@ -615,6 +649,10 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         face_uv_rotations: [0; 6],
         face_shade: [true; 6],
         face_light_emission: [0; 6],
-        face_cull: [true; 6],
+        face_cull: all_face_cull(),
     }
+}
+
+fn all_face_cull() -> [Option<TerrainFace>; 6] {
+    TerrainFace::ALL.map(Some)
 }

@@ -101,7 +101,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
     let mut face_uv_rotations = [0; 6];
     let mut face_shade = [true; 6];
     let mut face_light_emission = [0; 6];
-    let mut face_cull = [false; 6];
+    let mut face_cull = [None; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
     for face in BlockModelFace::ALL {
@@ -111,7 +111,8 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
         face_uv_rotations[target.index()] = model_box.face_uv_rotations[face.index()];
         face_shade[target.index()] = model_box.face_shade[face.index()];
         face_light_emission[target.index()] = model_box.face_light_emission[face.index()];
-        face_cull[target.index()] = model_box.face_cull[face.index()];
+        face_cull[target.index()] = model_box.face_cull[face.index()]
+            .map(|cull_face| cull_face.rotate(x_degrees, y_degrees));
         face_tint_indices[target.index()] = model_box.face_tint_indices[face.index()];
         face_textures[target.index()] = model_box.face_textures[face.index()].clone();
     }

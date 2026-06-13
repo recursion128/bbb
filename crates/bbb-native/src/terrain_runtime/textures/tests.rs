@@ -36,7 +36,7 @@ fn water_level_shape_uses_cropped_fluid_box() {
             face_uv_rotations: [0; 6],
             face_shade: [true; 6],
             face_light_emission: [0; 6],
-            face_cull: [true; 6],
+            face_cull: all_terrain_face_cull(),
         }
     );
 }
@@ -436,7 +436,7 @@ fn block_model_box_with_face_texture(
         face_uv_rotations: [0; 6],
         face_shade: [true; 6],
         face_light_emission: [0; 6],
-        face_cull: [false; 6],
+        face_cull: [None; 6],
         face_tint_indices,
         face_textures,
     }

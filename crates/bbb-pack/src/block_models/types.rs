@@ -102,7 +102,7 @@ pub struct BlockModelBox {
     pub face_uv_rotations: [u8; 6],
     pub face_shade: [bool; 6],
     pub face_light_emission: [u8; 6],
-    pub face_cull: [bool; 6],
+    pub face_cull: [Option<BlockModelFace>; 6],
     pub face_tint_indices: [Option<i32>; 6],
     pub face_textures: [Option<String>; 6],
 }

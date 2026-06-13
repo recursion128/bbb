@@ -403,7 +403,7 @@ fn block_model_catalog_extracts_single_box_geometry() {
                 "faces": {
                     "down":  { "uv": [0, 0, 16, 16], "texture": "#bottom", "cullface": "down" },
                     "up":    { "uv": [0, 0, 16, 16], "rotation": 90, "texture": "#top" },
-                    "north": { "uv": [0, 8, 16, 16], "texture": "#side", "cullface": "north" },
+                    "north": { "uv": [0, 8, 16, 16], "texture": "#side", "cullface": "south" },
                     "south": { "uv": [0, 8, 16, 16], "texture": "#side", "cullface": "south" },
                     "west":  { "uv": [0, 8, 16, 16], "texture": "#side", "cullface": "west" },
                     "east":  { "uv": [0, 8, 16, 16], "texture": "#side", "cullface": "east" }
@@ -447,8 +447,11 @@ fn block_model_catalog_extracts_single_box_geometry() {
     );
     assert_eq!(model_box.face_uv_rotations[BlockModelFace::Up.index()], 1);
     assert!(!model_box.face_shade[BlockModelFace::North.index()]);
-    assert!(model_box.face_cull[BlockModelFace::North.index()]);
-    assert!(!model_box.face_cull[BlockModelFace::Up.index()]);
+    assert_eq!(
+        model_box.face_cull[BlockModelFace::North.index()],
+        Some(BlockModelFace::South)
+    );
+    assert_eq!(model_box.face_cull[BlockModelFace::Up.index()], None);
     assert_eq!(
         render_model.face_textures.get(BlockModelFace::North),
         "minecraft:block/oak_planks"

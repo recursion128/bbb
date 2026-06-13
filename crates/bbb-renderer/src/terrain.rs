@@ -53,7 +53,7 @@ pub enum TerrainRenderShape {
         face_uv_rotations: [u8; 6],
         face_shade: [bool; 6],
         face_light_emission: [u8; 6],
-        face_cull: [bool; 6],
+        face_cull: [Option<TerrainFace>; 6],
     },
     Boxes(Vec<TerrainBox>),
 }
@@ -67,7 +67,7 @@ pub struct TerrainBox {
     pub face_uv_rotations: [u8; 6],
     pub face_shade: [bool; 6],
     pub face_light_emission: [u8; 6],
-    pub face_cull: [bool; 6],
+    pub face_cull: [Option<TerrainFace>; 6],
     pub texture_indices: [u32; 6],
     pub tint: [TerrainTint; 6],
 }
@@ -237,6 +237,15 @@ pub enum TerrainFace {
 }
 
 impl TerrainFace {
+    pub const ALL: [Self; 6] = [
+        Self::Down,
+        Self::Up,
+        Self::North,
+        Self::South,
+        Self::West,
+        Self::East,
+    ];
+
     fn index(self) -> usize {
         match self {
             Self::Down => 0,

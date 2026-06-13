@@ -3,10 +3,11 @@ use std::collections::{BTreeMap, HashMap};
 use anyhow::Result;
 use bbb_pack::{
     AtlasLayout, AtlasPacker, BiomeColorCatalog, BiomeColorProfile, BlockFaceTextures,
-    BlockModelCatalog, BlockModelShape, GrassColorModifier, PackRoots, TerrainColorMaps,
+    BlockModelCatalog, BlockModelFace, BlockModelShape, GrassColorModifier, PackRoots,
+    TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
-    TerrainCross, TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainUvRect,
+    TerrainCross, TerrainFace, TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainUvRect,
 };
 
 use crate::biome_tint::{
@@ -236,7 +237,7 @@ impl TerrainTextureState {
                 face_uv_rotations: model_box.face_uv_rotations,
                 face_shade: model_box.face_shade,
                 face_light_emission: model_box.face_light_emission,
-                face_cull: model_box.face_cull,
+                face_cull: model_box_cull_faces(model_box.face_cull),
             },
             BlockModelShape::Boxes(model_boxes) => TerrainRenderShape::Boxes(
                 model_boxes
@@ -249,7 +250,7 @@ impl TerrainTextureState {
                         face_uv_rotations: model_box.face_uv_rotations,
                         face_shade: model_box.face_shade,
                         face_light_emission: model_box.face_light_emission,
-                        face_cull: model_box.face_cull,
+                        face_cull: model_box_cull_faces(model_box.face_cull),
                         texture_indices: self
                             .model_box_texture_indices(&model_box, fallback_texture_indices),
                         tint: self.model_box_face_tints(
@@ -562,8 +563,27 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         face_uv_rotations: [0; 6],
         face_shade: [true; 6],
         face_light_emission: [0; 6],
-        face_cull: [true; 6],
+        face_cull: all_terrain_face_cull(),
     }
+}
+
+fn model_box_cull_faces(face_cull: [Option<BlockModelFace>; 6]) -> [Option<TerrainFace>; 6] {
+    face_cull.map(|face| face.map(model_face_to_terrain_face))
+}
+
+fn model_face_to_terrain_face(face: BlockModelFace) -> TerrainFace {
+    match face {
+        BlockModelFace::Down => TerrainFace::Down,
+        BlockModelFace::Up => TerrainFace::Up,
+        BlockModelFace::North => TerrainFace::North,
+        BlockModelFace::South => TerrainFace::South,
+        BlockModelFace::West => TerrainFace::West,
+        BlockModelFace::East => TerrainFace::East,
+    }
+}
+
+fn all_terrain_face_cull() -> [Option<TerrainFace>; 6] {
+    TerrainFace::ALL.map(Some)
 }
 
 #[cfg(test)]
