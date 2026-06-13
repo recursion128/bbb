@@ -86,6 +86,8 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         1 | 2 | 3 | 19 | 31 | 41 | 46 | 63 => {
             decoder.read_var_i32()?;
         }
+        // use_effects.
+        5 => decode_use_effects(decoder)?,
         // unbreakable, creative_slot_lock, glider use Unit.STREAM_CODEC.
         4 | 20 | 34 => {}
         // damage_type and holderRegistry-backed entity variants.
@@ -121,6 +123,10 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         21 => {
             decoder.read_bool()?;
         }
+        // food, consumable, use_remainder.
+        23 => decode_food(decoder)?,
+        24 => decode_consumable(decoder)?,
+        25 => decode_use_remainder(decoder)?,
         // use_cooldown.
         26 => decode_use_cooldown(decoder)?,
         // tool: rules, default mining speed, damage per block, creative flag.
@@ -131,6 +137,8 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         29 => decode_weapon(decoder)?,
         // attack_range.
         30 => decode_attack_range(decoder)?,
+        // equippable.
+        32 => decode_equippable(decoder)?,
         // swing_animation.
         40 => decode_swing_animation(decoder)?,
         // dyed_color and map_color.
@@ -275,6 +283,78 @@ fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
+fn decode_use_effects(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_bool()?;
+    decoder.read_bool()?;
+    decoder.read_f32()?;
+    Ok(())
+}
+
+fn decode_food(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_var_i32()?;
+    decoder.read_f32()?;
+    decoder.read_bool()?;
+    Ok(())
+}
+
+fn decode_consumable(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_f32()?;
+    decoder.read_var_i32()?;
+    decode_sound_event_holder(decoder)?;
+    decoder.read_bool()?;
+
+    let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..effect_count {
+        decode_consume_effect(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_consume_effect(decoder: &mut Decoder<'_>) -> Result<()> {
+    match decoder.read_var_i32()? {
+        0 => {
+            let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+            for _ in 0..effect_count {
+                decode_mob_effect_instance(decoder)?;
+            }
+            decoder.read_f32()?;
+        }
+        1 => decode_holder_set(decoder)?,
+        2 => {}
+        3 => {
+            decoder.read_f32()?;
+        }
+        4 => decode_sound_event_holder(decoder)?,
+        other => {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid consume effect type id {other}"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn decode_use_remainder(decoder: &mut Decoder<'_>) -> Result<()> {
+    decode_item_stack_template(decoder)
+}
+
+fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
+    let item_id = decoder.read_var_i32()?;
+    if item_id < 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid item stack template item id {item_id}"
+        )));
+    }
+    let count = decoder.read_var_i32()?;
+    if count <= 0 {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid item stack template count {count}"
+        )));
+    }
+    decode_data_component_patch_summary(decoder)?;
+    Ok(())
+}
+
 fn decode_tool(decoder: &mut Decoder<'_>) -> Result<()> {
     let rule_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     for _ in 0..rule_count {
@@ -303,6 +383,21 @@ fn decode_attack_range(decoder: &mut Decoder<'_>) -> Result<()> {
     for _ in 0..6 {
         decoder.read_f32()?;
     }
+    Ok(())
+}
+
+fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_var_i32()?;
+    decode_sound_event_holder(decoder)?;
+    decode_optional_string(decoder, MAX_IDENTIFIER_CHARS)?;
+    decode_optional_string(decoder, MAX_IDENTIFIER_CHARS)?;
+    if decoder.read_bool()? {
+        decode_holder_set(decoder)?;
+    }
+    for _ in 0..5 {
+        decoder.read_bool()?;
+    }
+    decode_sound_event_holder(decoder)?;
     Ok(())
 }
 
@@ -628,13 +723,47 @@ mod tests {
     fn decodes_additional_item_data_components() {
         let mut payload = Encoder::new();
         let component_ids = [
-            0, 26, 28, 29, 30, 40, 44, 45, 51, 53, 54, 55, 56, 61, 64, 68, 69, 76, 80, 102,
+            0, 5, 23, 24, 25, 26, 28, 29, 30, 32, 40, 44, 45, 51, 53, 54, 55, 56, 61, 64, 68, 69,
+            76, 80, 102,
         ];
         payload.write_var_i32(component_ids.len() as i32);
         payload.write_var_i32(0);
 
         payload.write_var_i32(0);
         payload.write_bytes(&empty_nbt_compound_root());
+
+        payload.write_var_i32(5);
+        payload.write_bool(true);
+        payload.write_bool(false);
+        payload.write_f32(0.5);
+
+        payload.write_var_i32(23);
+        payload.write_var_i32(6);
+        payload.write_f32(7.2);
+        payload.write_bool(true);
+
+        payload.write_var_i32(24);
+        payload.write_f32(1.6);
+        payload.write_var_i32(2);
+        write_direct_sound_event(&mut payload, "minecraft:entity.generic.drink", None);
+        payload.write_bool(true);
+        payload.write_var_i32(5);
+        payload.write_var_i32(0);
+        payload.write_var_i32(1);
+        payload.write_var_i32(5);
+        write_mob_effect_details(&mut payload, false);
+        payload.write_f32(0.75);
+        payload.write_var_i32(1);
+        payload.write_var_i32(2);
+        payload.write_var_i32(6);
+        payload.write_var_i32(2);
+        payload.write_var_i32(3);
+        payload.write_f32(16.0);
+        payload.write_var_i32(4);
+        write_direct_sound_event(&mut payload, "minecraft:item.honey_bottle.drink", None);
+
+        payload.write_var_i32(25);
+        write_item_stack_template(&mut payload, 42, 1);
 
         payload.write_var_i32(26);
         payload.write_f32(1.25);
@@ -661,6 +790,23 @@ mod tests {
         for value in [0.0, 3.0, 0.0, 5.0, 0.3, 1.0] {
             payload.write_f32(value);
         }
+
+        payload.write_var_i32(32);
+        payload.write_var_i32(5);
+        write_direct_sound_event(&mut payload, "minecraft:item.armor.equip_generic", None);
+        payload.write_bool(true);
+        payload.write_string("minecraft:diamond");
+        payload.write_bool(true);
+        payload.write_string("minecraft:misc/pumpkinblur");
+        payload.write_bool(true);
+        payload.write_var_i32(0);
+        payload.write_string("minecraft:skeletons");
+        payload.write_bool(true);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        write_direct_sound_event(&mut payload, "minecraft:item.shears.snip", None);
 
         payload.write_var_i32(40);
         payload.write_var_i32(0);
@@ -817,6 +963,13 @@ mod tests {
         payload.write_i32(0x070809);
         payload.write_bool(true);
         payload.write_bool(false);
+    }
+
+    fn write_item_stack_template(payload: &mut Encoder, item_id: i32, count: i32) {
+        payload.write_var_i32(item_id);
+        payload.write_var_i32(count);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
     }
 
     fn write_direct_sound_event(payload: &mut Encoder, id: &str, fixed_range: Option<f32>) {
