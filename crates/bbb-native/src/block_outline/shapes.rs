@@ -42,6 +42,9 @@ pub(super) fn outline_shape_for_block(
     if is_anvil_block_name(block_name) {
         return anvil_outline_shape(properties);
     }
+    if block_name == "minecraft:lectern" {
+        return lectern_outline_shape(properties);
+    }
     if is_flower_pot_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
     }
@@ -304,6 +307,26 @@ fn anvil_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOut
         ]
     };
     Some(BlockOutlineShape::from_boxes(boxes))
+}
+
+fn lectern_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    Some(BlockOutlineShape::from_boxes(
+        lectern_north_boxes()
+            .into_iter()
+            .map(|outline| outline.rotate_to_direction(facing))
+            .collect(),
+    ))
+}
+
+fn lectern_north_boxes() -> Vec<BlockOutlineBox> {
+    vec![
+        BlockOutlineBox::centered_column(16.0, 16.0, 0.0, 2.0),
+        BlockOutlineBox::centered_column(8.0, 8.0, 2.0, 14.0),
+        BlockOutlineBox::from_pixels([0.0, 10.0, 1.0], [16.0, 14.0, 5.333333]),
+        BlockOutlineBox::from_pixels([0.0, 12.0, 5.333333], [16.0, 16.0, 9.666667]),
+        BlockOutlineBox::from_pixels([0.0, 14.0, 9.666667], [16.0, 18.0, 14.0]),
+    ]
 }
 
 fn wall_sign_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {

@@ -152,6 +152,66 @@ fn anvil_outline_clip_uses_axis_rotated_top_width() {
     );
 }
 
+#[test]
+fn outline_shape_uses_vanilla_lectern_north_shape() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:lectern"), &lectern_properties("north")),
+        Some(lectern_north_shape())
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_lectern_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:lectern"), &BTreeMap::new()),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:lectern"), &lectern_properties("up")),
+        None
+    );
+}
+
+#[test]
+fn lectern_outline_clip_uses_rotated_high_book_rest() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(Some("minecraft:lectern"), &lectern_properties("east")),
+    };
+
+    assert_eq!(
+        target.clip(
+            [-1.0, 17.0 / 16.0, 0.5],
+            [1.0, 0.0, 0.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.125,
+            face: ProtocolDirection::West,
+            inside: false,
+        })
+    );
+}
+
+fn lectern_north_shape() -> BlockOutlineShape {
+    BlockOutlineShape::from_boxes(vec![
+        BlockOutlineBox::centered_column(16.0, 16.0, 0.0, 2.0),
+        BlockOutlineBox::centered_column(8.0, 8.0, 2.0, 14.0),
+        BlockOutlineBox::from_pixels([0.0, 10.0, 1.0], [16.0, 14.0, 5.333333]),
+        BlockOutlineBox::from_pixels([0.0, 12.0, 5.333333], [16.0, 16.0, 9.666667]),
+        BlockOutlineBox::from_pixels([0.0, 14.0, 9.666667], [16.0, 18.0, 14.0]),
+    ])
+}
+
+fn lectern_properties(facing: &str) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("has_book".to_string(), "false".to_string()),
+        ("powered".to_string(), "false".to_string()),
+    ])
+}
+
 fn anvil_z_axis_shape() -> BlockOutlineShape {
     BlockOutlineShape::from_boxes(vec![
         BlockOutlineBox::centered_column(12.0, 12.0, 0.0, 4.0),
