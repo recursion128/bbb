@@ -410,6 +410,9 @@ fn outline_box_for_block(
     properties: &BTreeMap<String, String>,
 ) -> Option<BlockOutlineBox> {
     let block_name = block_name?;
+    if block_name == "minecraft:snow" {
+        return snow_layer_outline_box(properties);
+    }
     if is_slab_block_name(block_name) {
         return match properties.get("type").map(String::as_str) {
             Some("bottom") => Some(BlockOutlineBox::BOTTOM_SLAB),
@@ -419,6 +422,17 @@ fn outline_box_for_block(
         };
     }
     Some(BlockOutlineBox::FULL)
+}
+
+fn snow_layer_outline_box(properties: &BTreeMap<String, String>) -> Option<BlockOutlineBox> {
+    let layers = properties.get("layers")?.parse::<u8>().ok()?;
+    if !(1..=8).contains(&layers) {
+        return None;
+    }
+    Some(BlockOutlineBox {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, f64::from(layers) / 8.0, 1.0],
+    })
 }
 
 fn is_slab_block_name(block_name: &str) -> bool {
@@ -597,6 +611,60 @@ mod tests {
     }
 
     #[test]
+    fn crosshair_raycast_clips_snow_layer_outline_shape() {
+        let pose = player_pose(0.0, 0.0, 0.0);
+        let hit = raycast_crosshair_block_hit(pose, 5.0, |pos| {
+            if pos == (BlockPos { x: 0, y: 1, z: 3 }) {
+                Some(CrosshairBlockTarget {
+                    material: bbb_world::TerrainMaterialClass::Opaque,
+                    outline: snow_layer_outline_box(&snow_properties(5)),
+                })
+            } else {
+                None
+            }
+        });
+
+        assert_eq!(
+            hit,
+            Some(CrosshairBlockHit {
+                pos: BlockPos { x: 0, y: 1, z: 3 },
+                face: ProtocolDirection::North,
+                cursor: [0.0, 0.62, 0.0],
+                inside: false,
+            })
+        );
+    }
+
+    #[test]
+    fn crosshair_raycast_skips_snow_layers_above_outline_shape() {
+        let pose = player_pose(0.0, 0.0, 0.0);
+        let hit = raycast_crosshair_block_hit(pose, 5.0, |pos| {
+            if pos == (BlockPos { x: 0, y: 1, z: 3 }) {
+                Some(CrosshairBlockTarget {
+                    material: bbb_world::TerrainMaterialClass::Opaque,
+                    outline: snow_layer_outline_box(&snow_properties(4)),
+                })
+            } else if pos == (BlockPos { x: 0, y: 1, z: 4 }) {
+                Some(CrosshairBlockTarget::full_block(
+                    bbb_world::TerrainMaterialClass::Opaque,
+                ))
+            } else {
+                None
+            }
+        });
+
+        assert_eq!(
+            hit,
+            Some(CrosshairBlockHit {
+                pos: BlockPos { x: 0, y: 1, z: 4 },
+                face: ProtocolDirection::North,
+                cursor: [0.0, 0.62, 0.0],
+                inside: false,
+            })
+        );
+    }
+
+    #[test]
     fn crosshair_raycast_visits_blocks_by_grid_boundary() {
         let pose = player_pose(0.0, 0.0, 0.0);
         let hit = raycast_crosshair_block(pose, 5.0, |pos| {
@@ -639,6 +707,29 @@ mod tests {
 
         assert_eq!(SELECTION_MAX_DISTANCE, 4.5);
         assert_eq!(hit, None);
+    }
+
+    #[test]
+    fn outline_box_uses_vanilla_snow_layers_property() {
+        assert_eq!(
+            outline_box_for_block(Some("minecraft:snow"), &snow_properties(1)),
+            Some(BlockOutlineBox {
+                min: [0.0, 0.0, 0.0],
+                max: [1.0, 0.125, 1.0],
+            })
+        );
+        assert_eq!(
+            outline_box_for_block(Some("minecraft:snow"), &snow_properties(8)),
+            Some(BlockOutlineBox::FULL)
+        );
+        assert_eq!(
+            outline_box_for_block(Some("minecraft:snow"), &BTreeMap::new()),
+            None
+        );
+        assert_eq!(
+            outline_box_for_block(Some("minecraft:snow"), &snow_properties(9)),
+            None
+        );
     }
 
     #[test]
@@ -690,6 +781,20 @@ mod tests {
     }
 
     #[test]
+    fn selection_outline_uses_snow_layer_bounds() {
+        assert_eq!(
+            selection_outline_for_box(
+                BlockPos { x: -2, y: 63, z: 4 },
+                snow_layer_outline_box(&snow_properties(3)).unwrap(),
+            ),
+            SelectionOutline {
+                min: [-2.0, 63.0, 4.0],
+                max: [-1.0, 63.375, 5.0],
+            }
+        );
+    }
+
+    #[test]
     fn selection_outline_uses_block_bounds() {
         assert_eq!(
             selection_outline_for_block(BlockPos { x: -2, y: 63, z: 4 }),
@@ -711,5 +816,9 @@ mod tests {
 
     fn slab_properties(slab_type: &str) -> BTreeMap<String, String> {
         BTreeMap::from([("type".to_string(), slab_type.to_string())])
+    }
+
+    fn snow_properties(layers: u8) -> BTreeMap<String, String> {
+        BTreeMap::from([("layers".to_string(), layers.to_string())])
     }
 }
