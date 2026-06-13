@@ -7,6 +7,7 @@ use winit::{
 };
 
 mod biome_tint;
+mod block_outline;
 mod crosshair;
 mod hud_assets;
 mod input;
