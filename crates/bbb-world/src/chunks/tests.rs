@@ -14,6 +14,8 @@ use bbb_protocol::packets::{
     ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes,
     LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LightUpdate as ProtocolLightUpdate,
     LightUpdateData as ProtocolLightUpdateData, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
+    SetChunkCacheCenter as ProtocolSetChunkCacheCenter,
+    SetChunkCacheRadius as ProtocolSetChunkCacheRadius,
 };
 
 #[test]
@@ -200,6 +202,32 @@ fn biome_update_for_missing_chunk_is_counted_but_not_applied() {
     assert_eq!(applied, 0);
     assert_eq!(store.counters().biome_updates_received, 1);
     assert_eq!(store.counters().biome_updates_applied, 0);
+}
+
+#[test]
+fn chunk_cache_updates_track_view_state() {
+    let mut store = WorldStore::new();
+
+    assert_eq!(store.chunk_cache_center(), None);
+    assert_eq!(store.chunk_cache_radius(), None);
+
+    let view = store.apply_set_chunk_cache_center(ProtocolSetChunkCacheCenter {
+        chunk_x: 11,
+        chunk_z: -9,
+    });
+
+    assert_eq!(view.center, Some(ChunkPos { x: 11, z: -9 }));
+    assert_eq!(view.radius, None);
+    assert_eq!(store.chunk_cache_center(), Some(ChunkPos { x: 11, z: -9 }));
+    assert_eq!(store.counters().chunk_cache_center_updates_received, 1);
+
+    let view = store.apply_set_chunk_cache_radius(ProtocolSetChunkCacheRadius { radius: 12 });
+
+    assert_eq!(view.center, Some(ChunkPos { x: 11, z: -9 }));
+    assert_eq!(view.radius, Some(12));
+    assert_eq!(store.chunk_view(), view);
+    assert_eq!(store.chunk_cache_radius(), Some(12));
+    assert_eq!(store.counters().chunk_cache_radius_updates_received, 1);
 }
 
 #[test]

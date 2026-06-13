@@ -69,8 +69,8 @@ pub(crate) fn maybe_upload_decoded_terrain(
         return;
     }
 
-    let center = counters
-        .chunk_cache_center
+    let center = world
+        .chunk_cache_center()
         .or(counters.first_chunk)
         .unwrap_or_else(|| {
             world

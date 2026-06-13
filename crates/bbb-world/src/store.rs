@@ -3,11 +3,11 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BlockDestructionProgress, BlockEventRecord, ChunkColumn, ClientAdvancementsState,
-    ClientChatState, ClientHudState, ClientRecipesState, CommandSuggestionsState, CommandTreeState,
-    InventoryState, ItemCooldownState, LevelEventRecord, LocalPlayerState, MapItemState,
-    PlayerInfoState, RegistrySet, ScoreboardState, ServerPresentationState, WorldBorderState,
-    WorldCounters, WorldDimension, WorldLevelInfo,
+    BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkViewState,
+    ClientAdvancementsState, ClientChatState, ClientHudState, ClientRecipesState,
+    CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState, LevelEventRecord,
+    LocalPlayerState, MapItemState, PlayerInfoState, RegistrySet, ScoreboardState,
+    ServerPresentationState, WorldBorderState, WorldCounters, WorldDimension, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -24,6 +24,8 @@ pub struct WorldStore {
     pub(crate) ticking: crate::WorldTickingState,
     pub(crate) registries: RegistrySet,
     pub(crate) chunks: Vec<ChunkColumn>,
+    #[serde(default)]
+    pub(crate) chunk_view: ChunkViewState,
     #[serde(default)]
     pub(crate) block_destructions: Vec<BlockDestructionProgress>,
     #[serde(default)]

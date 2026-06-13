@@ -378,16 +378,20 @@ pub(in crate::runtime) fn drain_net_events(
                 world.apply_section_blocks_update(update);
             }
             NetEvent::SetChunkCacheCenter(update) => {
-                counters.chunk_cache_center = Some(ChunkPos {
-                    x: update.chunk_x,
-                    z: update.chunk_z,
-                });
+                world.apply_set_chunk_cache_center(update);
+                sync_chunk_cache_counters(counters, world);
             }
             NetEvent::SetChunkCacheRadius(update) => {
-                counters.chunk_cache_radius = Some(update.radius);
+                world.apply_set_chunk_cache_radius(update);
+                sync_chunk_cache_counters(counters, world);
             }
             _ => unreachable!("control projection event reached world dispatcher"),
         }
     }
     drained
+}
+
+fn sync_chunk_cache_counters(counters: &mut NetCounters, world: &WorldStore) {
+    counters.chunk_cache_center = world.chunk_cache_center();
+    counters.chunk_cache_radius = world.chunk_cache_radius();
 }

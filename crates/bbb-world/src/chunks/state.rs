@@ -4,6 +4,12 @@ use crate::ChunkPos;
 
 use super::{light::LightData, palette::PalettedContainerData};
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChunkViewState {
+    pub center: Option<ChunkPos>,
+    pub radius: Option<i32>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChunkState {
     Missing,

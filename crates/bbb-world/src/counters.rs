@@ -65,6 +65,10 @@ pub struct WorldCounters {
     pub block_updates_received: usize,
     pub block_updates_applied: usize,
     #[serde(default)]
+    pub chunk_cache_center_updates_received: usize,
+    #[serde(default)]
+    pub chunk_cache_radius_updates_received: usize,
+    #[serde(default)]
     pub block_destructions_received: usize,
     #[serde(default)]
     pub block_destructions_tracked: usize,

@@ -17,11 +17,12 @@ use bbb_protocol::packets::{
     RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
     RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType,
     SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
-    SetPassengers, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
-    SoundEventHolder, SoundSource, StonecutterSelectableRecipeSummary, StopSound,
-    TagNetworkPayload, TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
-    UpdateAdvancements, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
-    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    SetChunkCacheCenter, SetChunkCacheRadius, SetPassengers, ShowDialog, SignedMessageBody,
+    SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
+    StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload, TagQuery,
+    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateAdvancements,
+    UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData,
+    WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, RegistryPacketEntry, WorldStore};
 use std::collections::BTreeMap;
@@ -39,6 +40,35 @@ fn block_changed_ack_updates_snapshot_counters() {
 
     assert_eq!(counters.block_changed_ack_packets, 1);
     assert_eq!(counters.last_block_changed_ack_sequence, Some(17));
+}
+
+#[test]
+fn chunk_cache_events_update_world_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::SetChunkCacheCenter(SetChunkCacheCenter {
+        chunk_x: -4,
+        chunk_z: 7,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetChunkCacheRadius(SetChunkCacheRadius {
+        radius: 10,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+    assert_eq!(world.chunk_cache_center(), Some(ChunkPos { x: -4, z: 7 }));
+    assert_eq!(world.chunk_cache_radius(), Some(10));
+    assert_eq!(counters.chunk_cache_center, Some(ChunkPos { x: -4, z: 7 }));
+    assert_eq!(counters.chunk_cache_radius, Some(10));
+    let world_counters = world.counters();
+    assert_eq!(world_counters.chunk_cache_center_updates_received, 1);
+    assert_eq!(world_counters.chunk_cache_radius_updates_received, 1);
 }
 
 #[test]

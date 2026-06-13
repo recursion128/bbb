@@ -4,13 +4,16 @@ use bbb_protocol::{
         BlockEntityData as ProtocolBlockEntityData, BlockUpdate as ProtocolBlockUpdate,
         ChunksBiomes as ProtocolChunksBiomes, LevelChunkWithLight,
         LightUpdate as ProtocolLightUpdate, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
+        SetChunkCacheCenter as ProtocolSetChunkCacheCenter,
+        SetChunkCacheRadius as ProtocolSetChunkCacheRadius,
     },
 };
 
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
     terrain::classify_terrain_material, BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn,
-    ChunkPos, RegistrySet, Result, TerrainBlockCell, TerrainChunkSnapshot, WorldStore,
+    ChunkPos, ChunkViewState, RegistrySet, Result, TerrainBlockCell, TerrainChunkSnapshot,
+    WorldStore,
 };
 
 use super::{
@@ -149,6 +152,39 @@ impl WorldStore {
         }
         self.counters.biome_updates_applied += applied;
         Ok(applied)
+    }
+
+    pub fn apply_set_chunk_cache_center(
+        &mut self,
+        update: ProtocolSetChunkCacheCenter,
+    ) -> ChunkViewState {
+        self.counters.chunk_cache_center_updates_received += 1;
+        self.chunk_view.center = Some(ChunkPos {
+            x: update.chunk_x,
+            z: update.chunk_z,
+        });
+        self.chunk_view
+    }
+
+    pub fn apply_set_chunk_cache_radius(
+        &mut self,
+        update: ProtocolSetChunkCacheRadius,
+    ) -> ChunkViewState {
+        self.counters.chunk_cache_radius_updates_received += 1;
+        self.chunk_view.radius = Some(update.radius);
+        self.chunk_view
+    }
+
+    pub fn chunk_view(&self) -> ChunkViewState {
+        self.chunk_view
+    }
+
+    pub fn chunk_cache_center(&self) -> Option<ChunkPos> {
+        self.chunk_view.center
+    }
+
+    pub fn chunk_cache_radius(&self) -> Option<i32> {
+        self.chunk_view.radius
     }
 
     pub fn forget_chunk(&mut self, pos: ChunkPos) -> bool {
