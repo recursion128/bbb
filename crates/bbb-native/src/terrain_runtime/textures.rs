@@ -7,7 +7,8 @@ use bbb_pack::{
     TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
-    TerrainCross, TerrainFace, TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainUvRect,
+    TerrainCross, TerrainFace, TerrainRenderShape, TerrainTextureAtlas, TerrainTint,
+    TerrainTransparency, TerrainUvRect,
 };
 
 use crate::biome_tint::{
@@ -22,6 +23,7 @@ pub(crate) struct TerrainTextureState {
     block_models: Option<BlockModelCatalog>,
     colormaps: Option<TerrainColorMaps>,
     biome_colors: Option<BiomeColorCatalog>,
+    transparencies: Vec<TerrainTransparency>,
     fallback_index: u32,
 }
 
@@ -33,6 +35,7 @@ impl Default for TerrainTextureState {
             block_models: None,
             colormaps: None,
             biome_colors: None,
+            transparencies: vec![TerrainTransparency::OPAQUE],
             fallback_index: 0,
         }
     }
@@ -54,9 +57,11 @@ impl TerrainTextureState {
     ) -> Self {
         let mut indices = HashMap::new();
         let mut rects = Vec::with_capacity(layout.sprites.len());
+        let mut transparencies = Vec::with_capacity(layout.sprites.len());
         for (index, sprite) in layout.sprites.iter().enumerate() {
             indices.insert(sprite.id.clone(), index as u32);
             rects.push(terrain_uv_rect(layout, sprite));
+            transparencies.push(terrain_transparency(sprite.transparency));
         }
         let fallback_index = indices.get("minecraft:block/stone").copied().unwrap_or(0);
         Self {
@@ -68,6 +73,7 @@ impl TerrainTextureState {
             block_models,
             colormaps,
             biome_colors,
+            transparencies,
             fallback_index,
         }
     }
@@ -79,6 +85,22 @@ impl TerrainTextureState {
             .unwrap_or(self.fallback_index)
     }
 
+    fn texture_transparency(&self, texture_id: &str) -> TerrainTransparency {
+        self.texture_index_transparency(self.texture_index(texture_id))
+    }
+
+    fn texture_index_transparency(&self, texture_index: u32) -> TerrainTransparency {
+        self.transparencies
+            .get(texture_index as usize)
+            .copied()
+            .or_else(|| {
+                self.transparencies
+                    .get(self.fallback_index as usize)
+                    .copied()
+            })
+            .unwrap_or(TerrainTransparency::OPAQUE)
+    }
+
     pub(super) fn block_render_data(
         &self,
         block_name: Option<&str>,
@@ -86,12 +108,17 @@ impl TerrainTextureState {
         material: bbb_world::TerrainMaterialClass,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
-    ) -> ([u32; 6], [TerrainTint; 6], [bool; 6], TerrainRenderShape) {
+    ) -> (
+        [u32; 6],
+        [TerrainTint; 6],
+        [TerrainTransparency; 6],
+        TerrainRenderShape,
+    ) {
         let Some(block_name) = block_name else {
             return (
                 [self.fallback_index; 6],
                 [TerrainTint::WHITE; 6],
-                [false; 6],
+                [TerrainTransparency::OPAQUE; 6],
                 TerrainRenderShape::Cube,
             );
         };
@@ -111,10 +138,11 @@ impl TerrainTextureState {
                 biome_id,
                 position,
             );
+            let face_transparency = self.face_texture_transparencies(&model.face_textures);
             return (
                 texture_indices,
                 tint,
-                model.face_textures.force_translucent,
+                face_transparency,
                 self.terrain_render_shape_for_block(
                     block_name,
                     properties,
@@ -122,6 +150,7 @@ impl TerrainTextureState {
                     model.shape,
                     texture_indices,
                     tint,
+                    face_transparency,
                     biome_id,
                     position,
                 ),
@@ -134,7 +163,7 @@ impl TerrainTextureState {
         (
             texture_indices,
             tint,
-            [false; 6],
+            [TerrainTransparency::OPAQUE; 6],
             self.terrain_render_shape_for_block(
                 block_name,
                 properties,
@@ -142,6 +171,7 @@ impl TerrainTextureState {
                 BlockModelShape::Cube,
                 texture_indices,
                 tint,
+                [TerrainTransparency::OPAQUE; 6],
                 biome_id,
                 position,
             ),
@@ -150,6 +180,16 @@ impl TerrainTextureState {
 
     fn face_texture_indices(&self, face_textures: &BlockFaceTextures) -> [u32; 6] {
         std::array::from_fn(|index| self.texture_index(&face_textures.textures[index]))
+    }
+
+    fn face_texture_transparencies(
+        &self,
+        face_textures: &BlockFaceTextures,
+    ) -> [TerrainTransparency; 6] {
+        std::array::from_fn(|index| {
+            self.texture_transparency(&face_textures.textures[index])
+                .or(force_translucent(face_textures.force_translucent[index]))
+        })
     }
 
     fn face_tints(
@@ -179,6 +219,7 @@ impl TerrainTextureState {
         model_shape: BlockModelShape,
         fallback_texture_indices: [u32; 6],
         fallback_tint: [TerrainTint; 6],
+        fallback_transparency: [TerrainTransparency; 6],
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
     ) -> TerrainRenderShape {
@@ -193,6 +234,7 @@ impl TerrainTextureState {
             model_shape,
             fallback_texture_indices,
             fallback_tint,
+            fallback_transparency,
             biome_id,
             position,
         )
@@ -205,6 +247,7 @@ impl TerrainTextureState {
         shape: BlockModelShape,
         fallback_texture_indices: [u32; 6],
         fallback_tint: [TerrainTint; 6],
+        fallback_transparency: [TerrainTransparency; 6],
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
     ) -> TerrainRenderShape {
@@ -230,7 +273,8 @@ impl TerrainTextureState {
                             biome_id,
                             position,
                         ),
-                        face_force_translucent: model_cross.face_force_translucent,
+                        face_transparency: self
+                            .model_cross_face_transparencies(&model_cross, fallback_transparency),
                         shade: model_cross.shade,
                         light_emission: model_cross.light_emission,
                     })
@@ -245,7 +289,8 @@ impl TerrainTextureState {
                 face_shade: model_box.face_shade,
                 face_light_emission: model_box.face_light_emission,
                 face_cull: model_box_cull_faces(model_box.face_cull),
-                face_force_translucent: model_box.face_force_translucent,
+                face_transparency: self
+                    .model_box_face_transparencies(&model_box, fallback_transparency),
             },
             BlockModelShape::Boxes(model_boxes) => TerrainRenderShape::Boxes(
                 model_boxes
@@ -269,7 +314,8 @@ impl TerrainTextureState {
                             biome_id,
                             position,
                         ),
-                        face_force_translucent: model_box.face_force_translucent,
+                        face_transparency: self
+                            .model_box_face_transparencies(&model_box, fallback_transparency),
                     })
                     .collect(),
             ),
@@ -300,6 +346,34 @@ impl TerrainTextureState {
                 .as_deref()
                 .map(|texture| self.texture_index(texture))
                 .unwrap_or(fallback[index])
+        })
+    }
+
+    fn model_box_face_transparencies(
+        &self,
+        model_box: &bbb_pack::BlockModelBox,
+        fallback: [TerrainTransparency; 6],
+    ) -> [TerrainTransparency; 6] {
+        std::array::from_fn(|index| {
+            model_box.face_textures[index]
+                .as_deref()
+                .map(|texture| self.texture_transparency(texture))
+                .unwrap_or(fallback[index])
+                .or(force_translucent(model_box.face_force_translucent[index]))
+        })
+    }
+
+    fn model_cross_face_transparencies(
+        &self,
+        model_cross: &bbb_pack::BlockModelCross,
+        fallback: [TerrainTransparency; 6],
+    ) -> [TerrainTransparency; 6] {
+        std::array::from_fn(|index| {
+            model_cross.face_textures[index]
+                .as_deref()
+                .map(|texture| self.texture_transparency(texture))
+                .unwrap_or(fallback[index])
+                .or(force_translucent(model_cross.face_force_translucent[index]))
         })
     }
 
@@ -527,6 +601,21 @@ fn terrain_uv_rect(layout: &AtlasLayout, sprite: &bbb_pack::AtlasSprite) -> Terr
     }
 }
 
+fn terrain_transparency(transparency: bbb_pack::SpriteTransparency) -> TerrainTransparency {
+    TerrainTransparency {
+        has_transparent: transparency.has_transparent,
+        has_translucent: transparency.has_translucent,
+    }
+}
+
+fn force_translucent(force: bool) -> TerrainTransparency {
+    if force {
+        TerrainTransparency::TRANSLUCENT
+    } else {
+        TerrainTransparency::OPAQUE
+    }
+}
+
 fn block_model_seed(position: BlockRenderPosition) -> i64 {
     let seed = i64::from(position.x).wrapping_mul(3_129_871)
         ^ i64::from(position.z).wrapping_mul(116_129_781)
@@ -583,7 +672,7 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         face_shade: [true; 6],
         face_light_emission: [0; 6],
         face_cull: all_terrain_face_cull(),
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     }
 }
 

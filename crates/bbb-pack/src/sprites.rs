@@ -35,11 +35,50 @@ pub struct SpriteImage {
     pub id: String,
     pub width: u32,
     pub height: u32,
+    pub transparency: SpriteTransparency,
     pub rgba: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpriteTransparency {
+    pub has_transparent: bool,
+    pub has_translucent: bool,
+}
+
+impl SpriteTransparency {
+    pub fn from_rgba(rgba: &[u8]) -> Self {
+        let mut transparency = Self::default();
+        for alpha in rgba.chunks_exact(4).map(|pixel| pixel[3]) {
+            if alpha == 0 {
+                transparency.has_transparent = true;
+            } else if alpha != 255 {
+                transparency.has_translucent = true;
+            }
+        }
+        transparency
+    }
+
+    pub fn or(self, other: Self) -> Self {
+        Self {
+            has_transparent: self.has_transparent || other.has_transparent,
+            has_translucent: self.has_translucent || other.has_translucent,
+        }
+    }
 }
 
 impl SpriteImage {
     pub fn new(id: impl Into<String>, width: u32, height: u32, rgba: Vec<u8>) -> Result<Self> {
+        let transparency = SpriteTransparency::from_rgba(&rgba);
+        Self::new_with_transparency(id, width, height, rgba, transparency)
+    }
+
+    fn new_with_transparency(
+        id: impl Into<String>,
+        width: u32,
+        height: u32,
+        rgba: Vec<u8>,
+        transparency: SpriteTransparency,
+    ) -> Result<Self> {
         let expected = rgba_len(width, height)?;
         if rgba.len() != expected {
             bail!(
@@ -54,6 +93,7 @@ impl SpriteImage {
             id: id.into(),
             width,
             height,
+            transparency,
             rgba,
         })
     }
@@ -68,12 +108,14 @@ impl SpriteImage {
             .into_rgba8();
         let (image_width, image_height) = rgba.dimensions();
         let (width, height) = sprite_frame_size(path, image_width, image_height)?;
+        let source_rgba = rgba.into_raw();
+        let transparency = SpriteTransparency::from_rgba(&source_rgba);
         let rgba = if (width, height) == (image_width, image_height) {
-            rgba.into_raw()
+            source_rgba
         } else {
-            copy_first_frame_rgba(&rgba.into_raw(), image_width, width, height)?
+            copy_first_frame_rgba(&source_rgba, image_width, width, height)?
         };
-        Self::new(id, width, height, rgba)
+        Self::new_with_transparency(id, width, height, rgba, transparency)
     }
 
     pub(crate) fn source(&self) -> SpriteSource {
@@ -244,7 +286,7 @@ mod tests {
             4,
             &[
                 1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255, 13, 14, 15, 255, 16, 17,
-                18, 255, 19, 20, 21, 255, 22, 23, 24, 255,
+                18, 127, 19, 20, 21, 255, 22, 23, 24, 255,
             ],
         );
         write_json(
@@ -262,8 +304,24 @@ mod tests {
             image.rgba,
             vec![1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255]
         );
+        assert!(image.transparency.has_translucent);
 
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_records_alpha_transparency() {
+        let opaque = SpriteImage::new("test:opaque", 1, 1, vec![1, 2, 3, 255]).unwrap();
+        assert!(!opaque.transparency.has_transparent);
+        assert!(!opaque.transparency.has_translucent);
+
+        let transparent = SpriteImage::new("test:transparent", 1, 1, vec![1, 2, 3, 0]).unwrap();
+        assert!(transparent.transparency.has_transparent);
+        assert!(!transparent.transparency.has_translucent);
+
+        let translucent = SpriteImage::new("test:translucent", 1, 1, vec![1, 2, 3, 127]).unwrap();
+        assert!(!translucent.transparency.has_transparent);
+        assert!(translucent.transparency.has_translucent);
     }
 
     #[test]

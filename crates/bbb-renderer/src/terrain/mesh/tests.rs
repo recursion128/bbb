@@ -1,7 +1,7 @@
 use super::super::{
     build_opaque_chunk_mesh, build_opaque_terrain_meshes, build_opaque_terrain_meshes_with_atlas,
     build_terrain_mesh_layers_with_atlas, build_terrain_meshes_with_atlas, TerrainBox,
-    TerrainCross, TerrainFace, TerrainLight, TerrainTint, TerrainUvRect,
+    TerrainCross, TerrainFace, TerrainLight, TerrainTint, TerrainTransparency, TerrainUvRect,
 };
 use super::*;
 
@@ -276,19 +276,19 @@ fn cross_layers_preserve_emissive_light() {
             TerrainCross {
                 texture_indices: [0; 6],
                 tint: [TerrainTint::WHITE; 6],
-                face_force_translucent: [false; 6],
+                face_transparency: [TerrainTransparency::OPAQUE; 6],
                 shade: false,
                 light_emission: 0,
             },
             TerrainCross {
                 texture_indices: [0; 6],
                 tint: [TerrainTint::WHITE; 6],
-                face_force_translucent: [false; 6],
+                face_transparency: [TerrainTransparency::OPAQUE; 6],
                 shade: false,
                 light_emission: 15,
             },
         ]),
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     };
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
@@ -348,7 +348,7 @@ fn box_model_mesh_rotates_face_uv_crop() {
         face_shade: [false; 6],
         face_light_emission: [0; 6],
         face_cull: [None; 6],
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     };
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =
@@ -400,7 +400,7 @@ fn box_model_uses_cullface_direction_not_rendered_face_direction() {
         face_shade: [true; 6],
         face_light_emission: [0; 6],
         face_cull,
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     };
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =
@@ -433,7 +433,7 @@ fn multi_box_model_skips_absent_faces() {
         face_cull: [None; 6],
         texture_indices: [0; 6],
         tint: [TerrainTint::WHITE; 6],
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     };
     upper.face_present[TerrainFace::Down.index()] = false;
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
@@ -455,11 +455,11 @@ fn multi_box_model_skips_absent_faces() {
                 face_cull: [None; 6],
                 texture_indices: [0; 6],
                 tint: [TerrainTint::WHITE; 6],
-                face_force_translucent: [false; 6],
+                face_transparency: [TerrainTransparency::OPAQUE; 6],
             },
             upper,
         ]),
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     };
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
@@ -496,7 +496,7 @@ fn boxes_use_per_box_texture_and_tint() {
                 face_cull: [None; 6],
                 texture_indices: [1; 6],
                 tint: [grass_tint; 6],
-                face_force_translucent: [false; 6],
+                face_transparency: [TerrainTransparency::OPAQUE; 6],
             },
             TerrainBox {
                 from: [0, 8, 0],
@@ -509,10 +509,10 @@ fn boxes_use_per_box_texture_and_tint() {
                 face_cull: [None; 6],
                 texture_indices: [2; 6],
                 tint: [foliage_tint; 6],
-                face_force_translucent: [false; 6],
+                face_transparency: [TerrainTransparency::OPAQUE; 6],
             },
         ]),
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     };
     let atlas = TerrainTextureAtlas {
         rects: vec![
@@ -603,11 +603,11 @@ fn layer_builder_splits_opaque_and_cutout_meshes() {
 
 #[test]
 fn forced_translucent_cube_faces_emit_in_translucent_layer() {
-    let mut face_force_translucent = [false; 6];
-    face_force_translucent[TerrainFace::Up.index()] = true;
+    let mut face_transparency = [TerrainTransparency::OPAQUE; 6];
+    face_transparency[TerrainFace::Up.index()] = TerrainTransparency::TRANSLUCENT;
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
-        .with_face_force_translucent(face_force_translucent);
+        .with_face_transparency(face_transparency);
     let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
 
     let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
@@ -618,16 +618,34 @@ fn forced_translucent_cube_faces_emit_in_translucent_layer() {
 }
 
 #[test]
+fn transparent_cube_faces_emit_in_cutout_layer() {
+    let mut face_transparency = [TerrainTransparency::OPAQUE; 6];
+    face_transparency[TerrainFace::Up.index()] = TerrainTransparency {
+        has_transparent: true,
+        has_translucent: false,
+    };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0)
+        .with_face_transparency(face_transparency);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.opaque[0].opaque_faces, 5);
+    assert_eq!(layers.cutout[0].cutout_faces, 1);
+    assert_eq!(layers.translucent[0].vertices.len(), 0);
+}
+
+#[test]
 fn forced_translucent_box_faces_emit_in_translucent_layer() {
     let mut shape = slab_box_shape();
     let TerrainRenderShape::Box {
-        face_force_translucent,
-        ..
+        face_transparency, ..
     } = &mut shape
     else {
         panic!("slab helper builds a box");
     };
-    face_force_translucent[TerrainFace::Up.index()] = true;
+    face_transparency[TerrainFace::Up.index()] = TerrainTransparency::TRANSLUCENT;
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] =
         TerrainCell::with_shape(3, TerrainMaterialClass::Opaque, 1, shape);
@@ -680,7 +698,7 @@ fn slab_box_shape() -> TerrainRenderShape {
         face_shade: [true; 6],
         face_light_emission: [0; 6],
         face_cull,
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     }
 }
 
@@ -700,7 +718,7 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         face_shade: [true; 6],
         face_light_emission: [0; 6],
         face_cull: all_face_cull(),
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     }
 }
 

@@ -37,7 +37,7 @@ fn water_level_shape_uses_cropped_fluid_box() {
             face_shade: [true; 6],
             face_light_emission: [0; 6],
             face_cull: all_terrain_face_cull(),
-            face_force_translucent: [false; 6],
+            face_transparency: [TerrainTransparency::OPAQUE; 6],
         }
     );
 }
@@ -67,6 +67,41 @@ fn block_model_seed_matches_vanilla_position_seed() {
 }
 
 #[test]
+fn texture_alpha_maps_to_face_transparency() {
+    let cutout =
+        bbb_pack::SpriteImage::new("minecraft:block/cutout", 1, 1, vec![1, 2, 3, 0]).unwrap();
+    let translucent =
+        bbb_pack::SpriteImage::new("minecraft:block/translucent", 1, 1, vec![1, 2, 3, 127])
+            .unwrap();
+    let atlas = bbb_pack::AtlasPacker::new(8, 1)
+        .unwrap()
+        .stitch(&[cutout, translucent])
+        .unwrap();
+    let textures = TerrainTextureState::from_layout(&atlas.layout, None, None, None);
+    let mut force_translucent = [false; 6];
+    force_translucent[bbb_pack::BlockModelFace::East.index()] = true;
+    let face_textures = bbb_pack::BlockFaceTextures {
+        textures: std::array::from_fn(|index| {
+            if index == bbb_pack::BlockModelFace::North.index() {
+                "minecraft:block/cutout".to_string()
+            } else {
+                "minecraft:block/translucent".to_string()
+            }
+        }),
+        tint_indices: [None; 6],
+        force_translucent,
+    };
+
+    let transparencies = textures.face_texture_transparencies(&face_textures);
+
+    assert!(transparencies[bbb_pack::BlockModelFace::North.index()].has_transparent);
+    assert!(!transparencies[bbb_pack::BlockModelFace::North.index()].has_translucent);
+    assert!(!transparencies[bbb_pack::BlockModelFace::Up.index()].has_transparent);
+    assert!(transparencies[bbb_pack::BlockModelFace::Up.index()].has_translucent);
+    assert!(transparencies[bbb_pack::BlockModelFace::East.index()].has_translucent);
+}
+
+#[test]
 fn fluid_material_overrides_particle_only_model_shape() {
     let textures = TerrainTextureState::default();
     let shape = textures.terrain_render_shape_for_block(
@@ -76,6 +111,7 @@ fn fluid_material_overrides_particle_only_model_shape() {
         BlockModelShape::Custom,
         [0; 6],
         [TerrainTint::WHITE; 6],
+        [TerrainTransparency::OPAQUE; 6],
         None,
         None,
     );
@@ -95,6 +131,7 @@ fn fluid_material_overrides_particle_only_model_shape() {
         BlockModelShape::Custom,
         [0; 6],
         [TerrainTint::WHITE; 6],
+        [TerrainTransparency::OPAQUE; 6],
         None,
         None,
     );
@@ -130,6 +167,7 @@ fn model_boxes_preserve_per_element_textures_and_tints() {
         BlockModelShape::Boxes(vec![base, overlay]),
         [0; 6],
         [TerrainTint::WHITE; 6],
+        [TerrainTransparency::OPAQUE; 6],
         Some(4),
         None,
     );
@@ -142,7 +180,7 @@ fn model_boxes_preserve_per_element_textures_and_tints() {
     assert_eq!(boxes[0].tint[north], TerrainTint::WHITE);
     assert_eq!(boxes[1].texture_indices[north], 2);
     assert!(!boxes[1].face_shade[north]);
-    assert!(boxes[1].face_force_translucent[north]);
+    assert!(boxes[1].face_transparency[north].has_translucent);
     assert_eq!(
         boxes[1].tint[north],
         TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59)
@@ -191,6 +229,7 @@ fn model_crosses_preserve_per_layer_textures_tints_and_light() {
         ]),
         [0; 6],
         [TerrainTint::WHITE; 6],
+        [TerrainTransparency::OPAQUE; 6],
         Some(4),
         None,
     );
@@ -203,7 +242,7 @@ fn model_crosses_preserve_per_layer_textures_tints_and_light() {
     assert_eq!(crosses[0].light_emission, 0);
     assert_eq!(crosses[1].texture_indices[east], 2);
     assert_eq!(crosses[1].light_emission, 15);
-    assert!(crosses[1].face_force_translucent[east]);
+    assert!(crosses[1].face_transparency[east].has_translucent);
     assert_eq!(
         crosses[1].tint[east],
         TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59)

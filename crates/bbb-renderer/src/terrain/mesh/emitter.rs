@@ -1,6 +1,6 @@
 use super::super::{
     TerrainFace, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainTextureAtlas, TerrainTint,
-    TerrainUvRect, TerrainVertex,
+    TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::{
     geometry::{box_face_corners, face_uvs_from_crop, FaceDef, CROSS_FACES, FACES},
@@ -58,14 +58,14 @@ pub(super) fn emit_cross(
     light: TerrainLight,
     tint: [TerrainTint; 6],
     texture_indices: [u32; 6],
-    face_force_translucent: [bool; 6],
+    face_transparency: [TerrainTransparency; 6],
     shade: bool,
     light_emission: u8,
     atlas: &TerrainTextureAtlas,
     mode: TerrainMeshMode,
 ) {
     for (face, normal, corners) in CROSS_FACES {
-        let face_material = effective_face_material(material, face_force_translucent[face.index()]);
+        let face_material = effective_face_material(material, face_transparency[face.index()]);
         if !mode.is_meshed(face_material) {
             continue;
         }
@@ -106,7 +106,7 @@ pub(super) fn emit_box(
     face_shade: [bool; 6],
     face_light_emission: [u8; 6],
     face_cull: [Option<TerrainFace>; 6],
-    face_force_translucent: [bool; 6],
+    face_transparency: [TerrainTransparency; 6],
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
 ) {
@@ -133,7 +133,7 @@ pub(super) fn emit_box(
         if !face_present[face_index] {
             continue;
         }
-        let face_material = effective_face_material(material, face_force_translucent[face_index]);
+        let face_material = effective_face_material(material, face_transparency[face_index]);
         if !mode.is_meshed(face_material) {
             continue;
         }
@@ -170,10 +170,15 @@ pub(super) fn emit_box(
 
 pub(super) fn effective_face_material(
     material: TerrainMaterialClass,
-    force_translucent: bool,
+    transparency: TerrainTransparency,
 ) -> TerrainMaterialClass {
-    if force_translucent && !matches!(material, TerrainMaterialClass::Fluid) {
+    if matches!(material, TerrainMaterialClass::Fluid) {
+        material
+    } else if transparency.has_translucent || matches!(material, TerrainMaterialClass::Translucent)
+    {
         TerrainMaterialClass::Translucent
+    } else if transparency.has_transparent {
+        TerrainMaterialClass::Cutout
     } else {
         material
     }

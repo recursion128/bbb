@@ -54,7 +54,7 @@ pub enum TerrainRenderShape {
         face_shade: [bool; 6],
         face_light_emission: [u8; 6],
         face_cull: [Option<TerrainFace>; 6],
-        face_force_translucent: [bool; 6],
+        face_transparency: [TerrainTransparency; 6],
     },
     Boxes(Vec<TerrainBox>),
 }
@@ -71,14 +71,14 @@ pub struct TerrainBox {
     pub face_cull: [Option<TerrainFace>; 6],
     pub texture_indices: [u32; 6],
     pub tint: [TerrainTint; 6],
-    pub face_force_translucent: [bool; 6],
+    pub face_transparency: [TerrainTransparency; 6],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TerrainCross {
     pub texture_indices: [u32; 6],
     pub tint: [TerrainTint; 6],
-    pub face_force_translucent: [bool; 6],
+    pub face_transparency: [TerrainTransparency; 6],
     pub shade: bool,
     pub light_emission: u8,
 }
@@ -91,7 +91,7 @@ pub struct TerrainCell {
     pub render_shape: TerrainRenderShape,
     pub light: TerrainLight,
     pub tint: [TerrainTint; 6],
-    pub face_force_translucent: [bool; 6],
+    pub face_transparency: [TerrainTransparency; 6],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -138,6 +138,31 @@ impl TerrainTint {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainTransparency {
+    pub has_transparent: bool,
+    pub has_translucent: bool,
+}
+
+impl TerrainTransparency {
+    pub const OPAQUE: Self = Self {
+        has_transparent: false,
+        has_translucent: false,
+    };
+
+    pub const TRANSLUCENT: Self = Self {
+        has_transparent: false,
+        has_translucent: true,
+    };
+
+    pub fn or(self, other: Self) -> Self {
+        Self {
+            has_transparent: self.has_transparent || other.has_transparent,
+            has_translucent: self.has_translucent || other.has_translucent,
+        }
+    }
+}
+
 impl TerrainCell {
     pub const EMPTY: Self = Self {
         block_state_id: 0,
@@ -146,7 +171,7 @@ impl TerrainCell {
         render_shape: TerrainRenderShape::Cube,
         light: TerrainLight::FULL_BRIGHT,
         tint: [TerrainTint::WHITE; 6],
-        face_force_translucent: [false; 6],
+        face_transparency: [TerrainTransparency::OPAQUE; 6],
     };
 
     pub fn with_texture(
@@ -161,7 +186,7 @@ impl TerrainCell {
             render_shape: TerrainRenderShape::Cube,
             light: TerrainLight::FULL_BRIGHT,
             tint: [TerrainTint::WHITE; 6],
-            face_force_translucent: [false; 6],
+            face_transparency: [TerrainTransparency::OPAQUE; 6],
         }
     }
 
@@ -178,7 +203,7 @@ impl TerrainCell {
             render_shape,
             light: TerrainLight::FULL_BRIGHT,
             tint: [TerrainTint::WHITE; 6],
-            face_force_translucent: [false; 6],
+            face_transparency: [TerrainTransparency::OPAQUE; 6],
         }
     }
 
@@ -192,8 +217,8 @@ impl TerrainCell {
         self
     }
 
-    pub fn with_face_force_translucent(mut self, face_force_translucent: [bool; 6]) -> Self {
-        self.face_force_translucent = face_force_translucent;
+    pub fn with_face_transparency(mut self, face_transparency: [TerrainTransparency; 6]) -> Self {
+        self.face_transparency = face_transparency;
         self
     }
 }

@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::{rgba_len, rgba_offset, SpriteImage, SpriteSource};
+use crate::{rgba_len, rgba_offset, SpriteImage, SpriteSource, SpriteTransparency};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AtlasRect {
@@ -16,6 +16,7 @@ pub struct AtlasSprite {
     pub id: String,
     pub source_width: u32,
     pub source_height: u32,
+    pub transparency: SpriteTransparency,
     pub content: AtlasRect,
     pub padded: AtlasRect,
 }
@@ -110,6 +111,7 @@ impl AtlasPacker {
                 id: source.id.clone(),
                 source_width: source.width,
                 source_height: source.height,
+                transparency: SpriteTransparency::default(),
                 content,
                 padded,
             });
@@ -135,7 +137,10 @@ impl AtlasPacker {
 
     pub fn stitch(&self, images: &[SpriteImage]) -> Result<AtlasImage> {
         let sources = images.iter().map(SpriteImage::source).collect::<Vec<_>>();
-        let layout = self.pack(&sources)?;
+        let mut layout = self.pack(&sources)?;
+        for (sprite, image) in layout.sprites.iter_mut().zip(images) {
+            sprite.transparency = image.transparency;
+        }
         let mut rgba = vec![0; rgba_len(layout.width, layout.height)?];
 
         for (sprite, image) in layout.sprites.iter().zip(images) {
@@ -296,21 +301,20 @@ mod tests {
             "test:quad",
             2,
             2,
-            vec![10, 0, 0, 255, 20, 0, 0, 255, 30, 0, 0, 255, 40, 0, 0, 255],
+            vec![10, 0, 0, 255, 20, 0, 0, 0, 30, 0, 0, 255, 40, 0, 0, 255],
         )
         .unwrap();
         let atlas = AtlasPacker::new(8, 1).unwrap().stitch(&[image]).unwrap();
 
         assert_eq!(atlas.layout.width, 4);
         assert_eq!(atlas.layout.height, 4);
+        assert!(atlas.layout.sprites[0].transparency.has_transparent);
+        assert!(!atlas.layout.sprites[0].transparency.has_translucent);
         assert_eq!(
             pixel(&atlas.rgba, atlas.layout.width, 0, 0),
             [10, 0, 0, 255]
         );
-        assert_eq!(
-            pixel(&atlas.rgba, atlas.layout.width, 3, 0),
-            [20, 0, 0, 255]
-        );
+        assert_eq!(pixel(&atlas.rgba, atlas.layout.width, 3, 0), [20, 0, 0, 0]);
         assert_eq!(
             pixel(&atlas.rgba, atlas.layout.width, 0, 3),
             [30, 0, 0, 255]

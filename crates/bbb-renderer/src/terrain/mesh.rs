@@ -66,7 +66,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                 let cell = snapshot
                     .cell(x, y, z)
                     .expect("in-bounds terrain cell exists");
-                if !mode.is_meshed(cell.material) && !has_forced_translucent_quads(cell) {
+                if !mode.is_meshed(cell.material) && !has_texture_layer_overrides(cell) {
                     continue;
                 }
 
@@ -88,7 +88,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             cell.light,
                             cell.tint,
                             cell.texture_indices,
-                            cell.face_force_translucent,
+                            cell.face_transparency,
                             *shade,
                             *light_emission,
                             atlas,
@@ -108,7 +108,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 cell.light,
                                 model_cross.tint,
                                 model_cross.texture_indices,
-                                model_cross.face_force_translucent,
+                                model_cross.face_transparency,
                                 model_cross.shade,
                                 model_cross.light_emission,
                                 atlas,
@@ -126,7 +126,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         face_shade,
                         face_light_emission,
                         face_cull,
-                        face_force_translucent,
+                        face_transparency,
                     } => {
                         emit_box(
                             &mut mesh,
@@ -147,7 +147,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             *face_shade,
                             *face_light_emission,
                             *face_cull,
-                            *face_force_translucent,
+                            *face_transparency,
                             lookup,
                             mode,
                         );
@@ -174,7 +174,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 model_box.face_shade,
                                 model_box.face_light_emission,
                                 model_box.face_cull,
-                                model_box.face_force_translucent,
+                                model_box.face_transparency,
                                 lookup,
                                 mode,
                             );
@@ -186,10 +186,8 @@ pub(super) fn build_chunk_mesh_with_lookup(
 
                 for face in FACES {
                     let face_index = face.face.index();
-                    let face_material = effective_face_material(
-                        cell.material,
-                        cell.face_force_translucent[face_index],
-                    );
+                    let face_material =
+                        effective_face_material(cell.material, cell.face_transparency[face_index]);
                     if !mode.is_meshed(face_material) {
                         continue;
                     }
@@ -221,27 +219,34 @@ pub(super) fn build_chunk_mesh_with_lookup(
     mesh
 }
 
-fn has_forced_translucent_quads(cell: &TerrainCell) -> bool {
-    cell.face_force_translucent.iter().any(|forced| *forced)
+fn has_texture_layer_overrides(cell: &TerrainCell) -> bool {
+    cell.face_transparency
+        .iter()
+        .any(|transparency| !is_opaque_transparency(*transparency))
         || match &cell.render_shape {
             TerrainRenderShape::Box {
-                face_force_translucent,
-                ..
-            } => face_force_translucent.iter().any(|forced| *forced),
+                face_transparency, ..
+            } => face_transparency
+                .iter()
+                .any(|transparency| !is_opaque_transparency(*transparency)),
             TerrainRenderShape::Boxes(model_boxes) => model_boxes.iter().any(|model_box| {
                 model_box
-                    .face_force_translucent
+                    .face_transparency
                     .iter()
-                    .any(|forced| *forced)
+                    .any(|transparency| !is_opaque_transparency(*transparency))
             }),
             TerrainRenderShape::Crosses(model_crosses) => model_crosses.iter().any(|model_cross| {
                 model_cross
-                    .face_force_translucent
+                    .face_transparency
                     .iter()
-                    .any(|forced| *forced)
+                    .any(|transparency| !is_opaque_transparency(*transparency))
             }),
             TerrainRenderShape::Cube | TerrainRenderShape::Cross { .. } => false,
         }
+}
+
+fn is_opaque_transparency(transparency: super::TerrainTransparency) -> bool {
+    !transparency.has_transparent && !transparency.has_translucent
 }
 
 pub(super) struct TerrainChunkLookup<'a> {

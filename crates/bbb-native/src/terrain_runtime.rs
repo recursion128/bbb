@@ -132,7 +132,7 @@ fn convert_terrain_snapshot(
                 z: chunk_origin_z + local_z,
             };
             let world_material = cell.material;
-            let (texture_indices, tint, face_force_translucent, render_shape) = textures
+            let (texture_indices, tint, face_transparency, render_shape) = textures
                 .block_render_data(
                     cell.block_name.as_deref(),
                     &cell.block_properties,
@@ -158,7 +158,7 @@ fn convert_terrain_snapshot(
                     block: cell.light.block,
                 },
                 tint,
-                face_force_translucent,
+                face_transparency,
             }
         })
         .collect();
