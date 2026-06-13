@@ -24,6 +24,10 @@ pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -
     }
 }
 
+pub(crate) fn skip_nbt_tag_from_decoder(decoder: &mut Decoder<'_>) -> Result<()> {
+    read_nbt_any(decoder).map(|_| ())
+}
+
 pub(crate) fn decode_component_summary(payload: &[u8]) -> Result<String> {
     let mut decoder = Decoder::new(payload);
     let summary = decode_component_summary_from_decoder(&mut decoder)?;
