@@ -1889,6 +1889,14 @@ fn drain_net_events(
                 counters.block_destruction_packets += 1;
                 world.apply_block_destruction(update);
             }
+            NetEvent::BlockEvent(event) => {
+                counters.block_event_packets += 1;
+                world.apply_block_event(event);
+            }
+            NetEvent::LevelEvent(event) => {
+                counters.level_event_packets += 1;
+                world.apply_level_event(event);
+            }
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
             }
@@ -3374,6 +3382,64 @@ mod tests {
         assert_eq!(world.counters().block_destructions_received, 1);
         assert_eq!(world.counters().block_destructions_tracked, 1);
         assert_eq!(world.block_destruction(4).unwrap().progress, 6);
+    }
+
+    #[test]
+    fn block_and_level_events_update_world_and_counters() {
+        let (tx, mut rx) = mpsc::channel(2);
+        tx.try_send(NetEvent::BlockEvent(bbb_protocol::packets::BlockEvent {
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 65,
+                z: -5,
+            },
+            b0: 2,
+            b1: 9,
+            block_id: 54,
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::LevelEvent(bbb_protocol::packets::LevelEvent {
+            event_type: 1001,
+            pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+            data: 42,
+            global: true,
+        }))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            2
+        );
+        assert_eq!(counters.block_event_packets, 1);
+        assert_eq!(counters.level_event_packets, 1);
+
+        let world_counters = world.counters();
+        assert_eq!(world_counters.block_events_received, 1);
+        assert_eq!(world_counters.block_events_tracked, 1);
+        assert_eq!(world_counters.level_events_received, 1);
+        assert_eq!(world_counters.level_events_tracked, 1);
+
+        let block_event = world.block_events().first().unwrap();
+        assert_eq!(
+            block_event.pos,
+            BlockPos {
+                x: 12,
+                y: 65,
+                z: -5
+            }
+        );
+        assert_eq!(block_event.b0, 2);
+        assert_eq!(block_event.b1, 9);
+        assert_eq!(block_event.block_id, 54);
+
+        let level_event = world.level_events().first().unwrap();
+        assert_eq!(level_event.event_type, 1001);
+        assert_eq!(level_event.pos, BlockPos { x: 3, y: 4, z: 5 });
+        assert_eq!(level_event.data, 42);
+        assert!(level_event.global);
     }
 
     #[test]

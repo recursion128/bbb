@@ -9,19 +9,20 @@ use bbb_protocol::{
     },
     ids,
     packets::{
-        self, AddEntity, BlockChangedAck, BlockDestruction, BlockEntityData, BlockUpdate,
-        ChunksBiomes, ClientIntent, ConfigurationClientbound, ContainerClose, ContainerSetContent,
-        ContainerSetData, ContainerSetSlot, EntityAnimation, EntityEvent, EntityMove,
-        EntityPositionSync, ForgetLevelChunk, GameEvent, HurtAnimation, InteractionHand,
-        LevelChunkWithLight, LightUpdate, LoginClientbound, MoveVehicle, OpenScreen,
-        PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime, PlayerAbilities, PlayerAction,
-        PlayerCommand, PlayerExperience, PlayerHealth, PlayerInput, PlayerPositionState,
-        PlayerPositionUpdate, PlayerRotationUpdate, RemoveEntities, Respawn, RotateHead,
-        SectionBlocksUpdate, SetActionBarText, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
-        SetCursorItem, SetDefaultSpawnPosition, SetEntityData, SetEntityLink, SetEntityMotion,
-        SetEquipment, SetHeldSlot, SetPassengers, SetPlayerInventory, SetSimulationDistance,
-        SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat, TakeItemEntity,
-        TeleportEntity, TickingState, TickingStep, UpdateAttributes, UseItem, UseItemOn, Vec3d,
+        self, AddEntity, BlockChangedAck, BlockDestruction, BlockEntityData, BlockEvent,
+        BlockUpdate, ChunksBiomes, ClientIntent, ConfigurationClientbound, ContainerClose,
+        ContainerSetContent, ContainerSetData, ContainerSetSlot, EntityAnimation, EntityEvent,
+        EntityMove, EntityPositionSync, ForgetLevelChunk, GameEvent, HurtAnimation,
+        InteractionHand, LevelChunkWithLight, LevelEvent, LightUpdate, LoginClientbound,
+        MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime,
+        PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth, PlayerInput,
+        PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate, RemoveEntities, Respawn,
+        RotateHead, SectionBlocksUpdate, SetActionBarText, SetCamera, SetChunkCacheCenter,
+        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetEntityData, SetEntityLink,
+        SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers, SetPlayerInventory,
+        SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat,
+        TakeItemEntity, TeleportEntity, TickingState, TickingStep, UpdateAttributes, UseItem,
+        UseItemOn, Vec3d,
     },
 };
 use bbb_world::{
@@ -146,6 +147,8 @@ pub enum NetEvent {
     GameEvent(GameEvent),
     SetTime(PlayTime),
     BlockEntityData(BlockEntityData),
+    BlockEvent(BlockEvent),
+    LevelEvent(LevelEvent),
     BlockUpdate(BlockUpdate),
     SectionBlocksUpdate(SectionBlocksUpdate),
     SetChunkCacheCenter(SetChunkCacheCenter),
@@ -500,6 +503,12 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::BlockEntityData(update) => {
                     emit(&events, NetEvent::BlockEntityData(update)).await?;
                 }
+                PlayClientbound::BlockEvent(event) => {
+                    emit(&events, NetEvent::BlockEvent(event)).await?;
+                }
+                PlayClientbound::LevelEvent(event) => {
+                    emit(&events, NetEvent::LevelEvent(event)).await?;
+                }
                 PlayClientbound::PlayerPosition(update) => {
                     player_position_state = update.apply_to_state(player_position_state);
                     emit(&events, NetEvent::PlayerPosition(update)).await?;
@@ -839,6 +848,12 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::BlockChangedAck(_) => {}
                 PlayClientbound::BlockEntityData(update) => {
                     world.apply_block_entity_data(update)?;
+                }
+                PlayClientbound::BlockEvent(event) => {
+                    world.apply_block_event(event);
+                }
+                PlayClientbound::LevelEvent(event) => {
+                    world.apply_level_event(event);
                 }
                 PlayClientbound::GameEvent(_) | PlayClientbound::SetTime(_) => {}
                 PlayClientbound::PlayerPosition(update) => {

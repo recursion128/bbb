@@ -86,6 +86,7 @@ pub enum PlayClientbound {
     BlockChangedAck(BlockChangedAck),
     BlockDestruction(BlockDestruction),
     BlockEntityData(BlockEntityData),
+    BlockEvent(BlockEvent),
     BlockUpdate(BlockUpdate),
     ChunkBatchStart,
     ChunkBatchFinished { batch_size: i32 },
@@ -101,6 +102,7 @@ pub enum PlayClientbound {
     GameEvent(GameEvent),
     HurtAnimation(HurtAnimation),
     KeepAlive { id: i64 },
+    LevelEvent(LevelEvent),
     Ping { id: i32 },
     Login(PlayLogin),
     MoveEntity(EntityMove),
@@ -484,6 +486,14 @@ pub struct BlockDestruction {
     pub progress: u8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockEvent {
+    pub pos: BlockPos,
+    pub b0: u8,
+    pub b1: u8,
+    pub block_id: i32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SectionBlocksUpdate {
     pub section_x: i32,
@@ -524,6 +534,14 @@ pub struct ForgetLevelChunk {
 pub struct GameEvent {
     pub event_id: u8,
     pub param: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LevelEvent {
+    pub event_type: i32,
+    pub pos: BlockPos,
+    pub data: i32,
+    pub global: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1346,6 +1364,15 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 raw_nbt: decoder.remaining().to_vec(),
             }))
         }
+        ids::play::CLIENTBOUND_BLOCK_EVENT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::BlockEvent(BlockEvent {
+                pos: decode_block_pos(decoder.read_i64()?),
+                b0: decoder.read_u8()?,
+                b1: decoder.read_u8()?,
+                block_id: decoder.read_var_i32()?,
+            }))
+        }
         ids::play::CLIENTBOUND_BLOCK_UPDATE => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::BlockUpdate(decode_block_update(
@@ -1688,6 +1715,15 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::UpdateAttributes(decode_update_attributes(
                 &mut decoder,
             )?))
+        }
+        ids::play::CLIENTBOUND_LEVEL_EVENT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: decoder.read_i32()?,
+                pos: decode_block_pos(decoder.read_i64()?),
+                data: decoder.read_i32()?,
+                global: decoder.read_bool()?,
+            }))
         }
         ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT => {
             let mut decoder = Decoder::new(payload);
@@ -4111,6 +4147,28 @@ mod tests {
         );
 
         let mut payload = Encoder::new();
+        payload.write_i32(2001);
+        payload.write_i64(encode_block_pos(34, 64, -45));
+        payload.write_i32(9);
+        payload.write_bool(true);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_LEVEL_EVENT, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 2001,
+                pos: BlockPos {
+                    x: 34,
+                    y: 64,
+                    z: -45,
+                },
+                data: 9,
+                global: true,
+            })
+        );
+
+        let mut payload = Encoder::new();
         payload.write_i64(12345);
         payload.write_var_i32(2);
         payload.write_var_i32(0);
@@ -4211,6 +4269,28 @@ mod tests {
                     z: -45,
                 },
                 progress: 7,
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_i64(encode_block_pos(35, 64, -46));
+        payload.write_u8(1);
+        payload.write_u8(5);
+        payload.write_var_i32(123);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_EVENT, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BlockEvent(BlockEvent {
+                pos: BlockPos {
+                    x: 35,
+                    y: 64,
+                    z: -46,
+                },
+                b0: 1,
+                b1: 5,
+                block_id: 123,
             })
         );
 
