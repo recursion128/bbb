@@ -16,6 +16,11 @@ const MAX_FIREWORK_EXPLOSIONS: usize = 256;
 const MAX_LORE_LINES: usize = 256;
 const MAX_MOB_EFFECT_DETAILS_DEPTH: usize = 16;
 const MAX_PARTIAL_DATA_COMPONENT_PREDICATES: usize = 64;
+const MAX_PLAYER_NAME_CHARS: usize = 16;
+const MAX_POT_DECORATIONS: usize = 4;
+const MAX_PROFILE_PROPERTIES: usize = 16;
+const MAX_PROFILE_PROPERTY_NAME_CHARS: usize = 64;
+const MAX_PROFILE_SIGNATURE_CHARS: usize = 1024;
 const MAX_STRING_CHARS: usize = 32767;
 const MAX_WRITABLE_BOOK_PAGE_CHARS: usize = 1024;
 const MAX_WRITTEN_BOOK_TITLE_CHARS: usize = 32;
@@ -172,11 +177,18 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         61 => decode_instrument_component(decoder)?,
         62 => decode_trim_material_holder(decoder)?,
         64 => decode_jukebox_playable(decoder)?,
+        65 => decode_holder_set(decoder)?,
+        67 => decode_lodestone_tracker(decoder)?,
+        70 => decode_resolvable_profile(decoder)?,
         80 => decode_sound_event_holder(decoder)?,
         102 => decode_painting_variant_holder(decoder)?,
         // firework_explosion and fireworks.
         68 => decode_firework_explosion(decoder)?,
         69 => decode_fireworks(decoder)?,
+        // banner_patterns, pot_decorations, and bees.
+        72 => decode_banner_pattern_layers(decoder)?,
+        74 => decode_pot_decorations(decoder)?,
+        77 => decode_bees(decoder)?,
         // block_state.
         76 => decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?,
         // container.
@@ -269,6 +281,19 @@ fn decode_optional_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
     if decoder.read_bool()? {
         decode_sound_event_holder(decoder)?;
     }
+    Ok(())
+}
+
+fn decode_optional_global_pos(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decode_global_pos(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_global_pos(decoder: &mut Decoder<'_>) -> Result<()> {
+    decode_identifier(decoder)?;
+    decoder.read_i64()?;
     Ok(())
 }
 
@@ -654,6 +679,62 @@ fn decode_jukebox_playable(decoder: &mut Decoder<'_>) -> Result<()> {
     decode_holder_with_direct(decoder, decode_direct_jukebox_song)
 }
 
+fn decode_lodestone_tracker(decoder: &mut Decoder<'_>) -> Result<()> {
+    decode_optional_global_pos(decoder)?;
+    decoder.read_bool()?;
+    Ok(())
+}
+
+fn decode_resolvable_profile(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decode_game_profile(decoder)?;
+    } else {
+        decode_partial_profile(decoder)?;
+    }
+    decode_player_skin_patch(decoder)
+}
+
+fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_uuid()?;
+    decoder.read_string(MAX_PLAYER_NAME_CHARS)?;
+    decode_game_profile_properties(decoder)
+}
+
+fn decode_partial_profile(decoder: &mut Decoder<'_>) -> Result<()> {
+    decode_optional_string(decoder, MAX_PLAYER_NAME_CHARS)?;
+    if decoder.read_bool()? {
+        decoder.read_uuid()?;
+    }
+    decode_game_profile_properties(decoder)
+}
+
+fn decode_game_profile_properties(decoder: &mut Decoder<'_>) -> Result<()> {
+    let property_count = read_bounded_len(decoder, MAX_PROFILE_PROPERTIES)?;
+    for _ in 0..property_count {
+        decoder.read_string(MAX_PROFILE_PROPERTY_NAME_CHARS)?;
+        decoder.read_string(MAX_STRING_CHARS)?;
+        decode_optional_string(decoder, MAX_PROFILE_SIGNATURE_CHARS)?;
+    }
+    Ok(())
+}
+
+fn decode_player_skin_patch(decoder: &mut Decoder<'_>) -> Result<()> {
+    for _ in 0..3 {
+        decode_optional_resource_texture(decoder)?;
+    }
+    if decoder.read_bool()? {
+        decoder.read_bool()?;
+    }
+    Ok(())
+}
+
+fn decode_optional_resource_texture(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decode_identifier(decoder)?;
+    }
+    Ok(())
+}
+
 fn decode_direct_jukebox_song(decoder: &mut Decoder<'_>) -> Result<()> {
     decode_sound_event_holder(decoder)?;
     decode_component_summary_from_decoder(decoder)?;
@@ -669,6 +750,44 @@ fn decode_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
 fn decode_direct_sound_event(decoder: &mut Decoder<'_>) -> Result<()> {
     decode_identifier(decoder)?;
     decode_optional_f32(decoder)
+}
+
+fn decode_banner_pattern_layers(decoder: &mut Decoder<'_>) -> Result<()> {
+    let layer_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..layer_count {
+        decode_banner_pattern_holder(decoder)?;
+        decoder.read_var_i32()?;
+    }
+    Ok(())
+}
+
+fn decode_banner_pattern_holder(decoder: &mut Decoder<'_>) -> Result<()> {
+    decode_holder_with_direct(decoder, decode_direct_banner_pattern)
+}
+
+fn decode_direct_banner_pattern(decoder: &mut Decoder<'_>) -> Result<()> {
+    decode_identifier(decoder)?;
+    decoder.read_string(MAX_STRING_CHARS)?;
+    Ok(())
+}
+
+fn decode_pot_decorations(decoder: &mut Decoder<'_>) -> Result<()> {
+    let item_count = read_bounded_len(decoder, MAX_POT_DECORATIONS)?;
+    for _ in 0..item_count {
+        decoder.read_var_i32()?;
+    }
+    Ok(())
+}
+
+fn decode_bees(decoder: &mut Decoder<'_>) -> Result<()> {
+    let bee_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..bee_count {
+        decoder.read_var_i32()?;
+        skip_nbt_tag_from_decoder(decoder)?;
+        decoder.read_var_i32()?;
+        decoder.read_var_i32()?;
+    }
+    Ok(())
 }
 
 fn decode_painting_variant_holder(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -837,6 +956,7 @@ fn read_bounded_len(decoder: &mut Decoder<'_>, max: usize) -> Result<usize> {
 mod tests {
     use super::*;
     use crate::codec::Encoder;
+    use uuid::Uuid;
 
     #[test]
     fn decodes_supported_data_component_patch_values() {
@@ -1054,6 +1174,77 @@ mod tests {
             payload.write_var_i32(*component_id);
             payload.write_var_i32(index as i32);
         }
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: component_ids.len(),
+                added_type_ids: component_ids.to_vec(),
+                removed_type_ids: Vec::new(),
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_profile_and_decorative_data_components() {
+        let mut payload = Encoder::new();
+        let component_ids = [65, 67, 70, 72, 74, 77];
+        payload.write_var_i32(component_ids.len() as i32);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(65);
+        write_holder_set_tag(&mut payload, "minecraft:no_item_required");
+
+        payload.write_var_i32(67);
+        payload.write_bool(true);
+        payload.write_string("minecraft:overworld");
+        payload.write_i64(0);
+        payload.write_bool(true);
+
+        payload.write_var_i32(70);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_string("Steve");
+        payload.write_bool(true);
+        payload.write_uuid(Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678));
+        payload.write_var_i32(1);
+        payload.write_string("textures");
+        payload.write_string("skin-value");
+        payload.write_bool(true);
+        payload.write_string("skin-signature");
+        payload.write_bool(true);
+        payload.write_string("minecraft:entity/player/wide/steve");
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_string("minecraft:entity/player/elytra");
+        payload.write_bool(true);
+        payload.write_bool(true);
+
+        payload.write_var_i32(72);
+        payload.write_var_i32(2);
+        payload.write_var_i32(5);
+        payload.write_var_i32(14);
+        payload.write_var_i32(0);
+        payload.write_string("minecraft:stripe_bottom");
+        payload.write_string("block.minecraft.banner.stripe_bottom");
+        payload.write_var_i32(11);
+
+        payload.write_var_i32(74);
+        payload.write_var_i32(4);
+        for item_id in [1, 2, 3, 4] {
+            payload.write_var_i32(item_id);
+        }
+
+        payload.write_var_i32(77);
+        payload.write_var_i32(1);
+        payload.write_var_i32(3);
+        payload.write_bytes(&empty_nbt_compound_root());
+        payload.write_var_i32(40);
+        payload.write_var_i32(2400);
 
         let payload = payload.into_inner();
         let mut decoder = Decoder::new(&payload);
