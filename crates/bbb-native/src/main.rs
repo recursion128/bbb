@@ -1897,6 +1897,30 @@ fn drain_net_events(
                 counters.level_event_packets += 1;
                 world.apply_level_event(event);
             }
+            NetEvent::InitializeBorder(border) => {
+                counters.initialize_border_packets += 1;
+                world.apply_initialize_border(border);
+            }
+            NetEvent::SetBorderCenter(update) => {
+                counters.set_border_center_packets += 1;
+                world.apply_set_border_center(update);
+            }
+            NetEvent::SetBorderLerpSize(update) => {
+                counters.set_border_lerp_size_packets += 1;
+                world.apply_set_border_lerp_size(update);
+            }
+            NetEvent::SetBorderSize(update) => {
+                counters.set_border_size_packets += 1;
+                world.apply_set_border_size(update);
+            }
+            NetEvent::SetBorderWarningDelay(update) => {
+                counters.set_border_warning_delay_packets += 1;
+                world.apply_set_border_warning_delay(update);
+            }
+            NetEvent::SetBorderWarningDistance(update) => {
+                counters.set_border_warning_distance_packets += 1;
+                world.apply_set_border_warning_distance(update);
+            }
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
             }
@@ -3440,6 +3464,75 @@ mod tests {
         assert_eq!(level_event.pos, BlockPos { x: 3, y: 4, z: 5 });
         assert_eq!(level_event.data, 42);
         assert!(level_event.global);
+    }
+
+    #[test]
+    fn border_events_update_world_and_counters() {
+        let (tx, mut rx) = mpsc::channel(6);
+        tx.try_send(NetEvent::InitializeBorder(
+            bbb_protocol::packets::InitializeBorder {
+                new_center_x: 1.0,
+                new_center_z: 2.0,
+                old_size: 100.0,
+                new_size: 200.0,
+                lerp_time: 40,
+                new_absolute_max_size: 500,
+                warning_blocks: 6,
+                warning_time: 7,
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::SetBorderCenter(
+            bbb_protocol::packets::SetBorderCenter {
+                new_center_x: 3.0,
+                new_center_z: 4.0,
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::SetBorderLerpSize(
+            bbb_protocol::packets::SetBorderLerpSize {
+                old_size: 200.0,
+                new_size: 300.0,
+                lerp_time: 50,
+            },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::SetBorderSize(
+            bbb_protocol::packets::SetBorderSize { size: 250.0 },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::SetBorderWarningDelay(
+            bbb_protocol::packets::SetBorderWarningDelay { warning_delay: 9 },
+        ))
+        .unwrap();
+        tx.try_send(NetEvent::SetBorderWarningDistance(
+            bbb_protocol::packets::SetBorderWarningDistance { warning_blocks: 8 },
+        ))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            6
+        );
+        assert_eq!(counters.initialize_border_packets, 1);
+        assert_eq!(counters.set_border_center_packets, 1);
+        assert_eq!(counters.set_border_lerp_size_packets, 1);
+        assert_eq!(counters.set_border_size_packets, 1);
+        assert_eq!(counters.set_border_warning_delay_packets, 1);
+        assert_eq!(counters.set_border_warning_distance_packets, 1);
+
+        let border = world.world_border();
+        assert_eq!(border.center_x, 3.0);
+        assert_eq!(border.center_z, 4.0);
+        assert_eq!(border.size, 250.0);
+        assert_eq!(border.lerp_target, 250.0);
+        assert_eq!(border.lerp_time, 0);
+        assert_eq!(border.absolute_max_size, 500);
+        assert_eq!(border.warning_blocks, 8);
+        assert_eq!(border.warning_time, 9);
     }
 
     #[test]

@@ -13,16 +13,17 @@ use bbb_protocol::{
         BlockUpdate, ChunksBiomes, ClientIntent, ConfigurationClientbound, ContainerClose,
         ContainerSetContent, ContainerSetData, ContainerSetSlot, EntityAnimation, EntityEvent,
         EntityMove, EntityPositionSync, ForgetLevelChunk, GameEvent, HurtAnimation,
-        InteractionHand, LevelChunkWithLight, LevelEvent, LightUpdate, LoginClientbound,
-        MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin, PlayTime,
-        PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth, PlayerInput,
-        PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate, RemoveEntities, Respawn,
-        RotateHead, SectionBlocksUpdate, SetActionBarText, SetCamera, SetChunkCacheCenter,
-        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetEntityData, SetEntityLink,
-        SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers, SetPlayerInventory,
-        SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat,
-        TakeItemEntity, TeleportEntity, TickingState, TickingStep, UpdateAttributes, UseItem,
-        UseItemOn, Vec3d,
+        InitializeBorder, InteractionHand, LevelChunkWithLight, LevelEvent, LightUpdate,
+        LoginClientbound, MoveVehicle, OpenScreen, PickItemFromBlock, PlayClientbound, PlayLogin,
+        PlayTime, PlayerAbilities, PlayerAction, PlayerCommand, PlayerExperience, PlayerHealth,
+        PlayerInput, PlayerPositionState, PlayerPositionUpdate, PlayerRotationUpdate,
+        RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SetActionBarText,
+        SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
+        SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
+        SetCursorItem, SetDefaultSpawnPosition, SetEntityData, SetEntityLink, SetEntityMotion,
+        SetEquipment, SetHeldSlot, SetPassengers, SetPlayerInventory, SetSimulationDistance,
+        SetSubtitleText, SetTitleText, SetTitlesAnimation, SystemChat, TakeItemEntity,
+        TeleportEntity, TickingState, TickingStep, UpdateAttributes, UseItem, UseItemOn, Vec3d,
     },
 };
 use bbb_world::{
@@ -144,6 +145,12 @@ pub enum NetEvent {
     TickingState(TickingState),
     TickingStep(TickingStep),
     SetCamera(SetCamera),
+    InitializeBorder(InitializeBorder),
+    SetBorderCenter(SetBorderCenter),
+    SetBorderLerpSize(SetBorderLerpSize),
+    SetBorderSize(SetBorderSize),
+    SetBorderWarningDelay(SetBorderWarningDelay),
+    SetBorderWarningDistance(SetBorderWarningDistance),
     GameEvent(GameEvent),
     SetTime(PlayTime),
     BlockEntityData(BlockEntityData),
@@ -606,6 +613,24 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetCamera(camera) => {
                     emit(&events, NetEvent::SetCamera(camera)).await?;
                 }
+                PlayClientbound::InitializeBorder(border) => {
+                    emit(&events, NetEvent::InitializeBorder(border)).await?;
+                }
+                PlayClientbound::SetBorderCenter(update) => {
+                    emit(&events, NetEvent::SetBorderCenter(update)).await?;
+                }
+                PlayClientbound::SetBorderLerpSize(update) => {
+                    emit(&events, NetEvent::SetBorderLerpSize(update)).await?;
+                }
+                PlayClientbound::SetBorderSize(update) => {
+                    emit(&events, NetEvent::SetBorderSize(update)).await?;
+                }
+                PlayClientbound::SetBorderWarningDelay(update) => {
+                    emit(&events, NetEvent::SetBorderWarningDelay(update)).await?;
+                }
+                PlayClientbound::SetBorderWarningDistance(update) => {
+                    emit(&events, NetEvent::SetBorderWarningDistance(update)).await?;
+                }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     emit(&events, NetEvent::LevelChunkWithLight(chunk)).await?;
                 }
@@ -845,6 +870,24 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 | PlayClientbound::TickingState(_)
                 | PlayClientbound::TickingStep(_)
                 | PlayClientbound::SetCamera(_) => {}
+                PlayClientbound::InitializeBorder(border) => {
+                    world.apply_initialize_border(border);
+                }
+                PlayClientbound::SetBorderCenter(update) => {
+                    world.apply_set_border_center(update);
+                }
+                PlayClientbound::SetBorderLerpSize(update) => {
+                    world.apply_set_border_lerp_size(update);
+                }
+                PlayClientbound::SetBorderSize(update) => {
+                    world.apply_set_border_size(update);
+                }
+                PlayClientbound::SetBorderWarningDelay(update) => {
+                    world.apply_set_border_warning_delay(update);
+                }
+                PlayClientbound::SetBorderWarningDistance(update) => {
+                    world.apply_set_border_warning_distance(update);
+                }
                 PlayClientbound::BlockChangedAck(_) => {}
                 PlayClientbound::BlockEntityData(update) => {
                     world.apply_block_entity_data(update)?;

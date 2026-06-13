@@ -101,6 +101,7 @@ pub enum PlayClientbound {
     ForgetLevelChunk(ForgetLevelChunk),
     GameEvent(GameEvent),
     HurtAnimation(HurtAnimation),
+    InitializeBorder(InitializeBorder),
     KeepAlive { id: i64 },
     LevelEvent(LevelEvent),
     Ping { id: i32 },
@@ -115,6 +116,11 @@ pub enum PlayClientbound {
     Respawn(Respawn),
     RotateHead(RotateHead),
     SetActionBarText(SetActionBarText),
+    SetBorderCenter(SetBorderCenter),
+    SetBorderLerpSize(SetBorderLerpSize),
+    SetBorderSize(SetBorderSize),
+    SetBorderWarningDelay(SetBorderWarningDelay),
+    SetBorderWarningDistance(SetBorderWarningDistance),
     SetCamera(SetCamera),
     SetCursorItem(SetCursorItem),
     SetDefaultSpawnPosition(SetDefaultSpawnPosition),
@@ -195,6 +201,46 @@ pub struct EntityEvent {
 pub struct HurtAnimation {
     pub id: i32,
     pub yaw: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct InitializeBorder {
+    pub new_center_x: f64,
+    pub new_center_z: f64,
+    pub old_size: f64,
+    pub new_size: f64,
+    pub lerp_time: i64,
+    pub new_absolute_max_size: i32,
+    pub warning_blocks: i32,
+    pub warning_time: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SetBorderCenter {
+    pub new_center_x: f64,
+    pub new_center_z: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SetBorderLerpSize {
+    pub old_size: f64,
+    pub new_size: f64,
+    pub lerp_time: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SetBorderSize {
+    pub size: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetBorderWarningDelay {
+    pub warning_delay: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetBorderWarningDistance {
+    pub warning_blocks: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -1452,6 +1498,19 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 yaw: decoder.read_f32()?,
             }))
         }
+        ids::play::CLIENTBOUND_INITIALIZE_BORDER => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::InitializeBorder(InitializeBorder {
+                new_center_x: decoder.read_f64()?,
+                new_center_z: decoder.read_f64()?,
+                old_size: decoder.read_f64()?,
+                new_size: decoder.read_f64()?,
+                lerp_time: decoder.read_var_i64()?,
+                new_absolute_max_size: decoder.read_var_i32()?,
+                warning_blocks: decoder.read_var_i32()?,
+                warning_time: decoder.read_var_i32()?,
+            }))
+        }
         ids::play::CLIENTBOUND_KEEP_ALIVE => Ok(PlayClientbound::KeepAlive {
             id: Decoder::new(payload).read_i64()?,
         }),
@@ -1545,6 +1604,43 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::SetActionBarText(SetActionBarText {
                 content: decode_component_summary_from_decoder(&mut decoder)?,
             }))
+        }
+        ids::play::CLIENTBOUND_SET_BORDER_CENTER => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetBorderCenter(SetBorderCenter {
+                new_center_x: decoder.read_f64()?,
+                new_center_z: decoder.read_f64()?,
+            }))
+        }
+        ids::play::CLIENTBOUND_SET_BORDER_LERP_SIZE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetBorderLerpSize(SetBorderLerpSize {
+                old_size: decoder.read_f64()?,
+                new_size: decoder.read_f64()?,
+                lerp_time: decoder.read_var_i64()?,
+            }))
+        }
+        ids::play::CLIENTBOUND_SET_BORDER_SIZE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetBorderSize(SetBorderSize {
+                size: decoder.read_f64()?,
+            }))
+        }
+        ids::play::CLIENTBOUND_SET_BORDER_WARNING_DELAY => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetBorderWarningDelay(
+                SetBorderWarningDelay {
+                    warning_delay: decoder.read_var_i32()?,
+                },
+            ))
+        }
+        ids::play::CLIENTBOUND_SET_BORDER_WARNING_DISTANCE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::SetBorderWarningDistance(
+                SetBorderWarningDistance {
+                    warning_blocks: decoder.read_var_i32()?,
+                },
+            ))
         }
         ids::play::CLIENTBOUND_SET_CAMERA => {
             let mut decoder = Decoder::new(payload);
@@ -3079,6 +3175,130 @@ mod tests {
     fn decodes_bundle_delimiter_packet() {
         let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BUNDLE_DELIMITER, &[]).unwrap();
         assert_eq!(packet, PlayClientbound::BundleDelimiter);
+    }
+
+    #[test]
+    fn decodes_initialize_border_packet() {
+        let mut payload = Encoder::new();
+        payload.write_f64(12.5);
+        payload.write_f64(-30.25);
+        payload.write_f64(60000000.0);
+        payload.write_f64(300.0);
+        payload.write_var_i64(1200);
+        payload.write_var_i32(29999984);
+        payload.write_var_i32(5);
+        payload.write_var_i32(15);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_INITIALIZE_BORDER,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::InitializeBorder(InitializeBorder {
+                new_center_x: 12.5,
+                new_center_z: -30.25,
+                old_size: 60000000.0,
+                new_size: 300.0,
+                lerp_time: 1200,
+                new_absolute_max_size: 29999984,
+                warning_blocks: 5,
+                warning_time: 15,
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_set_border_center_packet() {
+        let mut payload = Encoder::new();
+        payload.write_f64(-7.75);
+        payload.write_f64(42.125);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_BORDER_CENTER,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetBorderCenter(SetBorderCenter {
+                new_center_x: -7.75,
+                new_center_z: 42.125,
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_set_border_lerp_size_packet() {
+        let mut payload = Encoder::new();
+        payload.write_f64(512.0);
+        payload.write_f64(128.0);
+        payload.write_var_i64(6000);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_BORDER_LERP_SIZE,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetBorderLerpSize(SetBorderLerpSize {
+                old_size: 512.0,
+                new_size: 128.0,
+                lerp_time: 6000,
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_set_border_size_packet() {
+        let mut payload = Encoder::new();
+        payload.write_f64(2048.0);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_BORDER_SIZE,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetBorderSize(SetBorderSize { size: 2048.0 })
+        );
+    }
+
+    #[test]
+    fn decodes_set_border_warning_delay_packet() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(30);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_BORDER_WARNING_DELAY,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetBorderWarningDelay(SetBorderWarningDelay { warning_delay: 30 })
+        );
+    }
+
+    #[test]
+    fn decodes_set_border_warning_distance_packet() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(8);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_SET_BORDER_WARNING_DISTANCE,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::SetBorderWarningDistance(SetBorderWarningDistance {
+                warning_blocks: 8
+            })
+        );
     }
 
     #[test]
