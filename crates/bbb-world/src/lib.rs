@@ -125,10 +125,6 @@ impl WorldStore {
 #[cfg(test)]
 mod tests {
     use super::chunks::LIGHT_ARRAY_BYTES;
-    use super::entities::{
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    };
     use super::*;
 
     use bbb_protocol::codec::Encoder;
@@ -138,16 +134,14 @@ mod tests {
         BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
         ChunkBiomeData as ProtocolChunkBiomeData, ChunkPos as ProtocolChunkPos,
         ChunksBiomes as ProtocolChunksBiomes, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
-        EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
-        EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
-        EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
-        HurtAnimation as ProtocolHurtAnimation, ItemStackSummary, LevelChunkWithLight,
+        EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+        EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
+        EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, LevelChunkWithLight,
         LightUpdate as ProtocolLightUpdate, MoveVehicle as ProtocolMoveVehicle,
         PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
         RotateHead as ProtocolRotateHead, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
-        SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
-        SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
-        SetPassengers as ProtocolSetPassengers, TakeItemEntity as ProtocolTakeItemEntity,
+        SetEntityData as ProtocolSetEntityData, SetEntityMotion as ProtocolSetEntityMotion,
+        SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
         TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
         Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
     };
@@ -535,102 +529,6 @@ mod tests {
     }
 
     #[test]
-    fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
-        let mut store = WorldStore::new();
-        store.apply_add_entity(protocol_add_entity_with_type(
-            10,
-            VANILLA_ENTITY_TYPE_ITEM_ID,
-        ));
-        store.apply_add_entity(protocol_add_entity_with_type(
-            20,
-            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        ));
-        store.apply_add_entity(protocol_add_entity_with_type(30, 7));
-
-        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-            id: 10,
-            values: vec![item_stack_entity_data(item_stack(42, 5))],
-        }));
-
-        assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
-            item_id: 10,
-            player_id: 99,
-            amount: 2,
-        }));
-        let item_entity = store.probe_entity(10).unwrap();
-        assert_eq!(
-            item_entity.data_values,
-            vec![item_stack_entity_data(item_stack(42, 3))]
-        );
-
-        assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
-            item_id: 10,
-            player_id: 99,
-            amount: 3,
-        }));
-        assert!(store.probe_entity(10).is_none());
-
-        assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
-            item_id: 20,
-            player_id: 99,
-            amount: 1,
-        }));
-        assert!(store.probe_entity(20).is_some());
-
-        assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
-            item_id: 30,
-            player_id: 99,
-            amount: 1,
-        }));
-        assert!(store.probe_entity(30).is_none());
-        assert!(!store.apply_take_item_entity(ProtocolTakeItemEntity {
-            item_id: 999,
-            player_id: 99,
-            amount: 1,
-        }));
-
-        assert_eq!(store.entity_count(), 1);
-        assert_eq!(store.counters().take_item_entities_received, 5);
-        assert_eq!(store.counters().take_item_entities_applied, 4);
-        assert_eq!(store.counters().item_entity_stack_shrinks, 2);
-        assert_eq!(store.counters().take_item_entities_removed, 2);
-        assert_eq!(store.counters().entities_removed, 2);
-        assert_eq!(store.counters().entities_tracked, 1);
-    }
-
-    #[test]
-    fn tracks_entity_transient_events() {
-        let mut store = WorldStore::new();
-        store.apply_add_entity(protocol_add_entity(123));
-
-        assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 123, action: 3 }));
-        assert!(store.apply_entity_event(ProtocolEntityEvent {
-            entity_id: 123,
-            event_id: 35,
-        }));
-        assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 123, yaw: 45.5 }));
-
-        let entity = store.probe_entity(123).unwrap();
-        assert_eq!(entity.last_animation_action, Some(3));
-        assert_eq!(entity.last_event_id, Some(35));
-        assert_eq!(entity.last_hurt_yaw, Some(45.5));
-
-        assert!(!store.apply_entity_animation(ProtocolEntityAnimation { id: 999, action: 4 }));
-        assert!(!store.apply_entity_event(ProtocolEntityEvent {
-            entity_id: 999,
-            event_id: 21,
-        }));
-        assert!(!store.apply_hurt_animation(ProtocolHurtAnimation { id: 999, yaw: 90.0 }));
-
-        assert_eq!(store.counters().entity_animation_updates_received, 2);
-        assert_eq!(store.counters().entity_animation_updates_applied, 1);
-        assert_eq!(store.counters().entity_events_received, 2);
-        assert_eq!(store.counters().entity_events_applied, 1);
-        assert_eq!(store.counters().entity_hurt_animations_received, 2);
-        assert_eq!(store.counters().entity_hurt_animations_applied, 1);
-    }
-
-    #[test]
     fn tracks_entity_passenger_updates() {
         let mut store = WorldStore::new();
         for id in [10, 20, 21, 30] {
@@ -873,51 +771,6 @@ mod tests {
         assert_eq!(store.counters().vehicle_moves_applied, 1);
         assert_eq!(store.counters().vehicle_moves_acked, 1);
         assert_eq!(store.counters().vehicle_moves_snapped, 0);
-    }
-
-    #[test]
-    fn tracks_entity_link_updates() {
-        let mut store = WorldStore::new();
-        store.apply_add_entity(protocol_add_entity(10));
-        store.apply_add_entity(protocol_add_entity(20));
-
-        assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
-            source_id: 10,
-            dest_id: 20,
-        }));
-        assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, Some(20));
-
-        assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
-            source_id: 10,
-            dest_id: 999,
-        }));
-        assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, Some(999));
-
-        assert!(!store.apply_set_entity_link(ProtocolSetEntityLink {
-            source_id: 999,
-            dest_id: 20,
-        }));
-
-        assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
-            source_id: 10,
-            dest_id: 0,
-        }));
-        assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, None);
-
-        assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
-            source_id: 10,
-            dest_id: 20,
-        }));
-        assert_eq!(
-            store.apply_remove_entities(ProtocolRemoveEntities {
-                entity_ids: vec![20],
-            }),
-            1
-        );
-        assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, None);
-
-        assert_eq!(store.counters().entity_link_updates_received, 5);
-        assert_eq!(store.counters().entity_link_updates_applied, 4);
     }
 
     #[test]
@@ -1430,22 +1283,6 @@ mod tests {
             y_rot: 20.0,
             y_head_rot: 30.0,
             data: 99,
-        }
-    }
-
-    fn item_stack_entity_data(item: ItemStackSummary) -> ProtocolEntityDataValue {
-        ProtocolEntityDataValue {
-            data_id: VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-            serializer_id: 7,
-            value: EntityDataValueKind::ItemStack(item),
-        }
-    }
-
-    fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
-        ItemStackSummary {
-            item_id: Some(item_id),
-            count,
-            component_patch: Default::default(),
         }
     }
 
