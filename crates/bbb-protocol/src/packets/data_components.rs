@@ -86,8 +86,8 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         // These components use DataComponentType's codec-backed stream codec,
         // which serializes one NBT tag through ByteBufCodecs.fromCodec*.
         // custom_data, intangible_projectile, map_decorations, debug_stick_state,
-        // recipes, lock, and container_loot.
-        0 | 22 | 47 | 57 | 66 | 78 | 79 => skip_nbt_tag_from_decoder(decoder)?,
+        // bucket_entity_data, recipes, lock, and container_loot.
+        0 | 22 | 47 | 57 | 59 | 66 | 78 | 79 => skip_nbt_tag_from_decoder(decoder)?,
         // 26.1 DataComponents: max_stack_size, max_damage, damage, repair_cost,
         // additional_trade_cost, map_id, ominous_bottle_amplifier, enchantable.
         1 | 2 | 3 | 19 | 31 | 41 | 46 | 63 => {
@@ -173,6 +173,8 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         55 => decode_written_book_content(decoder)?,
         // trim.
         56 => decode_armor_trim(decoder)?,
+        // entity_data and block_entity_data.
+        58 | 60 => decode_typed_entity_data(decoder)?,
         // instrument, trim material, jukebox playable, break sound, painting variant.
         61 => decode_instrument_component(decoder)?,
         62 => decode_trim_material_holder(decoder)?,
@@ -630,6 +632,11 @@ fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
 fn decode_armor_trim(decoder: &mut Decoder<'_>) -> Result<()> {
     decode_trim_material_holder(decoder)?;
     decode_trim_pattern_holder(decoder)
+}
+
+fn decode_typed_entity_data(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_var_i32()?;
+    skip_nbt_tag_from_decoder(decoder)
 }
 
 fn decode_instrument_component(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1245,6 +1252,38 @@ mod tests {
         payload.write_bytes(&empty_nbt_compound_root());
         payload.write_var_i32(40);
         payload.write_var_i32(2400);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: component_ids.len(),
+                added_type_ids: component_ids.to_vec(),
+                removed_type_ids: Vec::new(),
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_entity_data_components() {
+        let mut payload = Encoder::new();
+        let component_ids = [58, 59, 60];
+        payload.write_var_i32(component_ids.len() as i32);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(58);
+        payload.write_var_i32(1);
+        payload.write_bytes(&empty_nbt_compound_root());
+
+        payload.write_var_i32(59);
+        payload.write_bytes(&empty_nbt_compound_root());
+
+        payload.write_var_i32(60);
+        payload.write_var_i32(2);
+        payload.write_bytes(&empty_nbt_compound_root());
 
         let payload = payload.into_inner();
         let mut decoder = Decoder::new(&payload);
