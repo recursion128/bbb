@@ -83,6 +83,15 @@ pub enum NetEvent {
     CompressionSet {
         threshold: i32,
     },
+    CookieRequest {
+        key: String,
+        response_payload_present: bool,
+    },
+    StoreCookie {
+        key: String,
+        payload_len: usize,
+        stored_cookie_count: usize,
+    },
     PacketSeen {
         state: ConnectionState,
         packet_id: i32,

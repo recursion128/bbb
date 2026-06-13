@@ -6,6 +6,8 @@ use crate::{
     ids, PROTOCOL_VERSION,
 };
 
+const MAX_COOKIE_PAYLOAD_SIZE: usize = 5120;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(i32)]
 pub enum ClientIntent {
@@ -35,6 +37,7 @@ pub enum LoginClientbound {
     LoginFinished { profile: GameProfile },
     SetCompression { threshold: i32 },
     CustomQuery { transaction_id: i32 },
+    CookieRequest(CookieRequest),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +56,8 @@ pub enum ConfigurationClientbound {
     SelectKnownPacks {
         offered: usize,
     },
+    CookieRequest(CookieRequest),
+    StoreCookie(StoreCookie),
     Transfer(Transfer),
     Unknown {
         packet_id: i32,
@@ -64,6 +69,17 @@ pub enum ConfigurationClientbound {
 pub struct Transfer {
     pub host: String,
     pub port: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CookieRequest {
+    pub key: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StoreCookie {
+    pub key: String,
+    pub payload: Vec<u8>,
 }
 
 pub fn encode_handshake(host: &str, port: u16, intent: ClientIntent) -> (i32, Vec<u8>) {
@@ -125,8 +141,21 @@ pub fn decode_login_clientbound(packet_id: i32, payload: &[u8]) -> Result<LoginC
         ids::login::CLIENTBOUND_CUSTOM_QUERY => Ok(LoginClientbound::CustomQuery {
             transaction_id: Decoder::new(payload).read_var_i32()?,
         }),
+        ids::login::CLIENTBOUND_COOKIE_REQUEST => {
+            let mut decoder = Decoder::new(payload);
+            Ok(LoginClientbound::CookieRequest(decode_cookie_request(
+                &mut decoder,
+            )?))
+        }
         id => Err(ProtocolError::UnknownPacket { state: "login", id }),
     }
+}
+
+pub fn encode_login_cookie_response(key: &str, payload: Option<&[u8]>) -> (i32, Vec<u8>) {
+    (
+        ids::login::SERVERBOUND_COOKIE_RESPONSE,
+        encode_cookie_response_payload(key, payload),
+    )
 }
 
 pub fn encode_client_information_default() -> (i32, Vec<u8>) {
@@ -163,6 +192,13 @@ pub fn encode_configuration_keep_alive(id: i64) -> (i32, Vec<u8>) {
     (ids::configuration::SERVERBOUND_KEEP_ALIVE, out.into_inner())
 }
 
+pub fn encode_configuration_cookie_response(key: &str, payload: Option<&[u8]>) -> (i32, Vec<u8>) {
+    (
+        ids::configuration::SERVERBOUND_COOKIE_RESPONSE,
+        encode_cookie_response_payload(key, payload),
+    )
+}
+
 pub fn encode_configuration_pong(id: i32) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_i32(id);
@@ -183,6 +219,12 @@ pub fn decode_configuration_clientbound(
     payload: &[u8],
 ) -> Result<ConfigurationClientbound> {
     match packet_id {
+        ids::configuration::CLIENTBOUND_COOKIE_REQUEST => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::CookieRequest(
+                decode_cookie_request(&mut decoder)?,
+            ))
+        }
         ids::configuration::CLIENTBOUND_FINISH_CONFIGURATION => {
             Ok(ConfigurationClientbound::Finish)
         }
@@ -205,6 +247,12 @@ pub fn decode_configuration_clientbound(
             let offered = decoder.read_len()?;
             Ok(ConfigurationClientbound::SelectKnownPacks { offered })
         }
+        ids::configuration::CLIENTBOUND_STORE_COOKIE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::StoreCookie(decode_store_cookie(
+                &mut decoder,
+            )?))
+        }
         ids::configuration::CLIENTBOUND_TRANSFER => {
             let mut decoder = Decoder::new(payload);
             Ok(ConfigurationClientbound::Transfer(decode_transfer(
@@ -218,11 +266,42 @@ pub fn decode_configuration_clientbound(
     }
 }
 
+pub(super) fn decode_cookie_request(decoder: &mut Decoder<'_>) -> Result<CookieRequest> {
+    Ok(CookieRequest {
+        key: decoder.read_string(32767)?,
+    })
+}
+
+pub(super) fn decode_store_cookie(decoder: &mut Decoder<'_>) -> Result<StoreCookie> {
+    let key = decoder.read_string(32767)?;
+    let len = decoder.read_len()?;
+    if len > MAX_COOKIE_PAYLOAD_SIZE {
+        return Err(ProtocolError::PacketTooLarge(len, MAX_COOKIE_PAYLOAD_SIZE));
+    }
+    Ok(StoreCookie {
+        key,
+        payload: decoder.read_exact(len, "cookie payload")?.to_vec(),
+    })
+}
+
 pub(super) fn decode_transfer(decoder: &mut Decoder<'_>) -> Result<Transfer> {
     Ok(Transfer {
         host: decoder.read_string(32767)?,
         port: decoder.read_var_i32()?,
     })
+}
+
+pub(super) fn encode_cookie_response_payload(key: &str, payload: Option<&[u8]>) -> Vec<u8> {
+    let mut out = Encoder::new();
+    out.write_string(key);
+    if let Some(payload) = payload {
+        out.write_bool(true);
+        out.write_var_i32(payload.len() as i32);
+        out.write_bytes(payload);
+    } else {
+        out.write_bool(false);
+    }
+    out.into_inner()
 }
 
 fn decode_game_profile(decoder: &mut Decoder<'_>) -> Result<GameProfile> {

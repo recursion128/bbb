@@ -49,6 +49,42 @@ fn transfer_event_updates_snapshot_counters() {
 }
 
 #[test]
+fn cookie_events_update_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::StoreCookie {
+        key: "bbb:session".to_string(),
+        payload_len: 3,
+        stored_cookie_count: 1,
+    })
+    .unwrap();
+    tx.try_send(NetEvent::CookieRequest {
+        key: "bbb:session".to_string(),
+        response_payload_present: true,
+    })
+    .unwrap();
+    tx.try_send(NetEvent::CookieRequest {
+        key: "bbb:missing".to_string(),
+        response_payload_present: false,
+    })
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+    assert_eq!(counters.last_cookie_key.as_deref(), Some("bbb:missing"));
+    assert_eq!(counters.store_cookie_packets, 1);
+    assert_eq!(counters.stored_cookie_count, 1);
+    assert_eq!(counters.stored_cookie_bytes, 3);
+    assert_eq!(counters.cookie_request_packets, 2);
+    assert_eq!(counters.cookie_response_hits, 1);
+    assert_eq!(counters.cookie_response_misses, 1);
+}
+
+#[test]
 fn take_item_entity_event_updates_snapshot_counter() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::TakeItemEntity(

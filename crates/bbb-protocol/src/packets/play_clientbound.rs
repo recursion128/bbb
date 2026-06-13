@@ -120,6 +120,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 inventory::decode_container_set_slot(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_COOKIE_REQUEST => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::CookieRequest(
+                connection::decode_cookie_request(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_COOLDOWN => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::Cooldown(client_state::decode_cooldown(
@@ -492,6 +498,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             ))
         }
         ids::play::CLIENTBOUND_START_CONFIGURATION => Ok(PlayClientbound::StartConfiguration),
+        ids::play::CLIENTBOUND_STORE_COOKIE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::StoreCookie(
+                connection::decode_store_cookie(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_SYSTEM_CHAT => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SystemChat(

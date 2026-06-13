@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use anyhow::{bail, Context, Result};
 use bbb_protocol::{
     ids,
@@ -30,6 +32,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
     let mut player_position_state = PlayerPositionState::default();
     let mut player_was_dead = false;
     let mut play_tick = None;
+    let mut server_cookies = BTreeMap::<String, Vec<u8>>::new();
 
     let (id, payload) = packets::encode_handshake(&options.host, options.port, ClientIntent::Login);
     conn.send_packet(id, &payload).await?;
@@ -63,6 +66,12 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                         &response.into_inner(),
                     )
                     .await?;
+                }
+                LoginClientbound::CookieRequest(request) => {
+                    let payload = server_cookies.get(&request.key).map(Vec::as_slice);
+                    let (id, response) =
+                        packets::encode_login_cookie_response(&request.key, payload);
+                    conn.send_packet(id, &response).await?;
                 }
                 LoginClientbound::LoginFinished { .. } => {
                     let (id, payload) = packets::encode_login_acknowledged();
@@ -100,6 +109,15 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     ConfigurationClientbound::SelectKnownPacks { .. } => {
                         let (id, payload) = packets::encode_select_known_packs_empty();
                         conn.send_packet(id, &payload).await?;
+                    }
+                    ConfigurationClientbound::CookieRequest(request) => {
+                        let payload = server_cookies.get(&request.key).map(Vec::as_slice);
+                        let (id, response) =
+                            packets::encode_configuration_cookie_response(&request.key, payload);
+                        conn.send_packet(id, &response).await?;
+                    }
+                    ConfigurationClientbound::StoreCookie(cookie) => {
+                        server_cookies.insert(cookie.key, cookie.payload);
                     }
                     ConfigurationClientbound::Transfer(_) => {}
                     ConfigurationClientbound::Unknown { .. } => {}
@@ -162,6 +180,12 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::ContainerSetSlot(update) => {
                     world.apply_container_set_slot(update);
                 }
+                PlayClientbound::CookieRequest(request) => {
+                    let payload = server_cookies.get(&request.key).map(Vec::as_slice);
+                    let (id, response) =
+                        packets::encode_play_cookie_response(&request.key, payload);
+                    conn.send_packet(id, &response).await?;
+                }
                 PlayClientbound::OpenScreen(update) => {
                     world.apply_open_screen(update);
                 }
@@ -177,6 +201,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     conn.send_packet(id, &payload).await?;
                     state = ConnectionState::Configuration;
                     play_tick = None;
+                }
+                PlayClientbound::StoreCookie(cookie) => {
+                    server_cookies.insert(cookie.key, cookie.payload);
                 }
                 PlayClientbound::Login(login) => {
                     world.apply_login(&login);

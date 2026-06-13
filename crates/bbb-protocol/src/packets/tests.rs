@@ -1130,6 +1130,88 @@ fn decodes_transfer_packets_in_configuration_and_play() {
     );
 }
 
+#[test]
+fn decodes_and_encodes_cookie_packets() {
+    let mut request_payload = Encoder::new();
+    request_payload.write_string("bbb:session");
+    let request_payload = request_payload.into_inner();
+
+    assert_eq!(
+        decode_login_clientbound(ids::login::CLIENTBOUND_COOKIE_REQUEST, &request_payload).unwrap(),
+        LoginClientbound::CookieRequest(CookieRequest {
+            key: "bbb:session".to_string(),
+        })
+    );
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_COOKIE_REQUEST,
+            &request_payload,
+        )
+        .unwrap(),
+        ConfigurationClientbound::CookieRequest(CookieRequest {
+            key: "bbb:session".to_string(),
+        })
+    );
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_COOKIE_REQUEST, &request_payload).unwrap(),
+        PlayClientbound::CookieRequest(CookieRequest {
+            key: "bbb:session".to_string(),
+        })
+    );
+
+    let mut store_payload = Encoder::new();
+    store_payload.write_string("bbb:session");
+    store_payload.write_var_i32(3);
+    store_payload.write_bytes(&[1, 2, 3]);
+    let store_payload = store_payload.into_inner();
+
+    let store = StoreCookie {
+        key: "bbb:session".to_string(),
+        payload: vec![1, 2, 3],
+    };
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_STORE_COOKIE,
+            &store_payload,
+        )
+        .unwrap(),
+        ConfigurationClientbound::StoreCookie(store.clone())
+    );
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_STORE_COOKIE, &store_payload).unwrap(),
+        PlayClientbound::StoreCookie(store)
+    );
+
+    let (id, payload) = encode_login_cookie_response("bbb:session", Some(&[1, 2, 3]));
+    assert_eq!(id, ids::login::SERVERBOUND_COOKIE_RESPONSE);
+    assert_cookie_response_payload(&payload, "bbb:session", Some(&[1, 2, 3]));
+
+    let (id, payload) = encode_configuration_cookie_response("bbb:missing", None);
+    assert_eq!(id, ids::configuration::SERVERBOUND_COOKIE_RESPONSE);
+    assert_cookie_response_payload(&payload, "bbb:missing", None);
+
+    let (id, payload) = encode_play_cookie_response("bbb:session", Some(&[4, 5]));
+    assert_eq!(id, ids::play::SERVERBOUND_COOKIE_RESPONSE);
+    assert_cookie_response_payload(&payload, "bbb:session", Some(&[4, 5]));
+}
+
+fn assert_cookie_response_payload(payload: &[u8], key: &str, expected: Option<&[u8]>) {
+    let mut decoder = Decoder::new(payload);
+    assert_eq!(decoder.read_string(32767).unwrap(), key);
+    match expected {
+        Some(expected) => {
+            assert!(decoder.read_bool().unwrap());
+            let len = decoder.read_len().unwrap();
+            assert_eq!(
+                decoder.read_exact(len, "cookie response").unwrap(),
+                expected
+            );
+        }
+        None => assert!(!decoder.read_bool().unwrap()),
+    }
+    assert!(decoder.is_empty());
+}
+
 fn encode_block_pos(x: i32, y: i32, z: i32) -> i64 {
     (((x as i64) & 0x3ffffff) << 38) | (((z as i64) & 0x3ffffff) << 12) | ((y as i64) & 0xfff)
 }

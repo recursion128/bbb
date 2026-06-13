@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use anyhow::{anyhow, bail, Context, Result};
 use bbb_protocol::{
     frame::encode_packet,
@@ -31,6 +33,7 @@ pub async fn run_offline_event_stream(
     let mut player_position_state = PlayerPositionState::default();
     let mut player_was_dead = false;
     let mut play_tick = None;
+    let mut server_cookies = BTreeMap::<String, Vec<u8>>::new();
 
     emit(&events, NetEvent::Connected).await?;
     emit(&events, NetEvent::StateChanged { state }).await?;
@@ -85,6 +88,21 @@ pub async fn run_offline_event_stream(
                     )
                     .await?;
                 }
+                LoginClientbound::CookieRequest(request) => {
+                    let payload = server_cookies.get(&request.key).map(Vec::as_slice);
+                    let payload_present = payload.is_some();
+                    let (id, response) =
+                        packets::encode_login_cookie_response(&request.key, payload);
+                    conn.send_packet(id, &response).await?;
+                    emit(
+                        &events,
+                        NetEvent::CookieRequest {
+                            key: request.key,
+                            response_payload_present: payload_present,
+                        },
+                    )
+                    .await?;
+                }
                 LoginClientbound::LoginFinished { .. } => {
                     let (id, payload) = packets::encode_login_acknowledged();
                     conn.send_packet(id, &payload).await?;
@@ -130,6 +148,35 @@ pub async fn run_offline_event_stream(
                     ConfigurationClientbound::SelectKnownPacks { .. } => {
                         let (id, payload) = packets::encode_select_known_packs_empty();
                         conn.send_packet(id, &payload).await?;
+                    }
+                    ConfigurationClientbound::CookieRequest(request) => {
+                        let payload = server_cookies.get(&request.key).map(Vec::as_slice);
+                        let payload_present = payload.is_some();
+                        let (id, response) =
+                            packets::encode_configuration_cookie_response(&request.key, payload);
+                        conn.send_packet(id, &response).await?;
+                        emit(
+                            &events,
+                            NetEvent::CookieRequest {
+                                key: request.key,
+                                response_payload_present: payload_present,
+                            },
+                        )
+                        .await?;
+                    }
+                    ConfigurationClientbound::StoreCookie(cookie) => {
+                        let key = cookie.key;
+                        let payload_len = cookie.payload.len();
+                        server_cookies.insert(key.clone(), cookie.payload);
+                        emit(
+                            &events,
+                            NetEvent::StoreCookie {
+                                key,
+                                payload_len,
+                                stored_cookie_count: server_cookies.len(),
+                            },
+                        )
+                        .await?;
                     }
                     ConfigurationClientbound::Transfer(transfer) => {
                         emit(&events, NetEvent::Transfer(transfer)).await?;
@@ -194,6 +241,21 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::ContainerSetSlot(update) => {
                     emit(&events, NetEvent::ContainerSetSlot(update)).await?;
                 }
+                PlayClientbound::CookieRequest(request) => {
+                    let payload = server_cookies.get(&request.key).map(Vec::as_slice);
+                    let payload_present = payload.is_some();
+                    let (id, response) =
+                        packets::encode_play_cookie_response(&request.key, payload);
+                    conn.send_packet(id, &response).await?;
+                    emit(
+                        &events,
+                        NetEvent::CookieRequest {
+                            key: request.key,
+                            response_payload_present: payload_present,
+                        },
+                    )
+                    .await?;
+                }
                 PlayClientbound::OpenScreen(update) => {
                     emit(&events, NetEvent::OpenScreen(update)).await?;
                 }
@@ -210,6 +272,20 @@ pub async fn run_offline_event_stream(
                     state = ConnectionState::Configuration;
                     play_tick = None;
                     emit(&events, NetEvent::StateChanged { state }).await?;
+                }
+                PlayClientbound::StoreCookie(cookie) => {
+                    let key = cookie.key;
+                    let payload_len = cookie.payload.len();
+                    server_cookies.insert(key.clone(), cookie.payload);
+                    emit(
+                        &events,
+                        NetEvent::StoreCookie {
+                            key,
+                            payload_len,
+                            stored_cookie_count: server_cookies.len(),
+                        },
+                    )
+                    .await?;
                 }
                 PlayClientbound::Login(login) => {
                     emit(&events, NetEvent::Login(login)).await?;

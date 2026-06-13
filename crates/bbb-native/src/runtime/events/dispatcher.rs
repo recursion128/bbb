@@ -41,6 +41,29 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::CompressionSet { threshold } => {
                 counters.compression_threshold = Some(threshold);
             }
+            NetEvent::CookieRequest {
+                key,
+                response_payload_present,
+            } => {
+                counters.last_cookie_key = Some(key);
+                counters.cookie_request_packets += 1;
+                if response_payload_present {
+                    counters.cookie_response_hits += 1;
+                } else {
+                    counters.cookie_response_misses += 1;
+                }
+            }
+            NetEvent::StoreCookie {
+                key,
+                payload_len,
+                stored_cookie_count,
+            } => {
+                counters.last_cookie_key = Some(key);
+                counters.store_cookie_packets += 1;
+                counters.stored_cookie_count = stored_cookie_count;
+                counters.stored_cookie_bytes =
+                    counters.stored_cookie_bytes.saturating_add(payload_len);
+            }
             NetEvent::Transfer(transfer) => {
                 counters.last_transfer = Some(bbb_control::TransferTarget {
                     host: transfer.host,

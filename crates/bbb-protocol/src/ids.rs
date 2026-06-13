@@ -15,12 +15,14 @@ pub mod login {
     pub const SERVERBOUND_KEY: i32 = 0x01;
     pub const SERVERBOUND_CUSTOM_QUERY_ANSWER: i32 = 0x02;
     pub const SERVERBOUND_LOGIN_ACKNOWLEDGED: i32 = 0x03;
+    pub const SERVERBOUND_COOKIE_RESPONSE: i32 = 0x04;
 
     pub const CLIENTBOUND_LOGIN_DISCONNECT: i32 = 0x00;
     pub const CLIENTBOUND_HELLO: i32 = 0x01;
     pub const CLIENTBOUND_LOGIN_FINISHED: i32 = 0x02;
     pub const CLIENTBOUND_LOGIN_COMPRESSION: i32 = 0x03;
     pub const CLIENTBOUND_CUSTOM_QUERY: i32 = 0x04;
+    pub const CLIENTBOUND_COOKIE_REQUEST: i32 = 0x05;
 }
 
 pub mod configuration {
@@ -33,10 +35,12 @@ pub mod configuration {
     pub const SERVERBOUND_RESOURCE_PACK: i32 = 0x06;
     pub const SERVERBOUND_SELECT_KNOWN_PACKS: i32 = 0x07;
 
+    pub const CLIENTBOUND_COOKIE_REQUEST: i32 = 0x00;
     pub const CLIENTBOUND_FINISH_CONFIGURATION: i32 = 0x03;
     pub const CLIENTBOUND_KEEP_ALIVE: i32 = 0x04;
     pub const CLIENTBOUND_PING: i32 = 0x05;
     pub const CLIENTBOUND_REGISTRY_DATA: i32 = 0x07;
+    pub const CLIENTBOUND_STORE_COOKIE: i32 = 0x0a;
     pub const CLIENTBOUND_TRANSFER: i32 = 0x0b;
     pub const CLIENTBOUND_SELECT_KNOWN_PACKS: i32 = 0x0e;
 }
@@ -191,6 +195,7 @@ pub mod play {
     pub const SERVERBOUND_CLIENT_INFORMATION: i32 = 14;
     pub const SERVERBOUND_COMMAND_SUGGESTION: i32 = 15;
     pub const SERVERBOUND_CONFIGURATION_ACKNOWLEDGED: i32 = 16;
+    pub const SERVERBOUND_COOKIE_RESPONSE: i32 = 21;
     pub const SERVERBOUND_KEEP_ALIVE: i32 = 28;
     pub const SERVERBOUND_MOVE_PLAYER_POS_ROT: i32 = 31;
     pub const SERVERBOUND_MOVE_VEHICLE: i32 = 34;
