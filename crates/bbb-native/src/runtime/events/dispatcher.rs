@@ -278,6 +278,9 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::SetSubtitleText(text) => {
                 apply_subtitle_text_update(counters, text);
             }
+            NetEvent::ClearTitles(clear) => {
+                apply_clear_titles_update(counters, clear);
+            }
             NetEvent::SetTitlesAnimation(animation) => {
                 apply_titles_animation_update(counters, animation);
             }

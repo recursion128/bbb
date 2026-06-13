@@ -84,6 +84,22 @@ pub(super) fn apply_subtitle_text_update(
     counters.subtitle_text_packets += 1;
 }
 
+pub(super) fn apply_clear_titles_update(
+    counters: &mut NetCounters,
+    clear: bbb_protocol::packets::ClearTitles,
+) {
+    counters.title.title = None;
+    counters.title.subtitle = None;
+    counters.title.title_time = 0;
+    if clear.reset_times {
+        let defaults = bbb_control::TitleState::default();
+        counters.title.fade_in = defaults.fade_in;
+        counters.title.stay = defaults.stay;
+        counters.title.fade_out = defaults.fade_out;
+    }
+    counters.clear_titles_packets += 1;
+}
+
 pub(super) fn apply_titles_animation_update(
     counters: &mut NetCounters,
     animation: bbb_protocol::packets::SetTitlesAnimation,

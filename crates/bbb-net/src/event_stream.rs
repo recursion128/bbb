@@ -354,6 +354,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetSubtitleText(text) => {
                     emit(&events, NetEvent::SetSubtitleText(text)).await?;
                 }
+                PlayClientbound::ClearTitles(clear) => {
+                    emit(&events, NetEvent::ClearTitles(clear)).await?;
+                }
                 PlayClientbound::SetTitlesAnimation(animation) => {
                     emit(&events, NetEvent::SetTitlesAnimation(animation)).await?;
                 }

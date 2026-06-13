@@ -441,6 +441,16 @@ fn decodes_title_camera_and_ticking_packets() {
     );
 
     let mut payload = Encoder::new();
+    payload.write_bool(true);
+    let packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_CLEAR_TITLES, &payload.into_inner())
+            .unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::ClearTitles(ClearTitles { reset_times: true })
+    );
+
+    let mut payload = Encoder::new();
     payload.write_i32(10);
     payload.write_i32(70);
     payload.write_i32(-5);

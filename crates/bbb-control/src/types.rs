@@ -75,6 +75,7 @@ pub struct NetCounters {
     pub action_bar_packets: usize,
     pub title_text_packets: usize,
     pub subtitle_text_packets: usize,
+    pub clear_titles_packets: usize,
     pub titles_animation_packets: usize,
     pub ticking_state_packets: usize,
     pub ticking_step_packets: usize,

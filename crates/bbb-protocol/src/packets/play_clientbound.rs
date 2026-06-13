@@ -84,6 +84,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
+        ids::play::CLIENTBOUND_CLEAR_TITLES => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::ClearTitles(
+                client_state::decode_clear_titles(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_COMMAND_SUGGESTIONS => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::CommandSuggestions(

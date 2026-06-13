@@ -301,6 +301,74 @@ fn hud_text_and_ticking_updates_snapshot_counters() {
 }
 
 #[test]
+fn clear_titles_resets_visible_title_and_optionally_times() {
+    let mut counters = NetCounters::default();
+
+    apply_titles_animation_update(
+        &mut counters,
+        bbb_protocol::packets::SetTitlesAnimation {
+            fade_in: 5,
+            stay: 40,
+            fade_out: 15,
+        },
+    );
+    apply_title_text_update(
+        &mut counters,
+        bbb_protocol::packets::SetTitleText {
+            content: "Quest complete".to_string(),
+        },
+    );
+    apply_subtitle_text_update(
+        &mut counters,
+        bbb_protocol::packets::SetSubtitleText {
+            content: "Return to camp".to_string(),
+        },
+    );
+
+    apply_clear_titles_update(
+        &mut counters,
+        bbb_protocol::packets::ClearTitles { reset_times: false },
+    );
+    assert_eq!(counters.title.title, None);
+    assert_eq!(counters.title.subtitle, None);
+    assert_eq!(counters.title.title_time, 0);
+    assert_eq!(counters.title.fade_in, 5);
+    assert_eq!(counters.title.stay, 40);
+    assert_eq!(counters.title.fade_out, 15);
+
+    apply_titles_animation_update(
+        &mut counters,
+        bbb_protocol::packets::SetTitlesAnimation {
+            fade_in: 6,
+            stay: 50,
+            fade_out: 16,
+        },
+    );
+    apply_title_text_update(
+        &mut counters,
+        bbb_protocol::packets::SetTitleText {
+            content: "Again".to_string(),
+        },
+    );
+    apply_subtitle_text_update(
+        &mut counters,
+        bbb_protocol::packets::SetSubtitleText {
+            content: "Reset timers".to_string(),
+        },
+    );
+
+    apply_clear_titles_update(
+        &mut counters,
+        bbb_protocol::packets::ClearTitles { reset_times: true },
+    );
+    assert_eq!(counters.title, bbb_control::TitleState::default());
+    assert_eq!(counters.clear_titles_packets, 2);
+    assert_eq!(counters.title_text_packets, 2);
+    assert_eq!(counters.subtitle_text_packets, 2);
+    assert_eq!(counters.titles_animation_packets, 2);
+}
+
+#[test]
 fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
     let mut counters = NetCounters {
         player_entity_id: Some(9),

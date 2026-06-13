@@ -18,6 +18,7 @@ pub enum PlayClientbound {
     ChunkBatchStart,
     ChunkBatchFinished { batch_size: i32 },
     ChunksBiomes(ChunksBiomes),
+    ClearTitles(ClearTitles),
     CommandSuggestions(CommandSuggestions),
     ContainerClose(ContainerClose),
     ContainerSetContent(ContainerSetContent),

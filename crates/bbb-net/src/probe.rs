@@ -241,6 +241,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::SetActionBarText(_)
                 | PlayClientbound::SetTitleText(_)
                 | PlayClientbound::SetSubtitleText(_)
+                | PlayClientbound::ClearTitles(_)
                 | PlayClientbound::SetTitlesAnimation(_)
                 | PlayClientbound::TickingState(_)
                 | PlayClientbound::TickingStep(_)

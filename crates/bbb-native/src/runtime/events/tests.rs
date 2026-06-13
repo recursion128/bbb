@@ -48,6 +48,52 @@ fn take_item_entity_event_updates_snapshot_counter() {
 }
 
 #[test]
+fn clear_titles_event_updates_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::SetTitlesAnimation(
+        bbb_protocol::packets::SetTitlesAnimation {
+            fade_in: 5,
+            stay: 40,
+            fade_out: 15,
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::SetTitleText(
+        bbb_protocol::packets::SetTitleText {
+            content: "Quest complete".to_string(),
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::SetSubtitleText(
+        bbb_protocol::packets::SetSubtitleText {
+            content: "Return to camp".to_string(),
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::ClearTitles(bbb_protocol::packets::ClearTitles {
+        reset_times: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ClearTitles(bbb_protocol::packets::ClearTitles {
+        reset_times: true,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        5
+    );
+    assert_eq!(counters.title, bbb_control::TitleState::default());
+    assert_eq!(counters.clear_titles_packets, 2);
+    assert_eq!(counters.title_text_packets, 1);
+    assert_eq!(counters.subtitle_text_packets, 1);
+    assert_eq!(counters.titles_animation_packets, 1);
+}
+
+#[test]
 fn command_suggestions_event_updates_world_and_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::CommandSuggestions(

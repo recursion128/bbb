@@ -317,6 +317,11 @@ pub struct SetSubtitleText {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClearTitles {
+    pub reset_times: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SetTitlesAnimation {
     pub fade_in: i32,
     pub stay: i32,
@@ -457,6 +462,12 @@ pub(super) fn decode_remove_mob_effect(decoder: &mut Decoder<'_>) -> Result<Remo
 pub(super) fn decode_set_action_bar_text(decoder: &mut Decoder<'_>) -> Result<SetActionBarText> {
     Ok(SetActionBarText {
         content: decode_component_summary_from_decoder(decoder)?,
+    })
+}
+
+pub(super) fn decode_clear_titles(decoder: &mut Decoder<'_>) -> Result<ClearTitles> {
+    Ok(ClearTitles {
+        reset_times: decoder.read_bool()?,
     })
 }
 
