@@ -1,6 +1,6 @@
 use super::super::{
-    TerrainFace, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainTextureAtlas, TerrainTint,
-    TerrainTransparency, TerrainUvRect, TerrainVertex,
+    TerrainFace, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainQuad, TerrainTextureAtlas,
+    TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::{
     geometry::{box_face_corners, face_uvs_from_crop, FaceDef, CROSS_FACES, FACES},
@@ -164,6 +164,56 @@ pub(super) fn emit_box(
             face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
             face_shade[face_index],
             face_light_emission[face_index],
+        );
+    }
+}
+
+pub(super) fn emit_quads(
+    mesh: &mut TerrainMesh,
+    x: i32,
+    y: i32,
+    z: i32,
+    block_state_id: i32,
+    material: TerrainMaterialClass,
+    light: TerrainLight,
+    quads: &[TerrainQuad],
+    atlas: &TerrainTextureAtlas,
+    lookup: &TerrainChunkLookup<'_>,
+    mode: TerrainMeshMode,
+) {
+    for quad in quads {
+        let face_material = effective_face_material(material, quad.transparency);
+        if !mode.is_meshed(face_material) {
+            continue;
+        }
+        if let Some(cull_face) = quad.cull {
+            let (dx, dy, dz) = cull_offset(cull_face);
+            let neighbor = lookup.cell(x + dx, y + dy, z + dz);
+            if neighbor
+                .map(|neighbor| mode.culls_face_between(face_material, neighbor.material))
+                .unwrap_or(false)
+            {
+                mesh.culled_faces += 1;
+                continue;
+            }
+        }
+
+        emit_custom_quad_with_uvs(
+            mesh,
+            x,
+            y,
+            z,
+            block_state_id,
+            face_material,
+            light,
+            quad.tint,
+            atlas.rect(quad.texture_index),
+            quad.normal,
+            quad.corners
+                .map(|corner| [corner[0] / 16.0, corner[1] / 16.0, corner[2] / 16.0]),
+            quad.uvs,
+            quad.shade,
+            quad.light_emission,
         );
     }
 }

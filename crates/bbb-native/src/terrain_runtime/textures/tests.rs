@@ -318,6 +318,53 @@ fn model_crosses_preserve_per_layer_textures_tints_and_light() {
 }
 
 #[test]
+fn model_quads_preserve_texture_tint_transparency_and_light() {
+    let mut texture_state = TerrainTextureState::default();
+    texture_state
+        .indices
+        .insert("minecraft:block/rotated".to_string(), 7);
+
+    let shape = texture_state.terrain_render_shape_for_block(
+        "minecraft:grass_block",
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Opaque,
+        BlockModelShape::Quads(vec![bbb_pack::BlockModelQuad {
+            face: bbb_pack::BlockModelFace::North,
+            corners: [
+                [0.0, 0.0, 0.0],
+                [16.0, 0.0, 0.0],
+                [16.0, 16.0, 0.0],
+                [0.0, 16.0, 0.0],
+            ],
+            normal: [0.0, 0.0, -1.0],
+            uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            cull: Some(bbb_pack::BlockModelFace::North),
+            tint_index: Some(0),
+            texture: Some("minecraft:block/rotated".to_string()),
+            force_translucent: true,
+            shade: false,
+            light_emission: 12,
+        }]),
+        [0; 6],
+        [TerrainTint::WHITE; 6],
+        [TerrainTransparency::OPAQUE; 6],
+        Some(4),
+        None,
+    );
+
+    let TerrainRenderShape::Quads(quads) = shape else {
+        panic!("expected quad render shape");
+    };
+    assert_eq!(quads.len(), 1);
+    assert_eq!(quads[0].texture_index, 7);
+    assert_eq!(quads[0].cull, Some(TerrainFace::North));
+    assert_eq!(quads[0].tint, TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59));
+    assert!(quads[0].transparency.has_translucent);
+    assert!(!quads[0].shade);
+    assert_eq!(quads[0].light_emission, 12);
+}
+
+#[test]
 fn block_tint_uses_default_vanilla_color_classes() {
     let textures = TerrainTextureState::default();
     assert_eq!(

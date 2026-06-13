@@ -4,7 +4,7 @@ mod geometry;
 use std::collections::HashMap;
 
 use self::{
-    emitter::{effective_face_material, emit_box, emit_cross, emit_face},
+    emitter::{effective_face_material, emit_box, emit_cross, emit_face, emit_quads},
     geometry::FACES,
 };
 use super::{
@@ -181,6 +181,22 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         }
                         continue;
                     }
+                    TerrainRenderShape::Quads(model_quads) => {
+                        emit_quads(
+                            &mut mesh,
+                            world_x,
+                            world_y,
+                            world_z,
+                            cell.block_state_id,
+                            cell.material,
+                            cell.light,
+                            model_quads,
+                            atlas,
+                            lookup,
+                            mode,
+                        );
+                        continue;
+                    }
                     TerrainRenderShape::Cube => {}
                 }
 
@@ -241,6 +257,9 @@ fn has_texture_layer_overrides(cell: &TerrainCell) -> bool {
                     .iter()
                     .any(|transparency| !is_opaque_transparency(*transparency))
             }),
+            TerrainRenderShape::Quads(model_quads) => model_quads
+                .iter()
+                .any(|model_quad| !is_opaque_transparency(model_quad.transparency)),
             TerrainRenderShape::Cube | TerrainRenderShape::Cross { .. } => false,
         }
 }

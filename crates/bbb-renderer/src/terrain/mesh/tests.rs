@@ -1,7 +1,8 @@
 use super::super::{
     build_opaque_chunk_mesh, build_opaque_terrain_meshes, build_opaque_terrain_meshes_with_atlas,
     build_terrain_mesh_layers_with_atlas, build_terrain_meshes_with_atlas, TerrainBox,
-    TerrainCross, TerrainFace, TerrainLight, TerrainTint, TerrainTransparency, TerrainUvRect,
+    TerrainCross, TerrainFace, TerrainLight, TerrainQuad, TerrainTint, TerrainTransparency,
+    TerrainUvRect,
 };
 use super::*;
 
@@ -633,6 +634,49 @@ fn transparent_cube_faces_emit_in_cutout_layer() {
 
     assert_eq!(layers.opaque[0].opaque_faces, 5);
     assert_eq!(layers.cutout[0].cutout_faces, 1);
+    assert_eq!(layers.translucent[0].vertices.len(), 0);
+}
+
+#[test]
+fn quad_shape_emits_custom_vertices_in_texture_layer() {
+    let quad = TerrainQuad {
+        corners: [
+            [0.0, 0.0, 0.0],
+            [16.0, 0.0, 0.0],
+            [16.0, 16.0, 0.0],
+            [0.0, 16.0, 0.0],
+        ],
+        normal: [0.0, 0.0, -1.0],
+        uvs: [[0.0, 0.0], [0.5, 0.0], [0.5, 1.0], [0.0, 1.0]],
+        cull: None,
+        texture_index: 0,
+        tint: TerrainTint::from_rgb_u8(128, 255, 64),
+        transparency: TerrainTransparency {
+            has_transparent: true,
+            has_translucent: false,
+        },
+        shade: false,
+        light_emission: 15,
+    };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_shape(
+        7,
+        TerrainMaterialClass::Opaque,
+        0,
+        TerrainRenderShape::Quads(vec![quad]),
+    );
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.opaque[0].vertices.len(), 0);
+    assert_eq!(layers.cutout[0].cutout_faces, 1);
+    assert_eq!(layers.cutout[0].vertices.len(), 4);
+    assert_eq!(layers.cutout[0].vertices[0].position, [1.0, 0.0, 2.0]);
+    assert_eq!(layers.cutout[0].vertices[2].position, [2.0, 1.0, 2.0]);
+    assert_eq!(layers.cutout[0].vertices[0].uv, [0.0, 0.0]);
+    assert_eq!(layers.cutout[0].vertices[0].shade, 0.0);
+    assert_eq!(layers.cutout[0].vertices[0].light[0], 1.0);
     assert_eq!(layers.translucent[0].vertices.len(), 0);
 }
 

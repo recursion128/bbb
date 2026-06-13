@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use super::{
-    resolve_texture_alias, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelShape,
-    RawBlockElement, ResolvedTextureReference,
+    resolve_texture_alias, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelQuad,
+    BlockModelShape, RawBlockElement, RawBlockElementRotation, ResolvedTextureReference,
 };
 
 pub(super) fn classify_model_shape(
@@ -40,7 +40,9 @@ pub(super) fn classify_model_shape(
         if let Some(model_crosses) = multi_cross_shape(elements, textures) {
             return BlockModelShape::Crosses(model_crosses);
         }
-        return BlockModelShape::Custom;
+        return model_quads_shape(elements, textures)
+            .map(BlockModelShape::Quads)
+            .unwrap_or(BlockModelShape::Custom);
     }
 
     if elements.len() > 1 {
@@ -71,6 +73,10 @@ pub(super) fn classify_model_shape(
         return BlockModelShape::Cube;
     }
 
+    if let Some(model_quads) = model_quads_shape(elements, textures) {
+        return BlockModelShape::Quads(model_quads);
+    }
+
     BlockModelShape::Custom
 }
 
@@ -84,6 +90,8 @@ pub(super) fn combine_model_shapes(shapes: Vec<BlockModelShape>) -> BlockModelSh
     };
 
     let mut boxes = Vec::new();
+    let mut quads = Vec::new();
+    let mut has_quads = false;
     for shape in std::iter::once(first)
         .chain(std::iter::once(second))
         .chain(shapes)
@@ -91,6 +99,10 @@ pub(super) fn combine_model_shapes(shapes: Vec<BlockModelShape>) -> BlockModelSh
         match shape {
             BlockModelShape::Box(model_box) => boxes.push(model_box),
             BlockModelShape::Boxes(model_boxes) => boxes.extend(model_boxes),
+            BlockModelShape::Quads(model_quads) => {
+                has_quads = true;
+                quads.extend(model_quads);
+            }
             BlockModelShape::Cube => return BlockModelShape::Cube,
             BlockModelShape::Cross { .. }
             | BlockModelShape::Crosses(_)
@@ -98,6 +110,13 @@ pub(super) fn combine_model_shapes(shapes: Vec<BlockModelShape>) -> BlockModelSh
                 return BlockModelShape::Custom;
             }
         }
+    }
+
+    if has_quads {
+        for model_box in boxes {
+            quads.extend(box_to_quads(&model_box));
+        }
+        return BlockModelShape::Quads(quads);
     }
 
     match boxes.len() {
@@ -210,6 +229,117 @@ fn element_box_shape(
     })
 }
 
+fn model_quads_shape(
+    elements: &[RawBlockElement],
+    textures: &BTreeMap<String, ResolvedTextureReference>,
+) -> Option<Vec<BlockModelQuad>> {
+    if elements.is_empty() {
+        return None;
+    }
+    let quads = elements
+        .iter()
+        .map(|element| element_quads(element, textures))
+        .collect::<Option<Vec<_>>>()?
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    (!quads.is_empty()).then_some(quads)
+}
+
+fn element_quads(
+    element: &RawBlockElement,
+    textures: &BTreeMap<String, ResolvedTextureReference>,
+) -> Option<Vec<BlockModelQuad>> {
+    let from = element.from?;
+    let to = element.to?;
+    if from[0] >= to[0] || from[1] >= to[1] || from[2] >= to[2] {
+        return None;
+    }
+
+    let element_shade = element_shade(element);
+    let element_light_emission = element_light_emission(element)?;
+    let mut quads = Vec::with_capacity(element.faces.len());
+    for (face_name, raw_face) in &element.faces {
+        let face = BlockModelFace::from_name(face_name)?;
+        let uv = raw_face
+            .uv
+            .unwrap_or_else(|| default_face_uv_f32(from, to, face));
+        let uv_rotation = raw_face
+            .rotation
+            .map(quantize_face_uv_rotation)
+            .unwrap_or(Some(0))?;
+        let resolved_texture = resolve_texture_alias(textures, &raw_face.texture);
+        let mut corners = model_face_corners(face, from, to);
+        if let Some(rotation) = &element.rotation {
+            for corner in &mut corners {
+                *corner = rotate_element_point(*corner, rotation)?;
+            }
+        }
+        let normal = if let Some(rotation) = &element.rotation {
+            rotate_element_normal(face_normal(face), rotation)?
+        } else {
+            face_normal(face)
+        };
+        let force_translucent = resolved_texture
+            .as_ref()
+            .map(|texture| texture.force_translucent)
+            .unwrap_or(false);
+        quads.push(BlockModelQuad {
+            face,
+            corners,
+            normal,
+            uvs: face_uvs_from_crop_f32(uv, uv_rotation),
+            cull: raw_face
+                .cullface
+                .as_deref()
+                .and_then(BlockModelFace::from_name),
+            tint_index: raw_face.tintindex,
+            texture: resolved_texture.map(|texture| texture.id),
+            force_translucent,
+            shade: element_shade,
+            light_emission: element_light_emission,
+        });
+    }
+    Some(quads)
+}
+
+fn box_to_quads(model_box: &BlockModelBox) -> Vec<BlockModelQuad> {
+    let from = [
+        model_box.from[0] as f32,
+        model_box.from[1] as f32,
+        model_box.from[2] as f32,
+    ];
+    let to = [
+        model_box.to[0] as f32,
+        model_box.to[1] as f32,
+        model_box.to[2] as f32,
+    ];
+    let mut quads = Vec::new();
+    for face in BlockModelFace::ALL {
+        let index = face.index();
+        if !model_box.face_present[index] {
+            continue;
+        }
+        let corners = model_face_corners(face, from, to);
+        quads.push(BlockModelQuad {
+            face,
+            corners,
+            normal: face_normal(face),
+            uvs: face_uvs_from_crop(
+                model_box.face_uvs[index],
+                model_box.face_uv_rotations[index],
+            ),
+            cull: model_box.face_cull[index],
+            tint_index: model_box.face_tint_indices[index],
+            texture: model_box.face_textures[index].clone(),
+            force_translucent: model_box.face_force_translucent[index],
+            shade: model_box.face_shade[index],
+            light_emission: model_box.face_light_emission[index],
+        });
+    }
+    quads
+}
+
 fn quantize_vec3_0_16(values: [f32; 3]) -> Option<[u8; 3]> {
     Some([
         quantize_0_16(values[0])?,
@@ -227,6 +357,27 @@ fn quantize_uv_0_16(values: [f32; 4]) -> Option<[u8; 4]> {
     ])
 }
 
+fn face_uvs_from_crop(uv: [u8; 4], rotation: u8) -> [[f32; 2]; 4] {
+    face_uvs_from_crop_f32(
+        [uv[0] as f32, uv[1] as f32, uv[2] as f32, uv[3] as f32],
+        rotation,
+    )
+}
+
+fn face_uvs_from_crop_f32(uv: [f32; 4], rotation: u8) -> [[f32; 2]; 4] {
+    let min_u = uv[0].min(uv[2]) / 16.0;
+    let min_v = uv[1].min(uv[3]) / 16.0;
+    let max_u = uv[0].max(uv[2]) / 16.0;
+    let max_v = uv[1].max(uv[3]) / 16.0;
+    let uvs = [
+        [min_u, min_v],
+        [max_u, min_v],
+        [max_u, max_v],
+        [min_u, max_v],
+    ];
+    std::array::from_fn(|index| uvs[(index + rotation as usize) % uvs.len()])
+}
+
 fn default_face_uv(from: [u8; 3], to: [u8; 3], face: BlockModelFace) -> [u8; 4] {
     match face {
         BlockModelFace::Down => [from[0], 16 - to[2], to[0], 16 - from[2]],
@@ -235,6 +386,181 @@ fn default_face_uv(from: [u8; 3], to: [u8; 3], face: BlockModelFace) -> [u8; 4] 
         BlockModelFace::South => [from[0], 16 - to[1], to[0], 16 - from[1]],
         BlockModelFace::West => [from[2], 16 - to[1], to[2], 16 - from[1]],
         BlockModelFace::East => [16 - to[2], 16 - to[1], 16 - from[2], 16 - from[1]],
+    }
+}
+
+fn default_face_uv_f32(from: [f32; 3], to: [f32; 3], face: BlockModelFace) -> [f32; 4] {
+    match face {
+        BlockModelFace::Down => [from[0], 16.0 - to[2], to[0], 16.0 - from[2]],
+        BlockModelFace::Up => [from[0], from[2], to[0], to[2]],
+        BlockModelFace::North => [16.0 - to[0], 16.0 - to[1], 16.0 - from[0], 16.0 - from[1]],
+        BlockModelFace::South => [from[0], 16.0 - to[1], to[0], 16.0 - from[1]],
+        BlockModelFace::West => [from[2], 16.0 - to[1], to[2], 16.0 - from[1]],
+        BlockModelFace::East => [16.0 - to[2], 16.0 - to[1], 16.0 - from[2], 16.0 - from[1]],
+    }
+}
+
+fn model_face_corners(face: BlockModelFace, from: [f32; 3], to: [f32; 3]) -> [[f32; 3]; 4] {
+    match face {
+        BlockModelFace::Down => [
+            [from[0], from[1], to[2]],
+            [to[0], from[1], to[2]],
+            [to[0], from[1], from[2]],
+            [from[0], from[1], from[2]],
+        ],
+        BlockModelFace::Up => [
+            [from[0], to[1], from[2]],
+            [to[0], to[1], from[2]],
+            [to[0], to[1], to[2]],
+            [from[0], to[1], to[2]],
+        ],
+        BlockModelFace::North => [
+            [to[0], from[1], from[2]],
+            [to[0], to[1], from[2]],
+            [from[0], to[1], from[2]],
+            [from[0], from[1], from[2]],
+        ],
+        BlockModelFace::South => [
+            [from[0], from[1], to[2]],
+            [from[0], to[1], to[2]],
+            [to[0], to[1], to[2]],
+            [to[0], from[1], to[2]],
+        ],
+        BlockModelFace::West => [
+            [from[0], from[1], from[2]],
+            [from[0], to[1], from[2]],
+            [from[0], to[1], to[2]],
+            [from[0], from[1], to[2]],
+        ],
+        BlockModelFace::East => [
+            [to[0], from[1], to[2]],
+            [to[0], to[1], to[2]],
+            [to[0], to[1], from[2]],
+            [to[0], from[1], from[2]],
+        ],
+    }
+}
+
+fn face_normal(face: BlockModelFace) -> [f32; 3] {
+    match face {
+        BlockModelFace::Down => [0.0, -1.0, 0.0],
+        BlockModelFace::Up => [0.0, 1.0, 0.0],
+        BlockModelFace::North => [0.0, 0.0, -1.0],
+        BlockModelFace::South => [0.0, 0.0, 1.0],
+        BlockModelFace::West => [-1.0, 0.0, 0.0],
+        BlockModelFace::East => [1.0, 0.0, 0.0],
+    }
+}
+
+fn rotate_element_point(point: [f32; 3], rotation: &RawBlockElementRotation) -> Option<[f32; 3]> {
+    let transform = element_rotation_transform(rotation)?;
+    let mut vector = sub3(point, rotation.origin);
+    if rotation.rescale {
+        let scale = rotation_rescale(transform);
+        vector = [
+            vector[0] * scale[0],
+            vector[1] * scale[1],
+            vector[2] * scale[2],
+        ];
+    }
+    Some(add3(transform_vector(transform, vector), rotation.origin))
+}
+
+fn rotate_element_normal(normal: [f32; 3], rotation: &RawBlockElementRotation) -> Option<[f32; 3]> {
+    Some(normalize3(transform_vector(
+        element_rotation_transform(rotation)?,
+        normal,
+    )))
+}
+
+fn element_rotation_transform(rotation: &RawBlockElementRotation) -> Option<[[f32; 3]; 3]> {
+    if rotation.axis.is_some() || rotation.angle.is_some() {
+        return single_axis_rotation(rotation.axis.as_deref()?, rotation.angle?);
+    }
+    if rotation.x.is_none() && rotation.y.is_none() && rotation.z.is_none() {
+        return None;
+    }
+    let x = rotation.x.unwrap_or(0.0);
+    let y = rotation.y.unwrap_or(0.0);
+    let z = rotation.z.unwrap_or(0.0);
+    Some(euler_xyz_rotation(x, y, z))
+}
+
+fn single_axis_rotation(axis: &str, angle: f32) -> Option<[[f32; 3]; 3]> {
+    let radians = angle.to_radians();
+    let (sin, cos) = radians.sin_cos();
+    match axis.to_ascii_lowercase().as_str() {
+        "x" => Some([[1.0, 0.0, 0.0], [0.0, cos, -sin], [0.0, sin, cos]]),
+        "y" => Some([[cos, 0.0, sin], [0.0, 1.0, 0.0], [-sin, 0.0, cos]]),
+        "z" => Some([[cos, -sin, 0.0], [sin, cos, 0.0], [0.0, 0.0, 1.0]]),
+        _ => None,
+    }
+}
+
+fn euler_xyz_rotation(x: f32, y: f32, z: f32) -> [[f32; 3]; 3] {
+    multiply_rotation(
+        multiply_rotation(
+            single_axis_rotation("z", z).expect("z axis is supported"),
+            single_axis_rotation("y", y).expect("y axis is supported"),
+        ),
+        single_axis_rotation("x", x).expect("x axis is supported"),
+    )
+}
+
+fn multiply_rotation(left: [[f32; 3]; 3], right: [[f32; 3]; 3]) -> [[f32; 3]; 3] {
+    std::array::from_fn(|row| {
+        std::array::from_fn(|col| {
+            left[row][0] * right[0][col]
+                + left[row][1] * right[1][col]
+                + left[row][2] * right[2][col]
+        })
+    })
+}
+
+fn rotation_rescale(rotation: [[f32; 3]; 3]) -> [f32; 3] {
+    std::array::from_fn(|axis| {
+        let transformed = transform_vector(
+            rotation,
+            [
+                (axis == 0) as u8 as f32,
+                (axis == 1) as u8 as f32,
+                (axis == 2) as u8 as f32,
+            ],
+        );
+        let max_component = transformed
+            .into_iter()
+            .map(f32::abs)
+            .fold(0.0_f32, f32::max);
+        if max_component <= f32::EPSILON {
+            1.0
+        } else {
+            1.0 / max_component
+        }
+    })
+}
+
+fn transform_vector(matrix: [[f32; 3]; 3], vector: [f32; 3]) -> [f32; 3] {
+    [
+        matrix[0][0] * vector[0] + matrix[0][1] * vector[1] + matrix[0][2] * vector[2],
+        matrix[1][0] * vector[0] + matrix[1][1] * vector[1] + matrix[1][2] * vector[2],
+        matrix[2][0] * vector[0] + matrix[2][1] * vector[1] + matrix[2][2] * vector[2],
+    ]
+}
+
+fn sub3(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn add3(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
+}
+
+fn normalize3(vector: [f32; 3]) -> [f32; 3] {
+    let length = (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]).sqrt();
+    if length <= f32::EPSILON {
+        [0.0, 1.0, 0.0]
+    } else {
+        [vector[0] / length, vector[1] / length, vector[2] / length]
     }
 }
 

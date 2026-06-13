@@ -37,7 +37,7 @@ impl TerrainMaterialClass {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TerrainRenderShape {
     Cube,
     Cross {
@@ -57,6 +57,7 @@ pub enum TerrainRenderShape {
         face_transparency: [TerrainTransparency; 6],
     },
     Boxes(Vec<TerrainBox>),
+    Quads(Vec<TerrainQuad>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,7 +84,20 @@ pub struct TerrainCross {
     pub light_emission: u8,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct TerrainQuad {
+    pub corners: [[f32; 3]; 4],
+    pub normal: [f32; 3],
+    pub uvs: [[f32; 2]; 4],
+    pub cull: Option<TerrainFace>,
+    pub texture_index: u32,
+    pub tint: TerrainTint,
+    pub transparency: TerrainTransparency,
+    pub shade: bool,
+    pub light_emission: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TerrainCell {
     pub block_state_id: i32,
     pub material: TerrainMaterialClass,
@@ -223,7 +237,7 @@ impl TerrainCell {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TerrainChunkSnapshot {
     pub chunk_x: i32,
     pub chunk_z: i32,

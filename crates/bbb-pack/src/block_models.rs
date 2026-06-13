@@ -12,13 +12,13 @@ mod shape;
 mod types;
 
 use blockstates::RawBlockstate;
-use raw_model::{RawBlockElement, RawBlockModel};
+use raw_model::{RawBlockElement, RawBlockElementRotation, RawBlockModel};
 use resolver::{resolve_texture_alias, ResolvedTextureReference};
 use rotation::{apply_variant_rotation, rotate_model_shape};
 use shape::{classify_model_shape, combine_model_shapes};
 pub use types::{
-    BlockFaceTextures, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelShape,
-    BlockRenderModel,
+    BlockFaceTextures, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelQuad,
+    BlockModelShape, BlockRenderModel,
 };
 
 #[derive(Debug, Clone)]

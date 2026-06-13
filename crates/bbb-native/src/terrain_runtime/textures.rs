@@ -7,7 +7,7 @@ use bbb_pack::{
     TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
-    TerrainCross, TerrainFace, TerrainRenderShape, TerrainTextureAtlas, TerrainTint,
+    TerrainCross, TerrainFace, TerrainQuad, TerrainRenderShape, TerrainTextureAtlas, TerrainTint,
     TerrainTransparency, TerrainUvRect,
 };
 
@@ -398,6 +398,35 @@ impl TerrainTextureState {
                     })
                     .collect(),
             ),
+            BlockModelShape::Quads(model_quads) => TerrainRenderShape::Quads(
+                model_quads
+                    .into_iter()
+                    .map(|model_quad| TerrainQuad {
+                        corners: model_quad.corners,
+                        normal: model_quad.normal,
+                        uvs: model_quad.uvs,
+                        cull: model_quad.cull.map(model_face_to_terrain_face),
+                        texture_index: model_quad
+                            .texture
+                            .as_deref()
+                            .map(|texture| self.texture_index(texture))
+                            .unwrap_or(fallback_texture_indices[model_quad.face.index()]),
+                        tint: self.model_quad_tint(
+                            block_name,
+                            material,
+                            &model_quad,
+                            fallback_tint,
+                            biome_id,
+                            position,
+                        ),
+                        transparency: self
+                            .model_quad_transparency(&model_quad, fallback_transparency)
+                            .or(force_translucent(model_quad.force_translucent)),
+                        shade: model_quad.shade,
+                        light_emission: model_quad.light_emission,
+                    })
+                    .collect(),
+            ),
             BlockModelShape::Cube | BlockModelShape::Custom => TerrainRenderShape::Cube,
         }
     }
@@ -456,6 +485,22 @@ impl TerrainTextureState {
         })
     }
 
+    fn model_quad_transparency(
+        &self,
+        model_quad: &bbb_pack::BlockModelQuad,
+        fallback: [TerrainTransparency; 6],
+    ) -> TerrainTransparency {
+        model_quad
+            .texture
+            .as_deref()
+            .map(|texture| {
+                quad_uv_crop(model_quad.uvs)
+                    .map(|uv| self.texture_uv_transparency(texture, uv))
+                    .unwrap_or_else(|| self.texture_transparency(texture))
+            })
+            .unwrap_or(fallback[model_quad.face.index()])
+    }
+
     fn fallback_face_tints(
         &self,
         block_name: &str,
@@ -512,6 +557,28 @@ impl TerrainTextureState {
                 fallback[index]
             }
         })
+    }
+
+    fn model_quad_tint(
+        &self,
+        block_name: &str,
+        material: bbb_world::TerrainMaterialClass,
+        model_quad: &bbb_pack::BlockModelQuad,
+        fallback: [TerrainTint; 6],
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> TerrainTint {
+        if model_quad.texture.is_some() {
+            self.block_tint(
+                block_name,
+                material,
+                model_quad.tint_index,
+                biome_id,
+                position,
+            )
+        } else {
+            fallback[model_quad.face.index()]
+        }
     }
 
     fn block_tint(
@@ -694,6 +761,45 @@ fn force_translucent(force: bool) -> TerrainTransparency {
     } else {
         TerrainTransparency::OPAQUE
     }
+}
+
+fn quad_uv_crop(uvs: [[f32; 2]; 4]) -> Option<[u8; 4]> {
+    let min_u = uvs
+        .iter()
+        .map(|uv| uv[0])
+        .try_fold(f32::INFINITY, finite_min)?;
+    let min_v = uvs
+        .iter()
+        .map(|uv| uv[1])
+        .try_fold(f32::INFINITY, finite_min)?;
+    let max_u = uvs
+        .iter()
+        .map(|uv| uv[0])
+        .try_fold(f32::NEG_INFINITY, finite_max)?;
+    let max_v = uvs
+        .iter()
+        .map(|uv| uv[1])
+        .try_fold(f32::NEG_INFINITY, finite_max)?;
+    Some([
+        quantize_model_uv(min_u)?,
+        quantize_model_uv(min_v)?,
+        quantize_model_uv(max_u)?,
+        quantize_model_uv(max_v)?,
+    ])
+}
+
+fn finite_min(current: f32, value: f32) -> Option<f32> {
+    value.is_finite().then_some(current.min(value))
+}
+
+fn finite_max(current: f32, value: f32) -> Option<f32> {
+    value.is_finite().then_some(current.max(value))
+}
+
+fn quantize_model_uv(value: f32) -> Option<u8> {
+    let scaled = value * 16.0;
+    let rounded = scaled.round();
+    ((0.0..=16.0).contains(&rounded) && (scaled - rounded).abs() < 0.001).then_some(rounded as u8)
 }
 
 fn block_model_seed(position: BlockRenderPosition) -> i64 {

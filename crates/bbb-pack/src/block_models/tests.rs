@@ -641,7 +641,7 @@ fn block_model_catalog_uses_vanilla_default_face_uvs() {
 }
 
 #[test]
-fn block_model_catalog_keeps_rotated_elements_custom() {
+fn block_model_catalog_bakes_rotated_elements_to_quads() {
     let root = unique_temp_dir("block-model-rotated-element");
     let asset_root = root
         .join("sources")
@@ -684,7 +684,18 @@ fn block_model_catalog_keeps_rotated_elements_custom() {
         .block_render_model("minecraft:lever", &BTreeMap::new())
         .unwrap();
 
-    assert_eq!(render_model.shape, BlockModelShape::Custom);
+    let BlockModelShape::Quads(quads) = render_model.shape else {
+        panic!("rotated lever element should bake to quads");
+    };
+    assert_eq!(quads.len(), 6);
+    let north = quads
+        .iter()
+        .find(|quad| quad.face == BlockModelFace::North)
+        .expect("north face quad exists");
+    assert_close(north.corners[0], [9.0, 1.0, 6.5857863]);
+    assert_close(north.normal, [0.0, 0.70710677, -0.70710677]);
+    assert_eq!(north.texture.as_deref(), Some("minecraft:block/oak_planks"));
+    assert_eq!(north.uvs[0], [7.0 / 16.0, 6.0 / 16.0]);
     assert_eq!(
         render_model.face_textures.get(BlockModelFace::North),
         "minecraft:block/oak_planks"
@@ -1130,6 +1141,21 @@ fn loads_local_vanilla_block_model_catalog() {
     assert_eq!(fence_boxes[3].from, [0, 12, 7]);
     assert_eq!(fence_boxes[4].from, [0, 6, 7]);
 
+    let mut lever = BTreeMap::new();
+    lever.insert("face".to_string(), "floor".to_string());
+    lever.insert("facing".to_string(), "north".to_string());
+    lever.insert("powered".to_string(), "true".to_string());
+    let lever_model = catalog
+        .block_render_model("minecraft:lever", &lever)
+        .unwrap();
+    let BlockModelShape::Quads(lever_quads) = lever_model.shape else {
+        panic!("official lever should bake rotated elements to quads");
+    };
+    assert_eq!(lever_quads.len(), 11);
+    assert!(lever_quads
+        .iter()
+        .any(|quad| quad.texture.as_deref() == Some("minecraft:block/lever")));
+
     let flower = catalog
         .block_render_model("minecraft:dandelion", &BTreeMap::new())
         .unwrap();
@@ -1166,4 +1192,13 @@ fn unique_temp_dir(name: &str) -> PathBuf {
         .unwrap()
         .as_nanos();
     std::env::temp_dir().join(format!("bbb-pack-{name}-{}-{nonce}", std::process::id()))
+}
+
+fn assert_close(actual: [f32; 3], expected: [f32; 3]) {
+    for (actual, expected) in actual.into_iter().zip(expected) {
+        assert!(
+            (actual - expected).abs() < 0.0001,
+            "expected {actual} to be close to {expected}"
+        );
+    }
 }

@@ -1,4 +1,7 @@
-use super::{BlockFaceTextures, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelShape};
+use super::{
+    BlockFaceTextures, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelQuad,
+    BlockModelShape,
+};
 
 pub(super) fn apply_variant_rotation(
     local: BlockFaceTextures,
@@ -41,6 +44,12 @@ pub(super) fn rotate_model_shape(
             model_crosses
                 .into_iter()
                 .map(|model_cross| rotate_model_cross(model_cross, x_degrees, y_degrees))
+                .collect(),
+        ),
+        BlockModelShape::Quads(model_quads) => BlockModelShape::Quads(
+            model_quads
+                .into_iter()
+                .map(|model_quad| rotate_model_quad(model_quad, x_degrees, y_degrees, uvlock))
                 .collect(),
         ),
         BlockModelShape::Cube | BlockModelShape::Cross { .. } | BlockModelShape::Custom => shape,
@@ -180,6 +189,46 @@ fn rotate_model_cross(
     }
 }
 
+fn rotate_model_quad(
+    model_quad: BlockModelQuad,
+    x_degrees: i32,
+    y_degrees: i32,
+    uvlock: bool,
+) -> BlockModelQuad {
+    let source_face = model_quad.face;
+    let target_face = source_face.rotate(x_degrees, y_degrees);
+    BlockModelQuad {
+        face: target_face,
+        corners: model_quad
+            .corners
+            .map(|corner| rotate_model_point_f32(corner, x_degrees, y_degrees)),
+        normal: normalize3(rotate_model_vector_f32(
+            model_quad.normal,
+            x_degrees,
+            y_degrees,
+        )),
+        uvs: if uvlock {
+            uvlock_quad_uvs(
+                source_face,
+                target_face,
+                model_quad.uvs,
+                x_degrees,
+                y_degrees,
+            )
+        } else {
+            model_quad.uvs
+        },
+        cull: model_quad
+            .cull
+            .map(|cull_face| cull_face.rotate(x_degrees, y_degrees)),
+        tint_index: model_quad.tint_index,
+        texture: model_quad.texture,
+        force_translucent: model_quad.force_translucent,
+        shade: model_quad.shade,
+        light_emission: model_quad.light_emission,
+    }
+}
+
 fn rotate_face_values<T: Copy>(values: [T; 6], x_degrees: i32, y_degrees: i32) -> [T; 6] {
     let mut rotated = values;
     for face in BlockModelFace::ALL {
@@ -237,6 +286,42 @@ fn uvlock_face_uvs(
     (transformed_uv, uv_rotation)
 }
 
+fn uvlock_quad_uvs(
+    source_face: BlockModelFace,
+    target_face: BlockModelFace,
+    uvs: [[f32; 2]; 4],
+    x_degrees: i32,
+    y_degrees: i32,
+) -> [[f32; 2]; 4] {
+    uvs.map(|[u, v]| {
+        let [u, v] = uvlock_uv_point_16(
+            source_face,
+            target_face,
+            [u * 16.0, v * 16.0],
+            x_degrees,
+            y_degrees,
+        );
+        [u / 16.0, v / 16.0]
+    })
+}
+
+fn uvlock_uv_point_16(
+    source_face: BlockModelFace,
+    target_face: BlockModelFace,
+    uv: [f32; 2],
+    x_degrees: i32,
+    y_degrees: i32,
+) -> [f32; 2] {
+    let vector = (uv[0] - 8.0, uv[1] - 8.0, 0.0);
+    let vector = local_to_global_f32(target_face, vector);
+    let vector = inverse_model_rotation_f32(vector, x_degrees, y_degrees);
+    let vector = global_to_local_f32(source_face, vector);
+    [
+        (vector.0 + 8.0).clamp(0.0, 16.0),
+        (vector.1 + 8.0).clamp(0.0, 16.0),
+    ]
+}
+
 fn uv_corners(uv: [u8; 4], rotation: u8) -> [[u8; 2]; 4] {
     let min_u = uv[0].min(uv[2]);
     let min_v = uv[1].min(uv[3]);
@@ -287,6 +372,44 @@ fn inverse_model_rotation(
     vector
 }
 
+fn local_to_global_f32(face: BlockModelFace, vector: (f32, f32, f32)) -> (f32, f32, f32) {
+    match face {
+        BlockModelFace::South => vector,
+        BlockModelFace::East => rotate_y_quarter_f32(vector),
+        BlockModelFace::West => {
+            rotate_y_quarter_f32(rotate_y_quarter_f32(rotate_y_quarter_f32(vector)))
+        }
+        BlockModelFace::North => rotate_y_quarter_f32(rotate_y_quarter_f32(vector)),
+        BlockModelFace::Up => rotate_x_counter_quarter_f32(vector),
+        BlockModelFace::Down => rotate_x_quarter_f32(vector),
+    }
+}
+
+fn global_to_local_f32(face: BlockModelFace, vector: (f32, f32, f32)) -> (f32, f32, f32) {
+    match face {
+        BlockModelFace::South => vector,
+        BlockModelFace::East => rotate_y_counter_quarter_f32(vector),
+        BlockModelFace::West => rotate_y_quarter_f32(vector),
+        BlockModelFace::North => rotate_y_quarter_f32(rotate_y_quarter_f32(vector)),
+        BlockModelFace::Up => rotate_x_quarter_f32(vector),
+        BlockModelFace::Down => rotate_x_counter_quarter_f32(vector),
+    }
+}
+
+fn inverse_model_rotation_f32(
+    mut vector: (f32, f32, f32),
+    x_degrees: i32,
+    y_degrees: i32,
+) -> (f32, f32, f32) {
+    for _ in 0..quarter_turns(y_degrees) {
+        vector = rotate_y_counter_quarter_f32(vector);
+    }
+    for _ in 0..quarter_turns(x_degrees) {
+        vector = rotate_x_counter_quarter_f32(vector);
+    }
+    vector
+}
+
 fn rotate_model_point(point: [u8; 3], x_degrees: i32, y_degrees: i32) -> [u8; 3] {
     let mut vector = (
         point[0] as i32 - 8,
@@ -306,6 +429,35 @@ fn rotate_model_point(point: [u8; 3], x_degrees: i32, y_degrees: i32) -> [u8; 3]
     ]
 }
 
+fn rotate_model_point_f32(point: [f32; 3], x_degrees: i32, y_degrees: i32) -> [f32; 3] {
+    let vector = rotate_model_vector_f32(
+        [point[0] - 8.0, point[1] - 8.0, point[2] - 8.0],
+        x_degrees,
+        y_degrees,
+    );
+    [vector[0] + 8.0, vector[1] + 8.0, vector[2] + 8.0]
+}
+
+fn rotate_model_vector_f32(vector: [f32; 3], x_degrees: i32, y_degrees: i32) -> [f32; 3] {
+    let mut vector = (vector[0], vector[1], vector[2]);
+    for _ in 0..quarter_turns(x_degrees) {
+        vector = rotate_x_quarter_f32(vector);
+    }
+    for _ in 0..quarter_turns(y_degrees) {
+        vector = rotate_y_quarter_f32(vector);
+    }
+    [vector.0, vector.1, vector.2]
+}
+
+fn normalize3(vector: [f32; 3]) -> [f32; 3] {
+    let length = (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]).sqrt();
+    if length <= f32::EPSILON {
+        [0.0, 1.0, 0.0]
+    } else {
+        [vector[0] / length, vector[1] / length, vector[2] / length]
+    }
+}
+
 fn quarter_turns(degrees: i32) -> usize {
     degrees.rem_euclid(360) as usize / 90
 }
@@ -323,5 +475,21 @@ fn rotate_y_quarter((x, y, z): (i32, i32, i32)) -> (i32, i32, i32) {
 }
 
 fn rotate_y_counter_quarter((x, y, z): (i32, i32, i32)) -> (i32, i32, i32) {
+    (-z, y, x)
+}
+
+fn rotate_x_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
+    (x, -z, y)
+}
+
+fn rotate_x_counter_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
+    (x, z, -y)
+}
+
+fn rotate_y_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
+    (z, y, -x)
+}
+
+fn rotate_y_counter_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
     (-z, y, x)
 }

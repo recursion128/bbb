@@ -76,13 +76,14 @@ impl BlockFaceTextures {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BlockModelShape {
     Cube,
     Cross { shade: bool, light_emission: u8 },
     Crosses(Vec<BlockModelCross>),
     Box(BlockModelBox),
     Boxes(Vec<BlockModelBox>),
+    Quads(Vec<BlockModelQuad>),
     Custom,
 }
 
@@ -92,7 +93,7 @@ impl Default for BlockModelShape {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlockRenderModel {
     pub face_textures: BlockFaceTextures,
     pub shape: BlockModelShape,
@@ -118,6 +119,20 @@ pub struct BlockModelCross {
     pub face_textures: [Option<String>; 6],
     pub face_tint_indices: [Option<i32>; 6],
     pub face_force_translucent: [bool; 6],
+    pub shade: bool,
+    pub light_emission: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlockModelQuad {
+    pub face: BlockModelFace,
+    pub corners: [[f32; 3]; 4],
+    pub normal: [f32; 3],
+    pub uvs: [[f32; 2]; 4],
+    pub cull: Option<BlockModelFace>,
+    pub tint_index: Option<i32>,
+    pub texture: Option<String>,
+    pub force_translucent: bool,
     pub shade: bool,
     pub light_emission: u8,
 }
