@@ -109,6 +109,26 @@ impl BlockOutlineBox {
         min: [6.0 / 16.0, 0.0, 0.0],
         max: [10.0 / 16.0, 13.0 / 16.0, 1.0],
     };
+    pub(super) const PANE_POST: Self = Self {
+        min: [7.0 / 16.0, 0.0, 7.0 / 16.0],
+        max: [9.0 / 16.0, 1.0, 9.0 / 16.0],
+    };
+    pub(super) const PANE_NORTH_ARM: Self = Self {
+        min: [7.0 / 16.0, 0.0, 0.0],
+        max: [9.0 / 16.0, 1.0, 8.0 / 16.0],
+    };
+    pub(super) const PANE_EAST_ARM: Self = Self {
+        min: [8.0 / 16.0, 0.0, 7.0 / 16.0],
+        max: [1.0, 1.0, 9.0 / 16.0],
+    };
+    pub(super) const PANE_SOUTH_ARM: Self = Self {
+        min: [7.0 / 16.0, 0.0, 8.0 / 16.0],
+        max: [9.0 / 16.0, 1.0, 1.0],
+    };
+    pub(super) const PANE_WEST_ARM: Self = Self {
+        min: [0.0, 0.0, 7.0 / 16.0],
+        max: [8.0 / 16.0, 1.0, 9.0 / 16.0],
+    };
     pub(super) const WALL_POST: Self = Self {
         min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
         max: [12.0 / 16.0, 1.0, 12.0 / 16.0],

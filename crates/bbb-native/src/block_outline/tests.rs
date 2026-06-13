@@ -419,6 +419,48 @@ fn outline_shape_rejects_invalid_fence_gate_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_disconnected_pane_post() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:glass_pane"), &pane_properties([])),
+        Some(BlockOutlineShape::single(BlockOutlineBox::PANE_POST))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:iron_bars"), &pane_properties([])),
+        Some(BlockOutlineShape::single(BlockOutlineBox::PANE_POST))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_pane_connection_boxes() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:white_stained_glass_pane"),
+            &pane_properties(["south", "west"]),
+        ),
+        Some(BlockOutlineShape::from_boxes(vec![
+            BlockOutlineBox::PANE_POST,
+            BlockOutlineBox::PANE_SOUTH_ARM,
+            BlockOutlineBox::PANE_WEST_ARM,
+        ]))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_pane_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:glass_pane"), &BTreeMap::new()),
+        None
+    );
+
+    let mut properties = pane_properties(["north"]);
+    properties.insert("north".to_string(), "sometimes".to_string());
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:iron_bars"), &properties),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_disconnected_wall_post() {
     assert_eq!(
         outline_shape_for_block(
@@ -766,6 +808,28 @@ fn fence_gate_outline_clip_uses_shape_even_when_open() {
 }
 
 #[test]
+fn pane_outline_clip_hits_connected_arm_before_post() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(Some("minecraft:glass_pane"), &pane_properties(["north"])),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 0.5, -1.0],
+            [0.0, 0.0, 1.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::North,
+            inside: false,
+        })
+    );
+}
+
+#[test]
 fn wall_outline_clip_hits_low_side_shape() {
     let target = BlockOutlineTarget {
         material: TerrainMaterialClass::Opaque,
@@ -848,6 +912,20 @@ fn fence_gate_properties(facing: &str, in_wall: bool, open: bool) -> BTreeMap<St
         ("open".to_string(), open.to_string()),
         ("powered".to_string(), "false".to_string()),
     ])
+}
+
+fn pane_properties<const N: usize>(connected: [&str; N]) -> BTreeMap<String, String> {
+    let mut properties = BTreeMap::from([
+        ("north".to_string(), "false".to_string()),
+        ("east".to_string(), "false".to_string()),
+        ("south".to_string(), "false".to_string()),
+        ("west".to_string(), "false".to_string()),
+        ("waterlogged".to_string(), "false".to_string()),
+    ]);
+    for direction in connected {
+        properties.insert(direction.to_string(), "true".to_string());
+    }
+    properties
 }
 
 fn wall_properties<const N: usize>(up: bool, sides: [(&str, &str); N]) -> BTreeMap<String, String> {
