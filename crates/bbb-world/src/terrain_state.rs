@@ -12,5 +12,3 @@ pub use crate::terrain::{
     BlockProbe, TerrainBlockCell, TerrainChunkSnapshot, TerrainChunkSummary, TerrainLight,
     TerrainMaterialClass,
 };
-
-pub(crate) use crate::position::{protocol_block_pos, section_biome_index, section_block_index};
