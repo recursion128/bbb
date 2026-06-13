@@ -73,6 +73,14 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 1.0 / 16.0, 1.0],
     };
+    pub(super) const RAIL_FLAT: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 2.0 / 16.0, 1.0],
+    };
+    pub(super) const RAIL_SLOPE: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 8.0 / 16.0, 1.0],
+    };
     pub(super) const PRESSURE_PLATE: Self = Self {
         min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
         max: [15.0 / 16.0, 1.0 / 16.0, 15.0 / 16.0],
