@@ -2,8 +2,9 @@ use super::*;
 
 use bbb_protocol::packets::{
     AttributeModifier as ProtocolAttributeModifier, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
-    EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, PlayLogin as ProtocolPlayLogin,
-    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    EquipmentSlot, EquipmentSlotUpdate, ItemStackSummary, MoveVehicle as ProtocolMoveVehicle,
+    PlayLogin as ProtocolPlayLogin, SetPassengers as ProtocolSetPassengers, Vec3d as ProtocolVec3d,
+    PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
 };
 
 #[test]
