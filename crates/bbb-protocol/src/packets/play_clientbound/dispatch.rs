@@ -347,6 +347,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 true,
             )?))
         }
+        ids::play::CLIENTBOUND_MOVE_MINECART_ALONG_TRACK => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::MoveMinecartAlongTrack(
+                entities::decode_move_minecart_along_track(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_MOVE_ENTITY_ROT => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::MoveEntity(entities::decode_move_entity(

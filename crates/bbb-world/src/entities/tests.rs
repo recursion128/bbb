@@ -7,7 +7,8 @@ use bbb_protocol::packets::{
     EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
     HurtAnimation as ProtocolHurtAnimation, ItemStackSummary,
-    ItemStackSummary as ProtocolItemStackSummary, MoveVehicle as ProtocolMoveVehicle,
+    ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
+    MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
     PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
     RotateHead as ProtocolRotateHead, SetEntityData as ProtocolSetEntityData,
     SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
@@ -617,6 +618,74 @@ fn move_vehicle_small_delta_acks_without_snap() {
 }
 
 #[test]
+fn minecart_along_track_updates_entity_from_latest_step() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity(20));
+
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![
+                minecart_step(1.25, 64.1, -2.25, 0.2, 0.0, -0.2, 45.0, -10.0, 0.5),
+                minecart_step(1.75, 64.2, -2.75, 0.4, 0.0, -0.4, 90.0, 5.0, 1.25),
+            ],
+        })
+    );
+
+    let entity = store.probe_entity(10).unwrap();
+    assert_eq!(
+        entity.position,
+        EntityVec3 {
+            x: 1.75,
+            y: 64.2,
+            z: -2.75,
+        }
+    );
+    assert_eq!(
+        entity.delta_movement,
+        EntityVec3 {
+            x: 0.4,
+            y: 0.0,
+            z: -0.4,
+        }
+    );
+    assert_eq!(entity.y_rot, 90.0);
+    assert_eq!(entity.x_rot, 5.0);
+    assert_eq!(entity.minecart_lerp_steps.len(), 2);
+
+    assert!(
+        store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![minecart_step(
+                2.0, 64.3, -3.0, 0.1, 0.0, -0.1, 135.0, 0.0, 1.0,
+            )],
+        })
+    );
+    assert_eq!(store.probe_entity(10).unwrap().minecart_lerp_steps.len(), 1);
+
+    assert!(
+        !store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 999,
+            lerp_steps: vec![minecart_step(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)],
+        })
+    );
+    assert!(
+        !store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
+            entity_id: 20,
+            lerp_steps: vec![minecart_step(3.0, 64.0, -4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)],
+        })
+    );
+    assert_eq!(store.counters().minecart_moves_received, 4);
+    assert_eq!(store.counters().minecart_moves_applied, 2);
+    assert_eq!(store.counters().minecart_lerp_steps_received, 5);
+    assert_eq!(store.counters().minecart_lerp_steps_tracked, 1);
+}
+
+#[test]
 fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -755,6 +824,30 @@ fn tracks_entity_link_updates() {
 
     assert_eq!(store.counters().entity_link_updates_received, 5);
     assert_eq!(store.counters().entity_link_updates_applied, 4);
+}
+
+fn minecart_step(
+    x: f64,
+    y: f64,
+    z: f64,
+    xa: f64,
+    ya: f64,
+    za: f64,
+    y_rot: f32,
+    x_rot: f32,
+    weight: f32,
+) -> ProtocolMinecartStep {
+    ProtocolMinecartStep {
+        position: ProtocolVec3d { x, y, z },
+        movement: ProtocolVec3d {
+            x: xa,
+            y: ya,
+            z: za,
+        },
+        y_rot,
+        x_rot,
+        weight,
+    }
 }
 
 fn protocol_add_entity(id: i32) -> ProtocolAddEntity {

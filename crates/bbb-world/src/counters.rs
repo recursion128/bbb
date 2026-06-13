@@ -214,6 +214,14 @@ pub struct WorldCounters {
     pub vehicle_moves_acked: usize,
     #[serde(default)]
     pub vehicle_moves_snapped: usize,
+    #[serde(default)]
+    pub minecart_moves_received: usize,
+    #[serde(default)]
+    pub minecart_moves_applied: usize,
+    #[serde(default)]
+    pub minecart_lerp_steps_received: usize,
+    #[serde(default)]
+    pub minecart_lerp_steps_tracked: usize,
     pub entity_link_updates_received: usize,
     pub entity_link_updates_applied: usize,
     pub entity_motion_updates_received: usize,

@@ -17,6 +17,9 @@ const MAX_ENTITY_ATTRIBUTES: usize = 1024;
 const MAX_ENTITY_ID_LIST: usize = 8192;
 const MAX_EQUIPMENT_SLOTS: usize = 8;
 const MAX_ATTRIBUTE_MODIFIERS: usize = 1024;
+// Vanilla uses ByteBufCodecs.list() without an explicit wire cap. Keep a repo-side
+// allocation guard so malformed packets cannot request unbounded step storage.
+const MAX_MINECART_LERP_STEPS: usize = 65_536;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AddEntity {
@@ -75,6 +78,21 @@ pub struct MoveVehicle {
     pub position: Vec3d,
     pub y_rot: f32,
     pub x_rot: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MoveMinecartAlongTrack {
+    pub entity_id: i32,
+    pub lerp_steps: Vec<MinecartStep>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct MinecartStep {
+    pub position: Vec3d,
+    pub movement: Vec3d,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub weight: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -330,6 +348,35 @@ pub(super) fn decode_move_vehicle(decoder: &mut Decoder<'_>) -> Result<MoveVehic
         position: decode_vec3d(decoder)?,
         y_rot: decoder.read_f32()?,
         x_rot: decoder.read_f32()?,
+    })
+}
+
+pub(super) fn decode_move_minecart_along_track(
+    decoder: &mut Decoder<'_>,
+) -> Result<MoveMinecartAlongTrack> {
+    let entity_id = decoder.read_var_i32()?;
+    let step_count = decoder.read_len()?;
+    if step_count > MAX_MINECART_LERP_STEPS {
+        return Err(ProtocolError::PacketTooLarge(
+            step_count,
+            MAX_MINECART_LERP_STEPS,
+        ));
+    }
+
+    let mut lerp_steps = Vec::with_capacity(step_count);
+    for _ in 0..step_count {
+        lerp_steps.push(MinecartStep {
+            position: decode_vec3d(decoder)?,
+            movement: decode_vec3d(decoder)?,
+            y_rot: unpack_degrees(decoder.read_i8()?),
+            x_rot: unpack_degrees(decoder.read_i8()?),
+            weight: decoder.read_f32()?,
+        });
+    }
+
+    Ok(MoveMinecartAlongTrack {
+        entity_id,
+        lerp_steps,
     })
 }
 

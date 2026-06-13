@@ -1,5 +1,6 @@
 use bbb_protocol::packets::{
     EntityMove as ProtocolEntityMove, EntityPositionSync as ProtocolEntityPositionSync,
+    MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack,
     TeleportEntity as ProtocolTeleportEntity, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X,
     PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA,
     PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT,
@@ -8,7 +9,12 @@ use bbb_protocol::packets::{
 
 use crate::WorldStore;
 
-use super::EntityVec3;
+use super::{
+    EntityVec3, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+};
 
 impl WorldStore {
     pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
@@ -62,6 +68,40 @@ impl WorldStore {
         true
     }
 
+    pub fn apply_move_minecart_along_track(
+        &mut self,
+        packet: ProtocolMoveMinecartAlongTrack,
+    ) -> bool {
+        self.counters.minecart_moves_received += 1;
+        self.counters.minecart_lerp_steps_received += packet.lerp_steps.len();
+        let Some(entity) = self
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == packet.entity_id)
+        else {
+            return false;
+        };
+        if !is_vanilla_minecart_type(entity.entity_type_id) {
+            return false;
+        }
+
+        if let Some(last_step) = packet.lerp_steps.last().copied() {
+            entity.position = entity_vec3(last_step.position);
+            entity.position_base = entity.position;
+            entity.delta_movement = entity_vec3(last_step.movement);
+            entity.y_rot = last_step.y_rot;
+            entity.x_rot = last_step.x_rot;
+        }
+        entity.minecart_lerp_steps = packet.lerp_steps;
+        self.counters.minecart_moves_applied += 1;
+        self.counters.minecart_lerp_steps_tracked = self
+            .entities
+            .iter()
+            .map(|entity| entity.minecart_lerp_steps.len())
+            .sum();
+        true
+    }
+
     pub fn apply_teleport_entity(&mut self, packet: ProtocolTeleportEntity) -> bool {
         self.counters.entity_teleports_received += 1;
         let Some(entity) = self
@@ -99,6 +139,19 @@ pub(super) struct EntityMoveRotation {
     pub(super) delta_movement: EntityVec3,
     pub(super) y_rot: f32,
     pub(super) x_rot: f32,
+}
+
+fn is_vanilla_minecart_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID
+            | VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID
+            | VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
+            | VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID
+            | VANILLA_ENTITY_TYPE_MINECART_ID
+            | VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID
+            | VANILLA_ENTITY_TYPE_TNT_MINECART_ID
+    )
 }
 
 pub(super) fn entity_vec3(vec: ProtocolVec3d) -> EntityVec3 {

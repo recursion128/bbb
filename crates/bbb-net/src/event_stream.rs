@@ -256,6 +256,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::MoveEntity(update) => {
                     emit(&events, NetEvent::MoveEntity(update)).await?;
                 }
+                PlayClientbound::MoveMinecartAlongTrack(update) => {
+                    emit(&events, NetEvent::MoveMinecartAlongTrack(update)).await?;
+                }
                 PlayClientbound::MoveVehicle(update) => {
                     emit(&events, NetEvent::MoveVehicle(update)).await?;
                 }

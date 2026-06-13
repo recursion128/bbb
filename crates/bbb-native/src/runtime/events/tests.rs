@@ -9,17 +9,17 @@ use bbb_protocol::packets::{
     DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind, GameRuleValue,
     GameRuleValues, GameTestHighlightPos, IngredientSummary, InteractionHand, ItemCostSummary,
     ItemStackSummary, LevelParticles, MapColorPatch, MapDecoration, MapItemData, MerchantOffer,
-    MerchantOffers, MessageSignature, MountScreenOpen, OpenBook, OpenScreen, OpenSignEditor,
-    PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat,
-    PlayerCombatEnd, PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse,
-    ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
-    RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
-    RecipeDisplayType, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
-    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog, SignedMessageBody,
-    SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StopSound, TagNetworkPayload,
-    TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateTags,
-    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
-    WaypointOperation, WaypointVec3i,
+    MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen, MoveMinecartAlongTrack,
+    OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature, ParticlePayload,
+    PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill, PlayerLookAt,
+    PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry,
+    RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
+    RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RegistryTags, RemoteDebugSampleType,
+    SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+    SetPassengers, ShowDialog, SignedMessageBody, SoundEntityEvent, SoundEvent, SoundEventHolder,
+    SoundSource, StopSound, TagNetworkPayload, TagQuery, TestInstanceBlockStatus, TrackedWaypoint,
+    TrackedWaypointPacket, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -1781,6 +1781,53 @@ fn move_vehicle_event_updates_world_and_queues_ack() {
 }
 
 #[test]
+fn minecart_along_track_event_updates_world_state() {
+    let (event_tx, mut event_rx) = mpsc::channel(1);
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_type(10, 85));
+
+    event_tx
+        .try_send(NetEvent::MoveMinecartAlongTrack(MoveMinecartAlongTrack {
+            entity_id: 10,
+            lerp_steps: vec![MinecartStep {
+                position: ProtocolVec3d {
+                    x: 2.0,
+                    y: 64.25,
+                    z: -3.0,
+                },
+                movement: ProtocolVec3d {
+                    x: 0.3,
+                    y: 0.0,
+                    z: -0.3,
+                },
+                y_rot: 90.0,
+                x_rot: 5.0,
+                weight: 1.0,
+            }],
+        }))
+        .unwrap();
+
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut event_rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    let entity = world.probe_entity(10).unwrap();
+    assert_eq!(
+        entity.position,
+        bbb_world::EntityVec3 {
+            x: 2.0,
+            y: 64.25,
+            z: -3.0,
+        }
+    );
+    assert_eq!(entity.y_rot, 90.0);
+    assert_eq!(entity.x_rot, 5.0);
+    assert_eq!(world.counters().minecart_moves_applied, 1);
+}
+
+#[test]
 fn world_time_and_weather_update_snapshot_and_clear_color() {
     let mut counters = NetCounters::default();
 
@@ -1899,10 +1946,14 @@ fn protocol_chat_type(name: &str) -> ChatTypeBound {
 }
 
 fn protocol_add_entity(id: i32) -> AddEntity {
+    protocol_add_entity_with_type(id, 7)
+}
+
+fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
     AddEntity {
         id,
         uuid: Uuid::from_u128(0x12345678123456781234567812345678),
-        entity_type_id: 7,
+        entity_type_id,
         position: ProtocolVec3d {
             x: 1.0,
             y: 64.0,

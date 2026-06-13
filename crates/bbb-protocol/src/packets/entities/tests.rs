@@ -111,6 +111,71 @@ fn decodes_entity_lifecycle_packets() {
     );
 
     let mut payload = Encoder::new();
+    payload.write_var_i32(77);
+    payload.write_var_i32(2);
+    payload.write_f64(1.0);
+    payload.write_f64(64.125);
+    payload.write_f64(-2.0);
+    payload.write_f64(0.25);
+    payload.write_f64(0.0);
+    payload.write_f64(-0.25);
+    payload.write_i8(32);
+    payload.write_i8(-16);
+    payload.write_f32(0.5);
+    payload.write_f64(1.5);
+    payload.write_f64(64.25);
+    payload.write_f64(-2.5);
+    payload.write_f64(0.5);
+    payload.write_f64(0.0);
+    payload.write_f64(-0.5);
+    payload.write_i8(64);
+    payload.write_i8(16);
+    payload.write_f32(1.25);
+    let packet = decode_play_clientbound(
+        ids::play::CLIENTBOUND_MOVE_MINECART_ALONG_TRACK,
+        &payload.into_inner(),
+    )
+    .unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::MoveMinecartAlongTrack(MoveMinecartAlongTrack {
+            entity_id: 77,
+            lerp_steps: vec![
+                MinecartStep {
+                    position: Vec3d {
+                        x: 1.0,
+                        y: 64.125,
+                        z: -2.0,
+                    },
+                    movement: Vec3d {
+                        x: 0.25,
+                        y: 0.0,
+                        z: -0.25,
+                    },
+                    y_rot: 45.0,
+                    x_rot: -22.5,
+                    weight: 0.5,
+                },
+                MinecartStep {
+                    position: Vec3d {
+                        x: 1.5,
+                        y: 64.25,
+                        z: -2.5,
+                    },
+                    movement: Vec3d {
+                        x: 0.5,
+                        y: 0.0,
+                        z: -0.5,
+                    },
+                    y_rot: 90.0,
+                    x_rot: 22.5,
+                    weight: 1.25,
+                },
+            ],
+        })
+    );
+
+    let mut payload = Encoder::new();
     payload.write_var_i32(123);
     payload.write_bytes(&[0]);
     let packet = decode_play_clientbound(

@@ -59,6 +59,7 @@ pub enum PlayClientbound {
     MerchantOffers(MerchantOffers),
     MountScreenOpen(MountScreenOpen),
     MoveEntity(EntityMove),
+    MoveMinecartAlongTrack(MoveMinecartAlongTrack),
     MoveVehicle(MoveVehicle),
     OpenBook(OpenBook),
     OpenScreen(OpenScreen),

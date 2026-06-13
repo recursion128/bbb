@@ -474,6 +474,9 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::MoveEntity(update) => {
                 world.apply_entity_move(update);
             }
+            NetEvent::MoveMinecartAlongTrack(update) => {
+                world.apply_move_minecart_along_track(update);
+            }
             NetEvent::MoveVehicle(update) => {
                 counters.move_vehicle_packets += 1;
                 if let Some(report) = world.apply_move_vehicle(update) {

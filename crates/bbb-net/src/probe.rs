@@ -179,6 +179,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::MoveEntity(update) => {
                     world.apply_entity_move(update);
                 }
+                PlayClientbound::MoveMinecartAlongTrack(update) => {
+                    world.apply_move_minecart_along_track(update);
+                }
                 PlayClientbound::MoveVehicle(update) => {
                     world.apply_move_vehicle(update);
                 }

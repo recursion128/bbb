@@ -4,8 +4,8 @@ use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
-    ItemStackSummary as ProtocolItemStackSummary, RemoveEntities as ProtocolRemoveEntities,
-    TakeItemEntity as ProtocolTakeItemEntity,
+    ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
+    RemoveEntities as ProtocolRemoveEntities, TakeItemEntity as ProtocolTakeItemEntity,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -21,6 +21,13 @@ use movement::entity_vec3;
 
 pub(crate) const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
 pub(crate) const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
+pub(crate) const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
+pub(crate) const VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID: i32 = 29;
+pub(crate) const VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID: i32 = 56;
+pub(crate) const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
+pub(crate) const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+pub(crate) const VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID: i32 = 122;
+pub(crate) const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
@@ -56,6 +63,8 @@ pub struct EntityState {
     pub mob_effects: BTreeMap<i32, MobEffectState>,
     #[serde(default)]
     pub last_damage: Option<EntityDamageEventState>,
+    #[serde(default)]
+    pub minecart_lerp_steps: Vec<ProtocolMinecartStep>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -94,6 +103,7 @@ impl WorldStore {
             last_hurt_yaw: None,
             mob_effects: BTreeMap::new(),
             last_damage: None,
+            minecart_lerp_steps: Vec::new(),
         };
 
         if let Some(existing) = self
