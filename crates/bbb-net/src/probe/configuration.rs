@@ -71,7 +71,9 @@ impl ProbeContext {
             ConfigurationClientbound::ServerLinks(links) => {
                 self.world.apply_server_links(links);
             }
-            ConfigurationClientbound::Transfer(_) => {}
+            ConfigurationClientbound::Transfer(update) => {
+                self.world.apply_transfer(update);
+            }
             ConfigurationClientbound::ClearDialog => {
                 self.world.apply_clear_dialog();
             }

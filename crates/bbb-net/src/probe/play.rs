@@ -191,20 +191,30 @@ impl ProbeContext {
             PlayClientbound::TeleportEntity(update) => {
                 self.world.apply_teleport_entity(update);
             }
-            PlayClientbound::PlayerAbilities(_) => {}
+            PlayClientbound::PlayerAbilities(update) => {
+                self.world.apply_player_abilities(update);
+            }
             PlayClientbound::PlayerChat(update) => {
                 self.world.apply_player_chat(update);
             }
-            PlayClientbound::SetExperience(_) => {}
-            PlayClientbound::SetHeldSlot(_) => {}
+            PlayClientbound::SetExperience(update) => {
+                self.world.apply_player_experience(update);
+            }
+            PlayClientbound::SetHeldSlot(update) => {
+                self.world.apply_held_slot(update);
+            }
             PlayClientbound::SetCursorItem(update) => {
                 self.world.apply_set_cursor_item(update);
             }
             PlayClientbound::SetPlayerInventory(update) => {
                 self.world.apply_set_player_inventory(update);
             }
-            PlayClientbound::SetDefaultSpawnPosition(_) => {}
-            PlayClientbound::SetSimulationDistance(_) => {}
+            PlayClientbound::SetDefaultSpawnPosition(update) => {
+                self.world.apply_default_spawn_position(update);
+            }
+            PlayClientbound::SetSimulationDistance(update) => {
+                self.world.apply_simulation_distance(update);
+            }
             PlayClientbound::SystemChat(_) => {}
             PlayClientbound::PlayerCombatEnd(_)
             | PlayClientbound::PlayerCombatEnter
@@ -220,11 +230,19 @@ impl ProbeContext {
             | PlayClientbound::SetTitlesAnimation(_)
             | PlayClientbound::Sound(_)
             | PlayClientbound::SoundEntity(_)
-            | PlayClientbound::StopSound(_)
-            | PlayClientbound::TickingState(_)
-            | PlayClientbound::TickingStep(_)
-            | PlayClientbound::Transfer(_)
-            | PlayClientbound::SetCamera(_) => {}
+            | PlayClientbound::StopSound(_) => {}
+            PlayClientbound::TickingState(update) => {
+                self.world.apply_ticking_state(update);
+            }
+            PlayClientbound::TickingStep(update) => {
+                self.world.apply_ticking_step(update);
+            }
+            PlayClientbound::Transfer(update) => {
+                self.world.apply_transfer(update);
+            }
+            PlayClientbound::SetCamera(update) => {
+                self.world.apply_set_camera(update);
+            }
             PlayClientbound::InitializeBorder(border) => {
                 self.world.apply_initialize_border(border);
             }
@@ -290,10 +308,13 @@ impl ProbeContext {
             PlayClientbound::LevelEvent(event) => {
                 self.world.apply_level_event(event);
             }
-            PlayClientbound::GameEvent(_)
-            | PlayClientbound::GameRuleValues(_)
-            | PlayClientbound::GameTestHighlightPos(_)
-            | PlayClientbound::SetTime(_) => {}
+            PlayClientbound::GameEvent(update) => {
+                self.world.apply_game_event(update);
+            }
+            PlayClientbound::GameRuleValues(_) | PlayClientbound::GameTestHighlightPos(_) => {}
+            PlayClientbound::SetTime(update) => {
+                self.world.apply_world_time(update);
+            }
             PlayClientbound::PlayerPosition(update) => {
                 self.player_position_state = update.apply_to_state(self.player_position_state);
                 let (id, payload) = packets::encode_play_accept_teleportation(update.id);
@@ -359,9 +380,13 @@ impl ProbeContext {
             PlayClientbound::SectionBlocksUpdate(update) => {
                 self.world.apply_section_blocks_update(update);
             }
-            PlayClientbound::SetChunkCacheCenter(_)
-            | PlayClientbound::SetChunkCacheRadius(_)
-            | PlayClientbound::ProjectilePower(_) => {}
+            PlayClientbound::SetChunkCacheCenter(update) => {
+                self.world.apply_set_chunk_cache_center(update);
+            }
+            PlayClientbound::SetChunkCacheRadius(update) => {
+                self.world.apply_set_chunk_cache_radius(update);
+            }
+            PlayClientbound::ProjectilePower(_) => {}
             PlayClientbound::Waypoint(update) => {
                 self.world.apply_waypoint(update);
             }
