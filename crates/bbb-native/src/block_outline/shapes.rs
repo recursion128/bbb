@@ -42,6 +42,9 @@ pub(super) fn outline_shape_for_block(
     if is_button_block_name(block_name) {
         return button_outline_shape(properties);
     }
+    if block_name == "minecraft:lever" {
+        return lever_outline_shape(properties);
+    }
     if is_fence_gate_block_name(block_name) {
         return fence_gate_outline_shape(properties);
     }
@@ -334,6 +337,20 @@ fn button_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOu
         ("floor", true) => BlockOutlineBox::BUTTON_FLOOR_NORTH_PRESSED,
         ("ceiling", false) => BlockOutlineBox::BUTTON_CEILING_NORTH,
         ("ceiling", true) => BlockOutlineBox::BUTTON_CEILING_NORTH_PRESSED,
+        _ => return None,
+    };
+
+    Some(BlockOutlineShape::single(
+        outline.rotate_to_direction(facing),
+    ))
+}
+
+fn lever_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let outline = match properties.get("face").map(String::as_str)? {
+        "wall" => BlockOutlineBox::LEVER_WALL_NORTH,
+        "floor" => BlockOutlineBox::LEVER_FLOOR_NORTH,
+        "ceiling" => BlockOutlineBox::LEVER_CEILING_NORTH,
         _ => return None,
     };
 

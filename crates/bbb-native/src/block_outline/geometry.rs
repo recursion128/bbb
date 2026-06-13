@@ -125,6 +125,18 @@ impl BlockOutlineBox {
         min: [5.0 / 16.0, 0.0, 6.0 / 16.0],
         max: [11.0 / 16.0, 1.0 / 16.0, 10.0 / 16.0],
     };
+    pub(super) const LEVER_WALL_NORTH: Self = Self {
+        min: [5.0 / 16.0, 4.0 / 16.0, 10.0 / 16.0],
+        max: [11.0 / 16.0, 12.0 / 16.0, 1.0],
+    };
+    pub(super) const LEVER_FLOOR_NORTH: Self = Self {
+        min: [5.0 / 16.0, 10.0 / 16.0, 4.0 / 16.0],
+        max: [11.0 / 16.0, 1.0, 12.0 / 16.0],
+    };
+    pub(super) const LEVER_CEILING_NORTH: Self = Self {
+        min: [5.0 / 16.0, 0.0, 4.0 / 16.0],
+        max: [11.0 / 16.0, 6.0 / 16.0, 12.0 / 16.0],
+    };
     pub(super) const FENCE_POST: Self = Self {
         min: [6.0 / 16.0, 0.0, 6.0 / 16.0],
         max: [10.0 / 16.0, 1.0, 10.0 / 16.0],

@@ -549,6 +549,68 @@ fn outline_shape_rejects_invalid_button_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_lever_attach_face_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:lever"),
+            &lever_properties("north", "wall", false)
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::LEVER_WALL_NORTH))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:lever"),
+            &lever_properties("east", "wall", true)
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox {
+            min: [0.0, 4.0 / 16.0, 5.0 / 16.0],
+            max: [6.0 / 16.0, 12.0 / 16.0, 11.0 / 16.0],
+        }))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:lever"),
+            &lever_properties("south", "floor", true)
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::LEVER_FLOOR_NORTH
+        ))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:lever"),
+            &lever_properties("west", "ceiling", false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox {
+            min: [4.0 / 16.0, 0.0, 5.0 / 16.0],
+            max: [12.0 / 16.0, 6.0 / 16.0, 11.0 / 16.0],
+        }))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_lever_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:lever"), &BTreeMap::new()),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:lever"),
+            &lever_properties("up", "wall", false)
+        ),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:lever"),
+            &lever_properties("north", "side", false)
+        ),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_disconnected_fence_post() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:oak_fence"), &fence_properties([])),
