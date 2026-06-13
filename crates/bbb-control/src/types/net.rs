@@ -33,10 +33,13 @@ pub struct NetCounters {
     pub camera: CameraState,
     pub last_transfer: Option<TransferTarget>,
     pub last_custom_chat_completion: Option<CustomChatCompletionState>,
+    pub last_custom_payload: Option<CustomPayloadState>,
     pub last_mount_screen: Option<MountScreenState>,
     pub last_open_book_hand: Option<String>,
     pub last_open_sign_editor: Option<OpenSignEditorState>,
     pub last_ghost_recipe: Option<GhostRecipeState>,
+    pub last_show_dialog: Option<ShowDialogState>,
+    pub last_waypoint: Option<WaypointState>,
     pub last_pong_response_time: Option<i64>,
     pub last_sound: Option<ClientSoundState>,
     pub last_sound_entity: Option<ClientSoundEntityState>,
@@ -112,6 +115,10 @@ pub struct NetCounters {
     pub transfer_packets: usize,
     pub take_item_entity_packets: usize,
     pub custom_chat_completion_packets: usize,
+    pub custom_payload_packets: usize,
+    pub clear_dialog_packets: usize,
+    pub show_dialog_packets: usize,
+    pub waypoint_packets: usize,
     pub low_disk_space_warnings: usize,
     pub mount_screen_open_packets: usize,
     pub open_book_packets: usize,
@@ -295,6 +302,14 @@ pub struct CustomChatCompletionState {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomPayloadState {
+    pub id: String,
+    pub kind: String,
+    pub brand: Option<String>,
+    pub raw_payload_len: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MountScreenState {
     pub container_id: i32,
     pub inventory_columns: i32,
@@ -313,6 +328,26 @@ pub struct GhostRecipeState {
     pub recipe_display_type_id: i32,
     pub recipe_display_type: String,
     pub recipe_display_body_len: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShowDialogState {
+    pub holder_kind: String,
+    pub registry_id: Option<i32>,
+    pub raw_dialog_payload_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WaypointState {
+    pub operation: String,
+    pub identifier_kind: String,
+    pub identifier: String,
+    pub icon_style: String,
+    pub icon_color_rgb: Option<u32>,
+    pub waypoint_kind: String,
+    pub position: Option<NetVec3i>,
+    pub chunk: Option<ChunkPos>,
+    pub azimuth: Option<f32>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

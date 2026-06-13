@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 pub mod chunks;
 pub mod client_audio;
+pub mod client_common;
 pub mod client_features;
 pub mod client_state;
 pub mod client_ui;
@@ -20,10 +21,12 @@ pub mod player_info;
 pub mod scoreboard;
 pub mod server_presentation;
 pub mod serverbound;
+pub mod waypoints;
 pub mod world_border;
 pub mod world_effects;
 pub use chunks::*;
 pub use client_audio::*;
+pub use client_common::*;
 pub use client_features::*;
 pub use client_state::*;
 pub use client_ui::*;
@@ -38,6 +41,7 @@ pub use player_info::*;
 pub use scoreboard::*;
 pub use server_presentation::*;
 pub use serverbound::*;
+pub use waypoints::*;
 pub use world_border::*;
 pub use world_effects::*;
 

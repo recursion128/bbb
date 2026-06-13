@@ -3,14 +3,16 @@ use crate::runtime::clear_color_for_day_time;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, CommonPlayerSpawnInfo,
-    CustomChatCompletions, CustomChatCompletionsAction, DebugBlockValue, DebugChunkValue,
-    DebugEntityValue, DebugEvent, DebugSample, Explosion, GameRuleValue, GameRuleValues,
-    GameTestHighlightPos, InteractionHand, LevelParticles, MountScreenOpen, OpenBook,
-    OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PongResponse, ProjectilePower,
-    RecipeDisplayType, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
-    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, SoundEntityEvent, SoundEvent,
-    SoundEventHolder, SoundSource, StopSound, TagQuery, TestInstanceBlockStatus,
-    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+    CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
+    DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
+    Explosion, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
+    LevelParticles, MountScreenOpen, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
+    PlayLogin, PongResponse, ProjectilePower, RecipeDisplayType, RemoteDebugSampleType,
+    SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+    SetPassengers, ShowDialog, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
+    StopSound, TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
+    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
+    WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -402,6 +404,87 @@ fn client_feature_events_update_snapshot_counters() {
             transaction_id: 12,
             tag_present: true,
             raw_nbt_len: 2,
+        })
+    );
+}
+
+#[test]
+fn client_common_waypoint_events_update_snapshot_counters() {
+    let waypoint_id = Uuid::from_u128(0x00112233445566778899aabbccddeeff);
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::CustomPayload(CustomPayload {
+        id: "minecraft:brand".to_string(),
+        payload: CustomPayloadBody::Brand {
+            brand: "vanilla".to_string(),
+        },
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ClearDialog).unwrap();
+    tx.try_send(NetEvent::ShowDialog(ShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::Waypoint(TrackedWaypointPacket {
+        operation: WaypointOperation::Track,
+        waypoint: TrackedWaypoint {
+            identifier: WaypointIdentifier::Uuid(waypoint_id),
+            icon: WaypointIcon {
+                style: "minecraft:default".to_string(),
+                color_rgb: Some(0x112233),
+            },
+            data: WaypointData::Position(WaypointVec3i {
+                x: 10,
+                y: 64,
+                z: -5,
+            }),
+        },
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        4
+    );
+    assert_eq!(counters.custom_payload_packets, 1);
+    assert_eq!(
+        counters.last_custom_payload,
+        Some(bbb_control::CustomPayloadState {
+            id: "minecraft:brand".to_string(),
+            kind: "brand".to_string(),
+            brand: Some("vanilla".to_string()),
+            raw_payload_len: 0,
+        })
+    );
+    assert_eq!(counters.clear_dialog_packets, 1);
+    assert_eq!(counters.show_dialog_packets, 1);
+    assert_eq!(
+        counters.last_show_dialog,
+        Some(bbb_control::ShowDialogState {
+            holder_kind: "reference".to_string(),
+            registry_id: Some(11),
+            raw_dialog_payload_len: 0,
+        })
+    );
+    assert_eq!(counters.waypoint_packets, 1);
+    assert_eq!(
+        counters.last_waypoint,
+        Some(bbb_control::WaypointState {
+            operation: "track".to_string(),
+            identifier_kind: "uuid".to_string(),
+            identifier: waypoint_id.to_string(),
+            icon_style: "minecraft:default".to_string(),
+            icon_color_rgb: Some(0x112233),
+            waypoint_kind: "position".to_string(),
+            position: Some(bbb_control::NetVec3i {
+                x: 10,
+                y: 64,
+                z: -5,
+            }),
+            chunk: None,
+            azimuth: None,
         })
     );
 }

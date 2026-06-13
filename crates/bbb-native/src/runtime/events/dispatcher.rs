@@ -77,6 +77,10 @@ pub(in crate::runtime) fn drain_net_events(
                     });
                 counters.custom_chat_completion_packets += 1;
             }
+            NetEvent::CustomPayload(update) => {
+                counters.last_custom_payload = Some(custom_payload_state(update));
+                counters.custom_payload_packets += 1;
+            }
             NetEvent::ServerLinks(links) => {
                 apply_server_links_update(counters, links);
             }
@@ -120,6 +124,17 @@ pub(in crate::runtime) fn drain_net_events(
                     recipe_display_body_len: update.recipe_display_body.len(),
                 });
                 counters.ghost_recipe_packets += 1;
+            }
+            NetEvent::ClearDialog => {
+                counters.clear_dialog_packets += 1;
+            }
+            NetEvent::ShowDialog(update) => {
+                counters.last_show_dialog = Some(show_dialog_state(update));
+                counters.show_dialog_packets += 1;
+            }
+            NetEvent::Waypoint(update) => {
+                counters.last_waypoint = Some(waypoint_state(update));
+                counters.waypoint_packets += 1;
             }
             NetEvent::PongResponse(update) => {
                 counters.last_pong_response_time = Some(update.time);
@@ -638,6 +653,74 @@ fn sound_holder_state(
     }
 }
 
+fn custom_payload_state(
+    payload: bbb_protocol::packets::CustomPayload,
+) -> bbb_control::CustomPayloadState {
+    match payload.payload {
+        bbb_protocol::packets::CustomPayloadBody::Brand { brand } => {
+            bbb_control::CustomPayloadState {
+                id: payload.id,
+                kind: "brand".to_string(),
+                brand: Some(brand),
+                raw_payload_len: 0,
+            }
+        }
+        bbb_protocol::packets::CustomPayloadBody::Unknown { raw_payload } => {
+            bbb_control::CustomPayloadState {
+                id: payload.id,
+                kind: "unknown".to_string(),
+                brand: None,
+                raw_payload_len: raw_payload.len(),
+            }
+        }
+    }
+}
+
+fn show_dialog_state(dialog: bbb_protocol::packets::ShowDialog) -> bbb_control::ShowDialogState {
+    match dialog.dialog {
+        bbb_protocol::packets::DialogHolder::Reference { registry_id } => {
+            bbb_control::ShowDialogState {
+                holder_kind: "reference".to_string(),
+                registry_id: Some(registry_id),
+                raw_dialog_payload_len: 0,
+            }
+        }
+        bbb_protocol::packets::DialogHolder::Direct { raw_dialog_payload } => {
+            bbb_control::ShowDialogState {
+                holder_kind: "direct".to_string(),
+                registry_id: None,
+                raw_dialog_payload_len: raw_dialog_payload.len(),
+            }
+        }
+    }
+}
+
+fn waypoint_state(
+    packet: bbb_protocol::packets::TrackedWaypointPacket,
+) -> bbb_control::WaypointState {
+    let data = packet.waypoint.data;
+    bbb_control::WaypointState {
+        operation: packet.operation.as_str().to_string(),
+        identifier_kind: packet.waypoint.identifier.kind().to_string(),
+        identifier: packet.waypoint.identifier.value_string(),
+        icon_style: packet.waypoint.icon.style,
+        icon_color_rgb: packet.waypoint.icon.color_rgb,
+        waypoint_kind: data.kind().to_string(),
+        position: match data {
+            bbb_protocol::packets::WaypointData::Position(pos) => Some(control_waypoint_vec3i(pos)),
+            _ => None,
+        },
+        chunk: match data {
+            bbb_protocol::packets::WaypointData::Chunk(pos) => Some(control_chunk_pos(pos)),
+            _ => None,
+        },
+        azimuth: match data {
+            bbb_protocol::packets::WaypointData::Azimuth(angle) => Some(angle),
+            _ => None,
+        },
+    }
+}
+
 fn net_vec3(vec: bbb_protocol::packets::Vec3d) -> bbb_control::NetVec3 {
     bbb_control::NetVec3 {
         x: vec.x,
@@ -659,6 +742,14 @@ fn control_chunk_pos(pos: bbb_protocol::packets::ChunkPos) -> bbb_world::ChunkPo
 }
 
 fn control_vec3i(pos: bbb_protocol::packets::Vec3i) -> bbb_control::NetVec3i {
+    bbb_control::NetVec3i {
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
+    }
+}
+
+fn control_waypoint_vec3i(pos: bbb_protocol::packets::WaypointVec3i) -> bbb_control::NetVec3i {
     bbb_control::NetVec3i {
         x: pos.x,
         y: pos.y,

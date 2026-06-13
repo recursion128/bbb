@@ -214,6 +214,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::CustomChatCompletions(update) => {
                     emit(&events, NetEvent::CustomChatCompletions(update)).await?;
                 }
+                PlayClientbound::CustomPayload(update) => {
+                    emit(&events, NetEvent::CustomPayload(update)).await?;
+                }
                 PlayClientbound::DamageEvent(update) => {
                     emit(&events, NetEvent::DamageEvent(update)).await?;
                 }
@@ -496,6 +499,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetTitlesAnimation(animation) => {
                     emit(&events, NetEvent::SetTitlesAnimation(animation)).await?;
                 }
+                PlayClientbound::ShowDialog(update) => {
+                    emit(&events, NetEvent::ShowDialog(update)).await?;
+                }
                 PlayClientbound::Sound(sound) => {
                     emit(&events, NetEvent::Sound(sound)).await?;
                 }
@@ -513,6 +519,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::Transfer(transfer) => {
                     emit(&events, NetEvent::Transfer(transfer)).await?;
+                }
+                PlayClientbound::Waypoint(update) => {
+                    emit(&events, NetEvent::Waypoint(update)).await?;
                 }
                 PlayClientbound::SetCamera(camera) => {
                     emit(&events, NetEvent::SetCamera(camera)).await?;
@@ -564,6 +573,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::TestInstanceBlockStatus(update) => {
                     emit(&events, NetEvent::TestInstanceBlockStatus(update)).await?;
+                }
+                PlayClientbound::ClearDialog => {
+                    emit(&events, NetEvent::ClearDialog).await?;
                 }
                 PlayClientbound::LevelChunkWithLight(chunk) => {
                     emit(&events, NetEvent::LevelChunkWithLight(chunk)).await?;

@@ -84,6 +84,11 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
+        ids::play::CLIENTBOUND_CLEAR_DIALOG => {
+            let decoder = Decoder::new(payload);
+            client_common::decode_clear_dialog(&decoder)?;
+            Ok(PlayClientbound::ClearDialog)
+        }
         ids::play::CLIENTBOUND_CLEAR_TITLES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::ClearTitles(
@@ -136,6 +141,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::CustomChatCompletions(
                 client_features::decode_custom_chat_completions(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_CUSTOM_PAYLOAD => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::CustomPayload(
+                client_common::decode_custom_payload(&mut decoder)?,
             ))
         }
         ids::play::CLIENTBOUND_CUSTOM_REPORT_DETAILS => {
@@ -620,6 +631,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_state::decode_set_titles_animation(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_SHOW_DIALOG => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::ShowDialog(
+                client_common::decode_show_dialog(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_SOUND_ENTITY => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SoundEntity(
@@ -698,6 +715,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::Transfer(connection::decode_transfer(
                 &mut decoder,
             )?))
+        }
+        ids::play::CLIENTBOUND_WAYPOINT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::Waypoint(
+                waypoints::decode_tracked_waypoint_packet(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES => {
             let mut decoder = Decoder::new(payload);

@@ -147,6 +147,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     world.apply_cooldown(update);
                 }
                 PlayClientbound::CustomChatCompletions(_)
+                | PlayClientbound::CustomPayload(_)
                 | PlayClientbound::CustomReportDetails(_)
                 | PlayClientbound::ServerLinks(_) => {}
                 PlayClientbound::DamageEvent(update) => {
@@ -332,6 +333,8 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::SelectAdvancementsTab(_)
                 | PlayClientbound::TagQuery(_)
+                | PlayClientbound::ClearDialog
+                | PlayClientbound::ShowDialog(_)
                 | PlayClientbound::TestInstanceBlockStatus(_) => {}
                 PlayClientbound::TabList(update) => {
                     world.apply_tab_list(update);
@@ -418,7 +421,8 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::SetChunkCacheCenter(_)
                 | PlayClientbound::SetChunkCacheRadius(_)
-                | PlayClientbound::ProjectilePower(_) => {}
+                | PlayClientbound::ProjectilePower(_)
+                | PlayClientbound::Waypoint(_) => {}
                 PlayClientbound::Unknown { .. } => {}
             },
             ConnectionState::Handshake | ConnectionState::Status => {
