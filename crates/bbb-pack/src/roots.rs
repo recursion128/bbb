@@ -58,6 +58,14 @@ impl PackRoots {
         self.assets_dir.join("models").join("block")
     }
 
+    pub fn atlases_dir(&self) -> PathBuf {
+        self.assets_dir.join("atlases")
+    }
+
+    pub fn atlas_definition(&self, name: &str) -> PathBuf {
+        self.atlases_dir().join(format!("{name}.json"))
+    }
+
     pub fn biomes_dir(&self) -> PathBuf {
         self.sources_dir
             .join("data")
@@ -89,51 +97,17 @@ impl PackRoots {
     }
 
     pub fn load_block_texture_sources(&self) -> Result<Vec<SpriteSource>> {
-        let dir = self.block_textures_dir();
-        let mut sources = Vec::new();
-        for entry in std::fs::read_dir(&dir)
-            .with_context(|| format!("read block texture directory {}", dir.display()))?
-        {
-            let entry =
-                entry.with_context(|| format!("read block texture entry in {}", dir.display()))?;
-            let path = entry.path();
-            if path.extension().and_then(|extension| extension.to_str()) != Some("png") {
-                continue;
-            }
-            let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-                continue;
-            };
-            sources.push(SpriteSource::from_png_file(
-                format!("minecraft:block/{stem}"),
-                &path,
-            )?);
-        }
-        sources.sort_by(|left, right| left.id.cmp(&right.id));
-        Ok(sources)
+        self.load_atlas_texture_entries("blocks")?
+            .into_iter()
+            .map(|entry| SpriteSource::from_png_file(entry.id, entry.path))
+            .collect()
     }
 
     pub fn load_block_texture_images(&self) -> Result<Vec<SpriteImage>> {
-        let dir = self.block_textures_dir();
-        let mut images = Vec::new();
-        for entry in std::fs::read_dir(&dir)
-            .with_context(|| format!("read block texture directory {}", dir.display()))?
-        {
-            let entry =
-                entry.with_context(|| format!("read block texture entry in {}", dir.display()))?;
-            let path = entry.path();
-            if path.extension().and_then(|extension| extension.to_str()) != Some("png") {
-                continue;
-            }
-            let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-                continue;
-            };
-            images.push(SpriteImage::from_png_file(
-                format!("minecraft:block/{stem}"),
-                &path,
-            )?);
-        }
-        images.sort_by(|left, right| left.id.cmp(&right.id));
-        Ok(images)
+        self.load_atlas_texture_entries("blocks")?
+            .into_iter()
+            .map(|entry| SpriteImage::from_png_file(entry.id, entry.path))
+            .collect()
     }
 
     pub fn load_block_model_catalog(&self) -> Result<BlockModelCatalog> {
@@ -153,6 +127,214 @@ impl PackRoots {
     pub fn load_biome_color_catalog(&self) -> Result<BiomeColorCatalog> {
         BiomeColorCatalog::load_vanilla_26_1(self)
     }
+
+    fn load_atlas_texture_entries(&self, atlas_name: &str) -> Result<Vec<AtlasTextureEntry>> {
+        let path = self.atlas_definition(atlas_name);
+        let bytes =
+            std::fs::read(&path).with_context(|| format!("read atlas {}", path.display()))?;
+        let atlas: RawAtlas = serde_json::from_slice(&bytes)
+            .with_context(|| format!("parse atlas {}", path.display()))?;
+
+        let mut entries = Vec::new();
+        for source in atlas.sources {
+            match source.source_type.as_str() {
+                "minecraft:directory" => {
+                    let source_location = source.required_location("source")?;
+                    let prefix = source.required_field("prefix")?;
+                    self.append_directory_atlas_entries(&mut entries, &source_location, prefix)?;
+                }
+                "minecraft:single" => {
+                    let resource = source.required_location("resource")?;
+                    let sprite = source
+                        .optional_location("sprite")?
+                        .unwrap_or(resource.clone());
+                    entries.push(AtlasTextureEntry {
+                        id: sprite.id(),
+                        path: self.texture_path(&resource),
+                    });
+                }
+                other => bail!("unsupported atlas source type {other:?} in atlas {atlas_name}"),
+            }
+        }
+        Ok(entries)
+    }
+
+    fn append_directory_atlas_entries(
+        &self,
+        entries: &mut Vec<AtlasTextureEntry>,
+        source: &ResourceLocation,
+        prefix: &str,
+    ) -> Result<()> {
+        let dir = self.texture_dir(source);
+        let mut files = Vec::new();
+        collect_png_files(&dir, &mut files)
+            .with_context(|| format!("read atlas texture directory {}", dir.display()))?;
+        files.sort();
+
+        for path in files {
+            let relative = path
+                .strip_prefix(&dir)
+                .with_context(|| format!("strip texture directory {}", dir.display()))?;
+            let relative = texture_id_suffix(relative)?;
+            entries.push(AtlasTextureEntry {
+                id: format!("{}:{}{}", source.namespace, prefix, relative),
+                path,
+            });
+        }
+        Ok(())
+    }
+
+    fn namespace_assets_dir(&self, namespace: &str) -> PathBuf {
+        self.sources_dir.join("assets").join(namespace)
+    }
+
+    fn texture_dir(&self, location: &ResourceLocation) -> PathBuf {
+        self.namespace_assets_dir(&location.namespace)
+            .join("textures")
+            .join(&location.path)
+    }
+
+    fn texture_path(&self, location: &ResourceLocation) -> PathBuf {
+        self.namespace_assets_dir(&location.namespace)
+            .join("textures")
+            .join(format!("{}.png", location.path))
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct RawAtlas {
+    sources: Vec<RawAtlasSource>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawAtlasSource {
+    #[serde(rename = "type")]
+    source_type: String,
+    source: Option<String>,
+    prefix: Option<String>,
+    resource: Option<String>,
+    sprite: Option<String>,
+}
+
+impl RawAtlasSource {
+    fn required_field(&self, field: &str) -> Result<&str> {
+        match field {
+            "prefix" => self
+                .prefix
+                .as_deref()
+                .ok_or_else(|| anyhow::anyhow!("missing atlas source prefix")),
+            _ => bail!("unsupported required atlas field {field:?}"),
+        }
+    }
+
+    fn required_location(&self, field: &str) -> Result<ResourceLocation> {
+        self.optional_location(field)?
+            .ok_or_else(|| anyhow::anyhow!("missing atlas source {field}"))
+    }
+
+    fn optional_location(&self, field: &str) -> Result<Option<ResourceLocation>> {
+        let value = match field {
+            "source" => self.source.as_deref(),
+            "resource" => self.resource.as_deref(),
+            "sprite" => self.sprite.as_deref(),
+            _ => bail!("unsupported atlas location field {field:?}"),
+        };
+        value.map(ResourceLocation::parse).transpose()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ResourceLocation {
+    namespace: String,
+    path: String,
+}
+
+impl ResourceLocation {
+    fn parse(value: &str) -> Result<Self> {
+        let (namespace, path) = value.split_once(':').unwrap_or(("minecraft", value));
+        validate_resource_namespace(namespace)?;
+        validate_resource_path(path)?;
+        Ok(Self {
+            namespace: namespace.to_string(),
+            path: path.to_string(),
+        })
+    }
+
+    fn id(&self) -> String {
+        format!("{}:{}", self.namespace, self.path)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AtlasTextureEntry {
+    id: String,
+    path: PathBuf,
+}
+
+fn collect_png_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+    for entry in std::fs::read_dir(dir)
+        .with_context(|| format!("read texture directory {}", dir.display()))?
+    {
+        let entry =
+            entry.with_context(|| format!("read texture directory entry in {}", dir.display()))?;
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .with_context(|| format!("read file type {}", path.display()))?;
+        if file_type.is_dir() {
+            collect_png_files(&path, files)?;
+            continue;
+        }
+        if path.extension().and_then(|extension| extension.to_str()) == Some("png") {
+            files.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn texture_id_suffix(path: &Path) -> Result<String> {
+    let mut parts = Vec::new();
+    for component in path.components() {
+        let std::path::Component::Normal(part) = component else {
+            bail!("invalid texture path component in {}", path.display());
+        };
+        let part = part
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("non-utf8 texture path {}", path.display()))?;
+        parts.push(part.to_string());
+    }
+    let Some(last) = parts.last_mut() else {
+        bail!("empty texture path");
+    };
+    let Some(stem) = last.strip_suffix(".png") else {
+        bail!("texture path {} does not end with .png", path.display());
+    };
+    *last = stem.to_string();
+    Ok(parts.join("/"))
+}
+
+fn validate_resource_namespace(namespace: &str) -> Result<()> {
+    if namespace.is_empty() {
+        bail!("resource namespace must not be empty");
+    }
+    if !namespace.bytes().all(|byte| {
+        byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-' | b'.')
+    }) {
+        bail!("invalid resource namespace {namespace:?}");
+    }
+    Ok(())
+}
+
+fn validate_resource_path(path: &str) -> Result<()> {
+    if path.is_empty() || path.starts_with('/') || path.contains('\\') {
+        bail!("invalid resource path {path:?}");
+    }
+    for segment in path.split('/') {
+        if segment.is_empty() || matches!(segment, "." | "..") {
+            bail!("invalid resource path segment {segment:?} in {path:?}");
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -163,19 +345,71 @@ mod tests {
     use crate::{colors::VANILLA_BIOME_ORDER, AtlasPacker, GrassColorModifier, SpriteSource};
 
     #[test]
-    fn pack_roots_loads_sorted_block_texture_sources() {
+    fn pack_roots_loads_block_texture_sources_from_vanilla_atlas() {
         let root = unique_temp_dir("pack-roots");
-        let block_dir = root
+        let assets_dir = root
             .join("sources")
             .join(MC_VERSION)
             .join("assets")
-            .join("minecraft")
-            .join("textures")
-            .join("block");
-        std::fs::create_dir_all(&block_dir).unwrap();
+            .join("minecraft");
+        let block_dir = assets_dir.join("textures").join("block");
         write_test_png(&block_dir.join("z_stone.png"), 16, 16);
         write_test_png(&block_dir.join("a_hd_overlay.png"), 64, 32);
+        write_test_png(&block_dir.join("sub").join("deepslate.png"), 8, 8);
         std::fs::write(block_dir.join("a_hd_overlay.png.mcmeta"), "{}").unwrap();
+        write_test_png(
+            &assets_dir
+                .join("textures")
+                .join("entity")
+                .join("conduit")
+                .join("base.png"),
+            32,
+            16,
+        );
+        write_test_png(
+            &assets_dir
+                .join("textures")
+                .join("entity")
+                .join("bell")
+                .join("bell_body.png"),
+            32,
+            32,
+        );
+        write_test_png(
+            &assets_dir
+                .join("textures")
+                .join("entity")
+                .join("enchantment")
+                .join("enchanting_table_book.png"),
+            48,
+            16,
+        );
+        write_json(
+            &assets_dir.join("atlases").join("blocks.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "prefix": "block/",
+                  "source": "block"
+                },
+                {
+                  "type": "minecraft:directory",
+                  "prefix": "entity/conduit/",
+                  "source": "entity/conduit"
+                },
+                {
+                  "type": "minecraft:single",
+                  "resource": "minecraft:entity/bell/bell_body"
+                },
+                {
+                  "type": "minecraft:single",
+                  "resource": "minecraft:entity/enchantment/enchanting_table_book",
+                  "sprite": "minecraft:custom/book"
+                }
+              ]
+            }"#,
+        );
 
         let roots = PackRoots::from_root(&root).unwrap();
         let sources = roots.load_block_texture_sources().unwrap();
@@ -183,9 +417,16 @@ mod tests {
             sources,
             vec![
                 SpriteSource::new("minecraft:block/a_hd_overlay", 64, 32),
+                SpriteSource::new("minecraft:block/sub/deepslate", 8, 8),
                 SpriteSource::new("minecraft:block/z_stone", 16, 16),
+                SpriteSource::new("minecraft:entity/conduit/base", 32, 16),
+                SpriteSource::new("minecraft:entity/bell/bell_body", 32, 32),
+                SpriteSource::new("minecraft:custom/book", 48, 16),
             ]
         );
+        let images = roots.load_block_texture_images().unwrap();
+        assert_eq!(images.len(), sources.len());
+        assert_eq!(images.last().unwrap().id, "minecraft:custom/book");
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -277,7 +518,7 @@ mod tests {
     fn loads_local_vanilla_block_texture_dimensions() {
         let roots = PackRoots::discover().unwrap();
         let sources = roots.load_block_texture_sources().unwrap();
-        assert!(sources.len() > 1_000);
+        assert_eq!(sources.len(), 1_121);
         let biome_colors = roots.load_biome_color_catalog().unwrap();
         assert_eq!(biome_colors.len(), VANILLA_BIOME_ORDER.len());
         let plains = biome_colors.profile(1).unwrap();
@@ -313,6 +554,16 @@ mod tests {
             .unwrap();
         assert_eq!(water.width, 16);
         assert!(water.height >= 16);
+        let conduit = sources
+            .iter()
+            .find(|source| source.id == "minecraft:entity/conduit/base")
+            .unwrap();
+        assert_eq!((conduit.width, conduit.height), (32, 16));
+        let bell = sources
+            .iter()
+            .find(|source| source.id == "minecraft:entity/bell/bell_body")
+            .unwrap();
+        assert_eq!((bell.width, bell.height), (32, 32));
 
         let layout = AtlasPacker::new(4096, 1)
             .unwrap()
