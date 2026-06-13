@@ -513,6 +513,8 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
         registry_entries_with_data: world_counters.registry_entries_with_data,
         registry_entry_stubs: world_counters.registry_entry_stubs,
         registry_entry_payload_bytes: world_counters.registry_entry_payload_bytes,
+        registry_content_registries_tracked: world_counters.registry_content_registries_tracked,
+        registry_duplicate_entries: world_counters.registry_duplicate_entries,
         first_chunk: Some(first_chunk),
         first_chunk_summary,
         first_chunk_center_block,

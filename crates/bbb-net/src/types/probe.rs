@@ -17,6 +17,10 @@ pub struct ProbeReport {
     pub registry_entry_stubs: usize,
     #[serde(default)]
     pub registry_entry_payload_bytes: usize,
+    #[serde(default)]
+    pub registry_content_registries_tracked: usize,
+    #[serde(default)]
+    pub registry_duplicate_entries: usize,
     pub first_chunk: Option<ChunkPos>,
     pub first_chunk_summary: Option<ChunkProbeSummary>,
     pub first_chunk_center_block: Option<BlockProbe>,

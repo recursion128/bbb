@@ -19,6 +19,10 @@ pub struct NetCounters {
     #[serde(default)]
     pub registry_entry_payload_bytes: usize,
     #[serde(default)]
+    pub registry_content_registries_tracked: usize,
+    #[serde(default)]
+    pub registry_duplicate_entries: usize,
+    #[serde(default)]
     pub update_tags_packets: usize,
     #[serde(default)]
     pub last_update_tags_registry_count: usize,

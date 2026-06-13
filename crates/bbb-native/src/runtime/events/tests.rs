@@ -217,6 +217,8 @@ fn registry_data_event_updates_world_state_and_snapshot_counters() {
     assert_eq!(counters.registry_entries_with_data, 1);
     assert_eq!(counters.registry_entry_stubs, 1);
     assert_eq!(counters.registry_entry_payload_bytes, 24);
+    assert_eq!(counters.registry_content_registries_tracked, 1);
+    assert_eq!(counters.registry_duplicate_entries, 0);
 }
 
 #[test]

@@ -731,6 +731,9 @@ fn sync_registry_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.registry_entries_with_data = world_counters.registry_entries_with_data;
     counters.registry_entry_stubs = world_counters.registry_entry_stubs;
     counters.registry_entry_payload_bytes = world_counters.registry_entry_payload_bytes;
+    counters.registry_content_registries_tracked =
+        world_counters.registry_content_registries_tracked;
+    counters.registry_duplicate_entries = world_counters.registry_duplicate_entries;
 }
 
 fn sound_holder_state(

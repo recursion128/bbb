@@ -18,6 +18,8 @@ static VANILLA_BLOCK_STATES: OnceLock<Arc<Vec<Option<BlockStateInfo>>>> = OnceLo
 pub struct RegistrySet {
     pub registries: Vec<RegistryPacket>,
     #[serde(default)]
+    pub contents: BTreeMap<String, RegistryContentState>,
+    #[serde(default)]
     pub tags: BTreeMap<String, RegistryTagState>,
     #[serde(skip)]
     pub block_states: BlockStateRegistry,
@@ -32,6 +34,16 @@ pub struct RegistryPacket {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RegistryContentState {
+    pub registry: String,
+    pub packet_count: usize,
+    #[serde(default)]
+    pub entries: Vec<RegistryPacketEntry>,
+    #[serde(default)]
+    pub duplicate_entry_ids: BTreeMap<String, usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegistryPacketEntry {
     pub id: String,
     #[serde(default)]
@@ -39,7 +51,7 @@ pub struct RegistryPacketEntry {
     #[serde(default)]
     pub raw_data_len: usize,
     #[serde(skip)]
-    pub raw_data: Option<Vec<u8>>,
+    pub raw_data: Option<Arc<[u8]>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,6 +83,7 @@ impl RegistrySet {
     pub fn vanilla_26_1() -> Self {
         Self {
             registries: Vec::new(),
+            contents: BTreeMap::new(),
             tags: BTreeMap::new(),
             block_states: BlockStateRegistry::vanilla_26_1(),
         }
@@ -97,7 +110,7 @@ impl RegistryPacketEntry {
             id: id.into(),
             has_data: true,
             raw_data_len: raw_data.len(),
-            raw_data: Some(raw_data),
+            raw_data: Some(Arc::from(raw_data)),
         }
     }
 
@@ -124,6 +137,34 @@ impl RegistryPacketEntry {
     }
 }
 
+impl RegistryContentState {
+    pub fn new(registry: impl Into<String>) -> Self {
+        Self {
+            registry: registry.into(),
+            packet_count: 0,
+            entries: Vec::new(),
+            duplicate_entry_ids: BTreeMap::new(),
+        }
+    }
+
+    fn append_packet(&mut self, entries: &[RegistryPacketEntry]) {
+        self.packet_count += 1;
+        for entry in entries {
+            if self.entries.iter().any(|existing| existing.id == entry.id) {
+                *self
+                    .duplicate_entry_ids
+                    .entry(entry.id.clone())
+                    .or_insert(0) += 1;
+            }
+            self.entries.push(entry.clone());
+        }
+    }
+
+    pub fn duplicate_entry_count(&self) -> usize {
+        self.duplicate_entry_ids.values().sum()
+    }
+}
+
 impl From<ProtocolRegistryDataEntry> for RegistryPacketEntry {
     fn from(entry: ProtocolRegistryDataEntry) -> Self {
         let ProtocolRegistryDataEntry { id, raw_data } = entry;
@@ -132,7 +173,7 @@ impl From<ProtocolRegistryDataEntry> for RegistryPacketEntry {
             id,
             has_data: raw_data.is_some(),
             raw_data_len,
-            raw_data,
+            raw_data: raw_data.map(Arc::from),
         }
     }
 }
@@ -199,8 +240,14 @@ impl WorldStore {
         raw_payload_len: usize,
         entries: Vec<RegistryPacketEntry>,
     ) {
+        let name = name.into();
+        self.registries
+            .contents
+            .entry(name.clone())
+            .or_insert_with(|| RegistryContentState::new(name.clone()))
+            .append_packet(&entries);
         self.registries.registries.push(RegistryPacket {
-            name: name.into(),
+            name,
             raw_payload_len,
             entries,
         });
@@ -209,6 +256,10 @@ impl WorldStore {
 
     pub fn registries(&self) -> &RegistrySet {
         &self.registries
+    }
+
+    pub fn registry_content(&self, registry: &str) -> Option<&RegistryContentState> {
+        self.registries.contents.get(registry)
     }
 
     fn sync_registry_counters(&mut self) {
@@ -237,6 +288,13 @@ impl WorldStore {
             .iter()
             .flat_map(|registry| registry.entries.iter())
             .map(|entry| entry.raw_data_len)
+            .sum();
+        self.counters.registry_content_registries_tracked = self.registries.contents.len();
+        self.counters.registry_duplicate_entries = self
+            .registries
+            .contents
+            .values()
+            .map(RegistryContentState::duplicate_entry_count)
             .sum();
     }
 
@@ -344,6 +402,14 @@ mod tests {
             ],
         );
         store.record_registry_entries(
+            "minecraft:chat_type",
+            96,
+            vec![RegistryPacketEntry::with_raw_data(
+                "minecraft:chat",
+                vec![11; 12],
+            )],
+        );
+        store.record_registry_entries(
             "minecraft:damage_type",
             64,
             vec![RegistryPacketEntry::with_raw_data(
@@ -353,7 +419,7 @@ mod tests {
         );
 
         let registries = &store.registries().registries;
-        assert_eq!(registries.len(), 2);
+        assert_eq!(registries.len(), 3);
         assert_eq!(registries[0].name, "minecraft:chat_type");
         assert_eq!(
             registries[0].entries,
@@ -362,15 +428,33 @@ mod tests {
                 RegistryPacketEntry::stub("minecraft:raw"),
             ]
         );
-        assert_eq!(registries[1].entries[0].id, "minecraft:in_fire");
-        assert_eq!(registries[1].entries[0].raw_data(), Some(&[8; 17][..]));
+        assert_eq!(registries[1].entries[0].id, "minecraft:chat");
+        assert_eq!(registries[2].entries[0].id, "minecraft:in_fire");
+        assert_eq!(registries[2].entries[0].raw_data(), Some(&[8; 17][..]));
+
+        let chat_content = store
+            .registry_content("minecraft:chat_type")
+            .expect("chat_type content is collected");
+        assert_eq!(chat_content.packet_count, 2);
+        assert_eq!(
+            chat_content
+                .entries
+                .iter()
+                .map(|entry| entry.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["minecraft:chat", "minecraft:raw", "minecraft:chat"]
+        );
+        assert_eq!(chat_content.duplicate_entry_ids["minecraft:chat"], 1);
+        assert_eq!(store.registries().contents.len(), 2);
 
         let counters = store.counters();
-        assert_eq!(counters.registries_seen, 2);
-        assert_eq!(counters.registry_entries_seen, 3);
-        assert_eq!(counters.registry_entries_with_data, 2);
+        assert_eq!(counters.registries_seen, 3);
+        assert_eq!(counters.registry_entries_seen, 4);
+        assert_eq!(counters.registry_entries_with_data, 3);
         assert_eq!(counters.registry_entry_stubs, 1);
-        assert_eq!(counters.registry_entry_payload_bytes, 41);
+        assert_eq!(counters.registry_entry_payload_bytes, 53);
+        assert_eq!(counters.registry_content_registries_tracked, 2);
+        assert_eq!(counters.registry_duplicate_entries, 1);
     }
 
     #[test]
