@@ -18,6 +18,9 @@ pub(super) fn outline_shape_for_block(
             _ => None,
         };
     }
+    if is_pressure_plate_block_name(block_name) {
+        return pressure_plate_outline_shape(properties);
+    }
     if is_stair_block_name(block_name) {
         return stair_outline_shape(properties);
     }
@@ -114,6 +117,31 @@ fn stair_shape_boxes(kind: StairShapeKind, top: bool) -> Vec<BlockOutlineBox> {
         }
     }
     boxes
+}
+
+fn pressure_plate_outline_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockOutlineShape> {
+    let pressed = if let Some(powered) = properties.get("powered").map(String::as_str) {
+        match powered {
+            "true" => true,
+            "false" => false,
+            _ => return None,
+        }
+    } else {
+        let power = properties.get("power")?.parse::<u8>().ok()?;
+        if power > 15 {
+            return None;
+        }
+        power > 0
+    };
+
+    let outline = if pressed {
+        BlockOutlineBox::PRESSURE_PLATE_PRESSED
+    } else {
+        BlockOutlineBox::PRESSURE_PLATE
+    };
+    Some(BlockOutlineShape::single(outline))
 }
 
 fn fence_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -382,6 +410,12 @@ fn is_stair_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_stairs"))
+}
+
+fn is_pressure_plate_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_pressure_plate"))
 }
 
 fn is_trapdoor_block_name(block_name: &str) -> bool {

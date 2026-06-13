@@ -73,6 +73,14 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 1.0 / 16.0, 1.0],
     };
+    pub(super) const PRESSURE_PLATE: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 1.0 / 16.0, 15.0 / 16.0],
+    };
+    pub(super) const PRESSURE_PLATE_PRESSED: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 0.5 / 16.0, 15.0 / 16.0],
+    };
     pub(super) const TORCH: Self = Self {
         min: [6.0 / 16.0, 0.0, 6.0 / 16.0],
         max: [10.0 / 16.0, 10.0 / 16.0, 10.0 / 16.0],

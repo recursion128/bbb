@@ -8,6 +8,14 @@ pub(super) fn snow_properties(layers: u8) -> BTreeMap<String, String> {
     BTreeMap::from([("layers".to_string(), layers.to_string())])
 }
 
+pub(super) fn pressure_plate_properties(powered: bool) -> BTreeMap<String, String> {
+    BTreeMap::from([("powered".to_string(), powered.to_string())])
+}
+
+pub(super) fn weighted_pressure_plate_properties(power: u8) -> BTreeMap<String, String> {
+    BTreeMap::from([("power".to_string(), power.to_string())])
+}
+
 pub(super) fn stair_properties(facing: &str, half: &str, shape: &str) -> BTreeMap<String, String> {
     BTreeMap::from([
         ("facing".to_string(), facing.to_string()),

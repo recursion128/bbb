@@ -40,6 +40,31 @@ fn selection_outline_uses_flat_carpet_bounds() {
 }
 
 #[test]
+fn pressure_plate_outline_clip_uses_thin_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(
+            Some("minecraft:oak_pressure_plate"),
+            &pressure_plate_properties(false),
+        ),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 2.0, 0.5],
+            [0.0, -1.0, 0.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.9375,
+            face: ProtocolDirection::Up,
+            inside: false,
+        })
+    );
+}
+
+#[test]
 fn selection_outline_preserves_pale_moss_multi_box_shape() {
     let shape = outline_shape_for_block(
         Some("minecraft:pale_moss_carpet"),

@@ -54,6 +54,68 @@ fn outline_shape_uses_vanilla_snow_layers_property() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_pressure_plate_powered_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_pressure_plate"),
+            &pressure_plate_properties(false),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::PRESSURE_PLATE))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:stone_pressure_plate"),
+            &pressure_plate_properties(true),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::PRESSURE_PLATE_PRESSED,
+        ))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_weighted_pressure_plate_power_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:light_weighted_pressure_plate"),
+            &weighted_pressure_plate_properties(0),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::PRESSURE_PLATE))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:heavy_weighted_pressure_plate"),
+            &weighted_pressure_plate_properties(7),
+        ),
+        Some(BlockOutlineShape::single(
+            BlockOutlineBox::PRESSURE_PLATE_PRESSED,
+        ))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_pressure_plate_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_pressure_plate"), &BTreeMap::new()),
+        None
+    );
+
+    let mut properties = pressure_plate_properties(false);
+    properties.insert("powered".to_string(), "sometimes".to_string());
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_pressure_plate"), &properties),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:light_weighted_pressure_plate"),
+            &weighted_pressure_plate_properties(16),
+        ),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_stair_straight_boxes() {
     assert_eq!(
         outline_shape_for_block(
