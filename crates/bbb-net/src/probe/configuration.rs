@@ -64,9 +64,11 @@ impl ProbeContext {
             ConfigurationClientbound::CustomReportDetails(_)
             | ConfigurationClientbound::ServerLinks(_) => {}
             ConfigurationClientbound::Transfer(_) => {}
-            ConfigurationClientbound::ClearDialog
-            | ConfigurationClientbound::ShowDialog(_)
-            | ConfigurationClientbound::CodeOfConduct { .. } => {}
+            ConfigurationClientbound::ClearDialog | ConfigurationClientbound::ShowDialog(_) => {}
+            ConfigurationClientbound::CodeOfConduct { .. } => {
+                let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
+                self.conn.send_packet(id, &payload).await?;
+            }
             ConfigurationClientbound::Unknown { .. } => {}
         }
         Ok(())

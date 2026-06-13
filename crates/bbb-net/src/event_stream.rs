@@ -138,3 +138,76 @@ fn emit_best_effort(events: &mpsc::Sender<NetEvent>, event: NetEvent) -> Result<
 fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
     encode_packet(packet_id, payload)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_protocol::ids;
+    use bytes::BytesMut;
+    use std::time::Duration;
+    use tokio::{net::TcpListener, time::timeout};
+
+    #[tokio::test]
+    async fn configuration_code_of_conduct_sends_accept_and_emits_event() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            server_cookies: BTreeMap::new(),
+        };
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::CodeOfConduct {
+                text: "Follow the server rules.".to_string(),
+            })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("accept packet should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT
+        );
+        assert!(payload.is_empty());
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("code-of-conduct event should be emitted")
+            .unwrap();
+        match event {
+            NetEvent::CodeOfConduct { text } => {
+                assert_eq!(text, "Follow the server rules.");
+            }
+            other => panic!("expected code-of-conduct event, got {other:?}"),
+        }
+    }
+
+    async fn raw_connection_pair() -> (RawConnection, RawConnection) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let client = tokio::spawn(async move {
+            RawConnection::connect(&addr.to_string(), None)
+                .await
+                .unwrap()
+        });
+        let (server_stream, _) = listener.accept().await.unwrap();
+        let client = client.await.unwrap();
+        let server = RawConnection {
+            stream: server_stream,
+            read_buf: BytesMut::with_capacity(8192),
+            compression_threshold: None,
+        };
+        (client, server)
+    }
+}

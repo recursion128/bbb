@@ -323,6 +323,13 @@ pub fn encode_configuration_pong(id: i32) -> (i32, Vec<u8>) {
     (ids::configuration::SERVERBOUND_PONG, out.into_inner())
 }
 
+pub fn encode_configuration_accept_code_of_conduct() -> (i32, Vec<u8>) {
+    (
+        ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT,
+        Vec::new(),
+    )
+}
+
 pub fn encode_select_known_packs_empty() -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(0);

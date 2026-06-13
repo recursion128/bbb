@@ -1215,6 +1215,13 @@ fn decodes_chunk_batch_and_encodes_client_play_status_packets() {
 }
 
 #[test]
+fn encodes_configuration_accept_code_of_conduct_as_unit_packet() {
+    let (id, payload) = encode_configuration_accept_code_of_conduct();
+    assert_eq!(id, ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT);
+    assert!(payload.is_empty());
+}
+
+#[test]
 fn decodes_transfer_packets_in_configuration_and_play() {
     let mut payload = Encoder::new();
     payload.write_string("next.example.com");

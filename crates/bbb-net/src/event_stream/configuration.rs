@@ -108,6 +108,8 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::ShowDialog(update)).await?;
             }
             ConfigurationClientbound::CodeOfConduct { text } => {
+                let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
+                self.conn.send_packet(id, &payload).await?;
                 emit(&self.events, NetEvent::CodeOfConduct { text }).await?;
             }
             ConfigurationClientbound::Unknown { .. } => {}
