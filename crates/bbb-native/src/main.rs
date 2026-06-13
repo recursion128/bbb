@@ -1895,6 +1895,10 @@ fn drain_net_events(
             NetEvent::SetEquipment(update) => {
                 world.apply_set_equipment(update);
             }
+            NetEvent::TakeItemEntity(update) => {
+                world.apply_take_item_entity(update);
+                counters.take_item_entity_packets += 1;
+            }
             NetEvent::SetPassengers(update) => {
                 world.apply_set_passengers(update);
             }
@@ -3281,6 +3285,28 @@ mod tests {
 
         assert_eq!(counters.block_changed_ack_packets, 1);
         assert_eq!(counters.last_block_changed_ack_sequence, Some(17));
+    }
+
+    #[test]
+    fn take_item_entity_event_updates_snapshot_counter() {
+        let (tx, mut rx) = mpsc::channel(1);
+        tx.try_send(NetEvent::TakeItemEntity(
+            bbb_protocol::packets::TakeItemEntity {
+                item_id: 10,
+                player_id: 20,
+                amount: 3,
+            },
+        ))
+        .unwrap();
+        drop(tx);
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(drain_net_events(&mut rx, &mut world, &mut counters), 1);
+        assert_eq!(counters.take_item_entity_packets, 1);
+        assert_eq!(world.counters().take_item_entities_received, 1);
+        assert_eq!(world.counters().take_item_entities_applied, 0);
     }
 
     #[test]

@@ -133,6 +133,7 @@ pub enum PlayClientbound {
     SetTitleText(SetTitleText),
     SetTitlesAnimation(SetTitlesAnimation),
     SystemChat(SystemChat),
+    TakeItemEntity(TakeItemEntity),
     TeleportEntity(TeleportEntity),
     TickingState(TickingState),
     TickingStep(TickingStep),
@@ -216,6 +217,13 @@ pub struct EntityMove {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RemoveEntities {
     pub entity_ids: Vec<i32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TakeItemEntity {
+    pub item_id: i32,
+    pub player_id: i32,
+    pub amount: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -410,6 +418,7 @@ pub enum EntityDataValueKind {
     String(String),
     Component(String),
     OptionalComponent(Option<String>),
+    ItemStack(ItemStackSummary),
     Boolean(bool),
     Rotations {
         x: f32,
@@ -1597,6 +1606,14 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 overlay: decoder.read_bool()?,
             }))
         }
+        ids::play::CLIENTBOUND_TAKE_ITEM_ENTITY => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::TakeItemEntity(TakeItemEntity {
+                item_id: decoder.read_var_i32()?,
+                player_id: decoder.read_var_i32()?,
+                amount: decoder.read_var_i32()?,
+            }))
+        }
         ids::play::CLIENTBOUND_TELEPORT_ENTITY => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::TeleportEntity(decode_teleport_entity(
@@ -1920,6 +1937,7 @@ fn decode_entity_data_value(
         } else {
             None
         }),
+        7 => EntityDataValueKind::ItemStack(decode_item_stack_summary(decoder)?),
         8 => EntityDataValueKind::Boolean(decoder.read_bool()?),
         9 => EntityDataValueKind::Rotations {
             x: decoder.read_f32()?,
@@ -3250,6 +3268,24 @@ mod tests {
         );
 
         let mut payload = Encoder::new();
+        payload.write_var_i32(321);
+        payload.write_var_i32(654);
+        payload.write_var_i32(3);
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_TAKE_ITEM_ENTITY,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::TakeItemEntity(TakeItemEntity {
+                item_id: 321,
+                player_id: 654,
+                amount: 3,
+            })
+        );
+
+        let mut payload = Encoder::new();
         payload.write_var_i32(123);
         payload.write_u8(0);
         payload.write_var_i32(0);
@@ -3268,6 +3304,12 @@ mod tests {
         payload.write_f32(1.0);
         payload.write_f32(2.0);
         payload.write_f32(3.0);
+        payload.write_u8(8);
+        payload.write_var_i32(7);
+        payload.write_var_i32(3);
+        payload.write_var_i32(42);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
         payload.write_u8(0xff);
         let packet = decode_play_clientbound(
             ids::play::CLIENTBOUND_SET_ENTITY_DATA,
@@ -3307,6 +3349,15 @@ mod tests {
                             y: 2.0,
                             z: 3.0,
                         },
+                    },
+                    EntityDataValue {
+                        data_id: 8,
+                        serializer_id: 7,
+                        value: EntityDataValueKind::ItemStack(ItemStackSummary {
+                            item_id: Some(42),
+                            count: 3,
+                            component_patch: Default::default(),
+                        }),
                     },
                 ],
             })

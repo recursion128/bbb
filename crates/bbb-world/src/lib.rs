@@ -13,7 +13,7 @@ use bbb_protocol::{
         ContainerSetContent as ProtocolContainerSetContent,
         ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
         EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
-        EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
+        EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
         EntityPositionSync as ProtocolEntityPositionSync,
         EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, HurtAnimation as ProtocolHurtAnimation,
         ItemStackSummary as ProtocolItemStackSummary, LevelChunkWithLight,
@@ -24,10 +24,11 @@ use bbb_protocol::{
         SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
         SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
         SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
-        Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y,
-        PLAYER_RELATIVE_DELTA_Z, PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X,
-        PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y, PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
+        TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
+        UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d,
+        PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_DELTA_Z,
+        PLAYER_RELATIVE_ROTATE_DELTA, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y,
+        PLAYER_RELATIVE_Y_ROT, PLAYER_RELATIVE_Z,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -37,6 +38,9 @@ use uuid::Uuid;
 const MAX_CHUNK_SECTION_BUFFER: usize = 2 * 1024 * 1024;
 const LIGHT_ARRAY_BYTES: usize = 2048;
 const VANILLA_BLOCK_STATES_JSON: &str = include_str!("../data/block_states_26_1.json");
+const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
+const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
+const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 static VANILLA_BLOCK_STATES: OnceLock<Arc<Vec<Option<BlockStateInfo>>>> = OnceLock::new();
 
@@ -530,6 +534,10 @@ pub struct WorldCounters {
     pub entity_motion_updates_applied: usize,
     pub entity_head_rotations_received: usize,
     pub entity_head_rotations_applied: usize,
+    pub take_item_entities_received: usize,
+    pub take_item_entities_applied: usize,
+    pub item_entity_stack_shrinks: usize,
+    pub take_item_entities_removed: usize,
     pub entity_removes_received: usize,
     pub entities_removed: usize,
 }
@@ -1301,9 +1309,45 @@ impl WorldStore {
         true
     }
 
+    pub fn apply_take_item_entity(&mut self, packet: ProtocolTakeItemEntity) -> bool {
+        self.counters.take_item_entities_received += 1;
+        let Some(entity_index) = self
+            .entities
+            .iter()
+            .position(|entity| entity.id == packet.item_id)
+        else {
+            return false;
+        };
+
+        self.counters.take_item_entities_applied += 1;
+        let entity_type_id = self.entities[entity_index].entity_type_id;
+        if entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
+            return true;
+        }
+
+        if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID {
+            if let Some(stack) = item_entity_stack_mut(&mut self.entities[entity_index]) {
+                if stack.count > 0 && packet.amount > 0 {
+                    stack.count = stack.count.saturating_sub(packet.amount).max(0);
+                    self.counters.item_entity_stack_shrinks += 1;
+                }
+                if stack.count > 0 {
+                    return true;
+                }
+            }
+        }
+
+        let removed = self.remove_entities_by_ids(&[packet.item_id]);
+        self.counters.take_item_entities_removed += removed;
+        true
+    }
+
     pub fn apply_remove_entities(&mut self, packet: ProtocolRemoveEntities) -> usize {
         self.counters.entity_removes_received += packet.entity_ids.len();
-        let removed_ids = packet.entity_ids;
+        self.remove_entities_by_ids(&packet.entity_ids)
+    }
+
+    fn remove_entities_by_ids(&mut self, removed_ids: &[i32]) -> usize {
         let before = self.entities.len();
         self.entities
             .retain(|entity| !removed_ids.contains(&entity.id));
@@ -1858,6 +1902,17 @@ fn entity_vec3(vec: ProtocolVec3d) -> EntityVec3 {
         y: vec.y,
         z: vec.z,
     }
+}
+
+fn item_entity_stack_mut(entity: &mut EntityState) -> Option<&mut ProtocolItemStackSummary> {
+    entity.data_values.iter_mut().find_map(|value| {
+        if value.data_id == VANILLA_ITEM_ENTITY_STACK_DATA_ID {
+            if let EntityDataValueKind::ItemStack(stack) = &mut value.value {
+                return Some(stack);
+            }
+        }
+        None
+    })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2452,8 +2507,8 @@ mod tests {
         SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
         SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
         SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-        TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
-        Vec3d as ProtocolVec3d,
+        TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
+        UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -3057,6 +3112,70 @@ mod tests {
         assert_eq!(store.counters().entity_removes_received, 2);
         assert_eq!(store.counters().entities_removed, 1);
         assert_eq!(store.counters().entities_tracked, 0);
+    }
+
+    #[test]
+    fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(
+            10,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+        ));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            20,
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        ));
+        store.apply_add_entity(protocol_add_entity_with_type(30, 7));
+
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 10,
+            values: vec![item_stack_entity_data(item_stack(42, 5))],
+        }));
+
+        assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
+            item_id: 10,
+            player_id: 99,
+            amount: 2,
+        }));
+        let item_entity = store.probe_entity(10).unwrap();
+        assert_eq!(
+            item_entity.data_values,
+            vec![item_stack_entity_data(item_stack(42, 3))]
+        );
+
+        assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
+            item_id: 10,
+            player_id: 99,
+            amount: 3,
+        }));
+        assert!(store.probe_entity(10).is_none());
+
+        assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
+            item_id: 20,
+            player_id: 99,
+            amount: 1,
+        }));
+        assert!(store.probe_entity(20).is_some());
+
+        assert!(store.apply_take_item_entity(ProtocolTakeItemEntity {
+            item_id: 30,
+            player_id: 99,
+            amount: 1,
+        }));
+        assert!(store.probe_entity(30).is_none());
+        assert!(!store.apply_take_item_entity(ProtocolTakeItemEntity {
+            item_id: 999,
+            player_id: 99,
+            amount: 1,
+        }));
+
+        assert_eq!(store.entity_count(), 1);
+        assert_eq!(store.counters().take_item_entities_received, 5);
+        assert_eq!(store.counters().take_item_entities_applied, 4);
+        assert_eq!(store.counters().item_entity_stack_shrinks, 2);
+        assert_eq!(store.counters().take_item_entities_removed, 2);
+        assert_eq!(store.counters().entities_removed, 2);
+        assert_eq!(store.counters().entities_tracked, 1);
     }
 
     #[test]
@@ -3665,10 +3784,14 @@ mod tests {
     }
 
     fn protocol_add_entity(id: i32) -> ProtocolAddEntity {
+        protocol_add_entity_with_type(id, 7)
+    }
+
+    fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEntity {
         ProtocolAddEntity {
             id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678),
-            entity_type_id: 7,
+            entity_type_id,
             position: ProtocolVec3d {
                 x: 1.0,
                 y: 64.0,
@@ -3683,6 +3806,14 @@ mod tests {
             y_rot: 20.0,
             y_head_rot: 30.0,
             data: 99,
+        }
+    }
+
+    fn item_stack_entity_data(item: ItemStackSummary) -> ProtocolEntityDataValue {
+        ProtocolEntityDataValue {
+            data_id: VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+            serializer_id: 7,
+            value: EntityDataValueKind::ItemStack(item),
         }
     }
 

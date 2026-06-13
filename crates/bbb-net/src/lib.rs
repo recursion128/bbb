@@ -20,7 +20,7 @@ use bbb_protocol::{
         SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
         SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetPassengers,
         SetPlayerInventory, SetSimulationDistance, SetSubtitleText, SetTitleText,
-        SetTitlesAnimation, SystemChat, TeleportEntity, TickingState, TickingStep,
+        SetTitlesAnimation, SystemChat, TakeItemEntity, TeleportEntity, TickingState, TickingStep,
         UpdateAttributes, UseItem, UseItemOn,
     },
 };
@@ -115,6 +115,7 @@ pub enum NetEvent {
     SetEntityLink(SetEntityLink),
     SetEntityMotion(SetEntityMotion),
     SetEquipment(SetEquipment),
+    TakeItemEntity(TakeItemEntity),
     SetPassengers(SetPassengers),
     UpdateAttributes(UpdateAttributes),
     TeleportEntity(TeleportEntity),
@@ -518,6 +519,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::SetEquipment(update) => {
                     emit(&events, NetEvent::SetEquipment(update)).await?;
                 }
+                PlayClientbound::TakeItemEntity(update) => {
+                    emit(&events, NetEvent::TakeItemEntity(update)).await?;
+                }
                 PlayClientbound::SetPassengers(update) => {
                     emit(&events, NetEvent::SetPassengers(update)).await?;
                 }
@@ -761,6 +765,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 }
                 PlayClientbound::SetEquipment(update) => {
                     world.apply_set_equipment(update);
+                }
+                PlayClientbound::TakeItemEntity(update) => {
+                    world.apply_take_item_entity(update);
                 }
                 PlayClientbound::SetPassengers(update) => {
                     world.apply_set_passengers(update);

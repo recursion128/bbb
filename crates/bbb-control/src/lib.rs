@@ -59,6 +59,7 @@ pub struct NetCounters {
     pub ticking_state_packets: usize,
     pub ticking_step_packets: usize,
     pub set_camera_packets: usize,
+    pub take_item_entity_packets: usize,
     pub last_block_changed_ack_sequence: Option<i32>,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,
