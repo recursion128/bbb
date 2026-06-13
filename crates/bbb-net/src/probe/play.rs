@@ -30,9 +30,13 @@ impl ProbeContext {
             PlayClientbound::Cooldown(update) => {
                 self.world.apply_cooldown(update);
             }
-            PlayClientbound::CustomChatCompletions(_)
-            | PlayClientbound::CustomPayload(_)
-            | PlayClientbound::ServerLinks(_) => {}
+            PlayClientbound::CustomChatCompletions(_) => {}
+            PlayClientbound::CustomPayload(payload) => {
+                self.world.apply_custom_payload(payload);
+            }
+            PlayClientbound::ServerLinks(links) => {
+                self.world.apply_server_links(links);
+            }
             PlayClientbound::CustomReportDetails(details) => {
                 self.world.apply_custom_report_details(details);
             }

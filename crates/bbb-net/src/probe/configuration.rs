@@ -20,7 +20,9 @@ impl ProbeContext {
             ConfigurationClientbound::Disconnect { reason, .. } => {
                 bail!("configuration disconnected: {reason}");
             }
-            ConfigurationClientbound::CustomPayload(_) => {}
+            ConfigurationClientbound::CustomPayload(payload) => {
+                self.world.apply_custom_payload(payload);
+            }
             ConfigurationClientbound::KeepAlive { id } => {
                 let (id, payload) = packets::encode_configuration_keep_alive(id);
                 self.conn.send_packet(id, &payload).await?;
@@ -66,7 +68,9 @@ impl ProbeContext {
             ConfigurationClientbound::CustomReportDetails(details) => {
                 self.world.apply_custom_report_details(details);
             }
-            ConfigurationClientbound::ServerLinks(_) => {}
+            ConfigurationClientbound::ServerLinks(links) => {
+                self.world.apply_server_links(links);
+            }
             ConfigurationClientbound::Transfer(_) => {}
             ConfigurationClientbound::ClearDialog | ConfigurationClientbound::ShowDialog(_) => {}
             ConfigurationClientbound::CodeOfConduct { .. } => {
