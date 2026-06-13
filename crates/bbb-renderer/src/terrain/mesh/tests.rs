@@ -271,6 +271,7 @@ fn cross_layers_preserve_emissive_light() {
         block_state_id: 2,
         material: TerrainMaterialClass::Cutout,
         texture_indices: [0; 6],
+        ambient_occlusion: true,
         light: TerrainLight { sky: 4, block: 2 },
         tint: [TerrainTint::WHITE; 6],
         render_shape: TerrainRenderShape::Crosses(vec![
@@ -442,6 +443,7 @@ fn multi_box_model_skips_absent_faces() {
         block_state_id: 4,
         material: TerrainMaterialClass::Opaque,
         texture_indices: [0; 6],
+        ambient_occlusion: true,
         light: TerrainLight::FULL_BRIGHT,
         tint: [TerrainTint::WHITE; 6],
         render_shape: TerrainRenderShape::Boxes(vec![
@@ -483,6 +485,7 @@ fn boxes_use_per_box_texture_and_tint() {
         block_state_id: 4,
         material: TerrainMaterialClass::Opaque,
         texture_indices: [0; 6],
+        ambient_occlusion: true,
         light: TerrainLight::FULL_BRIGHT,
         tint: [TerrainTint::WHITE; 6],
         render_shape: TerrainRenderShape::Boxes(vec![

@@ -7,6 +7,8 @@ pub(super) struct RawBlockModel {
     #[serde(default)]
     pub(super) parent: Option<String>,
     #[serde(default)]
+    pub(super) ambientocclusion: Option<bool>,
+    #[serde(default)]
     pub(super) textures: BTreeMap<String, RawTextureReference>,
     #[serde(default)]
     pub(super) elements: Vec<RawBlockElement>,

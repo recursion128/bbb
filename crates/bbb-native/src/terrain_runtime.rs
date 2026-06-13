@@ -132,8 +132,8 @@ fn convert_terrain_snapshot(
                 z: chunk_origin_z + local_z,
             };
             let world_material = cell.material;
-            let (texture_indices, tint, face_transparency, render_shape) = textures
-                .block_render_data(
+            let (texture_indices, tint, face_transparency, render_shape, ambient_occlusion) =
+                textures.block_render_data(
                     cell.block_name.as_deref(),
                     &cell.block_properties,
                     world_material,
@@ -144,6 +144,7 @@ fn convert_terrain_snapshot(
                 block_state_id: cell.block_state_id,
                 texture_indices,
                 render_shape,
+                ambient_occlusion,
                 material: match cell.material {
                     bbb_world::TerrainMaterialClass::Empty => TerrainMaterialClass::Empty,
                     bbb_world::TerrainMaterialClass::Opaque => TerrainMaterialClass::Opaque,

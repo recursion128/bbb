@@ -103,6 +103,7 @@ pub struct TerrainCell {
     pub material: TerrainMaterialClass,
     pub texture_indices: [u32; 6],
     pub render_shape: TerrainRenderShape,
+    pub ambient_occlusion: bool,
     pub light: TerrainLight,
     pub tint: [TerrainTint; 6],
     pub face_transparency: [TerrainTransparency; 6],
@@ -183,6 +184,7 @@ impl TerrainCell {
         material: TerrainMaterialClass::Empty,
         texture_indices: [0; 6],
         render_shape: TerrainRenderShape::Cube,
+        ambient_occlusion: true,
         light: TerrainLight::FULL_BRIGHT,
         tint: [TerrainTint::WHITE; 6],
         face_transparency: [TerrainTransparency::OPAQUE; 6],
@@ -198,6 +200,7 @@ impl TerrainCell {
             material,
             texture_indices: [texture_index; 6],
             render_shape: TerrainRenderShape::Cube,
+            ambient_occlusion: true,
             light: TerrainLight::FULL_BRIGHT,
             tint: [TerrainTint::WHITE; 6],
             face_transparency: [TerrainTransparency::OPAQUE; 6],
@@ -215,6 +218,7 @@ impl TerrainCell {
             material,
             texture_indices: [texture_index; 6],
             render_shape,
+            ambient_occlusion: true,
             light: TerrainLight::FULL_BRIGHT,
             tint: [TerrainTint::WHITE; 6],
             face_transparency: [TerrainTransparency::OPAQUE; 6],
@@ -223,6 +227,11 @@ impl TerrainCell {
 
     pub fn with_light(mut self, light: TerrainLight) -> Self {
         self.light = light;
+        self
+    }
+
+    pub fn with_ambient_occlusion(mut self, ambient_occlusion: bool) -> Self {
+        self.ambient_occlusion = ambient_occlusion;
         self
     }
 

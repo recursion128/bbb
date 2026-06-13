@@ -365,6 +365,66 @@ fn model_quads_preserve_texture_tint_transparency_and_light() {
 }
 
 #[test]
+fn block_render_data_preserves_model_ambient_occlusion() {
+    let root = unique_temp_dir("block-render-ambient-occlusion");
+    let asset_root = root
+        .join("sources")
+        .join(bbb_pack::MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/test_model" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("test_model.json"),
+        r##"{
+            "ambientocclusion": false,
+            "textures": {
+                "particle": "minecraft:block/stone",
+                "all": "minecraft:block/stone"
+            },
+            "elements": [{
+                "faces": {
+                    "down": { "texture": "#all" },
+                    "up": { "texture": "#all" },
+                    "north": { "texture": "#all" },
+                    "south": { "texture": "#all" },
+                    "west": { "texture": "#all" },
+                    "east": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+
+    let mut texture_state = TerrainTextureState::default();
+    texture_state.block_models = Some(
+        bbb_pack::PackRoots::from_root(&root)
+            .unwrap()
+            .load_block_model_catalog()
+            .unwrap(),
+    );
+
+    let (_, _, _, _, ambient_occlusion) = texture_state.block_render_data(
+        Some("minecraft:test_block"),
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Opaque,
+        None,
+        None,
+    );
+
+    assert!(!ambient_occlusion);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_tint_uses_default_vanilla_color_classes() {
     let textures = TerrainTextureState::default();
     assert_eq!(
@@ -579,6 +639,19 @@ fn properties<const N: usize>(entries: [(&str, &str); N]) -> BTreeMap<String, St
         .into_iter()
         .map(|(key, value)| (key.to_string(), value.to_string()))
         .collect()
+}
+
+fn write_json(path: &std::path::Path, contents: &str) {
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, contents).unwrap();
+}
+
+fn unique_temp_dir(name: &str) -> std::path::PathBuf {
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    std::env::temp_dir().join(format!("bbb-native-{name}-{}-{nonce}", std::process::id()))
 }
 
 fn flat_colormap(rgb: [u8; 3]) -> bbb_pack::ColorMapImage {

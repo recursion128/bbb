@@ -192,6 +192,7 @@ impl TerrainTextureState {
         [TerrainTint; 6],
         [TerrainTransparency; 6],
         TerrainRenderShape,
+        bool,
     ) {
         let Some(block_name) = block_name else {
             return (
@@ -199,6 +200,7 @@ impl TerrainTextureState {
                 [TerrainTint::WHITE; 6],
                 [TerrainTransparency::OPAQUE; 6],
                 TerrainRenderShape::Cube,
+                true,
             );
         };
 
@@ -233,6 +235,7 @@ impl TerrainTextureState {
                     biome_id,
                     position,
                 ),
+                model.use_ambient_occlusion,
             );
         }
 
@@ -254,6 +257,7 @@ impl TerrainTextureState {
                 biome_id,
                 position,
             ),
+            true,
         )
     }
 

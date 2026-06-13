@@ -10,6 +10,7 @@ pub(super) struct ResolvedBlockModel {
     textures: BTreeMap<String, ResolvedTextureReference>,
     faces: [Option<ResolvedModelFace>; 6],
     elements: Vec<RawBlockElement>,
+    ambient_occlusion: Option<bool>,
     pub(super) shape: BlockModelShape,
 }
 
@@ -26,6 +27,10 @@ struct ResolvedModelFace {
 }
 
 impl ResolvedBlockModel {
+    pub(super) fn use_ambient_occlusion(&self) -> bool {
+        self.ambient_occlusion.unwrap_or(true)
+    }
+
     pub(super) fn face_textures(&self) -> Option<BlockFaceTextures> {
         let resolved_faces: [Option<ResolvedTextureReference>; 6] = std::array::from_fn(|index| {
             self.faces[index]
@@ -92,6 +97,9 @@ fn resolve_model_inner(
             );
             textures_changed = true;
         }
+    }
+    if let Some(ambient_occlusion) = raw.ambientocclusion {
+        resolved.ambient_occlusion = Some(ambient_occlusion);
     }
 
     if !raw.elements.is_empty() {

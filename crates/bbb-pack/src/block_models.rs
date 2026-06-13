@@ -114,9 +114,11 @@ impl BlockModelCatalog {
         let blockstate = self.blockstates.get(&normalize_block_id(block_name))?;
         let variants = blockstate.select_variants(properties, seed)?;
         let mut face_textures = None;
+        let mut use_ambient_occlusion = None;
         let mut shapes = Vec::with_capacity(variants.len());
         for variant in variants {
             let model = self.resolve_model(&variant.model)?;
+            use_ambient_occlusion.get_or_insert_with(|| model.use_ambient_occlusion());
             let local = model.face_textures()?;
             face_textures
                 .get_or_insert_with(|| apply_variant_rotation(local, variant.x, variant.y));
@@ -131,6 +133,7 @@ impl BlockModelCatalog {
         Some(BlockRenderModel {
             face_textures: face_textures?,
             shape: combine_model_shapes(shapes),
+            use_ambient_occlusion: use_ambient_occlusion.unwrap_or(true),
         })
     }
 }

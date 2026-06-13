@@ -114,6 +114,7 @@ fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {
         .block_render_model("minecraft:grass_block", &properties)
         .unwrap();
     assert_eq!(render_model.shape, BlockModelShape::Cube);
+    assert!(render_model.use_ambient_occlusion);
     let textures = render_model.face_textures;
 
     assert_eq!(textures.get(BlockModelFace::Down), "minecraft:block/dirt");
@@ -146,6 +147,89 @@ fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {
     assert_eq!(snowy.face_textures.tint_index(BlockModelFace::Up), Some(0));
     assert!(snowy.face_textures.force_translucent(BlockModelFace::Up));
     assert!(!snowy.face_textures.force_translucent(BlockModelFace::North));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_resolves_parent_ambient_occlusion() {
+    let root = unique_temp_dir("block-model-ambient-occlusion");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "kind=inherit": { "model": "minecraft:block/child_inherit" },
+                "kind=override": { "model": "minecraft:block/child_override" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("parent_model.json"),
+        r##"{
+            "ambientocclusion": false,
+            "textures": { "particle": "#all" },
+            "elements": [{
+                "faces": {
+                    "down": { "texture": "#all" },
+                    "up": { "texture": "#all" },
+                    "north": { "texture": "#all" },
+                    "south": { "texture": "#all" },
+                    "west": { "texture": "#all" },
+                    "east": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("child_inherit.json"),
+        r##"{
+            "parent": "minecraft:block/parent_model",
+            "textures": { "all": "minecraft:block/oak_planks" }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("child_override.json"),
+        r##"{
+            "parent": "minecraft:block/parent_model",
+            "ambientocclusion": true,
+            "textures": { "all": "minecraft:block/stone" }
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let mut properties = BTreeMap::new();
+    properties.insert("kind".to_string(), "inherit".to_string());
+    let inherited = catalog
+        .block_render_model("minecraft:test_block", &properties)
+        .unwrap();
+    properties.insert("kind".to_string(), "override".to_string());
+    let overridden = catalog
+        .block_render_model("minecraft:test_block", &properties)
+        .unwrap();
+
+    assert!(!inherited.use_ambient_occlusion);
+    assert!(overridden.use_ambient_occlusion);
+    assert_eq!(
+        inherited.face_textures.get(BlockModelFace::North),
+        "minecraft:block/oak_planks"
+    );
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -1151,6 +1235,7 @@ fn loads_local_vanilla_block_model_catalog() {
     let BlockModelShape::Quads(lever_quads) = lever_model.shape else {
         panic!("official lever should bake rotated elements to quads");
     };
+    assert!(!lever_model.use_ambient_occlusion);
     assert_eq!(lever_quads.len(), 11);
     assert!(lever_quads
         .iter()

@@ -97,6 +97,7 @@ impl Default for BlockModelShape {
 pub struct BlockRenderModel {
     pub face_textures: BlockFaceTextures,
     pub shape: BlockModelShape,
+    pub use_ambient_occlusion: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
