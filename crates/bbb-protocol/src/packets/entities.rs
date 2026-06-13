@@ -10,13 +10,16 @@ use super::{
     chunks::decode_block_pos,
     decode_vec3d,
     inventory::{self, ItemStackSummary},
-    read_resource_key, BlockPos, Vec3d,
+    read_resource_key,
+    world_effects::{decode_particle_payload, ParticlePayload},
+    BlockPos, Vec3d,
 };
 
 const MAX_ENTITY_ATTRIBUTES: usize = 1024;
 const MAX_ENTITY_ID_LIST: usize = 8192;
 const MAX_EQUIPMENT_SLOTS: usize = 8;
 const MAX_ATTRIBUTE_MODIFIERS: usize = 1024;
+const MAX_ENTITY_DATA_PARTICLES: usize = 65_536;
 // Vanilla uses ByteBufCodecs.list() without an explicit wire cap. Keep a repo-side
 // allocation guard so malformed packets cannot request unbounded step storage.
 const MAX_MINECART_LERP_STEPS: usize = 65_536;
@@ -243,6 +246,8 @@ pub enum EntityDataValueKind {
     OptionalLivingEntityReference(Option<Uuid>),
     BlockState(i32),
     OptionalBlockState(Option<i32>),
+    Particle(ParticlePayload),
+    Particles(Vec<ParticlePayload>),
     RegistryId {
         serializer: EntityDataRegistryHolder,
         id: i32,
@@ -616,6 +621,21 @@ fn decode_entity_data_value(
         15 => {
             let id = decoder.read_var_i32()?;
             EntityDataValueKind::OptionalBlockState((id != 0).then_some(id))
+        }
+        16 => EntityDataValueKind::Particle(decode_particle_payload(decoder)?),
+        17 => {
+            let count = decoder.read_len()?;
+            if count > MAX_ENTITY_DATA_PARTICLES {
+                return Err(ProtocolError::PacketTooLarge(
+                    count,
+                    MAX_ENTITY_DATA_PARTICLES,
+                ));
+            }
+            let mut particles = Vec::with_capacity(count);
+            for _ in 0..count {
+                particles.push(decode_particle_payload(decoder)?);
+            }
+            EntityDataValueKind::Particles(particles)
         }
         18 => EntityDataValueKind::VillagerData {
             villager_type: decoder.read_var_i32()?,

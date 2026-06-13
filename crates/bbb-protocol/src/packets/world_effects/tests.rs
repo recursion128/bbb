@@ -88,6 +88,11 @@ fn decodes_explosion_without_knockback() {
 
 #[test]
 fn decodes_level_particles_packet_wire_order() {
+    let mut particle_options = Encoder::new();
+    particle_options.write_i32(0x00ff00);
+    particle_options.write_f32(0.5);
+    let particle_options = particle_options.into_inner();
+
     let mut payload = Encoder::new();
     payload.write_bool(true);
     payload.write_bool(false);
@@ -99,8 +104,8 @@ fn decodes_level_particles_packet_wire_order() {
     payload.write_f32(0.3);
     payload.write_f32(1.5);
     payload.write_i32(16);
-    payload.write_var_i32(45);
-    payload.write_bytes(&[0xaa, 0xbb]);
+    payload.write_var_i32(14);
+    payload.write_bytes(&particle_options);
     let payload = payload.into_inner();
 
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_LEVEL_PARTICLES, &payload).unwrap();
@@ -122,8 +127,8 @@ fn decodes_level_particles_packet_wire_order() {
             max_speed: 1.5,
             count: 16,
             particle: ParticlePayload {
-                particle_type_id: 45,
-                raw_options: vec![0xaa, 0xbb],
+                particle_type_id: 14,
+                raw_options: particle_options,
             },
         })
     );
@@ -139,13 +144,9 @@ fn decodes_level_particles_packet_wire_order() {
     assert_eq!(decoder.read_f32().unwrap(), 0.3);
     assert_eq!(decoder.read_f32().unwrap(), 1.5);
     assert_eq!(decoder.read_i32().unwrap(), 16);
-    assert_eq!(decoder.read_var_i32().unwrap(), 45);
-    assert_eq!(
-        decoder
-            .read_exact(decoder.remaining_len(), "particle options")
-            .unwrap(),
-        &[0xaa, 0xbb]
-    );
+    assert_eq!(decoder.read_var_i32().unwrap(), 14);
+    assert_eq!(decoder.read_i32().unwrap(), 0x00ff00);
+    assert_eq!(decoder.read_f32().unwrap(), 0.5);
     assert!(decoder.is_empty());
 }
 

@@ -3,7 +3,7 @@ use crate::{
     codec::Encoder,
     ids,
     packets::{
-        decode_play_clientbound, DataComponentPatchSummary, PlayClientbound,
+        decode_play_clientbound, DataComponentPatchSummary, ParticlePayload, PlayClientbound,
         PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
     },
 };
@@ -358,6 +358,14 @@ fn decodes_entity_lifecycle_packets() {
 #[test]
 fn decodes_additional_entity_data_serializers() {
     let owner = Uuid::from_u128(0xaaaaaaaa11111111bbbbbbbb22222222);
+    let mut dust_options = Encoder::new();
+    dust_options.write_i32(0x00ff00);
+    dust_options.write_f32(0.5);
+    let dust_options = dust_options.into_inner();
+    let mut block_particle_options = Encoder::new();
+    block_particle_options.write_var_i32(1234);
+    let block_particle_options = block_particle_options.into_inner();
+
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
 
@@ -396,6 +404,18 @@ fn decodes_additional_entity_data_serializers() {
     payload.write_u8(15);
     payload.write_var_i32(35);
     payload.write_var_i32(2);
+
+    payload.write_u8(16);
+    payload.write_var_i32(16);
+    payload.write_var_i32(14);
+    payload.write_bytes(&dust_options);
+
+    payload.write_u8(17);
+    payload.write_var_i32(17);
+    payload.write_var_i32(2);
+    payload.write_var_i32(45);
+    payload.write_var_i32(1);
+    payload.write_bytes(&block_particle_options);
 
     payload.write_u8(0xff);
 
@@ -465,6 +485,28 @@ fn decodes_additional_entity_data_serializers() {
                         serializer: EntityDataEnumSerializer::SnifferState,
                         id: 2,
                     },
+                },
+                EntityDataValue {
+                    data_id: 16,
+                    serializer_id: 16,
+                    value: EntityDataValueKind::Particle(ParticlePayload {
+                        particle_type_id: 14,
+                        raw_options: dust_options,
+                    }),
+                },
+                EntityDataValue {
+                    data_id: 17,
+                    serializer_id: 17,
+                    value: EntityDataValueKind::Particles(vec![
+                        ParticlePayload {
+                            particle_type_id: 45,
+                            raw_options: Vec::new(),
+                        },
+                        ParticlePayload {
+                            particle_type_id: 1,
+                            raw_options: block_particle_options,
+                        },
+                    ]),
                 },
             ],
         })
