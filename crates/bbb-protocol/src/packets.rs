@@ -7,12 +7,14 @@ use crate::{
     ids, PROTOCOL_VERSION,
 };
 
+pub mod chunks;
 pub mod entities;
 pub mod inventory;
 pub mod movement;
 pub mod scoreboard;
 pub mod server_presentation;
 pub mod world_border;
+pub use chunks::*;
 pub use entities::*;
 pub use inventory::*;
 pub use movement::*;
@@ -20,7 +22,6 @@ pub use scoreboard::*;
 pub use server_presentation::*;
 pub use world_border::*;
 
-const MAX_CHUNKS_BIOMES_BUFFER: usize = 2 * 1024 * 1024;
 const MAX_CLOCK_UPDATES: usize = 4096;
 const MAX_AWARD_STATS: usize = 8192;
 const MAX_COMMAND_SUGGESTIONS: usize = 8192;
@@ -191,13 +192,6 @@ pub enum PlayClientbound {
     Unknown { packet_id: i32, len: usize },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockPos {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AwardStats {
     pub stats: Vec<StatUpdate>,
@@ -279,39 +273,6 @@ impl MobEffectFlags {
             blend: raw & MOB_EFFECT_FLAG_BLEND != 0,
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockUpdate {
-    pub pos: BlockPos,
-    pub block_state_id: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockEntityData {
-    pub pos: BlockPos,
-    pub block_entity_type_id: i32,
-    pub raw_nbt: Vec<u8>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockChangedAck {
-    pub sequence: i32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockDestruction {
-    pub id: i32,
-    pub pos: BlockPos,
-    pub progress: u8,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockEvent {
-    pub pos: BlockPos,
-    pub b0: u8,
-    pub b1: u8,
-    pub block_id: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -445,53 +406,15 @@ impl Difficulty {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SectionBlocksUpdate {
-    pub section_x: i32,
-    pub section_y: i32,
-    pub section_z: i32,
-    pub updates: Vec<BlockUpdate>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ChunkPos {
-    pub x: i32,
-    pub z: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ChunksBiomes {
-    pub chunks: Vec<ChunkBiomeData>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ChunkBiomeData {
-    pub pos: ChunkPos,
-    pub raw_biomes: Vec<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Disconnect {
     pub reason: String,
     pub raw_reason: Vec<u8>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ForgetLevelChunk {
-    pub pos: ChunkPos,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct GameEvent {
     pub event_id: u8,
     pub param: f32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LevelEvent {
-    pub event_type: i32,
-    pub pos: BlockPos,
-    pub data: i32,
-    pub global: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -506,17 +429,6 @@ pub struct ClockUpdate {
     pub total_ticks: i64,
     pub partial_tick: f32,
     pub rate: f32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SetChunkCacheCenter {
-    pub chunk_x: i32,
-    pub chunk_z: i32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SetChunkCacheRadius {
-    pub radius: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -988,20 +900,6 @@ pub struct SetHeldSlot {
     pub slot: i32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LevelChunkWithLight {
-    pub x: i32,
-    pub z: i32,
-    pub raw_after_position: Vec<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LightUpdate {
-    pub chunk_x: i32,
-    pub chunk_z: i32,
-    pub raw_light_data: Vec<u8>,
-}
-
 pub fn encode_handshake(host: &str, port: u16, intent: ClientIntent) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(PROTOCOL_VERSION);
@@ -1240,7 +1138,7 @@ pub fn encode_play_player_command(command: PlayerCommand) -> (i32, Vec<u8>) {
 pub fn encode_play_player_action(action: PlayerAction) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(action.action.ordinal());
-    out.write_i64(encode_block_pos(action.pos));
+    out.write_i64(chunks::encode_block_pos(action.pos));
     out.write_u8(action.direction.id());
     out.write_var_i32(action.sequence);
     (ids::play::SERVERBOUND_PLAYER_ACTION, out.into_inner())
@@ -1255,7 +1153,7 @@ pub fn encode_play_swing(hand: InteractionHand) -> (i32, Vec<u8>) {
 pub fn encode_play_use_item_on(packet: UseItemOn) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(packet.hand.id());
-    encode_block_hit_result(&mut out, packet.hit);
+    chunks::encode_block_hit_result(&mut out, packet.hit);
     out.write_var_i32(packet.sequence);
     (ids::play::SERVERBOUND_USE_ITEM_ON, out.into_inner())
 }
@@ -1271,7 +1169,7 @@ pub fn encode_play_use_item(packet: UseItem) -> (i32, Vec<u8>) {
 
 pub fn encode_play_pick_item_from_block(packet: PickItemFromBlock) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
-    out.write_i64(encode_block_pos(packet.pos));
+    out.write_i64(chunks::encode_block_pos(packet.pos));
     out.write_bool(packet.include_data);
     (
         ids::play::SERVERBOUND_PICK_ITEM_FROM_BLOCK,
@@ -1329,38 +1227,32 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             )?))
         }
         ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK => {
-            Ok(PlayClientbound::BlockChangedAck(BlockChangedAck {
-                sequence: Decoder::new(payload).read_var_i32()?,
-            }))
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::BlockChangedAck(
+                chunks::decode_block_changed_ack(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_BLOCK_DESTRUCTION => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::BlockDestruction(BlockDestruction {
-                id: decoder.read_var_i32()?,
-                pos: decode_block_pos(decoder.read_i64()?),
-                progress: decoder.read_u8()?,
-            }))
+            Ok(PlayClientbound::BlockDestruction(
+                chunks::decode_block_destruction(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::BlockEntityData(BlockEntityData {
-                pos: decode_block_pos(decoder.read_i64()?),
-                block_entity_type_id: decoder.read_var_i32()?,
-                raw_nbt: decoder.remaining().to_vec(),
-            }))
+            Ok(PlayClientbound::BlockEntityData(
+                chunks::decode_block_entity_data(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_BLOCK_EVENT => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::BlockEvent(BlockEvent {
-                pos: decode_block_pos(decoder.read_i64()?),
-                b0: decoder.read_u8()?,
-                b1: decoder.read_u8()?,
-                block_id: decoder.read_var_i32()?,
-            }))
+            Ok(PlayClientbound::BlockEvent(chunks::decode_block_event(
+                &mut decoder,
+            )?))
         }
         ids::play::CLIENTBOUND_BLOCK_UPDATE => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::BlockUpdate(decode_block_update(
+            Ok(PlayClientbound::BlockUpdate(chunks::decode_block_update(
                 &mut decoder,
             )?))
         }
@@ -1380,7 +1272,7 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         }),
         ids::play::CLIENTBOUND_CHUNKS_BIOMES => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::ChunksBiomes(decode_chunks_biomes(
+            Ok(PlayClientbound::ChunksBiomes(chunks::decode_chunks_biomes(
                 &mut decoder,
             )?))
         }
@@ -1442,9 +1334,9 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         }
         ids::play::CLIENTBOUND_FORGET_LEVEL_CHUNK => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::ForgetLevelChunk(ForgetLevelChunk {
-                pos: decode_chunk_pos(decoder.read_i64()?),
-            }))
+            Ok(PlayClientbound::ForgetLevelChunk(
+                chunks::decode_forget_level_chunk(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_GAME_EVENT => {
             let mut decoder = Decoder::new(payload);
@@ -1675,21 +1567,20 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         ids::play::CLIENTBOUND_SECTION_BLOCKS_UPDATE => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::SectionBlocksUpdate(
-                decode_section_blocks_update(&mut decoder)?,
+                chunks::decode_section_blocks_update(&mut decoder)?,
             ))
         }
         ids::play::CLIENTBOUND_SET_CHUNK_CACHE_CENTER => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::SetChunkCacheCenter(SetChunkCacheCenter {
-                chunk_x: decoder.read_var_i32()?,
-                chunk_z: decoder.read_var_i32()?,
-            }))
+            Ok(PlayClientbound::SetChunkCacheCenter(
+                chunks::decode_set_chunk_cache_center(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_SET_CHUNK_CACHE_RADIUS => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::SetChunkCacheRadius(SetChunkCacheRadius {
-                radius: decoder.read_var_i32()?,
-            }))
+            Ok(PlayClientbound::SetChunkCacheRadius(
+                chunks::decode_set_chunk_cache_radius(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_SET_CURSOR_ITEM => {
             let mut decoder = Decoder::new(payload);
@@ -1844,53 +1735,27 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         }
         ids::play::CLIENTBOUND_LEVEL_EVENT => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::LevelEvent(LevelEvent {
-                event_type: decoder.read_i32()?,
-                pos: decode_block_pos(decoder.read_i64()?),
-                data: decoder.read_i32()?,
-                global: decoder.read_bool()?,
-            }))
+            Ok(PlayClientbound::LevelEvent(chunks::decode_level_event(
+                &mut decoder,
+            )?))
         }
         ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT => {
             let mut decoder = Decoder::new(payload);
-            let x = decoder.read_i32()?;
-            let z = decoder.read_i32()?;
-            Ok(PlayClientbound::LevelChunkWithLight(LevelChunkWithLight {
-                x,
-                z,
-                raw_after_position: decoder.remaining().to_vec(),
-            }))
+            Ok(PlayClientbound::LevelChunkWithLight(
+                chunks::decode_level_chunk_with_light(&mut decoder)?,
+            ))
         }
         ids::play::CLIENTBOUND_LIGHT_UPDATE => {
             let mut decoder = Decoder::new(payload);
-            Ok(PlayClientbound::LightUpdate(LightUpdate {
-                chunk_x: decoder.read_var_i32()?,
-                chunk_z: decoder.read_var_i32()?,
-                raw_light_data: decoder.remaining().to_vec(),
-            }))
+            Ok(PlayClientbound::LightUpdate(chunks::decode_light_update(
+                &mut decoder,
+            )?))
         }
         id => Ok(PlayClientbound::Unknown {
             packet_id: id,
             len: payload.len(),
         }),
     }
-}
-
-fn decode_chunks_biomes(decoder: &mut Decoder<'_>) -> Result<ChunksBiomes> {
-    let count = decoder.read_len()?;
-    let mut chunks = Vec::with_capacity(count);
-    for _ in 0..count {
-        let pos = decode_chunk_pos(decoder.read_i64()?);
-        let len = decoder.read_len()?;
-        if len > MAX_CHUNKS_BIOMES_BUFFER {
-            return Err(ProtocolError::PacketTooLarge(len, MAX_CHUNKS_BIOMES_BUFFER));
-        }
-        chunks.push(ChunkBiomeData {
-            pos,
-            raw_biomes: decoder.read_exact(len, "chunk biome data")?.to_vec(),
-        });
-    }
-    Ok(ChunksBiomes { chunks })
 }
 
 fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> {
@@ -2287,7 +2152,7 @@ fn decode_byte_array(
 fn decode_default_spawn_position(decoder: &mut Decoder<'_>) -> Result<SetDefaultSpawnPosition> {
     Ok(SetDefaultSpawnPosition {
         dimension: read_resource_key(decoder)?,
-        pos: decode_block_pos(decoder.read_i64()?),
+        pos: chunks::decode_block_pos(decoder.read_i64()?),
         yaw: decoder.read_f32()?,
         pitch: decoder.read_f32()?,
     })
@@ -2299,83 +2164,12 @@ fn decode_optional_global_pos(decoder: &mut Decoder<'_>) -> Result<Option<Global
     }
     Ok(Some(GlobalPos {
         dimension: read_resource_key(decoder)?,
-        pos: decode_block_pos(decoder.read_i64()?),
+        pos: chunks::decode_block_pos(decoder.read_i64()?),
     }))
 }
 
 fn read_resource_key(decoder: &mut Decoder<'_>) -> Result<String> {
     decoder.read_string(32767)
-}
-
-fn decode_block_update(decoder: &mut Decoder<'_>) -> Result<BlockUpdate> {
-    Ok(BlockUpdate {
-        pos: decode_block_pos(decoder.read_i64()?),
-        block_state_id: decoder.read_var_i32()?,
-    })
-}
-
-fn decode_section_blocks_update(decoder: &mut Decoder<'_>) -> Result<SectionBlocksUpdate> {
-    let (section_x, section_y, section_z) = decode_section_pos(decoder.read_i64()?);
-    let count = decoder.read_len()?;
-    let mut updates = Vec::with_capacity(count);
-    for _ in 0..count {
-        let packed_change = decoder.read_var_i64()? as u64;
-        let packed_pos = (packed_change & 0x0fff) as u16;
-        let block_state_id = (packed_change >> 12) as i32;
-        updates.push(BlockUpdate {
-            pos: BlockPos {
-                x: section_x * 16 + i32::from((packed_pos >> 8) & 0x0f),
-                y: section_y * 16 + i32::from(packed_pos & 0x0f),
-                z: section_z * 16 + i32::from((packed_pos >> 4) & 0x0f),
-            },
-            block_state_id,
-        });
-    }
-    Ok(SectionBlocksUpdate {
-        section_x,
-        section_y,
-        section_z,
-        updates,
-    })
-}
-
-fn decode_block_pos(packed: i64) -> BlockPos {
-    BlockPos {
-        x: (packed >> 38) as i32,
-        y: ((packed << 52) >> 52) as i32,
-        z: ((packed << 26) >> 38) as i32,
-    }
-}
-
-fn encode_block_pos(pos: BlockPos) -> i64 {
-    (((pos.x as i64) & 0x3ffffff) << 38)
-        | (((pos.z as i64) & 0x3ffffff) << 12)
-        | ((pos.y as i64) & 0xfff)
-}
-
-fn encode_block_hit_result(out: &mut Encoder, hit: BlockHitResult) {
-    out.write_i64(encode_block_pos(hit.pos));
-    out.write_var_i32(i32::from(hit.direction.id()));
-    out.write_f32(hit.cursor_x);
-    out.write_f32(hit.cursor_y);
-    out.write_f32(hit.cursor_z);
-    out.write_bool(hit.inside);
-    out.write_bool(hit.world_border_hit);
-}
-
-fn decode_section_pos(packed: i64) -> (i32, i32, i32) {
-    (
-        (packed >> 42) as i32,
-        ((packed << 44) >> 44) as i32,
-        ((packed << 22) >> 42) as i32,
-    )
-}
-
-fn decode_chunk_pos(packed: i64) -> ChunkPos {
-    ChunkPos {
-        x: packed as i32,
-        z: (packed >> 32) as i32,
-    }
 }
 
 fn decode_player_position(decoder: &mut Decoder<'_>) -> Result<PlayerPositionUpdate> {
@@ -3276,79 +3070,6 @@ mod tests {
     }
 
     #[test]
-    fn decodes_level_chunk_envelope() {
-        let mut payload = Encoder::new();
-        payload.write_i32(12);
-        payload.write_i32(-4);
-        payload.write_bytes(&[1, 2, 3]);
-
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_LEVEL_CHUNK_WITH_LIGHT,
-            &payload.into_inner(),
-        )
-        .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::LevelChunkWithLight(LevelChunkWithLight {
-                x: 12,
-                z: -4,
-                raw_after_position: vec![1, 2, 3],
-            })
-        );
-    }
-
-    #[test]
-    fn decodes_light_update_envelope() {
-        let mut payload = Encoder::new();
-        payload.write_var_i32(12);
-        payload.write_var_i32(-4);
-        payload.write_bytes(&[9, 8, 7]);
-
-        let packet =
-            decode_play_clientbound(ids::play::CLIENTBOUND_LIGHT_UPDATE, &payload.into_inner())
-                .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::LightUpdate(LightUpdate {
-                chunk_x: 12,
-                chunk_z: -4,
-                raw_light_data: vec![9, 8, 7],
-            })
-        );
-    }
-
-    #[test]
-    fn decodes_chunks_biomes_update() {
-        let mut payload = Encoder::new();
-        payload.write_var_i32(2);
-        payload.write_i64(encode_chunk_pos(12, -4));
-        payload.write_var_i32(3);
-        payload.write_bytes(&[1, 2, 3]);
-        payload.write_i64(encode_chunk_pos(-8, 5));
-        payload.write_var_i32(2);
-        payload.write_bytes(&[4, 5]);
-
-        let packet =
-            decode_play_clientbound(ids::play::CLIENTBOUND_CHUNKS_BIOMES, &payload.into_inner())
-                .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::ChunksBiomes(ChunksBiomes {
-                chunks: vec![
-                    ChunkBiomeData {
-                        pos: ChunkPos { x: 12, z: -4 },
-                        raw_biomes: vec![1, 2, 3],
-                    },
-                    ChunkBiomeData {
-                        pos: ChunkPos { x: -8, z: 5 },
-                        raw_biomes: vec![4, 5],
-                    },
-                ],
-            })
-        );
-    }
-
-    #[test]
     fn decodes_command_suggestions_packet_wire_order() {
         let mut payload = Encoder::new();
         payload.write_var_i32(17);
@@ -3914,7 +3635,7 @@ mod tests {
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert_eq!(
-            decode_block_pos(decoder.read_i64().unwrap()),
+            chunks::decode_block_pos(decoder.read_i64().unwrap()),
             BlockPos {
                 x: 34,
                 y: -12,
@@ -3982,7 +3703,7 @@ mod tests {
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert_eq!(
-            decode_block_pos(decoder.read_i64().unwrap()),
+            chunks::decode_block_pos(decoder.read_i64().unwrap()),
             BlockPos {
                 x: 34,
                 y: -12,
@@ -4031,7 +3752,7 @@ mod tests {
         assert_eq!(id, ids::play::SERVERBOUND_PICK_ITEM_FROM_BLOCK);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(
-            decode_block_pos(decoder.read_i64().unwrap()),
+            chunks::decode_block_pos(decoder.read_i64().unwrap()),
             BlockPos {
                 x: -5,
                 y: 70,
@@ -4055,28 +3776,6 @@ mod tests {
             PlayClientbound::GameEvent(GameEvent {
                 event_id: 7,
                 param: 0.75,
-            })
-        );
-
-        let mut payload = Encoder::new();
-        payload.write_i32(2001);
-        payload.write_i64(encode_block_pos(34, 64, -45));
-        payload.write_i32(9);
-        payload.write_bool(true);
-        let packet =
-            decode_play_clientbound(ids::play::CLIENTBOUND_LEVEL_EVENT, &payload.into_inner())
-                .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::LevelEvent(LevelEvent {
-                event_type: 2001,
-                pos: BlockPos {
-                    x: 34,
-                    y: 64,
-                    z: -45,
-                },
-                data: 9,
-                global: true,
             })
         );
 
@@ -4117,9 +3816,8 @@ mod tests {
     }
 
     #[test]
-    fn decodes_single_and_section_block_updates() {
+    fn decodes_award_stats() {
         assert_eq!(ids::play::CLIENTBOUND_AWARD_STATS, 3);
-        assert_eq!(ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK, 4);
 
         let mut payload = Encoder::new();
         payload.write_var_i32(2);
@@ -4148,193 +3846,6 @@ mod tests {
                     },
                 ],
             })
-        );
-
-        let mut payload = Encoder::new();
-        payload.write_var_i32(17);
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_BLOCK_CHANGED_ACK,
-            &payload.into_inner(),
-        )
-        .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::BlockChangedAck(BlockChangedAck { sequence: 17 })
-        );
-
-        let mut payload = Encoder::new();
-        payload.write_var_i32(1234);
-        payload.write_i64(encode_block_pos(34, -12, -45));
-        payload.write_u8(7);
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_BLOCK_DESTRUCTION,
-            &payload.into_inner(),
-        )
-        .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::BlockDestruction(BlockDestruction {
-                id: 1234,
-                pos: BlockPos {
-                    x: 34,
-                    y: -12,
-                    z: -45,
-                },
-                progress: 7,
-            })
-        );
-
-        let mut payload = Encoder::new();
-        payload.write_i64(encode_block_pos(35, 64, -46));
-        payload.write_u8(1);
-        payload.write_u8(5);
-        payload.write_var_i32(123);
-        let packet =
-            decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_EVENT, &payload.into_inner())
-                .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::BlockEvent(BlockEvent {
-                pos: BlockPos {
-                    x: 35,
-                    y: 64,
-                    z: -46,
-                },
-                b0: 1,
-                b1: 5,
-                block_id: 123,
-            })
-        );
-
-        let mut payload = Encoder::new();
-        payload.write_i64(encode_block_pos(34, -12, -45));
-        payload.write_var_i32(9);
-        let packet =
-            decode_play_clientbound(ids::play::CLIENTBOUND_BLOCK_UPDATE, &payload.into_inner())
-                .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::BlockUpdate(BlockUpdate {
-                pos: BlockPos {
-                    x: 34,
-                    y: -12,
-                    z: -45,
-                },
-                block_state_id: 9,
-            })
-        );
-
-        let mut payload = Encoder::new();
-        payload.write_i64(encode_section_pos(2, -1, -3));
-        payload.write_var_i32(2);
-        payload.write_var_i64((9 << 12) | section_relative_pos(2, 1, 3));
-        payload.write_var_i64((0 << 12) | section_relative_pos(15, 15, 15));
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SECTION_BLOCKS_UPDATE,
-            &payload.into_inner(),
-        )
-        .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::SectionBlocksUpdate(SectionBlocksUpdate {
-                section_x: 2,
-                section_y: -1,
-                section_z: -3,
-                updates: vec![
-                    BlockUpdate {
-                        pos: BlockPos {
-                            x: 34,
-                            y: -15,
-                            z: -45,
-                        },
-                        block_state_id: 9,
-                    },
-                    BlockUpdate {
-                        pos: BlockPos {
-                            x: 47,
-                            y: -1,
-                            z: -33,
-                        },
-                        block_state_id: 0,
-                    },
-                ],
-            })
-        );
-    }
-
-    #[test]
-    fn decodes_block_entity_data_update() {
-        let raw_nbt = nbt_compound_with_string("id", "minecraft:chest");
-        let mut payload = Encoder::new();
-        payload.write_i64(encode_block_pos(34, 64, -45));
-        payload.write_var_i32(5);
-        payload.write_bytes(&raw_nbt);
-
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_BLOCK_ENTITY_DATA,
-            &payload.into_inner(),
-        )
-        .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::BlockEntityData(BlockEntityData {
-                pos: BlockPos {
-                    x: 34,
-                    y: 64,
-                    z: -45,
-                },
-                block_entity_type_id: 5,
-                raw_nbt,
-            })
-        );
-    }
-
-    #[test]
-    fn decodes_forget_level_chunk() {
-        let mut payload = Encoder::new();
-        payload.write_i64(encode_chunk_pos(12, -4));
-
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_FORGET_LEVEL_CHUNK,
-            &payload.into_inner(),
-        )
-        .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::ForgetLevelChunk(ForgetLevelChunk {
-                pos: ChunkPos { x: 12, z: -4 },
-            })
-        );
-    }
-
-    #[test]
-    fn decodes_chunk_cache_center_and_radius() {
-        let mut payload = Encoder::new();
-        payload.write_var_i32(12);
-        payload.write_var_i32(-4);
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_CHUNK_CACHE_CENTER,
-            &payload.into_inner(),
-        )
-        .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::SetChunkCacheCenter(SetChunkCacheCenter {
-                chunk_x: 12,
-                chunk_z: -4,
-            })
-        );
-
-        let mut payload = Encoder::new();
-        payload.write_var_i32(10);
-        let packet = decode_play_clientbound(
-            ids::play::CLIENTBOUND_SET_CHUNK_CACHE_RADIUS,
-            &payload.into_inner(),
-        )
-        .unwrap();
-        assert_eq!(
-            packet,
-            PlayClientbound::SetChunkCacheRadius(SetChunkCacheRadius { radius: 10 })
         );
     }
 
@@ -4617,32 +4128,10 @@ mod tests {
         (((x as i64) & 0x3ffffff) << 38) | (((z as i64) & 0x3ffffff) << 12) | ((y as i64) & 0xfff)
     }
 
-    fn encode_section_pos(x: i32, y: i32, z: i32) -> i64 {
-        (((x as i64) & 0x3fffff) << 42) | (((z as i64) & 0x3fffff) << 20) | ((y as i64) & 0xfffff)
-    }
-
-    fn encode_chunk_pos(x: i32, z: i32) -> i64 {
-        (((x as u32) as u64) | (((z as u32) as u64) << 32)) as i64
-    }
-
     fn nbt_string_root(text: &str) -> Vec<u8> {
         let mut payload = vec![8];
         payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
         payload.extend_from_slice(text.as_bytes());
         payload
-    }
-
-    fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
-        let mut payload = vec![10, 8];
-        payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
-        payload.extend_from_slice(name.as_bytes());
-        payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
-        payload.extend_from_slice(value.as_bytes());
-        payload.push(0);
-        payload
-    }
-
-    fn section_relative_pos(x: i64, y: i64, z: i64) -> i64 {
-        (x << 8) | (z << 4) | y
     }
 }

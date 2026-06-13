@@ -7,7 +7,8 @@ use crate::{
 };
 
 use super::{
-    decode_block_pos, decode_vec3d,
+    chunks::decode_block_pos,
+    decode_vec3d,
     inventory::{self, ItemStackSummary},
     read_resource_key, BlockPos, Vec3d,
 };
