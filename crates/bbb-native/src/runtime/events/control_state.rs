@@ -99,13 +99,8 @@ pub(super) fn apply_control_projection_event(
             sync_client_ui_counters(counters, world);
         }
         NetEvent::PlaceGhostRecipe(update) => {
-            counters.last_ghost_recipe = Some(bbb_control::GhostRecipeState {
-                container_id: update.container_id,
-                recipe_display_type_id: update.recipe_display_type.id(),
-                recipe_display_type: update.recipe_display_type.as_str().to_string(),
-                recipe_display_body_len: update.recipe_display_body.len(),
-            });
-            counters.ghost_recipe_packets += 1;
+            world.apply_place_ghost_recipe(update);
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::ClearDialog => {
             world.apply_clear_dialog();
@@ -518,6 +513,7 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.mount_screen_open_packets = world_counters.mount_screen_open_packets;
     counters.open_book_packets = world_counters.open_book_packets;
     counters.open_sign_editor_packets = world_counters.open_sign_editor_packets;
+    counters.ghost_recipe_packets = world_counters.ghost_recipe_packets;
 
     counters.last_mount_screen =
         world
@@ -542,6 +538,15 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
             registry_id: state.registry_id,
             raw_dialog_payload_len: state.raw_dialog_payload_len,
         });
+    counters.last_ghost_recipe =
+        world
+            .last_ghost_recipe()
+            .map(|state| bbb_control::GhostRecipeState {
+                container_id: state.container_id,
+                recipe_display_type_id: state.recipe_display_type_id,
+                recipe_display_type: state.recipe_display_type.clone(),
+                recipe_display_body_len: state.recipe_display_body_len,
+            });
 }
 
 fn control_chat_line(message: &bbb_world::ChatMessageState) -> bbb_control::ClientChatLine {

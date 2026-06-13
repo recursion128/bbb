@@ -247,6 +247,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub open_sign_editor_packets: usize,
     #[serde(default)]
+    pub ghost_recipe_packets: usize,
+    #[serde(default)]
     pub map_item_data_packets: usize,
     #[serde(default)]
     pub maps_tracked: usize,

@@ -1,7 +1,7 @@
 use bbb_protocol::packets::{
     DialogHolder, InteractionHand, MountScreenOpen as ProtocolMountScreenOpen,
     OpenBook as ProtocolOpenBook, OpenSignEditor as ProtocolOpenSignEditor,
-    ShowDialog as ProtocolShowDialog,
+    PlaceGhostRecipe as ProtocolPlaceGhostRecipe, ShowDialog as ProtocolShowDialog,
 };
 use serde::{Deserialize, Serialize};
 
@@ -9,11 +9,18 @@ use crate::{protocol_block_pos, BlockPos, WorldStore};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientUiState {
+    #[serde(default)]
     pub low_disk_space_warning_count: usize,
+    #[serde(default)]
     pub current_dialog: Option<DialogState>,
+    #[serde(default)]
     pub last_mount_screen: Option<MountScreenState>,
+    #[serde(default)]
     pub last_open_book: Option<OpenBookState>,
+    #[serde(default)]
     pub last_open_sign_editor: Option<OpenSignEditorState>,
+    #[serde(default)]
+    pub last_ghost_recipe: Option<GhostRecipeState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -39,6 +46,14 @@ pub struct OpenBookState {
 pub struct OpenSignEditorState {
     pub pos: BlockPos,
     pub is_front_text: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GhostRecipeState {
+    pub container_id: i32,
+    pub recipe_display_type_id: i32,
+    pub recipe_display_type: String,
+    pub recipe_display_body_len: usize,
 }
 
 impl WorldStore {
@@ -81,6 +96,16 @@ impl WorldStore {
         });
     }
 
+    pub fn apply_place_ghost_recipe(&mut self, packet: ProtocolPlaceGhostRecipe) {
+        self.counters.ghost_recipe_packets += 1;
+        self.client_ui.last_ghost_recipe = Some(GhostRecipeState {
+            container_id: packet.container_id,
+            recipe_display_type_id: packet.recipe_display_type.id(),
+            recipe_display_type: packet.recipe_display_type.as_str().to_string(),
+            recipe_display_body_len: packet.recipe_display_body.len(),
+        });
+    }
+
     pub fn client_ui(&self) -> &ClientUiState {
         &self.client_ui
     }
@@ -103,6 +128,10 @@ impl WorldStore {
 
     pub fn last_open_sign_editor(&self) -> Option<&OpenSignEditorState> {
         self.client_ui.last_open_sign_editor.as_ref()
+    }
+
+    pub fn last_ghost_recipe(&self) -> Option<&GhostRecipeState> {
+        self.client_ui.last_ghost_recipe.as_ref()
     }
 }
 
@@ -229,5 +258,27 @@ mod tests {
         assert_eq!(counters.mount_screen_open_packets, 1);
         assert_eq!(counters.open_book_packets, 1);
         assert_eq!(counters.open_sign_editor_packets, 1);
+    }
+
+    #[test]
+    fn tracks_client_ui_ghost_recipe_request() {
+        let mut store = WorldStore::new();
+
+        store.apply_place_ghost_recipe(ProtocolPlaceGhostRecipe {
+            container_id: 9,
+            recipe_display_type: bbb_protocol::packets::RecipeDisplayType::Stonecutter,
+            recipe_display_body: vec![1, 2, 3],
+        });
+
+        assert_eq!(
+            store.last_ghost_recipe(),
+            Some(&GhostRecipeState {
+                container_id: 9,
+                recipe_display_type_id: 3,
+                recipe_display_type: "stonecutter".to_string(),
+                recipe_display_body_len: 3,
+            })
+        );
+        assert_eq!(store.counters().ghost_recipe_packets, 1);
     }
 }

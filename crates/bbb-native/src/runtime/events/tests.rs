@@ -721,7 +721,7 @@ fn client_chat_events_update_world_and_snapshot_counters() {
 }
 
 #[test]
-fn client_feature_events_update_snapshot_counters() {
+fn client_feature_events_update_world_and_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::CustomChatCompletions(CustomChatCompletions {
         action: CustomChatCompletionsAction::Set,
@@ -762,6 +762,15 @@ fn client_feature_events_update_snapshot_counters() {
     );
     assert_eq!(counters.ghost_recipe_packets, 1);
     assert_eq!(
+        world.last_ghost_recipe(),
+        Some(&bbb_world::GhostRecipeState {
+            container_id: 9,
+            recipe_display_type_id: 3,
+            recipe_display_type: "stonecutter".to_string(),
+            recipe_display_body_len: 3,
+        })
+    );
+    assert_eq!(
         counters.last_ghost_recipe,
         Some(bbb_control::GhostRecipeState {
             container_id: 9,
@@ -770,6 +779,7 @@ fn client_feature_events_update_snapshot_counters() {
             recipe_display_body_len: 3,
         })
     );
+    assert_eq!(world.counters().ghost_recipe_packets, 1);
     assert_eq!(counters.select_advancements_tab_packets, 1);
     assert_eq!(
         counters.selected_advancements_tab.as_deref(),
