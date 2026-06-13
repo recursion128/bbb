@@ -283,6 +283,10 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::SetDefaultSpawnPosition(_) => {}
                 PlayClientbound::SetSimulationDistance(_) => {}
                 PlayClientbound::SystemChat(_) => {}
+                PlayClientbound::PlayerCombatEnd(_)
+                | PlayClientbound::PlayerCombatEnter
+                | PlayClientbound::PlayerCombatKill(_)
+                | PlayClientbound::PlayerLookAt(_) => {}
                 PlayClientbound::SetActionBarText(_)
                 | PlayClientbound::SetTitleText(_)
                 | PlayClientbound::SetSubtitleText(_)

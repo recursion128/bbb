@@ -15,6 +15,8 @@ pub struct NetCounters {
     pub chunk_cache_radius: Option<i32>,
     pub player_entity_id: Option<i32>,
     pub player_pose: Option<PlayerPose>,
+    pub last_player_combat: Option<PlayerCombatState>,
+    pub last_player_look_at: Option<PlayerLookAtState>,
     pub player_abilities: Option<PlayerAbilities>,
     pub player_health: Option<PlayerHealth>,
     pub player_experience: Option<PlayerExperience>,
@@ -102,6 +104,10 @@ pub struct NetCounters {
     pub set_player_team_packets: usize,
     pub set_score_packets: usize,
     pub command_suggestion_packets: usize,
+    pub player_combat_end_packets: usize,
+    pub player_combat_enter_packets: usize,
+    pub player_combat_kill_packets: usize,
+    pub player_look_at_packets: usize,
     pub player_rotation_packets: usize,
     pub move_vehicle_packets: usize,
     pub action_bar_packets: usize,
@@ -172,6 +178,22 @@ pub struct PlayerPose {
     pub y_rot: f32,
     pub x_rot: f32,
     pub last_teleport_id: i32,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerCombatState {
+    pub kind: String,
+    pub duration: Option<i32>,
+    pub player_id: Option<i32>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlayerLookAtState {
+    pub from_anchor: String,
+    pub position: NetVec3,
+    pub target_entity_id: Option<i32>,
+    pub to_anchor: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]

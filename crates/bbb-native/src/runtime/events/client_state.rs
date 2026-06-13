@@ -1,9 +1,11 @@
 use bbb_control::{
     ActionBarText, CameraState, DefaultSpawn, NetCounters, NetVec3, PlayerAbilities,
-    PlayerExperience, PlayerHealth, PlayerPose, SystemChatLine,
+    PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose, SystemChatLine,
 };
 use bbb_protocol::packets::PlayerPositionState;
 use bbb_world::{BlockPos, WorldStore};
+
+const STANDING_EYE_HEIGHT: f64 = 1.62;
 
 pub(super) fn apply_player_abilities_update(
     counters: &mut NetCounters,
@@ -237,6 +239,26 @@ pub(super) fn apply_player_rotation_update(
     counters.player_rotation_packets += 1;
 }
 
+pub(super) fn apply_player_look_at_update(
+    counters: &mut NetCounters,
+    update: bbb_protocol::packets::PlayerLookAt,
+) {
+    counters.last_player_look_at = Some(PlayerLookAtState {
+        from_anchor: update.from_anchor.as_str().to_string(),
+        position: net_vec3_from_protocol(update.position),
+        target_entity_id: update.target.map(|target| target.entity_id),
+        to_anchor: update
+            .target
+            .map(|target| target.to_anchor.as_str().to_string()),
+    });
+
+    if let Some(pose) = counters.player_pose {
+        counters.player_pose = Some(apply_look_at_to_pose(pose, update));
+    }
+
+    counters.player_look_at_packets += 1;
+}
+
 pub(crate) fn player_position_state_from_pose(player: PlayerPose) -> PlayerPositionState {
     PlayerPositionState {
         position: protocol_vec3_from_net(player.position),
@@ -244,6 +266,41 @@ pub(crate) fn player_position_state_from_pose(player: PlayerPose) -> PlayerPosit
         y_rot: player.y_rot,
         x_rot: player.x_rot,
     }
+}
+
+fn apply_look_at_to_pose(
+    pose: PlayerPose,
+    update: bbb_protocol::packets::PlayerLookAt,
+) -> PlayerPose {
+    let from_y = match update.from_anchor {
+        bbb_protocol::packets::EntityAnchor::Feet => pose.position.y,
+        bbb_protocol::packets::EntityAnchor::Eyes => pose.position.y + STANDING_EYE_HEIGHT,
+    };
+    let dx = update.position.x - pose.position.x;
+    let dy = update.position.y - from_y;
+    let dz = update.position.z - pose.position.z;
+    let horizontal = (dx * dx + dz * dz).sqrt();
+    let x_rot = wrap_degrees_f32(-(dy.atan2(horizontal).to_degrees() as f32));
+    let y_rot = wrap_degrees_f32(dz.atan2(dx).to_degrees() as f32 - 90.0);
+
+    PlayerPose {
+        position: pose.position,
+        delta_movement: pose.delta_movement,
+        y_rot,
+        x_rot,
+        last_teleport_id: pose.last_teleport_id,
+    }
+}
+
+fn wrap_degrees_f32(degrees: f32) -> f32 {
+    let mut wrapped = degrees % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
 }
 
 fn protocol_vec3_from_net(vec: NetVec3) -> bbb_protocol::packets::Vec3d {

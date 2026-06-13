@@ -75,6 +75,50 @@ fn player_rotation_updates_pose_orientation() {
 }
 
 #[test]
+fn player_look_at_updates_snapshot_and_pose_orientation() {
+    let mut counters = NetCounters {
+        player_pose: Some(PlayerPose {
+            position: vec3(0.0, 64.0, 0.0),
+            delta_movement: vec3(0.0, 0.0, 0.0),
+            y_rot: 90.0,
+            x_rot: 30.0,
+            last_teleport_id: 7,
+        }),
+        ..NetCounters::default()
+    };
+
+    apply_player_look_at_update(
+        &mut counters,
+        bbb_protocol::packets::PlayerLookAt {
+            from_anchor: bbb_protocol::packets::EntityAnchor::Eyes,
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.0,
+                y: 65.62,
+                z: 10.0,
+            },
+            target: None,
+        },
+    );
+
+    let pose = counters.player_pose.unwrap();
+    assert_eq!(pose.position, vec3(0.0, 64.0, 0.0));
+    assert_eq!(pose.delta_movement, vec3(0.0, 0.0, 0.0));
+    assert!((pose.y_rot - 0.0).abs() < 0.001);
+    assert!((pose.x_rot - 0.0).abs() < 0.001);
+    assert_eq!(pose.last_teleport_id, 7);
+    assert_eq!(counters.player_look_at_packets, 1);
+    assert_eq!(
+        counters.last_player_look_at,
+        Some(PlayerLookAtState {
+            from_anchor: "eyes".to_string(),
+            position: vec3(0.0, 65.62, 10.0),
+            target_entity_id: None,
+            to_anchor: None,
+        })
+    );
+}
+
+#[test]
 fn player_health_updates_snapshot_counters() {
     let mut counters = NetCounters::default();
 

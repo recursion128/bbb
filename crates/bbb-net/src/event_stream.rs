@@ -345,6 +345,15 @@ pub async fn run_offline_event_stream(
                     player_was_dead = false;
                     emit(&events, NetEvent::Respawn(respawn)).await?;
                 }
+                PlayClientbound::PlayerCombatEnd(update) => {
+                    emit(&events, NetEvent::PlayerCombatEnd(update)).await?;
+                }
+                PlayClientbound::PlayerCombatEnter => {
+                    emit(&events, NetEvent::PlayerCombatEnter).await?;
+                }
+                PlayClientbound::PlayerCombatKill(update) => {
+                    emit(&events, NetEvent::PlayerCombatKill(update)).await?;
+                }
                 PlayClientbound::SetHealth(health) => {
                     maybe_send_perform_respawn(&mut conn, health, &mut player_was_dead).await?;
                     emit(&events, NetEvent::PlayerHealth(health)).await?;
@@ -381,6 +390,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::BlockEvent(event) => {
                     emit(&events, NetEvent::BlockEvent(event)).await?;
+                }
+                PlayClientbound::PlayerLookAt(update) => {
+                    emit(&events, NetEvent::PlayerLookAt(update)).await?;
                 }
                 PlayClientbound::LevelEvent(event) => {
                     emit(&events, NetEvent::LevelEvent(event)).await?;

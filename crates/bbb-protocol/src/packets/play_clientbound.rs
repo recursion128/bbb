@@ -347,6 +347,23 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 client_state::decode_player_abilities(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_PLAYER_COMBAT_END => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::PlayerCombatEnd(
+                player_actions::decode_player_combat_end(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_PLAYER_COMBAT_ENTER => {
+            let decoder = Decoder::new(payload);
+            player_actions::decode_player_combat_enter(&decoder)?;
+            Ok(PlayClientbound::PlayerCombatEnter)
+        }
+        ids::play::CLIENTBOUND_PLAYER_COMBAT_KILL => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::PlayerCombatKill(
+                player_actions::decode_player_combat_kill(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_PLAYER_INFO_REMOVE => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::PlayerInfoRemove(
@@ -369,6 +386,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::PlaceGhostRecipe(
                 client_features::decode_place_ghost_recipe(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_PLAYER_LOOK_AT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::PlayerLookAt(
+                player_actions::decode_player_look_at(&mut decoder)?,
             ))
         }
         ids::play::CLIENTBOUND_PLAYER_POSITION => {

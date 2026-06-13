@@ -10,10 +10,10 @@ pub use net::{
     DebugEntityValueState, DebugEventState, DebugSampleState, DefaultSpawn, ExplosionState,
     GameRuleValuesState, GameTestHighlightPosState, GhostRecipeState, LevelParticlesState,
     MountScreenState, NetCounters, NetVec3, NetVec3i, OpenSignEditorState, PlayerAbilities,
-    PlayerExperience, PlayerHealth, PlayerPose, ProjectilePowerState, ServerLinkState,
-    ShowDialogState, SoundHolderState, StopSoundState, SystemChatLine, TagQueryState,
-    TestInstanceBlockStatusState, TitleState, TransferTarget, WaypointState, WeatherState,
-    WorldTime,
+    PlayerCombatState, PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose,
+    ProjectilePowerState, ServerLinkState, ShowDialogState, SoundHolderState, StopSoundState,
+    SystemChatLine, TagQueryState, TestInstanceBlockStatusState, TitleState, TransferTarget,
+    WaypointState, WeatherState, WorldTime,
 };
 pub use renderer::RendererCounters;
 pub use snapshot::{AppStatus, ControlSnapshot, SharedSnapshot};

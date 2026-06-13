@@ -136,6 +136,36 @@ pub(in crate::runtime) fn drain_net_events(
                 counters.last_waypoint = Some(waypoint_state(update));
                 counters.waypoint_packets += 1;
             }
+            NetEvent::PlayerCombatEnd(update) => {
+                counters.last_player_combat = Some(bbb_control::PlayerCombatState {
+                    kind: "end".to_string(),
+                    duration: Some(update.duration),
+                    player_id: None,
+                    message: None,
+                });
+                counters.player_combat_end_packets += 1;
+            }
+            NetEvent::PlayerCombatEnter => {
+                counters.last_player_combat = Some(bbb_control::PlayerCombatState {
+                    kind: "enter".to_string(),
+                    duration: None,
+                    player_id: None,
+                    message: None,
+                });
+                counters.player_combat_enter_packets += 1;
+            }
+            NetEvent::PlayerCombatKill(update) => {
+                counters.last_player_combat = Some(bbb_control::PlayerCombatState {
+                    kind: "kill".to_string(),
+                    duration: None,
+                    player_id: Some(update.player_id),
+                    message: Some(update.message),
+                });
+                counters.player_combat_kill_packets += 1;
+            }
+            NetEvent::PlayerLookAt(update) => {
+                apply_player_look_at_update(counters, update);
+            }
             NetEvent::PongResponse(update) => {
                 counters.last_pong_response_time = Some(update.time);
                 counters.pong_response_packets += 1;

@@ -5,14 +5,15 @@ use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, CommonPlayerSpawnInfo,
     CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
     DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
-    Explosion, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
+    EntityAnchor, Explosion, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
     LevelParticles, MountScreenOpen, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
-    PlayLogin, PongResponse, ProjectilePower, RecipeDisplayType, RemoteDebugSampleType,
-    SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
-    SetPassengers, ShowDialog, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
-    StopSound, TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
-    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
-    WaypointOperation, WaypointVec3i,
+    PlayLogin, PlayerCombatEnd, PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse,
+    ProjectilePower, RecipeDisplayType, RemoteDebugSampleType, SelectAdvancementsTab,
+    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog,
+    SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StopSound, TagQuery,
+    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, Vec3d as ProtocolVec3d,
+    Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+    WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -485,6 +486,66 @@ fn client_common_waypoint_events_update_snapshot_counters() {
             }),
             chunk: None,
             azimuth: None,
+        })
+    );
+}
+
+#[test]
+fn player_action_events_update_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::PlayerCombatEnter).unwrap();
+    tx.try_send(NetEvent::PlayerCombatEnd(PlayerCombatEnd { duration: 37 }))
+        .unwrap();
+    tx.try_send(NetEvent::PlayerCombatKill(PlayerCombatKill {
+        player_id: 123,
+        message: "You died".to_string(),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::PlayerLookAt(PlayerLookAt {
+        from_anchor: EntityAnchor::Eyes,
+        position: ProtocolVec3d {
+            x: 10.5,
+            y: 64.0,
+            z: -2.25,
+        },
+        target: Some(PlayerLookAtTarget {
+            entity_id: 456,
+            to_anchor: EntityAnchor::Feet,
+        }),
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        4
+    );
+    assert_eq!(counters.player_combat_enter_packets, 1);
+    assert_eq!(counters.player_combat_end_packets, 1);
+    assert_eq!(counters.player_combat_kill_packets, 1);
+    assert_eq!(
+        counters.last_player_combat,
+        Some(bbb_control::PlayerCombatState {
+            kind: "kill".to_string(),
+            duration: None,
+            player_id: Some(123),
+            message: Some("You died".to_string()),
+        })
+    );
+    assert_eq!(counters.player_look_at_packets, 1);
+    assert_eq!(
+        counters.last_player_look_at,
+        Some(bbb_control::PlayerLookAtState {
+            from_anchor: "eyes".to_string(),
+            position: bbb_control::NetVec3 {
+                x: 10.5,
+                y: 64.0,
+                z: -2.25,
+            },
+            target_entity_id: Some(456),
+            to_anchor: Some("feet".to_string()),
         })
     );
 }
