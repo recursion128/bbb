@@ -2,6 +2,7 @@ mod beds;
 mod cakes;
 mod campfires;
 mod cauldrons;
+mod chains;
 mod chests;
 mod hoppers;
 mod interaction;

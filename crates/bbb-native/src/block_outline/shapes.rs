@@ -35,6 +35,9 @@ pub(super) fn outline_shape_for_block(
             16.0, 16.0, 0.0, 7.0,
         )));
     }
+    if is_chain_block_name(block_name) {
+        return chain_outline_shape(properties);
+    }
     if block_name == "minecraft:ender_chest" {
         return Some(BlockOutlineShape::single(BlockOutlineBox::CHEST_SINGLE));
     }
@@ -268,6 +271,16 @@ fn spoutless_hopper_boxes() -> Vec<BlockOutlineBox> {
         BlockOutlineBox::from_pixels([14.0, 11.0, 2.0], [16.0, 16.0, 14.0]),
         BlockOutlineBox::centered_column(8.0, 8.0, 4.0, 10.0),
     ]
+}
+
+fn chain_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let outline = match properties.get("axis").map(String::as_str)? {
+        "x" => BlockOutlineBox::from_pixels([0.0, 6.5, 6.5], [16.0, 9.5, 9.5]),
+        "y" => BlockOutlineBox::from_pixels([6.5, 0.0, 6.5], [9.5, 16.0, 9.5]),
+        "z" => BlockOutlineBox::from_pixels([6.5, 6.5, 0.0], [9.5, 9.5, 16.0]),
+        _ => return None,
+    };
+    Some(BlockOutlineShape::single(outline))
 }
 
 fn chest_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -789,6 +802,21 @@ fn is_anvil_block_name(block_name: &str) -> bool {
 
 fn is_campfire_block_name(block_name: &str) -> bool {
     matches!(block_name, "minecraft:campfire" | "minecraft:soul_campfire")
+}
+
+fn is_chain_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:iron_chain"
+            | "minecraft:copper_chain"
+            | "minecraft:exposed_copper_chain"
+            | "minecraft:weathered_copper_chain"
+            | "minecraft:oxidized_copper_chain"
+            | "minecraft:waxed_copper_chain"
+            | "minecraft:waxed_exposed_copper_chain"
+            | "minecraft:waxed_weathered_copper_chain"
+            | "minecraft:waxed_oxidized_copper_chain"
+    )
 }
 
 fn is_candle_cake_block_name(block_name: &str) -> bool {
