@@ -178,6 +178,9 @@ pub async fn run_offline_event_stream(
                         )
                         .await?;
                     }
+                    ConfigurationClientbound::CustomReportDetails(details) => {
+                        emit(&events, NetEvent::CustomReportDetails(details)).await?;
+                    }
                     ConfigurationClientbound::Transfer(transfer) => {
                         emit(&events, NetEvent::Transfer(transfer)).await?;
                     }
@@ -255,6 +258,9 @@ pub async fn run_offline_event_stream(
                         },
                     )
                     .await?;
+                }
+                PlayClientbound::CustomReportDetails(details) => {
+                    emit(&events, NetEvent::CustomReportDetails(details)).await?;
                 }
                 PlayClientbound::OpenScreen(update) => {
                     emit(&events, NetEvent::OpenScreen(update)).await?;

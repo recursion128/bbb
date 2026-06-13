@@ -64,6 +64,10 @@ pub(in crate::runtime) fn drain_net_events(
                 counters.stored_cookie_bytes =
                     counters.stored_cookie_bytes.saturating_add(payload_len);
             }
+            NetEvent::CustomReportDetails(details) => {
+                counters.custom_report_details = details.details;
+                counters.custom_report_detail_packets += 1;
+            }
             NetEvent::Transfer(transfer) => {
                 counters.last_transfer = Some(bbb_control::TransferTarget {
                     host: transfer.host,

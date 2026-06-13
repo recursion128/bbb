@@ -6,6 +6,7 @@ use bbb_protocol::packets::{
     Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
+use std::collections::BTreeMap;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -82,6 +83,31 @@ fn cookie_events_update_snapshot_counters() {
     assert_eq!(counters.cookie_request_packets, 2);
     assert_eq!(counters.cookie_response_hits, 1);
     assert_eq!(counters.cookie_response_misses, 1);
+}
+
+#[test]
+fn custom_report_details_event_updates_snapshot_counters() {
+    let details = BTreeMap::from([
+        ("Region".to_string(), "local".to_string()),
+        ("Server".to_string(), "bbb test shard".to_string()),
+    ]);
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::CustomReportDetails(
+        bbb_protocol::packets::CustomReportDetails {
+            details: details.clone(),
+        },
+    ))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(counters.custom_report_details, details);
+    assert_eq!(counters.custom_report_detail_packets, 1);
 }
 
 #[test]

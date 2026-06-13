@@ -43,6 +43,7 @@ pub mod configuration {
     pub const CLIENTBOUND_STORE_COOKIE: i32 = 0x0a;
     pub const CLIENTBOUND_TRANSFER: i32 = 0x0b;
     pub const CLIENTBOUND_SELECT_KNOWN_PACKS: i32 = 0x0e;
+    pub const CLIENTBOUND_CUSTOM_REPORT_DETAILS: i32 = 0x0f;
 }
 
 pub mod play {

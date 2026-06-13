@@ -132,6 +132,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
+        ids::play::CLIENTBOUND_CUSTOM_REPORT_DETAILS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::CustomReportDetails(
+                connection::decode_custom_report_details(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_DAMAGE_EVENT => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::DamageEvent(

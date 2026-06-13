@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -7,6 +9,7 @@ use crate::{
 };
 
 const MAX_COOKIE_PAYLOAD_SIZE: usize = 5120;
+const MAX_CUSTOM_REPORT_DETAILS: usize = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(i32)]
@@ -59,6 +62,7 @@ pub enum ConfigurationClientbound {
     CookieRequest(CookieRequest),
     StoreCookie(StoreCookie),
     Transfer(Transfer),
+    CustomReportDetails(CustomReportDetails),
     Unknown {
         packet_id: i32,
         len: usize,
@@ -80,6 +84,11 @@ pub struct CookieRequest {
 pub struct StoreCookie {
     pub key: String,
     pub payload: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomReportDetails {
+    pub details: BTreeMap<String, String>,
 }
 
 pub fn encode_handshake(host: &str, port: u16, intent: ClientIntent) -> (i32, Vec<u8>) {
@@ -259,6 +268,12 @@ pub fn decode_configuration_clientbound(
                 &mut decoder,
             )?))
         }
+        ids::configuration::CLIENTBOUND_CUSTOM_REPORT_DETAILS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(ConfigurationClientbound::CustomReportDetails(
+                decode_custom_report_details(&mut decoder)?,
+            ))
+        }
         id => Ok(ConfigurationClientbound::Unknown {
             packet_id: id,
             len: payload.len(),
@@ -289,6 +304,26 @@ pub(super) fn decode_transfer(decoder: &mut Decoder<'_>) -> Result<Transfer> {
         host: decoder.read_string(32767)?,
         port: decoder.read_var_i32()?,
     })
+}
+
+pub(super) fn decode_custom_report_details(
+    decoder: &mut Decoder<'_>,
+) -> Result<CustomReportDetails> {
+    let count = decoder.read_len()?;
+    if count > MAX_CUSTOM_REPORT_DETAILS {
+        return Err(ProtocolError::PacketTooLarge(
+            count,
+            MAX_CUSTOM_REPORT_DETAILS,
+        ));
+    }
+
+    let mut details = BTreeMap::new();
+    for _ in 0..count {
+        let key = decoder.read_string(128)?;
+        let value = decoder.read_string(4096)?;
+        details.insert(key, value);
+    }
+    Ok(CustomReportDetails { details })
 }
 
 pub(super) fn encode_cookie_response_payload(key: &str, payload: Option<&[u8]>) -> Vec<u8> {

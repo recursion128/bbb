@@ -3,6 +3,7 @@ use crate::{
     codec::{offline_player_uuid, Encoder},
     ids,
 };
+use std::collections::BTreeMap;
 
 #[test]
 fn play_clientbound_packet_ids_match_vanilla_26_1_registration_order() {
@@ -1193,6 +1194,36 @@ fn decodes_and_encodes_cookie_packets() {
     let (id, payload) = encode_play_cookie_response("bbb:session", Some(&[4, 5]));
     assert_eq!(id, ids::play::SERVERBOUND_COOKIE_RESPONSE);
     assert_cookie_response_payload(&payload, "bbb:session", Some(&[4, 5]));
+}
+
+#[test]
+fn decodes_custom_report_details_in_configuration_and_play() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(2);
+    payload.write_string("Server");
+    payload.write_string("bbb test shard");
+    payload.write_string("Region");
+    payload.write_string("local");
+    let payload = payload.into_inner();
+
+    let details = BTreeMap::from([
+        ("Region".to_string(), "local".to_string()),
+        ("Server".to_string(), "bbb test shard".to_string()),
+    ]);
+    let expected = CustomReportDetails { details };
+
+    assert_eq!(
+        decode_configuration_clientbound(
+            ids::configuration::CLIENTBOUND_CUSTOM_REPORT_DETAILS,
+            &payload,
+        )
+        .unwrap(),
+        ConfigurationClientbound::CustomReportDetails(expected.clone())
+    );
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_CUSTOM_REPORT_DETAILS, &payload).unwrap(),
+        PlayClientbound::CustomReportDetails(expected)
+    );
 }
 
 fn assert_cookie_response_payload(payload: &[u8], key: &str, expected: Option<&[u8]>) {

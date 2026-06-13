@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, RwLock},
+};
 
 use bbb_world::{BlockPos, ChunkPos, WorldCounters, WorldStore};
 use serde::{Deserialize, Serialize};
@@ -30,6 +33,7 @@ pub struct NetCounters {
     pub world_time: Option<WorldTime>,
     pub weather: WeatherState,
     pub last_cookie_key: Option<String>,
+    pub custom_report_details: BTreeMap<String, String>,
     pub last_system_chat: Option<SystemChatLine>,
     pub last_action_bar: Option<ActionBarText>,
     pub title: TitleState,
@@ -52,6 +56,7 @@ pub struct NetCounters {
     pub store_cookie_packets: usize,
     pub stored_cookie_count: usize,
     pub stored_cookie_bytes: usize,
+    pub custom_report_detail_packets: usize,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,

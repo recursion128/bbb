@@ -119,6 +119,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     ConfigurationClientbound::StoreCookie(cookie) => {
                         server_cookies.insert(cookie.key, cookie.payload);
                     }
+                    ConfigurationClientbound::CustomReportDetails(_) => {}
                     ConfigurationClientbound::Transfer(_) => {}
                     ConfigurationClientbound::Unknown { .. } => {}
                 }
@@ -144,6 +145,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::Cooldown(update) => {
                     world.apply_cooldown(update);
                 }
+                PlayClientbound::CustomReportDetails(_) => {}
                 PlayClientbound::DamageEvent(update) => {
                     world.apply_damage_event(update);
                 }

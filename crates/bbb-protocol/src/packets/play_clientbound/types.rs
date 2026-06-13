@@ -26,6 +26,7 @@ pub enum PlayClientbound {
     ContainerSetSlot(ContainerSetSlot),
     CookieRequest(CookieRequest),
     Cooldown(Cooldown),
+    CustomReportDetails(CustomReportDetails),
     DamageEvent(DamageEvent),
     Disconnect(Disconnect),
     EntityEvent(EntityEvent),
