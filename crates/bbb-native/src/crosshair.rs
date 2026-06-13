@@ -1,10 +1,12 @@
+use std::collections::BTreeMap;
+
 use bbb_control::PlayerPose;
 use bbb_protocol::packets::{
     BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
     Direction as ProtocolDirection,
 };
 use bbb_renderer::{CameraPose, SelectionOutline};
-use bbb_world::{BlockPos, WorldStore};
+use bbb_world::{BlockPos, BlockProbe, TerrainMaterialClass, WorldStore};
 
 const SELECTION_MAX_DISTANCE: f64 = 4.5;
 
@@ -21,7 +23,10 @@ pub(crate) fn selection_outline_from_crosshair(
     pose: Option<PlayerPose>,
 ) -> Option<SelectionOutline> {
     let hit = crosshair_block_hit_from_world(world, pose)?;
-    Some(selection_outline_for_block(hit.pos))
+    match world.probe_block(hit.pos) {
+        Some(probe) => selection_outline_for_probe(&probe),
+        None => Some(selection_outline_for_block(hit.pos)),
+    }
 }
 
 pub(crate) fn crosshair_block_hit_from_world(
@@ -29,28 +34,33 @@ pub(crate) fn crosshair_block_hit_from_world(
     pose: Option<PlayerPose>,
 ) -> Option<CrosshairBlockHit> {
     raycast_crosshair_block_hit(pose?, SELECTION_MAX_DISTANCE, |pos| {
-        world.probe_block(pos).map(|probe| probe.material)
+        world
+            .probe_block(pos)
+            .map(|probe| crosshair_target_from_probe(&probe))
     })
 }
 
 fn raycast_crosshair_block<F>(
     pose: PlayerPose,
     max_distance: f64,
-    material_at: F,
+    mut material_at: F,
 ) -> Option<BlockPos>
 where
     F: FnMut(BlockPos) -> Option<bbb_world::TerrainMaterialClass>,
 {
-    raycast_crosshair_block_hit(pose, max_distance, material_at).map(|hit| hit.pos)
+    raycast_crosshair_block_hit(pose, max_distance, |pos| {
+        material_at(pos).map(CrosshairBlockTarget::full_block)
+    })
+    .map(|hit| hit.pos)
 }
 
 fn raycast_crosshair_block_hit<F>(
     pose: PlayerPose,
     max_distance: f64,
-    mut material_at: F,
+    mut target_at: F,
 ) -> Option<CrosshairBlockHit>
 where
-    F: FnMut(BlockPos) -> Option<bbb_world::TerrainMaterialClass>,
+    F: FnMut(BlockPos) -> Option<CrosshairBlockTarget>,
 {
     if max_distance <= 0.0 {
         return None;
@@ -67,30 +77,156 @@ where
     }
 
     let mut pos = block_pos_containing(eye);
-    if material_at(pos).is_some_and(is_selectable_crosshair_material) {
+    if let Some(hit) =
+        target_at(pos).and_then(|target| target.clip(eye, direction, max_distance, pos))
+    {
         return Some(CrosshairBlockHit {
             pos,
-            face: face_opposing_dominant_direction(direction),
-            cursor: block_hit_cursor(eye, direction, 0.0, pos),
-            inside: true,
+            face: hit.face,
+            cursor: block_hit_cursor(eye, direction, hit.distance, pos),
+            inside: hit.inside,
         });
     }
 
     let mut cursor = RayGridCursor::new(eye, direction);
     while let Some(step) = cursor.next_step(max_distance) {
         pos = offset_block_pos_axis(pos, step.axis, step.delta);
-        if material_at(pos).is_some_and(is_selectable_crosshair_material) {
-            let face = face_for_axis_delta(step.axis, step.delta);
+        if let Some(hit) =
+            target_at(pos).and_then(|target| target.clip(eye, direction, max_distance, pos))
+        {
             return Some(CrosshairBlockHit {
                 pos,
-                face,
-                cursor: block_hit_cursor(eye, direction, step.distance, pos),
-                inside: false,
+                face: hit.face,
+                cursor: block_hit_cursor(eye, direction, hit.distance, pos),
+                inside: hit.inside,
             });
         }
     }
 
     None
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CrosshairBlockTarget {
+    material: TerrainMaterialClass,
+    outline: Option<BlockOutlineBox>,
+}
+
+impl CrosshairBlockTarget {
+    fn full_block(material: TerrainMaterialClass) -> Self {
+        Self {
+            material,
+            outline: Some(BlockOutlineBox::FULL),
+        }
+    }
+
+    fn clip(
+        self,
+        eye: [f64; 3],
+        direction: [f64; 3],
+        max_distance: f64,
+        pos: BlockPos,
+    ) -> Option<BlockOutlineHit> {
+        if !is_selectable_crosshair_material(self.material) {
+            return None;
+        }
+        self.outline?.clip(eye, direction, max_distance, pos)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct BlockOutlineBox {
+    min: [f64; 3],
+    max: [f64; 3],
+}
+
+impl BlockOutlineBox {
+    const FULL: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 1.0, 1.0],
+    };
+    const BOTTOM_SLAB: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 0.5, 1.0],
+    };
+    const TOP_SLAB: Self = Self {
+        min: [0.0, 0.5, 0.0],
+        max: [1.0, 1.0, 1.0],
+    };
+
+    fn clip(
+        self,
+        eye: [f64; 3],
+        direction: [f64; 3],
+        max_distance: f64,
+        pos: BlockPos,
+    ) -> Option<BlockOutlineHit> {
+        let min = [
+            f64::from(pos.x) + self.min[0],
+            f64::from(pos.y) + self.min[1],
+            f64::from(pos.z) + self.min[2],
+        ];
+        let max = [
+            f64::from(pos.x) + self.max[0],
+            f64::from(pos.y) + self.max[1],
+            f64::from(pos.z) + self.max[2],
+        ];
+
+        if contains_point(min, max, eye) {
+            return Some(BlockOutlineHit {
+                distance: 0.0,
+                face: face_opposing_dominant_direction(direction),
+                inside: true,
+            });
+        }
+
+        let mut entry = f64::NEG_INFINITY;
+        let mut exit = f64::INFINITY;
+        let mut face = face_opposing_dominant_direction(direction);
+
+        for axis in 0..3 {
+            if direction[axis] == 0.0 {
+                if eye[axis] < min[axis] || eye[axis] > max[axis] {
+                    return None;
+                }
+                continue;
+            }
+
+            let t0 = (min[axis] - eye[axis]) / direction[axis];
+            let t1 = (max[axis] - eye[axis]) / direction[axis];
+            let (near, far, near_face) = if t0 <= t1 {
+                (t0, t1, face_for_axis_delta(axis as u8, 1))
+            } else {
+                (t1, t0, face_for_axis_delta(axis as u8, -1))
+            };
+
+            if near > entry {
+                entry = near;
+                face = near_face;
+            }
+            exit = exit.min(far);
+            if entry > exit {
+                return None;
+            }
+        }
+
+        if entry < 0.0 || entry > max_distance {
+            return None;
+        }
+
+        Some(BlockOutlineHit {
+            distance: entry,
+            face,
+            inside: false,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct BlockOutlineHit {
+    distance: f64,
+    face: ProtocolDirection,
+    inside: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -258,6 +394,39 @@ fn block_hit_cursor(eye: [f64; 3], direction: [f64; 3], distance: f64, pos: Bloc
     ]
 }
 
+fn contains_point(min: [f64; 3], max: [f64; 3], point: [f64; 3]) -> bool {
+    (0..3).all(|axis| point[axis] >= min[axis] && point[axis] <= max[axis])
+}
+
+fn crosshair_target_from_probe(probe: &BlockProbe) -> CrosshairBlockTarget {
+    CrosshairBlockTarget {
+        material: probe.material,
+        outline: outline_box_for_block(probe.block_name.as_deref(), &probe.block_properties),
+    }
+}
+
+fn outline_box_for_block(
+    block_name: Option<&str>,
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockOutlineBox> {
+    let block_name = block_name?;
+    if is_slab_block_name(block_name) {
+        return match properties.get("type").map(String::as_str) {
+            Some("bottom") => Some(BlockOutlineBox::BOTTOM_SLAB),
+            Some("top") => Some(BlockOutlineBox::TOP_SLAB),
+            Some("double") => Some(BlockOutlineBox::FULL),
+            _ => None,
+        };
+    }
+    Some(BlockOutlineBox::FULL)
+}
+
+fn is_slab_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_slab"))
+}
+
 pub(crate) fn protocol_block_pos_from_world(pos: BlockPos) -> ProtocolBlockPos {
     ProtocolBlockPos {
         x: pos.x,
@@ -304,10 +473,27 @@ fn is_selectable_crosshair_material(material: bbb_world::TerrainMaterialClass) -
     )
 }
 
+fn selection_outline_for_probe(probe: &BlockProbe) -> Option<SelectionOutline> {
+    outline_box_for_block(probe.block_name.as_deref(), &probe.block_properties)
+        .map(|outline| selection_outline_for_box(probe.pos, outline))
+}
+
 fn selection_outline_for_block(pos: BlockPos) -> SelectionOutline {
+    selection_outline_for_box(pos, BlockOutlineBox::FULL)
+}
+
+fn selection_outline_for_box(pos: BlockPos, outline: BlockOutlineBox) -> SelectionOutline {
     SelectionOutline {
-        min: [pos.x as f32, pos.y as f32, pos.z as f32],
-        max: [(pos.x + 1) as f32, (pos.y + 1) as f32, (pos.z + 1) as f32],
+        min: [
+            pos.x as f32 + outline.min[0] as f32,
+            pos.y as f32 + outline.min[1] as f32,
+            pos.z as f32 + outline.min[2] as f32,
+        ],
+        max: [
+            pos.x as f32 + outline.max[0] as f32,
+            pos.y as f32 + outline.max[1] as f32,
+            pos.z as f32 + outline.max[2] as f32,
+        ],
     }
 }
 
@@ -336,7 +522,9 @@ mod tests {
 
         let hit = raycast_crosshair_block_hit(pose, 5.0, |pos| {
             if pos == (BlockPos { x: 0, y: 1, z: 3 }) {
-                Some(bbb_world::TerrainMaterialClass::Opaque)
+                Some(CrosshairBlockTarget::full_block(
+                    bbb_world::TerrainMaterialClass::Opaque,
+                ))
             } else {
                 None
             }
@@ -346,6 +534,61 @@ mod tests {
             hit,
             Some(CrosshairBlockHit {
                 pos: BlockPos { x: 0, y: 1, z: 3 },
+                face: ProtocolDirection::North,
+                cursor: [0.0, 0.62, 0.0],
+                inside: false,
+            })
+        );
+    }
+
+    #[test]
+    fn crosshair_raycast_clips_top_slab_outline_shape() {
+        let pose = player_pose(0.0, 0.0, 0.0);
+
+        let hit = raycast_crosshair_block_hit(pose, 5.0, |pos| {
+            if pos == (BlockPos { x: 0, y: 1, z: 3 }) {
+                Some(CrosshairBlockTarget {
+                    material: bbb_world::TerrainMaterialClass::Opaque,
+                    outline: Some(BlockOutlineBox::TOP_SLAB),
+                })
+            } else {
+                None
+            }
+        });
+
+        assert_eq!(
+            hit,
+            Some(CrosshairBlockHit {
+                pos: BlockPos { x: 0, y: 1, z: 3 },
+                face: ProtocolDirection::North,
+                cursor: [0.0, 0.62, 0.0],
+                inside: false,
+            })
+        );
+    }
+
+    #[test]
+    fn crosshair_raycast_skips_bottom_slab_above_outline_shape() {
+        let pose = player_pose(0.0, 0.0, 0.0);
+        let hit = raycast_crosshair_block_hit(pose, 5.0, |pos| {
+            if pos == (BlockPos { x: 0, y: 1, z: 3 }) {
+                Some(CrosshairBlockTarget {
+                    material: bbb_world::TerrainMaterialClass::Opaque,
+                    outline: Some(BlockOutlineBox::BOTTOM_SLAB),
+                })
+            } else if pos == (BlockPos { x: 0, y: 1, z: 4 }) {
+                Some(CrosshairBlockTarget::full_block(
+                    bbb_world::TerrainMaterialClass::Opaque,
+                ))
+            } else {
+                None
+            }
+        });
+
+        assert_eq!(
+            hit,
+            Some(CrosshairBlockHit {
+                pos: BlockPos { x: 0, y: 1, z: 4 },
                 face: ProtocolDirection::North,
                 cursor: [0.0, 0.62, 0.0],
                 inside: false,
@@ -399,6 +642,54 @@ mod tests {
     }
 
     #[test]
+    fn outline_box_uses_vanilla_slab_type_property() {
+        assert_eq!(
+            outline_box_for_block(Some("minecraft:oak_slab"), &slab_properties("bottom"),),
+            Some(BlockOutlineBox::BOTTOM_SLAB)
+        );
+        assert_eq!(
+            outline_box_for_block(Some("minecraft:smooth_stone_slab"), &slab_properties("top"),),
+            Some(BlockOutlineBox::TOP_SLAB)
+        );
+        assert_eq!(
+            outline_box_for_block(
+                Some("minecraft:petrified_oak_slab"),
+                &slab_properties("double"),
+            ),
+            Some(BlockOutlineBox::FULL)
+        );
+        assert_eq!(
+            outline_box_for_block(Some("minecraft:oak_slab"), &BTreeMap::new()),
+            None
+        );
+        assert_eq!(
+            outline_box_for_block(Some("minecraft:oak_slab"), &slab_properties("unexpected"),),
+            None
+        );
+    }
+
+    #[test]
+    fn selection_outline_uses_slab_bounds() {
+        assert_eq!(
+            selection_outline_for_box(
+                BlockPos { x: -2, y: 63, z: 4 },
+                BlockOutlineBox::BOTTOM_SLAB,
+            ),
+            SelectionOutline {
+                min: [-2.0, 63.0, 4.0],
+                max: [-1.0, 63.5, 5.0],
+            }
+        );
+        assert_eq!(
+            selection_outline_for_box(BlockPos { x: -2, y: 63, z: 4 }, BlockOutlineBox::TOP_SLAB,),
+            SelectionOutline {
+                min: [-2.0, 63.5, 4.0],
+                max: [-1.0, 64.0, 5.0],
+            }
+        );
+    }
+
+    #[test]
     fn selection_outline_uses_block_bounds() {
         assert_eq!(
             selection_outline_for_block(BlockPos { x: -2, y: 63, z: 4 }),
@@ -416,5 +707,9 @@ mod tests {
             x_rot,
             ..PlayerPose::default()
         }
+    }
+
+    fn slab_properties(slab_type: &str) -> BTreeMap<String, String> {
+        BTreeMap::from([("type".to_string(), slab_type.to_string())])
     }
 }
