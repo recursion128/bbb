@@ -1,6 +1,7 @@
 use bbb_protocol::packets::{
-    InteractionHand, MountScreenOpen as ProtocolMountScreenOpen, OpenBook as ProtocolOpenBook,
-    OpenSignEditor as ProtocolOpenSignEditor,
+    DialogHolder, InteractionHand, MountScreenOpen as ProtocolMountScreenOpen,
+    OpenBook as ProtocolOpenBook, OpenSignEditor as ProtocolOpenSignEditor,
+    ShowDialog as ProtocolShowDialog,
 };
 use serde::{Deserialize, Serialize};
 
@@ -8,9 +9,18 @@ use crate::{protocol_block_pos, BlockPos, WorldStore};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientUiState {
+    pub low_disk_space_warning_count: usize,
+    pub current_dialog: Option<DialogState>,
     pub last_mount_screen: Option<MountScreenState>,
     pub last_open_book: Option<OpenBookState>,
     pub last_open_sign_editor: Option<OpenSignEditorState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogState {
+    pub holder_kind: String,
+    pub registry_id: Option<i32>,
+    pub raw_dialog_payload_len: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,6 +42,21 @@ pub struct OpenSignEditorState {
 }
 
 impl WorldStore {
+    pub fn apply_low_disk_space_warning(&mut self) {
+        self.counters.low_disk_space_warnings += 1;
+        self.client_ui.low_disk_space_warning_count += 1;
+    }
+
+    pub fn apply_clear_dialog(&mut self) {
+        self.counters.clear_dialog_packets += 1;
+        self.client_ui.current_dialog = None;
+    }
+
+    pub fn apply_show_dialog(&mut self, packet: ProtocolShowDialog) {
+        self.counters.show_dialog_packets += 1;
+        self.client_ui.current_dialog = Some(DialogState::from_packet(packet));
+    }
+
     pub fn apply_mount_screen_open(&mut self, packet: ProtocolMountScreenOpen) {
         self.counters.mount_screen_open_packets += 1;
         self.client_ui.last_mount_screen = Some(MountScreenState {
@@ -60,6 +85,14 @@ impl WorldStore {
         &self.client_ui
     }
 
+    pub fn current_dialog(&self) -> Option<&DialogState> {
+        self.client_ui.current_dialog.as_ref()
+    }
+
+    pub fn low_disk_space_warning_count(&self) -> usize {
+        self.client_ui.low_disk_space_warning_count
+    }
+
     pub fn last_mount_screen(&self) -> Option<&MountScreenState> {
         self.client_ui.last_mount_screen.as_ref()
     }
@@ -73,6 +106,23 @@ impl WorldStore {
     }
 }
 
+impl DialogState {
+    fn from_packet(packet: ProtocolShowDialog) -> Self {
+        match packet.dialog {
+            DialogHolder::Reference { registry_id } => Self {
+                holder_kind: "reference".to_string(),
+                registry_id: Some(registry_id),
+                raw_dialog_payload_len: 0,
+            },
+            DialogHolder::Direct { raw_dialog_payload } => Self {
+                holder_kind: "direct".to_string(),
+                registry_id: None,
+                raw_dialog_payload_len: raw_dialog_payload.len(),
+            },
+        }
+    }
+}
+
 fn interaction_hand_name(hand: InteractionHand) -> &'static str {
     match hand {
         InteractionHand::MainHand => "main_hand",
@@ -83,7 +133,50 @@ fn interaction_hand_name(hand: InteractionHand) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, InteractionHand};
+    use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, DialogHolder, InteractionHand};
+
+    #[test]
+    fn tracks_client_ui_warnings_and_dialogs() {
+        let mut store = WorldStore::new();
+
+        store.apply_low_disk_space_warning();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                raw_dialog_payload: vec![0xaa, 0xbb, 0xcc],
+            },
+        });
+
+        assert_eq!(store.low_disk_space_warning_count(), 1);
+        assert_eq!(
+            store.current_dialog(),
+            Some(&DialogState {
+                holder_kind: "direct".to_string(),
+                registry_id: None,
+                raw_dialog_payload_len: 3,
+            })
+        );
+
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 11 },
+        });
+
+        assert_eq!(
+            store.current_dialog(),
+            Some(&DialogState {
+                holder_kind: "reference".to_string(),
+                registry_id: Some(11),
+                raw_dialog_payload_len: 0,
+            })
+        );
+
+        store.apply_clear_dialog();
+
+        assert_eq!(store.current_dialog(), None);
+        let counters = store.counters();
+        assert_eq!(counters.low_disk_space_warnings, 1);
+        assert_eq!(counters.show_dialog_packets, 2);
+        assert_eq!(counters.clear_dialog_packets, 1);
+    }
 
     #[test]
     fn tracks_client_ui_open_requests() {

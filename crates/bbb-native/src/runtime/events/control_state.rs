@@ -80,7 +80,8 @@ pub(super) fn apply_control_projection_event(
             apply_server_links_update(counters, links);
         }
         NetEvent::LowDiskSpaceWarning => {
-            counters.low_disk_space_warnings += 1;
+            world.apply_low_disk_space_warning();
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::MapItemData(update) => {
             world.apply_map_item_data(update);
@@ -107,11 +108,12 @@ pub(super) fn apply_control_projection_event(
             counters.ghost_recipe_packets += 1;
         }
         NetEvent::ClearDialog => {
-            counters.clear_dialog_packets += 1;
+            world.apply_clear_dialog();
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::ShowDialog(update) => {
-            counters.last_show_dialog = Some(show_dialog_state(update));
-            counters.show_dialog_packets += 1;
+            world.apply_show_dialog(update);
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::Waypoint(update) => {
             counters.last_waypoint = Some(waypoint_state(update));
@@ -410,25 +412,6 @@ fn custom_payload_state(
     }
 }
 
-fn show_dialog_state(dialog: bbb_protocol::packets::ShowDialog) -> bbb_control::ShowDialogState {
-    match dialog.dialog {
-        bbb_protocol::packets::DialogHolder::Reference { registry_id } => {
-            bbb_control::ShowDialogState {
-                holder_kind: "reference".to_string(),
-                registry_id: Some(registry_id),
-                raw_dialog_payload_len: 0,
-            }
-        }
-        bbb_protocol::packets::DialogHolder::Direct { raw_dialog_payload } => {
-            bbb_control::ShowDialogState {
-                holder_kind: "direct".to_string(),
-                registry_id: None,
-                raw_dialog_payload_len: raw_dialog_payload.len(),
-            }
-        }
-    }
-}
-
 fn waypoint_state(
     packet: bbb_protocol::packets::TrackedWaypointPacket,
 ) -> bbb_control::WaypointState {
@@ -529,6 +512,9 @@ fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
 
 fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
+    counters.low_disk_space_warnings = world_counters.low_disk_space_warnings;
+    counters.clear_dialog_packets = world_counters.clear_dialog_packets;
+    counters.show_dialog_packets = world_counters.show_dialog_packets;
     counters.mount_screen_open_packets = world_counters.mount_screen_open_packets;
     counters.open_book_packets = world_counters.open_book_packets;
     counters.open_sign_editor_packets = world_counters.open_sign_editor_packets;
@@ -549,6 +535,13 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
                 pos: state.pos,
                 is_front_text: state.is_front_text,
             });
+    counters.last_show_dialog = world
+        .current_dialog()
+        .map(|state| bbb_control::ShowDialogState {
+            holder_kind: state.holder_kind.clone(),
+            registry_id: state.registry_id,
+            raw_dialog_payload_len: state.raw_dialog_payload_len,
+        });
 }
 
 fn control_chat_line(message: &bbb_world::ChatMessageState) -> bbb_control::ClientChatLine {

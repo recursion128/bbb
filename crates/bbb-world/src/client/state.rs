@@ -22,5 +22,7 @@ pub use crate::client::scoreboard::{
 pub use crate::client::server_presentation::{
     ResourcePackState, ServerDataState, ServerPresentationState,
 };
-pub use crate::client::ui::{ClientUiState, MountScreenState, OpenBookState, OpenSignEditorState};
+pub use crate::client::ui::{
+    ClientUiState, DialogState, MountScreenState, OpenBookState, OpenSignEditorState,
+};
 pub use crate::client::world_border::WorldBorderState;

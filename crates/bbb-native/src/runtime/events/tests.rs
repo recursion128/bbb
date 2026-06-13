@@ -376,6 +376,7 @@ fn client_ui_events_update_world_and_snapshot_counters() {
         5
     );
     assert_eq!(counters.low_disk_space_warnings, 1);
+    assert_eq!(world.low_disk_space_warning_count(), 1);
     assert_eq!(
         world.last_mount_screen(),
         Some(&bbb_world::MountScreenState {
@@ -428,6 +429,7 @@ fn client_ui_events_update_world_and_snapshot_counters() {
     assert_eq!(counters.last_pong_response_time, Some(123456789));
 
     let world_counters = world.counters();
+    assert_eq!(world_counters.low_disk_space_warnings, 1);
     assert_eq!(world_counters.mount_screen_open_packets, 1);
     assert_eq!(world_counters.open_book_packets, 1);
     assert_eq!(world_counters.open_sign_editor_packets, 1);
@@ -995,7 +997,7 @@ fn update_recipes_event_replaces_world_recipe_access_state() {
 }
 
 #[test]
-fn client_common_waypoint_events_update_snapshot_counters() {
+fn client_common_waypoint_events_update_world_and_snapshot_counters() {
     let waypoint_id = Uuid::from_u128(0x00112233445566778899aabbccddeeff);
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::CustomPayload(CustomPayload {
@@ -1047,6 +1049,14 @@ fn client_common_waypoint_events_update_snapshot_counters() {
     assert_eq!(counters.clear_dialog_packets, 1);
     assert_eq!(counters.show_dialog_packets, 1);
     assert_eq!(
+        world.current_dialog(),
+        Some(&bbb_world::DialogState {
+            holder_kind: "reference".to_string(),
+            registry_id: Some(11),
+            raw_dialog_payload_len: 0,
+        })
+    );
+    assert_eq!(
         counters.last_show_dialog,
         Some(bbb_control::ShowDialogState {
             holder_kind: "reference".to_string(),
@@ -1054,6 +1064,9 @@ fn client_common_waypoint_events_update_snapshot_counters() {
             raw_dialog_payload_len: 0,
         })
     );
+    let world_counters = world.counters();
+    assert_eq!(world_counters.clear_dialog_packets, 1);
+    assert_eq!(world_counters.show_dialog_packets, 1);
     assert_eq!(counters.waypoint_packets, 1);
     assert_eq!(
         counters.last_waypoint,
