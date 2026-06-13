@@ -65,11 +65,8 @@ pub(super) fn apply_control_projection_event(
             counters.code_of_conduct_packets += 1;
         }
         NetEvent::CustomChatCompletions(update) => {
-            counters.last_custom_chat_completion = Some(bbb_control::CustomChatCompletionState {
-                action: update.action.as_str().to_string(),
-                entries: update.entries.len(),
-            });
-            counters.custom_chat_completion_packets += 1;
+            world.apply_custom_chat_completions(update);
+            sync_custom_chat_completion_counters(counters, world);
         }
         NetEvent::CustomPayload(update) => {
             world.apply_custom_payload(update);
@@ -421,6 +418,18 @@ fn sync_custom_payload_counters(counters: &mut NetCounters, world: &WorldStore) 
     counters.last_custom_payload = world
         .last_custom_payload()
         .map(control_custom_payload_state);
+}
+
+fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.custom_chat_completion_packets = world_counters.custom_chat_completion_packets;
+    counters.last_custom_chat_completion =
+        world.last_custom_chat_completion_update().map(|update| {
+            bbb_control::CustomChatCompletionState {
+                action: update.action.clone(),
+                entries: update.entries,
+            }
+        });
 }
 
 fn sync_tag_query_counters(counters: &mut NetCounters, world: &WorldStore) {

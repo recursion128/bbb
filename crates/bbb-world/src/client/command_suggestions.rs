@@ -1,6 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use bbb_protocol::packets::CommandSuggestions as ProtocolCommandSuggestions;
+use bbb_protocol::packets::{
+    CommandSuggestions as ProtocolCommandSuggestions,
+    CustomChatCompletions as ProtocolCustomChatCompletions,
+    CustomChatCompletionsAction as ProtocolCustomChatCompletionsAction,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
@@ -9,6 +13,10 @@ use crate::WorldStore;
 pub struct CommandSuggestionsState {
     pub by_id: BTreeMap<i32, CommandSuggestionsResultState>,
     pub last_id: Option<i32>,
+    #[serde(default)]
+    pub custom_completions: BTreeSet<String>,
+    #[serde(default)]
+    pub last_custom_completion_update: Option<CustomChatCompletionUpdateState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,6 +31,12 @@ pub struct CommandSuggestionsResultState {
 pub struct CommandSuggestionState {
     pub text: String,
     pub tooltip: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomChatCompletionUpdateState {
+    pub action: String,
+    pub entries: usize,
 }
 
 impl From<ProtocolCommandSuggestions> for CommandSuggestionsResultState {
@@ -44,6 +58,34 @@ impl From<ProtocolCommandSuggestions> for CommandSuggestionsResultState {
 }
 
 impl WorldStore {
+    pub fn apply_custom_chat_completions(&mut self, packet: ProtocolCustomChatCompletions) {
+        self.counters.custom_chat_completion_packets += 1;
+        let action = packet.action;
+        let entries = packet.entries;
+        let entry_count = entries.len();
+
+        match action {
+            ProtocolCustomChatCompletionsAction::Add => {
+                self.command_suggestions.custom_completions.extend(entries);
+            }
+            ProtocolCustomChatCompletionsAction::Remove => {
+                for entry in entries {
+                    self.command_suggestions.custom_completions.remove(&entry);
+                }
+            }
+            ProtocolCustomChatCompletionsAction::Set => {
+                self.command_suggestions.custom_completions = entries.into_iter().collect();
+            }
+        }
+
+        self.command_suggestions.last_custom_completion_update =
+            Some(CustomChatCompletionUpdateState {
+                action: action.as_str().to_string(),
+                entries: entry_count,
+            });
+        self.update_custom_completion_count();
+    }
+
     pub fn apply_command_suggestions(
         &mut self,
         packet: ProtocolCommandSuggestions,
@@ -64,6 +106,16 @@ impl WorldStore {
         &self.command_suggestions
     }
 
+    pub fn custom_chat_completions(&self) -> &BTreeSet<String> {
+        &self.command_suggestions.custom_completions
+    }
+
+    pub fn last_custom_chat_completion_update(&self) -> Option<&CustomChatCompletionUpdateState> {
+        self.command_suggestions
+            .last_custom_completion_update
+            .as_ref()
+    }
+
     pub fn command_suggestions_by_id(&self, id: i32) -> Option<&CommandSuggestionsResultState> {
         self.command_suggestions.by_id.get(&id)
     }
@@ -82,12 +134,56 @@ impl WorldStore {
             .map(|result| result.suggestions.len())
             .sum();
     }
+
+    fn update_custom_completion_count(&mut self) {
+        self.counters.custom_chat_completions_tracked =
+            self.command_suggestions.custom_completions.len();
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{CommandSuggestion, CommandSuggestions};
+    use bbb_protocol::packets::{
+        CommandSuggestion, CommandSuggestions, CustomChatCompletions, CustomChatCompletionsAction,
+    };
+
+    #[test]
+    fn custom_chat_completions_apply_set_add_and_remove_as_suggestions_set() {
+        let mut store = WorldStore::new();
+
+        store.apply_custom_chat_completions(CustomChatCompletions {
+            action: CustomChatCompletionsAction::Set,
+            entries: vec!["/warp".to_string(), "/spawn".to_string()],
+        });
+        store.apply_custom_chat_completions(CustomChatCompletions {
+            action: CustomChatCompletionsAction::Add,
+            entries: vec!["/home".to_string(), "/warp".to_string()],
+        });
+        store.apply_custom_chat_completions(CustomChatCompletions {
+            action: CustomChatCompletionsAction::Remove,
+            entries: vec!["/spawn".to_string(), "/missing".to_string()],
+        });
+
+        assert_eq!(
+            store
+                .custom_chat_completions()
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            vec!["/home", "/warp"]
+        );
+        assert_eq!(
+            store.last_custom_chat_completion_update(),
+            Some(&CustomChatCompletionUpdateState {
+                action: "remove".to_string(),
+                entries: 2,
+            })
+        );
+        let counters = store.counters();
+        assert_eq!(counters.custom_chat_completion_packets, 3);
+        assert_eq!(counters.custom_chat_completions_tracked, 2);
+    }
 
     #[test]
     fn command_suggestions_store_by_id_and_last_response() {

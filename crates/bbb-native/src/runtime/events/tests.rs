@@ -806,6 +806,10 @@ fn client_feature_events_update_world_and_snapshot_counters() {
             entries: 2,
         })
     );
+    assert!(world.custom_chat_completions().contains("/warp"));
+    assert!(world.custom_chat_completions().contains("/spawn"));
+    assert_eq!(world.counters().custom_chat_completion_packets, 1);
+    assert_eq!(world.counters().custom_chat_completions_tracked, 2);
     assert_eq!(counters.ghost_recipe_packets, 1);
     assert_eq!(
         world.last_ghost_recipe(),

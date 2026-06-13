@@ -177,6 +177,10 @@ pub struct WorldCounters {
     #[serde(default)]
     pub command_suggestion_entries_tracked: usize,
     #[serde(default)]
+    pub custom_chat_completion_packets: usize,
+    #[serde(default)]
+    pub custom_chat_completions_tracked: usize,
+    #[serde(default)]
     pub recipe_book_add_packets: usize,
     #[serde(default)]
     pub recipe_book_remove_packets: usize,
