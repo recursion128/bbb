@@ -73,6 +73,26 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 1.0 / 16.0, 1.0],
     };
+    pub(super) const FENCE_POST: Self = Self {
+        min: [6.0 / 16.0, 0.0, 6.0 / 16.0],
+        max: [10.0 / 16.0, 1.0, 10.0 / 16.0],
+    };
+    pub(super) const FENCE_NORTH_ARM: Self = Self {
+        min: [6.0 / 16.0, 0.0, 0.0],
+        max: [10.0 / 16.0, 1.0, 8.0 / 16.0],
+    };
+    pub(super) const FENCE_EAST_ARM: Self = Self {
+        min: [8.0 / 16.0, 0.0, 6.0 / 16.0],
+        max: [1.0, 1.0, 10.0 / 16.0],
+    };
+    pub(super) const FENCE_SOUTH_ARM: Self = Self {
+        min: [6.0 / 16.0, 0.0, 8.0 / 16.0],
+        max: [10.0 / 16.0, 1.0, 1.0],
+    };
+    pub(super) const FENCE_WEST_ARM: Self = Self {
+        min: [0.0, 0.0, 6.0 / 16.0],
+        max: [8.0 / 16.0, 1.0, 10.0 / 16.0],
+    };
     pub(super) const TRAPDOOR_BOTTOM: Self = Self {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 3.0 / 16.0, 1.0],

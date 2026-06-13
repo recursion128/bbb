@@ -236,6 +236,44 @@ fn outline_shape_rejects_invalid_trapdoor_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_disconnected_fence_post() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_fence"), &fence_properties([])),
+        Some(BlockOutlineShape::single(BlockOutlineBox::FENCE_POST))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_fence_connection_boxes() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:nether_brick_fence"),
+            &fence_properties(["north", "east"]),
+        ),
+        Some(BlockOutlineShape::from_boxes(vec![
+            BlockOutlineBox::FENCE_POST,
+            BlockOutlineBox::FENCE_NORTH_ARM,
+            BlockOutlineBox::FENCE_EAST_ARM,
+        ]))
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_fence_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_fence"), &BTreeMap::new()),
+        None
+    );
+
+    let mut properties = fence_properties(["west"]);
+    properties.insert("west".to_string(), "sometimes".to_string());
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_fence"), &properties),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_flat_carpet_shape() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:white_carpet"), &BTreeMap::new()),
@@ -455,6 +493,28 @@ fn trapdoor_outline_clip_uses_thin_closed_shape() {
     );
 }
 
+#[test]
+fn fence_outline_clip_hits_connected_arm_before_post() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(Some("minecraft:oak_fence"), &fence_properties(["west"])),
+    };
+
+    assert_eq!(
+        target.clip(
+            [-1.0, 0.5, 0.5],
+            [1.0, 0.0, 0.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::West,
+            inside: false,
+        })
+    );
+}
+
 fn slab_properties(slab_type: &str) -> BTreeMap<String, String> {
     BTreeMap::from([("type".to_string(), slab_type.to_string())])
 }
@@ -480,6 +540,20 @@ fn trapdoor_properties(facing: &str, half: &str, open: bool) -> BTreeMap<String,
         ("powered".to_string(), "false".to_string()),
         ("waterlogged".to_string(), "false".to_string()),
     ])
+}
+
+fn fence_properties<const N: usize>(connected: [&str; N]) -> BTreeMap<String, String> {
+    let mut properties = BTreeMap::from([
+        ("north".to_string(), "false".to_string()),
+        ("east".to_string(), "false".to_string()),
+        ("south".to_string(), "false".to_string()),
+        ("west".to_string(), "false".to_string()),
+        ("waterlogged".to_string(), "false".to_string()),
+    ]);
+    for direction in connected {
+        properties.insert(direction.to_string(), "true".to_string());
+    }
+    properties
 }
 
 fn pale_moss_properties(bottom: bool, sides: [(&str, &str); 4]) -> BTreeMap<String, String> {

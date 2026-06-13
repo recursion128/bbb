@@ -24,6 +24,9 @@ pub(super) fn outline_shape_for_block(
     if is_trapdoor_block_name(block_name) {
         return trapdoor_outline_shape(properties);
     }
+    if is_fence_block_name(block_name) {
+        return fence_outline_shape(properties);
+    }
     if block_name == "minecraft:pale_moss_carpet" {
         return pale_moss_carpet_outline_shape(properties);
     }
@@ -87,6 +90,26 @@ fn stair_shape_boxes(kind: StairShapeKind, top: bool) -> Vec<BlockOutlineBox> {
         }
     }
     boxes
+}
+
+fn fence_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let mut boxes = Vec::with_capacity(5);
+    boxes.push(BlockOutlineBox::FENCE_POST);
+
+    for (property, outline) in [
+        ("north", BlockOutlineBox::FENCE_NORTH_ARM),
+        ("east", BlockOutlineBox::FENCE_EAST_ARM),
+        ("south", BlockOutlineBox::FENCE_SOUTH_ARM),
+        ("west", BlockOutlineBox::FENCE_WEST_ARM),
+    ] {
+        match properties.get(property).map(String::as_str)? {
+            "true" => boxes.push(outline),
+            "false" => {}
+            _ => return None,
+        }
+    }
+
+    Some(BlockOutlineShape::from_boxes(boxes))
 }
 
 fn trapdoor_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -188,6 +211,12 @@ fn is_trapdoor_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_trapdoor"))
+}
+
+fn is_fence_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_fence"))
 }
 
 fn is_flat_carpet_block_name(block_name: &str) -> bool {
