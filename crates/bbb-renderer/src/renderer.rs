@@ -229,8 +229,8 @@ impl Renderer {
         if self
             .selection_outline
             .as_ref()
-            .map(|selection| selection.outline)
-            == outline
+            .map(|selection| &selection.outline)
+            == outline.as_ref()
         {
             return;
         }

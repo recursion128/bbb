@@ -1,27 +1,27 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::packets::Direction as ProtocolDirection;
-use bbb_renderer::SelectionOutline;
+use bbb_renderer::{SelectionBox, SelectionOutline};
 use bbb_world::{BlockPos, BlockProbe, TerrainMaterialClass};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct BlockOutlineTarget {
     material: TerrainMaterialClass,
-    outline: Option<BlockOutlineBox>,
+    outline: Option<BlockOutlineShape>,
 }
 
 impl BlockOutlineTarget {
     pub(crate) fn full_block(material: TerrainMaterialClass) -> Self {
         Self {
             material,
-            outline: Some(BlockOutlineBox::FULL),
+            outline: Some(BlockOutlineShape::single(BlockOutlineBox::FULL)),
         }
     }
 
     pub(crate) fn from_probe(probe: &BlockProbe) -> Self {
         Self {
             material: probe.material,
-            outline: outline_box_for_block(probe.block_name.as_deref(), &probe.block_properties),
+            outline: outline_shape_for_block(probe.block_name.as_deref(), &probe.block_properties),
         }
     }
 
@@ -29,7 +29,7 @@ impl BlockOutlineTarget {
     pub(crate) fn from_box(material: TerrainMaterialClass, min: [f64; 3], max: [f64; 3]) -> Self {
         Self {
             material,
-            outline: Some(BlockOutlineBox { min, max }),
+            outline: Some(BlockOutlineShape::single(BlockOutlineBox { min, max })),
         }
     }
 
@@ -44,6 +44,54 @@ impl BlockOutlineTarget {
             return None;
         }
         self.outline?.clip(eye, direction, max_distance, pos)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum BlockOutlineShape {
+    Single(BlockOutlineBox),
+    Multi(Vec<BlockOutlineBox>),
+}
+
+impl BlockOutlineShape {
+    fn single(outline: BlockOutlineBox) -> Self {
+        Self::Single(outline)
+    }
+
+    fn from_boxes(mut boxes: Vec<BlockOutlineBox>) -> Self {
+        if boxes.len() == 1 {
+            Self::Single(boxes.pop().expect("one outline box"))
+        } else {
+            Self::Multi(boxes)
+        }
+    }
+
+    fn boxes(&self) -> &[BlockOutlineBox] {
+        match self {
+            Self::Single(outline) => std::slice::from_ref(outline),
+            Self::Multi(boxes) => boxes,
+        }
+    }
+
+    fn clip(
+        &self,
+        eye: [f64; 3],
+        direction: [f64; 3],
+        max_distance: f64,
+        pos: BlockPos,
+    ) -> Option<BlockOutlineHit> {
+        self.boxes()
+            .iter()
+            .filter_map(|outline| outline.clip(eye, direction, max_distance, pos))
+            .min_by(|a, b| a.distance.total_cmp(&b.distance))
+    }
+
+    fn selection_outline(&self, pos: BlockPos) -> SelectionOutline {
+        SelectionOutline::from_boxes(
+            self.boxes()
+                .iter()
+                .map(|outline| selection_box_for_outline_box(pos, *outline)),
+        )
     }
 }
 
@@ -69,6 +117,38 @@ impl BlockOutlineBox {
     const CARPET: Self = Self {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 1.0 / 16.0, 1.0],
+    };
+    const PALE_MOSS_NORTH_LOW: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 10.0 / 16.0, 1.0 / 16.0],
+    };
+    const PALE_MOSS_EAST_LOW: Self = Self {
+        min: [15.0 / 16.0, 0.0, 0.0],
+        max: [1.0, 10.0 / 16.0, 1.0],
+    };
+    const PALE_MOSS_SOUTH_LOW: Self = Self {
+        min: [0.0, 0.0, 15.0 / 16.0],
+        max: [1.0, 10.0 / 16.0, 1.0],
+    };
+    const PALE_MOSS_WEST_LOW: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0 / 16.0, 10.0 / 16.0, 1.0],
+    };
+    const PALE_MOSS_NORTH_TALL: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 1.0, 1.0 / 16.0],
+    };
+    const PALE_MOSS_EAST_TALL: Self = Self {
+        min: [15.0 / 16.0, 0.0, 0.0],
+        max: [1.0, 1.0, 1.0],
+    };
+    const PALE_MOSS_SOUTH_TALL: Self = Self {
+        min: [0.0, 0.0, 15.0 / 16.0],
+        max: [1.0, 1.0, 1.0],
+    };
+    const PALE_MOSS_WEST_TALL: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0 / 16.0, 1.0, 1.0],
     };
 
     fn clip(
@@ -147,8 +227,8 @@ pub(crate) struct BlockOutlineHit {
 }
 
 pub(crate) fn selection_outline_for_probe(probe: &BlockProbe) -> Option<SelectionOutline> {
-    outline_box_for_block(probe.block_name.as_deref(), &probe.block_properties)
-        .map(|outline| selection_outline_for_box(probe.pos, outline))
+    outline_shape_for_block(probe.block_name.as_deref(), &probe.block_properties)
+        .map(|outline| outline.selection_outline(probe.pos))
 }
 
 pub(crate) fn selection_outline_for_block(pos: BlockPos) -> SelectionOutline {
@@ -156,7 +236,12 @@ pub(crate) fn selection_outline_for_block(pos: BlockPos) -> SelectionOutline {
 }
 
 fn selection_outline_for_box(pos: BlockPos, outline: BlockOutlineBox) -> SelectionOutline {
-    SelectionOutline {
+    let selection_box = selection_box_for_outline_box(pos, outline);
+    SelectionOutline::from_box(selection_box.min, selection_box.max)
+}
+
+fn selection_box_for_outline_box(pos: BlockPos, outline: BlockOutlineBox) -> SelectionBox {
+    SelectionBox {
         min: [
             pos.x as f32 + outline.min[0] as f32,
             pos.y as f32 + outline.min[1] as f32,
@@ -174,26 +259,76 @@ fn contains_point(min: [f64; 3], max: [f64; 3], point: [f64; 3]) -> bool {
     (0..3).all(|axis| point[axis] >= min[axis] && point[axis] <= max[axis])
 }
 
-fn outline_box_for_block(
+fn outline_shape_for_block(
     block_name: Option<&str>,
     properties: &BTreeMap<String, String>,
-) -> Option<BlockOutlineBox> {
+) -> Option<BlockOutlineShape> {
     let block_name = block_name?;
     if block_name == "minecraft:snow" {
-        return snow_layer_outline_box(properties);
+        return snow_layer_outline_box(properties).map(BlockOutlineShape::single);
     }
     if is_slab_block_name(block_name) {
         return match properties.get("type").map(String::as_str) {
-            Some("bottom") => Some(BlockOutlineBox::BOTTOM_SLAB),
-            Some("top") => Some(BlockOutlineBox::TOP_SLAB),
-            Some("double") => Some(BlockOutlineBox::FULL),
+            Some("bottom") => Some(BlockOutlineShape::single(BlockOutlineBox::BOTTOM_SLAB)),
+            Some("top") => Some(BlockOutlineShape::single(BlockOutlineBox::TOP_SLAB)),
+            Some("double") => Some(BlockOutlineShape::single(BlockOutlineBox::FULL)),
             _ => None,
         };
     }
-    if is_flat_carpet_block_name(block_name) {
-        return Some(BlockOutlineBox::CARPET);
+    if block_name == "minecraft:pale_moss_carpet" {
+        return pale_moss_carpet_outline_shape(properties);
     }
-    Some(BlockOutlineBox::FULL)
+    if is_flat_carpet_block_name(block_name) {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::CARPET));
+    }
+    Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
+}
+
+fn pale_moss_carpet_outline_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockOutlineShape> {
+    let mut boxes = Vec::with_capacity(5);
+    match properties.get("bottom").map(String::as_str)? {
+        "true" => boxes.push(BlockOutlineBox::CARPET),
+        "false" => {}
+        _ => return None,
+    }
+
+    for (property, low, tall) in [
+        (
+            "north",
+            BlockOutlineBox::PALE_MOSS_NORTH_LOW,
+            BlockOutlineBox::PALE_MOSS_NORTH_TALL,
+        ),
+        (
+            "east",
+            BlockOutlineBox::PALE_MOSS_EAST_LOW,
+            BlockOutlineBox::PALE_MOSS_EAST_TALL,
+        ),
+        (
+            "south",
+            BlockOutlineBox::PALE_MOSS_SOUTH_LOW,
+            BlockOutlineBox::PALE_MOSS_SOUTH_TALL,
+        ),
+        (
+            "west",
+            BlockOutlineBox::PALE_MOSS_WEST_LOW,
+            BlockOutlineBox::PALE_MOSS_WEST_TALL,
+        ),
+    ] {
+        match properties.get(property).map(String::as_str)? {
+            "none" => {}
+            "low" => boxes.push(low),
+            "tall" => boxes.push(tall),
+            _ => return None,
+        }
+    }
+
+    if boxes.is_empty() {
+        Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
+    } else {
+        Some(BlockOutlineShape::from_boxes(boxes))
+    }
 }
 
 fn snow_layer_outline_box(properties: &BTreeMap<String, String>) -> Option<BlockOutlineBox> {
@@ -288,66 +423,131 @@ mod tests {
     use super::*;
 
     #[test]
-    fn outline_box_uses_vanilla_slab_type_property() {
+    fn outline_shape_uses_vanilla_slab_type_property() {
         assert_eq!(
-            outline_box_for_block(Some("minecraft:oak_slab"), &slab_properties("bottom")),
-            Some(BlockOutlineBox::BOTTOM_SLAB)
+            outline_shape_for_block(Some("minecraft:oak_slab"), &slab_properties("bottom")),
+            Some(BlockOutlineShape::single(BlockOutlineBox::BOTTOM_SLAB))
         );
         assert_eq!(
-            outline_box_for_block(Some("minecraft:smooth_stone_slab"), &slab_properties("top")),
-            Some(BlockOutlineBox::TOP_SLAB)
+            outline_shape_for_block(Some("minecraft:smooth_stone_slab"), &slab_properties("top")),
+            Some(BlockOutlineShape::single(BlockOutlineBox::TOP_SLAB))
         );
         assert_eq!(
-            outline_box_for_block(
+            outline_shape_for_block(
                 Some("minecraft:petrified_oak_slab"),
                 &slab_properties("double"),
             ),
-            Some(BlockOutlineBox::FULL)
+            Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
         );
         assert_eq!(
-            outline_box_for_block(Some("minecraft:oak_slab"), &BTreeMap::new()),
+            outline_shape_for_block(Some("minecraft:oak_slab"), &BTreeMap::new()),
             None
         );
         assert_eq!(
-            outline_box_for_block(Some("minecraft:oak_slab"), &slab_properties("unexpected")),
+            outline_shape_for_block(Some("minecraft:oak_slab"), &slab_properties("unexpected")),
             None
         );
     }
 
     #[test]
-    fn outline_box_uses_vanilla_snow_layers_property() {
+    fn outline_shape_uses_vanilla_snow_layers_property() {
         assert_eq!(
-            outline_box_for_block(Some("minecraft:snow"), &snow_properties(1)),
-            Some(BlockOutlineBox {
+            outline_shape_for_block(Some("minecraft:snow"), &snow_properties(1)),
+            Some(BlockOutlineShape::single(BlockOutlineBox {
                 min: [0.0, 0.0, 0.0],
                 max: [1.0, 0.125, 1.0],
-            })
+            }))
         );
         assert_eq!(
-            outline_box_for_block(Some("minecraft:snow"), &snow_properties(8)),
-            Some(BlockOutlineBox::FULL)
+            outline_shape_for_block(Some("minecraft:snow"), &snow_properties(8)),
+            Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
         );
         assert_eq!(
-            outline_box_for_block(Some("minecraft:snow"), &BTreeMap::new()),
+            outline_shape_for_block(Some("minecraft:snow"), &BTreeMap::new()),
             None
         );
         assert_eq!(
-            outline_box_for_block(Some("minecraft:snow"), &snow_properties(9)),
+            outline_shape_for_block(Some("minecraft:snow"), &snow_properties(9)),
             None
         );
     }
 
     #[test]
-    fn outline_box_uses_vanilla_flat_carpet_shape() {
+    fn outline_shape_uses_vanilla_flat_carpet_shape() {
         assert_eq!(
-            outline_box_for_block(Some("minecraft:white_carpet"), &BTreeMap::new()),
-            Some(BlockOutlineBox::CARPET)
+            outline_shape_for_block(Some("minecraft:white_carpet"), &BTreeMap::new()),
+            Some(BlockOutlineShape::single(BlockOutlineBox::CARPET))
         );
         assert_eq!(
-            outline_box_for_block(Some("minecraft:moss_carpet"), &BTreeMap::new()),
-            Some(BlockOutlineBox::CARPET)
+            outline_shape_for_block(Some("minecraft:moss_carpet"), &BTreeMap::new()),
+            Some(BlockOutlineShape::single(BlockOutlineBox::CARPET))
         );
         assert!(!is_flat_carpet_block_name("minecraft:pale_moss_carpet"));
+    }
+
+    #[test]
+    fn outline_shape_uses_vanilla_pale_moss_carpet_boxes() {
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:pale_moss_carpet"),
+                &pale_moss_properties(
+                    true,
+                    [
+                        ("north", "low"),
+                        ("east", "tall"),
+                        ("south", "none"),
+                        ("west", "none"),
+                    ],
+                ),
+            ),
+            Some(BlockOutlineShape::from_boxes(vec![
+                BlockOutlineBox::CARPET,
+                BlockOutlineBox::PALE_MOSS_NORTH_LOW,
+                BlockOutlineBox::PALE_MOSS_EAST_TALL,
+            ]))
+        );
+    }
+
+    #[test]
+    fn outline_shape_uses_vanilla_pale_moss_empty_shape_fallback() {
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:pale_moss_carpet"),
+                &pale_moss_properties(
+                    false,
+                    [
+                        ("north", "none"),
+                        ("east", "none"),
+                        ("south", "none"),
+                        ("west", "none"),
+                    ],
+                ),
+            ),
+            Some(BlockOutlineShape::single(BlockOutlineBox::FULL))
+        );
+    }
+
+    #[test]
+    fn outline_shape_rejects_invalid_pale_moss_properties() {
+        assert_eq!(
+            outline_shape_for_block(
+                Some("minecraft:pale_moss_carpet"),
+                &pale_moss_properties(
+                    true,
+                    [
+                        ("north", "low"),
+                        ("east", "unexpected"),
+                        ("south", "none"),
+                        ("west", "none"),
+                    ],
+                ),
+            ),
+            None
+        );
+        assert_eq!(
+            outline_shape_for_block(Some("minecraft:pale_moss_carpet"), &BTreeMap::new()),
+            None
+        );
     }
 
     #[test]
@@ -357,17 +557,11 @@ mod tests {
                 BlockPos { x: -2, y: 63, z: 4 },
                 BlockOutlineBox::BOTTOM_SLAB,
             ),
-            SelectionOutline {
-                min: [-2.0, 63.0, 4.0],
-                max: [-1.0, 63.5, 5.0],
-            }
+            SelectionOutline::from_box([-2.0, 63.0, 4.0], [-1.0, 63.5, 5.0])
         );
         assert_eq!(
             selection_outline_for_box(BlockPos { x: -2, y: 63, z: 4 }, BlockOutlineBox::TOP_SLAB,),
-            SelectionOutline {
-                min: [-2.0, 63.5, 4.0],
-                max: [-1.0, 64.0, 5.0],
-            }
+            SelectionOutline::from_box([-2.0, 63.5, 4.0], [-1.0, 64.0, 5.0])
         );
     }
 
@@ -378,10 +572,7 @@ mod tests {
                 BlockPos { x: -2, y: 63, z: 4 },
                 snow_layer_outline_box(&snow_properties(3)).unwrap(),
             ),
-            SelectionOutline {
-                min: [-2.0, 63.0, 4.0],
-                max: [-1.0, 63.375, 5.0],
-            }
+            SelectionOutline::from_box([-2.0, 63.0, 4.0], [-1.0, 63.375, 5.0])
         );
     }
 
@@ -389,10 +580,64 @@ mod tests {
     fn selection_outline_uses_flat_carpet_bounds() {
         assert_eq!(
             selection_outline_for_box(BlockPos { x: -2, y: 63, z: 4 }, BlockOutlineBox::CARPET),
-            SelectionOutline {
-                min: [-2.0, 63.0, 4.0],
-                max: [-1.0, 63.0625, 5.0],
-            }
+            SelectionOutline::from_box([-2.0, 63.0, 4.0], [-1.0, 63.0625, 5.0])
+        );
+    }
+
+    #[test]
+    fn selection_outline_preserves_pale_moss_multi_box_shape() {
+        let shape = pale_moss_carpet_outline_shape(&pale_moss_properties(
+            true,
+            [
+                ("north", "low"),
+                ("east", "tall"),
+                ("south", "none"),
+                ("west", "none"),
+            ],
+        ))
+        .unwrap();
+
+        assert_eq!(
+            shape.selection_outline(BlockPos { x: -2, y: 63, z: 4 }),
+            SelectionOutline::from_boxes([
+                SelectionBox {
+                    min: [-2.0, 63.0, 4.0],
+                    max: [-1.0, 63.0625, 5.0],
+                },
+                SelectionBox {
+                    min: [-2.0, 63.0, 4.0],
+                    max: [-1.0, 63.625, 4.0625],
+                },
+                SelectionBox {
+                    min: [-1.0625, 63.0, 4.0],
+                    max: [-1.0, 64.0, 5.0],
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn multi_box_outline_clip_uses_nearest_hit() {
+        let target = BlockOutlineTarget {
+            material: TerrainMaterialClass::Opaque,
+            outline: Some(BlockOutlineShape::from_boxes(vec![
+                BlockOutlineBox::PALE_MOSS_EAST_TALL,
+                BlockOutlineBox::PALE_MOSS_NORTH_LOW,
+            ])),
+        };
+
+        assert_eq!(
+            target.clip(
+                [0.5, 0.5, -1.0],
+                [0.0, 0.0, 1.0],
+                4.5,
+                BlockPos { x: 0, y: 0, z: 0 },
+            ),
+            Some(BlockOutlineHit {
+                distance: 1.0,
+                face: ProtocolDirection::North,
+                inside: false,
+            })
         );
     }
 
@@ -402,5 +647,13 @@ mod tests {
 
     fn snow_properties(layers: u8) -> BTreeMap<String, String> {
         BTreeMap::from([("layers".to_string(), layers.to_string())])
+    }
+
+    fn pale_moss_properties(bottom: bool, sides: [(&str, &str); 4]) -> BTreeMap<String, String> {
+        let mut properties = BTreeMap::from([("bottom".to_string(), bottom.to_string())]);
+        for (name, value) in sides {
+            properties.insert(name.to_string(), value.to_string());
+        }
+        properties
     }
 }

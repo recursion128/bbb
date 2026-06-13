@@ -425,10 +425,7 @@ mod tests {
     fn selection_outline_uses_block_bounds() {
         assert_eq!(
             selection_outline_for_block(BlockPos { x: -2, y: 63, z: 4 }),
-            SelectionOutline {
-                min: [-2.0, 63.0, 4.0],
-                max: [-1.0, 64.0, 5.0],
-            }
+            SelectionOutline::from_box([-2.0, 63.0, 4.0], [-1.0, 64.0, 5.0])
         );
     }
 

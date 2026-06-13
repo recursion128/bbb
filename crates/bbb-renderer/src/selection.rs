@@ -5,9 +5,28 @@ use wgpu::util::DeviceExt;
 use crate::gpu::DEPTH_FORMAT;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct SelectionOutline {
+pub struct SelectionBox {
     pub min: [f32; 3],
     pub max: [f32; 3],
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SelectionOutline {
+    pub boxes: Vec<SelectionBox>,
+}
+
+impl SelectionOutline {
+    pub fn from_box(min: [f32; 3], max: [f32; 3]) -> Self {
+        Self {
+            boxes: vec![SelectionBox { min, max }],
+        }
+    }
+
+    pub fn from_boxes(boxes: impl IntoIterator<Item = SelectionBox>) -> Self {
+        Self {
+            boxes: boxes.into_iter().collect(),
+        }
+    }
 }
 
 const SELECTION_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 1] =
@@ -52,7 +71,7 @@ pub(super) fn create_selection_outline_gpu(
     device: &wgpu::Device,
     outline: SelectionOutline,
 ) -> SelectionOutlineGpu {
-    let vertices = selection_outline_vertices(outline);
+    let vertices = selection_outline_vertices(&outline);
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-selection-outline-vertices"),
         contents: bytemuck::cast_slice(&vertices),
@@ -119,9 +138,19 @@ pub(super) fn create_selection_pipeline(
     })
 }
 
-fn selection_outline_vertices(outline: SelectionOutline) -> [SelectionVertex; 24] {
-    let min = Vec3::from_array(outline.min).min(Vec3::from_array(outline.max)) - Vec3::splat(0.002);
-    let max = Vec3::from_array(outline.min).max(Vec3::from_array(outline.max)) + Vec3::splat(0.002);
+fn selection_outline_vertices(outline: &SelectionOutline) -> Vec<SelectionVertex> {
+    let mut vertices = Vec::with_capacity(outline.boxes.len() * 24);
+    for outline_box in &outline.boxes {
+        vertices.extend(selection_box_vertices(*outline_box));
+    }
+    vertices
+}
+
+fn selection_box_vertices(outline_box: SelectionBox) -> [SelectionVertex; 24] {
+    let min = Vec3::from_array(outline_box.min).min(Vec3::from_array(outline_box.max))
+        - Vec3::splat(0.002);
+    let max = Vec3::from_array(outline_box.min).max(Vec3::from_array(outline_box.max))
+        + Vec3::splat(0.002);
     let p000 = [min.x, min.y, min.z];
     let p100 = [max.x, min.y, min.z];
     let p010 = [min.x, max.y, min.z];
@@ -177,14 +206,33 @@ mod tests {
 
     #[test]
     fn selection_outline_vertices_emit_expanded_box_edges() {
-        let vertices = selection_outline_vertices(SelectionOutline {
-            min: [1.0, 2.0, 3.0],
-            max: [2.0, 3.0, 4.0],
-        });
+        let vertices = selection_outline_vertices(&SelectionOutline::from_box(
+            [1.0, 2.0, 3.0],
+            [2.0, 3.0, 4.0],
+        ));
         assert_eq!(vertices.len(), 24);
         assert_eq!(vertices[0].position, [0.998, 1.998, 2.998]);
         assert_eq!(vertices[1].position, [2.002, 1.998, 2.998]);
         assert_eq!(vertices[22].position, [0.998, 1.998, 4.002]);
         assert_eq!(vertices[23].position, [0.998, 3.002, 4.002]);
+    }
+
+    #[test]
+    fn selection_outline_vertices_emit_each_box_edges() {
+        let vertices = selection_outline_vertices(&SelectionOutline::from_boxes([
+            SelectionBox {
+                min: [0.0, 0.0, 0.0],
+                max: [1.0, 1.0, 1.0],
+            },
+            SelectionBox {
+                min: [2.0, 0.0, 0.0],
+                max: [3.0, 1.0, 1.0],
+            },
+        ]));
+
+        assert_eq!(vertices.len(), 48);
+        assert_eq!(vertices[0].position, [-0.002, -0.002, -0.002]);
+        assert_eq!(vertices[24].position, [1.998, -0.002, -0.002]);
+        assert_eq!(vertices[25].position, [3.002, -0.002, -0.002]);
     }
 }
