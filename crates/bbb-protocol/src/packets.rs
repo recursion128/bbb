@@ -4,6 +4,7 @@ use crate::{
 };
 use uuid::Uuid;
 
+pub mod chat;
 pub mod chunks;
 pub mod client_audio;
 pub mod client_common;
@@ -27,6 +28,7 @@ pub mod tags;
 pub mod waypoints;
 pub mod world_border;
 pub mod world_effects;
+pub use chat::*;
 pub use chunks::*;
 pub use client_audio::*;
 pub use client_common::*;

@@ -197,10 +197,22 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 debug_game::decode_debug_sample(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_DELETE_CHAT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::DeleteChat(chat::decode_delete_chat(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_DISCONNECT => Ok(PlayClientbound::Disconnect(Disconnect {
             reason: decode_component_summary(payload)?,
             raw_reason: payload.to_vec(),
         })),
+        ids::play::CLIENTBOUND_DISGUISED_CHAT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::DisguisedChat(chat::decode_disguised_chat(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_ENTITY_EVENT => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::EntityEvent(entities::decode_entity_event(
@@ -352,6 +364,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             Ok(PlayClientbound::PlayerAbilities(
                 client_state::decode_player_abilities(&mut decoder)?,
             ))
+        }
+        ids::play::CLIENTBOUND_PLAYER_CHAT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::PlayerChat(chat::decode_player_chat(
+                &mut decoder,
+            )?))
         }
         ids::play::CLIENTBOUND_PLAYER_COMBAT_END => {
             let mut decoder = Decoder::new(payload);

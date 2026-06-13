@@ -161,6 +161,12 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 | PlayClientbound::DebugEntityValue(_)
                 | PlayClientbound::DebugEvent(_)
                 | PlayClientbound::DebugSample(_) => {}
+                PlayClientbound::DeleteChat(update) => {
+                    world.apply_delete_chat(update);
+                }
+                PlayClientbound::DisguisedChat(update) => {
+                    world.apply_disguised_chat(update);
+                }
                 PlayClientbound::UpdateMobEffect(update) => {
                     world.apply_update_mob_effect(update);
                 }
@@ -278,6 +284,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     world.apply_teleport_entity(update);
                 }
                 PlayClientbound::PlayerAbilities(_) => {}
+                PlayClientbound::PlayerChat(update) => {
+                    world.apply_player_chat(update);
+                }
                 PlayClientbound::SetExperience(_) => {}
                 PlayClientbound::SetHeldSlot(_) => {}
                 PlayClientbound::SetCursorItem(update) => {

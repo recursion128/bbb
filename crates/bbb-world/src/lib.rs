@@ -1,5 +1,6 @@
 mod block_events;
 mod chunks;
+mod client_chat;
 mod client_hud;
 mod client_state;
 mod command_suggestions;

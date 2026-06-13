@@ -2,19 +2,21 @@ use super::*;
 use crate::runtime::clear_color_for_day_time;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, CommonPlayerSpawnInfo,
-    CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
-    DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
-    EntityAnchor, Explosion, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
-    LevelParticles, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
-    OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerCombatEnd,
-    PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse, ProjectilePower,
-    RecipeDisplayType, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
-    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog, SoundEntityEvent,
-    SoundEvent, SoundEventHolder, SoundSource, StopSound, TagNetworkPayload, TagQuery,
-    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateTags,
-    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
-    WaypointOperation, WaypointVec3i,
+    AddEntity, BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder,
+    ChunkPos as ProtocolChunkPos, CommonPlayerSpawnInfo, CustomChatCompletions,
+    CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, DebugBlockValue,
+    DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat, DialogHolder,
+    DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind, GameRuleValue,
+    GameRuleValues, GameTestHighlightPos, InteractionHand, LevelParticles, MapColorPatch,
+    MapDecoration, MapItemData, MessageSignature, MountScreenOpen, OpenBook, OpenSignEditor,
+    PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat,
+    PlayerCombatEnd, PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse,
+    ProjectilePower, RecipeDisplayType, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab,
+    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog,
+    SignedMessageBody, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StopSound,
+    TagNetworkPayload, TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
+    UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
+    WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -422,6 +424,97 @@ fn command_suggestions_event_updates_world_and_counters() {
     assert_eq!(result.suggestions[0].text, "give");
     assert_eq!(result.suggestions[0].tooltip.as_deref(), Some("Run give"));
     assert_eq!(world.last_command_suggestions(), Some(result));
+}
+
+#[test]
+fn client_chat_events_update_world_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(3);
+    let sender = Uuid::from_u128(0x1234);
+    let signature = MessageSignature {
+        bytes: vec![9; 256],
+    };
+    let expected_signature_checksum = signature.checksum();
+    tx.try_send(NetEvent::PlayerChat(PlayerChat {
+        global_index: 0,
+        sender,
+        index: 2,
+        signature: Some(signature),
+        body: SignedMessageBody {
+            content: "hello".to_string(),
+            timestamp_millis: 1,
+            salt: 2,
+            last_seen: Vec::new(),
+        },
+        unsigned_content: Some("unsigned hello".to_string()),
+        filter_mask: FilterMask {
+            kind: FilterMaskKind::PartiallyFiltered,
+            mask_words: vec![1],
+        },
+        chat_type: protocol_chat_type("Alice"),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::DeleteChat(DeleteChat {
+        message_signature: PackedMessageSignature {
+            cache_id: Some(0),
+            full_signature: None,
+        },
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::DisguisedChat(DisguisedChat {
+        message: "server notice".to_string(),
+        chat_type: protocol_chat_type("Server"),
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+    assert_eq!(world.client_chat().messages.len(), 2);
+    assert_eq!(world.client_chat().deleted_messages.len(), 1);
+    assert_eq!(counters.player_chat_packets, 1);
+    assert_eq!(counters.disguised_chat_packets, 1);
+    assert_eq!(counters.delete_chat_packets, 1);
+    assert_eq!(counters.chat_messages_tracked, 2);
+    assert_eq!(counters.deleted_chat_messages_tracked, 1);
+    assert_eq!(counters.chat_signature_cache_entries, 1);
+    assert_eq!(counters.player_chat_unsigned_content_packets, 1);
+    assert_eq!(counters.player_chat_filtered_packets, 1);
+    assert_eq!(
+        counters.last_player_chat,
+        Some(bbb_control::ClientChatLine {
+            kind: "player".to_string(),
+            content: "hello".to_string(),
+            sender: Some(sender.to_string()),
+            sender_name: "Alice".to_string(),
+            target_name: None,
+            global_index: Some(0),
+            message_index: Some(2),
+            chat_type_id: Some(0),
+            signature_checksum: Some(expected_signature_checksum),
+            unsigned_content_present: true,
+            filter_mask: "partially_filtered".to_string(),
+            validation_state: "unchecked".to_string(),
+        })
+    );
+    assert_eq!(
+        counters
+            .last_disguised_chat
+            .as_ref()
+            .map(|chat| &chat.content),
+        Some(&"server notice".to_string())
+    );
+    assert_eq!(
+        counters.last_deleted_chat,
+        Some(bbb_control::DeletedChatLine {
+            signature_checksum: Some(expected_signature_checksum),
+            cache_id: Some(0),
+            resolved: true,
+        })
+    );
 }
 
 #[test]
@@ -1638,6 +1731,14 @@ fn protocol_play_login(player_id: i32) -> PlayLogin {
             sea_level: 63,
         },
         enforces_secure_chat: false,
+    }
+}
+
+fn protocol_chat_type(name: &str) -> ChatTypeBound {
+    ChatTypeBound {
+        chat_type: ChatTypeHolder::Registry { id: 0 },
+        name: name.to_string(),
+        target_name: None,
     }
 }
 

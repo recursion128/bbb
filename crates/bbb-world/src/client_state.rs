@@ -1,3 +1,7 @@
+pub use crate::client_chat::{
+    ChatMessageKind, ChatMessageState, ChatSignatureState, ChatTypeState, ChatValidationState,
+    ClientChatState, DeletedChatState,
+};
 pub use crate::client_hud::{BossBarState, ClientHudState, DifficultyState, TabListState};
 pub use crate::command_suggestions::{
     CommandSuggestionState, CommandSuggestionsResultState, CommandSuggestionsState,

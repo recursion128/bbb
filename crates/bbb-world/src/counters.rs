@@ -99,6 +99,28 @@ pub struct WorldCounters {
     #[serde(default)]
     pub command_suggestion_entries_tracked: usize,
     #[serde(default)]
+    pub player_chat_packets: usize,
+    #[serde(default)]
+    pub disguised_chat_packets: usize,
+    #[serde(default)]
+    pub delete_chat_packets: usize,
+    #[serde(default)]
+    pub chat_messages_tracked: usize,
+    #[serde(default)]
+    pub deleted_chat_messages_tracked: usize,
+    #[serde(default)]
+    pub chat_signature_cache_entries: usize,
+    #[serde(default)]
+    pub player_chat_index_mismatches: usize,
+    #[serde(default)]
+    pub chat_unknown_packed_signatures: usize,
+    #[serde(default)]
+    pub player_chat_unsigned_content_packets: usize,
+    #[serde(default)]
+    pub player_chat_filtered_packets: usize,
+    #[serde(default)]
+    pub player_chat_fully_filtered_packets: usize,
+    #[serde(default)]
     pub map_item_data_packets: usize,
     #[serde(default)]
     pub maps_tracked: usize,

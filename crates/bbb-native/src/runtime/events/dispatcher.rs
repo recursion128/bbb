@@ -237,6 +237,14 @@ pub(in crate::runtime) fn drain_net_events(
                 });
                 counters.debug_sample_packets += 1;
             }
+            NetEvent::DeleteChat(update) => {
+                world.apply_delete_chat(update);
+                sync_chat_counters(counters, world);
+            }
+            NetEvent::DisguisedChat(update) => {
+                world.apply_disguised_chat(update);
+                sync_chat_counters(counters, world);
+            }
             NetEvent::GameRuleValues(update) => {
                 counters.last_game_rule_values = Some(bbb_control::GameRuleValuesState {
                     values: update.values.len(),
@@ -531,6 +539,10 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::PlayerAbilities(abilities) => {
                 apply_player_abilities_update(counters, abilities);
             }
+            NetEvent::PlayerChat(update) => {
+                world.apply_player_chat(update);
+                sync_chat_counters(counters, world);
+            }
             NetEvent::PlayerHealth(health) => {
                 apply_player_health_update(counters, health);
             }
@@ -801,6 +813,75 @@ fn control_waypoint_vec3i(pos: bbb_protocol::packets::WaypointVec3i) -> bbb_cont
         x: pos.x,
         y: pos.y,
         z: pos.z,
+    }
+}
+
+fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.player_chat_packets = world_counters.player_chat_packets;
+    counters.disguised_chat_packets = world_counters.disguised_chat_packets;
+    counters.delete_chat_packets = world_counters.delete_chat_packets;
+    counters.chat_messages_tracked = world_counters.chat_messages_tracked;
+    counters.deleted_chat_messages_tracked = world_counters.deleted_chat_messages_tracked;
+    counters.chat_signature_cache_entries = world_counters.chat_signature_cache_entries;
+    counters.player_chat_index_mismatches = world_counters.player_chat_index_mismatches;
+    counters.chat_unknown_packed_signatures = world_counters.chat_unknown_packed_signatures;
+    counters.player_chat_unsigned_content_packets =
+        world_counters.player_chat_unsigned_content_packets;
+    counters.player_chat_filtered_packets = world_counters.player_chat_filtered_packets;
+    counters.player_chat_fully_filtered_packets = world_counters.player_chat_fully_filtered_packets;
+
+    counters.last_player_chat = world
+        .client_chat()
+        .messages
+        .iter()
+        .rev()
+        .find(|message| message.kind == bbb_world::ChatMessageKind::Player)
+        .map(control_chat_line);
+    counters.last_disguised_chat = world
+        .client_chat()
+        .messages
+        .iter()
+        .rev()
+        .find(|message| message.kind == bbb_world::ChatMessageKind::Disguised)
+        .map(control_chat_line);
+    counters.last_deleted_chat = world
+        .client_chat()
+        .deleted_messages
+        .last()
+        .map(control_deleted_chat_line);
+}
+
+fn control_chat_line(message: &bbb_world::ChatMessageState) -> bbb_control::ClientChatLine {
+    bbb_control::ClientChatLine {
+        kind: message.kind.as_str().to_string(),
+        content: message.content.clone(),
+        sender: message.sender.map(|sender| sender.to_string()),
+        sender_name: message.sender_name.clone(),
+        target_name: message.target_name.clone(),
+        global_index: message.global_index,
+        message_index: message.message_index,
+        chat_type_id: message.chat_type.registry_id,
+        signature_checksum: message
+            .signature
+            .as_ref()
+            .map(|signature| signature.checksum),
+        unsigned_content_present: message.unsigned_content.is_some(),
+        filter_mask: message.filter_mask.clone(),
+        validation_state: message.validation_state.as_str().to_string(),
+    }
+}
+
+fn control_deleted_chat_line(
+    deleted: &bbb_world::DeletedChatState,
+) -> bbb_control::DeletedChatLine {
+    bbb_control::DeletedChatLine {
+        signature_checksum: deleted
+            .signature
+            .as_ref()
+            .map(|signature| signature.checksum),
+        cache_id: deleted.cache_id,
+        resolved: deleted.resolved,
     }
 }
 

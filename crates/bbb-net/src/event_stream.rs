@@ -238,6 +238,12 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::DebugSample(update) => {
                     emit(&events, NetEvent::DebugSample(update)).await?;
                 }
+                PlayClientbound::DeleteChat(update) => {
+                    emit(&events, NetEvent::DeleteChat(update)).await?;
+                }
+                PlayClientbound::DisguisedChat(update) => {
+                    emit(&events, NetEvent::DisguisedChat(update)).await?;
+                }
                 PlayClientbound::UpdateMobEffect(update) => {
                     emit(&events, NetEvent::UpdateMobEffect(update)).await?;
                 }
@@ -362,6 +368,9 @@ pub async fn run_offline_event_stream(
                 }
                 PlayClientbound::PlayerCombatKill(update) => {
                     emit(&events, NetEvent::PlayerCombatKill(update)).await?;
+                }
+                PlayClientbound::PlayerChat(update) => {
+                    emit(&events, NetEvent::PlayerChat(update)).await?;
                 }
                 PlayClientbound::SetHealth(health) => {
                     maybe_send_perform_respawn(&mut conn, health, &mut player_was_dead).await?;

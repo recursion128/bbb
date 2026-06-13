@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BlockDestructionProgress, BlockEventRecord, ChunkColumn, ClientHudState,
+    BlockDestructionProgress, BlockEventRecord, ChunkColumn, ClientChatState, ClientHudState,
     CommandSuggestionsState, InventoryState, ItemCooldownState, LevelEventRecord, MapItemState,
     PlayerInfoState, RegistrySet, ScoreboardState, ServerPresentationState, WorldBorderState,
     WorldCounters, WorldDimension, WorldLevelInfo,
@@ -28,6 +28,8 @@ pub struct WorldStore {
     pub(crate) scoreboard: ScoreboardState,
     #[serde(default)]
     pub(crate) client_hud: ClientHudState,
+    #[serde(default)]
+    pub(crate) client_chat: ClientChatState,
     #[serde(default)]
     pub(crate) player_info: PlayerInfoState,
     #[serde(default)]

@@ -43,6 +43,9 @@ pub struct NetCounters {
     pub custom_report_details: BTreeMap<String, String>,
     pub server_links: Vec<ServerLinkState>,
     pub last_system_chat: Option<SystemChatLine>,
+    pub last_player_chat: Option<ClientChatLine>,
+    pub last_disguised_chat: Option<ClientChatLine>,
+    pub last_deleted_chat: Option<DeletedChatLine>,
     pub last_action_bar: Option<ActionBarText>,
     pub title: TitleState,
     pub ticking: ClientTickingState,
@@ -99,6 +102,17 @@ pub struct NetCounters {
     pub default_spawn_position_packets: usize,
     pub simulation_distance_packets: usize,
     pub system_chat_packets: usize,
+    pub player_chat_packets: usize,
+    pub disguised_chat_packets: usize,
+    pub delete_chat_packets: usize,
+    pub chat_messages_tracked: usize,
+    pub deleted_chat_messages_tracked: usize,
+    pub chat_signature_cache_entries: usize,
+    pub player_chat_index_mismatches: usize,
+    pub chat_unknown_packed_signatures: usize,
+    pub player_chat_unsigned_content_packets: usize,
+    pub player_chat_filtered_packets: usize,
+    pub player_chat_fully_filtered_packets: usize,
     pub block_changed_ack_packets: usize,
     pub block_destruction_packets: usize,
     pub block_event_packets: usize,
@@ -253,6 +267,29 @@ pub struct WorldTime {
 pub struct SystemChatLine {
     pub content: String,
     pub overlay: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClientChatLine {
+    pub kind: String,
+    pub content: String,
+    pub sender: Option<String>,
+    pub sender_name: String,
+    pub target_name: Option<String>,
+    pub global_index: Option<i32>,
+    pub message_index: Option<i32>,
+    pub chat_type_id: Option<i32>,
+    pub signature_checksum: Option<i32>,
+    pub unsigned_content_present: bool,
+    pub filter_mask: String,
+    pub validation_state: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeletedChatLine {
+    pub signature_checksum: Option<i32>,
+    pub cache_id: Option<i32>,
+    pub resolved: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
