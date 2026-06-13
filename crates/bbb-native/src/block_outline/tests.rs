@@ -236,6 +236,78 @@ fn outline_shape_rejects_invalid_trapdoor_properties() {
 }
 
 #[test]
+fn outline_shape_uses_vanilla_closed_door_direction_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_door"),
+            &door_properties("north", "left", false, "lower"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::DOOR_NORTH))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:iron_door"),
+            &door_properties("east", "right", false, "upper"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::DOOR_EAST))
+    );
+}
+
+#[test]
+fn outline_shape_uses_vanilla_open_door_hinge_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_door"),
+            &door_properties("north", "left", true, "lower"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::DOOR_EAST))
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_door"),
+            &door_properties("north", "right", true, "upper"),
+        ),
+        Some(BlockOutlineShape::single(BlockOutlineBox::DOOR_WEST))
+    );
+}
+
+#[test]
+fn outline_shape_ignores_vanilla_door_half_for_selection_shape() {
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_door"),
+            &door_properties("south", "left", false, "lower"),
+        ),
+        outline_shape_for_block(
+            Some("minecraft:oak_door"),
+            &door_properties("south", "left", false, "upper"),
+        )
+    );
+}
+
+#[test]
+fn outline_shape_rejects_invalid_door_properties() {
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_door"), &BTreeMap::new()),
+        None
+    );
+
+    let mut properties = door_properties("north", "left", true, "lower");
+    properties.insert("hinge".to_string(), "middle".to_string());
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:oak_door"), &properties),
+        None
+    );
+    assert_eq!(
+        outline_shape_for_block(
+            Some("minecraft:oak_door"),
+            &door_properties("up", "left", false, "lower"),
+        ),
+        None
+    );
+}
+
+#[test]
 fn outline_shape_uses_vanilla_disconnected_fence_post() {
     assert_eq!(
         outline_shape_for_block(Some("minecraft:oak_fence"), &fence_properties([])),
@@ -622,6 +694,31 @@ fn trapdoor_outline_clip_uses_thin_closed_shape() {
 }
 
 #[test]
+fn door_outline_clip_uses_thin_direction_shape() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(
+            Some("minecraft:oak_door"),
+            &door_properties("north", "left", false, "lower"),
+        ),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 0.5, 2.0],
+            [0.0, 0.0, -1.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::South,
+            inside: false,
+        })
+    );
+}
+
+#[test]
 fn fence_outline_clip_hits_connected_arm_before_post() {
     let target = BlockOutlineTarget {
         material: TerrainMaterialClass::Opaque,
@@ -717,6 +814,16 @@ fn trapdoor_properties(facing: &str, half: &str, open: bool) -> BTreeMap<String,
         ("open".to_string(), open.to_string()),
         ("powered".to_string(), "false".to_string()),
         ("waterlogged".to_string(), "false".to_string()),
+    ])
+}
+
+fn door_properties(facing: &str, hinge: &str, open: bool, half: &str) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("facing".to_string(), facing.to_string()),
+        ("half".to_string(), half.to_string()),
+        ("hinge".to_string(), hinge.to_string()),
+        ("open".to_string(), open.to_string()),
+        ("powered".to_string(), "false".to_string()),
     ])
 }
 

@@ -169,6 +169,22 @@ impl BlockOutlineBox {
         min: [13.0 / 16.0, 0.0, 0.0],
         max: [1.0, 1.0, 1.0],
     };
+    pub(super) const DOOR_NORTH: Self = Self {
+        min: [0.0, 0.0, 13.0 / 16.0],
+        max: [1.0, 1.0, 1.0],
+    };
+    pub(super) const DOOR_EAST: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [3.0 / 16.0, 1.0, 1.0],
+    };
+    pub(super) const DOOR_SOUTH: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 1.0, 3.0 / 16.0],
+    };
+    pub(super) const DOOR_WEST: Self = Self {
+        min: [13.0 / 16.0, 0.0, 0.0],
+        max: [1.0, 1.0, 1.0],
+    };
     pub(super) const STAIR_NORTH_WEST_OCTET: Self = Self {
         min: [0.0, 0.5, 0.0],
         max: [0.5, 1.0, 0.5],
