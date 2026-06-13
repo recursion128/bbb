@@ -1,11 +1,6 @@
-use std::time::Duration;
-
 use anyhow::{anyhow, bail, Context, Result};
 use bbb_protocol::{
-    frame::{
-        decode_packet_body, encode_packet, encode_packet_with_compression, split_packet,
-        try_read_frame,
-    },
+    frame::encode_packet,
     ids,
     packets::{
         self, ClientIntent, CommandSuggestionRequest, ConfigurationClientbound, InteractionHand,
@@ -15,16 +10,15 @@ use bbb_protocol::{
     },
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
-use bytes::BytesMut;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
     sync::mpsc,
-    time::{interval, timeout, Interval, MissedTickBehavior},
+    time::{timeout, Interval},
 };
 
+mod connection;
 mod types;
 
+use connection::{play_tick_interval, RawConnection};
 use types::split_host_port;
 pub use types::{
     ChunkProbeSummary, ConnectionOptions, ConnectionState, NetCommand, NetEvent, PlayerMoveCommand,
@@ -1075,56 +1069,6 @@ async fn maybe_send_perform_respawn(
     Ok(())
 }
 
-fn play_tick_interval() -> Interval {
-    let mut tick = interval(Duration::from_millis(50));
-    tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    tick
-}
-
-struct RawConnection {
-    stream: TcpStream,
-    read_buf: BytesMut,
-    compression_threshold: Option<i32>,
-}
-
-impl RawConnection {
-    async fn connect(address: &str, compression_threshold: Option<i32>) -> Result<Self> {
-        let stream = TcpStream::connect(address)
-            .await
-            .with_context(|| format!("connect {address}"))?;
-        stream.set_nodelay(true).ok();
-        Ok(Self {
-            stream,
-            read_buf: BytesMut::with_capacity(8192),
-            compression_threshold,
-        })
-    }
-
-    async fn send_packet(&mut self, packet_id: i32, payload: &[u8]) -> Result<()> {
-        let packet =
-            encode_packet_with_compression(packet_id, payload, self.compression_threshold)?;
-        self.stream.write_all(&packet).await?;
-        Ok(())
-    }
-
-    async fn read_packet(&mut self) -> Result<(i32, Vec<u8>)> {
-        loop {
-            if let Some(frame) = try_read_frame(&mut self.read_buf)? {
-                let body = decode_packet_body(&frame, self.compression_threshold)?;
-                let (packet_id, payload) = split_packet(&body)?;
-                return Ok((packet_id, payload.to_vec()));
-            }
-
-            let mut temp = [0u8; 4096];
-            let read = self.stream.read(&mut temp).await?;
-            if read == 0 {
-                return Err(anyhow!("connection closed"));
-            }
-            self.read_buf.extend_from_slice(&temp[..read]);
-        }
-    }
-}
-
 async fn emit(events: &mpsc::Sender<NetEvent>, event: NetEvent) -> Result<()> {
     events
         .send(event)
@@ -1147,6 +1091,8 @@ fn emit_best_effort(events: &mpsc::Sender<NetEvent>, event: NetEvent) -> Result<
 mod tests {
     use super::*;
     use bbb_protocol::{codec::Decoder, ids, packets::Vec3d};
+    use bytes::BytesMut;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn drive_connection_disconnects_when_command_channel_closes_before_play() {
