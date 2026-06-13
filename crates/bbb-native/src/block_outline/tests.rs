@@ -7,6 +7,7 @@ mod cauldrons;
 mod chains;
 mod chests;
 mod composters;
+mod grindstones;
 mod hoppers;
 mod interaction;
 mod lanterns;

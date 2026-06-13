@@ -29,6 +29,9 @@ pub(super) fn object_outline_shape_for_block(
     if block_name == "minecraft:bell" {
         return Some(bell_outline_shape(properties));
     }
+    if block_name == "minecraft:grindstone" {
+        return Some(grindstone_outline_shape(properties));
+    }
     if block_name == "minecraft:ender_chest" {
         return Some(Some(BlockOutlineShape::single(
             BlockOutlineBox::CHEST_SINGLE,
@@ -209,6 +212,52 @@ fn bell_body_boxes() -> Vec<BlockOutlineBox> {
         BlockOutlineBox::centered_column(6.0, 6.0, 6.0, 13.0),
         BlockOutlineBox::centered_column(8.0, 8.0, 4.0, 6.0),
     ]
+}
+
+fn grindstone_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let boxes = match properties.get("face").map(String::as_str)? {
+        "wall" => grindstone_north_wall_boxes()
+            .into_iter()
+            .map(|outline| outline.rotate_to_direction(facing))
+            .collect(),
+        "floor" => grindstone_north_wall_boxes()
+            .into_iter()
+            .map(rotate_grindstone_to_floor)
+            .map(|outline| outline.rotate_to_direction(facing))
+            .collect(),
+        "ceiling" => grindstone_north_wall_boxes()
+            .into_iter()
+            .map(rotate_grindstone_to_ceiling)
+            .map(|outline| outline.rotate_to_direction(facing))
+            .collect(),
+        _ => return None,
+    };
+    Some(BlockOutlineShape::from_boxes(boxes))
+}
+
+fn grindstone_north_wall_boxes() -> Vec<BlockOutlineBox> {
+    vec![
+        BlockOutlineBox::from_pixels([4.0, 2.0, 0.0], [12.0, 14.0, 12.0]),
+        BlockOutlineBox::from_pixels([2.0, 6.0, 7.0], [4.0, 10.0, 16.0]),
+        BlockOutlineBox::from_pixels([2.0, 5.0, 3.0], [4.0, 11.0, 9.0]),
+        BlockOutlineBox::from_pixels([12.0, 6.0, 7.0], [14.0, 10.0, 16.0]),
+        BlockOutlineBox::from_pixels([12.0, 5.0, 3.0], [14.0, 11.0, 9.0]),
+    ]
+}
+
+fn rotate_grindstone_to_floor(outline: BlockOutlineBox) -> BlockOutlineBox {
+    BlockOutlineBox {
+        min: [outline.min[0], 1.0 - outline.max[2], outline.min[1]],
+        max: [outline.max[0], 1.0 - outline.min[2], outline.max[1]],
+    }
+}
+
+fn rotate_grindstone_to_ceiling(outline: BlockOutlineBox) -> BlockOutlineBox {
+    BlockOutlineBox {
+        min: [1.0 - outline.max[0], outline.min[2], outline.min[1]],
+        max: [1.0 - outline.min[0], outline.max[2], outline.max[1]],
+    }
 }
 
 fn chest_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
