@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use self::{
     emitter::{
         effective_face_material, emit_box, emit_cross, emit_face, emit_quads,
-        face_ambient_occlusion,
+        face_ambient_occlusion, face_vertex_lights,
     },
     geometry::FACES,
 };
@@ -229,10 +229,21 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         world_z,
                         cell.block_state_id,
                         face_material,
-                        cell.light,
                         cell.tint[face_index],
                         atlas.rect(cell.texture_indices[face_index]),
                         face,
+                        face_vertex_lights(
+                            cell.ambient_occlusion,
+                            face.face,
+                            world_x,
+                            world_y,
+                            world_z,
+                            true,
+                            cell.light,
+                            0,
+                            lookup,
+                            mode,
+                        ),
                         face_ambient_occlusion(
                             cell.ambient_occlusion,
                             face.face,

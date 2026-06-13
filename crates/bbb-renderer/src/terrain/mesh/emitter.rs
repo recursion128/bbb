@@ -14,16 +14,20 @@ pub(super) fn emit_face(
     z: i32,
     block_state_id: i32,
     material: TerrainMaterialClass,
-    light: TerrainLight,
     tint: TerrainTint,
     uv_rect: TerrainUvRect,
     face: FaceDef,
+    vertex_lights: [[f32; 2]; 4],
     ambient_occlusion: [f32; 4],
 ) {
     let base = mesh.vertices.len() as u32;
     let uvs = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
-    for ((corner, uv), ambient_occlusion) in
-        face.corners.into_iter().zip(uvs).zip(ambient_occlusion)
+    for (((corner, uv), light), ambient_occlusion) in face
+        .corners
+        .into_iter()
+        .zip(uvs)
+        .zip(vertex_lights)
+        .zip(ambient_occlusion)
     {
         mesh.vertices.push(TerrainVertex {
             position: [
@@ -33,7 +37,7 @@ pub(super) fn emit_face(
             ],
             normal: face.normal,
             uv: uv_rect.map(uv),
-            light: light.as_shader_light(),
+            light,
             tint: tint.as_shader_tint(),
             shade: cardinal_shade(true, face.face),
             ambient_occlusion,
@@ -80,13 +84,12 @@ pub(super) fn emit_cross(
             z,
             block_state_id,
             face_material,
-            light,
             tint[face.index()],
             atlas.rect(texture_indices[face.index()]),
             normal,
             corners,
             cardinal_shade(shade, face),
-            light_emission,
+            [shader_light_with_emission(light, light_emission); 4],
         );
     }
 }
@@ -154,13 +157,19 @@ pub(super) fn emit_box(
             }
         }
 
-        let ambient_occlusion = face_ambient_occlusion(
-            ambient_occlusion && face_light_emission[face_index] == 0,
+        let smooth_light = ambient_occlusion && face_light_emission[face_index] == 0;
+        let face_cubic = box_face_is_cubic(face.face, min, max);
+        let ambient_occlusion =
+            face_ambient_occlusion(smooth_light, face.face, x, y, z, face_cubic, lookup, mode);
+        let vertex_lights = face_vertex_lights(
+            smooth_light,
             face.face,
             x,
             y,
             z,
-            box_face_is_cubic(face.face, min, max),
+            face_cubic,
+            light,
+            face_light_emission[face_index],
             lookup,
             mode,
         );
@@ -171,14 +180,13 @@ pub(super) fn emit_box(
             z,
             block_state_id,
             face_material,
-            light,
             tint[face_index],
             atlas.rect(texture_indices[face_index]),
             face.normal,
             box_face_corners(face.face, min, max),
             face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
             cardinal_shade(face_shade[face_index], face.face),
-            face_light_emission[face_index],
+            vertex_lights,
             ambient_occlusion,
         );
     }
@@ -215,11 +223,30 @@ pub(super) fn emit_quads(
             }
         }
 
+        let smooth_light = ambient_occlusion && quad.light_emission == 0;
         let ambient_occlusion = quad
             .cull
-            .filter(|_| ambient_occlusion && quad.light_emission == 0)
+            .filter(|_| smooth_light)
             .map(|face| face_ambient_occlusion(true, face, x, y, z, true, lookup, mode))
             .unwrap_or([1.0; 4]);
+        let vertex_lights = quad
+            .cull
+            .filter(|_| smooth_light)
+            .map(|face| {
+                face_vertex_lights(
+                    true,
+                    face,
+                    x,
+                    y,
+                    z,
+                    true,
+                    light,
+                    quad.light_emission,
+                    lookup,
+                    mode,
+                )
+            })
+            .unwrap_or([shader_light_with_emission(light, quad.light_emission); 4]);
         emit_custom_quad_with_uvs(
             mesh,
             x,
@@ -227,7 +254,6 @@ pub(super) fn emit_quads(
             z,
             block_state_id,
             face_material,
-            light,
             quad.tint,
             atlas.rect(quad.texture_index),
             quad.normal,
@@ -238,7 +264,7 @@ pub(super) fn emit_quads(
                 quad.shade,
                 quad.cull.unwrap_or_else(|| face_from_normal(quad.normal)),
             ),
-            quad.light_emission,
+            vertex_lights,
             ambient_occlusion,
         );
     }
@@ -267,13 +293,12 @@ fn emit_custom_quad(
     z: i32,
     block_state_id: i32,
     material: TerrainMaterialClass,
-    light: TerrainLight,
     tint: TerrainTint,
     uv_rect: TerrainUvRect,
     normal: [f32; 3],
     corners: [[f32; 3]; 4],
     shade: f32,
-    light_emission: u8,
+    vertex_lights: [[f32; 2]; 4],
 ) {
     emit_custom_quad_with_uvs(
         mesh,
@@ -282,14 +307,13 @@ fn emit_custom_quad(
         z,
         block_state_id,
         material,
-        light,
         tint,
         uv_rect,
         normal,
         corners,
         [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
         shade,
-        light_emission,
+        vertex_lights,
         [1.0; 4],
     );
 }
@@ -301,19 +325,22 @@ fn emit_custom_quad_with_uvs(
     z: i32,
     block_state_id: i32,
     material: TerrainMaterialClass,
-    light: TerrainLight,
     tint: TerrainTint,
     uv_rect: TerrainUvRect,
     normal: [f32; 3],
     corners: [[f32; 3]; 4],
     uvs: [[f32; 2]; 4],
     shade: f32,
-    light_emission: u8,
+    vertex_lights: [[f32; 2]; 4],
     ambient_occlusion: [f32; 4],
 ) {
     let base = mesh.vertices.len() as u32;
-    let light = shader_light_with_emission(light, light_emission);
-    for ((corner, uv), ambient_occlusion) in corners.into_iter().zip(uvs).zip(ambient_occlusion) {
+    for (((corner, uv), light), ambient_occlusion) in corners
+        .into_iter()
+        .zip(uvs)
+        .zip(vertex_lights)
+        .zip(ambient_occlusion)
+    {
         mesh.vertices.push(TerrainVertex {
             position: [
                 x as f32 + corner[0],
@@ -345,6 +372,125 @@ fn shader_light_with_emission(light: TerrainLight, light_emission: u8) -> [f32; 
     let mut shader_light = light.as_shader_light();
     shader_light[0] = shader_light[0].max(light_emission.min(15) as f32 / 15.0);
     shader_light
+}
+
+pub(super) fn face_vertex_lights(
+    enabled: bool,
+    face: TerrainFace,
+    x: i32,
+    y: i32,
+    z: i32,
+    face_cubic: bool,
+    light: TerrainLight,
+    light_emission: u8,
+    lookup: &TerrainChunkLookup<'_>,
+    mode: TerrainMeshMode,
+) -> [[f32; 2]; 4] {
+    if !enabled {
+        return [shader_light_with_emission(light, light_emission); 4];
+    }
+
+    let normal = if face_cubic {
+        cull_offset(face)
+    } else {
+        (0, 0, 0)
+    };
+    let base = (x + normal.0, y + normal.1, z + normal.2);
+    let center_light = if face_cubic {
+        sample_light(base.0, base.1, base.2, lookup).unwrap_or(light)
+    } else {
+        light
+    };
+
+    std::array::from_fn(|corner| {
+        let (side_a, side_b) = face_corner_sides(face, corner);
+        let (side_a_occludes, side_a_light) = light_sample(
+            base.0 + side_a.0,
+            base.1 + side_a.1,
+            base.2 + side_a.2,
+            center_light,
+            lookup,
+            mode,
+        );
+        let (side_b_occludes, side_b_light) = light_sample(
+            base.0 + side_b.0,
+            base.1 + side_b.1,
+            base.2 + side_b.2,
+            center_light,
+            lookup,
+            mode,
+        );
+        let corner_light = if side_a_occludes && side_b_occludes {
+            side_a_light
+        } else {
+            light_sample(
+                base.0 + side_a.0 + side_b.0,
+                base.1 + side_a.1 + side_b.1,
+                base.2 + side_a.2 + side_b.2,
+                center_light,
+                lookup,
+                mode,
+            )
+            .1
+        };
+        shader_light_with_emission(
+            smooth_light_blend(side_a_light, side_b_light, corner_light, center_light),
+            light_emission,
+        )
+    })
+}
+
+fn light_sample(
+    x: i32,
+    y: i32,
+    z: i32,
+    fallback: TerrainLight,
+    lookup: &TerrainChunkLookup<'_>,
+    mode: TerrainMeshMode,
+) -> (bool, TerrainLight) {
+    lookup
+        .cell(x, y, z)
+        .map(|cell| (mode.is_occluded_by(cell.material), cell.light))
+        .unwrap_or((false, fallback))
+}
+
+fn sample_light(x: i32, y: i32, z: i32, lookup: &TerrainChunkLookup<'_>) -> Option<TerrainLight> {
+    lookup.cell(x, y, z).map(|cell| cell.light)
+}
+
+fn smooth_light_blend(
+    mut neighbor_a: TerrainLight,
+    mut neighbor_b: TerrainLight,
+    mut corner: TerrainLight,
+    center: TerrainLight,
+) -> TerrainLight {
+    if center.sky > 2 || center.block > 2 {
+        fill_zero_light_channels(&mut neighbor_a, center);
+        fill_zero_light_channels(&mut neighbor_b, center);
+        fill_zero_light_channels(&mut corner, center);
+    }
+
+    TerrainLight {
+        sky: ((u16::from(neighbor_a.sky)
+            + u16::from(neighbor_b.sky)
+            + u16::from(corner.sky)
+            + u16::from(center.sky))
+            / 4) as u8,
+        block: ((u16::from(neighbor_a.block)
+            + u16::from(neighbor_b.block)
+            + u16::from(corner.block)
+            + u16::from(center.block))
+            / 4) as u8,
+    }
+}
+
+fn fill_zero_light_channels(light: &mut TerrainLight, center: TerrainLight) {
+    if light.sky == 0 {
+        light.sky = center.sky;
+    }
+    if light.block == 0 {
+        light.block = center.block;
+    }
 }
 
 fn cardinal_shade(enabled: bool, face: TerrainFace) -> f32 {

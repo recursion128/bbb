@@ -558,6 +558,58 @@ fn mesh_vertices_carry_terrain_light() {
 }
 
 #[test]
+fn ambient_occlusion_smooths_cubic_face_vertex_light() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0)
+        .with_light(TerrainLight { sky: 1, block: 1 });
+    cells[cell_index(1, 1, 2, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 12, block: 12 });
+    cells[cell_index(0, 1, 2, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 8, block: 4 });
+    cells[cell_index(1, 1, 1, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 4, block: 8 });
+    cells[cell_index(0, 1, 1, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 0, block: 0 });
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+
+    let mesh = build_opaque_chunk_mesh(&snapshot);
+    let top_vertices = face_vertices(&mesh, 42, [0.0, 1.0, 0.0]);
+
+    assert_float_eq(
+        vertex_at(&top_vertices, [1.0, 1.0, 2.0]).light[0],
+        9.0 / 15.0,
+    );
+    assert_float_eq(
+        vertex_at(&top_vertices, [1.0, 1.0, 2.0]).light[1],
+        9.0 / 15.0,
+    );
+}
+
+#[test]
+fn ambient_occlusion_flag_disables_light_smoothing() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0)
+        .with_light(TerrainLight { sky: 5, block: 6 })
+        .with_ambient_occlusion(false);
+    cells[cell_index(1, 1, 2, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 15, block: 15 });
+    cells[cell_index(0, 1, 2, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 15, block: 15 });
+    cells[cell_index(1, 1, 1, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 15, block: 15 });
+    cells[cell_index(0, 1, 1, 2)] =
+        TerrainCell::EMPTY.with_light(TerrainLight { sky: 15, block: 15 });
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+
+    let mesh = build_opaque_chunk_mesh(&snapshot);
+    let top_vertices = face_vertices(&mesh, 42, [0.0, 1.0, 0.0]);
+
+    assert!(top_vertices
+        .iter()
+        .all(|vertex| vertex.light == [6.0 / 15.0, 5.0 / 15.0]));
+}
+
+#[test]
 fn mesh_vertices_carry_face_tint() {
     let mut face_tints = [TerrainTint::WHITE; 6];
     face_tints[TerrainFace::Down.index()] = TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59);
