@@ -24,6 +24,15 @@ pub(super) fn outline_shape_for_block(
     if is_flower_pot_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
     }
+    if is_sapling_block_name(block_name) {
+        return Some(BlockOutlineShape::single(BlockOutlineBox::SAPLING));
+    }
+    if let Some(outline) = simple_vegetation_outline_box(block_name) {
+        return Some(BlockOutlineShape::single(outline));
+    }
+    if is_crop_block_name(block_name) {
+        return crop_outline_shape(block_name, properties);
+    }
     if is_wall_sign_block_name(block_name) {
         return wall_sign_outline_shape(properties);
     }
@@ -425,6 +434,60 @@ fn pale_moss_carpet_outline_shape(
     }
 }
 
+fn crop_outline_shape(
+    block_name: &str,
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockOutlineShape> {
+    let outline = match block_name {
+        "minecraft:wheat" => {
+            let age = age_property(properties, 7)?;
+            BlockOutlineBox::centered_column(16.0, 16.0, 0.0, f64::from(2 + age * 2))
+        }
+        "minecraft:carrots" | "minecraft:potatoes" => {
+            let age = age_property(properties, 7)?;
+            BlockOutlineBox::centered_column(16.0, 16.0, 0.0, f64::from(2 + age))
+        }
+        "minecraft:beetroots" => {
+            let age = age_property(properties, 3)?;
+            BlockOutlineBox::centered_column(16.0, 16.0, 0.0, f64::from(2 + age * 2))
+        }
+        "minecraft:nether_wart" => {
+            let age = age_property(properties, 3)?;
+            BlockOutlineBox::centered_column(16.0, 16.0, 0.0, f64::from(5 + age * 3))
+        }
+        "minecraft:torchflower_crop" => {
+            let age = age_property(properties, 1)?;
+            BlockOutlineBox::centered_column(6.0, 6.0, 0.0, f64::from(6 + age * 4))
+        }
+        "minecraft:sweet_berry_bush" => match age_property(properties, 3)? {
+            0 => BlockOutlineBox::SWEET_BERRY_SAPLING,
+            3 => BlockOutlineBox::FULL,
+            _ => BlockOutlineBox::SWEET_BERRY_GROWING,
+        },
+        _ => return None,
+    };
+
+    Some(BlockOutlineShape::single(outline))
+}
+
+fn age_property(properties: &BTreeMap<String, String>, max_age: u8) -> Option<u8> {
+    let age = properties.get("age")?.parse::<u8>().ok()?;
+    (age <= max_age).then_some(age)
+}
+
+fn is_crop_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:wheat"
+            | "minecraft:carrots"
+            | "minecraft:potatoes"
+            | "minecraft:beetroots"
+            | "minecraft:nether_wart"
+            | "minecraft:torchflower_crop"
+            | "minecraft:sweet_berry_bush"
+    )
+}
+
 fn snow_layer_outline_box(properties: &BTreeMap<String, String>) -> Option<BlockOutlineBox> {
     let layers = properties.get("layers")?.parse::<u8>().ok()?;
     if !(1..=8).contains(&layers) {
@@ -458,6 +521,24 @@ fn is_flower_pot_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path == "flower_pot" || path.starts_with("potted_"))
+}
+
+fn is_sapling_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_sapling") && path != "bamboo_sapling")
+}
+
+fn simple_vegetation_outline_box(block_name: &str) -> Option<BlockOutlineBox> {
+    match block_name {
+        "minecraft:short_grass" | "minecraft:fern" | "minecraft:dead_bush" => {
+            Some(BlockOutlineBox::GROUND_VEGETATION)
+        }
+        "minecraft:bush" => Some(BlockOutlineBox::BUSH),
+        "minecraft:short_dry_grass" => Some(BlockOutlineBox::SHORT_DRY_GRASS),
+        "minecraft:tall_dry_grass" => Some(BlockOutlineBox::TALL_DRY_GRASS),
+        _ => None,
+    }
 }
 
 fn is_wall_sign_block_name(block_name: &str) -> bool {

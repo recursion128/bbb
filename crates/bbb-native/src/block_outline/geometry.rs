@@ -85,6 +85,34 @@ impl BlockOutlineBox {
         min: [5.0 / 16.0, 0.0, 5.0 / 16.0],
         max: [11.0 / 16.0, 6.0 / 16.0, 11.0 / 16.0],
     };
+    pub(super) const SAPLING: Self = Self {
+        min: [2.0 / 16.0, 0.0, 2.0 / 16.0],
+        max: [14.0 / 16.0, 12.0 / 16.0, 14.0 / 16.0],
+    };
+    pub(super) const GROUND_VEGETATION: Self = Self {
+        min: [2.0 / 16.0, 0.0, 2.0 / 16.0],
+        max: [14.0 / 16.0, 13.0 / 16.0, 14.0 / 16.0],
+    };
+    pub(super) const BUSH: Self = Self {
+        min: [0.0, 0.0, 0.0],
+        max: [1.0, 13.0 / 16.0, 1.0],
+    };
+    pub(super) const SHORT_DRY_GRASS: Self = Self {
+        min: [2.0 / 16.0, 0.0, 2.0 / 16.0],
+        max: [14.0 / 16.0, 10.0 / 16.0, 14.0 / 16.0],
+    };
+    pub(super) const TALL_DRY_GRASS: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 1.0, 15.0 / 16.0],
+    };
+    pub(super) const SWEET_BERRY_SAPLING: Self = Self {
+        min: [3.0 / 16.0, 0.0, 3.0 / 16.0],
+        max: [13.0 / 16.0, 8.0 / 16.0, 13.0 / 16.0],
+    };
+    pub(super) const SWEET_BERRY_GROWING: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 1.0, 15.0 / 16.0],
+    };
     pub(super) const SIGN: Self = Self {
         min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
         max: [12.0 / 16.0, 1.0, 12.0 / 16.0],
@@ -341,6 +369,15 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 0.0],
         max: [1.0 / 16.0, 1.0, 1.0],
     };
+
+    pub(super) fn centered_column(size_x: f64, size_z: f64, min_y: f64, max_y: f64) -> Self {
+        let half_x = size_x / 2.0;
+        let half_z = size_z / 2.0;
+        Self {
+            min: [(8.0 - half_x) / 16.0, min_y / 16.0, (8.0 - half_z) / 16.0],
+            max: [(8.0 + half_x) / 16.0, max_y / 16.0, (8.0 + half_z) / 16.0],
+        }
+    }
 
     fn clip(
         self,
