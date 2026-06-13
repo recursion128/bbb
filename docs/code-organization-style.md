@@ -36,6 +36,9 @@ navigation. Good module names are semantic and stable, for example:
 Avoid modules named by implementation accident such as `misc`, `helpers`,
 `stuff`, `new`, or `common` unless the contents are genuinely shared primitives.
 
+Use Rust 2018 module file layout. Prefer `foo.rs` for the module entry and
+`foo/bar.rs` for child modules; do not add new `foo/mod.rs` files.
+
 ## File Size And Growth
 
 - New feature slices should not add large unrelated sections to existing root

@@ -82,6 +82,8 @@ workspace test suite. If a command cannot run, state the reason and the residual
 - Organize code by semantic modules and avoid growing catch-all `lib.rs` or
   `main.rs` sections; use `docs/code-organization-style.md` as the required
   module/layout policy.
+- Use Rust 2018 module layout: `foo.rs` plus `foo/bar.rs`; do not add new
+  `foo/mod.rs` files.
 - Prefer existing crate boundaries and local patterns over new abstractions.
 - Add structured packet/state types rather than ad hoc byte or string handling.
 - Keep counters and query APIs useful for native snapshots and future renderer work.
