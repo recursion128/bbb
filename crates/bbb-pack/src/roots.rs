@@ -881,13 +881,32 @@ mod tests {
             .iter()
             .find(|source| source.id == "minecraft:block/water_still")
             .unwrap();
-        assert_eq!(water.width, 16);
-        assert!(water.height >= 16);
+        assert_eq!((water.width, water.height), (16, 16));
+        let water_flow = sources
+            .iter()
+            .find(|source| source.id == "minecraft:block/water_flow")
+            .unwrap();
+        assert_eq!((water_flow.width, water_flow.height), (32, 32));
+        let lava = sources
+            .iter()
+            .find(|source| source.id == "minecraft:block/lava_still")
+            .unwrap();
+        assert_eq!((lava.width, lava.height), (16, 16));
+        let fire = sources
+            .iter()
+            .find(|source| source.id == "minecraft:block/fire_0")
+            .unwrap();
+        assert_eq!((fire.width, fire.height), (16, 16));
         let conduit = sources
             .iter()
             .find(|source| source.id == "minecraft:entity/conduit/base")
             .unwrap();
         assert_eq!((conduit.width, conduit.height), (32, 16));
+        let conduit_wind = sources
+            .iter()
+            .find(|source| source.id == "minecraft:entity/conduit/wind")
+            .unwrap();
+        assert_eq!((conduit_wind.width, conduit_wind.height), (64, 32));
         let bell = sources
             .iter()
             .find(|source| source.id == "minecraft:entity/bell/bell_body")
@@ -949,6 +968,11 @@ mod tests {
             .find(|source| source.id == "minecraft:mob_effect/speed")
             .unwrap();
         assert_eq!((speed.width, speed.height), (18, 18));
+        let locator_arrow = gui_sources
+            .iter()
+            .find(|source| source.id == "minecraft:hud/locator_bar_arrow_down")
+            .unwrap();
+        assert_eq!((locator_arrow.width, locator_arrow.height), (7, 5));
 
         let crosshair_image = roots.load_gui_sprite_image("hud/crosshair").unwrap();
         assert_eq!(crosshair_image.id, "minecraft:hud/crosshair");
