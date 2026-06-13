@@ -1,3 +1,4 @@
+mod cauldrons;
 mod interaction;
 mod rails;
 mod shapes;

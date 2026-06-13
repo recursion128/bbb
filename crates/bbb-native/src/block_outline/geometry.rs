@@ -399,6 +399,13 @@ impl BlockOutlineBox {
         }
     }
 
+    pub(super) fn from_pixels(min: [f64; 3], max: [f64; 3]) -> Self {
+        Self {
+            min: [min[0] / 16.0, min[1] / 16.0, min[2] / 16.0],
+            max: [max[0] / 16.0, max[1] / 16.0, max[2] / 16.0],
+        }
+    }
+
     fn clip(
         self,
         eye: [f64; 3],

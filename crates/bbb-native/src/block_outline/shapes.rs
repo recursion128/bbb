@@ -24,6 +24,9 @@ pub(super) fn outline_shape_for_block(
     if is_rail_block_name(block_name) {
         return rail_outline_shape(properties);
     }
+    if is_cauldron_block_name(block_name) {
+        return Some(cauldron_outline_shape());
+    }
     if is_flower_pot_block_name(block_name) {
         return Some(BlockOutlineShape::single(BlockOutlineBox::FLOWER_POT));
     }
@@ -179,6 +182,24 @@ fn rail_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutl
         _ => return None,
     };
     Some(BlockOutlineShape::single(outline))
+}
+
+fn cauldron_outline_shape() -> BlockOutlineShape {
+    BlockOutlineShape::from_boxes(vec![
+        BlockOutlineBox::from_pixels([0.0, 0.0, 0.0], [2.0, 3.0, 4.0]),
+        BlockOutlineBox::from_pixels([0.0, 0.0, 12.0], [2.0, 3.0, 16.0]),
+        BlockOutlineBox::from_pixels([14.0, 0.0, 0.0], [16.0, 3.0, 4.0]),
+        BlockOutlineBox::from_pixels([14.0, 0.0, 12.0], [16.0, 3.0, 16.0]),
+        BlockOutlineBox::from_pixels([2.0, 0.0, 0.0], [4.0, 3.0, 2.0]),
+        BlockOutlineBox::from_pixels([2.0, 0.0, 14.0], [4.0, 3.0, 16.0]),
+        BlockOutlineBox::from_pixels([12.0, 0.0, 0.0], [14.0, 3.0, 2.0]),
+        BlockOutlineBox::from_pixels([12.0, 0.0, 14.0], [14.0, 3.0, 16.0]),
+        BlockOutlineBox::from_pixels([0.0, 3.0, 0.0], [16.0, 4.0, 16.0]),
+        BlockOutlineBox::from_pixels([0.0, 4.0, 0.0], [2.0, 16.0, 16.0]),
+        BlockOutlineBox::from_pixels([14.0, 4.0, 0.0], [16.0, 16.0, 16.0]),
+        BlockOutlineBox::from_pixels([2.0, 4.0, 0.0], [14.0, 16.0, 2.0]),
+        BlockOutlineBox::from_pixels([2.0, 4.0, 14.0], [14.0, 16.0, 16.0]),
+    ])
 }
 
 fn wall_sign_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
@@ -540,6 +561,16 @@ fn is_rail_block_name(block_name: &str) -> bool {
             | "minecraft:powered_rail"
             | "minecraft:detector_rail"
             | "minecraft:activator_rail"
+    )
+}
+
+fn is_cauldron_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:cauldron"
+            | "minecraft:water_cauldron"
+            | "minecraft:lava_cauldron"
+            | "minecraft:powder_snow_cauldron"
     )
 }
 
