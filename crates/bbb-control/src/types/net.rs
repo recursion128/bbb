@@ -11,6 +11,12 @@ pub struct NetCounters {
     pub packets_seen: usize,
     pub registries_seen: usize,
     #[serde(default)]
+    pub registry_entries_seen: usize,
+    #[serde(default)]
+    pub registry_entries_with_data: usize,
+    #[serde(default)]
+    pub registry_entry_stubs: usize,
+    #[serde(default)]
     pub update_tags_packets: usize,
     #[serde(default)]
     pub last_update_tags_registry_count: usize,

@@ -17,6 +17,10 @@ use crate::{
 
 const MAX_COOKIE_PAYLOAD_SIZE: usize = 5120;
 const MAX_CUSTOM_REPORT_DETAILS: usize = 32;
+const MAX_REGISTRY_DATA_ENTRIES: usize = 131_072;
+const MAX_REGISTRY_DATA_NBT_BYTES: usize = 2 * 1024 * 1024;
+const MAX_REGISTRY_DATA_NBT_DEPTH: usize = 512;
+const MAX_REGISTRY_DATA_NBT_LIST_ITEMS: usize = 1_000_000;
 const MAX_SERVER_LINKS_INITIAL_CAPACITY: usize = 65_536;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,28 +57,16 @@ pub enum LoginClientbound {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConfigurationClientbound {
-    Disconnect {
-        reason: String,
-        raw_reason: Vec<u8>,
-    },
+    Disconnect { reason: String, raw_reason: Vec<u8> },
     CustomPayload(CustomPayload),
     Finish,
-    KeepAlive {
-        id: i64,
-    },
-    Ping {
-        id: i32,
-    },
+    KeepAlive { id: i64 },
+    Ping { id: i32 },
     ResetChat,
-    RegistryData {
-        registry: String,
-        raw_payload_len: usize,
-    },
+    RegistryData(RegistryData),
     ResourcePackPop(ResourcePackPop),
     ResourcePackPush(ResourcePackPush),
-    SelectKnownPacks {
-        known_packs: Vec<KnownPack>,
-    },
+    SelectKnownPacks { known_packs: Vec<KnownPack> },
     UpdateEnabledFeatures(UpdateEnabledFeatures),
     CookieRequest(CookieRequest),
     StoreCookie(StoreCookie),
@@ -84,13 +76,8 @@ pub enum ConfigurationClientbound {
     ServerLinks(ServerLinks),
     ClearDialog,
     ShowDialog(ShowDialog),
-    CodeOfConduct {
-        text: String,
-    },
-    Unknown {
-        packet_id: i32,
-        len: usize,
-    },
+    CodeOfConduct { text: String },
+    Unknown { packet_id: i32, len: usize },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -120,6 +107,29 @@ pub struct KnownPack {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpdateEnabledFeatures {
     pub features: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RegistryData {
+    pub registry: String,
+    pub entries: Vec<RegistryDataEntry>,
+    pub raw_payload_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RegistryDataEntry {
+    pub id: String,
+    pub raw_data: Option<Vec<u8>>,
+}
+
+impl RegistryDataEntry {
+    pub fn has_data(&self) -> bool {
+        self.raw_data.is_some()
+    }
+
+    pub fn raw_data_len(&self) -> usize {
+        self.raw_data.as_ref().map_or(0, Vec::len)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -358,11 +368,9 @@ pub fn decode_configuration_clientbound(
         ids::configuration::CLIENTBOUND_RESET_CHAT => Ok(ConfigurationClientbound::ResetChat),
         ids::configuration::CLIENTBOUND_REGISTRY_DATA => {
             let mut decoder = Decoder::new(payload);
-            let registry = decoder.read_string(32767)?;
-            Ok(ConfigurationClientbound::RegistryData {
-                registry,
-                raw_payload_len: payload.len(),
-            })
+            Ok(ConfigurationClientbound::RegistryData(
+                decode_registry_data(&mut decoder, payload.len())?,
+            ))
         }
         ids::configuration::CLIENTBOUND_RESOURCE_PACK_POP => {
             let mut decoder = Decoder::new(payload);
@@ -463,6 +471,176 @@ fn decode_update_enabled_features(decoder: &mut Decoder<'_>) -> Result<UpdateEna
     }
     features.sort();
     Ok(UpdateEnabledFeatures { features })
+}
+
+fn decode_registry_data(decoder: &mut Decoder<'_>, raw_payload_len: usize) -> Result<RegistryData> {
+    let registry = decoder.read_string(32767)?;
+    let count = decoder.read_len()?;
+    if count > MAX_REGISTRY_DATA_ENTRIES {
+        return Err(ProtocolError::PacketTooLarge(
+            count,
+            MAX_REGISTRY_DATA_ENTRIES,
+        ));
+    }
+
+    let mut entries = Vec::with_capacity(count);
+    for _ in 0..count {
+        let id = decoder.read_string(32767)?;
+        let raw_data = if decoder.read_bool()? {
+            Some(read_registry_data_nbt(decoder)?)
+        } else {
+            None
+        };
+        entries.push(RegistryDataEntry { id, raw_data });
+    }
+
+    if !decoder.is_empty() {
+        return Err(ProtocolError::InvalidData(
+            "trailing bytes after registry data packet".to_string(),
+        ));
+    }
+
+    Ok(RegistryData {
+        registry,
+        entries,
+        raw_payload_len,
+    })
+}
+
+fn read_registry_data_nbt(decoder: &mut Decoder<'_>) -> Result<Vec<u8>> {
+    let mut raw = Vec::new();
+    let tag_id = read_registry_nbt_u8(decoder, &mut raw, "registry data nbt tag")?;
+    if tag_id == 0 {
+        return Err(ProtocolError::InvalidData(
+            "registry data nbt root must not be TAG_End".to_string(),
+        ));
+    }
+    read_registry_nbt_payload(decoder, &mut raw, tag_id, 0)?;
+    Ok(raw)
+}
+
+fn read_registry_nbt_payload(
+    decoder: &mut Decoder<'_>,
+    raw: &mut Vec<u8>,
+    tag_id: u8,
+    depth: usize,
+) -> Result<()> {
+    if depth > MAX_REGISTRY_DATA_NBT_DEPTH {
+        return Err(ProtocolError::InvalidData(
+            "registry data nbt exceeded max depth".to_string(),
+        ));
+    }
+
+    match tag_id {
+        1 => {
+            read_registry_nbt_bytes(decoder, raw, 1, "nbt byte")?;
+        }
+        2 => {
+            read_registry_nbt_bytes(decoder, raw, 2, "nbt short")?;
+        }
+        3 | 5 => {
+            read_registry_nbt_bytes(decoder, raw, 4, "nbt int/float")?;
+        }
+        4 | 6 => {
+            read_registry_nbt_bytes(decoder, raw, 8, "nbt long/double")?;
+        }
+        7 => {
+            let len = read_registry_nbt_len(decoder, raw)?;
+            read_registry_nbt_bytes(decoder, raw, len, "nbt byte array")?;
+        }
+        8 => read_registry_nbt_string(decoder, raw)?,
+        9 => {
+            let element_type = read_registry_nbt_u8(decoder, raw, "nbt list element type")?;
+            let len = read_registry_nbt_len(decoder, raw)?;
+            if len > MAX_REGISTRY_DATA_NBT_LIST_ITEMS {
+                return Err(ProtocolError::PacketTooLarge(
+                    len,
+                    MAX_REGISTRY_DATA_NBT_LIST_ITEMS,
+                ));
+            }
+            if element_type == 0 && len > 0 {
+                return Err(ProtocolError::InvalidData(
+                    "non-empty registry data nbt list has end tag element type".to_string(),
+                ));
+            }
+            for _ in 0..len {
+                read_registry_nbt_payload(decoder, raw, element_type, depth + 1)?;
+            }
+        }
+        10 => loop {
+            let nested_type = read_registry_nbt_u8(decoder, raw, "nbt compound tag")?;
+            if nested_type == 0 {
+                break;
+            }
+            read_registry_nbt_string(decoder, raw)?;
+            read_registry_nbt_payload(decoder, raw, nested_type, depth + 1)?;
+        },
+        11 => {
+            let len = read_registry_nbt_len(decoder, raw)?;
+            let byte_len = len.checked_mul(4).ok_or_else(|| {
+                ProtocolError::InvalidData("nbt int array length overflow".to_string())
+            })?;
+            read_registry_nbt_bytes(decoder, raw, byte_len, "nbt int array")?;
+        }
+        12 => {
+            let len = read_registry_nbt_len(decoder, raw)?;
+            let byte_len = len.checked_mul(8).ok_or_else(|| {
+                ProtocolError::InvalidData("nbt long array length overflow".to_string())
+            })?;
+            read_registry_nbt_bytes(decoder, raw, byte_len, "nbt long array")?;
+        }
+        other => {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid registry data nbt tag id {other}"
+            )))
+        }
+    }
+    Ok(())
+}
+
+fn read_registry_nbt_len(decoder: &mut Decoder<'_>, raw: &mut Vec<u8>) -> Result<usize> {
+    let bytes = read_registry_nbt_bytes(decoder, raw, 4, "nbt length")?;
+    let len = i32::from_be_bytes(bytes.try_into().expect("fixed length"));
+    if len < 0 {
+        return Err(ProtocolError::NegativeLength(len));
+    }
+    Ok(len as usize)
+}
+
+fn read_registry_nbt_string(decoder: &mut Decoder<'_>, raw: &mut Vec<u8>) -> Result<()> {
+    let len_bytes = read_registry_nbt_bytes(decoder, raw, 2, "nbt string length")?;
+    let len = u16::from_be_bytes(len_bytes.try_into().expect("fixed length")) as usize;
+    read_registry_nbt_bytes(decoder, raw, len, "nbt string")?;
+    Ok(())
+}
+
+fn read_registry_nbt_u8(
+    decoder: &mut Decoder<'_>,
+    raw: &mut Vec<u8>,
+    what: &'static str,
+) -> Result<u8> {
+    Ok(read_registry_nbt_bytes(decoder, raw, 1, what)?[0])
+}
+
+fn read_registry_nbt_bytes<'a>(
+    decoder: &mut Decoder<'a>,
+    raw: &mut Vec<u8>,
+    len: usize,
+    what: &'static str,
+) -> Result<&'a [u8]> {
+    let next_len = raw
+        .len()
+        .checked_add(len)
+        .ok_or_else(|| ProtocolError::InvalidData("registry nbt length overflow".to_string()))?;
+    if next_len > MAX_REGISTRY_DATA_NBT_BYTES {
+        return Err(ProtocolError::PacketTooLarge(
+            next_len,
+            MAX_REGISTRY_DATA_NBT_BYTES,
+        ));
+    }
+    let bytes = decoder.read_exact(len, what)?;
+    raw.extend_from_slice(bytes);
+    Ok(bytes)
 }
 
 pub(super) fn decode_cookie_request(decoder: &mut Decoder<'_>) -> Result<CookieRequest> {

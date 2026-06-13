@@ -9,6 +9,12 @@ pub struct ProbeReport {
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
     pub registries_seen: usize,
+    #[serde(default)]
+    pub registry_entries_seen: usize,
+    #[serde(default)]
+    pub registry_entries_with_data: usize,
+    #[serde(default)]
+    pub registry_entry_stubs: usize,
     pub first_chunk: Option<ChunkPos>,
     pub first_chunk_summary: Option<ChunkProbeSummary>,
     pub first_chunk_center_block: Option<BlockProbe>,

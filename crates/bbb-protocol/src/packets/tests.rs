@@ -1447,6 +1447,72 @@ fn decodes_configuration_common_packets() {
 }
 
 #[test]
+fn decodes_configuration_registry_data_entries() {
+    let raw_plains = nbt_compound_with_string("name", "minecraft:plains");
+    let raw_temperature = nbt_list_of_floats(&[0.8, 0.4]);
+    let mut payload = Encoder::new();
+    payload.write_string("minecraft:worldgen/biome");
+    payload.write_var_i32(3);
+    payload.write_string("minecraft:plains");
+    payload.write_bool(true);
+    payload.write_bytes(&raw_plains);
+    payload.write_string("minecraft:the_void");
+    payload.write_bool(false);
+    payload.write_string("bbb:raw_numeric_root");
+    payload.write_bool(true);
+    payload.write_bytes(&raw_temperature);
+    let payload = payload.into_inner();
+
+    assert_eq!(
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_REGISTRY_DATA, &payload)
+            .unwrap(),
+        ConfigurationClientbound::RegistryData(RegistryData {
+            registry: "minecraft:worldgen/biome".to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "minecraft:plains".to_string(),
+                    raw_data: Some(raw_plains),
+                },
+                RegistryDataEntry {
+                    id: "minecraft:the_void".to_string(),
+                    raw_data: None,
+                },
+                RegistryDataEntry {
+                    id: "bbb:raw_numeric_root".to_string(),
+                    raw_data: Some(raw_temperature),
+                },
+            ],
+            raw_payload_len: payload.len(),
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_configuration_registry_data_nbt() {
+    let mut root_end = Encoder::new();
+    root_end.write_string("minecraft:worldgen/biome");
+    root_end.write_var_i32(1);
+    root_end.write_string("minecraft:plains");
+    root_end.write_bool(true);
+    root_end.write_u8(0);
+    assert!(decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_REGISTRY_DATA,
+        &root_end.into_inner(),
+    )
+    .is_err());
+
+    let mut trailing = Encoder::new();
+    trailing.write_string("minecraft:worldgen/biome");
+    trailing.write_var_i32(0);
+    trailing.write_u8(99);
+    assert!(decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_REGISTRY_DATA,
+        &trailing.into_inner(),
+    )
+    .is_err());
+}
+
+#[test]
 fn decodes_custom_report_details_in_configuration_and_play() {
     let mut payload = Encoder::new();
     payload.write_var_i32(2);
@@ -1540,4 +1606,26 @@ fn nbt_string_root(text: &str) -> Vec<u8> {
     payload.extend_from_slice(&(text.len() as u16).to_be_bytes());
     payload.extend_from_slice(text.as_bytes());
     payload
+}
+
+fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
+    let mut payload = vec![10, 8];
+    write_nbt_string(&mut payload, name);
+    write_nbt_string(&mut payload, value);
+    payload.push(0);
+    payload
+}
+
+fn nbt_list_of_floats(values: &[f32]) -> Vec<u8> {
+    let mut payload = vec![9, 5];
+    payload.extend_from_slice(&(values.len() as i32).to_be_bytes());
+    for value in values {
+        payload.extend_from_slice(&value.to_be_bytes());
+    }
+    payload
+}
+
+fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
 }

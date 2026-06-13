@@ -138,18 +138,8 @@ pub async fn run_offline_event_stream(
                         let (id, payload) = packets::encode_configuration_pong(id);
                         conn.send_packet(id, &payload).await?;
                     }
-                    ConfigurationClientbound::RegistryData {
-                        registry,
-                        raw_payload_len,
-                    } => {
-                        emit(
-                            &events,
-                            NetEvent::RegistryData {
-                                registry,
-                                raw_payload_len,
-                            },
-                        )
-                        .await?;
+                    ConfigurationClientbound::RegistryData(registry_data) => {
+                        emit(&events, NetEvent::RegistryData(registry_data)).await?;
                     }
                     ConfigurationClientbound::UpdateTags(update) => {
                         emit(&events, NetEvent::UpdateTags(update)).await?;

@@ -5,6 +5,12 @@ use crate::WorldStore;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WorldCounters {
     pub registries_seen: usize,
+    #[serde(default)]
+    pub registry_entries_seen: usize,
+    #[serde(default)]
+    pub registry_entries_with_data: usize,
+    #[serde(default)]
+    pub registry_entry_stubs: usize,
     pub play_logins_received: usize,
     pub respawns_received: usize,
     pub chunks_received: usize,

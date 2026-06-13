@@ -15,15 +15,15 @@ use bbb_protocol::packets::{
     PlayerLookAt, PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd,
     RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
     RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
-    RecipePropertySetSummary, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab,
-    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog,
-    SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder,
-    SoundSource, StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload, TagQuery,
-    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateAdvancements,
-    UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData,
-    WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType,
+    SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+    SetPassengers, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
+    SoundEventHolder, SoundSource, StonecutterSelectableRecipeSummary, StopSound,
+    TagNetworkPayload, TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
+    UpdateAdvancements, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
-use bbb_world::{BlockPos, ChunkPos, WorldStore};
+use bbb_world::{BlockPos, ChunkPos, RegistryPacketEntry, WorldStore};
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
 use uuid::Uuid;
@@ -174,6 +174,48 @@ fn configuration_state_events_update_snapshot_counters() {
         counters.last_code_of_conduct_len,
         "Keep the server friendly.".len()
     );
+}
+
+#[test]
+fn registry_data_event_updates_world_state_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::RegistryData(RegistryData {
+        registry: "minecraft:chat_type".to_string(),
+        raw_payload_len: 96,
+        entries: vec![
+            RegistryDataEntry {
+                id: "minecraft:chat".to_string(),
+                raw_data: Some(vec![10; 24]),
+            },
+            RegistryDataEntry {
+                id: "minecraft:raw".to_string(),
+                raw_data: None,
+            },
+        ],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    let packet = &world.registries().registries[0];
+    assert_eq!(packet.name, "minecraft:chat_type");
+    assert_eq!(packet.raw_payload_len, 96);
+    assert_eq!(
+        packet.entries,
+        vec![
+            RegistryPacketEntry::with_data_len("minecraft:chat", 24),
+            RegistryPacketEntry::stub("minecraft:raw"),
+        ]
+    );
+    assert_eq!(counters.registries_seen, 1);
+    assert_eq!(counters.registry_entries_seen, 2);
+    assert_eq!(counters.registry_entries_with_data, 1);
+    assert_eq!(counters.registry_entry_stubs, 1);
 }
 
 #[test]

@@ -104,11 +104,8 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                         let (id, payload) = packets::encode_configuration_pong(id);
                         conn.send_packet(id, &payload).await?;
                     }
-                    ConfigurationClientbound::RegistryData {
-                        registry,
-                        raw_payload_len,
-                    } => {
-                        world.record_registry(registry, raw_payload_len);
+                    ConfigurationClientbound::RegistryData(registry_data) => {
+                        world.record_registry_data(registry_data);
                     }
                     ConfigurationClientbound::UpdateTags(update) => {
                         world.apply_update_tags(update);
@@ -512,6 +509,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
         compression_threshold: conn.compression_threshold,
         packets_seen,
         registries_seen: world_counters.registries_seen,
+        registry_entries_seen: world_counters.registry_entries_seen,
+        registry_entries_with_data: world_counters.registry_entries_with_data,
+        registry_entry_stubs: world_counters.registry_entry_stubs,
         first_chunk: Some(first_chunk),
         first_chunk_summary,
         first_chunk_center_block,

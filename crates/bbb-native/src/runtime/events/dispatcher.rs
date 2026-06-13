@@ -541,12 +541,9 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::TeleportEntity(update) => {
                 world.apply_teleport_entity(update);
             }
-            NetEvent::RegistryData {
-                registry,
-                raw_payload_len,
-            } => {
-                world.record_registry(registry, raw_payload_len);
-                counters.registries_seen = world.counters().registries_seen;
+            NetEvent::RegistryData(update) => {
+                world.record_registry_data(update);
+                sync_registry_counters(counters, world);
             }
             NetEvent::UpdateTags(update) => {
                 world.apply_update_tags(update);
@@ -725,6 +722,14 @@ fn server_link_state(entry: ServerLinkEntry) -> bbb_control::ServerLinkState {
             known_type: None,
         },
     }
+}
+
+fn sync_registry_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.registries_seen = world_counters.registries_seen;
+    counters.registry_entries_seen = world_counters.registry_entries_seen;
+    counters.registry_entries_with_data = world_counters.registry_entries_with_data;
+    counters.registry_entry_stubs = world_counters.registry_entry_stubs;
 }
 
 fn sound_holder_state(
