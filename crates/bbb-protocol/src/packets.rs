@@ -8,6 +8,7 @@ pub mod client_ui;
 pub mod command_suggestions;
 pub mod commands;
 pub mod connection;
+mod data_components;
 pub mod debug_game;
 pub mod entities;
 mod exports;

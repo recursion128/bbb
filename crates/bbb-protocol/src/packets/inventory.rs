@@ -3,22 +3,18 @@ use serde::{Deserialize, Serialize};
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
+    packets::data_components,
 };
 
 const MAX_CONTAINER_ITEMS: usize = 1024;
-const MAX_ITEM_COMPONENT_PATCH_ENTRIES: usize = 1024;
+
+pub use data_components::DataComponentPatchSummary;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemStackSummary {
     pub item_id: Option<i32>,
     pub count: i32,
     pub component_patch: DataComponentPatchSummary,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DataComponentPatchSummary {
-    pub added: usize,
-    pub removed_type_ids: Vec<i32>,
 }
 
 impl ItemStackSummary {
@@ -164,28 +160,7 @@ pub(super) fn decode_item_stack_summary(decoder: &mut Decoder<'_>) -> Result<Ite
 pub(super) fn decode_data_component_patch_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<DataComponentPatchSummary> {
-    let added = decoder.read_len()?;
-    let removed = decoder.read_len()?;
-    if added + removed > MAX_ITEM_COMPONENT_PATCH_ENTRIES {
-        return Err(ProtocolError::PacketTooLarge(
-            added + removed,
-            MAX_ITEM_COMPONENT_PATCH_ENTRIES,
-        ));
-    }
-    if added != 0 {
-        return Err(ProtocolError::InvalidData(format!(
-            "unsupported item stack component patch with {added} added component(s)"
-        )));
-    }
-
-    let mut removed_type_ids = Vec::with_capacity(removed);
-    for _ in 0..removed {
-        removed_type_ids.push(decoder.read_var_i32()?);
-    }
-    Ok(DataComponentPatchSummary {
-        added,
-        removed_type_ids,
-    })
+    data_components::decode_data_component_patch_summary(decoder)
 }
 
 #[cfg(test)]
@@ -198,21 +173,34 @@ mod tests {
     };
 
     #[test]
-    fn rejects_set_equipment_item_stack_with_added_component_patch() {
+    fn decodes_set_equipment_item_stack_with_supported_component_patch() {
         let mut payload = Encoder::new();
         payload.write_var_i32(123);
         payload.write_u8(EquipmentSlot::MainHand.ordinal());
         payload.write_var_i32(1);
         payload.write_var_i32(42);
-        payload.write_var_i32(1);
+        payload.write_var_i32(2);
         payload.write_var_i32(0);
+        payload.write_var_i32(1);
+        payload.write_var_i32(64);
+        payload.write_var_i32(10);
+        payload.write_string("minecraft:diamond_sword");
 
-        let error =
+        let packet =
             decode_play_clientbound(ids::play::CLIENTBOUND_SET_EQUIPMENT, &payload.into_inner())
-                .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("unsupported item stack component patch"));
+                .unwrap();
+        let PlayClientbound::SetEquipment(update) = packet else {
+            panic!("expected equipment packet");
+        };
+        assert_eq!(update.slots.len(), 1);
+        assert_eq!(
+            update.slots[0].item.component_patch,
+            DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![1, 10],
+                removed_type_ids: Vec::new(),
+            }
+        );
     }
 
     #[test]

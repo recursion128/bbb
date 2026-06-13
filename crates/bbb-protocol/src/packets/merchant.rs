@@ -2,11 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    packets::inventory::{self, ItemStackSummary},
+    packets::{
+        data_components,
+        inventory::{self, ItemStackSummary},
+    },
 };
 
 const MAX_MERCHANT_OFFERS: usize = 1024;
-const MAX_ITEM_COST_COMPONENTS: usize = 1024;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MerchantOffers {
@@ -42,6 +44,8 @@ pub struct ItemCostSummary {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemCostComponentPredicateSummary {
     pub component_count: usize,
+    #[serde(default)]
+    pub component_type_ids: Vec<i32>,
 }
 
 pub(super) fn decode_merchant_offers(decoder: &mut Decoder<'_>) -> Result<MerchantOffers> {
@@ -106,20 +110,12 @@ fn decode_item_cost_summary(decoder: &mut Decoder<'_>) -> Result<ItemCostSummary
 fn decode_item_cost_component_predicate_summary(
     decoder: &mut Decoder<'_>,
 ) -> Result<ItemCostComponentPredicateSummary> {
-    let component_count = decoder.read_len()?;
-    if component_count > MAX_ITEM_COST_COMPONENTS {
-        return Err(ProtocolError::PacketTooLarge(
-            component_count,
-            MAX_ITEM_COST_COMPONENTS,
-        ));
-    }
-    if component_count != 0 {
-        return Err(ProtocolError::InvalidData(format!(
-            "unsupported item cost component predicate with {component_count} component(s)"
-        )));
-    }
-
-    Ok(ItemCostComponentPredicateSummary { component_count })
+    let component_type_ids =
+        data_components::decode_data_component_exact_predicate_type_ids(decoder)?;
+    Ok(ItemCostComponentPredicateSummary {
+        component_count: component_type_ids.len(),
+        component_type_ids,
+    })
 }
 
 fn decode_non_empty_item_stack_summary(decoder: &mut Decoder<'_>) -> Result<ItemStackSummary> {
@@ -197,23 +193,44 @@ mod tests {
     }
 
     #[test]
-    fn rejects_merchant_offer_with_component_predicate() {
+    fn decodes_merchant_offer_with_supported_component_predicate() {
         let mut payload = Encoder::new();
         payload.write_var_i32(7);
         payload.write_var_i32(1);
         payload.write_var_i32(42);
         payload.write_var_i32(1);
         payload.write_var_i32(1);
-        payload.write_var_i32(5);
+        payload.write_var_i32(10);
+        payload.write_string("minecraft:emerald");
+        write_item_stack(&mut payload, 99, 1);
+        payload.write_bool(false);
+        payload.write_bool(false);
+        payload.write_i32(0);
+        payload.write_i32(12);
+        payload.write_i32(1);
+        payload.write_i32(0);
+        payload.write_f32(0.0);
+        payload.write_i32(0);
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_bool(false);
+        payload.write_bool(true);
 
-        let error = decode_play_clientbound(
+        let packet = decode_play_clientbound(
             ids::play::CLIENTBOUND_MERCHANT_OFFERS,
             &payload.into_inner(),
         )
-        .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("unsupported item cost component predicate"));
+        .unwrap();
+        let PlayClientbound::MerchantOffers(offers) = packet else {
+            panic!("expected merchant offers packet");
+        };
+        assert_eq!(
+            offers.offers[0].buy_a.component_predicate,
+            ItemCostComponentPredicateSummary {
+                component_count: 1,
+                component_type_ids: vec![10],
+            }
+        );
     }
 
     fn write_item_cost(out: &mut Encoder, item_id: i32, count: i32) {
