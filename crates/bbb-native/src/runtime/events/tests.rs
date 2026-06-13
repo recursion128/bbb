@@ -343,7 +343,7 @@ fn server_links_event_updates_snapshot_counters() {
 }
 
 #[test]
-fn client_ui_events_update_snapshot_counters() {
+fn client_ui_events_update_world_and_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::LowDiskSpaceWarning).unwrap();
     tx.try_send(NetEvent::MountScreenOpen(MountScreenOpen {
@@ -376,6 +376,14 @@ fn client_ui_events_update_snapshot_counters() {
         5
     );
     assert_eq!(counters.low_disk_space_warnings, 1);
+    assert_eq!(
+        world.last_mount_screen(),
+        Some(&bbb_world::MountScreenState {
+            container_id: 11,
+            inventory_columns: 5,
+            entity_id: 42,
+        })
+    );
     assert_eq!(counters.mount_screen_open_packets, 1);
     assert_eq!(
         counters.last_mount_screen,
@@ -385,8 +393,25 @@ fn client_ui_events_update_snapshot_counters() {
             entity_id: 42,
         })
     );
+    assert_eq!(
+        world.last_open_book(),
+        Some(&bbb_world::OpenBookState {
+            hand: "off_hand".to_string(),
+        })
+    );
     assert_eq!(counters.open_book_packets, 1);
     assert_eq!(counters.last_open_book_hand.as_deref(), Some("off_hand"));
+    assert_eq!(
+        world.last_open_sign_editor(),
+        Some(&bbb_world::OpenSignEditorState {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+        })
+    );
     assert_eq!(counters.open_sign_editor_packets, 1);
     assert_eq!(
         counters.last_open_sign_editor,
@@ -401,6 +426,11 @@ fn client_ui_events_update_snapshot_counters() {
     );
     assert_eq!(counters.pong_response_packets, 1);
     assert_eq!(counters.last_pong_response_time, Some(123456789));
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.mount_screen_open_packets, 1);
+    assert_eq!(world_counters.open_book_packets, 1);
+    assert_eq!(world_counters.open_sign_editor_packets, 1);
 }
 
 #[test]

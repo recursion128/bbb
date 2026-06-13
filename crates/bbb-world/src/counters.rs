@@ -235,6 +235,12 @@ pub struct WorldCounters {
     #[serde(default)]
     pub player_chat_fully_filtered_packets: usize,
     #[serde(default)]
+    pub mount_screen_open_packets: usize,
+    #[serde(default)]
+    pub open_book_packets: usize,
+    #[serde(default)]
+    pub open_sign_editor_packets: usize,
+    #[serde(default)]
     pub map_item_data_packets: usize,
     #[serde(default)]
     pub maps_tracked: usize,

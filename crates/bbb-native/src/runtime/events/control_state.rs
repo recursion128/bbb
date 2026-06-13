@@ -86,33 +86,16 @@ pub(super) fn apply_control_projection_event(
             world.apply_map_item_data(update);
         }
         NetEvent::MountScreenOpen(update) => {
-            counters.last_mount_screen = Some(bbb_control::MountScreenState {
-                container_id: update.container_id,
-                inventory_columns: update.inventory_columns,
-                entity_id: update.entity_id,
-            });
-            counters.mount_screen_open_packets += 1;
+            world.apply_mount_screen_open(update);
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::OpenBook(update) => {
-            counters.last_open_book_hand = Some(
-                match update.hand {
-                    bbb_protocol::packets::InteractionHand::MainHand => "main_hand",
-                    bbb_protocol::packets::InteractionHand::OffHand => "off_hand",
-                }
-                .to_string(),
-            );
-            counters.open_book_packets += 1;
+            world.apply_open_book(update);
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::OpenSignEditor(update) => {
-            counters.last_open_sign_editor = Some(bbb_control::OpenSignEditorState {
-                pos: bbb_world::BlockPos {
-                    x: update.pos.x,
-                    y: update.pos.y,
-                    z: update.pos.z,
-                },
-                is_front_text: update.is_front_text,
-            });
-            counters.open_sign_editor_packets += 1;
+            world.apply_open_sign_editor(update);
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::PlaceGhostRecipe(update) => {
             counters.last_ghost_recipe = Some(bbb_control::GhostRecipeState {
@@ -542,6 +525,30 @@ fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
         .deleted_messages
         .last()
         .map(control_deleted_chat_line);
+}
+
+fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.mount_screen_open_packets = world_counters.mount_screen_open_packets;
+    counters.open_book_packets = world_counters.open_book_packets;
+    counters.open_sign_editor_packets = world_counters.open_sign_editor_packets;
+
+    counters.last_mount_screen =
+        world
+            .last_mount_screen()
+            .map(|state| bbb_control::MountScreenState {
+                container_id: state.container_id,
+                inventory_columns: state.inventory_columns,
+                entity_id: state.entity_id,
+            });
+    counters.last_open_book_hand = world.last_open_book().map(|state| state.hand.clone());
+    counters.last_open_sign_editor =
+        world
+            .last_open_sign_editor()
+            .map(|state| bbb_control::OpenSignEditorState {
+                pos: state.pos,
+                is_front_text: state.is_front_text,
+            });
 }
 
 fn control_chat_line(message: &bbb_world::ChatMessageState) -> bbb_control::ClientChatLine {

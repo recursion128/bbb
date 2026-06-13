@@ -7,4 +7,5 @@ mod player_info;
 mod scoreboard;
 mod server_presentation;
 pub(crate) mod state;
+mod ui;
 mod world_border;
