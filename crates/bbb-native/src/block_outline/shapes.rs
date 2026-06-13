@@ -27,6 +27,9 @@ pub(super) fn outline_shape_for_block(
     if is_cauldron_block_name(block_name) {
         return Some(cauldron_outline_shape());
     }
+    if block_name == "minecraft:hopper" {
+        return hopper_outline_shape(properties);
+    }
     if block_name == "minecraft:ender_chest" {
         return Some(BlockOutlineShape::single(BlockOutlineBox::CHEST_SINGLE));
     }
@@ -224,6 +227,32 @@ fn cauldron_outline_shape() -> BlockOutlineShape {
         BlockOutlineBox::from_pixels([2.0, 4.0, 0.0], [14.0, 16.0, 2.0]),
         BlockOutlineBox::from_pixels([2.0, 4.0, 14.0], [14.0, 16.0, 16.0]),
     ])
+}
+
+fn hopper_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let spout = match properties.get("facing").map(String::as_str)? {
+        "down" => BlockOutlineBox::from_pixels([6.0, 0.0, 6.0], [10.0, 6.0, 10.0]),
+        "north" => BlockOutlineBox::from_pixels([6.0, 4.0, 0.0], [10.0, 8.0, 8.0]),
+        "east" => BlockOutlineBox::from_pixels([8.0, 4.0, 6.0], [16.0, 8.0, 10.0]),
+        "south" => BlockOutlineBox::from_pixels([6.0, 4.0, 8.0], [10.0, 8.0, 16.0]),
+        "west" => BlockOutlineBox::from_pixels([0.0, 4.0, 6.0], [8.0, 8.0, 10.0]),
+        _ => return None,
+    };
+
+    let mut boxes = spoutless_hopper_boxes();
+    boxes.push(spout);
+    Some(BlockOutlineShape::from_boxes(boxes))
+}
+
+fn spoutless_hopper_boxes() -> Vec<BlockOutlineBox> {
+    vec![
+        BlockOutlineBox::from_pixels([0.0, 10.0, 0.0], [16.0, 11.0, 16.0]),
+        BlockOutlineBox::from_pixels([0.0, 11.0, 0.0], [16.0, 16.0, 2.0]),
+        BlockOutlineBox::from_pixels([0.0, 11.0, 14.0], [16.0, 16.0, 16.0]),
+        BlockOutlineBox::from_pixels([0.0, 11.0, 2.0], [2.0, 16.0, 14.0]),
+        BlockOutlineBox::from_pixels([14.0, 11.0, 2.0], [16.0, 16.0, 14.0]),
+        BlockOutlineBox::centered_column(8.0, 8.0, 4.0, 10.0),
+    ]
 }
 
 fn chest_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {

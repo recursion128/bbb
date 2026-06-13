@@ -2,6 +2,7 @@ mod beds;
 mod cakes;
 mod cauldrons;
 mod chests;
+mod hoppers;
 mod interaction;
 mod rails;
 mod shapes;
