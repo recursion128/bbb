@@ -329,6 +329,7 @@ pub struct TerrainVertex {
     pub light: [f32; 2],
     pub tint: [f32; 3],
     pub shade: f32,
+    pub ambient_occlusion: f32,
     pub block_state_id: i32,
 }
 

@@ -4,7 +4,10 @@ mod geometry;
 use std::collections::HashMap;
 
 use self::{
-    emitter::{effective_face_material, emit_box, emit_cross, emit_face, emit_quads},
+    emitter::{
+        effective_face_material, emit_box, emit_cross, emit_face, emit_quads,
+        face_ambient_occlusion,
+    },
     geometry::FACES,
 };
 use super::{
@@ -148,6 +151,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             *face_light_emission,
                             *face_cull,
                             *face_transparency,
+                            cell.ambient_occlusion,
                             lookup,
                             mode,
                         );
@@ -175,6 +179,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 model_box.face_light_emission,
                                 model_box.face_cull,
                                 model_box.face_transparency,
+                                cell.ambient_occlusion,
                                 lookup,
                                 mode,
                             );
@@ -192,6 +197,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             cell.light,
                             model_quads,
                             atlas,
+                            cell.ambient_occlusion,
                             lookup,
                             mode,
                         );
@@ -227,6 +233,16 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         cell.tint[face_index],
                         atlas.rect(cell.texture_indices[face_index]),
                         face,
+                        face_ambient_occlusion(
+                            cell.ambient_occlusion,
+                            face.face,
+                            world_x,
+                            world_y,
+                            world_z,
+                            true,
+                            lookup,
+                            mode,
+                        ),
                     );
                 }
             }

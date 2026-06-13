@@ -1,8 +1,8 @@
 use super::super::{
     build_opaque_chunk_mesh, build_opaque_terrain_meshes, build_opaque_terrain_meshes_with_atlas,
     build_terrain_mesh_layers_with_atlas, build_terrain_meshes_with_atlas, TerrainBox,
-    TerrainCross, TerrainFace, TerrainLight, TerrainQuad, TerrainTint, TerrainTransparency,
-    TerrainUvRect,
+    TerrainCross, TerrainFace, TerrainLight, TerrainMesh, TerrainQuad, TerrainTint,
+    TerrainTransparency, TerrainUvRect, TerrainVertex,
 };
 use super::*;
 
@@ -580,6 +580,48 @@ fn mesh_vertices_carry_face_tint() {
 }
 
 #[test]
+fn ambient_occlusion_darkens_cubic_face_corners_from_outer_neighbors() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(0, 1, 2, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(1, 1, 1, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(0, 1, 1, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+
+    let mesh = build_opaque_chunk_mesh(&snapshot);
+    let top_vertices = face_vertices(&mesh, 42, [0.0, 1.0, 0.0]);
+
+    assert_eq!(top_vertices.len(), 4);
+    assert_float_eq(
+        vertex_at(&top_vertices, [1.0, 1.0, 2.0]).ambient_occlusion,
+        0.4,
+    );
+    assert_float_eq(
+        vertex_at(&top_vertices, [2.0, 1.0, 3.0]).ambient_occlusion,
+        1.0,
+    );
+}
+
+#[test]
+fn ambient_occlusion_flag_disables_corner_darkening() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 2 * 16];
+    cells[cell_index(1, 0, 2, 2)] = TerrainCell::with_texture(42, TerrainMaterialClass::Opaque, 0)
+        .with_ambient_occlusion(false);
+    cells[cell_index(0, 1, 2, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(1, 1, 1, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(0, 1, 1, 2)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 2, cells);
+
+    let mesh = build_opaque_chunk_mesh(&snapshot);
+    let top_vertices = face_vertices(&mesh, 42, [0.0, 1.0, 0.0]);
+
+    assert_eq!(top_vertices.len(), 4);
+    assert!(top_vertices
+        .iter()
+        .all(|vertex| vertex.ambient_occlusion == 1.0));
+}
+
+#[test]
 fn layer_builder_splits_opaque_and_cutout_meshes() {
     let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
     cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
@@ -771,4 +813,27 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
 
 fn all_face_cull() -> [Option<TerrainFace>; 6] {
     TerrainFace::ALL.map(Some)
+}
+
+fn face_vertices(mesh: &TerrainMesh, block_state_id: i32, normal: [f32; 3]) -> Vec<TerrainVertex> {
+    mesh.vertices
+        .iter()
+        .copied()
+        .filter(|vertex| vertex.block_state_id == block_state_id && vertex.normal == normal)
+        .collect()
+}
+
+fn vertex_at(vertices: &[TerrainVertex], position: [f32; 3]) -> TerrainVertex {
+    vertices
+        .iter()
+        .copied()
+        .find(|vertex| vertex.position == position)
+        .expect("vertex exists at position")
+}
+
+fn assert_float_eq(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() < 0.0001,
+        "expected {expected}, got {actual}"
+    );
 }

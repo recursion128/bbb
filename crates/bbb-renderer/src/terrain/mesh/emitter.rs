@@ -18,10 +18,13 @@ pub(super) fn emit_face(
     tint: TerrainTint,
     uv_rect: TerrainUvRect,
     face: FaceDef,
+    ambient_occlusion: [f32; 4],
 ) {
     let base = mesh.vertices.len() as u32;
     let uvs = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
-    for (corner, uv) in face.corners.into_iter().zip(uvs) {
+    for ((corner, uv), ambient_occlusion) in
+        face.corners.into_iter().zip(uvs).zip(ambient_occlusion)
+    {
         mesh.vertices.push(TerrainVertex {
             position: [
                 x as f32 + corner[0],
@@ -33,6 +36,7 @@ pub(super) fn emit_face(
             light: light.as_shader_light(),
             tint: tint.as_shader_tint(),
             shade: 1.0,
+            ambient_occlusion,
             block_state_id,
         });
     }
@@ -107,6 +111,7 @@ pub(super) fn emit_box(
     face_light_emission: [u8; 6],
     face_cull: [Option<TerrainFace>; 6],
     face_transparency: [TerrainTransparency; 6],
+    ambient_occlusion: bool,
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
 ) {
@@ -149,6 +154,16 @@ pub(super) fn emit_box(
             }
         }
 
+        let ambient_occlusion = face_ambient_occlusion(
+            ambient_occlusion && face_light_emission[face_index] == 0,
+            face.face,
+            x,
+            y,
+            z,
+            box_face_is_cubic(face.face, min, max),
+            lookup,
+            mode,
+        );
         emit_custom_quad_with_uvs(
             mesh,
             x,
@@ -164,6 +179,7 @@ pub(super) fn emit_box(
             face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
             face_shade[face_index],
             face_light_emission[face_index],
+            ambient_occlusion,
         );
     }
 }
@@ -178,6 +194,7 @@ pub(super) fn emit_quads(
     light: TerrainLight,
     quads: &[TerrainQuad],
     atlas: &TerrainTextureAtlas,
+    ambient_occlusion: bool,
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
 ) {
@@ -198,6 +215,11 @@ pub(super) fn emit_quads(
             }
         }
 
+        let ambient_occlusion = quad
+            .cull
+            .filter(|_| ambient_occlusion && quad.light_emission == 0)
+            .map(|face| face_ambient_occlusion(true, face, x, y, z, true, lookup, mode))
+            .unwrap_or([1.0; 4]);
         emit_custom_quad_with_uvs(
             mesh,
             x,
@@ -214,6 +236,7 @@ pub(super) fn emit_quads(
             quad.uvs,
             quad.shade,
             quad.light_emission,
+            ambient_occlusion,
         );
     }
 }
@@ -264,6 +287,7 @@ fn emit_custom_quad(
         [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
         shade,
         light_emission,
+        [1.0; 4],
     );
 }
 
@@ -282,11 +306,12 @@ fn emit_custom_quad_with_uvs(
     uvs: [[f32; 2]; 4],
     shade: bool,
     light_emission: u8,
+    ambient_occlusion: [f32; 4],
 ) {
     let base = mesh.vertices.len() as u32;
     let shade = if shade { 1.0 } else { 0.0 };
     let light = shader_light_with_emission(light, light_emission);
-    for (corner, uv) in corners.into_iter().zip(uvs) {
+    for ((corner, uv), ambient_occlusion) in corners.into_iter().zip(uvs).zip(ambient_occlusion) {
         mesh.vertices.push(TerrainVertex {
             position: [
                 x as f32 + corner[0],
@@ -298,6 +323,7 @@ fn emit_custom_quad_with_uvs(
             light,
             tint: tint.as_shader_tint(),
             shade,
+            ambient_occlusion,
             block_state_id,
         });
     }
@@ -327,5 +353,125 @@ fn cull_offset(face: TerrainFace) -> (i32, i32, i32) {
         TerrainFace::South => (0, 0, 1),
         TerrainFace::West => (-1, 0, 0),
         TerrainFace::East => (1, 0, 0),
+    }
+}
+
+pub(super) fn face_ambient_occlusion(
+    enabled: bool,
+    face: TerrainFace,
+    x: i32,
+    y: i32,
+    z: i32,
+    face_cubic: bool,
+    lookup: &TerrainChunkLookup<'_>,
+    mode: TerrainMeshMode,
+) -> [f32; 4] {
+    if !enabled {
+        return [1.0; 4];
+    }
+
+    let normal = if face_cubic {
+        cull_offset(face)
+    } else {
+        (0, 0, 0)
+    };
+    let base = (x + normal.0, y + normal.1, z + normal.2);
+    std::array::from_fn(|corner| {
+        let (side_a, side_b) = face_corner_sides(face, corner);
+        vertex_ambient_occlusion(base, side_a, side_b, lookup, mode)
+    })
+}
+
+fn vertex_ambient_occlusion(
+    base: (i32, i32, i32),
+    side_a: (i32, i32, i32),
+    side_b: (i32, i32, i32),
+    lookup: &TerrainChunkLookup<'_>,
+    mode: TerrainMeshMode,
+) -> f32 {
+    let (side_a_occludes, side_a_brightness) = ambient_sample(
+        base.0 + side_a.0,
+        base.1 + side_a.1,
+        base.2 + side_a.2,
+        lookup,
+        mode,
+    );
+    let (side_b_occludes, side_b_brightness) = ambient_sample(
+        base.0 + side_b.0,
+        base.1 + side_b.1,
+        base.2 + side_b.2,
+        lookup,
+        mode,
+    );
+    let corner_brightness = if side_a_occludes && side_b_occludes {
+        side_a_brightness
+    } else {
+        ambient_sample(
+            base.0 + side_a.0 + side_b.0,
+            base.1 + side_a.1 + side_b.1,
+            base.2 + side_a.2 + side_b.2,
+            lookup,
+            mode,
+        )
+        .1
+    };
+
+    (side_a_brightness + side_b_brightness + corner_brightness + 1.0) * 0.25
+}
+
+fn ambient_sample(
+    x: i32,
+    y: i32,
+    z: i32,
+    lookup: &TerrainChunkLookup<'_>,
+    mode: TerrainMeshMode,
+) -> (bool, f32) {
+    let occludes = lookup
+        .cell(x, y, z)
+        .map(|cell| mode.is_occluded_by(cell.material))
+        .unwrap_or(false);
+    (occludes, if occludes { 0.2 } else { 1.0 })
+}
+
+fn box_face_is_cubic(face: TerrainFace, min: [f32; 3], max: [f32; 3]) -> bool {
+    const MIN: f32 = 0.0001;
+    const MAX: f32 = 0.9999;
+    match face {
+        TerrainFace::Down => min[1] <= MIN,
+        TerrainFace::Up => max[1] >= MAX,
+        TerrainFace::North => min[2] <= MIN,
+        TerrainFace::South => max[2] >= MAX,
+        TerrainFace::West => min[0] <= MIN,
+        TerrainFace::East => max[0] >= MAX,
+    }
+}
+
+fn face_corner_sides(face: TerrainFace, corner: usize) -> ((i32, i32, i32), (i32, i32, i32)) {
+    match (face, corner) {
+        (TerrainFace::Down, 0) => ((-1, 0, 0), (0, 0, 1)),
+        (TerrainFace::Down, 1) => ((1, 0, 0), (0, 0, 1)),
+        (TerrainFace::Down, 2) => ((1, 0, 0), (0, 0, -1)),
+        (TerrainFace::Down, 3) => ((-1, 0, 0), (0, 0, -1)),
+        (TerrainFace::Up, 0) => ((-1, 0, 0), (0, 0, -1)),
+        (TerrainFace::Up, 1) => ((1, 0, 0), (0, 0, -1)),
+        (TerrainFace::Up, 2) => ((1, 0, 0), (0, 0, 1)),
+        (TerrainFace::Up, 3) => ((-1, 0, 0), (0, 0, 1)),
+        (TerrainFace::North, 0) => ((1, 0, 0), (0, -1, 0)),
+        (TerrainFace::North, 1) => ((1, 0, 0), (0, 1, 0)),
+        (TerrainFace::North, 2) => ((-1, 0, 0), (0, 1, 0)),
+        (TerrainFace::North, 3) => ((-1, 0, 0), (0, -1, 0)),
+        (TerrainFace::South, 0) => ((-1, 0, 0), (0, -1, 0)),
+        (TerrainFace::South, 1) => ((-1, 0, 0), (0, 1, 0)),
+        (TerrainFace::South, 2) => ((1, 0, 0), (0, 1, 0)),
+        (TerrainFace::South, 3) => ((1, 0, 0), (0, -1, 0)),
+        (TerrainFace::West, 0) => ((0, 0, -1), (0, -1, 0)),
+        (TerrainFace::West, 1) => ((0, 0, -1), (0, 1, 0)),
+        (TerrainFace::West, 2) => ((0, 0, 1), (0, 1, 0)),
+        (TerrainFace::West, 3) => ((0, 0, 1), (0, -1, 0)),
+        (TerrainFace::East, 0) => ((0, 0, 1), (0, -1, 0)),
+        (TerrainFace::East, 1) => ((0, 0, 1), (0, 1, 0)),
+        (TerrainFace::East, 2) => ((0, 0, -1), (0, 1, 0)),
+        (TerrainFace::East, 3) => ((0, 0, -1), (0, -1, 0)),
+        _ => unreachable!("terrain quads have four corners"),
     }
 }

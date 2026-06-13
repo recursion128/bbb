@@ -7,7 +7,7 @@ use crate::{camera::CameraUniform, terrain};
 
 pub(super) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
-const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Sint32];
+const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Float32x2, 4 => Float32x3, 5 => Float32, 6 => Float32, 7 => Sint32];
 
 const TERRAIN_SHADER: &str = r#"
 struct Camera {
@@ -30,7 +30,8 @@ struct VertexIn {
     @location(3) light: vec2<f32>,
     @location(4) tint: vec3<f32>,
     @location(5) shade: f32,
-    @location(6) block_state_id: i32,
+    @location(6) ambient_occlusion: f32,
+    @location(7) block_state_id: i32,
 };
 
 struct VertexOut {
@@ -40,6 +41,7 @@ struct VertexOut {
     @location(2) light: vec2<f32>,
     @location(3) tint: vec3<f32>,
     @location(4) shade: f32,
+    @location(5) ambient_occlusion: f32,
 };
 
 @vertex
@@ -51,6 +53,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
     out.light = input.light;
     out.tint = input.tint;
     out.shade = input.shade;
+    out.ambient_occlusion = input.ambient_occlusion;
     return out;
 }
 
@@ -68,7 +71,7 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     let sky_light = input.light.y;
     let light_level = max(block_light, sky_light * 0.95);
     let directional_shade = mix(1.0, 0.86 + direct * 0.14, input.shade);
-    let shade = (0.16 + light_level * 0.84) * directional_shade;
+    let shade = (0.16 + light_level * 0.84) * directional_shade * input.ambient_occlusion;
     return vec4<f32>(base * shade, texel.a);
 }
 "#;
@@ -345,5 +348,37 @@ fn terrain_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
         array_stride: mem::size_of::<terrain::TerrainVertex>() as wgpu::BufferAddress,
         step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &TERRAIN_VERTEX_ATTRIBUTES,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terrain_vertex_layout_exposes_ambient_occlusion_before_block_state_id() {
+        let layout = terrain_vertex_layout();
+
+        assert_eq!(
+            layout.array_stride,
+            mem::size_of::<terrain::TerrainVertex>() as wgpu::BufferAddress
+        );
+        assert_eq!(TERRAIN_VERTEX_ATTRIBUTES.len(), 8);
+        assert_eq!(TERRAIN_VERTEX_ATTRIBUTES[6].shader_location, 6);
+        assert_eq!(
+            TERRAIN_VERTEX_ATTRIBUTES[6].format,
+            wgpu::VertexFormat::Float32
+        );
+        assert_eq!(TERRAIN_VERTEX_ATTRIBUTES[7].shader_location, 7);
+        assert_eq!(
+            TERRAIN_VERTEX_ATTRIBUTES[7].format,
+            wgpu::VertexFormat::Sint32
+        );
+    }
+
+    #[test]
+    fn terrain_shader_multiplies_shade_by_vertex_ambient_occlusion() {
+        assert!(TERRAIN_SHADER.contains("@location(6) ambient_occlusion: f32"));
+        assert!(TERRAIN_SHADER.contains("* input.ambient_occlusion"));
     }
 }
