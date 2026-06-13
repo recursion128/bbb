@@ -356,6 +356,122 @@ fn decodes_entity_lifecycle_packets() {
 }
 
 #[test]
+fn decodes_additional_entity_data_serializers() {
+    let owner = Uuid::from_u128(0xaaaaaaaa11111111bbbbbbbb22222222);
+    let mut payload = Encoder::new();
+    payload.write_var_i32(123);
+
+    payload.write_u8(9);
+    payload.write_var_i32(13);
+    payload.write_bool(true);
+    payload.write_uuid(owner);
+
+    payload.write_u8(10);
+    payload.write_var_i32(21);
+    payload.write_var_i32(7);
+
+    payload.write_u8(11);
+    payload.write_var_i32(33);
+    payload.write_bool(true);
+    payload.write_string("minecraft:overworld");
+    payload.write_i64(pack_block_pos(34, 65, -12));
+
+    payload.write_u8(12);
+    payload.write_var_i32(39);
+    payload.write_f32(1.25);
+    payload.write_f32(-2.5);
+    payload.write_f32(3.75);
+
+    payload.write_u8(13);
+    payload.write_var_i32(40);
+    payload.write_f32(0.0);
+    payload.write_f32(0.25);
+    payload.write_f32(0.5);
+    payload.write_f32(1.0);
+
+    payload.write_u8(14);
+    payload.write_var_i32(42);
+    payload.write_var_i32(1);
+
+    payload.write_u8(15);
+    payload.write_var_i32(35);
+    payload.write_var_i32(2);
+
+    payload.write_u8(0xff);
+
+    let packet = decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_ENTITY_DATA,
+        &payload.into_inner(),
+    )
+    .unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::SetEntityData(SetEntityData {
+            id: 123,
+            values: vec![
+                EntityDataValue {
+                    data_id: 9,
+                    serializer_id: 13,
+                    value: EntityDataValueKind::OptionalLivingEntityReference(Some(owner)),
+                },
+                EntityDataValue {
+                    data_id: 10,
+                    serializer_id: 21,
+                    value: EntityDataValueKind::RegistryId {
+                        serializer: EntityDataRegistryHolder::CatVariant,
+                        id: 7,
+                    },
+                },
+                EntityDataValue {
+                    data_id: 11,
+                    serializer_id: 33,
+                    value: EntityDataValueKind::OptionalGlobalPos(Some(GlobalPosData {
+                        dimension: "minecraft:overworld".to_string(),
+                        pos: BlockPos {
+                            x: 34,
+                            y: 65,
+                            z: -12,
+                        },
+                    })),
+                },
+                EntityDataValue {
+                    data_id: 12,
+                    serializer_id: 39,
+                    value: EntityDataValueKind::Vector3f {
+                        x: 1.25,
+                        y: -2.5,
+                        z: 3.75,
+                    },
+                },
+                EntityDataValue {
+                    data_id: 13,
+                    serializer_id: 40,
+                    value: EntityDataValueKind::Quaternionf {
+                        x: 0.0,
+                        y: 0.25,
+                        z: 0.5,
+                        w: 1.0,
+                    },
+                },
+                EntityDataValue {
+                    data_id: 14,
+                    serializer_id: 42,
+                    value: EntityDataValueKind::HumanoidArm(1),
+                },
+                EntityDataValue {
+                    data_id: 15,
+                    serializer_id: 35,
+                    value: EntityDataValueKind::EnumId {
+                        serializer: EntityDataEnumSerializer::SnifferState,
+                        id: 2,
+                    },
+                },
+            ],
+        })
+    );
+}
+
+#[test]
 fn decodes_entity_transient_event_packets() {
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
@@ -531,4 +647,8 @@ fn lp_vec3_axis_x() -> [u8; 6] {
         ((buffer >> 16) >> 8) as u8,
         (buffer >> 16) as u8,
     ]
+}
+
+fn pack_block_pos(x: i32, y: i32, z: i32) -> i64 {
+    (((x as i64) & 0x3ffffff) << 38) | (((z as i64) & 0x3ffffff) << 12) | ((y as i64) & 0xfff)
 }

@@ -240,8 +240,17 @@ pub enum EntityDataValueKind {
     BlockPos(BlockPos),
     OptionalBlockPos(Option<BlockPos>),
     Direction(i32),
+    OptionalLivingEntityReference(Option<Uuid>),
     BlockState(i32),
     OptionalBlockState(Option<i32>),
+    RegistryId {
+        serializer: EntityDataRegistryHolder,
+        id: i32,
+    },
+    EnumId {
+        serializer: EntityDataEnumSerializer,
+        id: i32,
+    },
     VillagerData {
         villager_type: i32,
         profession: i32,
@@ -249,6 +258,83 @@ pub enum EntityDataValueKind {
     },
     OptionalUnsignedInt(Option<i32>),
     Pose(i32),
+    OptionalGlobalPos(Option<GlobalPosData>),
+    Vector3f {
+        x: f32,
+        y: f32,
+        z: f32,
+    },
+    Quaternionf {
+        x: f32,
+        y: f32,
+        z: f32,
+        w: f32,
+    },
+    HumanoidArm(i32),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EntityDataRegistryHolder {
+    CatVariant,
+    CatSoundVariant,
+    CowVariant,
+    CowSoundVariant,
+    WolfVariant,
+    WolfSoundVariant,
+    FrogVariant,
+    PigVariant,
+    PigSoundVariant,
+    ChickenVariant,
+    ChickenSoundVariant,
+    ZombieNautilusVariant,
+    PaintingVariant,
+}
+
+impl EntityDataRegistryHolder {
+    fn from_serializer_id(serializer_id: i32) -> Option<Self> {
+        Some(match serializer_id {
+            21 => Self::CatVariant,
+            22 => Self::CatSoundVariant,
+            23 => Self::CowVariant,
+            24 => Self::CowSoundVariant,
+            25 => Self::WolfVariant,
+            26 => Self::WolfSoundVariant,
+            27 => Self::FrogVariant,
+            28 => Self::PigVariant,
+            29 => Self::PigSoundVariant,
+            30 => Self::ChickenVariant,
+            31 => Self::ChickenSoundVariant,
+            32 => Self::ZombieNautilusVariant,
+            34 => Self::PaintingVariant,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EntityDataEnumSerializer {
+    SnifferState,
+    ArmadilloState,
+    CopperGolemState,
+    WeatheringCopperState,
+}
+
+impl EntityDataEnumSerializer {
+    fn from_serializer_id(serializer_id: i32) -> Option<Self> {
+        Some(match serializer_id {
+            35 => Self::SnifferState,
+            36 => Self::ArmadilloState,
+            37 => Self::CopperGolemState,
+            38 => Self::WeatheringCopperState,
+            _ => return None,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GlobalPosData {
+    pub dimension: String,
+    pub pos: BlockPos,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -521,6 +607,11 @@ fn decode_entity_data_value(
             None
         }),
         12 => EntityDataValueKind::Direction(decoder.read_var_i32()?),
+        13 => EntityDataValueKind::OptionalLivingEntityReference(if decoder.read_bool()? {
+            Some(decoder.read_uuid()?)
+        } else {
+            None
+        }),
         14 => EntityDataValueKind::BlockState(decoder.read_var_i32()?),
         15 => {
             let id = decoder.read_var_i32()?;
@@ -536,6 +627,38 @@ fn decode_entity_data_value(
             EntityDataValueKind::OptionalUnsignedInt((value != 0).then_some(value - 1))
         }
         20 => EntityDataValueKind::Pose(decoder.read_var_i32()?),
+        33 => EntityDataValueKind::OptionalGlobalPos(if decoder.read_bool()? {
+            Some(GlobalPosData {
+                dimension: read_resource_key(decoder)?,
+                pos: decode_block_pos(decoder.read_i64()?),
+            })
+        } else {
+            None
+        }),
+        39 => EntityDataValueKind::Vector3f {
+            x: decoder.read_f32()?,
+            y: decoder.read_f32()?,
+            z: decoder.read_f32()?,
+        },
+        40 => EntityDataValueKind::Quaternionf {
+            x: decoder.read_f32()?,
+            y: decoder.read_f32()?,
+            z: decoder.read_f32()?,
+            w: decoder.read_f32()?,
+        },
+        42 => EntityDataValueKind::HumanoidArm(decoder.read_var_i32()?),
+        other if let Some(serializer) = EntityDataRegistryHolder::from_serializer_id(other) => {
+            EntityDataValueKind::RegistryId {
+                serializer,
+                id: decoder.read_var_i32()?,
+            }
+        }
+        other if let Some(serializer) = EntityDataEnumSerializer::from_serializer_id(other) => {
+            EntityDataValueKind::EnumId {
+                serializer,
+                id: decoder.read_var_i32()?,
+            }
+        }
         other => {
             return Err(ProtocolError::InvalidData(format!(
                 "unsupported entity data serializer {other}"
