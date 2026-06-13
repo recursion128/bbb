@@ -5,6 +5,7 @@ mod candles;
 mod cauldrons;
 mod chains;
 mod chests;
+mod composters;
 mod hoppers;
 mod interaction;
 mod lanterns;

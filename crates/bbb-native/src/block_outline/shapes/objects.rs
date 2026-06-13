@@ -23,6 +23,9 @@ pub(super) fn object_outline_shape_for_block(
     if is_lantern_block_name(block_name) {
         return Some(lantern_outline_shape(properties));
     }
+    if block_name == "minecraft:composter" {
+        return Some(composter_outline_shape(properties));
+    }
     if block_name == "minecraft:ender_chest" {
         return Some(Some(BlockOutlineShape::single(
             BlockOutlineBox::CHEST_SINGLE,
@@ -129,6 +132,21 @@ fn lantern_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockO
     Some(BlockOutlineShape::from_boxes(vec![
         BlockOutlineBox::centered_column(4.0, 4.0, 7.0 + offset, 9.0 + offset),
         BlockOutlineBox::centered_column(6.0, 6.0, offset, 7.0 + offset),
+    ]))
+}
+
+fn composter_outline_shape(properties: &BTreeMap<String, String>) -> Option<BlockOutlineShape> {
+    let level = properties.get("level")?.parse::<u8>().ok()?;
+    if level > 8 {
+        return None;
+    }
+    let hole_y = f64::from((1 + level.min(7) * 2).clamp(2, 16));
+    Some(BlockOutlineShape::from_boxes(vec![
+        BlockOutlineBox::from_pixels([0.0, 0.0, 0.0], [16.0, hole_y, 16.0]),
+        BlockOutlineBox::from_pixels([0.0, hole_y, 0.0], [16.0, 16.0, 2.0]),
+        BlockOutlineBox::from_pixels([0.0, hole_y, 14.0], [16.0, 16.0, 16.0]),
+        BlockOutlineBox::from_pixels([0.0, hole_y, 2.0], [2.0, 16.0, 14.0]),
+        BlockOutlineBox::from_pixels([14.0, hole_y, 2.0], [16.0, 16.0, 14.0]),
     ]))
 }
 
