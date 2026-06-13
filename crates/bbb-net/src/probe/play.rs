@@ -30,7 +30,9 @@ impl ProbeContext {
             PlayClientbound::Cooldown(update) => {
                 self.world.apply_cooldown(update);
             }
-            PlayClientbound::CustomChatCompletions(_) => {}
+            PlayClientbound::CustomChatCompletions(update) => {
+                self.world.apply_custom_chat_completions(update);
+            }
             PlayClientbound::CustomPayload(payload) => {
                 self.world.apply_custom_payload(payload);
             }
@@ -262,7 +264,12 @@ impl ProbeContext {
             PlayClientbound::CommandSuggestions(update) => {
                 self.world.apply_command_suggestions(update);
             }
-            PlayClientbound::SelectAdvancementsTab(_) | PlayClientbound::TagQuery(_) => {}
+            PlayClientbound::SelectAdvancementsTab(update) => {
+                self.world.apply_select_advancements_tab(update);
+            }
+            PlayClientbound::TagQuery(update) => {
+                self.world.apply_tag_query(update);
+            }
             PlayClientbound::ClearDialog => {
                 self.world.apply_clear_dialog();
             }
@@ -354,8 +361,10 @@ impl ProbeContext {
             }
             PlayClientbound::SetChunkCacheCenter(_)
             | PlayClientbound::SetChunkCacheRadius(_)
-            | PlayClientbound::ProjectilePower(_)
-            | PlayClientbound::Waypoint(_) => {}
+            | PlayClientbound::ProjectilePower(_) => {}
+            PlayClientbound::Waypoint(update) => {
+                self.world.apply_waypoint(update);
+            }
             PlayClientbound::RecipeBookAdd(update) => {
                 self.world.apply_recipe_book_add(update);
             }
