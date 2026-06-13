@@ -241,6 +241,8 @@ impl WorldStore {
         entries: Vec<RegistryPacketEntry>,
     ) {
         let name = name.into();
+        self.counters.last_registry_data_registry = Some(name.clone());
+        self.counters.last_registry_data_entry_count = entries.len();
         self.registries
             .contents
             .entry(name.clone())
@@ -295,6 +297,24 @@ impl WorldStore {
             .contents
             .values()
             .map(RegistryContentState::duplicate_entry_count)
+            .sum();
+        self.counters.registry_content_packets_tracked = self
+            .registries
+            .contents
+            .values()
+            .map(|content| content.packet_count)
+            .sum();
+        self.counters.registry_content_entries_tracked = self
+            .registries
+            .contents
+            .values()
+            .map(|content| content.entries.len())
+            .sum();
+        self.counters.registry_duplicate_entry_ids_tracked = self
+            .registries
+            .contents
+            .values()
+            .map(|content| content.duplicate_entry_ids.len())
             .sum();
     }
 
@@ -454,7 +474,15 @@ mod tests {
         assert_eq!(counters.registry_entry_stubs, 1);
         assert_eq!(counters.registry_entry_payload_bytes, 53);
         assert_eq!(counters.registry_content_registries_tracked, 2);
+        assert_eq!(counters.registry_content_packets_tracked, 3);
+        assert_eq!(counters.registry_content_entries_tracked, 4);
         assert_eq!(counters.registry_duplicate_entries, 1);
+        assert_eq!(counters.registry_duplicate_entry_ids_tracked, 1);
+        assert_eq!(
+            counters.last_registry_data_registry.as_deref(),
+            Some("minecraft:damage_type")
+        );
+        assert_eq!(counters.last_registry_data_entry_count, 1);
     }
 
     #[test]

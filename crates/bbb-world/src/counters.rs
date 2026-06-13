@@ -16,7 +16,17 @@ pub struct WorldCounters {
     #[serde(default)]
     pub registry_content_registries_tracked: usize,
     #[serde(default)]
+    pub registry_content_packets_tracked: usize,
+    #[serde(default)]
+    pub registry_content_entries_tracked: usize,
+    #[serde(default)]
     pub registry_duplicate_entries: usize,
+    #[serde(default)]
+    pub registry_duplicate_entry_ids_tracked: usize,
+    #[serde(default)]
+    pub last_registry_data_registry: Option<String>,
+    #[serde(default)]
+    pub last_registry_data_entry_count: usize,
     pub play_logins_received: usize,
     pub respawns_received: usize,
     pub chunks_received: usize,

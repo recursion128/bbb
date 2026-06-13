@@ -218,7 +218,15 @@ fn registry_data_event_updates_world_state_and_snapshot_counters() {
     assert_eq!(counters.registry_entry_stubs, 1);
     assert_eq!(counters.registry_entry_payload_bytes, 24);
     assert_eq!(counters.registry_content_registries_tracked, 1);
+    assert_eq!(counters.registry_content_packets_tracked, 1);
+    assert_eq!(counters.registry_content_entries_tracked, 2);
     assert_eq!(counters.registry_duplicate_entries, 0);
+    assert_eq!(counters.registry_duplicate_entry_ids_tracked, 0);
+    assert_eq!(
+        counters.last_registry_data_registry.as_deref(),
+        Some("minecraft:chat_type")
+    );
+    assert_eq!(counters.last_registry_data_entry_count, 2);
 }
 
 #[test]
