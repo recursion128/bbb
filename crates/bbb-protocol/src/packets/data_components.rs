@@ -11,6 +11,7 @@ const MAX_IDENTIFIER_CHARS: usize = 32767;
 const MAX_DATA_COMPONENT_LIST_ITEMS: usize = 4096;
 const MAX_BLOCK_STATE_PROPERTIES: usize = 256;
 const MAX_BOOK_PAGES: usize = 100;
+const MAX_CONTAINER_ITEMS: usize = 256;
 const MAX_FIREWORK_EXPLOSIONS: usize = 256;
 const MAX_LORE_LINES: usize = 256;
 const MAX_MOB_EFFECT_DETAILS_DEPTH: usize = 16;
@@ -145,6 +146,8 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         44 | 45 => {
             decoder.read_i32()?;
         }
+        // charged_projectiles and bundle_contents.
+        49 | 50 => decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?,
         // potion_contents.
         51 => decode_potion_contents(decoder)?,
         // suspicious_stew_effects.
@@ -165,6 +168,8 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         69 => decode_fireworks(decoder)?,
         // block_state.
         76 => decode_string_map(decoder, MAX_BLOCK_STATE_PROPERTIES)?,
+        // container.
+        75 => decode_item_container_contents(decoder)?,
         other => {
             return Err(ProtocolError::InvalidData(format!(
                 "unsupported data component type id {other}"
@@ -352,6 +357,29 @@ fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
         )));
     }
     decode_data_component_patch_summary(decoder)?;
+    Ok(())
+}
+
+fn decode_item_stack_template_list(decoder: &mut Decoder<'_>, max: usize) -> Result<()> {
+    let count = read_bounded_len(decoder, max)?;
+    for _ in 0..count {
+        decode_item_stack_template(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_optional_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decode_item_stack_template(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_item_container_contents(decoder: &mut Decoder<'_>) -> Result<()> {
+    let count = read_bounded_len(decoder, MAX_CONTAINER_ITEMS)?;
+    for _ in 0..count {
+        decode_optional_item_stack_template(decoder)?;
+    }
     Ok(())
 }
 
@@ -723,8 +751,8 @@ mod tests {
     fn decodes_additional_item_data_components() {
         let mut payload = Encoder::new();
         let component_ids = [
-            0, 5, 23, 24, 25, 26, 28, 29, 30, 32, 40, 44, 45, 51, 53, 54, 55, 56, 61, 64, 68, 69,
-            76, 80, 102,
+            0, 5, 23, 24, 25, 26, 28, 29, 30, 32, 40, 44, 45, 49, 50, 51, 53, 54, 55, 56, 61, 64,
+            68, 69, 75, 76, 80, 102,
         ];
         payload.write_var_i32(component_ids.len() as i32);
         payload.write_var_i32(0);
@@ -817,6 +845,15 @@ mod tests {
         payload.write_var_i32(45);
         payload.write_i32(0x445566);
 
+        payload.write_var_i32(49);
+        payload.write_var_i32(2);
+        write_item_stack_template(&mut payload, 50, 1);
+        write_item_stack_template(&mut payload, 51, 2);
+
+        payload.write_var_i32(50);
+        payload.write_var_i32(1);
+        write_item_stack_template(&mut payload, 52, 3);
+
         payload.write_var_i32(51);
         payload.write_bool(true);
         payload.write_var_i32(3);
@@ -873,6 +910,13 @@ mod tests {
         payload.write_var_i32(1);
         write_firework_explosion(&mut payload, 0);
 
+        payload.write_var_i32(75);
+        payload.write_var_i32(3);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        write_item_stack_template(&mut payload, 53, 4);
+        payload.write_bool(false);
+
         payload.write_var_i32(76);
         payload.write_var_i32(2);
         payload.write_string("facing");
@@ -911,14 +955,14 @@ mod tests {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
         payload.write_var_i32(0);
-        payload.write_var_i32(75);
+        payload.write_var_i32(110);
 
         let payload = payload.into_inner();
         let mut decoder = Decoder::new(&payload);
         let err = decode_data_component_patch_summary(&mut decoder).unwrap_err();
         assert!(err
             .to_string()
-            .contains("unsupported data component type id 75"));
+            .contains("unsupported data component type id 110"));
     }
 
     pub(super) fn nbt_string_root(value: &str) -> Vec<u8> {
