@@ -1889,6 +1889,14 @@ fn drain_net_events(
                 counters.block_destruction_packets += 1;
                 world.apply_block_destruction(update);
             }
+            NetEvent::BossEvent(update) => {
+                counters.boss_event_packets += 1;
+                world.apply_boss_event(update);
+            }
+            NetEvent::ChangeDifficulty(update) => {
+                counters.change_difficulty_packets += 1;
+                world.apply_change_difficulty(update);
+            }
             NetEvent::BlockEvent(event) => {
                 counters.block_event_packets += 1;
                 world.apply_block_event(event);
@@ -1940,6 +1948,10 @@ fn drain_net_events(
             NetEvent::SetScore(update) => {
                 counters.set_score_packets += 1;
                 world.apply_set_score(update);
+            }
+            NetEvent::TabList(update) => {
+                counters.tab_list_packets += 1;
+                world.apply_tab_list(update);
             }
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
@@ -3650,6 +3662,73 @@ mod tests {
         let parameters = team.parameters.as_ref().unwrap();
         assert_eq!(parameters.display_name, "Red Team");
         assert_eq!(parameters.color, "red");
+    }
+
+    #[test]
+    fn hud_session_events_update_world_and_counters() {
+        let boss_id = Uuid::from_u128(1);
+        let (tx, mut rx) = mpsc::channel(4);
+        tx.try_send(NetEvent::BossEvent(bbb_protocol::packets::BossEvent {
+            id: boss_id,
+            operation: bbb_protocol::packets::BossEventOperation::Add {
+                name: "Ender Dragon".to_string(),
+                progress: 0.75,
+                color: bbb_protocol::packets::BossBarColor::Purple,
+                overlay: bbb_protocol::packets::BossBarOverlay::Progress,
+                flags: bbb_protocol::packets::BossEventFlags {
+                    darken_screen: true,
+                    play_music: false,
+                    create_world_fog: true,
+                },
+            },
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::BossEvent(bbb_protocol::packets::BossEvent {
+            id: boss_id,
+            operation: bbb_protocol::packets::BossEventOperation::UpdateProgress { progress: 0.25 },
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::TabList(bbb_protocol::packets::TabList {
+            header: Some("Welcome".to_string()),
+            footer: None,
+        }))
+        .unwrap();
+        tx.try_send(NetEvent::ChangeDifficulty(
+            bbb_protocol::packets::ChangeDifficulty {
+                difficulty: bbb_protocol::packets::Difficulty::Hard,
+                locked: true,
+            },
+        ))
+        .unwrap();
+
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        assert_eq!(
+            drain_net_events(&mut rx, &mut world, &mut counters, &None),
+            4
+        );
+        assert_eq!(counters.boss_event_packets, 2);
+        assert_eq!(counters.tab_list_packets, 1);
+        assert_eq!(counters.change_difficulty_packets, 1);
+
+        let boss = world.boss_bars().get(&boss_id).unwrap();
+        assert_eq!(boss.name, "Ender Dragon");
+        assert_eq!(boss.progress, 0.25);
+        assert_eq!(boss.color, "purple");
+        assert_eq!(boss.overlay, "progress");
+        assert!(boss.darken_screen);
+        assert!(boss.create_world_fog);
+        assert_eq!(world.tab_list().header.as_deref(), Some("Welcome"));
+        assert_eq!(world.tab_list().footer, None);
+        assert_eq!(world.difficulty().difficulty, "hard");
+        assert!(world.difficulty().difficulty_locked);
+
+        let world_counters = world.counters();
+        assert_eq!(world_counters.boss_event_packets, 2);
+        assert_eq!(world_counters.boss_bars_tracked, 1);
+        assert_eq!(world_counters.tab_list_packets, 1);
+        assert_eq!(world_counters.change_difficulty_packets, 1);
     }
 
     #[test]

@@ -24,6 +24,9 @@ const PLAYER_INPUT_RIGHT: u8 = 8;
 const PLAYER_INPUT_JUMP: u8 = 16;
 const PLAYER_INPUT_SHIFT: u8 = 32;
 const PLAYER_INPUT_SPRINT: u8 = 64;
+const BOSS_EVENT_FLAG_DARKEN_SCREEN: u8 = 1;
+const BOSS_EVENT_FLAG_PLAY_MUSIC: u8 = 2;
+const BOSS_EVENT_FLAG_CREATE_WORLD_FOG: u8 = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(i32)]
@@ -89,6 +92,8 @@ pub enum PlayClientbound {
     BlockEntityData(BlockEntityData),
     BlockEvent(BlockEvent),
     BlockUpdate(BlockUpdate),
+    BossEvent(BossEvent),
+    ChangeDifficulty(ChangeDifficulty),
     ChunkBatchStart,
     ChunkBatchFinished { batch_size: i32 },
     ChunksBiomes(ChunksBiomes),
@@ -149,6 +154,7 @@ pub enum PlayClientbound {
     SetTitleText(SetTitleText),
     SetTitlesAnimation(SetTitlesAnimation),
     SystemChat(SystemChat),
+    TabList(TabList),
     TakeItemEntity(TakeItemEntity),
     TeleportEntity(TeleportEntity),
     TickingState(TickingState),
@@ -544,6 +550,136 @@ pub struct BlockEvent {
     pub b0: u8,
     pub b1: u8,
     pub block_id: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BossEvent {
+    pub id: Uuid,
+    pub operation: BossEventOperation,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum BossEventOperation {
+    Add {
+        name: String,
+        progress: f32,
+        color: BossBarColor,
+        overlay: BossBarOverlay,
+        flags: BossEventFlags,
+    },
+    Remove,
+    UpdateProgress {
+        progress: f32,
+    },
+    UpdateName {
+        name: String,
+    },
+    UpdateStyle {
+        color: BossBarColor,
+        overlay: BossBarOverlay,
+    },
+    UpdateProperties {
+        flags: BossEventFlags,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BossBarColor {
+    Pink,
+    Blue,
+    Red,
+    Green,
+    Yellow,
+    Purple,
+    White,
+}
+
+impl BossBarColor {
+    fn from_ordinal(ordinal: i32) -> Result<Self> {
+        Ok(match ordinal {
+            0 => Self::Pink,
+            1 => Self::Blue,
+            2 => Self::Red,
+            3 => Self::Green,
+            4 => Self::Yellow,
+            5 => Self::Purple,
+            6 => Self::White,
+            other => {
+                return Err(ProtocolError::InvalidData(format!(
+                    "invalid boss bar color ordinal {other}"
+                )))
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BossBarOverlay {
+    Progress,
+    Notched6,
+    Notched10,
+    Notched12,
+    Notched20,
+}
+
+impl BossBarOverlay {
+    fn from_ordinal(ordinal: i32) -> Result<Self> {
+        Ok(match ordinal {
+            0 => Self::Progress,
+            1 => Self::Notched6,
+            2 => Self::Notched10,
+            3 => Self::Notched12,
+            4 => Self::Notched20,
+            other => {
+                return Err(ProtocolError::InvalidData(format!(
+                    "invalid boss bar overlay ordinal {other}"
+                )))
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BossEventFlags {
+    pub darken_screen: bool,
+    pub play_music: bool,
+    pub create_world_fog: bool,
+}
+
+impl BossEventFlags {
+    fn from_bits(bits: u8) -> Self {
+        Self {
+            darken_screen: bits & BOSS_EVENT_FLAG_DARKEN_SCREEN != 0,
+            play_music: bits & BOSS_EVENT_FLAG_PLAY_MUSIC != 0,
+            create_world_fog: bits & BOSS_EVENT_FLAG_CREATE_WORLD_FOG != 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangeDifficulty {
+    pub difficulty: Difficulty,
+    pub locked: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Difficulty {
+    Peaceful,
+    Easy,
+    Normal,
+    Hard,
+}
+
+impl Difficulty {
+    fn from_id(id: i32) -> Self {
+        match id.rem_euclid(4) {
+            0 => Self::Peaceful,
+            1 => Self::Easy,
+            2 => Self::Normal,
+            3 => Self::Hard,
+            _ => unreachable!("rem_euclid(4) is always in 0..4"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1017,6 +1153,12 @@ pub struct SetCamera {
 pub struct SystemChat {
     pub content: String,
     pub overlay: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TabList {
+    pub header: Option<String>,
+    pub footer: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -1715,6 +1857,16 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
+        ids::play::CLIENTBOUND_BOSS_EVENT => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::BossEvent(decode_boss_event(&mut decoder)?))
+        }
+        ids::play::CLIENTBOUND_CHANGE_DIFFICULTY => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::ChangeDifficulty(decode_change_difficulty(
+                &mut decoder,
+            )?))
+        }
         ids::play::CLIENTBOUND_CHUNK_BATCH_START => Ok(PlayClientbound::ChunkBatchStart),
         ids::play::CLIENTBOUND_CHUNK_BATCH_FINISHED => Ok(PlayClientbound::ChunkBatchFinished {
             batch_size: Decoder::new(payload).read_var_i32()?,
@@ -2097,6 +2249,10 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 overlay: decoder.read_bool()?,
             }))
         }
+        ids::play::CLIENTBOUND_TAB_LIST => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::TabList(decode_tab_list(&mut decoder)?))
+        }
         ids::play::CLIENTBOUND_TAKE_ITEM_ENTITY => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::TakeItemEntity(TakeItemEntity {
@@ -2225,6 +2381,71 @@ fn decode_reset_score(decoder: &mut Decoder<'_>) -> Result<ResetScore> {
         owner: decoder.read_string(32767)?,
         objective_name: decode_nullable_string(decoder)?,
     })
+}
+
+fn decode_boss_event(decoder: &mut Decoder<'_>) -> Result<BossEvent> {
+    let id = decoder.read_uuid()?;
+    let operation = match decoder.read_var_i32()? {
+        0 => BossEventOperation::Add {
+            name: decode_component_summary_from_decoder(decoder)?,
+            progress: decoder.read_f32()?,
+            color: BossBarColor::from_ordinal(decoder.read_var_i32()?)?,
+            overlay: BossBarOverlay::from_ordinal(decoder.read_var_i32()?)?,
+            flags: BossEventFlags::from_bits(decoder.read_u8()?),
+        },
+        1 => BossEventOperation::Remove,
+        2 => BossEventOperation::UpdateProgress {
+            progress: decoder.read_f32()?,
+        },
+        3 => BossEventOperation::UpdateName {
+            name: decode_component_summary_from_decoder(decoder)?,
+        },
+        4 => BossEventOperation::UpdateStyle {
+            color: BossBarColor::from_ordinal(decoder.read_var_i32()?)?,
+            overlay: BossBarOverlay::from_ordinal(decoder.read_var_i32()?)?,
+        },
+        5 => BossEventOperation::UpdateProperties {
+            flags: BossEventFlags::from_bits(decoder.read_u8()?),
+        },
+        other => {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid boss event operation ordinal {other}"
+            )))
+        }
+    };
+
+    Ok(BossEvent { id, operation })
+}
+
+fn decode_change_difficulty(decoder: &mut Decoder<'_>) -> Result<ChangeDifficulty> {
+    Ok(ChangeDifficulty {
+        difficulty: Difficulty::from_id(decoder.read_var_i32()?),
+        locked: decoder.read_bool()?,
+    })
+}
+
+fn decode_tab_list(decoder: &mut Decoder<'_>) -> Result<TabList> {
+    Ok(TabList {
+        header: decode_tab_list_component(decoder)?,
+        footer: decode_tab_list_component(decoder)?,
+    })
+}
+
+fn decode_tab_list_component(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
+    let before = decoder.remaining();
+    let summary = decode_component_summary_from_decoder(decoder)?;
+    let consumed_len = before.len().saturating_sub(decoder.remaining_len());
+    let consumed = &before[..consumed_len];
+
+    if is_empty_string_component_nbt(consumed) {
+        Ok(None)
+    } else {
+        Ok(Some(summary))
+    }
+}
+
+fn is_empty_string_component_nbt(payload: &[u8]) -> bool {
+    payload == [8, 0, 0]
 }
 
 fn decode_set_display_objective(decoder: &mut Decoder<'_>) -> Result<SetDisplayObjective> {
@@ -3618,6 +3839,174 @@ mod tests {
     fn decodes_bundle_delimiter_packet() {
         let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BUNDLE_DELIMITER, &[]).unwrap();
         assert_eq!(packet, PlayClientbound::BundleDelimiter);
+    }
+
+    #[test]
+    fn decodes_boss_event_operations() {
+        let id = Uuid::from_u128(0xaaaaaaaa_bbbb_cccc_dddd_eeeeeeeeeeee);
+
+        let payload = boss_event_payload(id, 0, |payload| {
+            payload.write_bytes(&nbt_string_root("Raid"));
+            payload.write_f32(0.75);
+            payload.write_var_i32(5);
+            payload.write_var_i32(3);
+            payload.write_u8(BOSS_EVENT_FLAG_DARKEN_SCREEN | BOSS_EVENT_FLAG_CREATE_WORLD_FOG);
+        });
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BossEvent(BossEvent {
+                id,
+                operation: BossEventOperation::Add {
+                    name: "Raid".to_string(),
+                    progress: 0.75,
+                    color: BossBarColor::Purple,
+                    overlay: BossBarOverlay::Notched12,
+                    flags: BossEventFlags {
+                        darken_screen: true,
+                        play_music: false,
+                        create_world_fog: true,
+                    },
+                },
+            })
+        );
+
+        let payload = boss_event_payload(id, 1, |_| {});
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BossEvent(BossEvent {
+                id,
+                operation: BossEventOperation::Remove,
+            })
+        );
+
+        let payload = boss_event_payload(id, 2, |payload| {
+            payload.write_f32(0.25);
+        });
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BossEvent(BossEvent {
+                id,
+                operation: BossEventOperation::UpdateProgress { progress: 0.25 },
+            })
+        );
+
+        let payload = boss_event_payload(id, 3, |payload| {
+            payload.write_bytes(&nbt_string_root("Dragon"));
+        });
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BossEvent(BossEvent {
+                id,
+                operation: BossEventOperation::UpdateName {
+                    name: "Dragon".to_string(),
+                },
+            })
+        );
+
+        let payload = boss_event_payload(id, 4, |payload| {
+            payload.write_var_i32(6);
+            payload.write_var_i32(4);
+        });
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BossEvent(BossEvent {
+                id,
+                operation: BossEventOperation::UpdateStyle {
+                    color: BossBarColor::White,
+                    overlay: BossBarOverlay::Notched20,
+                },
+            })
+        );
+
+        let payload = boss_event_payload(id, 5, |payload| {
+            payload.write_u8(BOSS_EVENT_FLAG_PLAY_MUSIC);
+        });
+        let packet = decode_play_clientbound(ids::play::CLIENTBOUND_BOSS_EVENT, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::BossEvent(BossEvent {
+                id,
+                operation: BossEventOperation::UpdateProperties {
+                    flags: BossEventFlags {
+                        darken_screen: false,
+                        play_music: true,
+                        create_world_fog: false,
+                    },
+                },
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_change_difficulty_with_wrapped_ids() {
+        let payload = change_difficulty_payload(2, true);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_CHANGE_DIFFICULTY, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ChangeDifficulty(ChangeDifficulty {
+                difficulty: Difficulty::Normal,
+                locked: true,
+            })
+        );
+
+        let payload = change_difficulty_payload(5, false);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_CHANGE_DIFFICULTY, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ChangeDifficulty(ChangeDifficulty {
+                difficulty: Difficulty::Easy,
+                locked: false,
+            })
+        );
+
+        let payload = change_difficulty_payload(-1, false);
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_CHANGE_DIFFICULTY, &payload).unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::ChangeDifficulty(ChangeDifficulty {
+                difficulty: Difficulty::Hard,
+                locked: false,
+            })
+        );
+    }
+
+    #[test]
+    fn decodes_tab_list_header_footer() {
+        let mut payload = Encoder::new();
+        payload.write_bytes(&nbt_string_root("Online players"));
+        payload.write_bytes(&nbt_string_root(""));
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_TAB_LIST, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::TabList(TabList {
+                header: Some("Online players".to_string()),
+                footer: None,
+            })
+        );
+
+        let mut payload = Encoder::new();
+        payload.write_bytes(&nbt_string_root(""));
+        payload.write_bytes(&nbt_string_root("Welcome"));
+        let packet =
+            decode_play_clientbound(ids::play::CLIENTBOUND_TAB_LIST, &payload.into_inner())
+                .unwrap();
+        assert_eq!(
+            packet,
+            PlayClientbound::TabList(TabList {
+                header: None,
+                footer: Some("Welcome".to_string()),
+            })
+        );
     }
 
     #[test]
@@ -5697,6 +6086,25 @@ mod tests {
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_string(16).unwrap(), "en_us");
         assert_eq!(decoder.read_i8().unwrap(), 10);
+    }
+
+    fn boss_event_payload(
+        id: Uuid,
+        operation: i32,
+        write_body: impl FnOnce(&mut Encoder),
+    ) -> Vec<u8> {
+        let mut payload = Encoder::new();
+        payload.write_uuid(id);
+        payload.write_var_i32(operation);
+        write_body(&mut payload);
+        payload.into_inner()
+    }
+
+    fn change_difficulty_payload(id: i32, locked: bool) -> Vec<u8> {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(id);
+        payload.write_bool(locked);
+        payload.into_inner()
     }
 
     fn encode_block_pos(x: i32, y: i32, z: i32) -> i64 {
