@@ -2,8 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
+mod advancements;
 mod recipes;
 
+pub(crate) use advancements::decode_update_advancements;
+pub use advancements::*;
 pub use recipes::*;
 pub(crate) use recipes::{
     decode_place_ghost_recipe, decode_recipe_book_add, decode_recipe_book_remove,

@@ -556,6 +556,9 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::Transfer(transfer) => {
                     emit(&events, NetEvent::Transfer(transfer)).await?;
                 }
+                PlayClientbound::UpdateAdvancements(update) => {
+                    emit(&events, NetEvent::UpdateAdvancements(update)).await?;
+                }
                 PlayClientbound::UpdateRecipes(update) => {
                     emit(&events, NetEvent::UpdateRecipes(update)).await?;
                 }

@@ -807,6 +807,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 waypoints::decode_tracked_waypoint_packet(&mut decoder)?,
             ))
         }
+        ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::UpdateAdvancements(
+                client_features::decode_update_advancements(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::UpdateAttributes(

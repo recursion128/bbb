@@ -212,6 +212,9 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::RecipeBookSettings(update) => {
                 world.apply_recipe_book_settings(update);
             }
+            NetEvent::UpdateAdvancements(update) => {
+                world.apply_update_advancements(update);
+            }
             NetEvent::UpdateRecipes(update) => {
                 world.apply_update_recipes(update);
             }

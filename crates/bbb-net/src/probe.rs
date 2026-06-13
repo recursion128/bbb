@@ -460,6 +460,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::RecipeBookSettings(update) => {
                     world.apply_recipe_book_settings(update);
                 }
+                PlayClientbound::UpdateAdvancements(update) => {
+                    world.apply_update_advancements(update);
+                }
                 PlayClientbound::UpdateRecipes(update) => {
                     world.apply_update_recipes(update);
                 }

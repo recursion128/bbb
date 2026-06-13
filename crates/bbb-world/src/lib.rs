@@ -1,3 +1,4 @@
+mod advancements;
 mod block_events;
 mod chunks;
 mod client_chat;
@@ -25,6 +26,7 @@ mod terrain_state;
 mod world_border;
 mod world_state;
 
+pub use advancements::*;
 pub use client_state::*;
 pub use entity_state::*;
 pub use maps::*;

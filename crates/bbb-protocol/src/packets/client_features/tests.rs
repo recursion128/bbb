@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     codec::{Decoder, Encoder},
     ids,
-    packets::{decode_play_clientbound, PlayClientbound},
+    packets::{decode_play_clientbound, DataComponentPatchSummary, PlayClientbound},
 };
 
 #[test]
@@ -271,6 +271,96 @@ fn decodes_select_advancements_tab_present_and_absent() {
 }
 
 #[test]
+fn decodes_update_advancements_packet_wire_order() {
+    let mut payload = Encoder::new();
+    payload.write_bool(true);
+
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:story/root");
+    payload.write_bool(false);
+    payload.write_bool(true);
+    payload.write_bytes(&nbt_string_root("Root"));
+    payload.write_bytes(&nbt_string_root("Description"));
+    payload.write_var_i32(42);
+    payload.write_var_i32(1);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_i32(3);
+    payload.write_string("minecraft:textures/gui/advancements/backgrounds/stone.png");
+    payload.write_f32(1.5);
+    payload.write_f32(-2.0);
+    payload.write_var_i32(1);
+    payload.write_var_i32(2);
+    payload.write_string("mine_stone");
+    payload.write_string("get_log");
+    payload.write_bool(true);
+
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:old");
+
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:story/root");
+    payload.write_var_i32(2);
+    payload.write_string("mine_stone");
+    payload.write_bool(true);
+    payload.write_i64(1_700_000_000_000);
+    payload.write_string("get_log");
+    payload.write_bool(false);
+
+    payload.write_bool(true);
+
+    assert_eq!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS,
+            &payload.into_inner()
+        )
+        .unwrap(),
+        PlayClientbound::UpdateAdvancements(UpdateAdvancements {
+            reset: true,
+            added: vec![AdvancementSummary {
+                id: "minecraft:story/root".to_string(),
+                parent: None,
+                display: Some(AdvancementDisplaySummary {
+                    title: "Root".to_string(),
+                    description: "Description".to_string(),
+                    icon: AdvancementIconSummary {
+                        item_id: 42,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
+                    frame_type: AdvancementFrameType::Task,
+                    show_toast: true,
+                    hidden: false,
+                    background: Some(
+                        "minecraft:textures/gui/advancements/backgrounds/stone.png".to_string()
+                    ),
+                    x: 1.5,
+                    y: -2.0,
+                }),
+                requirements: vec![vec!["mine_stone".to_string(), "get_log".to_string()]],
+                sends_telemetry_event: true,
+            }],
+            removed: vec!["minecraft:old".to_string()],
+            progress: vec![AdvancementProgressSummary {
+                id: "minecraft:story/root".to_string(),
+                criteria: vec![
+                    AdvancementCriterionProgressSummary {
+                        name: "mine_stone".to_string(),
+                        obtained_epoch_millis: Some(1_700_000_000_000),
+                    },
+                    AdvancementCriterionProgressSummary {
+                        name: "get_log".to_string(),
+                        obtained_epoch_millis: None,
+                    },
+                ],
+            }],
+            show_advancements: true,
+        })
+    );
+}
+
+#[test]
 fn decodes_tag_query_packet_raw_nbt() {
     let mut payload = Encoder::new();
     payload.write_var_i32(12);
@@ -333,6 +423,12 @@ fn compound_with_string(name: &str, value: &str) -> Vec<u8> {
     write_mutf8(&mut payload, name);
     write_mutf8(&mut payload, value);
     payload.push(0);
+    payload
+}
+
+fn nbt_string_root(value: &str) -> Vec<u8> {
+    let mut payload = vec![8];
+    write_mutf8(&mut payload, value);
     payload
 }
 

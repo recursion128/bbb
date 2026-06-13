@@ -21,7 +21,7 @@ use bbb_protocol::packets::{
     SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
     SoundEntityEvent, SoundEvent, StopSound, SystemChat, TabList, TagQuery, TakeItemEntity,
     TeleportEntity, TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypointPacket,
-    Transfer, UpdateAttributes, UpdateMobEffect, UpdateRecipes, UpdateTags,
+    Transfer, UpdateAdvancements, UpdateAttributes, UpdateMobEffect, UpdateRecipes, UpdateTags,
 };
 
 use super::ConnectionState;
@@ -148,6 +148,7 @@ pub enum NetEvent {
     TickingState(TickingState),
     TickingStep(TickingStep),
     Transfer(Transfer),
+    UpdateAdvancements(UpdateAdvancements),
     UpdateRecipes(UpdateRecipes),
     SetCamera(SetCamera),
     InitializeBorder(InitializeBorder),

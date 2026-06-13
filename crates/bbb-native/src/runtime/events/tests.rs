@@ -2,26 +2,26 @@ use super::*;
 use crate::runtime::clear_color_for_day_time;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder,
-    ChunkPos as ProtocolChunkPos, CommonPlayerSpawnInfo, CustomChatCompletions,
-    CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, DebugBlockValue,
-    DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat, DialogHolder,
-    DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind, GameRuleValue,
-    GameRuleValues, GameTestHighlightPos, IngredientSummary, InteractionHand, ItemCostSummary,
-    ItemStackSummary, LevelParticles, MapColorPatch, MapDecoration, MapItemData, MerchantOffer,
-    MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen, MoveMinecartAlongTrack,
-    OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature, ParticlePayload,
-    PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill, PlayerLookAt,
-    PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry,
-    RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
-    RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
-    RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab, ServerLinkEntry,
-    ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog, SignedMessageBody,
-    SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
-    StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload, TagQuery,
-    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateRecipes, UpdateTags,
-    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
-    WaypointOperation, WaypointVec3i,
+    AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
+    BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, ChunkPos as ProtocolChunkPos,
+    CommonPlayerSpawnInfo, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
+    CustomPayloadBody, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample,
+    DeleteChat, DialogHolder, DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind,
+    GameRuleValue, GameRuleValues, GameTestHighlightPos, IngredientSummary, InteractionHand,
+    ItemCostSummary, ItemStackSummary, LevelParticles, MapColorPatch, MapDecoration, MapItemData,
+    MerchantOffer, MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen,
+    MoveMinecartAlongTrack, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
+    ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill,
+    PlayerLookAt, PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd,
+    RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
+    RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
+    RecipePropertySetSummary, RegistryTags, RemoteDebugSampleType, SelectAdvancementsTab,
+    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, ShowDialog,
+    SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder,
+    SoundSource, StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload, TagQuery,
+    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateAdvancements,
+    UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData,
+    WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use std::collections::BTreeMap;
@@ -702,6 +702,59 @@ fn recipe_book_events_update_world_state() {
     assert_eq!(world_counters.recipe_book_entries_tracked, 1);
     assert_eq!(world_counters.recipe_book_highlights_tracked, 1);
     assert_eq!(world_counters.recipe_book_notifications_received, 1);
+}
+
+#[test]
+fn update_advancements_event_updates_world_state() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::UpdateAdvancements(UpdateAdvancements {
+        reset: true,
+        added: vec![AdvancementSummary {
+            id: "minecraft:story/root".to_string(),
+            parent: None,
+            display: None,
+            requirements: vec![vec!["mine_stone".to_string(), "get_log".to_string()]],
+            sends_telemetry_event: true,
+        }],
+        removed: Vec::new(),
+        progress: vec![AdvancementProgressSummary {
+            id: "minecraft:story/root".to_string(),
+            criteria: vec![AdvancementCriterionProgressSummary {
+                name: "mine_stone".to_string(),
+                obtained_epoch_millis: Some(1_700_000_000_000),
+            }],
+        }],
+        show_advancements: true,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert!(world
+        .advancements()
+        .advancements
+        .contains_key("minecraft:story/root"));
+    let progress = world
+        .advancements()
+        .progress
+        .get("minecraft:story/root")
+        .unwrap();
+    assert_eq!(progress.criteria.len(), 2);
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.update_advancements_packets, 1);
+    assert_eq!(world_counters.update_advancements_reset_packets, 1);
+    assert_eq!(world_counters.update_advancements_show_packets, 1);
+    assert_eq!(world_counters.advancements_tracked, 1);
+    assert_eq!(world_counters.advancement_roots_tracked, 1);
+    assert_eq!(world_counters.advancement_progress_tracked, 1);
+    assert_eq!(world_counters.advancement_progress_criteria_tracked, 2);
 }
 
 #[test]

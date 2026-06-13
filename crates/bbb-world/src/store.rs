@@ -3,10 +3,11 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BlockDestructionProgress, BlockEventRecord, ChunkColumn, ClientChatState, ClientHudState,
-    ClientRecipesState, CommandSuggestionsState, InventoryState, ItemCooldownState,
-    LevelEventRecord, MapItemState, PlayerInfoState, RegistrySet, ScoreboardState,
-    ServerPresentationState, WorldBorderState, WorldCounters, WorldDimension, WorldLevelInfo,
+    BlockDestructionProgress, BlockEventRecord, ChunkColumn, ClientAdvancementsState,
+    ClientChatState, ClientHudState, ClientRecipesState, CommandSuggestionsState, InventoryState,
+    ItemCooldownState, LevelEventRecord, MapItemState, PlayerInfoState, RegistrySet,
+    ScoreboardState, ServerPresentationState, WorldBorderState, WorldCounters, WorldDimension,
+    WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -42,6 +43,8 @@ pub struct WorldStore {
     pub(crate) recipe_book: crate::ClientRecipeBookState,
     #[serde(default)]
     pub(crate) recipes: ClientRecipesState,
+    #[serde(default)]
+    pub(crate) advancements: ClientAdvancementsState,
     #[serde(default)]
     pub(crate) maps: BTreeMap<i32, MapItemState>,
     #[serde(default)]
