@@ -102,6 +102,74 @@ fn texture_alpha_maps_to_face_transparency() {
 }
 
 #[test]
+fn box_face_transparency_uses_model_uv_crop() {
+    let image = bbb_pack::SpriteImage::new(
+        "minecraft:block/cropped",
+        2,
+        2,
+        vec![10, 0, 0, 255, 20, 0, 0, 0, 30, 0, 0, 255, 40, 0, 0, 255],
+    )
+    .unwrap();
+    let atlas = bbb_pack::AtlasPacker::new(8, 1)
+        .unwrap()
+        .stitch(std::slice::from_ref(&image))
+        .unwrap();
+    let textures =
+        TerrainTextureState::from_layout_and_images(&atlas.layout, &[image], None, None, None);
+    let north = bbb_pack::BlockModelFace::North.index();
+    let mut opaque_crop = block_model_box_with_face_texture(
+        bbb_pack::BlockModelFace::North,
+        "minecraft:block/cropped",
+        None,
+    );
+    opaque_crop.face_uvs[north] = [0, 0, 8, 8];
+    let mut transparent_crop = opaque_crop.clone();
+    transparent_crop.face_uvs[north] = [8, 0, 16, 8];
+
+    let opaque_shape = textures.terrain_render_shape_for_block(
+        "minecraft:test_block",
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Opaque,
+        BlockModelShape::Box(opaque_crop),
+        [0; 6],
+        [TerrainTint::WHITE; 6],
+        [TerrainTransparency::OPAQUE; 6],
+        None,
+        None,
+    );
+    let transparent_shape = textures.terrain_render_shape_for_block(
+        "minecraft:test_block",
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Opaque,
+        BlockModelShape::Box(transparent_crop),
+        [0; 6],
+        [TerrainTint::WHITE; 6],
+        [TerrainTransparency::OPAQUE; 6],
+        None,
+        None,
+    );
+
+    let TerrainRenderShape::Box {
+        face_transparency: opaque_faces,
+        ..
+    } = opaque_shape
+    else {
+        panic!("expected opaque crop box");
+    };
+    let TerrainRenderShape::Box {
+        face_transparency: transparent_faces,
+        ..
+    } = transparent_shape
+    else {
+        panic!("expected transparent crop box");
+    };
+    assert!(!opaque_faces[north].has_transparent);
+    assert!(!opaque_faces[north].has_translucent);
+    assert!(transparent_faces[north].has_transparent);
+    assert!(!transparent_faces[north].has_translucent);
+}
+
+#[test]
 fn fluid_material_overrides_particle_only_model_shape() {
     let textures = TerrainTextureState::default();
     let shape = textures.terrain_render_shape_for_block(

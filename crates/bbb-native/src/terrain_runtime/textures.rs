@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use anyhow::Result;
 use bbb_pack::{
     AtlasLayout, AtlasPacker, BiomeColorCatalog, BiomeColorProfile, BlockFaceTextures,
-    BlockModelCatalog, BlockModelFace, BlockModelShape, GrassColorModifier, PackRoots,
+    BlockModelCatalog, BlockModelFace, BlockModelShape, GrassColorModifier, PackRoots, SpriteImage,
     TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
@@ -24,6 +24,7 @@ pub(crate) struct TerrainTextureState {
     colormaps: Option<TerrainColorMaps>,
     biome_colors: Option<BiomeColorCatalog>,
     transparencies: Vec<TerrainTransparency>,
+    sprite_alphas: HashMap<String, SpriteAlpha>,
     fallback_index: u32,
 }
 
@@ -36,6 +37,7 @@ impl Default for TerrainTextureState {
             colormaps: None,
             biome_colors: None,
             transparencies: vec![TerrainTransparency::OPAQUE],
+            sprite_alphas: HashMap::new(),
             fallback_index: 0,
         }
     }
@@ -48,9 +50,74 @@ pub(crate) struct BlockRenderPosition {
     pub(crate) z: i32,
 }
 
+#[derive(Debug, Clone)]
+struct SpriteAlpha {
+    width: u32,
+    height: u32,
+    transparency: TerrainTransparency,
+    alpha: Vec<u8>,
+}
+
+impl SpriteAlpha {
+    fn from_image(image: &SpriteImage) -> Self {
+        Self {
+            width: image.width,
+            height: image.height,
+            transparency: terrain_transparency(image.transparency),
+            alpha: image.rgba.chunks_exact(4).map(|pixel| pixel[3]).collect(),
+        }
+    }
+
+    fn model_uv_transparency(&self, uv: [u8; 4]) -> TerrainTransparency {
+        if uv == [0, 0, 16, 16] {
+            return self.transparency;
+        }
+        let min_u = u32::from(uv[0].min(uv[2]));
+        let min_v = u32::from(uv[1].min(uv[3]));
+        let max_u = u32::from(uv[0].max(uv[2]));
+        let max_v = u32::from(uv[1].max(uv[3]));
+        let x0 = ((min_u * self.width) / 16).min(self.width);
+        let y0 = ((min_v * self.height) / 16).min(self.height);
+        let x1 = max_u
+            .saturating_mul(self.width)
+            .div_ceil(16)
+            .min(self.width);
+        let y1 = max_v
+            .saturating_mul(self.height)
+            .div_ceil(16)
+            .min(self.height);
+        if x0 >= x1 || y0 >= y1 {
+            return TerrainTransparency::OPAQUE;
+        }
+
+        let mut transparency = TerrainTransparency::OPAQUE;
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let alpha = self.alpha[(y * self.width + x) as usize];
+                if alpha == 0 {
+                    transparency.has_transparent = true;
+                } else if alpha != 255 {
+                    transparency.has_translucent = true;
+                }
+            }
+        }
+        transparency
+    }
+}
+
 impl TerrainTextureState {
     fn from_layout(
         layout: &AtlasLayout,
+        block_models: Option<BlockModelCatalog>,
+        colormaps: Option<TerrainColorMaps>,
+        biome_colors: Option<BiomeColorCatalog>,
+    ) -> Self {
+        Self::from_layout_and_images(layout, &[], block_models, colormaps, biome_colors)
+    }
+
+    fn from_layout_and_images(
+        layout: &AtlasLayout,
+        images: &[SpriteImage],
         block_models: Option<BlockModelCatalog>,
         colormaps: Option<TerrainColorMaps>,
         biome_colors: Option<BiomeColorCatalog>,
@@ -63,6 +130,10 @@ impl TerrainTextureState {
             rects.push(terrain_uv_rect(layout, sprite));
             transparencies.push(terrain_transparency(sprite.transparency));
         }
+        let sprite_alphas = images
+            .iter()
+            .map(|image| (image.id.clone(), SpriteAlpha::from_image(image)))
+            .collect();
         let fallback_index = indices.get("minecraft:block/stone").copied().unwrap_or(0);
         Self {
             atlas: TerrainTextureAtlas {
@@ -74,6 +145,7 @@ impl TerrainTextureState {
             colormaps,
             biome_colors,
             transparencies,
+            sprite_alphas,
             fallback_index,
         }
     }
@@ -87,6 +159,13 @@ impl TerrainTextureState {
 
     fn texture_transparency(&self, texture_id: &str) -> TerrainTransparency {
         self.texture_index_transparency(self.texture_index(texture_id))
+    }
+
+    fn texture_uv_transparency(&self, texture_id: &str, uv: [u8; 4]) -> TerrainTransparency {
+        self.sprite_alphas
+            .get(texture_id)
+            .map(|alpha| alpha.model_uv_transparency(uv))
+            .unwrap_or_else(|| self.texture_transparency(texture_id))
     }
 
     fn texture_index_transparency(&self, texture_index: u32) -> TerrainTransparency {
@@ -357,7 +436,7 @@ impl TerrainTextureState {
         std::array::from_fn(|index| {
             model_box.face_textures[index]
                 .as_deref()
-                .map(|texture| self.texture_transparency(texture))
+                .map(|texture| self.texture_uv_transparency(texture, model_box.face_uvs[index]))
                 .unwrap_or(fallback[index])
                 .or(force_translucent(model_box.face_force_translucent[index]))
         })
@@ -580,8 +659,9 @@ fn try_load_terrain_textures(renderer: &mut bbb_renderer::Renderer) -> Result<Te
         biome_colors = biome_colors.as_ref().map_or(0, |colors| colors.len()),
         "loaded terrain texture atlas"
     );
-    Ok(TerrainTextureState::from_layout(
+    Ok(TerrainTextureState::from_layout_and_images(
         &atlas.layout,
+        &images,
         Some(block_models),
         colormaps,
         biome_colors,
