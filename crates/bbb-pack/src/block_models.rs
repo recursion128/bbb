@@ -17,7 +17,8 @@ use resolver::resolve_texture_alias;
 use rotation::{apply_variant_rotation, rotate_model_shape};
 use shape::{classify_model_shape, combine_model_shapes};
 pub use types::{
-    BlockFaceTextures, BlockModelBox, BlockModelFace, BlockModelShape, BlockRenderModel,
+    BlockFaceTextures, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelShape,
+    BlockRenderModel,
 };
 
 #[derive(Debug, Clone)]

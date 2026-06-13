@@ -5,7 +5,9 @@ use bbb_pack::{
     AtlasLayout, AtlasPacker, BiomeColorCatalog, BiomeColorProfile, BlockFaceTextures,
     BlockModelCatalog, BlockModelShape, GrassColorModifier, PackRoots, TerrainColorMaps,
 };
-use bbb_renderer::terrain::{TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainUvRect};
+use bbb_renderer::terrain::{
+    TerrainCross, TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainUvRect,
+};
 
 use crate::biome_tint::{
     apply_grass_color_modifier, biome_colormap_climate, is_dry_foliage_tinted_block,
@@ -200,7 +202,32 @@ impl TerrainTextureState {
         position: Option<BlockRenderPosition>,
     ) -> TerrainRenderShape {
         match shape {
-            BlockModelShape::Cross { shade } => TerrainRenderShape::Cross { shade },
+            BlockModelShape::Cross {
+                shade,
+                light_emission,
+            } => TerrainRenderShape::Cross {
+                shade,
+                light_emission,
+            },
+            BlockModelShape::Crosses(model_crosses) => TerrainRenderShape::Crosses(
+                model_crosses
+                    .into_iter()
+                    .map(|model_cross| TerrainCross {
+                        texture_indices: self
+                            .model_cross_texture_indices(&model_cross, fallback_texture_indices),
+                        tint: self.model_cross_face_tints(
+                            block_name,
+                            material,
+                            &model_cross,
+                            fallback_tint,
+                            biome_id,
+                            position,
+                        ),
+                        shade: model_cross.shade,
+                        light_emission: model_cross.light_emission,
+                    })
+                    .collect(),
+            ),
             BlockModelShape::Box(model_box) => TerrainRenderShape::Box {
                 from: model_box.from,
                 to: model_box.to,
@@ -208,6 +235,7 @@ impl TerrainTextureState {
                 face_uvs: model_box.face_uvs,
                 face_uv_rotations: model_box.face_uv_rotations,
                 face_shade: model_box.face_shade,
+                face_light_emission: model_box.face_light_emission,
                 face_cull: model_box.face_cull,
             },
             BlockModelShape::Boxes(model_boxes) => TerrainRenderShape::Boxes(
@@ -220,6 +248,7 @@ impl TerrainTextureState {
                         face_uvs: model_box.face_uvs,
                         face_uv_rotations: model_box.face_uv_rotations,
                         face_shade: model_box.face_shade,
+                        face_light_emission: model_box.face_light_emission,
                         face_cull: model_box.face_cull,
                         texture_indices: self
                             .model_box_texture_indices(&model_box, fallback_texture_indices),
@@ -251,6 +280,19 @@ impl TerrainTextureState {
         })
     }
 
+    fn model_cross_texture_indices(
+        &self,
+        model_cross: &bbb_pack::BlockModelCross,
+        fallback: [u32; 6],
+    ) -> [u32; 6] {
+        std::array::from_fn(|index| {
+            model_cross.face_textures[index]
+                .as_deref()
+                .map(|texture| self.texture_index(texture))
+                .unwrap_or(fallback[index])
+        })
+    }
+
     fn fallback_face_tints(
         &self,
         block_name: &str,
@@ -276,6 +318,30 @@ impl TerrainTextureState {
                     block_name,
                     material,
                     model_box.face_tint_indices[index],
+                    biome_id,
+                    position,
+                )
+            } else {
+                fallback[index]
+            }
+        })
+    }
+
+    fn model_cross_face_tints(
+        &self,
+        block_name: &str,
+        material: bbb_world::TerrainMaterialClass,
+        model_cross: &bbb_pack::BlockModelCross,
+        fallback: [TerrainTint; 6],
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> [TerrainTint; 6] {
+        std::array::from_fn(|index| {
+            if model_cross.face_textures[index].is_some() {
+                self.block_tint(
+                    block_name,
+                    material,
+                    model_cross.face_tint_indices[index],
                     biome_id,
                     position,
                 )
@@ -495,6 +561,7 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         face_uvs,
         face_uv_rotations: [0; 6],
         face_shade: [true; 6],
+        face_light_emission: [0; 6],
         face_cull: [true; 6],
     }
 }

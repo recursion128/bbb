@@ -35,6 +35,7 @@ fn water_level_shape_uses_cropped_fluid_box() {
             ],
             face_uv_rotations: [0; 6],
             face_shade: [true; 6],
+            face_light_emission: [0; 6],
             face_cull: [true; 6],
         }
     );
@@ -117,6 +118,62 @@ fn model_boxes_preserve_per_element_textures_and_tints() {
     assert!(!boxes[1].face_shade[north]);
     assert_eq!(
         boxes[1].tint[north],
+        TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59)
+    );
+}
+
+#[test]
+fn model_crosses_preserve_per_layer_textures_tints_and_light() {
+    let mut texture_state = TerrainTextureState::default();
+    texture_state
+        .indices
+        .insert("minecraft:block/base".to_string(), 1);
+    texture_state
+        .indices
+        .insert("minecraft:block/emissive".to_string(), 2);
+    let north = bbb_pack::BlockModelFace::North.index();
+    let east = bbb_pack::BlockModelFace::East.index();
+    let mut base_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
+    base_textures[north] = Some("minecraft:block/base".to_string());
+    let mut emissive_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
+    emissive_textures[east] = Some("minecraft:block/emissive".to_string());
+    let mut emissive_tints = [None; 6];
+    emissive_tints[east] = Some(0);
+
+    let shape = texture_state.terrain_render_shape_for_block(
+        "minecraft:grass_block",
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Opaque,
+        BlockModelShape::Crosses(vec![
+            bbb_pack::BlockModelCross {
+                face_textures: base_textures,
+                face_tint_indices: [None; 6],
+                shade: false,
+                light_emission: 0,
+            },
+            bbb_pack::BlockModelCross {
+                face_textures: emissive_textures,
+                face_tint_indices: emissive_tints,
+                shade: false,
+                light_emission: 15,
+            },
+        ]),
+        [0; 6],
+        [TerrainTint::WHITE; 6],
+        Some(4),
+        None,
+    );
+
+    let TerrainRenderShape::Crosses(crosses) = shape else {
+        panic!("expected cross render layers");
+    };
+    assert_eq!(crosses.len(), 2);
+    assert_eq!(crosses[0].texture_indices[north], 1);
+    assert_eq!(crosses[0].light_emission, 0);
+    assert_eq!(crosses[1].texture_indices[east], 2);
+    assert_eq!(crosses[1].light_emission, 15);
+    assert_eq!(
+        crosses[1].tint[east],
         TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59)
     );
 }
@@ -378,6 +435,7 @@ fn block_model_box_with_face_texture(
         face_uvs: [[0, 0, 16, 16]; 6],
         face_uv_rotations: [0; 6],
         face_shade: [true; 6],
+        face_light_emission: [0; 6],
         face_cull: [false; 6],
         face_tint_indices,
         face_textures,

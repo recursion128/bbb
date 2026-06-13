@@ -1,4 +1,4 @@
-use super::{BlockFaceTextures, BlockModelBox, BlockModelFace, BlockModelShape};
+use super::{BlockFaceTextures, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelShape};
 
 pub(super) fn apply_variant_rotation(
     local: BlockFaceTextures,
@@ -33,6 +33,12 @@ pub(super) fn rotate_model_shape(
             model_boxes
                 .into_iter()
                 .map(|model_box| rotate_model_box(model_box, x_degrees, y_degrees))
+                .collect(),
+        ),
+        BlockModelShape::Crosses(model_crosses) => BlockModelShape::Crosses(
+            model_crosses
+                .into_iter()
+                .map(|model_cross| rotate_model_cross(model_cross, x_degrees, y_degrees))
                 .collect(),
         ),
         BlockModelShape::Cube | BlockModelShape::Cross { .. } | BlockModelShape::Custom => shape,
@@ -94,6 +100,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
     let mut face_uvs = [[0, 0, 16, 16]; 6];
     let mut face_uv_rotations = [0; 6];
     let mut face_shade = [true; 6];
+    let mut face_light_emission = [0; 6];
     let mut face_cull = [false; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
@@ -103,6 +110,7 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
         face_uvs[target.index()] = model_box.face_uvs[face.index()];
         face_uv_rotations[target.index()] = model_box.face_uv_rotations[face.index()];
         face_shade[target.index()] = model_box.face_shade[face.index()];
+        face_light_emission[target.index()] = model_box.face_light_emission[face.index()];
         face_cull[target.index()] = model_box.face_cull[face.index()];
         face_tint_indices[target.index()] = model_box.face_tint_indices[face.index()];
         face_textures[target.index()] = model_box.face_textures[face.index()].clone();
@@ -115,9 +123,31 @@ fn rotate_model_box(model_box: BlockModelBox, x_degrees: i32, y_degrees: i32) ->
         face_uvs,
         face_uv_rotations,
         face_shade,
+        face_light_emission,
         face_cull,
         face_tint_indices,
         face_textures,
+    }
+}
+
+fn rotate_model_cross(
+    model_cross: BlockModelCross,
+    x_degrees: i32,
+    y_degrees: i32,
+) -> BlockModelCross {
+    let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
+    let mut face_tint_indices = [None; 6];
+    for face in BlockModelFace::ALL {
+        let target = face.rotate(x_degrees, y_degrees);
+        face_textures[target.index()] = model_cross.face_textures[face.index()].clone();
+        face_tint_indices[target.index()] = model_cross.face_tint_indices[face.index()];
+    }
+
+    BlockModelCross {
+        face_textures,
+        face_tint_indices,
+        shade: model_cross.shade,
+        light_emission: model_cross.light_emission,
     }
 }
 

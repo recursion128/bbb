@@ -42,7 +42,9 @@ pub enum TerrainRenderShape {
     Cube,
     Cross {
         shade: bool,
+        light_emission: u8,
     },
+    Crosses(Vec<TerrainCross>),
     Box {
         from: [u8; 3],
         to: [u8; 3],
@@ -50,6 +52,7 @@ pub enum TerrainRenderShape {
         face_uvs: [[u8; 4]; 6],
         face_uv_rotations: [u8; 6],
         face_shade: [bool; 6],
+        face_light_emission: [u8; 6],
         face_cull: [bool; 6],
     },
     Boxes(Vec<TerrainBox>),
@@ -63,9 +66,18 @@ pub struct TerrainBox {
     pub face_uvs: [[u8; 4]; 6],
     pub face_uv_rotations: [u8; 6],
     pub face_shade: [bool; 6],
+    pub face_light_emission: [u8; 6],
     pub face_cull: [bool; 6],
     pub texture_indices: [u32; 6],
     pub tint: [TerrainTint; 6],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainCross {
+    pub texture_indices: [u32; 6],
+    pub tint: [TerrainTint; 6],
+    pub shade: bool,
+    pub light_emission: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

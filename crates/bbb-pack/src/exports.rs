@@ -1,7 +1,7 @@
 pub use crate::atlas::{AtlasImage, AtlasLayout, AtlasPacker, AtlasRect, AtlasSprite};
 pub use crate::block_models::{
-    BlockFaceTextures, BlockModelBox, BlockModelCatalog, BlockModelFace, BlockModelShape,
-    BlockRenderModel,
+    BlockFaceTextures, BlockModelBox, BlockModelCatalog, BlockModelCross, BlockModelFace,
+    BlockModelShape, BlockRenderModel,
 };
 pub use crate::colors::{
     BiomeColorCatalog, BiomeColorProfile, ColorMapImage, GrassColorModifier, TerrainColorMaps,

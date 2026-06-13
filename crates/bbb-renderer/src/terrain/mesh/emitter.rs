@@ -59,6 +59,7 @@ pub(super) fn emit_cross(
     tint: [TerrainTint; 6],
     texture_indices: [u32; 6],
     shade: bool,
+    light_emission: u8,
     atlas: &TerrainTextureAtlas,
 ) {
     for (face, normal, corners) in CROSS_FACES {
@@ -75,6 +76,7 @@ pub(super) fn emit_cross(
             normal,
             corners,
             shade,
+            light_emission,
         );
     }
 }
@@ -96,6 +98,7 @@ pub(super) fn emit_box(
     face_uvs: [[u8; 4]; 6],
     face_uv_rotations: [u8; 6],
     face_shade: [bool; 6],
+    face_light_emission: [u8; 6],
     face_cull: [bool; 6],
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
@@ -148,6 +151,7 @@ pub(super) fn emit_box(
             box_face_corners(face.face, min, max),
             face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
             face_shade[face_index],
+            face_light_emission[face_index],
         );
     }
 }
@@ -165,6 +169,7 @@ fn emit_custom_quad(
     normal: [f32; 3],
     corners: [[f32; 3]; 4],
     shade: bool,
+    light_emission: u8,
 ) {
     emit_custom_quad_with_uvs(
         mesh,
@@ -180,6 +185,7 @@ fn emit_custom_quad(
         corners,
         [[0.0, 1.0], [0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
         shade,
+        light_emission,
     );
 }
 
@@ -197,9 +203,11 @@ fn emit_custom_quad_with_uvs(
     corners: [[f32; 3]; 4],
     uvs: [[f32; 2]; 4],
     shade: bool,
+    light_emission: u8,
 ) {
     let base = mesh.vertices.len() as u32;
     let shade = if shade { 1.0 } else { 0.0 };
+    let light = shader_light_with_emission(light, light_emission);
     for (corner, uv) in corners.into_iter().zip(uvs) {
         mesh.vertices.push(TerrainVertex {
             position: [
@@ -209,7 +217,7 @@ fn emit_custom_quad_with_uvs(
             ],
             normal,
             uv: uv_rect.map(uv),
-            light: light.as_shader_light(),
+            light,
             tint: tint.as_shader_tint(),
             shade,
             block_state_id,
@@ -225,4 +233,10 @@ fn emit_custom_quad_with_uvs(
         }
         _ => {}
     }
+}
+
+fn shader_light_with_emission(light: TerrainLight, light_emission: u8) -> [f32; 2] {
+    let mut shader_light = light.as_shader_light();
+    shader_light[0] = shader_light[0].max(light_emission.min(15) as f32 / 15.0);
+    shader_light
 }

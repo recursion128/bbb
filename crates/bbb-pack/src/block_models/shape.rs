@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use super::{
-    resolve_texture_alias, BlockModelBox, BlockModelFace, BlockModelShape, RawBlockElement,
+    resolve_texture_alias, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelShape,
+    RawBlockElement,
 };
 
 pub(super) fn classify_model_shape(
@@ -32,9 +33,12 @@ pub(super) fn classify_model_shape(
 
     if has_element_rotation {
         if has_cross_faces {
-            return BlockModelShape::Cross {
-                shade: cross_shade(elements),
-            };
+            if let Some(shape) = single_cross_shape(elements) {
+                return shape;
+            }
+        }
+        if let Some(model_crosses) = multi_cross_shape(elements, textures) {
+            return BlockModelShape::Crosses(model_crosses);
         }
         return BlockModelShape::Custom;
     }
@@ -50,9 +54,9 @@ pub(super) fn classify_model_shape(
     }
 
     if has_cross_faces {
-        return BlockModelShape::Cross {
-            shade: cross_shade(elements),
-        };
+        if let Some(shape) = single_cross_shape(elements) {
+            return shape;
+        }
     }
 
     if let Some(model_box) = single_box_shape(elements, textures) {
@@ -88,7 +92,9 @@ pub(super) fn combine_model_shapes(shapes: Vec<BlockModelShape>) -> BlockModelSh
             BlockModelShape::Box(model_box) => boxes.push(model_box),
             BlockModelShape::Boxes(model_boxes) => boxes.extend(model_boxes),
             BlockModelShape::Cube => return BlockModelShape::Cube,
-            BlockModelShape::Cross { .. } | BlockModelShape::Custom => {
+            BlockModelShape::Cross { .. }
+            | BlockModelShape::Crosses(_)
+            | BlockModelShape::Custom => {
                 return BlockModelShape::Custom;
             }
         }
@@ -155,10 +161,12 @@ fn element_box_shape(
     let mut face_uvs = [[0, 0, 16, 16]; 6];
     let mut face_uv_rotations = [0; 6];
     let mut face_shade = [true; 6];
+    let mut face_light_emission = [0; 6];
     let mut face_cull = [false; 6];
     let mut face_tint_indices = [None; 6];
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
     let element_shade = element_shade(element);
+    let element_light_emission = element_light_emission(element)?;
     for (face_name, raw_face) in &element.faces {
         let face = BlockModelFace::from_name(face_name)?;
         face_present[face.index()] = true;
@@ -171,6 +179,7 @@ fn element_box_shape(
             .map(quantize_face_uv_rotation)
             .unwrap_or(Some(0))?;
         face_shade[face.index()] = element_shade;
+        face_light_emission[face.index()] = element_light_emission;
         face_cull[face.index()] = raw_face
             .cullface
             .as_deref()
@@ -187,6 +196,7 @@ fn element_box_shape(
         face_uvs,
         face_uv_rotations,
         face_shade,
+        face_light_emission,
         face_cull,
         face_tint_indices,
         face_textures,
@@ -220,16 +230,116 @@ fn quantize_face_uv_rotation(degrees: i32) -> Option<u8> {
     }
 }
 
+fn quantize_light_emission(value: i32) -> Option<u8> {
+    if (0..=15).contains(&value) {
+        Some(value as u8)
+    } else {
+        None
+    }
+}
+
 fn has_box_metadata_transform(element: &RawBlockElement) -> bool {
-    !element_shade(element) || has_face_uv_transform(element)
+    !element_shade(element)
+        || element.light_emission.unwrap_or(0) != 0
+        || has_face_uv_transform(element)
+}
+
+fn single_cross_shape(elements: &[RawBlockElement]) -> Option<BlockModelShape> {
+    Some(BlockModelShape::Cross {
+        shade: cross_shade(elements),
+        light_emission: cross_light_emission(elements)?,
+    })
+}
+
+fn multi_cross_shape(
+    elements: &[RawBlockElement],
+    textures: &BTreeMap<String, String>,
+) -> Option<Vec<BlockModelCross>> {
+    if elements.len() <= 2 {
+        return None;
+    }
+
+    let mut crosses = Vec::new();
+    let mut current = empty_cross();
+    for element in elements {
+        let element_light_emission = element_light_emission(element)?;
+        let mut element_faces = [false; 6];
+        let mut element_face_count = 0;
+        for (face_name, raw_face) in &element.faces {
+            let face = BlockModelFace::from_name(face_name)?;
+            if matches!(face, BlockModelFace::Down | BlockModelFace::Up) {
+                return None;
+            }
+            let index = face.index();
+            if current.face_textures[index].is_some() {
+                return None;
+            }
+            element_faces[index] = true;
+            element_face_count += 1;
+            current.face_textures[index] = resolve_texture_alias(textures, &raw_face.texture);
+            current.face_tint_indices[index] = raw_face.tintindex;
+        }
+
+        let has_north_south = element_faces[BlockModelFace::North.index()]
+            && element_faces[BlockModelFace::South.index()];
+        let has_west_east = element_faces[BlockModelFace::West.index()]
+            && element_faces[BlockModelFace::East.index()];
+        if element_face_count != 2 || !(has_north_south || has_west_east) {
+            return None;
+        }
+
+        current.shade &= element_shade(element);
+        current.light_emission = current.light_emission.max(element_light_emission);
+        if is_complete_cross(&current) {
+            crosses.push(current);
+            current = empty_cross();
+        }
+    }
+
+    if has_any_cross_face(&current) || crosses.len() <= 1 {
+        return None;
+    }
+    Some(crosses)
+}
+
+fn empty_cross() -> BlockModelCross {
+    BlockModelCross {
+        face_textures: std::array::from_fn(|_| None),
+        face_tint_indices: [None; 6],
+        shade: true,
+        light_emission: 0,
+    }
+}
+
+fn is_complete_cross(cross: &BlockModelCross) -> bool {
+    cross.face_textures[BlockModelFace::North.index()].is_some()
+        && cross.face_textures[BlockModelFace::South.index()].is_some()
+        && cross.face_textures[BlockModelFace::West.index()].is_some()
+        && cross.face_textures[BlockModelFace::East.index()].is_some()
+}
+
+fn has_any_cross_face(cross: &BlockModelCross) -> bool {
+    cross.face_textures.iter().any(Option::is_some)
 }
 
 fn cross_shade(elements: &[RawBlockElement]) -> bool {
     elements.iter().all(element_shade)
 }
 
+fn cross_light_emission(elements: &[RawBlockElement]) -> Option<u8> {
+    let mut light_emission = 0;
+    for element in elements {
+        light_emission = light_emission.max(element_light_emission(element)?);
+    }
+    Some(light_emission)
+}
+
 fn element_shade(element: &RawBlockElement) -> bool {
     element.shade.unwrap_or(true)
+}
+
+fn element_light_emission(element: &RawBlockElement) -> Option<u8> {
+    quantize_light_emission(element.light_emission.unwrap_or(0))
 }
 
 fn has_face_uv_transform(element: &RawBlockElement) -> bool {

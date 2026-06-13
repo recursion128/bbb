@@ -74,7 +74,10 @@ pub(super) fn build_chunk_mesh_with_lookup(
                 let world_y = snapshot.min_y + y;
                 let world_z = snapshot.chunk_z * 16 + z;
                 match &cell.render_shape {
-                    TerrainRenderShape::Cross { shade } => {
+                    TerrainRenderShape::Cross {
+                        shade,
+                        light_emission,
+                    } => {
                         emit_cross(
                             &mut mesh,
                             world_x,
@@ -86,8 +89,28 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             cell.tint,
                             cell.texture_indices,
                             *shade,
+                            *light_emission,
                             atlas,
                         );
+                        continue;
+                    }
+                    TerrainRenderShape::Crosses(model_crosses) => {
+                        for model_cross in model_crosses {
+                            emit_cross(
+                                &mut mesh,
+                                world_x,
+                                world_y,
+                                world_z,
+                                cell.block_state_id,
+                                cell.material,
+                                cell.light,
+                                model_cross.tint,
+                                model_cross.texture_indices,
+                                model_cross.shade,
+                                model_cross.light_emission,
+                                atlas,
+                            );
+                        }
                         continue;
                     }
                     TerrainRenderShape::Box {
@@ -97,6 +120,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         face_uvs,
                         face_uv_rotations,
                         face_shade,
+                        face_light_emission,
                         face_cull,
                     } => {
                         emit_box(
@@ -116,6 +140,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             *face_uvs,
                             *face_uv_rotations,
                             *face_shade,
+                            *face_light_emission,
                             *face_cull,
                             lookup,
                             mode,
@@ -141,6 +166,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 model_box.face_uvs,
                                 model_box.face_uv_rotations,
                                 model_box.face_shade,
+                                model_box.face_light_emission,
                                 model_box.face_cull,
                                 lookup,
                                 mode,

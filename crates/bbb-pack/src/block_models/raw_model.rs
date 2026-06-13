@@ -42,6 +42,8 @@ pub(super) struct RawBlockElement {
     #[serde(default)]
     pub(super) shade: Option<bool>,
     #[serde(default)]
+    pub(super) light_emission: Option<i32>,
+    #[serde(default)]
     pub(super) faces: BTreeMap<String, RawBlockModelFace>,
 }
 

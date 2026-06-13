@@ -211,7 +211,13 @@ fn block_model_catalog_classifies_cross_models() {
         .block_render_model("minecraft:dandelion", &properties)
         .unwrap();
 
-    assert_eq!(render_model.shape, BlockModelShape::Cross { shade: false });
+    assert_eq!(
+        render_model.shape,
+        BlockModelShape::Cross {
+            shade: false,
+            light_emission: 0,
+        }
+    );
     assert_eq!(
         render_model.face_textures.get(BlockModelFace::North),
         "minecraft:block/dandelion"
@@ -219,6 +225,107 @@ fn block_model_catalog_classifies_cross_models() {
     assert_eq!(
         render_model.face_textures.get(BlockModelFace::Up),
         "minecraft:block/dandelion"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_preserves_emissive_cross_layers() {
+    let root = unique_temp_dir("block-model-cross-emissive");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_flower.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/test_flower" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("test_flower.json"),
+        r##"{
+            "textures": {
+                "cross": "minecraft:block/test_flower",
+                "cross_emissive": "minecraft:block/test_flower_emissive"
+            },
+            "elements": [
+                {
+                    "from": [0.8, 0, 8],
+                    "to": [15.2, 16, 8],
+                    "rotation": { "origin": [8, 8, 8], "axis": "y", "angle": 45, "rescale": true },
+                    "shade": false,
+                    "faces": {
+                        "north": { "texture": "#cross" },
+                        "south": { "texture": "#cross" }
+                    }
+                },
+                {
+                    "from": [8, 0, 0.8],
+                    "to": [8, 16, 15.2],
+                    "rotation": { "origin": [8, 8, 8], "axis": "y", "angle": 45, "rescale": true },
+                    "shade": false,
+                    "faces": {
+                        "west": { "texture": "#cross" },
+                        "east": { "texture": "#cross" }
+                    }
+                },
+                {
+                    "from": [0.8, 0, 8],
+                    "to": [15.2, 16, 8],
+                    "rotation": { "origin": [8, 8, 8], "axis": "y", "angle": 45, "rescale": true },
+                    "shade": false,
+                    "light_emission": 15,
+                    "faces": {
+                        "north": { "texture": "#cross_emissive" },
+                        "south": { "texture": "#cross_emissive" }
+                    }
+                },
+                {
+                    "from": [8, 0, 0.8],
+                    "to": [8, 16, 15.2],
+                    "rotation": { "origin": [8, 8, 8], "axis": "y", "angle": 45, "rescale": true },
+                    "shade": false,
+                    "light_emission": 15,
+                    "faces": {
+                        "west": { "texture": "#cross_emissive" },
+                        "east": { "texture": "#cross_emissive" }
+                    }
+                }
+            ]
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let render_model = catalog
+        .block_render_model("minecraft:test_flower", &BTreeMap::new())
+        .unwrap();
+    let BlockModelShape::Crosses(crosses) = render_model.shape else {
+        panic!("emissive cross should preserve base and emissive layers");
+    };
+
+    assert_eq!(crosses.len(), 2);
+    assert!(!crosses[0].shade);
+    assert_eq!(crosses[0].light_emission, 0);
+    assert_eq!(
+        crosses[0].face_textures[BlockModelFace::North.index()].as_deref(),
+        Some("minecraft:block/test_flower")
+    );
+    assert!(!crosses[1].shade);
+    assert_eq!(crosses[1].light_emission, 15);
+    assert_eq!(
+        crosses[1].face_textures[BlockModelFace::East.index()].as_deref(),
+        Some("minecraft:block/test_flower_emissive")
     );
 
     std::fs::remove_dir_all(root).unwrap();
@@ -777,7 +884,13 @@ fn loads_local_vanilla_block_model_catalog() {
     let flower = catalog
         .block_render_model("minecraft:dandelion", &BTreeMap::new())
         .unwrap();
-    assert_eq!(flower.shape, BlockModelShape::Cross { shade: false });
+    assert_eq!(
+        flower.shape,
+        BlockModelShape::Cross {
+            shade: false,
+            light_emission: 0,
+        }
+    );
     assert_eq!(
         flower.face_textures.get(BlockModelFace::North),
         "minecraft:block/dandelion"
