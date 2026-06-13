@@ -113,6 +113,18 @@ impl BlockOutlineBox {
         min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
         max: [15.0 / 16.0, 1.0, 15.0 / 16.0],
     };
+    pub(super) const CACTUS: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 1.0, 15.0 / 16.0],
+    };
+    pub(super) const SUGAR_CANE: Self = Self {
+        min: [2.0 / 16.0, 0.0, 2.0 / 16.0],
+        max: [14.0 / 16.0, 1.0, 14.0 / 16.0],
+    };
+    pub(super) const LILY_PAD: Self = Self {
+        min: [1.0 / 16.0, 0.0, 1.0 / 16.0],
+        max: [15.0 / 16.0, 1.5 / 16.0, 15.0 / 16.0],
+    };
     pub(super) const SIGN: Self = Self {
         min: [4.0 / 16.0, 0.0, 4.0 / 16.0],
         max: [12.0 / 16.0, 1.0, 12.0 / 16.0],

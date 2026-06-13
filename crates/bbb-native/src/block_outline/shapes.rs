@@ -537,6 +537,9 @@ fn simple_vegetation_outline_box(block_name: &str) -> Option<BlockOutlineBox> {
         "minecraft:bush" => Some(BlockOutlineBox::BUSH),
         "minecraft:short_dry_grass" => Some(BlockOutlineBox::SHORT_DRY_GRASS),
         "minecraft:tall_dry_grass" => Some(BlockOutlineBox::TALL_DRY_GRASS),
+        "minecraft:cactus" => Some(BlockOutlineBox::CACTUS),
+        "minecraft:sugar_cane" => Some(BlockOutlineBox::SUGAR_CANE),
+        "minecraft:lily_pad" => Some(BlockOutlineBox::LILY_PAD),
         _ => None,
     }
 }

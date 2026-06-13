@@ -47,6 +47,18 @@ fn outline_shape_uses_vanilla_simple_vegetation_shapes() {
         outline_shape_for_block(Some("minecraft:tall_dry_grass"), &BTreeMap::new()),
         Some(BlockOutlineShape::single(BlockOutlineBox::TALL_DRY_GRASS))
     );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:cactus"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::CACTUS))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:sugar_cane"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::SUGAR_CANE))
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:lily_pad"), &BTreeMap::new()),
+        Some(BlockOutlineShape::single(BlockOutlineBox::LILY_PAD))
+    );
 }
 
 #[test]
@@ -145,6 +157,50 @@ fn crop_outline_clip_uses_age_height() {
         ),
         Some(BlockOutlineHit {
             distance: 1.6875,
+            face: ProtocolDirection::Up,
+            inside: false,
+        })
+    );
+}
+
+#[test]
+fn natural_column_outline_clip_uses_vanilla_width() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(Some("minecraft:cactus"), &BTreeMap::new()),
+    };
+
+    assert_eq!(
+        target.clip(
+            [-1.0, 0.5, 0.5],
+            [1.0, 0.0, 0.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0625,
+            face: ProtocolDirection::West,
+            inside: false,
+        })
+    );
+}
+
+#[test]
+fn lily_pad_outline_clip_uses_thin_vanilla_height() {
+    let target = BlockOutlineTarget {
+        material: TerrainMaterialClass::Opaque,
+        outline: outline_shape_for_block(Some("minecraft:lily_pad"), &BTreeMap::new()),
+    };
+
+    assert_eq!(
+        target.clip(
+            [0.5, 2.0, 0.5],
+            [0.0, -1.0, 0.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.90625,
             face: ProtocolDirection::Up,
             inside: false,
         })
