@@ -132,13 +132,14 @@ fn convert_terrain_snapshot(
                 z: chunk_origin_z + local_z,
             };
             let world_material = cell.material;
-            let (texture_indices, tint, render_shape) = textures.block_render_data(
-                cell.block_name.as_deref(),
-                &cell.block_properties,
-                world_material,
-                cell.biome_id,
-                Some(position),
-            );
+            let (texture_indices, tint, face_force_translucent, render_shape) = textures
+                .block_render_data(
+                    cell.block_name.as_deref(),
+                    &cell.block_properties,
+                    world_material,
+                    cell.biome_id,
+                    Some(position),
+                );
             TerrainCell {
                 block_state_id: cell.block_state_id,
                 texture_indices,
@@ -157,6 +158,7 @@ fn convert_terrain_snapshot(
                     block: cell.light.block,
                 },
                 tint,
+                face_force_translucent,
             }
         })
         .collect();

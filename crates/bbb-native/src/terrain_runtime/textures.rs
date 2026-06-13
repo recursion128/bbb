@@ -86,11 +86,12 @@ impl TerrainTextureState {
         material: bbb_world::TerrainMaterialClass,
         biome_id: Option<i32>,
         position: Option<BlockRenderPosition>,
-    ) -> ([u32; 6], [TerrainTint; 6], TerrainRenderShape) {
+    ) -> ([u32; 6], [TerrainTint; 6], [bool; 6], TerrainRenderShape) {
         let Some(block_name) = block_name else {
             return (
                 [self.fallback_index; 6],
                 [TerrainTint::WHITE; 6],
+                [false; 6],
                 TerrainRenderShape::Cube,
             );
         };
@@ -113,6 +114,7 @@ impl TerrainTextureState {
             return (
                 texture_indices,
                 tint,
+                model.face_textures.force_translucent,
                 self.terrain_render_shape_for_block(
                     block_name,
                     properties,
@@ -132,6 +134,7 @@ impl TerrainTextureState {
         (
             texture_indices,
             tint,
+            [false; 6],
             self.terrain_render_shape_for_block(
                 block_name,
                 properties,
@@ -227,6 +230,7 @@ impl TerrainTextureState {
                             biome_id,
                             position,
                         ),
+                        face_force_translucent: model_cross.face_force_translucent,
                         shade: model_cross.shade,
                         light_emission: model_cross.light_emission,
                     })
@@ -241,6 +245,7 @@ impl TerrainTextureState {
                 face_shade: model_box.face_shade,
                 face_light_emission: model_box.face_light_emission,
                 face_cull: model_box_cull_faces(model_box.face_cull),
+                face_force_translucent: model_box.face_force_translucent,
             },
             BlockModelShape::Boxes(model_boxes) => TerrainRenderShape::Boxes(
                 model_boxes
@@ -264,6 +269,7 @@ impl TerrainTextureState {
                             biome_id,
                             position,
                         ),
+                        face_force_translucent: model_box.face_force_translucent,
                     })
                     .collect(),
             ),
@@ -577,6 +583,7 @@ fn fluid_box_shape(height: u8) -> TerrainRenderShape {
         face_shade: [true; 6],
         face_light_emission: [0; 6],
         face_cull: all_terrain_face_cull(),
+        face_force_translucent: [false; 6],
     }
 }
 

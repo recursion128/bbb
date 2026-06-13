@@ -37,6 +37,7 @@ fn water_level_shape_uses_cropped_fluid_box() {
             face_shade: [true; 6],
             face_light_emission: [0; 6],
             face_cull: all_terrain_face_cull(),
+            face_force_translucent: [false; 6],
         }
     );
 }
@@ -120,6 +121,7 @@ fn model_boxes_preserve_per_element_textures_and_tints() {
         Some(0),
     );
     overlay.face_shade[bbb_pack::BlockModelFace::North.index()] = false;
+    overlay.face_force_translucent[bbb_pack::BlockModelFace::North.index()] = true;
 
     let shape = texture_state.terrain_render_shape_for_block(
         "minecraft:grass_block",
@@ -140,6 +142,7 @@ fn model_boxes_preserve_per_element_textures_and_tints() {
     assert_eq!(boxes[0].tint[north], TerrainTint::WHITE);
     assert_eq!(boxes[1].texture_indices[north], 2);
     assert!(!boxes[1].face_shade[north]);
+    assert!(boxes[1].face_force_translucent[north]);
     assert_eq!(
         boxes[1].tint[north],
         TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59)
@@ -163,6 +166,8 @@ fn model_crosses_preserve_per_layer_textures_tints_and_light() {
     emissive_textures[east] = Some("minecraft:block/emissive".to_string());
     let mut emissive_tints = [None; 6];
     emissive_tints[east] = Some(0);
+    let mut emissive_force_translucent = [false; 6];
+    emissive_force_translucent[east] = true;
 
     let shape = texture_state.terrain_render_shape_for_block(
         "minecraft:grass_block",
@@ -179,7 +184,7 @@ fn model_crosses_preserve_per_layer_textures_tints_and_light() {
             bbb_pack::BlockModelCross {
                 face_textures: emissive_textures,
                 face_tint_indices: emissive_tints,
-                face_force_translucent: [false; 6],
+                face_force_translucent: emissive_force_translucent,
                 shade: false,
                 light_emission: 15,
             },
@@ -198,6 +203,7 @@ fn model_crosses_preserve_per_layer_textures_tints_and_light() {
     assert_eq!(crosses[0].light_emission, 0);
     assert_eq!(crosses[1].texture_indices[east], 2);
     assert_eq!(crosses[1].light_emission, 15);
+    assert!(crosses[1].face_force_translucent[east]);
     assert_eq!(
         crosses[1].tint[east],
         TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59)

@@ -4,7 +4,7 @@ mod geometry;
 use std::collections::HashMap;
 
 use self::{
-    emitter::{emit_box, emit_cross, emit_face},
+    emitter::{effective_face_material, emit_box, emit_cross, emit_face},
     geometry::FACES,
 };
 use super::{
@@ -66,7 +66,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                 let cell = snapshot
                     .cell(x, y, z)
                     .expect("in-bounds terrain cell exists");
-                if !mode.is_meshed(cell.material) {
+                if !mode.is_meshed(cell.material) && !has_forced_translucent_quads(cell) {
                     continue;
                 }
 
@@ -88,9 +88,11 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             cell.light,
                             cell.tint,
                             cell.texture_indices,
+                            cell.face_force_translucent,
                             *shade,
                             *light_emission,
                             atlas,
+                            mode,
                         );
                         continue;
                     }
@@ -106,9 +108,11 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 cell.light,
                                 model_cross.tint,
                                 model_cross.texture_indices,
+                                model_cross.face_force_translucent,
                                 model_cross.shade,
                                 model_cross.light_emission,
                                 atlas,
+                                mode,
                             );
                         }
                         continue;
@@ -122,6 +126,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         face_shade,
                         face_light_emission,
                         face_cull,
+                        face_force_translucent,
                     } => {
                         emit_box(
                             &mut mesh,
@@ -142,6 +147,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                             *face_shade,
                             *face_light_emission,
                             *face_cull,
+                            *face_force_translucent,
                             lookup,
                             mode,
                         );
@@ -168,6 +174,7 @@ pub(super) fn build_chunk_mesh_with_lookup(
                                 model_box.face_shade,
                                 model_box.face_light_emission,
                                 model_box.face_cull,
+                                model_box.face_force_translucent,
                                 lookup,
                                 mode,
                             );
@@ -178,10 +185,18 @@ pub(super) fn build_chunk_mesh_with_lookup(
                 }
 
                 for face in FACES {
+                    let face_index = face.face.index();
+                    let face_material = effective_face_material(
+                        cell.material,
+                        cell.face_force_translucent[face_index],
+                    );
+                    if !mode.is_meshed(face_material) {
+                        continue;
+                    }
                     let neighbor =
                         lookup.cell(world_x + face.dx, world_y + face.dy, world_z + face.dz);
                     if neighbor
-                        .map(|neighbor| mode.culls_face_between(cell.material, neighbor.material))
+                        .map(|neighbor| mode.culls_face_between(face_material, neighbor.material))
                         .unwrap_or(false)
                     {
                         mesh.culled_faces += 1;
@@ -193,10 +208,10 @@ pub(super) fn build_chunk_mesh_with_lookup(
                         world_y,
                         world_z,
                         cell.block_state_id,
-                        cell.material,
+                        face_material,
                         cell.light,
-                        cell.tint[face.face.index()],
-                        atlas.rect(cell.texture_indices[face.face.index()]),
+                        cell.tint[face_index],
+                        atlas.rect(cell.texture_indices[face_index]),
                         face,
                     );
                 }
@@ -204,6 +219,29 @@ pub(super) fn build_chunk_mesh_with_lookup(
         }
     }
     mesh
+}
+
+fn has_forced_translucent_quads(cell: &TerrainCell) -> bool {
+    cell.face_force_translucent.iter().any(|forced| *forced)
+        || match &cell.render_shape {
+            TerrainRenderShape::Box {
+                face_force_translucent,
+                ..
+            } => face_force_translucent.iter().any(|forced| *forced),
+            TerrainRenderShape::Boxes(model_boxes) => model_boxes.iter().any(|model_box| {
+                model_box
+                    .face_force_translucent
+                    .iter()
+                    .any(|forced| *forced)
+            }),
+            TerrainRenderShape::Crosses(model_crosses) => model_crosses.iter().any(|model_cross| {
+                model_cross
+                    .face_force_translucent
+                    .iter()
+                    .any(|forced| *forced)
+            }),
+            TerrainRenderShape::Cube | TerrainRenderShape::Cross { .. } => false,
+        }
 }
 
 pub(super) struct TerrainChunkLookup<'a> {

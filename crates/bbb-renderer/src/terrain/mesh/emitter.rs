@@ -58,18 +58,24 @@ pub(super) fn emit_cross(
     light: TerrainLight,
     tint: [TerrainTint; 6],
     texture_indices: [u32; 6],
+    face_force_translucent: [bool; 6],
     shade: bool,
     light_emission: u8,
     atlas: &TerrainTextureAtlas,
+    mode: TerrainMeshMode,
 ) {
     for (face, normal, corners) in CROSS_FACES {
+        let face_material = effective_face_material(material, face_force_translucent[face.index()]);
+        if !mode.is_meshed(face_material) {
+            continue;
+        }
         emit_custom_quad(
             mesh,
             x,
             y,
             z,
             block_state_id,
-            material,
+            face_material,
             light,
             tint[face.index()],
             atlas.rect(texture_indices[face.index()]),
@@ -100,6 +106,7 @@ pub(super) fn emit_box(
     face_shade: [bool; 6],
     face_light_emission: [u8; 6],
     face_cull: [Option<TerrainFace>; 6],
+    face_force_translucent: [bool; 6],
     lookup: &TerrainChunkLookup<'_>,
     mode: TerrainMeshMode,
 ) {
@@ -126,11 +133,15 @@ pub(super) fn emit_box(
         if !face_present[face_index] {
             continue;
         }
+        let face_material = effective_face_material(material, face_force_translucent[face_index]);
+        if !mode.is_meshed(face_material) {
+            continue;
+        }
         if let Some(cull_face) = face_cull[face_index] {
             let (dx, dy, dz) = cull_offset(cull_face);
             let neighbor = lookup.cell(x + dx, y + dy, z + dz);
             if neighbor
-                .map(|neighbor| mode.culls_face_between(material, neighbor.material))
+                .map(|neighbor| mode.culls_face_between(face_material, neighbor.material))
                 .unwrap_or(false)
             {
                 mesh.culled_faces += 1;
@@ -144,7 +155,7 @@ pub(super) fn emit_box(
             y,
             z,
             block_state_id,
-            material,
+            face_material,
             light,
             tint[face_index],
             atlas.rect(texture_indices[face_index]),
@@ -154,6 +165,17 @@ pub(super) fn emit_box(
             face_shade[face_index],
             face_light_emission[face_index],
         );
+    }
+}
+
+pub(super) fn effective_face_material(
+    material: TerrainMaterialClass,
+    force_translucent: bool,
+) -> TerrainMaterialClass {
+    if force_translucent && !matches!(material, TerrainMaterialClass::Fluid) {
+        TerrainMaterialClass::Translucent
+    } else {
+        material
     }
 }
 
