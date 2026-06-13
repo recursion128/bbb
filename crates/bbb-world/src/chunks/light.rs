@@ -1,8 +1,9 @@
-use bbb_protocol::codec::Decoder;
+use bbb_protocol::packets::LightUpdateData;
 use serde::{Deserialize, Serialize};
 
-use crate::{section_block_index, Result, TerrainLight, WorldDecodeError, WorldDimension};
+use crate::{section_block_index, TerrainLight, WorldDimension};
 
+#[cfg(test)]
 pub(crate) const LIGHT_ARRAY_BYTES: usize = 2048;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -15,15 +16,17 @@ pub struct LightData {
     pub block_updates: Vec<Vec<u8>>,
 }
 
-pub(crate) fn decode_light_data(decoder: &mut Decoder<'_>) -> Result<LightData> {
-    Ok(LightData {
-        sky_y_mask: read_long_array(decoder)?,
-        block_y_mask: read_long_array(decoder)?,
-        empty_sky_y_mask: read_long_array(decoder)?,
-        empty_block_y_mask: read_long_array(decoder)?,
-        sky_updates: read_byte_array_list(decoder, LIGHT_ARRAY_BYTES)?,
-        block_updates: read_byte_array_list(decoder, LIGHT_ARRAY_BYTES)?,
-    })
+impl From<LightUpdateData> for LightData {
+    fn from(update: LightUpdateData) -> Self {
+        Self {
+            sky_y_mask: update.sky_y_mask,
+            block_y_mask: update.block_y_mask,
+            empty_sky_y_mask: update.empty_sky_y_mask,
+            empty_block_y_mask: update.empty_block_y_mask,
+            sky_updates: update.sky_updates,
+            block_updates: update.block_updates,
+        }
+    }
 }
 
 pub(crate) fn merge_light_data(target: &mut LightData, update: LightData) {
@@ -223,29 +226,4 @@ fn read_light_nibble(layer: &[u8], nibble_index: usize) -> Option<u8> {
     let byte = *layer.get(nibble_index / 2)?;
     let shift = (nibble_index % 2) * 4;
     Some((byte >> shift) & 0x0f)
-}
-
-fn read_long_array(decoder: &mut Decoder<'_>) -> Result<Vec<i64>> {
-    let count = decoder.read_len()?;
-    let mut out = Vec::with_capacity(count);
-    for _ in 0..count {
-        out.push(decoder.read_i64()?);
-    }
-    Ok(out)
-}
-
-fn read_byte_array_list(decoder: &mut Decoder<'_>, max_size: usize) -> Result<Vec<Vec<u8>>> {
-    let count = decoder.read_len()?;
-    let mut out = Vec::with_capacity(count);
-    for _ in 0..count {
-        let len = decoder.read_len()?;
-        if len > max_size {
-            return Err(WorldDecodeError::ByteArrayTooLarge {
-                actual: len,
-                max: max_size,
-            });
-        }
-        out.push(decoder.read_exact(len, "byte array")?.to_vec());
-    }
-    Ok(out)
 }

@@ -11,8 +11,9 @@ use bbb_protocol::codec::Encoder;
 use bbb_protocol::packets::{
     BlockEntityData as ProtocolBlockEntityData, BlockPos as ProtocolBlockPos,
     BlockUpdate as ProtocolBlockUpdate, ChunkBiomeData as ProtocolChunkBiomeData,
-    ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes, LevelChunkWithLight,
-    LightUpdate as ProtocolLightUpdate, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
+    ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes,
+    LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LightUpdate as ProtocolLightUpdate,
+    LightUpdateData as ProtocolLightUpdateData, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
 };
 
 #[test]
@@ -37,7 +38,7 @@ fn decodes_level_chunk_with_light_structure() {
     assert_eq!(chunk.block_entities[0].local_x, 10);
     assert_eq!(chunk.block_entities[0].local_z, 11);
     assert!(chunk.block_entities[0].nbt.is_none());
-    assert_eq!(chunk.light.sky_updates, vec![vec![1, 2]]);
+    assert_eq!(chunk.light.sky_updates, vec![vec![1; LIGHT_ARRAY_BYTES]]);
     assert_eq!(store.counters().chunks_decoded, 1);
     assert_eq!(store.counters().sections_decoded, 1);
 }
@@ -108,7 +109,7 @@ fn applies_light_update_to_existing_chunk_sections() {
         .apply_light_update(ProtocolLightUpdate {
             chunk_x: 2,
             chunk_z: -3,
-            raw_light_data: light_update_payload(&[0b10], &[0b10], &[], &[], &[&sky], &[&block]),
+            light_data: light_update_data(&[0b10], &[0b10], &[], &[], vec![sky], vec![block]),
         })
         .unwrap();
 
@@ -127,7 +128,7 @@ fn applies_light_update_to_existing_chunk_sections() {
         .apply_light_update(ProtocolLightUpdate {
             chunk_x: 2,
             chunk_z: -3,
-            raw_light_data: light_update_payload(&[], &[], &[], &[0b10], &[], &[]),
+            light_data: light_update_data(&[], &[], &[], &[0b10], Vec::new(), Vec::new()),
         })
         .unwrap();
 
@@ -496,13 +497,6 @@ fn extracts_all_terrain_chunks() {
 }
 
 fn synthetic_level_chunk_packet() -> LevelChunkWithLight {
-    let mut payload = Encoder::new();
-
-    payload.write_var_i32(1);
-    payload.write_var_i32(1);
-    payload.write_var_i32(1);
-    payload.write_i64(42);
-
     let mut sections = Encoder::new();
     sections.write_i16(0);
     sections.write_i16(0);
@@ -511,34 +505,35 @@ fn synthetic_level_chunk_packet() -> LevelChunkWithLight {
     sections.write_u8(0);
     sections.write_var_i32(0);
     let sections = sections.into_inner();
-    payload.write_var_i32(sections.len() as i32);
-    payload.write_bytes(&sections);
-
-    payload.write_var_i32(1);
-    payload.write_u8(0xab);
-    payload.write_i16(64);
-    payload.write_var_i32(7);
-    payload.write_u8(0);
-
-    write_long_array(&mut payload, &[0b10]);
-    write_long_array(&mut payload, &[0b100]);
-    write_long_array(&mut payload, &[]);
-    write_long_array(&mut payload, &[]);
-    write_byte_arrays(&mut payload, &[&[1, 2]]);
-    write_byte_arrays(&mut payload, &[&[3, 4]]);
 
     LevelChunkWithLight {
         x: 1,
         z: -2,
-        raw_after_position: payload.into_inner(),
+        chunk_data: LevelChunkData {
+            heightmaps: vec![ChunkHeightmapData {
+                kind_id: 1,
+                data: vec![42],
+            }],
+            section_data: sections,
+            block_entities: vec![LevelChunkBlockEntity {
+                packed_xz: 0xab,
+                y: 64,
+                block_entity_type_id: 7,
+                raw_nbt: vec![0],
+            }],
+        },
+        light_data: light_update_data(
+            &[0b10],
+            &[0b100],
+            &[],
+            &[],
+            vec![vec![1; LIGHT_ARRAY_BYTES]],
+            vec![vec![3; LIGHT_ARRAY_BYTES]],
+        ),
     }
 }
 
 fn synthetic_local_palette_chunk_packet() -> LevelChunkWithLight {
-    let mut payload = Encoder::new();
-
-    payload.write_var_i32(0);
-
     let mut sections = Encoder::new();
     sections.write_i16(4096);
     sections.write_i16(0);
@@ -546,21 +541,16 @@ fn synthetic_local_palette_chunk_packet() -> LevelChunkWithLight {
     sections.write_u8(0);
     sections.write_var_i32(4);
     let sections = sections.into_inner();
-    payload.write_var_i32(sections.len() as i32);
-    payload.write_bytes(&sections);
-
-    payload.write_var_i32(0);
-    write_long_array(&mut payload, &[]);
-    write_long_array(&mut payload, &[]);
-    write_long_array(&mut payload, &[]);
-    write_long_array(&mut payload, &[]);
-    write_byte_arrays(&mut payload, &[]);
-    write_byte_arrays(&mut payload, &[]);
 
     LevelChunkWithLight {
         x: 2,
         z: -3,
-        raw_after_position: payload.into_inner(),
+        chunk_data: LevelChunkData {
+            heightmaps: Vec::new(),
+            section_data: sections,
+            block_entities: Vec::new(),
+        },
+        light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
     }
 }
 
@@ -621,35 +611,20 @@ fn terrain_cell_index(x: usize, y: usize, z: usize, height: usize) -> usize {
     ((y * 16) + z) * 16 + x
 }
 
-fn light_update_payload(
+fn light_update_data(
     sky_y_mask: &[i64],
     block_y_mask: &[i64],
     empty_sky_y_mask: &[i64],
     empty_block_y_mask: &[i64],
-    sky_updates: &[&[u8]],
-    block_updates: &[&[u8]],
-) -> Vec<u8> {
-    let mut payload = Encoder::new();
-    write_long_array(&mut payload, sky_y_mask);
-    write_long_array(&mut payload, block_y_mask);
-    write_long_array(&mut payload, empty_sky_y_mask);
-    write_long_array(&mut payload, empty_block_y_mask);
-    write_byte_arrays(&mut payload, sky_updates);
-    write_byte_arrays(&mut payload, block_updates);
-    payload.into_inner()
-}
-
-fn write_long_array(out: &mut Encoder, values: &[i64]) {
-    out.write_var_i32(values.len() as i32);
-    for value in values {
-        out.write_i64(*value);
-    }
-}
-
-fn write_byte_arrays(out: &mut Encoder, values: &[&[u8]]) {
-    out.write_var_i32(values.len() as i32);
-    for value in values {
-        out.write_var_i32(value.len() as i32);
-        out.write_bytes(value);
+    sky_updates: Vec<Vec<u8>>,
+    block_updates: Vec<Vec<u8>>,
+) -> ProtocolLightUpdateData {
+    ProtocolLightUpdateData {
+        sky_y_mask: sky_y_mask.to_vec(),
+        block_y_mask: block_y_mask.to_vec(),
+        empty_sky_y_mask: empty_sky_y_mask.to_vec(),
+        empty_block_y_mask: empty_block_y_mask.to_vec(),
+        sky_updates,
+        block_updates,
     }
 }

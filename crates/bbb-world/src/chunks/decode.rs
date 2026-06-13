@@ -1,9 +1,12 @@
 use bbb_protocol::codec::Decoder;
+use bbb_protocol::packets::{
+    LevelChunkBlockEntity as ProtocolLevelChunkBlockEntity,
+    LevelChunkData as ProtocolLevelChunkData, LightUpdateData as ProtocolLightUpdateData,
+};
 
 use crate::{ChunkPos, Result, WorldDecodeError};
 
 use super::{
-    light::decode_light_data,
     palette::{packed_long_len, palette_kind, PaletteDomain, PaletteKind, PalettedContainerData},
     state::{
         BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, NbtPayloadSummary,
@@ -12,21 +15,27 @@ use super::{
 
 const MAX_CHUNK_SECTION_BUFFER: usize = 2 * 1024 * 1024;
 
-pub fn decode_level_chunk_with_light(pos: ChunkPos, payload: &[u8]) -> Result<ChunkColumn> {
-    let mut decoder = Decoder::new(payload);
-    let heightmaps = decode_heightmaps(&mut decoder)?;
-
-    let section_buffer_len = decoder.read_len()?;
-    if section_buffer_len > MAX_CHUNK_SECTION_BUFFER {
+pub fn decode_level_chunk_with_light(
+    pos: ChunkPos,
+    chunk_data: ProtocolLevelChunkData,
+    light_data: ProtocolLightUpdateData,
+) -> Result<ChunkColumn> {
+    if chunk_data.section_data.len() > MAX_CHUNK_SECTION_BUFFER {
         return Err(WorldDecodeError::ChunkSectionBufferTooLarge {
-            actual: section_buffer_len,
+            actual: chunk_data.section_data.len(),
             max: MAX_CHUNK_SECTION_BUFFER,
         });
     }
-    let section_buffer = decoder.read_exact(section_buffer_len, "chunk section buffer")?;
-    let sections = decode_sections(section_buffer)?;
-    let block_entities = decode_block_entities(&mut decoder)?;
-    let light = decode_light_data(&mut decoder)?;
+    let heightmaps = chunk_data
+        .heightmaps
+        .into_iter()
+        .map(|heightmap| HeightmapData {
+            kind_id: heightmap.kind_id,
+            data: heightmap.data,
+        })
+        .collect();
+    let sections = decode_sections(&chunk_data.section_data)?;
+    let block_entities = decode_block_entities(chunk_data.block_entities)?;
 
     Ok(ChunkColumn {
         pos,
@@ -34,7 +43,7 @@ pub fn decode_level_chunk_with_light(pos: ChunkPos, payload: &[u8]) -> Result<Ch
         heightmaps,
         sections,
         block_entities,
-        light,
+        light: light_data.into(),
     })
 }
 
@@ -74,17 +83,6 @@ pub(crate) fn decode_nbt_payload_summary(bytes: &[u8]) -> Result<Option<NbtPaylo
         });
     }
     Ok(nbt)
-}
-
-fn decode_heightmaps(decoder: &mut Decoder<'_>) -> Result<Vec<HeightmapData>> {
-    let count = decoder.read_len()?;
-    let mut heightmaps = Vec::with_capacity(count);
-    for _ in 0..count {
-        let kind_id = decoder.read_var_i32()?;
-        let data = read_long_array(decoder)?;
-        heightmaps.push(HeightmapData { kind_id, data });
-    }
-    Ok(heightmaps)
 }
 
 fn decode_sections(bytes: &[u8]) -> Result<Vec<ChunkSection>> {
@@ -140,19 +138,23 @@ fn decode_paletted_container(
     })
 }
 
-fn decode_block_entities(decoder: &mut Decoder<'_>) -> Result<Vec<BlockEntityRecord>> {
-    let count = decoder.read_len()?;
-    let mut out = Vec::with_capacity(count);
-    for _ in 0..count {
-        let packed_xz = decoder.read_u8()?;
-        let y = decoder.read_i16()?;
-        let type_id = decoder.read_var_i32()?;
-        let nbt = skip_nbt_any(decoder)?;
+fn decode_block_entities(
+    block_entities: Vec<ProtocolLevelChunkBlockEntity>,
+) -> Result<Vec<BlockEntityRecord>> {
+    let mut out = Vec::with_capacity(block_entities.len());
+    for entity in block_entities {
+        let mut decoder = Decoder::new(&entity.raw_nbt);
+        let nbt = skip_nbt_any(&mut decoder)?;
+        if !decoder.is_empty() {
+            return Err(WorldDecodeError::TrailingBlockEntityData {
+                remaining: decoder.remaining_len(),
+            });
+        }
         out.push(BlockEntityRecord {
-            local_x: packed_xz >> 4,
-            y,
-            local_z: packed_xz & 0x0f,
-            type_id,
+            local_x: entity.packed_xz >> 4,
+            y: entity.y,
+            local_z: entity.packed_xz & 0x0f,
+            type_id: entity.block_entity_type_id,
             nbt,
         });
     }
@@ -166,11 +168,6 @@ fn read_var_i32_array(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
         out.push(decoder.read_var_i32()?);
     }
     Ok(out)
-}
-
-fn read_long_array(decoder: &mut Decoder<'_>) -> Result<Vec<i64>> {
-    let count = decoder.read_len()?;
-    read_fixed_long_array(decoder, count)
 }
 
 fn read_fixed_long_array(decoder: &mut Decoder<'_>, count: usize) -> Result<Vec<i64>> {

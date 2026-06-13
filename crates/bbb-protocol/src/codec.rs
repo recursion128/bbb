@@ -129,6 +129,10 @@ impl<'a> Decoder<'a> {
         &self.bytes[self.cursor..]
     }
 
+    pub fn bytes_from(&self, start: usize) -> &'a [u8] {
+        &self.bytes[start.min(self.cursor)..self.cursor]
+    }
+
     pub fn remaining_len(&self) -> usize {
         self.bytes.len().saturating_sub(self.cursor)
     }

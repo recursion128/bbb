@@ -1,5 +1,5 @@
 use bbb_protocol::{
-    codec::{Decoder, ProtocolError},
+    codec::ProtocolError,
     packets::{
         BlockEntityData as ProtocolBlockEntityData, BlockUpdate as ProtocolBlockUpdate,
         ChunksBiomes as ProtocolChunksBiomes, LevelChunkWithLight,
@@ -14,8 +14,8 @@ use crate::{
 };
 
 use super::{
-    decode_biome_sections, decode_level_chunk_with_light, decode_light_data,
-    decode_nbt_payload_summary, merge_light_data, sample_terrain_light,
+    decode_biome_sections, decode_level_chunk_with_light, decode_nbt_payload_summary,
+    merge_light_data, sample_terrain_light,
 };
 
 impl WorldStore {
@@ -27,7 +27,7 @@ impl WorldStore {
             x: packet.x,
             z: packet.z,
         };
-        let column = decode_level_chunk_with_light(pos, &packet.raw_after_position)?;
+        let column = decode_level_chunk_with_light(pos, packet.chunk_data, packet.light_data)?;
         self.insert_decoded_chunk(column);
         Ok(pos)
     }
@@ -109,8 +109,7 @@ impl WorldStore {
 
     pub fn apply_light_update(&mut self, update: ProtocolLightUpdate) -> Result<bool> {
         self.counters.light_updates_received += 1;
-        let mut decoder = Decoder::new(&update.raw_light_data);
-        let update_light = decode_light_data(&mut decoder)?;
+        let update_light = update.light_data.into();
         let pos = ChunkPos {
             x: update.chunk_x,
             z: update.chunk_z,
