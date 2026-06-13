@@ -200,12 +200,33 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
         ids::play::CLIENTBOUND_KEEP_ALIVE => Ok(PlayClientbound::KeepAlive {
             id: Decoder::new(payload).read_i64()?,
         }),
+        ids::play::CLIENTBOUND_LOW_DISK_SPACE_WARNING => {
+            let decoder = Decoder::new(payload);
+            if !decoder.is_empty() {
+                return Err(ProtocolError::InvalidData(
+                    "trailing bytes after low disk space warning packet".to_string(),
+                ));
+            }
+            Ok(PlayClientbound::LowDiskSpaceWarning)
+        }
+        ids::play::CLIENTBOUND_MOUNT_SCREEN_OPEN => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::MountScreenOpen(
+                client_ui::decode_mount_screen_open(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_PING => Ok(PlayClientbound::Ping {
             id: Decoder::new(payload).read_i32()?,
         }),
         ids::play::CLIENTBOUND_LOGIN => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::Login(decode_play_login(&mut decoder)?))
+        }
+        ids::play::CLIENTBOUND_OPEN_BOOK => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::OpenBook(client_ui::decode_open_book(
+                &mut decoder,
+            )?))
         }
         ids::play::CLIENTBOUND_MOVE_ENTITY_POS => {
             let mut decoder = Decoder::new(payload);
@@ -243,6 +264,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
                 &mut decoder,
             )?))
         }
+        ids::play::CLIENTBOUND_OPEN_SIGN_EDITOR => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::OpenSignEditor(
+                client_ui::decode_open_sign_editor(&mut decoder)?,
+            ))
+        }
         ids::play::CLIENTBOUND_PLAYER_ABILITIES => {
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::PlayerAbilities(
@@ -259,6 +286,12 @@ pub fn decode_play_clientbound(packet_id: i32, payload: &[u8]) -> Result<PlayCli
             let mut decoder = Decoder::new(payload);
             Ok(PlayClientbound::PlayerInfoUpdate(
                 player_info::decode_player_info_update(&mut decoder)?,
+            ))
+        }
+        ids::play::CLIENTBOUND_PONG_RESPONSE => {
+            let mut decoder = Decoder::new(payload);
+            Ok(PlayClientbound::PongResponse(
+                client_ui::decode_play_pong_response(&mut decoder)?,
             ))
         }
         ids::play::CLIENTBOUND_PLAYER_POSITION => {

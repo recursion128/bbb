@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 pub mod chunks;
 pub mod client_state;
+pub mod client_ui;
 pub mod command_suggestions;
 pub mod connection;
 pub mod entities;
@@ -19,6 +20,7 @@ pub mod serverbound;
 pub mod world_border;
 pub use chunks::*;
 pub use client_state::*;
+pub use client_ui::*;
 pub use command_suggestions::*;
 pub use connection::*;
 pub use entities::*;

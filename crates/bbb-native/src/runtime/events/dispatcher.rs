@@ -72,6 +72,42 @@ pub(in crate::runtime) fn drain_net_events(
             NetEvent::ServerLinks(links) => {
                 apply_server_links_update(counters, links);
             }
+            NetEvent::LowDiskSpaceWarning => {
+                counters.low_disk_space_warnings += 1;
+            }
+            NetEvent::MountScreenOpen(update) => {
+                counters.last_mount_screen = Some(bbb_control::MountScreenState {
+                    container_id: update.container_id,
+                    inventory_columns: update.inventory_columns,
+                    entity_id: update.entity_id,
+                });
+                counters.mount_screen_open_packets += 1;
+            }
+            NetEvent::OpenBook(update) => {
+                counters.last_open_book_hand = Some(
+                    match update.hand {
+                        bbb_protocol::packets::InteractionHand::MainHand => "main_hand",
+                        bbb_protocol::packets::InteractionHand::OffHand => "off_hand",
+                    }
+                    .to_string(),
+                );
+                counters.open_book_packets += 1;
+            }
+            NetEvent::OpenSignEditor(update) => {
+                counters.last_open_sign_editor = Some(bbb_control::OpenSignEditorState {
+                    pos: bbb_world::BlockPos {
+                        x: update.pos.x,
+                        y: update.pos.y,
+                        z: update.pos.z,
+                    },
+                    is_front_text: update.is_front_text,
+                });
+                counters.open_sign_editor_packets += 1;
+            }
+            NetEvent::PongResponse(update) => {
+                counters.last_pong_response_time = Some(update.time);
+                counters.pong_response_packets += 1;
+            }
             NetEvent::Transfer(transfer) => {
                 counters.last_transfer = Some(bbb_control::TransferTarget {
                     host: transfer.host,

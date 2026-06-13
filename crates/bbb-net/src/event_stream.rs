@@ -230,6 +230,12 @@ pub async fn run_offline_event_stream(
                     let (id, payload) = packets::encode_play_keep_alive(id);
                     conn.send_packet(id, &payload).await?;
                 }
+                PlayClientbound::LowDiskSpaceWarning => {
+                    emit(&events, NetEvent::LowDiskSpaceWarning).await?;
+                }
+                PlayClientbound::MountScreenOpen(update) => {
+                    emit(&events, NetEvent::MountScreenOpen(update)).await?;
+                }
                 PlayClientbound::ChunkBatchStart => {}
                 PlayClientbound::ChunkBatchFinished { .. } => {
                     let (id, payload) = packets::encode_play_chunk_batch_received(9.0);
@@ -271,12 +277,21 @@ pub async fn run_offline_event_stream(
                 PlayClientbound::OpenScreen(update) => {
                     emit(&events, NetEvent::OpenScreen(update)).await?;
                 }
+                PlayClientbound::OpenBook(update) => {
+                    emit(&events, NetEvent::OpenBook(update)).await?;
+                }
+                PlayClientbound::OpenSignEditor(update) => {
+                    emit(&events, NetEvent::OpenSignEditor(update)).await?;
+                }
                 PlayClientbound::Disconnect(disconnect) => {
                     bail!("play disconnected: {}", disconnect.reason)
                 }
                 PlayClientbound::Ping { id } => {
                     let (id, payload) = packets::encode_play_pong(id);
                     conn.send_packet(id, &payload).await?;
+                }
+                PlayClientbound::PongResponse(update) => {
+                    emit(&events, NetEvent::PongResponse(update)).await?;
                 }
                 PlayClientbound::StartConfiguration => {
                     let (id, payload) = packets::encode_play_configuration_acknowledged();

@@ -2,7 +2,8 @@ use super::*;
 use crate::runtime::clear_color_for_day_time;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, PlayLogin, ServerLinkEntry,
+    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, InteractionHand,
+    MountScreenOpen, OpenBook, OpenSignEditor, PlayLogin, PongResponse, ServerLinkEntry,
     ServerLinkKnownType, ServerLinkType, ServerLinks, SetPassengers, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
@@ -157,6 +158,67 @@ fn server_links_event_updates_snapshot_counters() {
             },
         ]
     );
+}
+
+#[test]
+fn client_ui_events_update_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(5);
+    tx.try_send(NetEvent::LowDiskSpaceWarning).unwrap();
+    tx.try_send(NetEvent::MountScreenOpen(MountScreenOpen {
+        container_id: 11,
+        inventory_columns: 5,
+        entity_id: 42,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::OpenBook(OpenBook {
+        hand: InteractionHand::OffHand,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::OpenSignEditor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: -5,
+            y: 70,
+            z: 12,
+        },
+        is_front_text: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::PongResponse(PongResponse { time: 123456789 }))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        5
+    );
+    assert_eq!(counters.low_disk_space_warnings, 1);
+    assert_eq!(counters.mount_screen_open_packets, 1);
+    assert_eq!(
+        counters.last_mount_screen,
+        Some(bbb_control::MountScreenState {
+            container_id: 11,
+            inventory_columns: 5,
+            entity_id: 42,
+        })
+    );
+    assert_eq!(counters.open_book_packets, 1);
+    assert_eq!(counters.last_open_book_hand.as_deref(), Some("off_hand"));
+    assert_eq!(counters.open_sign_editor_packets, 1);
+    assert_eq!(
+        counters.last_open_sign_editor,
+        Some(bbb_control::OpenSignEditorState {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+        })
+    );
+    assert_eq!(counters.pong_response_packets, 1);
+    assert_eq!(counters.last_pong_response_time, Some(123456789));
 }
 
 #[test]

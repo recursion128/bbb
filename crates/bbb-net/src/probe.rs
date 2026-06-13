@@ -166,6 +166,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                     let (id, payload) = packets::encode_play_keep_alive(id);
                     conn.send_packet(id, &payload).await?;
                 }
+                PlayClientbound::LowDiskSpaceWarning | PlayClientbound::MountScreenOpen(_) => {}
                 PlayClientbound::ChunkBatchStart => {}
                 PlayClientbound::ChunkBatchFinished { .. } => {
                     let (id, payload) = packets::encode_play_chunk_batch_received(9.0);
@@ -192,6 +193,9 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
                 PlayClientbound::OpenScreen(update) => {
                     world.apply_open_screen(update);
                 }
+                PlayClientbound::OpenBook(_)
+                | PlayClientbound::OpenSignEditor(_)
+                | PlayClientbound::PongResponse(_) => {}
                 PlayClientbound::Disconnect(disconnect) => {
                     bail!("play disconnected: {}", disconnect.reason)
                 }
