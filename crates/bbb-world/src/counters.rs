@@ -37,6 +37,20 @@ pub struct WorldCounters {
     pub ticking_state_packets: usize,
     #[serde(default)]
     pub ticking_step_packets: usize,
+    #[serde(default)]
+    pub player_abilities_packets: usize,
+    #[serde(default)]
+    pub player_health_packets: usize,
+    #[serde(default)]
+    pub player_experience_packets: usize,
+    #[serde(default)]
+    pub held_slot_packets: usize,
+    #[serde(default)]
+    pub default_spawn_position_packets: usize,
+    #[serde(default)]
+    pub simulation_distance_packets: usize,
+    #[serde(default)]
+    pub set_camera_packets: usize,
     pub chunks_received: usize,
     pub chunks_decoded: usize,
     pub sections_decoded: usize,

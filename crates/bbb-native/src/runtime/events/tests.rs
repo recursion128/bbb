@@ -2060,6 +2060,120 @@ fn minecart_along_track_event_updates_world_state() {
 }
 
 #[test]
+fn local_player_events_update_world_state_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(10);
+    tx.try_send(NetEvent::Login(protocol_play_login(9)))
+        .unwrap();
+    tx.try_send(NetEvent::PlayerAbilities(
+        bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::PlayerHealth(
+        bbb_protocol::packets::PlayerHealth {
+            health: 7.5,
+            food: 16,
+            saturation: 2.0,
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::PlayerExperience(
+        bbb_protocol::packets::PlayerExperience {
+            progress: 0.75,
+            level: 8,
+            total: 123,
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::HeldSlot(bbb_protocol::packets::SetHeldSlot {
+        slot: 5,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetDefaultSpawnPosition(
+        bbb_protocol::packets::SetDefaultSpawnPosition {
+            dimension: "minecraft:overworld".to_string(),
+            pos: ProtocolBlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            yaw: 90.0,
+            pitch: -10.0,
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::SetSimulationDistance(
+        bbb_protocol::packets::SetSimulationDistance { distance: 12 },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::SetCamera(bbb_protocol::packets::SetCamera {
+        camera_id: 9,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetCamera(bbb_protocol::packets::SetCamera {
+        camera_id: 123,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        9
+    );
+
+    let local = world.local_player();
+    assert_eq!(local.health.unwrap().health, 7.5);
+    assert_eq!(local.experience.unwrap().level, 8);
+    assert_eq!(local.selected_hotbar_slot, 5);
+    assert_eq!(local.simulation_distance, Some(12));
+    assert_eq!(
+        local.default_spawn.as_ref().map(|spawn| spawn.pos),
+        Some(BlockPos {
+            x: -5,
+            y: 70,
+            z: 12,
+        })
+    );
+    assert_eq!(
+        local.camera,
+        bbb_world::CameraState {
+            entity_id: Some(9),
+            follows_player: true,
+            entity_known: true,
+        }
+    );
+
+    assert_eq!(counters.player_entity_id, Some(9));
+    assert_eq!(counters.player_health.unwrap().food, 16);
+    assert_eq!(counters.player_experience.unwrap().total, 123);
+    assert_eq!(counters.selected_hotbar_slot, 5);
+    assert_eq!(counters.default_spawn.as_ref().unwrap().yaw, 90.0);
+    assert_eq!(counters.simulation_distance, Some(12));
+    assert_eq!(
+        counters.camera,
+        bbb_control::CameraState {
+            entity_id: Some(9),
+            follows_player: true,
+            entity_known: true,
+        }
+    );
+    assert_eq!(counters.player_abilities_packets, 1);
+    assert_eq!(counters.player_health_packets, 1);
+    assert_eq!(counters.player_experience_packets, 1);
+    assert_eq!(counters.held_slot_packets, 1);
+    assert_eq!(counters.default_spawn_position_packets, 1);
+    assert_eq!(counters.simulation_distance_packets, 1);
+    assert_eq!(counters.set_camera_packets, 2);
+}
+
+#[test]
 fn world_time_and_weather_update_snapshot_and_clear_color() {
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::SetTime(bbb_protocol::packets::PlayTime {

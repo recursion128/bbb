@@ -60,14 +60,15 @@ pub(crate) fn pump_network_and_terrain(
         events::drain_net_events(rx, world, net_counters, net_commands);
     }
     advance_player_input(input, net_counters, net_commands, Instant::now());
-    renderer.set_hud_health(net_counters.player_health.map(|health| health.health));
-    renderer.set_hud_food(net_counters.player_health.map(|health| health.food));
+    let local_player = world.local_player();
+    renderer.set_hud_health(local_player.health.map(|health| health.health));
+    renderer.set_hud_food(local_player.health.map(|health| health.food));
     renderer.set_hud_experience_progress(
-        net_counters
-            .player_experience
+        local_player
+            .experience
             .map(|experience| experience.progress),
     );
-    renderer.set_hud_selected_slot(net_counters.selected_hotbar_slot);
+    renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
     renderer.set_camera_pose(net_counters.player_pose.map(camera_pose_from_player));
     renderer.set_selection_outline(selection_outline_from_crosshair(
         world,

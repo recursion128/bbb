@@ -273,22 +273,28 @@ pub(in crate::runtime) fn drain_net_events(
                 apply_player_rotation_update(counters, update);
             }
             NetEvent::PlayerAbilities(abilities) => {
-                apply_player_abilities_update(counters, abilities);
+                world.apply_player_abilities(abilities);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::PlayerHealth(health) => {
-                apply_player_health_update(counters, health);
+                world.apply_player_health(health);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::PlayerExperience(experience) => {
-                apply_player_experience_update(counters, experience);
+                world.apply_player_experience(experience);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::HeldSlot(slot) => {
-                apply_held_slot_update(counters, slot);
+                world.apply_held_slot(slot);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::SetDefaultSpawnPosition(spawn) => {
-                apply_default_spawn_update(counters, spawn);
+                world.apply_default_spawn_position(spawn);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::SetSimulationDistance(distance) => {
-                apply_simulation_distance_update(counters, distance);
+                world.apply_simulation_distance(distance);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::SystemChat(chat) => {
                 apply_system_chat_update(counters, chat);
@@ -317,7 +323,8 @@ pub(in crate::runtime) fn drain_net_events(
                 sync_ticking_counters(counters, world);
             }
             NetEvent::SetCamera(camera) => {
-                apply_set_camera_update(counters, world, camera);
+                world.apply_set_camera(camera);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::BlockChangedAck(ack) => {
                 apply_block_changed_ack(counters, ack);

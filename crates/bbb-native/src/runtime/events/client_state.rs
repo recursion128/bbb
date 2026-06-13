@@ -3,49 +3,9 @@ use bbb_control::{
     PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose, SystemChatLine,
 };
 use bbb_protocol::packets::PlayerPositionState;
-use bbb_world::{BlockPos, WorldStore};
+use bbb_world::WorldStore;
 
 const STANDING_EYE_HEIGHT: f64 = 1.62;
-
-pub(super) fn apply_player_abilities_update(
-    counters: &mut NetCounters,
-    abilities: bbb_protocol::packets::PlayerAbilities,
-) {
-    counters.player_abilities = Some(PlayerAbilities {
-        invulnerable: abilities.invulnerable,
-        flying: abilities.flying,
-        can_fly: abilities.can_fly,
-        instabuild: abilities.instabuild,
-        flying_speed: abilities.flying_speed,
-        walking_speed: abilities.walking_speed,
-    });
-    counters.player_abilities_packets += 1;
-}
-
-pub(super) fn apply_default_spawn_update(
-    counters: &mut NetCounters,
-    spawn: bbb_protocol::packets::SetDefaultSpawnPosition,
-) {
-    counters.default_spawn = Some(DefaultSpawn {
-        dimension: spawn.dimension,
-        pos: BlockPos {
-            x: spawn.pos.x,
-            y: spawn.pos.y,
-            z: spawn.pos.z,
-        },
-        yaw: spawn.yaw,
-        pitch: spawn.pitch,
-    });
-    counters.default_spawn_position_packets += 1;
-}
-
-pub(super) fn apply_simulation_distance_update(
-    counters: &mut NetCounters,
-    distance: bbb_protocol::packets::SetSimulationDistance,
-) {
-    counters.simulation_distance = Some(distance.distance);
-    counters.simulation_distance_packets += 1;
-}
 
 pub(super) fn apply_system_chat_update(
     counters: &mut NetCounters,
@@ -155,54 +115,48 @@ pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldSto
     counters.ticking_step_packets = world_counters.ticking_step_packets;
 }
 
-pub(super) fn apply_set_camera_update(
-    counters: &mut NetCounters,
-    world: &WorldStore,
-    camera: bbb_protocol::packets::SetCamera,
-) {
-    counters.set_camera_packets += 1;
-    let follows_player = counters.player_entity_id == Some(camera.camera_id);
-    if follows_player || world.probe_entity(camera.camera_id).is_some() {
-        counters.camera = CameraState {
-            entity_id: Some(camera.camera_id),
-            follows_player,
-            entity_known: true,
-        };
-    }
-}
-
-pub(super) fn apply_player_health_update(
-    counters: &mut NetCounters,
-    health: bbb_protocol::packets::PlayerHealth,
-) {
-    counters.player_health = Some(PlayerHealth {
+pub(super) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let local = world.local_player();
+    counters.player_abilities = local.abilities.map(|abilities| PlayerAbilities {
+        invulnerable: abilities.invulnerable,
+        flying: abilities.flying,
+        can_fly: abilities.can_fly,
+        instabuild: abilities.instabuild,
+        flying_speed: abilities.flying_speed,
+        walking_speed: abilities.walking_speed,
+    });
+    counters.player_health = local.health.map(|health| PlayerHealth {
         health: health.health,
         food: health.food,
         saturation: health.saturation,
     });
-    counters.player_health_packets += 1;
-}
-
-pub(super) fn apply_player_experience_update(
-    counters: &mut NetCounters,
-    experience: bbb_protocol::packets::PlayerExperience,
-) {
-    counters.player_experience = Some(PlayerExperience {
+    counters.player_experience = local.experience.map(|experience| PlayerExperience {
         progress: experience.progress,
         level: experience.level,
         total: experience.total,
     });
-    counters.player_experience_packets += 1;
-}
+    counters.selected_hotbar_slot = local.selected_hotbar_slot;
+    counters.default_spawn = local.default_spawn.as_ref().map(|spawn| DefaultSpawn {
+        dimension: spawn.dimension.clone(),
+        pos: spawn.pos,
+        yaw: spawn.yaw,
+        pitch: spawn.pitch,
+    });
+    counters.simulation_distance = local.simulation_distance;
+    counters.camera = CameraState {
+        entity_id: local.camera.entity_id,
+        follows_player: local.camera.follows_player,
+        entity_known: local.camera.entity_known,
+    };
 
-pub(super) fn apply_held_slot_update(
-    counters: &mut NetCounters,
-    slot: bbb_protocol::packets::SetHeldSlot,
-) {
-    if (0..=8).contains(&slot.slot) {
-        counters.selected_hotbar_slot = slot.slot as u8;
-    }
-    counters.held_slot_packets += 1;
+    let world_counters = world.counters();
+    counters.player_abilities_packets = world_counters.player_abilities_packets;
+    counters.player_health_packets = world_counters.player_health_packets;
+    counters.player_experience_packets = world_counters.player_experience_packets;
+    counters.held_slot_packets = world_counters.held_slot_packets;
+    counters.default_spawn_position_packets = world_counters.default_spawn_position_packets;
+    counters.simulation_distance_packets = world_counters.simulation_distance_packets;
+    counters.set_camera_packets = world_counters.set_camera_packets;
 }
 
 pub(super) fn apply_player_position_update(

@@ -3,6 +3,7 @@ use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_X,
     PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y_ROT,
 };
+use bbb_world::BlockPos;
 
 #[test]
 fn player_position_updates_absolute_and_relative_pose() {
@@ -121,15 +122,14 @@ fn player_look_at_updates_snapshot_and_pose_orientation() {
 #[test]
 fn player_health_updates_snapshot_counters() {
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
-    apply_player_health_update(
-        &mut counters,
-        bbb_protocol::packets::PlayerHealth {
-            health: 7.5,
-            food: 16,
-            saturation: 2.0,
-        },
-    );
+    world.apply_player_health(bbb_protocol::packets::PlayerHealth {
+        health: 7.5,
+        food: 16,
+        saturation: 2.0,
+    });
+    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(
         counters.player_health,
@@ -139,21 +139,21 @@ fn player_health_updates_snapshot_counters() {
             saturation: 2.0,
         })
     );
+    assert_eq!(world.local_player().health.unwrap().health, 7.5);
     assert_eq!(counters.player_health_packets, 1);
 }
 
 #[test]
 fn player_experience_updates_snapshot_counters() {
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
-    apply_player_experience_update(
-        &mut counters,
-        bbb_protocol::packets::PlayerExperience {
-            progress: 0.75,
-            level: 8,
-            total: 123,
-        },
-    );
+    world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
+        progress: 0.75,
+        level: 8,
+        total: 123,
+    });
+    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(
         counters.player_experience,
@@ -163,25 +163,23 @@ fn player_experience_updates_snapshot_counters() {
             total: 123,
         })
     );
+    assert_eq!(world.local_player().experience.unwrap().level, 8);
     assert_eq!(counters.player_experience_packets, 1);
 }
 
 #[test]
 fn held_slot_updates_snapshot_counters() {
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
-    apply_held_slot_update(
-        &mut counters,
-        bbb_protocol::packets::SetHeldSlot { slot: 5 },
-    );
+    assert!(world.apply_held_slot(bbb_protocol::packets::SetHeldSlot { slot: 5 }));
+    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(counters.selected_hotbar_slot, 5);
     assert_eq!(counters.held_slot_packets, 1);
 
-    apply_held_slot_update(
-        &mut counters,
-        bbb_protocol::packets::SetHeldSlot { slot: 99 },
-    );
+    assert!(!world.apply_held_slot(bbb_protocol::packets::SetHeldSlot { slot: 99 }));
+    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(counters.selected_hotbar_slot, 5);
     assert_eq!(counters.held_slot_packets, 2);
@@ -190,35 +188,28 @@ fn held_slot_updates_snapshot_counters() {
 #[test]
 fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
-    apply_player_abilities_update(
-        &mut counters,
-        bbb_protocol::packets::PlayerAbilities {
-            invulnerable: true,
-            flying: false,
-            can_fly: true,
-            instabuild: true,
-            flying_speed: 0.05,
-            walking_speed: 0.1,
+    world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+        invulnerable: true,
+        flying: false,
+        can_fly: true,
+        instabuild: true,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    });
+    world.apply_default_spawn_position(bbb_protocol::packets::SetDefaultSpawnPosition {
+        dimension: "minecraft:overworld".to_string(),
+        pos: ProtocolBlockPos {
+            x: -5,
+            y: 70,
+            z: 12,
         },
-    );
-    apply_default_spawn_update(
-        &mut counters,
-        bbb_protocol::packets::SetDefaultSpawnPosition {
-            dimension: "minecraft:overworld".to_string(),
-            pos: ProtocolBlockPos {
-                x: -5,
-                y: 70,
-                z: 12,
-            },
-            yaw: 90.0,
-            pitch: -10.0,
-        },
-    );
-    apply_simulation_distance_update(
-        &mut counters,
-        bbb_protocol::packets::SetSimulationDistance { distance: 12 },
-    );
+        yaw: 90.0,
+        pitch: -10.0,
+    });
+    world.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 12 });
+    sync_local_player_counters(&mut counters, &world);
     apply_system_chat_update(
         &mut counters,
         bbb_protocol::packets::SystemChat {
@@ -423,27 +414,22 @@ fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
         },
         ..NetCounters::default()
     };
-    let world = WorldStore::new();
+    let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(9));
 
-    apply_set_camera_update(
-        &mut counters,
-        &world,
-        bbb_protocol::packets::SetCamera { camera_id: 123 },
-    );
+    assert!(!world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 123 }));
+    sync_local_player_counters(&mut counters, &world);
     assert_eq!(
         counters.camera,
         CameraState {
-            entity_id: Some(42),
-            follows_player: false,
+            entity_id: None,
+            follows_player: true,
             entity_known: true,
         }
     );
 
-    apply_set_camera_update(
-        &mut counters,
-        &world,
-        bbb_protocol::packets::SetCamera { camera_id: 9 },
-    );
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 9 }));
+    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(
         counters.camera,
@@ -454,6 +440,33 @@ fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
         }
     );
     assert_eq!(counters.set_camera_packets, 2);
+}
+
+fn protocol_play_login(player_id: i32) -> bbb_protocol::packets::PlayLogin {
+    bbb_protocol::packets::PlayLogin {
+        player_id,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: bbb_protocol::packets::CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 12345,
+            game_type: 1,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: true,
+    }
 }
 
 fn player_position_update(

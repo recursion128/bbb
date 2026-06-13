@@ -2,6 +2,7 @@ mod chat;
 mod command_suggestions;
 mod hud;
 mod inventory;
+mod local_player;
 mod player_info;
 mod scoreboard;
 mod server_presentation;

@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     BlockDestructionProgress, BlockEventRecord, ChunkColumn, ClientAdvancementsState,
     ClientChatState, ClientHudState, ClientRecipesState, CommandSuggestionsState, CommandTreeState,
-    InventoryState, ItemCooldownState, LevelEventRecord, MapItemState, PlayerInfoState,
-    RegistrySet, ScoreboardState, ServerPresentationState, WorldBorderState, WorldCounters,
-    WorldDimension, WorldLevelInfo,
+    InventoryState, ItemCooldownState, LevelEventRecord, LocalPlayerState, MapItemState,
+    PlayerInfoState, RegistrySet, ScoreboardState, ServerPresentationState, WorldBorderState,
+    WorldCounters, WorldDimension, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -55,6 +55,8 @@ pub struct WorldStore {
     pub(crate) advancements: ClientAdvancementsState,
     #[serde(default)]
     pub(crate) maps: BTreeMap<i32, MapItemState>,
+    #[serde(default)]
+    pub(crate) local_player: LocalPlayerState,
     #[serde(default)]
     pub(crate) local_player_id: Option<i32>,
     #[serde(default)]
