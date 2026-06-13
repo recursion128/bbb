@@ -145,6 +145,11 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         30 => decode_attack_range(decoder)?,
         // equippable.
         32 => decode_equippable(decoder)?,
+        // death_protection, blocks_attacks, piercing_weapon, and kinetic_weapon.
+        36 => decode_death_protection(decoder)?,
+        37 => decode_blocks_attacks(decoder)?,
+        38 => decode_piercing_weapon(decoder)?,
+        39 => decode_kinetic_weapon(decoder)?,
         // swing_animation.
         40 => decode_swing_animation(decoder)?,
         // dyed_color and map_color.
@@ -248,6 +253,20 @@ fn decode_optional_f32(decoder: &mut Decoder<'_>) -> Result<()> {
 fn decode_optional_bool(decoder: &mut Decoder<'_>) -> Result<()> {
     if decoder.read_bool()? {
         decoder.read_bool()?;
+    }
+    Ok(())
+}
+
+fn decode_optional_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decode_holder_set(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_optional_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decode_sound_event_holder(decoder)?;
     }
     Ok(())
 }
@@ -493,6 +512,75 @@ fn decode_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
 
 fn decode_attack_range(decoder: &mut Decoder<'_>) -> Result<()> {
     for _ in 0..6 {
+        decoder.read_f32()?;
+    }
+    Ok(())
+}
+
+fn decode_death_protection(decoder: &mut Decoder<'_>) -> Result<()> {
+    let effect_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..effect_count {
+        decode_consume_effect(decoder)?;
+    }
+    Ok(())
+}
+
+fn decode_blocks_attacks(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_f32()?;
+    decoder.read_f32()?;
+
+    let reduction_count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    for _ in 0..reduction_count {
+        decode_damage_reduction(decoder)?;
+    }
+
+    decode_item_damage_function(decoder)?;
+    decode_optional_holder_set(decoder)?;
+    decode_optional_sound_event_holder(decoder)?;
+    decode_optional_sound_event_holder(decoder)?;
+    Ok(())
+}
+
+fn decode_damage_reduction(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_f32()?;
+    decode_optional_holder_set(decoder)?;
+    decoder.read_f32()?;
+    decoder.read_f32()?;
+    Ok(())
+}
+
+fn decode_item_damage_function(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_f32()?;
+    decoder.read_f32()?;
+    decoder.read_f32()?;
+    Ok(())
+}
+
+fn decode_piercing_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_bool()?;
+    decoder.read_bool()?;
+    decode_optional_sound_event_holder(decoder)?;
+    decode_optional_sound_event_holder(decoder)?;
+    Ok(())
+}
+
+fn decode_kinetic_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
+    decoder.read_var_i32()?;
+    decoder.read_var_i32()?;
+    decode_optional_kinetic_weapon_condition(decoder)?;
+    decode_optional_kinetic_weapon_condition(decoder)?;
+    decode_optional_kinetic_weapon_condition(decoder)?;
+    decoder.read_f32()?;
+    decoder.read_f32()?;
+    decode_optional_sound_event_holder(decoder)?;
+    decode_optional_sound_event_holder(decoder)?;
+    Ok(())
+}
+
+fn decode_optional_kinetic_weapon_condition(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decoder.read_var_i32()?;
+        decoder.read_f32()?;
         decoder.read_f32()?;
     }
     Ok(())
@@ -893,6 +981,68 @@ mod tests {
     }
 
     #[test]
+    fn decodes_combat_item_data_components() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(4);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(36);
+        payload.write_var_i32(2);
+        payload.write_var_i32(2);
+        payload.write_var_i32(4);
+        write_direct_sound_event(&mut payload, "minecraft:item.totem.use", None);
+
+        payload.write_var_i32(37);
+        payload.write_f32(0.25);
+        payload.write_f32(1.5);
+        payload.write_var_i32(1);
+        payload.write_f32(90.0);
+        payload.write_bool(true);
+        write_holder_set_tag(&mut payload, "minecraft:bypasses_shield");
+        payload.write_f32(1.0);
+        payload.write_f32(0.5);
+        payload.write_f32(1.0);
+        payload.write_f32(0.0);
+        payload.write_f32(1.0);
+        payload.write_bool(true);
+        write_holder_set_ids(&mut payload, &[3]);
+        write_optional_direct_sound_event(&mut payload, Some("minecraft:item.shield.block"));
+        write_optional_direct_sound_event(&mut payload, None);
+
+        payload.write_var_i32(38);
+        payload.write_bool(true);
+        payload.write_bool(true);
+        write_optional_direct_sound_event(&mut payload, Some("minecraft:item.mace.smash_air"));
+        write_optional_direct_sound_event(&mut payload, None);
+
+        payload.write_var_i32(39);
+        payload.write_var_i32(10);
+        payload.write_var_i32(2);
+        payload.write_bool(true);
+        write_kinetic_weapon_condition(&mut payload, 20, 0.25, 0.5);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        write_kinetic_weapon_condition(&mut payload, 30, 1.0, 1.5);
+        payload.write_f32(0.2);
+        payload.write_f32(2.0);
+        write_optional_direct_sound_event(&mut payload, None);
+        write_optional_direct_sound_event(&mut payload, Some("minecraft:item.mace.smash_ground"));
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 4,
+                added_type_ids: vec![36, 37, 38, 39],
+                removed_type_ids: Vec::new(),
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_additional_item_data_components() {
         let mut payload = Encoder::new();
         let component_ids = [
@@ -1184,6 +1334,39 @@ mod tests {
         if let Some(text) = display_text {
             payload.write_bytes(&nbt_string_root(text));
         }
+    }
+
+    fn write_holder_set_tag(payload: &mut Encoder, tag: &str) {
+        payload.write_var_i32(0);
+        payload.write_string(tag);
+    }
+
+    fn write_holder_set_ids(payload: &mut Encoder, ids: &[i32]) {
+        payload.write_var_i32(ids.len() as i32 + 1);
+        for id in ids {
+            payload.write_var_i32(*id);
+        }
+    }
+
+    fn write_optional_direct_sound_event(payload: &mut Encoder, id: Option<&str>) {
+        match id {
+            Some(id) => {
+                payload.write_bool(true);
+                write_direct_sound_event(payload, id, None);
+            }
+            None => payload.write_bool(false),
+        }
+    }
+
+    fn write_kinetic_weapon_condition(
+        payload: &mut Encoder,
+        max_duration_ticks: i32,
+        min_speed: f32,
+        min_relative_speed: f32,
+    ) {
+        payload.write_var_i32(max_duration_ticks);
+        payload.write_f32(min_speed);
+        payload.write_f32(min_relative_speed);
     }
 
     fn write_direct_sound_event(payload: &mut Encoder, id: &str, fixed_range: Option<f32>) {
