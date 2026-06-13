@@ -76,7 +76,12 @@ impl ProbeContext {
                 let (id, payload) = packets::encode_play_keep_alive(id);
                 self.conn.send_packet(id, &payload).await?;
             }
-            PlayClientbound::LowDiskSpaceWarning | PlayClientbound::MountScreenOpen(_) => {}
+            PlayClientbound::LowDiskSpaceWarning => {
+                self.world.apply_low_disk_space_warning();
+            }
+            PlayClientbound::MountScreenOpen(update) => {
+                self.world.apply_mount_screen_open(update);
+            }
             PlayClientbound::ChunkBatchStart => {}
             PlayClientbound::ChunkBatchFinished { .. } => {
                 let (id, payload) = packets::encode_play_chunk_batch_received(9.0);
@@ -105,10 +110,18 @@ impl ProbeContext {
             PlayClientbound::OpenScreen(update) => {
                 self.world.apply_open_screen(update);
             }
-            PlayClientbound::OpenBook(_)
-            | PlayClientbound::OpenSignEditor(_)
-            | PlayClientbound::PlaceGhostRecipe(_)
-            | PlayClientbound::PongResponse(_) => {}
+            PlayClientbound::OpenBook(update) => {
+                self.world.apply_open_book(update);
+            }
+            PlayClientbound::OpenSignEditor(update) => {
+                self.world.apply_open_sign_editor(update);
+            }
+            PlayClientbound::PlaceGhostRecipe(update) => {
+                self.world.apply_place_ghost_recipe(update);
+            }
+            PlayClientbound::PongResponse(update) => {
+                self.world.apply_pong_response(update);
+            }
             PlayClientbound::Disconnect(disconnect) => {
                 bail!("play disconnected: {}", disconnect.reason)
             }
@@ -249,11 +262,14 @@ impl ProbeContext {
             PlayClientbound::CommandSuggestions(update) => {
                 self.world.apply_command_suggestions(update);
             }
-            PlayClientbound::SelectAdvancementsTab(_)
-            | PlayClientbound::TagQuery(_)
-            | PlayClientbound::ClearDialog
-            | PlayClientbound::ShowDialog(_)
-            | PlayClientbound::TestInstanceBlockStatus(_) => {}
+            PlayClientbound::SelectAdvancementsTab(_) | PlayClientbound::TagQuery(_) => {}
+            PlayClientbound::ClearDialog => {
+                self.world.apply_clear_dialog();
+            }
+            PlayClientbound::ShowDialog(update) => {
+                self.world.apply_show_dialog(update);
+            }
+            PlayClientbound::TestInstanceBlockStatus(_) => {}
             PlayClientbound::TabList(update) => {
                 self.world.apply_tab_list(update);
             }

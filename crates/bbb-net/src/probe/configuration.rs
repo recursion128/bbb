@@ -72,7 +72,12 @@ impl ProbeContext {
                 self.world.apply_server_links(links);
             }
             ConfigurationClientbound::Transfer(_) => {}
-            ConfigurationClientbound::ClearDialog | ConfigurationClientbound::ShowDialog(_) => {}
+            ConfigurationClientbound::ClearDialog => {
+                self.world.apply_clear_dialog();
+            }
+            ConfigurationClientbound::ShowDialog(update) => {
+                self.world.apply_show_dialog(update);
+            }
             ConfigurationClientbound::CodeOfConduct { .. } => {
                 let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
                 self.conn.send_packet(id, &payload).await?;
