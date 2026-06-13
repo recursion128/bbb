@@ -1,6 +1,7 @@
 use super::super::{
-    TerrainFace, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainQuad, TerrainTextureAtlas,
-    TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
+    TerrainCell, TerrainFace, TerrainLight, TerrainMaterialClass, TerrainMesh, TerrainQuad,
+    TerrainRenderShape, TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
+    TerrainVertex,
 };
 use super::{
     geometry::{box_face_corners, face_uvs_from_crop, FaceDef, CROSS_FACES, FACES},
@@ -160,6 +161,7 @@ pub(super) fn emit_box(
         let is_fluid = matches!(material, TerrainMaterialClass::Fluid);
         let smooth_light = !is_fluid && ambient_occlusion && face_light_emission[face_index] == 0;
         let face_cubic = box_face_is_cubic(face.face, min, max);
+        let fluid_heights = is_fluid.then(|| fluid_corner_heights(x, y, z, max[1], lookup));
         let ambient_occlusion = if is_fluid {
             [1.0; 4]
         } else {
@@ -199,7 +201,9 @@ pub(super) fn emit_box(
             tint[face_index],
             atlas.rect(texture_indices[face_index]),
             face.normal,
-            box_face_corners(face.face, min, max),
+            fluid_heights
+                .map(|heights| fluid_face_corners(face.face, min, max, heights))
+                .unwrap_or_else(|| box_face_corners(face.face, min, max)),
             face_uvs_from_crop(face_uvs[face_index], face_uv_rotations[face_index]),
             cardinal_shade(face_shade[face_index], face.face),
             vertex_lights,
@@ -409,6 +413,166 @@ fn fluid_face_vertex_lights(
     }
     .unwrap_or(TerrainLight { sky: 0, block: 0 });
     [shader_light_with_emission(max_light(light, neighbor), light_emission); 4]
+}
+
+#[derive(Debug, Clone, Copy)]
+struct FluidCornerHeights {
+    north_west: f32,
+    north_east: f32,
+    south_east: f32,
+    south_west: f32,
+}
+
+fn fluid_corner_heights(
+    x: i32,
+    y: i32,
+    z: i32,
+    self_height: f32,
+    lookup: &TerrainChunkLookup<'_>,
+) -> FluidCornerHeights {
+    if self_height >= 1.0 {
+        return FluidCornerHeights {
+            north_west: 1.0,
+            north_east: 1.0,
+            south_east: 1.0,
+            south_west: 1.0,
+        };
+    }
+
+    let north = fluid_height_at(x, y, z - 1, lookup);
+    let south = fluid_height_at(x, y, z + 1, lookup);
+    let west = fluid_height_at(x - 1, y, z, lookup);
+    let east = fluid_height_at(x + 1, y, z, lookup);
+
+    FluidCornerHeights {
+        north_west: average_fluid_corner_height(
+            self_height,
+            north,
+            west,
+            fluid_height_at(x - 1, y, z - 1, lookup),
+        ),
+        north_east: average_fluid_corner_height(
+            self_height,
+            north,
+            east,
+            fluid_height_at(x + 1, y, z - 1, lookup),
+        ),
+        south_east: average_fluid_corner_height(
+            self_height,
+            south,
+            east,
+            fluid_height_at(x + 1, y, z + 1, lookup),
+        ),
+        south_west: average_fluid_corner_height(
+            self_height,
+            south,
+            west,
+            fluid_height_at(x - 1, y, z + 1, lookup),
+        ),
+    }
+}
+
+fn fluid_face_corners(
+    face: TerrainFace,
+    min: [f32; 3],
+    max: [f32; 3],
+    heights: FluidCornerHeights,
+) -> [[f32; 3]; 4] {
+    match face {
+        TerrainFace::Down => box_face_corners(face, min, max),
+        TerrainFace::Up => [
+            [min[0], heights.north_west, min[2]],
+            [max[0], heights.north_east, min[2]],
+            [max[0], heights.south_east, max[2]],
+            [min[0], heights.south_west, max[2]],
+        ],
+        TerrainFace::North => [
+            [max[0], min[1], min[2]],
+            [max[0], heights.north_east, min[2]],
+            [min[0], heights.north_west, min[2]],
+            [min[0], min[1], min[2]],
+        ],
+        TerrainFace::South => [
+            [min[0], min[1], max[2]],
+            [min[0], heights.south_west, max[2]],
+            [max[0], heights.south_east, max[2]],
+            [max[0], min[1], max[2]],
+        ],
+        TerrainFace::West => [
+            [min[0], min[1], min[2]],
+            [min[0], heights.north_west, min[2]],
+            [min[0], heights.south_west, max[2]],
+            [min[0], min[1], max[2]],
+        ],
+        TerrainFace::East => [
+            [max[0], min[1], max[2]],
+            [max[0], heights.south_east, max[2]],
+            [max[0], heights.north_east, min[2]],
+            [max[0], min[1], min[2]],
+        ],
+    }
+}
+
+fn fluid_height_at(x: i32, y: i32, z: i32, lookup: &TerrainChunkLookup<'_>) -> f32 {
+    let Some(cell) = lookup.cell(x, y, z) else {
+        return 0.0;
+    };
+    match cell.material {
+        TerrainMaterialClass::Fluid => {
+            if lookup
+                .cell(x, y + 1, z)
+                .is_some_and(|above| matches!(above.material, TerrainMaterialClass::Fluid))
+            {
+                1.0
+            } else {
+                fluid_cell_height(cell).unwrap_or(1.0)
+            }
+        }
+        TerrainMaterialClass::Opaque => -1.0,
+        TerrainMaterialClass::Empty
+        | TerrainMaterialClass::Cutout
+        | TerrainMaterialClass::Translucent => 0.0,
+    }
+}
+
+fn fluid_cell_height(cell: &TerrainCell) -> Option<f32> {
+    match &cell.render_shape {
+        TerrainRenderShape::Box { to, .. } => Some((to[1] as f32 / 16.0).clamp(0.0, 1.0)),
+        _ => None,
+    }
+}
+
+fn average_fluid_corner_height(self_height: f32, side_a: f32, side_b: f32, corner: f32) -> f32 {
+    if side_a >= 1.0 || side_b >= 1.0 {
+        return 1.0;
+    }
+
+    let mut weighted_height = [0.0, 0.0];
+    if side_a > 0.0 || side_b > 0.0 {
+        if corner >= 1.0 {
+            return 1.0;
+        }
+        add_weighted_fluid_height(&mut weighted_height, corner);
+    }
+
+    add_weighted_fluid_height(&mut weighted_height, self_height);
+    add_weighted_fluid_height(&mut weighted_height, side_a);
+    add_weighted_fluid_height(&mut weighted_height, side_b);
+    if weighted_height[1] == 0.0 {
+        0.0
+    } else {
+        weighted_height[0] / weighted_height[1]
+    }
+}
+
+fn add_weighted_fluid_height(weighted_height: &mut [f32; 2], height: f32) {
+    if height >= 0.8 {
+        weighted_height[0] += height * 10.0;
+        weighted_height[1] += 10.0;
+    } else if height >= 0.0 {
+        weighted_height[0] += height;
+        weighted_height[1] += 1.0;
+    }
 }
 
 pub(super) fn face_vertex_lights(

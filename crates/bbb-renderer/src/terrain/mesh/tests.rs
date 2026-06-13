@@ -77,11 +77,11 @@ fn fluid_box_extends_to_above_fluid_without_internal_top_face() {
         .iter()
         .filter(|vertex| vertex.block_state_id == 86)
         .any(|vertex| vertex.position[1] == 1.0));
-    assert!(mesh
-        .vertices
+    let upper_top = face_vertices(mesh, 87, [0.0, 1.0, 0.0]);
+    assert_eq!(upper_top.len(), 4);
+    assert!(upper_top
         .iter()
-        .filter(|vertex| vertex.block_state_id == 87)
-        .any(|vertex| vertex.position[1] == 1.875));
+        .all(|vertex| vertex.position[1] > 1.0 && vertex.position[1] < 1.875));
 }
 
 #[test]
@@ -112,6 +112,26 @@ fn fluid_faces_use_flat_vanilla_light_without_ambient_occlusion() {
     assert!(face_vertices(mesh, 86, [0.0, 1.0, 0.0])
         .iter()
         .all(|vertex| vertex.ambient_occlusion == 1.0));
+}
+
+#[test]
+fn fluid_top_face_averages_corner_heights_from_adjacent_fluids() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_shape(86, TerrainMaterialClass::Fluid, 0, fluid_box_shape(8));
+    cells[cell_index(1, 0, 1, 1)] =
+        TerrainCell::with_shape(87, TerrainMaterialClass::Fluid, 0, fluid_box_shape(16));
+    cells[cell_index(0, 0, 2, 1)] =
+        TerrainCell::with_shape(88, TerrainMaterialClass::Fluid, 0, fluid_box_shape(16));
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+    let top_vertices = face_vertices(&layers.translucent[0], 86, [0.0, 1.0, 0.0]);
+
+    assert_float_eq(vertex_at_xz(&top_vertices, 1.0, 2.0).position[1], 1.0);
+    assert_float_eq(vertex_at_xz(&top_vertices, 2.0, 2.0).position[1], 1.0);
+    assert_float_eq(vertex_at_xz(&top_vertices, 1.0, 3.0).position[1], 1.0);
+    assert_float_eq(vertex_at_xz(&top_vertices, 2.0, 3.0).position[1], 1.0 / 6.0);
 }
 
 #[test]
@@ -925,6 +945,14 @@ fn vertex_at(vertices: &[TerrainVertex], position: [f32; 3]) -> TerrainVertex {
         .copied()
         .find(|vertex| vertex.position == position)
         .expect("vertex exists at position")
+}
+
+fn vertex_at_xz(vertices: &[TerrainVertex], x: f32, z: f32) -> TerrainVertex {
+    vertices
+        .iter()
+        .copied()
+        .find(|vertex| vertex.position[0] == x && vertex.position[2] == z)
+        .expect("vertex exists at x/z")
 }
 
 fn assert_float_eq(actual: f32, expected: f32) {
