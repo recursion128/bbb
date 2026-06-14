@@ -129,6 +129,8 @@ pub struct TerrainCell {
     pub block_state_id: i32,
     pub material: TerrainMaterialClass,
     pub fluid: Option<TerrainFluid>,
+    pub fluid_texture_indices: [u32; 6],
+    pub fluid_tint: [TerrainTint; 6],
     pub texture_indices: [u32; 6],
     pub render_shape: TerrainRenderShape,
     pub ambient_occlusion: bool,
@@ -211,6 +213,8 @@ impl TerrainCell {
         block_state_id: 0,
         material: TerrainMaterialClass::Empty,
         fluid: None,
+        fluid_texture_indices: [0; 6],
+        fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         render_shape: TerrainRenderShape::Cube,
         ambient_occlusion: true,
@@ -228,6 +232,8 @@ impl TerrainCell {
             block_state_id,
             material,
             fluid: None,
+            fluid_texture_indices: [texture_index; 6],
+            fluid_tint: [TerrainTint::WHITE; 6],
             texture_indices: [texture_index; 6],
             render_shape: TerrainRenderShape::Cube,
             ambient_occlusion: true,
@@ -247,6 +253,8 @@ impl TerrainCell {
             block_state_id,
             material,
             fluid: None,
+            fluid_texture_indices: [texture_index; 6],
+            fluid_tint: [TerrainTint::WHITE; 6],
             texture_indices: [texture_index; 6],
             render_shape,
             ambient_occlusion: true,
@@ -263,6 +271,20 @@ impl TerrainCell {
 
     pub fn with_fluid(mut self, fluid: TerrainFluid) -> Self {
         self.fluid = Some(fluid);
+        self.fluid_texture_indices = self.texture_indices;
+        self.fluid_tint = self.tint;
+        self
+    }
+
+    pub fn with_fluid_render_data(
+        mut self,
+        fluid: TerrainFluid,
+        texture_indices: [u32; 6],
+        tint: [TerrainTint; 6],
+    ) -> Self {
+        self.fluid = Some(fluid);
+        self.fluid_texture_indices = texture_indices;
+        self.fluid_tint = tint;
         self
     }
 

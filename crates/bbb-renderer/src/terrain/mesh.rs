@@ -12,8 +12,8 @@ use self::{
     geometry::FACES,
 };
 use super::{
-    TerrainCell, TerrainChunkSnapshot, TerrainFluid, TerrainMaterialClass, TerrainMesh,
-    TerrainRenderShape, TerrainTextureAtlas,
+    TerrainCell, TerrainChunkSnapshot, TerrainFace, TerrainFluid, TerrainMaterialClass,
+    TerrainMesh, TerrainRenderShape, TerrainTextureAtlas,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -70,13 +70,23 @@ pub(super) fn build_chunk_mesh_with_lookup(
                 let cell = snapshot
                     .cell(x, y, z)
                     .expect("in-bounds terrain cell exists");
-                if !mode.is_meshed(cell.material) && !has_texture_layer_overrides(cell) {
+                let has_fluid_overlay = has_fluid_overlay(cell);
+                if !mode.is_meshed(cell.material)
+                    && !has_texture_layer_overrides(cell)
+                    && !(matches!(mode, TerrainMeshMode::TranslucentOnly) && has_fluid_overlay)
+                {
                     continue;
                 }
 
                 let world_x = snapshot.chunk_x * 16 + x;
                 let world_y = snapshot.min_y + y;
                 let world_z = snapshot.chunk_z * 16 + z;
+                if matches!(mode, TerrainMeshMode::TranslucentOnly) && has_fluid_overlay {
+                    emit_fluid_overlay(&mut mesh, world_x, world_y, world_z, cell, lookup, atlas);
+                    if !mode.is_meshed(cell.material) && !has_texture_layer_overrides(cell) {
+                        continue;
+                    }
+                }
                 match &cell.render_shape {
                     TerrainRenderShape::Cross {
                         shade,
@@ -296,19 +306,60 @@ fn has_texture_layer_overrides(cell: &TerrainCell) -> bool {
         }
 }
 
+fn has_fluid_overlay(cell: &TerrainCell) -> bool {
+    cell.fluid.is_some() && !matches!(cell.material, TerrainMaterialClass::Fluid)
+}
+
+fn emit_fluid_overlay(
+    mesh: &mut TerrainMesh,
+    world_x: i32,
+    world_y: i32,
+    world_z: i32,
+    cell: &TerrainCell,
+    lookup: &TerrainChunkLookup<'_>,
+    atlas: &TerrainTextureAtlas,
+) {
+    let face_cull = TerrainFace::ALL.map(Some);
+    emit_box(
+        mesh,
+        world_x,
+        world_y,
+        world_z,
+        cell.block_state_id,
+        TerrainMaterialClass::Fluid,
+        cell.fluid,
+        cell.light,
+        cell.fluid_tint,
+        cell.fluid_texture_indices,
+        atlas,
+        [0, 0, 0],
+        [16, 16, 16],
+        [true; 6],
+        [[0, 0, 16, 16]; 6],
+        [0; 6],
+        [true; 6],
+        [0; 6],
+        face_cull,
+        [super::TerrainTransparency::OPAQUE; 6],
+        false,
+        lookup,
+        TerrainMeshMode::TranslucentOnly,
+    );
+}
+
 pub(super) fn culls_face_between_cells(
     mode: TerrainMeshMode,
     current: TerrainMaterialClass,
     current_fluid: Option<TerrainFluid>,
     neighbor: &TerrainCell,
 ) -> bool {
-    if matches!(current, TerrainMaterialClass::Fluid)
-        && matches!(neighbor.material, TerrainMaterialClass::Fluid)
-    {
-        return match (current_fluid, neighbor.fluid) {
-            (Some(current), Some(neighbor)) => current.kind == neighbor.kind,
-            _ => true,
-        };
+    if matches!(current, TerrainMaterialClass::Fluid) {
+        if let (Some(current), Some(neighbor)) = (current_fluid, neighbor.fluid) {
+            return current.kind == neighbor.kind;
+        }
+        if matches!(neighbor.material, TerrainMaterialClass::Fluid) {
+            return true;
+        }
     }
     mode.culls_face_between(current, neighbor.material)
 }

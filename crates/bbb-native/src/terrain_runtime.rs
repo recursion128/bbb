@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use bbb_control::NetCounters;
 use bbb_renderer::terrain::{
     build_terrain_mesh_layers_with_atlas, TerrainCell, TerrainChunkSnapshot, TerrainFluid,
-    TerrainFluidKind, TerrainLight, TerrainMaterialClass,
+    TerrainFluidKind, TerrainLight, TerrainMaterialClass, TerrainTint,
 };
 use bbb_world::{ChunkPos, WorldStore};
 
@@ -140,9 +140,15 @@ fn convert_terrain_snapshot(
                     cell.biome_id,
                     Some(position),
                 );
+            let fluid = terrain_fluid(cell.block_name.as_deref(), &cell.block_properties);
+            let (fluid_texture_indices, fluid_tint) = fluid
+                .map(|fluid| textures.fluid_render_data(fluid.kind, cell.biome_id, Some(position)))
+                .unwrap_or(([0; 6], [TerrainTint::WHITE; 6]));
             TerrainCell {
                 block_state_id: cell.block_state_id,
-                fluid: terrain_fluid(cell.block_name.as_deref(), &cell.block_properties),
+                fluid,
+                fluid_texture_indices,
+                fluid_tint,
                 texture_indices,
                 render_shape,
                 ambient_occlusion,
@@ -181,6 +187,9 @@ fn terrain_fluid(
     let kind = match block_name? {
         "minecraft:water" => TerrainFluidKind::Water,
         "minecraft:lava" => TerrainFluidKind::Lava,
+        _ if is_waterlogged(properties) => {
+            return Some(TerrainFluid::new(TerrainFluidKind::Water, 8, false));
+        }
         _ => return None,
     };
     let level = properties
@@ -193,6 +202,12 @@ fn terrain_fluid(
         _ => (8, true),
     };
     Some(TerrainFluid::new(kind, amount, falling))
+}
+
+fn is_waterlogged(properties: &std::collections::BTreeMap<String, String>) -> bool {
+    properties
+        .get("waterlogged")
+        .is_some_and(|value| value == "true")
 }
 
 #[cfg(test)]
@@ -219,6 +234,31 @@ mod tests {
         );
         assert_eq!(
             terrain_fluid(Some("minecraft:stone"), &properties([("level", "0")])),
+            None
+        );
+    }
+
+    #[test]
+    fn terrain_fluid_maps_waterlogged_blocks_to_source_water() {
+        assert_eq!(
+            terrain_fluid(
+                Some("minecraft:oak_slab"),
+                &properties([("waterlogged", "true")])
+            ),
+            Some(TerrainFluid::new(TerrainFluidKind::Water, 8, false))
+        );
+        assert_eq!(
+            terrain_fluid(
+                Some("minecraft:light"),
+                &properties([("waterlogged", "true")])
+            ),
+            Some(TerrainFluid::new(TerrainFluidKind::Water, 8, false))
+        );
+        assert_eq!(
+            terrain_fluid(
+                Some("minecraft:oak_slab"),
+                &properties([("waterlogged", "false")])
+            ),
             None
         );
     }

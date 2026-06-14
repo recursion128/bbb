@@ -512,6 +512,8 @@ fn cross_layers_preserve_emissive_light() {
         block_state_id: 2,
         material: TerrainMaterialClass::Cutout,
         fluid: None,
+        fluid_texture_indices: [0; 6],
+        fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
         light: TerrainLight { sky: 4, block: 2 },
@@ -685,6 +687,8 @@ fn multi_box_model_skips_absent_faces() {
         block_state_id: 4,
         material: TerrainMaterialClass::Opaque,
         fluid: None,
+        fluid_texture_indices: [0; 6],
+        fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
         light: TerrainLight::FULL_BRIGHT,
@@ -728,6 +732,8 @@ fn boxes_use_per_box_texture_and_tint() {
         block_state_id: 4,
         material: TerrainMaterialClass::Opaque,
         fluid: None,
+        fluid_texture_indices: [0; 6],
+        fluid_tint: [TerrainTint::WHITE; 6],
         texture_indices: [0; 6],
         ambient_occlusion: true,
         light: TerrainLight::FULL_BRIGHT,
@@ -1054,6 +1060,50 @@ fn forced_translucent_box_faces_emit_in_translucent_layer() {
 
     assert_eq!(layers.opaque[0].opaque_faces, 5);
     assert_eq!(layers.translucent[0].translucent_faces, 1);
+}
+
+#[test]
+fn waterlogged_block_emits_block_and_fluid_layers() {
+    let water_tint = [TerrainTint::from_rgb_u8(0x3f, 0x76, 0xe4); 6];
+    let mut cell = TerrainCell::with_shape(42, TerrainMaterialClass::Opaque, 5, slab_box_shape())
+        .with_fluid_render_data(
+            TerrainFluid::new(TerrainFluidKind::Water, 8, false),
+            [9, 9, 10, 10, 10, 10],
+            water_tint,
+        );
+    cell.light = TerrainLight { sky: 13, block: 2 };
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = cell;
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.opaque[0].opaque_faces, 6);
+    assert_eq!(layers.cutout[0].vertices.len(), 0);
+    assert_eq!(layers.translucent[0].translucent_faces, 7);
+    assert!(layers.translucent[0]
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == water_tint[0].as_shader_tint()));
+}
+
+#[test]
+fn adjacent_waterlogged_blocks_cull_internal_fluid_faces() {
+    let water_tint = [TerrainTint::from_rgb_u8(0x3f, 0x76, 0xe4); 6];
+    let water = TerrainFluid::new(TerrainFluidKind::Water, 8, false);
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] =
+        TerrainCell::with_shape(42, TerrainMaterialClass::Opaque, 5, slab_box_shape())
+            .with_fluid_render_data(water, [9, 9, 10, 10, 10, 10], water_tint);
+    cells[cell_index(2, 0, 2, 1)] =
+        TerrainCell::with_shape(43, TerrainMaterialClass::Opaque, 5, slab_box_shape())
+            .with_fluid_render_data(water, [9, 9, 10, 10, 10, 10], water_tint);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.translucent[0].translucent_faces, 12);
+    assert_eq!(layers.translucent[0].culled_faces, 2);
 }
 
 fn single_block_snapshot(

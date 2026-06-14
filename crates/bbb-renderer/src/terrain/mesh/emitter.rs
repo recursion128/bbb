@@ -264,7 +264,8 @@ pub(super) fn emit_box(
             vertex_lights,
             ambient_occlusion,
         );
-        if matches!(face.face, TerrainFace::Up)
+        if is_fluid
+            && matches!(face.face, TerrainFace::Up)
             && fluid
                 .is_some_and(|fluid| fluid_should_render_backward_up_face(x, y, z, fluid, lookup))
         {

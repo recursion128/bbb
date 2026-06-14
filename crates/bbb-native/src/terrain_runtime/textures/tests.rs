@@ -68,6 +68,9 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
     assert_eq!(water[0], water_still);
     assert_eq!(water[1], water_still);
     assert_eq!(water[2..], [water_flow; 4]);
+    let (water_layer, water_tint) = textures.fluid_render_data(TerrainFluidKind::Water, None, None);
+    assert_eq!(water_layer, water);
+    assert_eq!(water_tint, [TerrainTint::from_rgb_u8(0x3f, 0x76, 0xe4); 6]);
 
     let (lava, _, _, _, _) = textures.block_render_data(
         Some("minecraft:lava"),
@@ -81,6 +84,9 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
     assert_eq!(lava[0], lava_still);
     assert_eq!(lava[1], lava_still);
     assert_eq!(lava[2..], [lava_flow; 4]);
+    let (lava_layer, lava_tint) = textures.fluid_render_data(TerrainFluidKind::Lava, None, None);
+    assert_eq!(lava_layer, lava);
+    assert_eq!(lava_tint, [TerrainTint::WHITE; 6]);
 }
 
 #[test]

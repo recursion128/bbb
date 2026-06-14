@@ -278,7 +278,7 @@ fn fluid_flow_distance(
 ) -> Option<f32> {
     let neighbor = lookup.cell(x, y, z);
     let neighbor_height = match neighbor {
-        Some(cell) if matches!(cell.material, TerrainMaterialClass::Fluid) => {
+        Some(cell) if same_fluid_own_height(cell, kind).is_some() => {
             same_fluid_own_height(cell, kind)?
         }
         Some(cell) if material_blocks_motion(cell.material) => return None,
@@ -359,6 +359,17 @@ fn fluid_height_at(
     let Some(cell) = lookup.cell(x, y, z) else {
         return 0.0;
     };
+    if let Some(kind) = kind {
+        if let Some(height) = same_fluid_own_height(cell, kind) {
+            if lookup
+                .cell(x, y + 1, z)
+                .is_some_and(|above| same_fluid_own_height(above, kind).is_some())
+            {
+                return 1.0;
+            }
+            return height;
+        }
+    }
     match cell.material {
         TerrainMaterialClass::Fluid => {
             if let Some(kind) = kind {

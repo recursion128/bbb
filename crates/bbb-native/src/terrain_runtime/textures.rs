@@ -7,8 +7,8 @@ use bbb_pack::{
     TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
-    TerrainCross, TerrainFace, TerrainQuad, TerrainRenderShape, TerrainTextureAtlas, TerrainTint,
-    TerrainTransparency, TerrainUvRect,
+    TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
+    TerrainTextureAtlas, TerrainTint, TerrainTransparency, TerrainUvRect,
 };
 
 use crate::biome_tint::{
@@ -189,6 +189,29 @@ impl TerrainTextureState {
         let still = self.texture_index(still);
         let flowing = self.texture_index(flowing);
         Some([still, still, flowing, flowing, flowing, flowing])
+    }
+
+    pub(super) fn fluid_render_data(
+        &self,
+        kind: TerrainFluidKind,
+        biome_id: Option<i32>,
+        position: Option<BlockRenderPosition>,
+    ) -> ([u32; 6], [TerrainTint; 6]) {
+        let block_name = match kind {
+            TerrainFluidKind::Water => "minecraft:water",
+            TerrainFluidKind::Lava => "minecraft:lava",
+        };
+        let texture_indices = self
+            .fluid_texture_indices(block_name)
+            .unwrap_or([self.fallback_index; 6]);
+        let tint = [self.block_tint(
+            block_name,
+            bbb_world::TerrainMaterialClass::Fluid,
+            Some(0),
+            biome_id,
+            position,
+        ); 6];
+        (texture_indices, tint)
     }
 
     pub(super) fn block_render_data(
