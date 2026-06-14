@@ -8,7 +8,8 @@ pub use crate::colors::{
 };
 pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};
 pub use crate::sprites::{
-    SpriteAnimation, SpriteAnimationFrame, SpriteImage, SpriteSource, SpriteTransparency,
+    SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteImage, SpriteSource,
+    SpriteTransparency,
 };
 
 pub(crate) use crate::image::{rgba_len, rgba_offset};

@@ -176,18 +176,9 @@ fn copy_sprite_with_gutter(
     image: &SpriteImage,
     tick: Option<u64>,
 ) -> Result<()> {
-    let animation_at_tick =
-        tick.and_then(|tick| image.animation.as_ref().map(|animation| (tick, animation)));
-    let source_rgba = match animation_at_tick {
-        Some((tick, animation)) => {
-            let frame_index = animation
-                .frame_index_at_tick(tick)
-                .ok_or_else(|| anyhow::anyhow!("animated sprite {} has no frames", image.id))?;
-            image.frame_rgba(frame_index).ok_or_else(|| {
-                anyhow::anyhow!("animated sprite {} missing frame {frame_index}", image.id)
-            })?
-        }
-        None => &image.rgba,
+    let source_rgba = match tick {
+        Some(tick) => image.frame_rgba_at_tick(tick)?,
+        None => std::borrow::Cow::Borrowed(image.rgba.as_slice()),
     };
     copy_sprite_rgba_with_gutter(
         atlas,
@@ -195,7 +186,7 @@ fn copy_sprite_with_gutter(
         sprite,
         image.width,
         image.height,
-        source_rgba,
+        source_rgba.as_ref(),
     )
 }
 
@@ -488,6 +479,37 @@ mod tests {
         assert_eq!(
             pixel(&tick_three.rgba, tick_three.layout.width, 1, 1),
             [10, 0, 0, 255]
+        );
+    }
+
+    #[test]
+    fn atlas_stitcher_interpolates_animation_frame_for_tick() {
+        let image = SpriteImage {
+            id: "minecraft:block/sculk".to_string(),
+            width: 1,
+            height: 1,
+            transparency: SpriteTransparency::default(),
+            animation: Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 1,
+                interpolate: true,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 4 },
+                    SpriteAnimationFrame { index: 1, time: 4 },
+                ],
+            }),
+            animation_frames_rgba: vec![vec![0, 0, 100, 255], vec![100, 40, 0, 127]],
+            rgba: vec![0, 0, 100, 255],
+        };
+
+        let tick_two = AtlasPacker::new(8, 1)
+            .unwrap()
+            .stitch_animation_frame(&[image], 2)
+            .unwrap();
+
+        assert_eq!(
+            pixel(&tick_two.rgba, tick_two.layout.width, 1, 1),
+            [50, 20, 50, 191]
         );
     }
 

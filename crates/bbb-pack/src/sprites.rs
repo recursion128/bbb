@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{bail, Context, Result};
 use image::ImageReader;
@@ -65,8 +68,19 @@ pub struct SpriteAnimationFrame {
     pub time: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpriteAnimationFrameTick {
+    pub frame_index: u32,
+    pub next_frame_index: u32,
+    pub frame_progress: f32,
+}
+
 impl SpriteAnimation {
     pub fn frame_index_at_tick(&self, tick: u64) -> Option<u32> {
+        self.frame_at_tick(tick).map(|frame| frame.frame_index)
+    }
+
+    pub fn frame_at_tick(&self, tick: u64) -> Option<SpriteAnimationFrameTick> {
         if self.frames.is_empty() {
             return None;
         }
@@ -78,14 +92,23 @@ impl SpriteAnimation {
         }
 
         let mut remaining = tick % total_duration;
-        for frame in &self.frames {
+        for (position, frame) in self.frames.iter().enumerate() {
             let duration = u64::from(frame.time);
             if remaining < duration {
-                return Some(frame.index);
+                let next = self.frames[(position + 1) % self.frames.len()].index;
+                return Some(SpriteAnimationFrameTick {
+                    frame_index: frame.index,
+                    next_frame_index: next,
+                    frame_progress: remaining as f32 / duration as f32,
+                });
             }
             remaining -= duration;
         }
-        self.frames.last().map(|frame| frame.index)
+        self.frames.last().map(|frame| SpriteAnimationFrameTick {
+            frame_index: frame.index,
+            next_frame_index: self.frames[0].index,
+            frame_progress: 0.0,
+        })
     }
 }
 
@@ -202,6 +225,57 @@ impl SpriteImage {
         }
         (frame_index == 0).then_some(self.rgba.as_slice())
     }
+
+    pub fn frame_rgba_at_tick(&self, tick: u64) -> Result<Cow<'_, [u8]>> {
+        let Some(animation) = self.animation.as_ref() else {
+            return Ok(Cow::Borrowed(self.rgba.as_slice()));
+        };
+        let frame = animation
+            .frame_at_tick(tick)
+            .ok_or_else(|| anyhow::anyhow!("animated sprite {} has no frames", self.id))?;
+        let current = self.frame_rgba(frame.frame_index).ok_or_else(|| {
+            anyhow::anyhow!(
+                "animated sprite {} missing frame {}",
+                self.id,
+                frame.frame_index
+            )
+        })?;
+        if !animation.interpolate || frame.frame_progress <= 0.0 {
+            return Ok(Cow::Borrowed(current));
+        }
+        let next = self.frame_rgba(frame.next_frame_index).ok_or_else(|| {
+            anyhow::anyhow!(
+                "animated sprite {} missing frame {}",
+                self.id,
+                frame.next_frame_index
+            )
+        })?;
+        Ok(Cow::Owned(interpolate_rgba(
+            current,
+            next,
+            frame.frame_progress,
+        )?))
+    }
+}
+
+fn interpolate_rgba(current: &[u8], next: &[u8], progress: f32) -> Result<Vec<u8>> {
+    if current.len() != next.len() {
+        bail!(
+            "animated sprite frame length mismatch: {} bytes vs {} bytes",
+            current.len(),
+            next.len()
+        );
+    }
+    let progress = progress.clamp(0.0, 1.0);
+    Ok(current
+        .iter()
+        .zip(next)
+        .map(|(current, next)| {
+            let current = f32::from(*current);
+            let next = f32::from(*next);
+            (current + (next - current) * progress).round() as u8
+        })
+        .collect())
 }
 
 fn png_dimensions(path: &Path, label: &str) -> Result<(u32, u32)> {
@@ -434,7 +508,9 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{SpriteAnimation, SpriteAnimationFrame, SpriteImage, SpriteSource};
+    use super::{
+        SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteImage, SpriteSource,
+    };
 
     #[test]
     fn sprite_source_reads_png_dimensions() {
@@ -548,6 +624,61 @@ mod tests {
         assert_eq!(animation.frame_index_at_tick(1), Some(0));
         assert_eq!(animation.frame_index_at_tick(2), Some(1));
         assert_eq!(animation.frame_index_at_tick(3), Some(0));
+    }
+
+    #[test]
+    fn sprite_animation_reports_frame_progress_for_interpolation() {
+        let animation = SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 1,
+            interpolate: true,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 4 },
+                SpriteAnimationFrame { index: 1, time: 2 },
+            ],
+        };
+
+        assert_eq!(
+            animation.frame_at_tick(0),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 0,
+                next_frame_index: 1,
+                frame_progress: 0.0,
+            })
+        );
+        assert_eq!(
+            animation.frame_at_tick(1),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 0,
+                next_frame_index: 1,
+                frame_progress: 0.25,
+            })
+        );
+        assert_eq!(
+            animation.frame_at_tick(3),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 0,
+                next_frame_index: 1,
+                frame_progress: 0.75,
+            })
+        );
+        assert_eq!(
+            animation.frame_at_tick(4),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 1,
+                next_frame_index: 0,
+                frame_progress: 0.0,
+            })
+        );
+        assert_eq!(
+            animation.frame_at_tick(5),
+            Some(SpriteAnimationFrameTick {
+                frame_index: 1,
+                next_frame_index: 0,
+                frame_progress: 0.5,
+            })
+        );
+        assert_eq!(animation.frame_index_at_tick(6), Some(0));
     }
 
     #[test]
@@ -668,6 +799,39 @@ mod tests {
         );
 
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_interpolates_animation_frame_rgba() {
+        let mut image =
+            SpriteImage::new("minecraft:block/interpolated", 1, 1, vec![0, 20, 100, 255]).unwrap();
+        image.animation = Some(SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 1,
+            interpolate: true,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 4 },
+                SpriteAnimationFrame { index: 1, time: 4 },
+            ],
+        });
+        image.animation_frames_rgba = vec![vec![0, 20, 100, 255], vec![100, 60, 0, 127]];
+
+        assert_eq!(
+            image.frame_rgba_at_tick(0).unwrap().as_ref(),
+            [0, 20, 100, 255]
+        );
+        assert_eq!(
+            image.frame_rgba_at_tick(1).unwrap().as_ref(),
+            [25, 30, 75, 223]
+        );
+        assert_eq!(
+            image.frame_rgba_at_tick(2).unwrap().as_ref(),
+            [50, 40, 50, 191]
+        );
+        assert_eq!(
+            image.frame_rgba_at_tick(4).unwrap().as_ref(),
+            [100, 60, 0, 127]
+        );
     }
 
     #[test]
