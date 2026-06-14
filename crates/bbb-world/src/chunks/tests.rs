@@ -723,6 +723,144 @@ fn terrain_cells_classify_waterlogged_rails_as_cutout() {
 }
 
 #[test]
+fn terrain_cells_classify_ladders_and_torches_as_cutout() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let applied = store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+        section_x: 2,
+        section_y: 0,
+        section_z: -3,
+        updates: vec![
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 34,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 5719,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 35,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 3370,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 36,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 3371,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 37,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 6885,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 38,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 6887,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 39,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 7006,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 40,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 7007,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 41,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 7011,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 42,
+                    y: 1,
+                    z: -43,
+                },
+                block_state_id: 7012,
+            },
+        ],
+    });
+
+    assert_eq!(applied, 9);
+
+    let source_water = Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+    for (x, block_name, expected_fluid) in [
+        (34, "minecraft:ladder", source_water),
+        (35, "minecraft:torch", None),
+        (36, "minecraft:wall_torch", None),
+        (37, "minecraft:redstone_torch", None),
+        (38, "minecraft:redstone_wall_torch", None),
+        (39, "minecraft:soul_torch", None),
+        (40, "minecraft:soul_wall_torch", None),
+        (41, "minecraft:copper_torch", None),
+        (42, "minecraft:copper_wall_torch", None),
+    ] {
+        let probe = store.probe_block(BlockPos { x, y: 1, z: -43 }).unwrap();
+        assert_eq!(probe.block_name.as_deref(), Some(block_name));
+        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.fluid, expected_fluid);
+    }
+
+    let terrain = store
+        .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    assert_eq!(
+        terrain.cells[terrain_cell_index(2, 1, 5, 16)].fluid,
+        source_water
+    );
+    for local_x in 3..=10 {
+        assert_eq!(
+            terrain.cells[terrain_cell_index(local_x, 1, 5, 16)].fluid,
+            None
+        );
+    }
+
+    let summary = terrain.summary();
+    assert_eq!(summary.fluid_state_blocks, 1);
+    assert_eq!(summary.cutout_blocks, 9);
+    assert_eq!(summary.opaque_blocks, 4087);
+    assert_eq!(
+        store
+            .probe_chunk(ChunkPos { x: 2, z: -3 })
+            .unwrap()
+            .sections[0]
+            .fluid_count,
+        1
+    );
+}
+
+#[test]
 fn applies_single_block_update_and_reuploads_palette() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,

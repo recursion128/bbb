@@ -243,6 +243,8 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_door_block_name(name)
         || is_trapdoor_block_name(name)
         || is_rail_block_name(name)
+        || is_ladder_block_name(name)
+        || is_torch_block_name(name)
 }
 
 fn is_bar_block_name(name: &str) -> bool {
@@ -336,6 +338,24 @@ fn is_rail_block_name(name: &str) -> bool {
             | "minecraft:powered_rail"
             | "minecraft:detector_rail"
             | "minecraft:activator_rail"
+    )
+}
+
+fn is_ladder_block_name(name: &str) -> bool {
+    matches!(name, "minecraft:ladder")
+}
+
+fn is_torch_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:torch"
+            | "minecraft:wall_torch"
+            | "minecraft:redstone_torch"
+            | "minecraft:redstone_wall_torch"
+            | "minecraft:soul_torch"
+            | "minecraft:soul_wall_torch"
+            | "minecraft:copper_torch"
+            | "minecraft:copper_wall_torch"
     )
 }
 
@@ -476,6 +496,25 @@ mod tests {
             "minecraft:powered_rail",
             "minecraft:detector_rail",
             "minecraft:activator_rail",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:ladder")),
+            TerrainMaterialClass::Cutout
+        );
+        for name in [
+            "minecraft:torch",
+            "minecraft:wall_torch",
+            "minecraft:redstone_torch",
+            "minecraft:redstone_wall_torch",
+            "minecraft:soul_torch",
+            "minecraft:soul_wall_torch",
+            "minecraft:copper_torch",
+            "minecraft:copper_wall_torch",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),
