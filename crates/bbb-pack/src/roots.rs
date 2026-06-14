@@ -175,7 +175,7 @@ impl PackRoots {
     }
 
     pub fn load_sound_catalog(&self) -> Result<SoundCatalog> {
-        SoundCatalog::load_minecraft_assets_dir(&self.assets_dir)
+        SoundCatalog::load_resource_stack(&self.resource_stack())
     }
 }
 

@@ -65,6 +65,37 @@ impl PackResourceStack {
         &self.roots
     }
 
+    pub fn namespaces(&self) -> Result<Vec<String>> {
+        let mut namespaces = BTreeMap::new();
+        for root in &self.roots {
+            let assets_root = root.join("assets");
+            if !assets_root.is_dir() {
+                continue;
+            }
+            for entry in std::fs::read_dir(&assets_root)
+                .with_context(|| format!("read assets directory {}", assets_root.display()))?
+            {
+                let entry = entry
+                    .with_context(|| format!("read assets entry in {}", assets_root.display()))?;
+                let path = entry.path();
+                if !entry
+                    .file_type()
+                    .with_context(|| format!("read file type {}", path.display()))?
+                    .is_dir()
+                {
+                    continue;
+                }
+                let namespace = entry
+                    .file_name()
+                    .into_string()
+                    .map_err(|name| anyhow::anyhow!("non-utf8 asset namespace {name:?}"))?;
+                validate_resource_namespace(&namespace)?;
+                namespaces.insert(namespace.clone(), namespace);
+            }
+        }
+        Ok(namespaces.into_values().collect())
+    }
+
     pub fn get_resource(&self, location: &ResourceLocation) -> Option<PackResource> {
         self.roots.iter().rev().find_map(|root| {
             let path = resource_path(root, location);
@@ -273,6 +304,8 @@ mod tests {
         );
 
         let stack = PackResourceStack::from_roots(vec![base, overlay]);
+        assert_eq!(stack.namespaces().unwrap(), vec!["example", "minecraft"]);
+
         let stone = ResourceLocation::parse("minecraft:textures/block/stone.png").unwrap();
         let resolved = stack.get_resource(&stone).unwrap();
         assert!(resolved

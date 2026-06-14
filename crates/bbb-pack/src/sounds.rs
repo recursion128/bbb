@@ -6,7 +6,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::resources::ResourceLocation;
+use crate::resources::{PackResourceStack, ResourceLocation};
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SoundCatalog {
@@ -31,26 +31,63 @@ impl SoundCatalog {
             .with_context(|| format!("parse sounds {}", path.display()))
     }
 
+    pub fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
+        let mut catalog = Self::default();
+        for namespace in stack.namespaces()? {
+            let sounds_location = ResourceLocation::new(namespace.clone(), "sounds.json")?;
+            for resource in stack.get_resource_stack(&sounds_location) {
+                let bytes = std::fs::read(&resource.path)
+                    .with_context(|| format!("read sounds {}", resource.path.display()))?;
+                let namespace_assets_dir = resource
+                    .path
+                    .parent()
+                    .ok_or_else(|| anyhow::anyhow!("sounds path has no parent"))?;
+                catalog
+                    .merge_json_bytes(&namespace, namespace_assets_dir, &bytes, Some(stack))
+                    .with_context(|| format!("parse sounds {}", resource.path.display()))?;
+            }
+        }
+        Ok(catalog)
+    }
+
     pub fn from_json_bytes(
         namespace: &str,
         namespace_assets_dir: impl AsRef<Path>,
         bytes: &[u8],
     ) -> Result<Self> {
-        ResourceLocation::parse(&format!("{namespace}:_"))?;
+        let mut catalog = Self::default();
         let namespace_assets_dir = namespace_assets_dir.as_ref();
+        catalog.merge_json_bytes(namespace, namespace_assets_dir, bytes, None)?;
+        Ok(catalog)
+    }
+
+    fn merge_json_bytes(
+        &mut self,
+        namespace: &str,
+        namespace_assets_dir: &Path,
+        bytes: &[u8],
+        stack: Option<&PackResourceStack>,
+    ) -> Result<()> {
+        ResourceLocation::parse(&format!("{namespace}:_"))?;
         let raw: BTreeMap<String, RawSoundEventDefinition> = serde_json::from_slice(bytes)?;
-        let mut events = BTreeMap::new();
         for (event_path, event) in raw {
-            let location = ResourceLocation::parse(&format!("{namespace}:{event_path}"))?;
+            let location = ResourceLocation::new(namespace.to_string(), event_path.clone())?;
             let id = location.id();
-            events.insert(
-                id.clone(),
-                event
-                    .into_definition(namespace, id, namespace_assets_dir)
-                    .with_context(|| format!("parse sound event {event_path:?}"))?,
-            );
+            let definition = event
+                .into_definition(namespace, id, namespace_assets_dir, stack)
+                .with_context(|| format!("parse sound event {event_path:?}"))?;
+            self.merge_definition(definition);
         }
-        Ok(Self { events })
+        Ok(())
+    }
+
+    fn merge_definition(&mut self, definition: SoundEventDefinition) {
+        match self.events.get_mut(&definition.id) {
+            Some(existing) if !definition.replace => existing.sounds.extend(definition.sounds),
+            _ => {
+                self.events.insert(definition.id.clone(), definition);
+            }
+        }
     }
 
     pub fn event(&self, id: &str) -> Option<&SoundEventDefinition> {
@@ -110,11 +147,12 @@ impl RawSoundEventDefinition {
         namespace: &str,
         id: String,
         namespace_assets_dir: &Path,
+        stack: Option<&PackResourceStack>,
     ) -> Result<SoundEventDefinition> {
         let sounds = self
             .sounds
             .into_iter()
-            .map(|sound| sound.into_entry(namespace, namespace_assets_dir))
+            .map(|sound| sound.into_entry(namespace, namespace_assets_dir, stack))
             .collect::<Result<Vec<_>>>()?;
         Ok(SoundEventDefinition {
             id,
@@ -133,7 +171,12 @@ enum RawSoundEntry {
 }
 
 impl RawSoundEntry {
-    fn into_entry(self, namespace: &str, namespace_assets_dir: &Path) -> Result<SoundEntry> {
+    fn into_entry(
+        self,
+        namespace: &str,
+        namespace_assets_dir: &Path,
+        stack: Option<&PackResourceStack>,
+    ) -> Result<SoundEntry> {
         match self {
             Self::Name(name) => sound_entry(
                 name,
@@ -146,8 +189,9 @@ impl RawSoundEntry {
                 16,
                 namespace,
                 namespace_assets_dir,
+                stack,
             ),
-            Self::Object(raw) => raw.into_entry(namespace, namespace_assets_dir),
+            Self::Object(raw) => raw.into_entry(namespace, namespace_assets_dir, stack),
         }
     }
 }
@@ -172,7 +216,12 @@ struct RawSoundObject {
 }
 
 impl RawSoundObject {
-    fn into_entry(self, namespace: &str, namespace_assets_dir: &Path) -> Result<SoundEntry> {
+    fn into_entry(
+        self,
+        namespace: &str,
+        namespace_assets_dir: &Path,
+        stack: Option<&PackResourceStack>,
+    ) -> Result<SoundEntry> {
         sound_entry(
             self.name,
             self.kind.into(),
@@ -184,6 +233,7 @@ impl RawSoundObject {
             self.attenuation_distance,
             namespace,
             namespace_assets_dir,
+            stack,
         )
     }
 }
@@ -216,6 +266,7 @@ fn sound_entry(
     attenuation_distance: i32,
     namespace: &str,
     namespace_assets_dir: &Path,
+    stack: Option<&PackResourceStack>,
 ) -> Result<SoundEntry> {
     if !volume.is_finite() || volume <= 0.0 {
         bail!("invalid sound volume {volume}");
@@ -229,7 +280,12 @@ fn sound_entry(
     let location = ResourceLocation::parse(&name)?;
     let name = location.id();
     let ogg_path = match kind {
-        SoundEntryKind::File => Some(sound_ogg_path(namespace_assets_dir, namespace, &location)),
+        SoundEntryKind::File => Some(sound_ogg_path(
+            namespace_assets_dir,
+            namespace,
+            &location,
+            stack,
+        )?),
         SoundEntryKind::Event => None,
     };
     Ok(SoundEntry {
@@ -249,7 +305,16 @@ fn sound_ogg_path(
     namespace_assets_dir: &Path,
     namespace: &str,
     location: &ResourceLocation,
-) -> PathBuf {
+    stack: Option<&PackResourceStack>,
+) -> Result<PathBuf> {
+    if let Some(resource) = stack.and_then(|stack| {
+        sound_resource_location(location)
+            .ok()
+            .and_then(|id| stack.get_resource(&id))
+    }) {
+        return Ok(resource.path);
+    }
+
     let assets_dir = if location.namespace() == namespace {
         namespace_assets_dir.to_path_buf()
     } else {
@@ -258,9 +323,16 @@ fn sound_ogg_path(
             .unwrap_or(namespace_assets_dir)
             .join(location.namespace())
     };
-    assets_dir
+    Ok(assets_dir
         .join("sounds")
-        .join(format!("{}.ogg", location.path()))
+        .join(format!("{}.ogg", location.path())))
+}
+
+fn sound_resource_location(location: &ResourceLocation) -> Result<ResourceLocation> {
+    ResourceLocation::new(
+        location.namespace().to_string(),
+        format!("sounds/{}.ogg", location.path()),
+    )
 }
 
 fn default_one() -> f32 {
@@ -405,6 +477,150 @@ mod tests {
     }
 
     #[test]
+    fn sound_catalog_merges_resource_stack_definitions_in_pack_order() {
+        let root = unique_temp_dir("sound-stack-merge");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        let base_assets = base.join("assets").join("minecraft");
+        let overlay_assets = overlay.join("assets").join("minecraft");
+        write_file(&base_assets.join("sounds").join("random").join("click.ogg"));
+        let overlay_ogg = overlay_assets
+            .join("sounds")
+            .join("random")
+            .join("click.ogg");
+        write_file(&overlay_ogg);
+        write_json(
+            &base_assets.join("sounds.json"),
+            r#"{
+              "ui.button.click": {
+                "subtitle": "subtitles.ui.button.click",
+                "sounds": ["random/click"]
+              }
+            }"#,
+        );
+        write_json(
+            &overlay_assets.join("sounds.json"),
+            r#"{
+              "ui.button.click": {
+                "subtitle": "subtitles.ui.button.overlay",
+                "sounds": [
+                  {
+                    "name": "random/click",
+                    "volume": 0.5
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+        let catalog = roots.load_sound_catalog().unwrap();
+        let event = catalog.event("minecraft:ui.button.click").unwrap();
+
+        assert_eq!(event.subtitle.as_deref(), Some("subtitles.ui.button.click"));
+        assert_eq!(event.sounds.len(), 2);
+        assert_eq!(event.sounds[0].ogg_path, Some(overlay_ogg.clone()));
+        assert_eq!(event.sounds[1].ogg_path, Some(overlay_ogg));
+        assert_eq!(event.sounds[1].volume, 0.5);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn sound_catalog_replace_clears_lower_priority_sounds() {
+        let root = unique_temp_dir("sound-stack-replace");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        let base_assets = base.join("assets").join("minecraft");
+        let overlay_assets = overlay.join("assets").join("minecraft");
+        write_file(
+            &base_assets
+                .join("sounds")
+                .join("music")
+                .join("menu_base.ogg"),
+        );
+        let overlay_ogg = overlay_assets
+            .join("sounds")
+            .join("music")
+            .join("menu_overlay.ogg");
+        write_file(&overlay_ogg);
+        write_json(
+            &base_assets.join("sounds.json"),
+            r#"{
+              "music.menu": {
+                "subtitle": "subtitles.music.base",
+                "sounds": ["music/menu_base"]
+              }
+            }"#,
+        );
+        write_json(
+            &overlay_assets.join("sounds.json"),
+            r#"{
+              "music.menu": {
+                "replace": true,
+                "subtitle": "subtitles.music.overlay",
+                "sounds": ["music/menu_overlay"]
+              }
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+        let catalog = roots.load_sound_catalog().unwrap();
+        let event = catalog.event("music.menu").unwrap();
+
+        assert!(event.replace);
+        assert_eq!(event.subtitle.as_deref(), Some("subtitles.music.overlay"));
+        assert_eq!(event.sounds.len(), 1);
+        assert_eq!(event.sounds[0].name, "minecraft:music/menu_overlay");
+        assert_eq!(event.sounds[0].ogg_path, Some(overlay_ogg));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn sound_catalog_loads_all_namespaces_from_resource_stack() {
+        let root = unique_temp_dir("sound-stack-namespaces");
+        let base = root.join("sources").join(MC_VERSION);
+        let custom_assets = base.join("assets").join("custom");
+        write_file(
+            &custom_assets
+                .join("sounds")
+                .join("ambient")
+                .join("wind.ogg"),
+        );
+        write_json(
+            &custom_assets.join("sounds.json"),
+            r#"{
+              "ambient.wind": {
+                "sounds": ["custom:ambient/wind"]
+              }
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let catalog = roots.load_sound_catalog().unwrap();
+        let event = catalog.event("custom:ambient.wind").unwrap();
+
+        assert_eq!(catalog.len(), 1);
+        assert_eq!(event.sounds[0].name, "custom:ambient/wind");
+        assert_eq!(
+            event.sounds[0].ogg_path,
+            Some(
+                custom_assets
+                    .join("sounds")
+                    .join("ambient")
+                    .join("wind.ogg")
+            )
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn rejects_invalid_sound_entry_values() {
         let err = SoundCatalog::from_json_bytes(
             "minecraft",
@@ -443,5 +659,15 @@ mod tests {
             .unwrap()
             .as_nanos();
         std::env::temp_dir().join(format!("bbb-pack-{label}-{nanos}"))
+    }
+
+    fn write_file(path: &Path) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, []).unwrap();
+    }
+
+    fn write_json(path: &Path, contents: &str) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, contents).unwrap();
     }
 }
