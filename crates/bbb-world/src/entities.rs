@@ -45,6 +45,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID: i32 = 29;
 pub(crate) const VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID: i32 = 56;
 pub(crate) const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
 pub(crate) const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+pub(crate) const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 pub(crate) const VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID: i32 = 122;
 pub(crate) const VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID: i32 = 118;
 pub(crate) const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
@@ -274,6 +275,14 @@ impl WorldStore {
     }
 
     pub fn probe_entity_pick_bounds(&self, id: i32) -> Option<EntityPickBoundsState> {
+        let identity = self.entities.identity(id)?;
+        if identity.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+            && self
+                .player_info_entry(identity.uuid)
+                .is_some_and(|info| info.is_spectator())
+        {
+            return None;
+        }
         self.entities.pick_bounds(id)
     }
 

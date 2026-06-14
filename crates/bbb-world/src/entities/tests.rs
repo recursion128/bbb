@@ -7,16 +7,18 @@ use bbb_protocol::packets::{
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
+    GameProfile as ProtocolGameProfile, GameType as ProtocolGameType,
     HurtAnimation as ProtocolHurtAnimation, ItemStackSummary,
     ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
     MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
-    PlayLogin as ProtocolPlayLogin, RemoveEntities as ProtocolRemoveEntities,
-    RotateHead as ProtocolRotateHead, SetEntityData as ProtocolSetEntityData,
-    SetEntityLink as ProtocolSetEntityLink, SetEntityMotion as ProtocolSetEntityMotion,
-    SetEquipment as ProtocolSetEquipment, SetPassengers as ProtocolSetPassengers,
-    TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
-    UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y,
-    PLAYER_RELATIVE_X,
+    PlayLogin as ProtocolPlayLogin, PlayerInfoAction as ProtocolPlayerInfoAction,
+    PlayerInfoEntry as ProtocolPlayerInfoEntry, PlayerInfoUpdate as ProtocolPlayerInfoUpdate,
+    RemoveEntities as ProtocolRemoveEntities, RotateHead as ProtocolRotateHead,
+    SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
+    SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
+    SetPassengers as ProtocolSetPassengers, TakeItemEntity as ProtocolTakeItemEntity,
+    TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
+    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
 };
 
 #[test]
@@ -844,6 +846,44 @@ fn armor_stand_pick_bounds_follow_client_flags() {
 }
 
 #[test]
+fn player_pick_bounds_skip_spectator_profile() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        29,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(29),
+        Some(EntityPickBoundsState::from_base_size(0.6, 1.8, 0.0))
+    );
+
+    store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+        actions: vec![
+            ProtocolPlayerInfoAction::AddPlayer,
+            ProtocolPlayerInfoAction::UpdateGameMode,
+        ],
+        entries: vec![protocol_player_info_entry_with_mode(
+            default_entity_uuid(),
+            ProtocolGameType::Spectator,
+        )],
+    });
+    assert_eq!(store.probe_entity_pick_bounds(29), None);
+
+    store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+        actions: vec![ProtocolPlayerInfoAction::UpdateGameMode],
+        entries: vec![protocol_player_info_entry_with_mode(
+            default_entity_uuid(),
+            ProtocolGameType::Survival,
+        )],
+    });
+    assert_eq!(
+        store.probe_entity_pick_bounds(29),
+        Some(EntityPickBoundsState::from_base_size(0.6, 1.8, 0.0))
+    );
+}
+
+#[test]
 fn tracks_entity_passenger_updates() {
     let mut store = WorldStore::new();
     for id in [10, 20, 21, 30] {
@@ -1355,7 +1395,7 @@ fn protocol_add_entity_with_type_data(
 ) -> ProtocolAddEntity {
     ProtocolAddEntity {
         id,
-        uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+        uuid: default_entity_uuid(),
         entity_type_id,
         position: ProtocolVec3d {
             x: 1.0,
@@ -1371,6 +1411,31 @@ fn protocol_add_entity_with_type_data(
         y_rot: 20.0,
         y_head_rot: 30.0,
         data,
+    }
+}
+
+fn default_entity_uuid() -> Uuid {
+    Uuid::from_u128(0x12345678123456781234567812345678)
+}
+
+fn protocol_player_info_entry_with_mode(
+    profile_id: Uuid,
+    game_mode: ProtocolGameType,
+) -> ProtocolPlayerInfoEntry {
+    ProtocolPlayerInfoEntry {
+        profile_id,
+        profile: Some(ProtocolGameProfile {
+            uuid: profile_id,
+            name: "PickTarget".to_string(),
+            properties: Vec::new(),
+        }),
+        listed: true,
+        latency: 0,
+        game_mode,
+        display_name: None,
+        show_hat: true,
+        list_order: 0,
+        chat_session: None,
     }
 }
 

@@ -41,6 +41,10 @@ impl PlayerInfoEntryState {
             chat_session_present: false,
         }
     }
+
+    pub fn is_spectator(&self) -> bool {
+        self.game_mode == "spectator"
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

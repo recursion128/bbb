@@ -77,6 +77,14 @@ impl EntityStore {
             .map(|identity| identity.entity_type_id)
     }
 
+    pub(crate) fn identity(&self, id: i32) -> Option<EntityIdentity> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityIdentity>(entity)
+            .ok()
+            .map(|identity| (*identity).clone())
+    }
+
     pub(crate) fn pick_bounds(&self, id: i32) -> Option<super::EntityPickBoundsState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
