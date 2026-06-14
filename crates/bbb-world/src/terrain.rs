@@ -248,6 +248,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_lever_block_name(name)
         || is_button_block_name(name)
         || is_pressure_plate_block_name(name)
+        || is_lantern_block_name(name)
 }
 
 fn is_bar_block_name(name: &str) -> bool {
@@ -405,6 +406,22 @@ fn is_pressure_plate_block_name(name: &str) -> bool {
             | "minecraft:light_weighted_pressure_plate"
             | "minecraft:heavy_weighted_pressure_plate"
             | "minecraft:polished_blackstone_pressure_plate"
+    )
+}
+
+fn is_lantern_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:lantern"
+            | "minecraft:soul_lantern"
+            | "minecraft:copper_lantern"
+            | "minecraft:exposed_copper_lantern"
+            | "minecraft:weathered_copper_lantern"
+            | "minecraft:oxidized_copper_lantern"
+            | "minecraft:waxed_copper_lantern"
+            | "minecraft:waxed_exposed_copper_lantern"
+            | "minecraft:waxed_weathered_copper_lantern"
+            | "minecraft:waxed_oxidized_copper_lantern"
     )
 }
 
@@ -612,6 +629,23 @@ mod tests {
             "minecraft:light_weighted_pressure_plate",
             "minecraft:heavy_weighted_pressure_plate",
             "minecraft:polished_blackstone_pressure_plate",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:lantern",
+            "minecraft:soul_lantern",
+            "minecraft:copper_lantern",
+            "minecraft:exposed_copper_lantern",
+            "minecraft:weathered_copper_lantern",
+            "minecraft:oxidized_copper_lantern",
+            "minecraft:waxed_copper_lantern",
+            "minecraft:waxed_exposed_copper_lantern",
+            "minecraft:waxed_weathered_copper_lantern",
+            "minecraft:waxed_oxidized_copper_lantern",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),
