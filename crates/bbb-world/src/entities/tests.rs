@@ -754,6 +754,56 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
 }
 
 #[test]
+fn slime_pick_bounds_scale_with_vanilla_size_metadata() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(24, 117));
+    store.apply_add_entity(protocol_add_entity_with_type(25, 80));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(24),
+        Some(EntityPickBoundsState::from_base_size(0.52, 0.52, 0.0))
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(25),
+        Some(EntityPickBoundsState::from_base_size(0.52, 0.52, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 24,
+        values: vec![ProtocolEntityDataValue {
+            data_id: 16,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(4),
+        }],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 25,
+        values: vec![ProtocolEntityDataValue {
+            data_id: 16,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(3),
+        }],
+    }));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(24),
+        Some(EntityPickBoundsState::from_base_size(
+            0.52 * 4.0,
+            0.52 * 4.0,
+            0.0,
+        ))
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(25),
+        Some(EntityPickBoundsState::from_base_size(
+            0.52 * 3.0,
+            0.52 * 3.0,
+            0.0,
+        ))
+    );
+}
+
+#[test]
 fn tracks_entity_passenger_updates() {
     let mut store = WorldStore::new();
     for id in [10, 20, 21, 30] {

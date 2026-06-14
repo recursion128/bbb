@@ -97,13 +97,14 @@ Known priority areas:
   verified 26.1 base pick bounds for vanilla `LivingEntity` types, boats,
   minecarts, TNT, falling blocks, end crystals, shulker bullets,
   `interaction` entity metadata width/height, direction-aware item
-  frames/paintings/leash knots, and the `redirectable_projectile` tag
-  (`fireball`, `wind_charge`, `breeze_wind_charge`); `bbb-native` routes
-  left/right/middle mouse actions to attack/interact/pick entity packets for
-  those targets, using vanilla default block/entity interaction ranges of
-  4.5/3.0 blocks. Owner: `bbb-world` + `bbb-native`; status: partial; next
-  action: apply dynamic bounding-box semantics for baby/pose/scale variants,
-  armor stand marker state, player spectator state, and slime/magma cube size.
+  frames/paintings/leash knots, slime/magma cube size metadata, and the
+  `redirectable_projectile` tag (`fireball`, `wind_charge`,
+  `breeze_wind_charge`); `bbb-native` routes left/right/middle mouse actions to
+  attack/interact/pick entity packets for those targets, using vanilla default
+  block/entity interaction ranges of 4.5/3.0 blocks. Owner: `bbb-world` +
+  `bbb-native`; status: partial; next action: apply dynamic bounding-box
+  semantics for baby/pose/scale variants, armor stand marker state, and player
+  spectator state.
 
 ## Phases
 

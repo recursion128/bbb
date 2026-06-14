@@ -7,7 +7,9 @@ const VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID: i32 = 60;
 const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
 const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
 const VANILLA_ENTITY_TYPE_LEASH_KNOT_ID: i32 = 76;
+const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_PAINTING_ID: i32 = 93;
+const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const HANGING_DATA_DIRECTION_ID: u8 = 8;
 const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
 const PAINTING_DATA_VARIANT_ID: u8 = 9;
@@ -21,6 +23,9 @@ const ITEM_FRAME_MAP_SIZE: f32 = 1.0;
 const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 = 41;
 const PAINTING_DEPTH: f32 = 0.0625;
 const HANGING_WALL_OFFSET: f64 = 0.46875;
+const SLIME_SIZE_DATA_ID: u8 = 16;
+const SLIME_BASE_SIZE: f32 = 0.52;
+const SLIME_DEFAULT_SIZE: i32 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -77,6 +82,11 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     }
     if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
         return Some(EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0));
+    }
+    if entity_type_id == VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_SLIME_ID
+    {
+        return Some(slime_pick_bounds(data_values));
     }
     vanilla_pick_bounds_for_type(entity_type_id)
 }
@@ -273,6 +283,22 @@ fn painting_variant_size(data_values: &[EntityDataValue]) -> (f32, f32) {
 
 fn positive_painting_size(width: i32, height: i32) -> Option<(f32, f32)> {
     (width > 0 && height > 0).then_some((width as f32, height as f32))
+}
+
+fn slime_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
+    let size = entity_data_int(data_values, SLIME_SIZE_DATA_ID, SLIME_DEFAULT_SIZE) as f32;
+    EntityPickBoundsState::from_base_size(SLIME_BASE_SIZE * size, SLIME_BASE_SIZE * size, 0.0)
+}
+
+fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Int(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
 }
 
 fn entity_data_float(data_values: &[EntityDataValue], data_id: u8, fallback: f32) -> f32 {
