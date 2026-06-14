@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use image::ImageReader;
 use regex::Regex;
 use serde::Deserialize;
 
@@ -56,6 +57,19 @@ pub(crate) fn load_atlas_texture_entries(
             "minecraft:filter" => {
                 let pattern = source.required_pattern()?;
                 remove_matching_entries(&mut entries, &pattern)?;
+            }
+            "minecraft:unstitch" => {
+                let resource = source.required_location("resource")?;
+                let regions = source.required_unstitch_regions()?;
+                let divisor_x = source.divisor_x.unwrap_or(1.0);
+                let divisor_y = source.divisor_y.unwrap_or(1.0);
+                loader.append_unstitch_entries(
+                    &mut entries,
+                    &resource,
+                    &regions,
+                    divisor_x,
+                    divisor_y,
+                )?;
             }
             other => bail!("unsupported atlas source type {other:?} in atlas {atlas_name}"),
         }
@@ -134,6 +148,28 @@ impl<'a> AtlasTextureLoader<'a> {
         Ok(())
     }
 
+    fn append_unstitch_entries(
+        &self,
+        entries: &mut Vec<AtlasTextureEntry>,
+        resource: &ResourceLocation,
+        regions: &[UnstitchRegion],
+        divisor_x: f64,
+        divisor_y: f64,
+    ) -> Result<()> {
+        let (source_width, source_height, rgba) = read_raw_png(self.texture_path(resource))?;
+        for region in regions {
+            entries.push(AtlasTextureEntry::Image(unstitch_region(
+                source_width,
+                source_height,
+                &rgba,
+                region,
+                divisor_x,
+                divisor_y,
+            )?));
+        }
+        Ok(())
+    }
+
     fn namespace_assets_dirs(&self) -> Result<Vec<(String, PathBuf)>> {
         let assets_root = self.roots.sources_dir.join("assets");
         let mut dirs = Vec::new();
@@ -188,8 +224,11 @@ struct RawAtlasSource {
     palette_key: Option<String>,
     pattern: Option<RawIdentifierPattern>,
     permutations: Option<BTreeMap<String, String>>,
+    regions: Option<Vec<RawUnstitchRegion>>,
     textures: Option<Vec<String>>,
     separator: Option<String>,
+    divisor_x: Option<f64>,
+    divisor_y: Option<f64>,
 }
 
 impl RawAtlasSource {
@@ -258,12 +297,53 @@ impl RawAtlasSource {
             .ok_or_else(|| anyhow::anyhow!("missing atlas source pattern"))?
             .compile()
     }
+
+    fn required_unstitch_regions(&self) -> Result<Vec<UnstitchRegion>> {
+        let regions = self
+            .regions
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("missing atlas source regions"))?;
+        if regions.is_empty() {
+            bail!("atlas source regions must not be empty");
+        }
+        regions.iter().map(RawUnstitchRegion::region).collect()
+    }
 }
 
 #[derive(Debug, Deserialize)]
 struct RawIdentifierPattern {
     namespace: Option<String>,
     path: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawUnstitchRegion {
+    sprite: String,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+#[derive(Debug, Clone)]
+struct UnstitchRegion {
+    sprite: ResourceLocation,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+impl RawUnstitchRegion {
+    fn region(&self) -> Result<UnstitchRegion> {
+        Ok(UnstitchRegion {
+            sprite: ResourceLocation::parse(&self.sprite)?,
+            x: finite_number(self.x, "unstitch x")?,
+            y: finite_number(self.y, "unstitch y")?,
+            width: positive_finite_number(self.width, "unstitch width")?,
+            height: positive_finite_number(self.height, "unstitch height")?,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -375,6 +455,96 @@ fn remove_matching_entries(
     }
     *entries = retained;
     Ok(())
+}
+
+fn read_raw_png(path: impl AsRef<Path>) -> Result<(u32, u32, Vec<u8>)> {
+    let path = path.as_ref();
+    let reader = ImageReader::open(path).with_context(|| format!("open png {}", path.display()))?;
+    let reader = reader
+        .with_guessed_format()
+        .with_context(|| format!("guess image format {}", path.display()))?;
+    if reader.format() != Some(image::ImageFormat::Png) {
+        bail!("unstitch source {} is not a PNG", path.display());
+    }
+    let rgba = reader
+        .decode()
+        .with_context(|| format!("decode png {}", path.display()))?
+        .into_rgba8();
+    let (width, height) = rgba.dimensions();
+    Ok((width, height, rgba.into_raw()))
+}
+
+fn unstitch_region(
+    source_width: u32,
+    source_height: u32,
+    source_rgba: &[u8],
+    region: &UnstitchRegion,
+    divisor_x: f64,
+    divisor_y: f64,
+) -> Result<SpriteImage> {
+    let divisor_x = positive_finite_number(divisor_x, "unstitch divisor_x")?;
+    let divisor_y = positive_finite_number(divisor_y, "unstitch divisor_y")?;
+    let x_scale = f64::from(source_width) / divisor_x;
+    let y_scale = f64::from(source_height) / divisor_y;
+    let x = scaled_floor(region.x, x_scale, "unstitch x")?;
+    let y = scaled_floor(region.y, y_scale, "unstitch y")?;
+    let width = scaled_floor(region.width, x_scale, "unstitch width")?;
+    let height = scaled_floor(region.height, y_scale, "unstitch height")?;
+    if width == 0 || height == 0 {
+        bail!(
+            "unstitch region {} has zero-sized dimensions",
+            region.sprite.id()
+        );
+    }
+    let right = x
+        .checked_add(width)
+        .ok_or_else(|| anyhow::anyhow!("unstitch region width overflow"))?;
+    let bottom = y
+        .checked_add(height)
+        .ok_or_else(|| anyhow::anyhow!("unstitch region height overflow"))?;
+    if right > source_width || bottom > source_height {
+        bail!(
+            "unstitch region {} exceeds source bounds {}x{}",
+            region.sprite.id(),
+            source_width,
+            source_height
+        );
+    }
+
+    let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+    let source_stride = source_width as usize * 4;
+    let row_len = width as usize * 4;
+    for local_y in 0..height {
+        let start = (y as usize + local_y as usize)
+            .checked_mul(source_stride)
+            .and_then(|row| row.checked_add(x as usize * 4))
+            .ok_or_else(|| anyhow::anyhow!("unstitch region offset overflow"))?;
+        rgba.extend_from_slice(&source_rgba[start..start + row_len]);
+    }
+    SpriteImage::new(region.sprite.id(), width, height, rgba)
+}
+
+fn finite_number(value: f64, label: &str) -> Result<f64> {
+    if !value.is_finite() {
+        bail!("{label} must be finite");
+    }
+    Ok(value)
+}
+
+fn positive_finite_number(value: f64, label: &str) -> Result<f64> {
+    let value = finite_number(value, label)?;
+    if value <= 0.0 {
+        bail!("{label} must be positive");
+    }
+    Ok(value)
+}
+
+fn scaled_floor(value: f64, scale: f64, label: &str) -> Result<u32> {
+    let scaled = finite_number(value * scale, label)?.floor();
+    if scaled < 0.0 || scaled > f64::from(u32::MAX) {
+        bail!("{label} is outside supported bounds");
+    }
+    Ok(scaled as u32)
 }
 
 fn collect_png_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
@@ -498,7 +668,7 @@ fn create_palette_mapping(
 #[cfg(test)]
 mod tests {
     use super::{apply_palette_permutation, load_atlas_texture_entries, AtlasTextureEntry};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::{PackRoots, MC_VERSION};
@@ -638,6 +808,67 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn atlas_unstitch_crops_regions_with_vanilla_divisors() {
+        let root = unique_temp_dir("atlas-unstitch");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        std::fs::create_dir_all(assets_dir.join("textures").join("gui")).unwrap();
+        std::fs::create_dir_all(assets_dir.join("atlases")).unwrap();
+        write_rgba_png(
+            &assets_dir.join("textures").join("gui").join("widgets.png"),
+            4,
+            4,
+            &[
+                0, 0, 100, 255, 40, 0, 100, 255, 80, 0, 100, 255, 120, 0, 100, 255, 0, 40, 100,
+                255, 40, 40, 100, 255, 80, 40, 100, 255, 120, 40, 100, 255, 0, 80, 100, 255, 40,
+                80, 100, 255, 80, 80, 100, 255, 120, 80, 100, 255, 0, 120, 100, 255, 40, 120, 100,
+                255, 80, 120, 100, 255, 120, 120, 100, 255,
+            ],
+        );
+        std::fs::write(
+            assets_dir.join("atlases").join("unstitch.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:unstitch",
+                  "resource": "minecraft:gui/widgets",
+                  "divisor_x": 4.0,
+                  "divisor_y": 4.0,
+                  "regions": [
+                    {
+                      "sprite": "minecraft:widget/center",
+                      "x": 1.0,
+                      "y": 1.0,
+                      "width": 2.0,
+                      "height": 2.0
+                    }
+                  ]
+                }
+              ]
+            }"#,
+        )
+        .unwrap();
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let entries = load_atlas_texture_entries(&roots, "unstitch").unwrap();
+        assert_eq!(entries.len(), 1);
+        let image = entries.into_iter().next().unwrap().into_image().unwrap();
+
+        assert_eq!(image.id, "minecraft:widget/center");
+        assert_eq!((image.width, image.height), (2, 2));
+        assert_eq!(
+            image.rgba,
+            vec![40, 40, 100, 255, 80, 40, 100, 255, 40, 80, 100, 255, 80, 80, 100, 255]
+        );
+        assert_eq!(image.texture_metadata, SpriteTextureMetadata::default());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     fn entry_id(entry: &AtlasTextureEntry) -> &str {
         match entry {
             AtlasTextureEntry::File { id, .. } => id,
@@ -653,5 +884,10 @@ mod tests {
             .as_nanos();
         dir.push(format!("bbb-pack-{label}-{nanos}"));
         dir
+    }
+
+    fn write_rgba_png(path: &Path, width: u32, height: u32, rgba: &[u8]) {
+        let image = image::RgbaImage::from_raw(width, height, rgba.to_vec()).unwrap();
+        image.save(path).unwrap();
     }
 }
