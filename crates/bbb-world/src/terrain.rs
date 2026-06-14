@@ -240,6 +240,8 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_copper_grate_block_name(name)
         || is_bar_block_name(name)
         || is_chain_block_name(name)
+        || is_door_block_name(name)
+        || is_trapdoor_block_name(name)
 }
 
 fn is_bar_block_name(name: &str) -> bool {
@@ -269,6 +271,60 @@ fn is_chain_block_name(name: &str) -> bool {
             | "minecraft:waxed_exposed_copper_chain"
             | "minecraft:waxed_weathered_copper_chain"
             | "minecraft:waxed_oxidized_copper_chain"
+    )
+}
+
+fn is_door_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:oak_door"
+            | "minecraft:spruce_door"
+            | "minecraft:birch_door"
+            | "minecraft:jungle_door"
+            | "minecraft:acacia_door"
+            | "minecraft:cherry_door"
+            | "minecraft:dark_oak_door"
+            | "minecraft:pale_oak_door"
+            | "minecraft:mangrove_door"
+            | "minecraft:bamboo_door"
+            | "minecraft:crimson_door"
+            | "minecraft:warped_door"
+            | "minecraft:iron_door"
+            | "minecraft:copper_door"
+            | "minecraft:exposed_copper_door"
+            | "minecraft:weathered_copper_door"
+            | "minecraft:oxidized_copper_door"
+            | "minecraft:waxed_copper_door"
+            | "minecraft:waxed_exposed_copper_door"
+            | "minecraft:waxed_weathered_copper_door"
+            | "minecraft:waxed_oxidized_copper_door"
+    )
+}
+
+fn is_trapdoor_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:oak_trapdoor"
+            | "minecraft:spruce_trapdoor"
+            | "minecraft:birch_trapdoor"
+            | "minecraft:jungle_trapdoor"
+            | "minecraft:acacia_trapdoor"
+            | "minecraft:cherry_trapdoor"
+            | "minecraft:dark_oak_trapdoor"
+            | "minecraft:pale_oak_trapdoor"
+            | "minecraft:mangrove_trapdoor"
+            | "minecraft:bamboo_trapdoor"
+            | "minecraft:crimson_trapdoor"
+            | "minecraft:warped_trapdoor"
+            | "minecraft:iron_trapdoor"
+            | "minecraft:copper_trapdoor"
+            | "minecraft:exposed_copper_trapdoor"
+            | "minecraft:weathered_copper_trapdoor"
+            | "minecraft:oxidized_copper_trapdoor"
+            | "minecraft:waxed_copper_trapdoor"
+            | "minecraft:waxed_exposed_copper_trapdoor"
+            | "minecraft:waxed_weathered_copper_trapdoor"
+            | "minecraft:waxed_oxidized_copper_trapdoor"
     )
 }
 
@@ -348,6 +404,62 @@ mod tests {
             classify_terrain_material(Some("minecraft:chain_command_block")),
             TerrainMaterialClass::Opaque
         );
+        for name in [
+            "minecraft:oak_door",
+            "minecraft:spruce_door",
+            "minecraft:birch_door",
+            "minecraft:jungle_door",
+            "minecraft:acacia_door",
+            "minecraft:cherry_door",
+            "minecraft:dark_oak_door",
+            "minecraft:pale_oak_door",
+            "minecraft:mangrove_door",
+            "minecraft:bamboo_door",
+            "minecraft:crimson_door",
+            "minecraft:warped_door",
+            "minecraft:iron_door",
+            "minecraft:copper_door",
+            "minecraft:exposed_copper_door",
+            "minecraft:weathered_copper_door",
+            "minecraft:oxidized_copper_door",
+            "minecraft:waxed_copper_door",
+            "minecraft:waxed_exposed_copper_door",
+            "minecraft:waxed_weathered_copper_door",
+            "minecraft:waxed_oxidized_copper_door",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:oak_trapdoor",
+            "minecraft:spruce_trapdoor",
+            "minecraft:birch_trapdoor",
+            "minecraft:jungle_trapdoor",
+            "minecraft:acacia_trapdoor",
+            "minecraft:cherry_trapdoor",
+            "minecraft:dark_oak_trapdoor",
+            "minecraft:pale_oak_trapdoor",
+            "minecraft:mangrove_trapdoor",
+            "minecraft:bamboo_trapdoor",
+            "minecraft:crimson_trapdoor",
+            "minecraft:warped_trapdoor",
+            "minecraft:iron_trapdoor",
+            "minecraft:copper_trapdoor",
+            "minecraft:exposed_copper_trapdoor",
+            "minecraft:weathered_copper_trapdoor",
+            "minecraft:oxidized_copper_trapdoor",
+            "minecraft:waxed_copper_trapdoor",
+            "minecraft:waxed_exposed_copper_trapdoor",
+            "minecraft:waxed_weathered_copper_trapdoor",
+            "minecraft:waxed_oxidized_copper_trapdoor",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
         assert_eq!(
             classify_terrain_material(Some("minecraft:water")),
             TerrainMaterialClass::Fluid
