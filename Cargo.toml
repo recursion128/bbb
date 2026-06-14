@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/bbb-audio",
     "crates/bbb-native",
     "crates/bbb-platform",
     "crates/bbb-protocol",
@@ -26,6 +27,7 @@ flate2 = "1"
 glam = "0.29"
 hecs = "0.10"
 image = { version = "0.25", default-features = false, features = ["png"] }
+kira = { version = "0.12.1", default-features = false, features = ["ogg", "vorbis"] }
 md5 = "0.7"
 pollster = "0.3"
 regex = "1"

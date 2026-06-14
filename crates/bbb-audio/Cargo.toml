@@ -1,0 +1,23 @@
+[package]
+name = "bbb-audio"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["kira"]
+kira = ["dep:kira"]
+device = ["kira", "kira/cpal"]
+
+[dependencies]
+anyhow = { workspace = true }
+bbb-pack = { path = "../bbb-pack" }
+bbb-world = { path = "../bbb-world" }
+kira = { workspace = true, optional = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+bbb-protocol = { path = "../bbb-protocol" }
