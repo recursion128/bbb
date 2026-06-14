@@ -352,12 +352,21 @@ fn terrain_cells_include_vanilla_fluid_state() {
                 },
                 block_state_id: 2254,
             },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 39,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 27047,
+            },
         ],
     });
 
-    assert_eq!(applied, 5);
+    assert_eq!(applied, 6);
 
     let source_water = Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+    let falling_source_water = Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, true));
     let slab = store
         .probe_block(BlockPos {
             x: 34,
@@ -419,6 +428,19 @@ fn terrain_cells_include_vanilla_fluid_state() {
     assert_eq!(seagrass.material, TerrainMaterialClass::Cutout);
     assert_eq!(seagrass.fluid, source_water);
 
+    let copper_grate = store
+        .probe_block(BlockPos {
+            x: 39,
+            y: 1,
+            z: -45,
+        })
+        .unwrap();
+    assert_eq!(
+        copper_grate.block_name.as_deref(),
+        Some("minecraft:copper_grate")
+    );
+    assert_eq!(copper_grate.fluid, falling_source_water);
+
     let terrain = store
         .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
         .unwrap();
@@ -442,9 +464,13 @@ fn terrain_cells_include_vanilla_fluid_state() {
         terrain.cells[terrain_cell_index(6, 1, 3, 16)].fluid,
         source_water
     );
+    assert_eq!(
+        terrain.cells[terrain_cell_index(7, 1, 3, 16)].fluid,
+        falling_source_water
+    );
 
     let summary = terrain.summary();
-    assert_eq!(summary.fluid_state_blocks, 5);
+    assert_eq!(summary.fluid_state_blocks, 6);
     assert_eq!(summary.fluid_blocks, 1);
     assert_eq!(summary.invisible_blocks, 2);
     assert_eq!(summary.cutout_blocks, 1);
@@ -455,7 +481,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
             .unwrap()
             .sections[0]
             .fluid_count,
-        5
+        6
     );
 }
 

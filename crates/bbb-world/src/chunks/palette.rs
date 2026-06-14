@@ -84,12 +84,18 @@ impl PalettedContainerData {
                     self.upgrade_to_global_with(index, global_id)
                 }
             }
-            PaletteKind::Global => set_packed_value(
-                &mut self.packed_data,
-                self.bits_per_entry,
-                index,
-                global_id as u64,
-            ),
+            PaletteKind::Global => {
+                if set_packed_value(
+                    &mut self.packed_data,
+                    self.bits_per_entry,
+                    index,
+                    global_id as u64,
+                ) {
+                    true
+                } else {
+                    self.upgrade_to_global_with(index, global_id)
+                }
+            }
         }
     }
 
@@ -213,4 +219,29 @@ fn pack_values_to_longs(values: &[u64], bits_per_entry: usize) -> Vec<i64> {
 
 fn bits_needed(max_value: u64) -> u8 {
     (u64::BITS - max_value.leading_zeros()).max(1) as u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn global_palette_set_value_grows_bits_for_higher_state_ids() {
+        let mut container = PalettedContainerData {
+            domain: PaletteDomain::BlockStates,
+            bits_per_entry: 14,
+            palette_kind: PaletteKind::Global,
+            palette_global_ids: Vec::new(),
+            packed_data: pack_values_to_longs(&[0, 13_332, 9], 14),
+            entry_count: 3,
+        };
+
+        assert!(container.set_value_at(2, 27_047));
+
+        assert_eq!(container.palette_kind, PaletteKind::Global);
+        assert_eq!(container.bits_per_entry, 15);
+        assert_eq!(container.value_at(0).unwrap().global_id, 0);
+        assert_eq!(container.value_at(1).unwrap().global_id, 13_332);
+        assert_eq!(container.value_at(2).unwrap().global_id, 27_047);
+    }
 }

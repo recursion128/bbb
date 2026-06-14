@@ -159,8 +159,12 @@ pub(crate) fn terrain_fluid_state(
         name if is_fixed_source_water_block_name(name) => {
             return Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
         }
-        _ if is_waterlogged(properties) => {
-            return Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+        name if is_waterlogged(properties) => {
+            return Some(TerrainFluidState::new(
+                TerrainFluidKind::Water,
+                8,
+                is_falling_source_waterlogged_block_name(name),
+            ));
         }
         _ => return None,
     };
@@ -190,6 +194,20 @@ fn is_fixed_source_water_block_name(name: &str) -> bool {
             | "minecraft:tall_seagrass"
             | "minecraft:kelp"
             | "minecraft:kelp_plant"
+    )
+}
+
+fn is_falling_source_waterlogged_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:copper_grate"
+            | "minecraft:exposed_copper_grate"
+            | "minecraft:weathered_copper_grate"
+            | "minecraft:oxidized_copper_grate"
+            | "minecraft:waxed_copper_grate"
+            | "minecraft:waxed_exposed_copper_grate"
+            | "minecraft:waxed_weathered_copper_grate"
+            | "minecraft:waxed_oxidized_copper_grate"
     )
 }
 
@@ -297,6 +315,21 @@ mod tests {
             ),
             Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
         );
+        for name in [
+            "minecraft:copper_grate",
+            "minecraft:exposed_copper_grate",
+            "minecraft:weathered_copper_grate",
+            "minecraft:oxidized_copper_grate",
+            "minecraft:waxed_copper_grate",
+            "minecraft:waxed_exposed_copper_grate",
+            "minecraft:waxed_weathered_copper_grate",
+            "minecraft:waxed_oxidized_copper_grate",
+        ] {
+            assert_eq!(
+                terrain_fluid_state(Some(name), &properties([("waterlogged", "true")])),
+                Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, true))
+            );
+        }
         assert_eq!(
             terrain_fluid_state(
                 Some("minecraft:oak_slab"),
