@@ -249,6 +249,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_button_block_name(name)
         || is_pressure_plate_block_name(name)
         || is_lantern_block_name(name)
+        || is_lightning_rod_block_name(name)
 }
 
 fn is_bar_block_name(name: &str) -> bool {
@@ -422,6 +423,20 @@ fn is_lantern_block_name(name: &str) -> bool {
             | "minecraft:waxed_exposed_copper_lantern"
             | "minecraft:waxed_weathered_copper_lantern"
             | "minecraft:waxed_oxidized_copper_lantern"
+    )
+}
+
+fn is_lightning_rod_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:lightning_rod"
+            | "minecraft:exposed_lightning_rod"
+            | "minecraft:weathered_lightning_rod"
+            | "minecraft:oxidized_lightning_rod"
+            | "minecraft:waxed_lightning_rod"
+            | "minecraft:waxed_exposed_lightning_rod"
+            | "minecraft:waxed_weathered_lightning_rod"
+            | "minecraft:waxed_oxidized_lightning_rod"
     )
 }
 
@@ -646,6 +661,21 @@ mod tests {
             "minecraft:waxed_exposed_copper_lantern",
             "minecraft:waxed_weathered_copper_lantern",
             "minecraft:waxed_oxidized_copper_lantern",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:lightning_rod",
+            "minecraft:exposed_lightning_rod",
+            "minecraft:weathered_lightning_rod",
+            "minecraft:oxidized_lightning_rod",
+            "minecraft:waxed_lightning_rod",
+            "minecraft:waxed_exposed_lightning_rod",
+            "minecraft:waxed_weathered_lightning_rod",
+            "minecraft:waxed_oxidized_lightning_rod",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),
