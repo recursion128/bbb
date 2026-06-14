@@ -576,6 +576,7 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     ));
     store.apply_add_entity(protocol_add_entity_with_type(18, 43));
     store.apply_add_entity(protocol_add_entity_with_type(19, 69));
+    store.apply_add_entity(protocol_add_entity_with_type(72, 18));
 
     assert_eq!(
         store.probe_entity_pick_bounds(10),
@@ -595,7 +596,7 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     );
     assert_eq!(
         store.probe_entity_pick_bounds(14),
-        Some(EntityPickBoundsState::from_base_size(0.3125, 0.3125, 1.0))
+        Some(wind_charge_pick_bounds())
     );
     assert_eq!(
         store.probe_entity_pick_bounds(15),
@@ -604,6 +605,10 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     assert_eq!(
         store.probe_entity_pick_bounds(16),
         Some(EntityPickBoundsState::from_base_size(0.3125, 0.3125, 1.0))
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(72),
+        Some(wind_charge_pick_bounds())
     );
     assert_eq!(
         store.probe_entity_pick_bounds(19),
@@ -2834,6 +2839,15 @@ fn protocol_add_entity_with_type_data(
 
 fn default_entity_uuid() -> Uuid {
     Uuid::from_u128(0x12345678123456781234567812345678)
+}
+
+fn wind_charge_pick_bounds() -> EntityPickBoundsState {
+    let half_width = 0.3125 / 2.0;
+    EntityPickBoundsState {
+        min: [-half_width, -0.15, -half_width],
+        max: [half_width, -0.15 + 0.3125, half_width],
+        pick_radius: 1.0,
+    }
 }
 
 fn protocol_player_info_entry_with_mode(

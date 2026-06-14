@@ -104,7 +104,8 @@ Known priority areas:
   pufferfish puff-state bounds, salmon variant bounds, camel/camel husk
   sitting pose bounds, goat long-jumping pose bounds, phantom size metadata
   bounds, sniffer digging state bounds, polar bear standing animation bounds,
-  warden emerging/digging pose bounds, and the `redirectable_projectile` tag
+  warden emerging/digging pose bounds, wind charge/breeze wind charge Y-offset
+  projectile bounds, and the `redirectable_projectile` tag
   (`fireball`, `wind_charge`, `breeze_wind_charge`); `bbb-native` routes
   left/right/middle mouse actions to attack/interact/pick entity packets for
   those targets, using vanilla default block/entity interaction ranges of

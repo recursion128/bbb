@@ -10,6 +10,7 @@ const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
 const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
 const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
 const VANILLA_ENTITY_TYPE_BEE_ID: i32 = 11;
+const VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID: i32 = 18;
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
 const VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID: i32 = 20;
 const VANILLA_ENTITY_TYPE_CAT_ID: i32 = 21;
@@ -57,6 +58,7 @@ const VANILLA_ENTITY_TYPE_TURTLE_ID: i32 = 137;
 const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
 const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
 const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
+const VANILLA_ENTITY_TYPE_WIND_CHARGE_ID: i32 = 143;
 const VANILLA_ENTITY_TYPE_WOLF_ID: i32 = 148;
 const VANILLA_ENTITY_TYPE_ZOGLIN_ID: i32 = 149;
 const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
@@ -118,6 +120,9 @@ const SNIFFER_DIGGING_HEIGHT_OFFSET: f32 = 0.4;
 const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 const SALMON_VARIANT_DATA_ID: u8 = 17;
 const PHANTOM_SIZE_DATA_ID: u8 = 16;
+const WIND_CHARGE_BOUNDS_SIZE: f32 = 0.3125;
+const WIND_CHARGE_BOUNDS_Y_OFFSET: f32 = -0.15;
+const WIND_CHARGE_PICK_RADIUS: f32 = 1.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -230,6 +235,10 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         salmon_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PHANTOM_ID {
         phantom_pick_bounds(data_values)
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_WIND_CHARGE_ID
+    {
+        wind_charge_pick_bounds()
     } else {
         vanilla_pick_bounds_for_type(entity_type_id)?
     };
@@ -648,6 +657,19 @@ fn salmon_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState 
 fn phantom_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
     let size = entity_data_int(data_values, PHANTOM_SIZE_DATA_ID, 0) as f32;
     EntityPickBoundsState::from_base_size(0.9, 0.5, 0.0).scale_dimensions(1.0 + 0.15 * size)
+}
+
+fn wind_charge_pick_bounds() -> EntityPickBoundsState {
+    let half_width = WIND_CHARGE_BOUNDS_SIZE / 2.0;
+    EntityPickBoundsState {
+        min: [-half_width, WIND_CHARGE_BOUNDS_Y_OFFSET, -half_width],
+        max: [
+            half_width,
+            WIND_CHARGE_BOUNDS_Y_OFFSET + WIND_CHARGE_BOUNDS_SIZE,
+            half_width,
+        ],
+        pick_radius: WIND_CHARGE_PICK_RADIUS,
+    }
 }
 
 fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPickBoundsState> {
