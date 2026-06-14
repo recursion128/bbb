@@ -278,7 +278,7 @@ impl ResourceLocation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum AtlasTextureEntry {
     File { id: String, path: PathBuf },
     Image(SpriteImage),
@@ -389,7 +389,9 @@ fn apply_palette_permutation(
         pixel[2] = replacement[2];
         pixel[3] = ((u16::from(pixel_alpha) * u16::from(replacement[3])) / 255) as u8;
     }
-    SpriteImage::new(id, base.width, base.height, rgba)
+    let mut image = SpriteImage::new(id, base.width, base.height, rgba)?;
+    image.texture_metadata = base.texture_metadata;
+    Ok(image)
 }
 
 fn create_palette_mapping(
@@ -419,11 +421,18 @@ fn create_palette_mapping(
 #[cfg(test)]
 mod tests {
     use super::apply_palette_permutation;
-    use crate::SpriteImage;
+    use crate::{SpriteImage, SpriteMipmapStrategy, SpriteTextureMetadata};
 
     #[test]
     fn paletted_permutations_follow_vanilla_palette_size_rules() {
-        let base = SpriteImage::new("minecraft:pattern/base", 1, 1, vec![20, 20, 20, 255]).unwrap();
+        let mut base =
+            SpriteImage::new("minecraft:pattern/base", 1, 1, vec![20, 20, 20, 255]).unwrap();
+        base.texture_metadata = SpriteTextureMetadata {
+            blur: false,
+            clamp: false,
+            mipmap_strategy: SpriteMipmapStrategy::StrictCutout,
+            alpha_cutoff_bias: 0.25,
+        };
         let key = SpriteImage::new(
             "minecraft:palette/key",
             2,
@@ -447,6 +456,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(image.rgba, vec![0, 100, 0, 255]);
+        assert_eq!(image.texture_metadata, base.texture_metadata);
 
         let wrong_pixel_count =
             SpriteImage::new("minecraft:palette/wrong", 1, 1, vec![100, 0, 0, 255]).unwrap();

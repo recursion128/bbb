@@ -9,13 +9,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::rgba_len;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SpriteSource {
     pub id: String,
     pub width: u32,
     pub height: u32,
     #[serde(default)]
     pub animation: Option<SpriteAnimation>,
+    #[serde(default)]
+    pub texture_metadata: SpriteTextureMetadata,
 }
 
 impl SpriteSource {
@@ -25,23 +27,28 @@ impl SpriteSource {
             width,
             height,
             animation: None,
+            texture_metadata: SpriteTextureMetadata::default(),
         }
     }
 
     pub fn from_png_file(id: impl Into<String>, path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         let (image_width, image_height) = png_dimensions(path, "sprite source")?;
-        let (width, height, animation) = sprite_frame_metadata(path, image_width, image_height)?;
+        let metadata = read_sprite_metadata(path)?;
+        let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
+        let (width, height, animation) =
+            sprite_frame_metadata(path, image_width, image_height, metadata.animation)?;
         Ok(Self {
             id: id.into(),
             width,
             height,
             animation,
+            texture_metadata,
         })
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SpriteImage {
     pub id: String,
     pub width: u32,
@@ -50,8 +57,40 @@ pub struct SpriteImage {
     #[serde(default)]
     pub animation: Option<SpriteAnimation>,
     #[serde(default)]
+    pub texture_metadata: SpriteTextureMetadata,
+    #[serde(default)]
     pub animation_frames_rgba: Vec<Vec<u8>>,
     pub rgba: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct SpriteTextureMetadata {
+    pub blur: bool,
+    pub clamp: bool,
+    pub mipmap_strategy: SpriteMipmapStrategy,
+    pub alpha_cutoff_bias: f32,
+}
+
+impl Default for SpriteTextureMetadata {
+    fn default() -> Self {
+        Self {
+            blur: false,
+            clamp: false,
+            mipmap_strategy: SpriteMipmapStrategy::Auto,
+            alpha_cutoff_bias: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpriteMipmapStrategy {
+    #[default]
+    Auto,
+    Mean,
+    Cutout,
+    StrictCutout,
+    DarkCutout,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -169,6 +208,7 @@ impl SpriteImage {
             height,
             transparency,
             animation,
+            texture_metadata: SpriteTextureMetadata::default(),
             animation_frames_rgba: Vec::new(),
             rgba,
         })
@@ -183,7 +223,10 @@ impl SpriteImage {
             .with_context(|| format!("decode png {}", path.display()))?
             .into_rgba8();
         let (image_width, image_height) = rgba.dimensions();
-        let (width, height, animation) = sprite_frame_metadata(path, image_width, image_height)?;
+        let metadata = read_sprite_metadata(path)?;
+        let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
+        let (width, height, animation) =
+            sprite_frame_metadata(path, image_width, image_height, metadata.animation)?;
         let source_rgba = rgba.into_raw();
         let transparency = SpriteTransparency::from_rgba(&source_rgba);
         let animation_frames_rgba = match animation.as_ref() {
@@ -199,6 +242,7 @@ impl SpriteImage {
         };
         let mut image =
             Self::new_with_transparency(id, width, height, rgba, transparency, animation)?;
+        image.texture_metadata = texture_metadata;
         image.animation_frames_rgba = animation_frames_rgba;
         Ok(image)
     }
@@ -209,6 +253,7 @@ impl SpriteImage {
             width: self.width,
             height: self.height,
             animation: self.animation.clone(),
+            texture_metadata: self.texture_metadata,
         }
     }
 
@@ -303,11 +348,12 @@ fn sprite_frame_metadata(
     path: &Path,
     image_width: u32,
     image_height: u32,
+    animation: Option<RawAnimationMetadata>,
 ) -> Result<(u32, u32, Option<SpriteAnimation>)> {
     if image_width == 0 || image_height == 0 {
         bail!("sprite image {} must not be empty", path.display());
     }
-    let Some(animation) = read_animation_metadata(path)? else {
+    let Some(animation) = animation else {
         return Ok((image_width, image_height, None));
     };
 
@@ -339,15 +385,15 @@ fn sprite_frame_metadata(
     Ok((width, height, Some(animation)))
 }
 
-fn read_animation_metadata(path: &Path) -> Result<Option<RawAnimationMetadata>> {
+fn read_sprite_metadata(path: &Path) -> Result<RawSpriteMetadata> {
     let path = mcmeta_path(path);
     if !path.exists() {
-        return Ok(None);
+        return Ok(RawSpriteMetadata::default());
     }
     let bytes = std::fs::read(&path).with_context(|| format!("read mcmeta {}", path.display()))?;
     let metadata: RawSpriteMetadata = serde_json::from_slice(&bytes)
         .with_context(|| format!("parse mcmeta {}", path.display()))?;
-    Ok(metadata.animation)
+    Ok(metadata)
 }
 
 fn mcmeta_path(path: &Path) -> PathBuf {
@@ -465,9 +511,10 @@ fn copy_frame_rgba(
     Ok(frame)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 struct RawSpriteMetadata {
     animation: Option<RawAnimationMetadata>,
+    texture: Option<RawTextureMetadata>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -484,6 +531,25 @@ struct RawAnimationMetadata {
 enum RawAnimationFrame {
     Index(u32),
     Object { index: u32, time: Option<u32> },
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawTextureMetadata {
+    blur: Option<bool>,
+    clamp: Option<bool>,
+    mipmap_strategy: Option<SpriteMipmapStrategy>,
+    alpha_cutoff_bias: Option<f32>,
+}
+
+impl RawTextureMetadata {
+    fn into_metadata(self) -> SpriteTextureMetadata {
+        SpriteTextureMetadata {
+            blur: self.blur.unwrap_or(false),
+            clamp: self.clamp.unwrap_or(false),
+            mipmap_strategy: self.mipmap_strategy.unwrap_or_default(),
+            alpha_cutoff_bias: self.alpha_cutoff_bias.unwrap_or(0.0),
+        }
+    }
 }
 
 impl RawAnimationFrame {
@@ -509,7 +575,8 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteImage, SpriteSource,
+        SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteImage,
+        SpriteMipmapStrategy, SpriteSource, SpriteTextureMetadata,
     };
 
     #[test]
@@ -521,6 +588,7 @@ mod tests {
 
         let source = SpriteSource::from_png_file("test:sprite", &path).unwrap();
         assert_eq!(source, SpriteSource::new("test:sprite", 7, 11));
+        assert_eq!(source.texture_metadata, SpriteTextureMetadata::default());
 
         std::fs::remove_dir_all(dir).unwrap();
     }
@@ -532,6 +600,38 @@ mod tests {
                 .unwrap();
 
         assert_eq!(source, SpriteSource::new("minecraft:block/stone", 16, 16));
+    }
+
+    #[test]
+    fn sprite_source_reads_texture_metadata_from_mcmeta() {
+        let dir = unique_temp_dir("texture-metadata-source");
+        let path = dir.join("torchflower.png");
+        write_test_png(&path, 16, 16);
+        write_json(
+            &dir.join("torchflower.png.mcmeta"),
+            r#"{
+              "texture": {
+                "blur": true,
+                "clamp": true,
+                "mipmap_strategy": "strict_cutout",
+                "alpha_cutoff_bias": 0.125
+              }
+            }"#,
+        );
+
+        let source = SpriteSource::from_png_file("minecraft:block/torchflower", &path).unwrap();
+
+        assert_eq!(
+            source.texture_metadata,
+            SpriteTextureMetadata {
+                blur: true,
+                clamp: true,
+                mipmap_strategy: SpriteMipmapStrategy::StrictCutout,
+                alpha_cutoff_bias: 0.125,
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
@@ -565,6 +665,7 @@ mod tests {
                         SpriteAnimationFrame { index: 2, time: 2 },
                     ],
                 }),
+                texture_metadata: SpriteTextureMetadata::default(),
             }
         );
 
@@ -796,6 +897,35 @@ mod tests {
                     SpriteAnimationFrame { index: 1, time: 20 },
                 ],
             })
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_records_texture_metadata() {
+        let dir = unique_temp_dir("texture-metadata-image");
+        let path = dir.join("glass.png");
+        write_test_png(&path, 16, 16);
+        write_json(
+            &dir.join("glass.png.mcmeta"),
+            r#"{
+              "texture": {
+                "mipmap_strategy": "mean"
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:block/glass", &path).unwrap();
+
+        assert_eq!(
+            image.texture_metadata,
+            SpriteTextureMetadata {
+                blur: false,
+                clamp: false,
+                mipmap_strategy: SpriteMipmapStrategy::Mean,
+                alpha_cutoff_bias: 0.0,
+            }
         );
 
         std::fs::remove_dir_all(dir).unwrap();

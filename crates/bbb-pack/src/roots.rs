@@ -152,7 +152,10 @@ mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use crate::{colors::VANILLA_BIOME_ORDER, AtlasPacker, GrassColorModifier, SpriteSource};
+    use crate::{
+        colors::VANILLA_BIOME_ORDER, AtlasPacker, GrassColorModifier, SpriteMipmapStrategy,
+        SpriteSource,
+    };
 
     #[test]
     fn pack_roots_loads_block_texture_sources_from_vanilla_atlas() {
@@ -576,6 +579,35 @@ mod tests {
             .find(|source| source.id == "minecraft:block/stone")
             .unwrap();
         assert_eq!((stone.width, stone.height), (16, 16));
+        assert_eq!(
+            stone.texture_metadata.mipmap_strategy,
+            SpriteMipmapStrategy::Auto
+        );
+
+        let torchflower = sources
+            .iter()
+            .find(|source| source.id == "minecraft:block/torchflower")
+            .unwrap();
+        assert_eq!(
+            torchflower.texture_metadata.mipmap_strategy,
+            SpriteMipmapStrategy::StrictCutout
+        );
+        let glass = sources
+            .iter()
+            .find(|source| source.id == "minecraft:block/glass")
+            .unwrap();
+        assert_eq!(
+            glass.texture_metadata.mipmap_strategy,
+            SpriteMipmapStrategy::Mean
+        );
+        let oak_leaves = sources
+            .iter()
+            .find(|source| source.id == "minecraft:block/oak_leaves")
+            .unwrap();
+        assert_eq!(
+            oak_leaves.texture_metadata.mipmap_strategy,
+            SpriteMipmapStrategy::DarkCutout
+        );
 
         let water = sources
             .iter()
