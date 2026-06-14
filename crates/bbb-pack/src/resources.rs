@@ -49,6 +49,7 @@ impl ResourceLocation {
 pub struct PackResource {
     pub location: ResourceLocation,
     pub path: PathBuf,
+    pub metadata_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -119,8 +120,10 @@ impl PackResourceStack {
 
     fn get_resource_in(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
         let pack_entries = self.pack_entries(domain);
-        for pack in pack_entries.iter().rev() {
-            if let Some(resource) = pack.get_resource(domain, location) {
+        for (pack_index, pack) in pack_entries.iter().enumerate().rev() {
+            if let Some(mut resource) = pack.get_resource(domain, location) {
+                resource.metadata_path =
+                    metadata_path_for_resource(domain, location, &pack_entries, pack_index);
                 return Some(resource);
             }
             if pack.is_filtered(location) {
@@ -143,15 +146,29 @@ impl PackResourceStack {
         domain: &str,
         location: &ResourceLocation,
     ) -> Vec<PackResource> {
+        let metadata_location = metadata_location(location).ok();
         let mut resources = Vec::new();
-        for pack in self.pack_entries(domain) {
-            if pack.is_filtered(location) {
-                resources.clear();
-            }
-            if let Some(resource) = pack.get_resource(domain, location) {
+        let mut filter_metadata = false;
+        for pack in self.pack_entries(domain).iter().rev() {
+            if let Some(mut resource) = pack.get_resource(domain, location) {
+                if !filter_metadata {
+                    resource.metadata_path = metadata_location
+                        .as_ref()
+                        .and_then(|location| pack.resource_path(domain, location));
+                }
                 resources.push(resource);
             }
+            if pack.is_filtered(location) {
+                break;
+            }
+            if metadata_location
+                .as_ref()
+                .is_some_and(|location| pack.is_filtered(location))
+            {
+                filter_metadata = true;
+            }
         }
+        resources.reverse();
         resources
     }
 
@@ -174,16 +191,24 @@ impl PackResourceStack {
         extension: &str,
     ) -> Result<Vec<PackResource>> {
         validate_resource_path_prefix(path_prefix)?;
-        let mut resources = BTreeMap::new();
-        for pack in self.pack_entries(domain) {
+        let pack_entries = self.pack_entries(domain);
+        let mut resources: BTreeMap<ResourceLocation, (usize, PackResource)> = BTreeMap::new();
+        for (pack_index, pack) in pack_entries.iter().enumerate() {
             if let Some(filter) = &pack.filter {
                 resources.retain(|location, _| !filter.is_filtered(location));
             }
             for (location, resource) in pack.list_resources(domain, path_prefix, extension)? {
-                resources.insert(location, resource);
+                resources.insert(location, (pack_index, resource));
             }
         }
-        Ok(resources.into_values().collect())
+        Ok(resources
+            .into_iter()
+            .map(|(location, (pack_index, mut resource))| {
+                resource.metadata_path =
+                    metadata_path_for_resource(domain, &location, &pack_entries, pack_index);
+                resource
+            })
+            .collect())
     }
 
     pub fn list_data_resource_stacks(
@@ -204,9 +229,26 @@ impl PackResourceStack {
         let mut resources: BTreeMap<ResourceLocation, Vec<PackResource>> = BTreeMap::new();
         for pack in self.pack_entries(domain) {
             if let Some(filter) = &pack.filter {
-                resources.retain(|location, _| !filter.is_filtered(location));
+                resources.retain(|location, stack| {
+                    if filter.is_filtered(location) {
+                        return false;
+                    }
+                    if metadata_location(location)
+                        .ok()
+                        .as_ref()
+                        .is_some_and(|metadata_location| filter.is_filtered(metadata_location))
+                    {
+                        for resource in stack {
+                            resource.metadata_path = None;
+                        }
+                    }
+                    true
+                });
             }
-            for (location, resource) in pack.list_resources(domain, path_prefix, extension)? {
+            for (location, mut resource) in pack.list_resources(domain, path_prefix, extension)? {
+                resource.metadata_path = metadata_location(&location)
+                    .ok()
+                    .and_then(|metadata_location| pack.resource_path(domain, &metadata_location));
                 resources.entry(location).or_default().push(resource);
             }
         }
@@ -251,6 +293,7 @@ fn collect_resources(
             PackResource {
                 location,
                 path: path.clone(),
+                metadata_path: None,
             },
         );
     }
@@ -307,12 +350,18 @@ impl PackEntry {
     }
 
     fn get_resource(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
-        self.content_roots.iter().rev().find_map(|root| {
-            let path = resource_path_in(root, domain, location);
-            path.is_file().then(|| PackResource {
+        self.resource_path(domain, location)
+            .map(|path| PackResource {
                 location: location.clone(),
                 path,
+                metadata_path: None,
             })
+    }
+
+    fn resource_path(&self, domain: &str, location: &ResourceLocation) -> Option<PathBuf> {
+        self.content_roots.iter().rev().find_map(|root| {
+            let path = resource_path_in(root, domain, location);
+            path.is_file().then_some(path)
         })
     }
 
@@ -361,6 +410,28 @@ impl PackEntry {
         }
         Ok(resources)
     }
+}
+
+fn metadata_location(location: &ResourceLocation) -> Result<ResourceLocation> {
+    location.with_suffix(".mcmeta")
+}
+
+fn metadata_path_for_resource(
+    domain: &str,
+    location: &ResourceLocation,
+    pack_entries: &[PackEntry],
+    resource_pack_index: usize,
+) -> Option<PathBuf> {
+    let metadata_location = metadata_location(location).ok()?;
+    for pack in pack_entries[resource_pack_index..].iter().rev() {
+        if let Some(path) = pack.resource_path(domain, &metadata_location) {
+            return Some(path);
+        }
+        if pack.is_filtered(&metadata_location) {
+            break;
+        }
+    }
+    None
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -751,6 +822,102 @@ mod tests {
         assert!(resolved.path.ends_with(&overlay_stone));
         assert_eq!(resource_stack.len(), 1);
         assert!(resource_stack[0].path.ends_with(&overlay_stone));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn single_resource_and_list_resources_use_highest_precedence_metadata() {
+        let root = unique_temp_dir("resource-metadata-precedence");
+        let base = root.join("base");
+        let overlay = root.join("overlay");
+        let base_stone = base
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        let base_metadata = base_stone.with_file_name("stone.png.mcmeta");
+        let overlay_metadata = overlay
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png.mcmeta");
+        write_file(&base_stone, b"base-stone");
+        write_file(&base_metadata, b"base-metadata");
+        write_file(&overlay_metadata, b"overlay-metadata");
+
+        let stack = PackResourceStack::from_roots([base, overlay]);
+        let stone = ResourceLocation::parse("minecraft:textures/block/stone.png").unwrap();
+        let resolved = stack.get_resource(&stone).unwrap();
+        let listed = stack.list_resources("textures/block", ".png").unwrap();
+        let resource_stack = stack.get_resource_stack(&stone);
+
+        assert!(resolved.path.ends_with(&base_stone));
+        assert!(resolved
+            .metadata_path
+            .as_ref()
+            .unwrap()
+            .ends_with(&overlay_metadata));
+        assert_eq!(listed.len(), 1);
+        assert!(listed[0]
+            .metadata_path
+            .as_ref()
+            .unwrap()
+            .ends_with(&overlay_metadata));
+        assert_eq!(resource_stack.len(), 1);
+        assert!(resource_stack[0]
+            .metadata_path
+            .as_ref()
+            .unwrap()
+            .ends_with(&base_metadata));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn metadata_filter_clears_metadata_without_filtering_resource() {
+        let root = unique_temp_dir("resource-metadata-filter");
+        let base = root.join("base");
+        let filter = root.join("filter");
+        let base_stone = base
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        write_file(&base_stone, b"base-stone");
+        write_file(
+            &base_stone.with_file_name("stone.png.mcmeta"),
+            b"base-metadata",
+        );
+        write_file(
+            &filter.join("pack.mcmeta"),
+            br#"{
+              "filter": {
+                "block": [
+                  {
+                    "namespace": "minecraft",
+                    "path": "textures/block/stone\\.png\\.mcmeta"
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let stack = PackResourceStack::from_roots([base, filter]);
+        let stone = ResourceLocation::parse("minecraft:textures/block/stone.png").unwrap();
+        let resolved = stack.get_resource(&stone).unwrap();
+        let listed = stack.list_resources("textures/block", ".png").unwrap();
+        let resource_stack = stack.get_resource_stack(&stone);
+
+        assert!(resolved.path.ends_with(&base_stone));
+        assert_eq!(resolved.metadata_path, None);
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].metadata_path, None);
+        assert_eq!(resource_stack.len(), 1);
+        assert_eq!(resource_stack[0].metadata_path, None);
 
         std::fs::remove_dir_all(root).unwrap();
     }

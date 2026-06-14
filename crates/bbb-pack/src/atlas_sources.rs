@@ -9,7 +9,7 @@ use regex::Regex;
 use serde::Deserialize;
 
 use crate::{
-    resources::{validate_resource_path, PackResourceStack, ResourceLocation},
+    resources::{validate_resource_path, PackResource, PackResourceStack, ResourceLocation},
     roots::PackRoots,
     sprites::{SpriteImage, SpriteSource},
 };
@@ -117,6 +117,7 @@ impl AtlasTextureLoader {
                 AtlasTextureEntry::File {
                     id,
                     path: resource.path,
+                    metadata_path: resource.metadata_path,
                 },
             );
         }
@@ -129,12 +130,13 @@ impl AtlasTextureLoader {
         resource: &ResourceLocation,
         sprite: &ResourceLocation,
     ) -> Result<()> {
-        if let Some(path) = self.texture_path(resource)? {
+        if let Some(resource) = self.texture_resource(resource)? {
             append_or_replace_entry(
                 entries,
                 AtlasTextureEntry::File {
                     id: sprite.id(),
-                    path,
+                    path: resource.path,
+                    metadata_path: resource.metadata_path,
                 },
             );
         }
@@ -149,19 +151,14 @@ impl AtlasTextureLoader {
         permutations: &BTreeMap<String, ResourceLocation>,
         separator: &str,
     ) -> Result<()> {
-        let key =
-            SpriteImage::from_png_file(palette_key.id(), self.required_texture_path(palette_key)?)?;
+        let key = self.required_raw_texture_image(palette_key)?;
         let mut palettes = Vec::with_capacity(permutations.len());
         for (suffix, palette) in permutations {
-            palettes.push((
-                suffix.as_str(),
-                SpriteImage::from_png_file(palette.id(), self.required_texture_path(palette)?)?,
-            ));
+            palettes.push((suffix.as_str(), self.required_raw_texture_image(palette)?));
         }
 
         for texture in textures {
-            let base =
-                SpriteImage::from_png_file(texture.id(), self.required_texture_path(texture)?)?;
+            let base = self.required_raw_texture_image(texture)?;
             for (suffix, palette) in &palettes {
                 let permutation = texture.with_suffix(&format!("{separator}{suffix}"))?;
                 append_or_replace_entry(
@@ -205,16 +202,23 @@ impl AtlasTextureLoader {
     }
 
     fn required_texture_path(&self, location: &ResourceLocation) -> Result<PathBuf> {
-        self.texture_path(location)?
+        Ok(self.required_texture_resource(location)?.path)
+    }
+
+    fn required_texture_resource(&self, location: &ResourceLocation) -> Result<PackResource> {
+        self.texture_resource(location)?
             .ok_or_else(|| anyhow::anyhow!("missing atlas texture {}", location.id()))
     }
 
-    fn texture_path(&self, location: &ResourceLocation) -> Result<Option<PathBuf>> {
+    fn texture_resource(&self, location: &ResourceLocation) -> Result<Option<PackResource>> {
         let resource = texture_resource_location(location)?;
-        Ok(self
-            .stack
-            .get_resource(&resource)
-            .map(|resource| resource.path))
+        Ok(self.stack.get_resource(&resource))
+    }
+
+    fn required_raw_texture_image(&self, location: &ResourceLocation) -> Result<SpriteImage> {
+        let resource = self.required_texture_resource(location)?;
+        let (width, height, rgba) = read_raw_png(resource.path)?;
+        SpriteImage::new(location.id(), width, height, rgba)
     }
 }
 
@@ -430,7 +434,11 @@ fn compile_optional_regex(pattern: Option<&str>, field: &str) -> Result<Option<R
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum AtlasTextureEntry {
-    File { id: String, path: PathBuf },
+    File {
+        id: String,
+        path: PathBuf,
+        metadata_path: Option<PathBuf>,
+    },
     Image(SpriteImage),
 }
 
@@ -444,14 +452,22 @@ impl AtlasTextureEntry {
 
     pub(crate) fn into_source(self) -> Result<SpriteSource> {
         match self {
-            AtlasTextureEntry::File { id, path } => SpriteSource::from_png_file(id, path),
+            AtlasTextureEntry::File {
+                id,
+                path,
+                metadata_path,
+            } => SpriteSource::from_png_file_with_metadata_path(id, path, metadata_path.as_deref()),
             AtlasTextureEntry::Image(image) => Ok(image.source()),
         }
     }
 
     pub(crate) fn into_image(self) -> Result<SpriteImage> {
         match self {
-            AtlasTextureEntry::File { id, path } => SpriteImage::from_png_file(id, path),
+            AtlasTextureEntry::File {
+                id,
+                path,
+                metadata_path,
+            } => SpriteImage::from_png_file_with_metadata_path(id, path, metadata_path.as_deref()),
             AtlasTextureEntry::Image(image) => Ok(image),
         }
     }
@@ -594,9 +610,7 @@ fn apply_palette_permutation(
         pixel[2] = replacement[2];
         pixel[3] = ((u16::from(pixel_alpha) * u16::from(replacement[3])) / 255) as u8;
     }
-    let mut image = SpriteImage::new(id, base.width, base.height, rgba)?;
-    image.texture_metadata = base.texture_metadata;
-    Ok(image)
+    SpriteImage::new(id, base.width, base.height, rgba)
 }
 
 fn create_palette_mapping(
@@ -634,14 +648,7 @@ mod tests {
 
     #[test]
     fn paletted_permutations_follow_vanilla_palette_size_rules() {
-        let mut base =
-            SpriteImage::new("minecraft:pattern/base", 1, 1, vec![20, 20, 20, 255]).unwrap();
-        base.texture_metadata = SpriteTextureMetadata {
-            blur: false,
-            clamp: false,
-            mipmap_strategy: SpriteMipmapStrategy::StrictCutout,
-            alpha_cutoff_bias: 0.25,
-        };
+        let base = SpriteImage::new("minecraft:pattern/base", 1, 1, vec![20, 20, 20, 255]).unwrap();
         let key = SpriteImage::new(
             "minecraft:palette/key",
             2,
@@ -665,7 +672,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(image.rgba, vec![0, 100, 0, 255]);
-        assert_eq!(image.texture_metadata, base.texture_metadata);
+        assert_eq!(image.texture_metadata, SpriteTextureMetadata::default());
 
         let wrong_pixel_count =
             SpriteImage::new("minecraft:palette/wrong", 1, 1, vec![100, 0, 0, 255]).unwrap();
@@ -955,6 +962,172 @@ mod tests {
             vec!["minecraft:block/stone"]
         );
         assert!(entry_path(&entries[0]).ends_with(&overlay_texture));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn single_source_uses_highest_precedence_texture_metadata() {
+        let root = unique_temp_dir("atlas-single-metadata");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        let texture = base
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        std::fs::create_dir_all(texture.parent().unwrap()).unwrap();
+        write_rgba_png(&texture, 1, 1, &[10, 20, 30, 255]);
+        write_json(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("atlases")
+                .join("blocks.json"),
+            r#"{"sources":[{"type":"minecraft:single","resource":"minecraft:block/stone"}]}"#,
+        );
+        write_json(
+            &overlay
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png.mcmeta"),
+            r#"{"texture":{"mipmap_strategy":"mean"}}"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+        let source = load_atlas_texture_entries(&roots, "blocks")
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap()
+            .into_source()
+            .unwrap();
+
+        assert_eq!(
+            source.texture_metadata.mipmap_strategy,
+            SpriteMipmapStrategy::Mean
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn directory_source_uses_highest_precedence_texture_metadata() {
+        let root = unique_temp_dir("atlas-directory-metadata");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        let texture = base
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        std::fs::create_dir_all(texture.parent().unwrap()).unwrap();
+        write_rgba_png(&texture, 1, 1, &[10, 20, 30, 255]);
+        write_json(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("atlases")
+                .join("blocks.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "source": "block",
+                  "prefix": "block/"
+                }
+              ]
+            }"#,
+        );
+        write_json(
+            &overlay
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png.mcmeta"),
+            r#"{"texture":{"mipmap_strategy":"mean"}}"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+        let source = load_atlas_texture_entries(&roots, "blocks")
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap()
+            .into_source()
+            .unwrap();
+
+        assert_eq!(
+            source.texture_metadata.mipmap_strategy,
+            SpriteMipmapStrategy::Mean
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn atlas_texture_metadata_filter_clears_lower_priority_metadata() {
+        let root = unique_temp_dir("atlas-metadata-filter");
+        let base = root.join("sources").join(MC_VERSION);
+        let filter = root.join("filter");
+        let texture = base
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        std::fs::create_dir_all(texture.parent().unwrap()).unwrap();
+        write_rgba_png(&texture, 1, 1, &[10, 20, 30, 255]);
+        write_json(
+            &texture.with_file_name("stone.png.mcmeta"),
+            r#"{"texture":{"mipmap_strategy":"mean"}}"#,
+        );
+        write_json(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("atlases")
+                .join("blocks.json"),
+            r#"{"sources":[{"type":"minecraft:single","resource":"minecraft:block/stone"}]}"#,
+        );
+        write_json(
+            &filter.join("pack.mcmeta"),
+            r#"{
+              "filter": {
+                "block": [
+                  {
+                    "namespace": "minecraft",
+                    "path": "textures/block/stone\\.png\\.mcmeta"
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([filter]);
+        let source = load_atlas_texture_entries(&roots, "blocks")
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap()
+            .into_source()
+            .unwrap();
+
+        assert_eq!(
+            source.texture_metadata.mipmap_strategy,
+            SpriteMipmapStrategy::Auto
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }

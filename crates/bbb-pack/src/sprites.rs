@@ -36,8 +36,18 @@ impl SpriteSource {
 
     pub fn from_png_file(id: impl Into<String>, path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
+        let metadata_path = mcmeta_path(path);
+        Self::from_png_file_with_metadata_path(id, path, Some(&metadata_path))
+    }
+
+    pub(crate) fn from_png_file_with_metadata_path(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        metadata_path: Option<&Path>,
+    ) -> Result<Self> {
+        let path = path.as_ref();
         let (image_width, image_height) = png_dimensions(path, "sprite source")?;
-        let metadata = read_sprite_metadata(path)?;
+        let metadata = read_sprite_metadata(metadata_path)?;
         let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
         let gui_metadata = metadata.gui.unwrap_or_default().into_metadata(path)?;
         let (width, height, animation) =
@@ -276,6 +286,16 @@ impl SpriteImage {
 
     pub fn from_png_file(id: impl Into<String>, path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
+        let metadata_path = mcmeta_path(path);
+        Self::from_png_file_with_metadata_path(id, path, Some(&metadata_path))
+    }
+
+    pub(crate) fn from_png_file_with_metadata_path(
+        id: impl Into<String>,
+        path: impl AsRef<Path>,
+        metadata_path: Option<&Path>,
+    ) -> Result<Self> {
+        let path = path.as_ref();
         let reader = png_reader(path, "sprite image")
             .with_context(|| format!("open sprite {}", path.display()))?;
         let rgba = reader
@@ -283,7 +303,7 @@ impl SpriteImage {
             .with_context(|| format!("decode png {}", path.display()))?
             .into_rgba8();
         let (image_width, image_height) = rgba.dimensions();
-        let metadata = read_sprite_metadata(path)?;
+        let metadata = read_sprite_metadata(metadata_path)?;
         let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
         let gui_metadata = metadata.gui.unwrap_or_default().into_metadata(path)?;
         let (width, height, animation) =
@@ -448,12 +468,14 @@ fn sprite_frame_metadata(
     Ok((width, height, Some(animation)))
 }
 
-fn read_sprite_metadata(path: &Path) -> Result<RawSpriteMetadata> {
-    let path = mcmeta_path(path);
-    if !path.exists() {
+fn read_sprite_metadata(path: Option<&Path>) -> Result<RawSpriteMetadata> {
+    let Some(path) = path else {
+        return Ok(RawSpriteMetadata::default());
+    };
+    if !path.is_file() {
         return Ok(RawSpriteMetadata::default());
     }
-    let bytes = std::fs::read(&path).with_context(|| format!("read mcmeta {}", path.display()))?;
+    let bytes = std::fs::read(path).with_context(|| format!("read mcmeta {}", path.display()))?;
     let metadata: RawSpriteMetadata = serde_json::from_slice(&bytes)
         .with_context(|| format!("parse mcmeta {}", path.display()))?;
     Ok(metadata)
