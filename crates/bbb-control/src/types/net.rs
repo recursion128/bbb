@@ -492,6 +492,10 @@ pub struct NetCounters {
     pub player_action_commands_queued: usize,
     pub player_command_commands_queued: usize,
     pub player_input_commands_queued: usize,
+    #[serde(default)]
+    pub attack_entity_commands_queued: usize,
+    #[serde(default)]
+    pub interact_entity_commands_queued: usize,
     pub swing_commands_queued: usize,
     pub use_item_on_commands_queued: usize,
     pub use_item_commands_queued: usize,

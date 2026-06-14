@@ -1,9 +1,9 @@
 use bbb_control::{NetCounters, PlayerPose};
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    CommandSuggestionRequest, Direction as ProtocolDirection, InteractionHand, PickItemFromBlock,
-    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem,
-    UseItemOn, Vec3d as ProtocolVec3d,
+    AttackEntity, CommandSuggestionRequest, Direction as ProtocolDirection, InteractEntity,
+    InteractionHand, PickItemFromBlock, PlayerAction, PlayerActionKind, PlayerCommand,
+    PlayerCommandAction, PlayerInput, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::BlockPos;
 use tokio::sync::mpsc;
@@ -105,6 +105,40 @@ pub(super) fn queue_player_action_command(
     };
     if tx.try_send(NetCommand::PlayerAction(action)).is_ok() {
         counters.player_action_commands_queued += 1;
+    }
+}
+
+pub(super) fn queue_attack_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    entity_id: i32,
+) {
+    if let Some(tx) = net_commands {
+        let packet = AttackEntity { entity_id };
+        if tx.try_send(NetCommand::AttackEntity(packet)).is_ok() {
+            counters.attack_entity_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn queue_interact_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    entity_id: i32,
+    hand: InteractionHand,
+    location: ProtocolVec3d,
+    using_secondary_action: bool,
+) {
+    if let Some(tx) = net_commands {
+        let packet = InteractEntity {
+            entity_id,
+            hand,
+            location,
+            using_secondary_action,
+        };
+        if tx.try_send(NetCommand::InteractEntity(packet)).is_ok() {
+            counters.interact_entity_commands_queued += 1;
+        }
     }
 }
 
@@ -238,8 +272,8 @@ pub(crate) fn queue_vehicle_move_command(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
-        CommandSuggestionRequest, Direction as ProtocolDirection, InteractionHand,
+        AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
+        CommandSuggestionRequest, Direction as ProtocolDirection, InteractEntity, InteractionHand,
         PickItemFromBlock, PlayerAction, PlayerActionKind, UseItemOn,
     };
     use bbb_world::BlockPos;
@@ -293,6 +327,44 @@ mod tests {
                 pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
                 direction: ProtocolDirection::West,
                 sequence: 3,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_entity_attack_and_interact_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let location = ProtocolVec3d {
+            x: 0.25,
+            y: 1.0,
+            z: -0.5,
+        };
+
+        queue_attack_entity_command(&mut counters, &commands, 123);
+        queue_interact_entity_command(
+            &mut counters,
+            &commands,
+            123,
+            InteractionHand::OffHand,
+            location,
+            true,
+        );
+
+        assert_eq!(counters.attack_entity_commands_queued, 1);
+        assert_eq!(counters.interact_entity_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::AttackEntity(AttackEntity { entity_id: 123 })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::InteractEntity(InteractEntity {
+                entity_id: 123,
+                hand: InteractionHand::OffHand,
+                location,
+                using_secondary_action: true,
             })
         );
     }
