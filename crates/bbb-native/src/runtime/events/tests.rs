@@ -181,6 +181,7 @@ fn custom_report_details_event_updates_snapshot_counters() {
     );
     assert_eq!(counters.custom_report_details, details);
     assert_eq!(counters.custom_report_detail_packets, 1);
+    assert_eq!(counters.custom_report_details_tracked, 2);
     assert_eq!(world.custom_report_details(), &details);
     assert_eq!(world.counters().custom_report_detail_packets, 1);
     assert_eq!(world.counters().custom_report_details_tracked, 2);
@@ -255,6 +256,8 @@ fn configuration_state_events_update_snapshot_counters() {
     assert!(world.is_feature_enabled("minecraft:vanilla"));
     assert_eq!(world.counters().update_enabled_features_packets, 1);
     assert_eq!(world.counters().enabled_features_tracked, 2);
+    assert_eq!(counters.enabled_features_tracked, 2);
+    assert_eq!(counters.enabled_features_ignored, 0);
     assert_eq!(counters.reset_chat_packets, 1);
     assert!(counters.last_player_chat.is_none());
     assert!(world.client_chat().messages.is_empty());
@@ -424,6 +427,7 @@ fn server_links_event_updates_world_and_snapshot_counters() {
     assert_eq!(world_counters.server_link_packets, 1);
     assert_eq!(world_counters.server_link_invalid_entries, 1);
     assert_eq!(world_counters.server_links_tracked, 2);
+    assert_eq!(counters.server_links_tracked, 2);
 }
 
 #[test]
@@ -904,6 +908,7 @@ fn client_feature_events_update_world_and_snapshot_counters() {
     assert!(world.custom_chat_completions().contains("/spawn"));
     assert_eq!(world.counters().custom_chat_completion_packets, 1);
     assert_eq!(world.counters().custom_chat_completions_tracked, 2);
+    assert_eq!(counters.custom_chat_completions_tracked, 2);
     assert_eq!(counters.ghost_recipe_packets, 1);
     assert_eq!(
         world.last_ghost_recipe(),

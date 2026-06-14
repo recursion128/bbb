@@ -152,9 +152,15 @@ pub struct NetCounters {
     pub stored_cookie_bytes: usize,
     pub custom_report_detail_packets: usize,
     #[serde(default)]
+    pub custom_report_details_tracked: usize,
+    #[serde(default)]
     pub reset_chat_packets: usize,
     #[serde(default)]
     pub update_enabled_features_packets: usize,
+    #[serde(default)]
+    pub enabled_features_tracked: usize,
+    #[serde(default)]
+    pub enabled_features_ignored: usize,
     #[serde(default)]
     pub enabled_features: Vec<String>,
     #[serde(default)]
@@ -163,6 +169,8 @@ pub struct NetCounters {
     pub last_code_of_conduct_len: usize,
     pub server_link_packets: usize,
     pub server_link_invalid_entries: usize,
+    #[serde(default)]
+    pub server_links_tracked: usize,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,
@@ -281,6 +289,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub take_item_entities_removed: usize,
     pub custom_chat_completion_packets: usize,
+    #[serde(default)]
+    pub custom_chat_completions_tracked: usize,
     pub custom_payload_packets: usize,
     #[serde(default)]
     pub custom_payload_brand_packets: usize,

@@ -380,6 +380,8 @@ pub(super) fn sync_advancement_counters(counters: &mut NetCounters, world: &Worl
 fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.update_enabled_features_packets = world_counters.update_enabled_features_packets;
+    counters.enabled_features_tracked = world_counters.enabled_features_tracked;
+    counters.enabled_features_ignored = world_counters.enabled_features_ignored;
     counters.enabled_features = world.enabled_feature_list();
 }
 
@@ -460,12 +462,14 @@ fn sync_custom_payload_counters(counters: &mut NetCounters, world: &WorldStore) 
 fn sync_custom_report_detail_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.custom_report_detail_packets = world_counters.custom_report_detail_packets;
+    counters.custom_report_details_tracked = world_counters.custom_report_details_tracked;
     counters.custom_report_details = world.custom_report_details().clone();
 }
 
 fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.custom_chat_completion_packets = world_counters.custom_chat_completion_packets;
+    counters.custom_chat_completions_tracked = world_counters.custom_chat_completions_tracked;
     counters.last_custom_chat_completion =
         world.last_custom_chat_completion_update().map(|update| {
             bbb_control::CustomChatCompletionState {
@@ -818,6 +822,7 @@ fn sync_server_link_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.server_link_packets = world_counters.server_link_packets;
     counters.server_link_invalid_entries = world_counters.server_link_invalid_entries;
+    counters.server_links_tracked = world_counters.server_links_tracked;
     counters.server_links = world
         .server_links()
         .iter()
