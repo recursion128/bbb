@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::EntityVec3;
 
+const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
 const VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID: i32 = 60;
 const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
 const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
@@ -26,6 +27,12 @@ const HANGING_WALL_OFFSET: f64 = 0.46875;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_BASE_SIZE: f32 = 0.52;
 const SLIME_DEFAULT_SIZE: i32 = 1;
+const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 16;
+const ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1;
+const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
+const ARMOR_STAND_WIDTH: f32 = 0.5;
+const ARMOR_STAND_HEIGHT: f32 = 1.975;
+const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -69,6 +76,9 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     add_entity_data: i32,
     data_values: &[EntityDataValue],
 ) -> Option<EntityPickBoundsState> {
+    if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
+        return armor_stand_pick_bounds(data_values);
+    }
     if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
         return Some(interaction_pick_bounds(data_values));
     }
@@ -290,12 +300,40 @@ fn slime_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
     EntityPickBoundsState::from_base_size(SLIME_BASE_SIZE * size, SLIME_BASE_SIZE * size, 0.0)
 }
 
+fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPickBoundsState> {
+    let flags = entity_data_byte(data_values, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0);
+    if flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
+        return None;
+    }
+    let scale = if flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0 {
+        ARMOR_STAND_SMALL_SCALE
+    } else {
+        1.0
+    };
+    Some(EntityPickBoundsState::from_base_size(
+        ARMOR_STAND_WIDTH * scale,
+        ARMOR_STAND_HEIGHT * scale,
+        0.0,
+    ))
+}
+
 fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {
     data_values
         .iter()
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Int(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
+}
+
+fn entity_data_byte(data_values: &[EntityDataValue], data_id: u8, fallback: i8) -> i8 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Byte(value) => Some(*value),
             _ => None,
         })
         .unwrap_or(fallback)

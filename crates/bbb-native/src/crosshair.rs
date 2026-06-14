@@ -511,6 +511,7 @@ mod tests {
     };
     use uuid::Uuid;
 
+    const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
     const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
     const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
@@ -687,6 +688,29 @@ mod tests {
             [0.0, 1.0, 3.0],
         ));
         world.apply_add_entity(protocol_add_entity(11, 999, [0.0, 1.0, 2.0]));
+
+        assert_eq!(
+            crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0))),
+            None
+        );
+    }
+
+    #[test]
+    fn crosshair_target_skips_marker_armor_stand() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            [0.0, 1.0, 3.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 12,
+            values: vec![EntityDataValue {
+                data_id: 16,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(16),
+            }],
+        }));
 
         assert_eq!(
             crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0))),
