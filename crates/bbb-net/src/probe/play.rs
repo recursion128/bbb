@@ -158,6 +158,7 @@ impl ProbeContext {
                 self.world.apply_respawn(&respawn);
             }
             PlayClientbound::SetHealth(health) => {
+                self.world.apply_player_health(health);
                 maybe_send_perform_respawn(&mut self.conn, health, &mut self.player_was_dead)
                     .await?;
             }
@@ -363,6 +364,7 @@ impl ProbeContext {
                 self.world.apply_world_time(update);
             }
             PlayClientbound::PlayerPosition(update) => {
+                self.world.apply_player_position(update);
                 self.player_position_state = update.apply_to_state(self.player_position_state);
                 let (id, payload) = packets::encode_play_accept_teleportation(update.id);
                 self.conn.send_packet(id, &payload).await?;
@@ -383,6 +385,7 @@ impl ProbeContext {
                 }
             }
             PlayClientbound::PlayerRotation(update) => {
+                self.world.apply_player_rotation(update);
                 self.player_position_state = update.apply_to_state(self.player_position_state);
             }
             PlayClientbound::PlayerInfoUpdate(update) => {
@@ -469,8 +472,9 @@ mod tests {
     use bbb_protocol::packets::{
         BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos,
         DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, EntityAnchor,
-        GameRuleValue, GameRuleValues, GameTestHighlightPos, PlayerLookAt, RemoteDebugSampleType,
-        TestInstanceBlockStatus, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        GameRuleValue, GameRuleValues, GameTestHighlightPos, PlayerHealth, PlayerLookAt,
+        PlayerPositionUpdate, PlayerRotationUpdate, RemoteDebugSampleType, TestInstanceBlockStatus,
+        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
     };
     use bbb_world::{BlockPos, ChunkPos};
     use bytes::BytesMut;
@@ -641,6 +645,84 @@ mod tests {
                 to_anchor: None,
             })
         );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_player_health_position_and_rotation_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::SetHealth(PlayerHealth {
+                health: 7.5,
+                food: 16,
+                saturation: 2.0,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::PlayerPosition(PlayerPositionUpdate {
+                id: 23,
+                position: ProtocolVec3d {
+                    x: 10.0,
+                    y: 64.0,
+                    z: -5.0,
+                },
+                delta_movement: ProtocolVec3d {
+                    x: 0.125,
+                    y: 0.0,
+                    z: 0.25,
+                },
+                y_rot: 90.0,
+                x_rot: 15.0,
+                relatives_mask: 0,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::PlayerRotation(PlayerRotationUpdate {
+                y_rot: 10.0,
+                relative_y: true,
+                x_rot: -5.0,
+                relative_x: false,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(3, ChunkPos { x: 0, z: 0 });
+        let local = report.world.local_player();
+        assert_eq!(
+            local.health,
+            Some(bbb_world::LocalPlayerHealthState {
+                health: 7.5,
+                food: 16,
+                saturation: 2.0,
+            })
+        );
+        assert_eq!(report.world_counters.player_health_packets, 1);
+        assert_eq!(report.world_counters.player_position_packets, 1);
+        assert_eq!(report.world_counters.player_rotation_packets, 1);
+
+        let pose = report.world.local_player_pose().unwrap();
+        assert_eq!(
+            pose.position,
+            ProtocolVec3d {
+                x: 10.0,
+                y: 64.0,
+                z: -5.0,
+            }
+        );
+        assert_eq!(
+            pose.delta_movement,
+            ProtocolVec3d {
+                x: 0.125,
+                y: 0.0,
+                z: 0.25,
+            }
+        );
+        assert_eq!(pose.y_rot, 100.0);
+        assert_eq!(pose.x_rot, -5.0);
+        assert_eq!(pose.last_teleport_id, 23);
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {
