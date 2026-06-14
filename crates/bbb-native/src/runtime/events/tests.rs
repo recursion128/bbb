@@ -2509,6 +2509,23 @@ fn minecart_along_track_event_updates_world_state() {
 }
 
 #[test]
+fn login_projects_local_player_id_from_world() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Login(protocol_play_login(9)))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert_eq!(world.local_player_id(), Some(9));
+    assert_eq!(counters.player_entity_id, Some(9));
+}
+
+#[test]
 fn local_player_events_update_world_state_and_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(10);
     tx.try_send(NetEvent::Login(protocol_play_login(9)))

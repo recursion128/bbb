@@ -116,6 +116,7 @@ pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldSto
 
 pub(super) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {
     let local = world.local_player();
+    counters.player_entity_id = world.local_player_id();
     counters.player_abilities = local.abilities.map(|abilities| PlayerAbilities {
         invulnerable: abilities.invulnerable,
         flying: abilities.flying,

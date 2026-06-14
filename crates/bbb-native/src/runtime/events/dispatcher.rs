@@ -266,8 +266,8 @@ pub(in crate::runtime) fn drain_net_events(
                 counters.tag_entries_tracked = world_counters.tag_entries_tracked;
             }
             NetEvent::Login(login) => {
-                counters.player_entity_id = Some(login.player_id);
                 world.apply_login(&login);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::Respawn(respawn) => {
                 world.apply_respawn(&respawn);
