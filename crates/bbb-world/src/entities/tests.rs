@@ -388,10 +388,23 @@ fn entity_store_round_trips_serde_and_replaces_by_protocol_id() {
             z: -0.25,
         },
     }));
+    assert_eq!(
+        store.entities.transform(20).unwrap().delta_movement,
+        EntityVec3 {
+            x: 0.5,
+            y: 0.0,
+            z: -0.25,
+        }
+    );
 
     let value = serde_json::to_value(&store).unwrap();
+    assert!(value["entities"].as_array().is_some());
     let mut restored: WorldStore = serde_json::from_value(value).unwrap();
     assert_eq!(restored.entity_count(), 2);
+    assert_eq!(
+        restored.entities.entity_type_id(20),
+        Some(VANILLA_ENTITY_TYPE_MINECART_ID)
+    );
     assert_eq!(
         restored.probe_entity(20).unwrap().delta_movement,
         EntityVec3 {
@@ -409,6 +422,10 @@ fn entity_store_round_trips_serde_and_replaces_by_protocol_id() {
     assert_eq!(
         restored.probe_entity(20).unwrap().entity_type_id,
         VANILLA_ENTITY_TYPE_ITEM_ID
+    );
+    assert_eq!(
+        restored.entities.entity_type_id(20),
+        Some(VANILLA_ENTITY_TYPE_ITEM_ID)
     );
     assert!(restored.apply_set_entity_motion(ProtocolSetEntityMotion {
         id: 20,

@@ -60,8 +60,8 @@ impl WorldStore {
 
     pub fn apply_set_entity_motion(&mut self, packet: ProtocolSetEntityMotion) -> bool {
         self.counters.entity_motion_updates_received += 1;
-        let Some(()) = self.entities.with_mut(packet.id, |entity| {
-            entity.delta_movement = entity_vec3(packet.delta_movement);
+        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
+            transform.delta_movement = entity_vec3(packet.delta_movement);
         }) else {
             return false;
         };
@@ -71,8 +71,8 @@ impl WorldStore {
 
     pub fn apply_rotate_head(&mut self, packet: ProtocolRotateHead) -> bool {
         self.counters.entity_head_rotations_received += 1;
-        let Some(()) = self.entities.with_mut(packet.id, |entity| {
-            entity.y_head_rot = packet.y_head_rot;
+        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
+            transform.y_head_rot = packet.y_head_rot;
         }) else {
             return false;
         };

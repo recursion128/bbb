@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::WorldStore;
 
+mod components;
 mod metadata;
 mod movement;
 mod passengers;
@@ -20,6 +21,7 @@ mod status;
 mod store;
 mod updates;
 
+pub(crate) use components::{EntityIdentity, EntityTransform};
 use movement::entity_vec3;
 use status::{EntityDamageEventState, MobEffectState};
 pub(crate) use store::EntityStore;
@@ -118,11 +120,7 @@ impl WorldStore {
 
     pub fn apply_take_item_entity(&mut self, packet: ProtocolTakeItemEntity) -> bool {
         self.counters.take_item_entities_received += 1;
-        let Some(entity_type_id) = self
-            .entities
-            .get(packet.item_id)
-            .map(|entity| entity.entity_type_id)
-        else {
+        let Some(entity_type_id) = self.entities.entity_type_id(packet.item_id) else {
             return false;
         };
 

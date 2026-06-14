@@ -86,29 +86,30 @@ impl WorldStore {
         let root_vehicle_id = self.local_player_root_vehicle_id()?;
         let packet_position = entity_vec3(packet.position);
         let snapped = entity_distance_squared(
-            self.entities.get(root_vehicle_id)?.position,
+            self.entities.transform(root_vehicle_id)?.position,
             packet_position,
         ) > MOVE_VEHICLE_SNAP_EPSILON_SQUARED;
 
         if snapped {
-            self.entities.with_mut(root_vehicle_id, |vehicle| {
-                vehicle.position = packet_position;
-                vehicle.position_base = packet_position;
-                vehicle.y_rot = packet.y_rot;
-                vehicle.x_rot = packet.x_rot;
-            });
+            self.entities
+                .with_transform_mut(root_vehicle_id, |transform| {
+                    transform.position = packet_position;
+                    transform.position_base = packet_position;
+                    transform.y_rot = packet.y_rot;
+                    transform.x_rot = packet.x_rot;
+                });
             self.counters.vehicle_moves_snapped += 1;
         }
 
         self.counters.vehicle_moves_applied += 1;
         self.counters.vehicle_moves_acked += 1;
-        let vehicle = self.entities.get(root_vehicle_id)?;
+        let transform = self.entities.transform(root_vehicle_id)?;
         Some(VehicleMoveReport {
-            vehicle_id: vehicle.id,
-            position: vehicle.position,
-            y_rot: vehicle.y_rot,
-            x_rot: vehicle.x_rot,
-            on_ground: vehicle.on_ground.unwrap_or(false),
+            vehicle_id: root_vehicle_id,
+            position: transform.position,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            on_ground: transform.on_ground.unwrap_or(false),
             snapped,
         })
     }

@@ -19,13 +19,13 @@ use super::{
 impl WorldStore {
     pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
         self.counters.entity_position_syncs_received += 1;
-        let Some(()) = self.entities.with_mut(packet.id, |entity| {
-            entity.position = entity_vec3(packet.position);
-            entity.position_base = entity_vec3(packet.position);
-            entity.delta_movement = entity_vec3(packet.delta_movement);
-            entity.y_rot = packet.y_rot;
-            entity.x_rot = packet.x_rot;
-            entity.on_ground = Some(packet.on_ground);
+        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
+            transform.position = entity_vec3(packet.position);
+            transform.position_base = entity_vec3(packet.position);
+            transform.delta_movement = entity_vec3(packet.delta_movement);
+            transform.y_rot = packet.y_rot;
+            transform.x_rot = packet.x_rot;
+            transform.on_ground = Some(packet.on_ground);
         }) else {
             return false;
         };
@@ -35,24 +35,24 @@ impl WorldStore {
 
     pub fn apply_entity_move(&mut self, packet: ProtocolEntityMove) -> bool {
         self.counters.entity_moves_received += 1;
-        let Some(()) = self.entities.with_mut(packet.id, |entity| {
+        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
             if packet.delta_x != 0 || packet.delta_y != 0 || packet.delta_z != 0 {
                 let position = decode_entity_delta_position(
-                    entity.position_base,
+                    transform.position_base,
                     packet.delta_x,
                     packet.delta_y,
                     packet.delta_z,
                 );
-                entity.position = position;
-                entity.position_base = position;
+                transform.position = position;
+                transform.position_base = position;
             }
             if let Some(y_rot) = packet.y_rot {
-                entity.y_rot = y_rot;
+                transform.y_rot = y_rot;
             }
             if let Some(x_rot) = packet.x_rot {
-                entity.x_rot = x_rot;
+                transform.x_rot = x_rot;
             }
-            entity.on_ground = Some(packet.on_ground);
+            transform.on_ground = Some(packet.on_ground);
         }) else {
             return false;
         };
@@ -66,25 +66,28 @@ impl WorldStore {
     ) -> bool {
         self.counters.minecart_moves_received += 1;
         self.counters.minecart_lerp_steps_received += packet.lerp_steps.len();
-        let Some(entity_type_id) = self
-            .entities
-            .get(packet.entity_id)
-            .map(|entity| entity.entity_type_id)
-        else {
+        let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
             return false;
         };
         if !is_vanilla_minecart_type(entity_type_id) {
             return false;
         }
 
+        if let Some(last_step) = packet.lerp_steps.last().copied() {
+            let Some(()) = self
+                .entities
+                .with_transform_mut(packet.entity_id, |transform| {
+                    transform.position = entity_vec3(last_step.position);
+                    transform.position_base = transform.position;
+                    transform.delta_movement = entity_vec3(last_step.movement);
+                    transform.y_rot = last_step.y_rot;
+                    transform.x_rot = last_step.x_rot;
+                })
+            else {
+                return false;
+            };
+        }
         let Some(()) = self.entities.with_mut(packet.entity_id, |entity| {
-            if let Some(last_step) = packet.lerp_steps.last().copied() {
-                entity.position = entity_vec3(last_step.position);
-                entity.position_base = entity.position;
-                entity.delta_movement = entity_vec3(last_step.movement);
-                entity.y_rot = last_step.y_rot;
-                entity.x_rot = last_step.x_rot;
-            }
             entity.minecart_lerp_steps = packet.lerp_steps;
         }) else {
             return false;
@@ -100,23 +103,23 @@ impl WorldStore {
 
     pub fn apply_teleport_entity(&mut self, packet: ProtocolTeleportEntity) -> bool {
         self.counters.entity_teleports_received += 1;
-        let Some(()) = self.entities.with_mut(packet.id, |entity| {
+        let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
             let absolute = entity_absolute_move_rotation(
-                entity.position,
-                entity.delta_movement,
-                entity.y_rot,
-                entity.x_rot,
+                transform.position,
+                transform.delta_movement,
+                transform.y_rot,
+                transform.x_rot,
                 packet.position,
                 packet.delta_movement,
                 packet.y_rot,
                 packet.x_rot,
                 packet.relatives_mask,
             );
-            entity.position = absolute.position;
-            entity.delta_movement = absolute.delta_movement;
-            entity.y_rot = absolute.y_rot;
-            entity.x_rot = absolute.x_rot;
-            entity.on_ground = Some(packet.on_ground);
+            transform.position = absolute.position;
+            transform.delta_movement = absolute.delta_movement;
+            transform.y_rot = absolute.y_rot;
+            transform.x_rot = absolute.x_rot;
+            transform.on_ground = Some(packet.on_ground);
         }) else {
             return false;
         };

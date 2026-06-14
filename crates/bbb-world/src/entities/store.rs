@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt};
 use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::EntityState;
+use super::{EntityIdentity, EntityState, EntityTransform};
 
 pub(crate) struct EntityStore {
     ecs: World,
@@ -16,23 +16,20 @@ pub(crate) struct EntityStore {
 impl EntityStore {
     pub(crate) fn insert_or_replace(&mut self, state: EntityState) {
         if let Some(entity) = self.by_protocol_id.get(&state.id).copied() {
-            let replaced = {
-                if let Ok(mut existing) = self.ecs.get::<&mut EntityState>(entity) {
-                    *existing = state.clone();
-                    true
-                } else {
-                    false
-                }
-            };
-            if replaced {
+            if self.replace_existing_components(entity, state.clone()) {
                 self.update_snapshot(state);
                 return;
             }
+            let _ = self.ecs.despawn(entity);
             self.by_protocol_id.remove(&state.id);
         }
 
         let id = state.id;
-        let entity = self.ecs.spawn((state.clone(),));
+        let entity = self.ecs.spawn((
+            EntityIdentity::from(&state),
+            EntityTransform::from(&state),
+            state.clone(),
+        ));
         self.by_protocol_id.insert(id, entity);
         if !self.snapshot_index.contains_key(&id) {
             self.order.push(id);
@@ -50,6 +47,22 @@ impl EntityStore {
         self.by_protocol_id.contains_key(&id)
     }
 
+    pub(crate) fn entity_type_id(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityIdentity>(entity)
+            .ok()
+            .map(|identity| identity.entity_type_id)
+    }
+
+    pub(crate) fn transform(&self, id: i32) -> Option<EntityTransform> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityTransform>(entity)
+            .ok()
+            .map(|transform| *transform)
+    }
+
     pub(crate) fn with_mut<R>(
         &mut self,
         id: i32,
@@ -60,7 +73,22 @@ impl EntityStore {
         let result = update(&mut state);
         let snapshot = (*state).clone();
         drop(state);
+        self.sync_components_from_state(entity, &snapshot);
         self.update_snapshot(snapshot);
+        Some(result)
+    }
+
+    pub(crate) fn with_transform_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityTransform) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut transform = self.ecs.get::<&mut EntityTransform>(entity).ok()?;
+        let result = update(&mut transform);
+        let snapshot_transform = *transform;
+        drop(transform);
+        self.sync_transform_to_state(entity, snapshot_transform);
         Some(result)
     }
 
@@ -106,6 +134,42 @@ impl EntityStore {
         let index = self.snapshots.len();
         self.snapshot_index.insert(state.id, index);
         self.snapshots.push(state);
+    }
+
+    fn replace_existing_components(&mut self, entity: Entity, state: EntityState) -> bool {
+        let replaced_state = {
+            if let Ok(mut existing) = self.ecs.get::<&mut EntityState>(entity) {
+                *existing = state.clone();
+                true
+            } else {
+                false
+            }
+        };
+        if !replaced_state {
+            return false;
+        }
+
+        self.sync_components_from_state(entity, &state);
+        true
+    }
+
+    fn sync_components_from_state(&mut self, entity: Entity, state: &EntityState) {
+        if let Ok(mut identity) = self.ecs.get::<&mut EntityIdentity>(entity) {
+            *identity = EntityIdentity::from(state);
+        }
+        if let Ok(mut transform) = self.ecs.get::<&mut EntityTransform>(entity) {
+            *transform = EntityTransform::from(state);
+        }
+    }
+
+    fn sync_transform_to_state(&mut self, entity: Entity, transform: EntityTransform) {
+        let Ok(mut state) = self.ecs.get::<&mut EntityState>(entity) else {
+            return;
+        };
+        transform.write_to_state(&mut state);
+        let snapshot = (*state).clone();
+        drop(state);
+        self.update_snapshot(snapshot);
     }
 
     fn rebuild_snapshots_from_ecs(&mut self) {
