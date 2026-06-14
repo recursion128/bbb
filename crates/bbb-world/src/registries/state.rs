@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, sync::Arc};
 use bbb_protocol::packets::RegistryDataEntry as ProtocolRegistryDataEntry;
 use serde::{Deserialize, Serialize};
 
+use crate::chunks::{decode_nbt_payload_summary, NbtPayloadSummary};
+
 use super::BlockStateRegistry;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,6 +43,8 @@ pub struct RegistryPacketEntry {
     pub has_data: bool,
     #[serde(default)]
     pub raw_data_len: usize,
+    #[serde(default)]
+    pub nbt: Option<NbtPayloadSummary>,
     #[serde(skip)]
     pub raw_data: Option<Arc<[u8]>>,
 }
@@ -78,10 +82,12 @@ impl Default for RegistrySet {
 
 impl RegistryPacketEntry {
     pub fn with_raw_data(id: impl Into<String>, raw_data: Vec<u8>) -> Self {
+        let nbt = decode_registry_entry_nbt(raw_data.as_slice());
         Self {
             id: id.into(),
             has_data: true,
             raw_data_len: raw_data.len(),
+            nbt,
             raw_data: Some(Arc::from(raw_data)),
         }
     }
@@ -91,6 +97,7 @@ impl RegistryPacketEntry {
             id: id.into(),
             has_data: true,
             raw_data_len,
+            nbt: None,
             raw_data: None,
         }
     }
@@ -100,6 +107,7 @@ impl RegistryPacketEntry {
             id: id.into(),
             has_data: false,
             raw_data_len: 0,
+            nbt: None,
             raw_data: None,
         }
     }
@@ -141,13 +149,19 @@ impl From<ProtocolRegistryDataEntry> for RegistryPacketEntry {
     fn from(entry: ProtocolRegistryDataEntry) -> Self {
         let ProtocolRegistryDataEntry { id, raw_data } = entry;
         let raw_data_len = raw_data.as_ref().map_or(0, Vec::len);
+        let nbt = raw_data.as_deref().and_then(decode_registry_entry_nbt);
         Self {
             id,
             has_data: raw_data.is_some(),
             raw_data_len,
+            nbt,
             raw_data: raw_data.map(Arc::from),
         }
     }
+}
+
+fn decode_registry_entry_nbt(raw_data: &[u8]) -> Option<NbtPayloadSummary> {
+    decode_nbt_payload_summary(raw_data).ok().flatten()
 }
 
 impl RegistryPacket {

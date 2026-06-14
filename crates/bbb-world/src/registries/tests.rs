@@ -1,4 +1,6 @@
-use bbb_protocol::packets::{RegistryTags, TagNetworkPayload, UpdateTags};
+use bbb_protocol::packets::{
+    RegistryData, RegistryDataEntry, RegistryTags, TagNetworkPayload, UpdateTags,
+};
 
 use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 
@@ -88,6 +90,35 @@ fn registry_data_entries_are_ordered_and_counted() {
 }
 
 #[test]
+fn registry_data_entries_decode_nbt_payload_summary() {
+    let mut store = WorldStore::new();
+    let raw_chat = nbt_compound_with_string("translation_key", "chat.type.text");
+    store.record_registry_data(RegistryData {
+        registry: "minecraft:chat_type".to_string(),
+        entries: vec![
+            RegistryDataEntry {
+                id: "minecraft:chat".to_string(),
+                raw_data: Some(raw_chat.clone()),
+            },
+            RegistryDataEntry {
+                id: "minecraft:system".to_string(),
+                raw_data: None,
+            },
+        ],
+        raw_payload_len: 128,
+    });
+
+    let content = store.registry_content("minecraft:chat_type").unwrap();
+    let chat = &content.entries[0];
+    assert_eq!(chat.raw_data(), Some(raw_chat.as_slice()));
+    assert_eq!(chat.nbt.as_ref().unwrap().root_type, 10);
+    assert_eq!(chat.nbt.as_ref().unwrap().byte_len, raw_chat.len());
+    assert!(content.entries[1].nbt.is_none());
+    assert_eq!(store.counters().registry_entries_with_data, 1);
+    assert_eq!(store.counters().registry_entry_stubs, 1);
+}
+
+#[test]
 fn update_tags_replace_network_tag_state() {
     let mut store = WorldStore::new();
     store.apply_update_tags(UpdateTags {
@@ -157,4 +188,18 @@ fn update_tags_replace_network_tag_state() {
     assert_eq!(store.counters().last_update_tags_registry_count, 1);
     assert_eq!(store.counters().last_update_tags_total_tag_count, 1);
     assert_eq!(store.counters().last_update_tags_total_value_count, 1);
+}
+
+fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
+    let mut payload = vec![10, 8];
+    write_nbt_string(&mut payload, name);
+    write_nbt_string(&mut payload, value);
+    payload.push(0);
+    payload
+}
+
+fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+    let bytes = value.as_bytes();
+    out.extend((bytes.len() as u16).to_be_bytes());
+    out.extend(bytes);
 }
