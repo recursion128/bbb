@@ -11,9 +11,9 @@ use bbb_protocol::{
 
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
-    terrain::classify_terrain_material, BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn,
-    ChunkPos, ChunkViewState, RegistrySet, Result, TerrainBlockCell, TerrainChunkSnapshot,
-    WorldStore,
+    terrain::{classify_terrain_material, terrain_fluid_state},
+    BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkViewState, RegistrySet,
+    Result, TerrainBlockCell, TerrainChunkSnapshot, WorldStore,
 };
 
 use super::{
@@ -221,6 +221,9 @@ impl WorldStore {
         let block_value = section.block_states.value_at(block_index)?;
         let block_state = self.registries.block_state(block_value.global_id);
         let block_name = block_state.map(|state| state.name.clone());
+        let block_properties = block_state
+            .map(|state| state.properties.clone())
+            .unwrap_or_default();
         let biome_index = section_biome_index(local_x / 4, local_y / 4, local_z / 4);
         let biome_value = section.biomes.value_at(biome_index);
 
@@ -234,10 +237,9 @@ impl WorldStore {
             section_index,
             block_state_id: block_value.global_id,
             material: classify_terrain_material(block_name.as_deref()),
+            fluid: terrain_fluid_state(block_name.as_deref(), &block_properties),
             block_name,
-            block_properties: block_state
-                .map(|state| state.properties.clone())
-                .unwrap_or_default(),
+            block_properties,
             block_palette_kind: section.block_states.palette_kind,
             block_palette_index: block_value.palette_index,
             biome_id: biome_value.map(|value| value.global_id),
@@ -274,6 +276,7 @@ impl WorldStore {
                         block_state_id: block_value.global_id,
                         biome_id,
                         material: classify_terrain_material(block_name.as_deref()),
+                        fluid: terrain_fluid_state(block_name.as_deref(), &block_properties),
                         block_name,
                         block_properties,
                         light: sample_terrain_light(&chunk.light, self.dimension, x, y, z),
@@ -372,12 +375,9 @@ fn is_empty_block_state_id(registries: &RegistrySet, block_state_id: i32) -> boo
 }
 
 fn is_fluid_block_state_id(registries: &RegistrySet, block_state_id: i32) -> bool {
-    matches!(
-        registries
-            .block_state(block_state_id)
-            .map(|state| state.name.as_str()),
-        Some("minecraft:water" | "minecraft:lava")
-    )
+    registries
+        .block_state(block_state_id)
+        .is_some_and(|state| terrain_fluid_state(Some(&state.name), &state.properties).is_some())
 }
 
 fn apply_counted_delta(count: &mut i16, old_counted: bool, new_counted: bool) {

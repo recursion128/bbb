@@ -3,8 +3,8 @@ use super::{
     LIGHT_ARRAY_BYTES,
 };
 use crate::{
-    section_block_index, BlockPos, ChunkPos, TerrainLight, TerrainMaterialClass, WorldDimension,
-    WorldStore,
+    section_block_index, BlockPos, ChunkPos, TerrainFluidKind, TerrainFluidState, TerrainLight,
+    TerrainMaterialClass, WorldDimension, WorldStore,
 };
 
 use bbb_protocol::codec::Encoder;
@@ -294,6 +294,118 @@ fn extracts_terrain_chunk_summary() {
     assert_eq!(
         terrain.cells[terrain_cell_index(2, 1, 3, 16)].biome_id,
         Some(4)
+    );
+}
+
+#[test]
+fn terrain_cells_include_vanilla_fluid_state() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let applied = store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+        section_x: 2,
+        section_y: 0,
+        section_z: -3,
+        updates: vec![
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 34,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 13332,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 35,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 12565,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 36,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 89,
+            },
+        ],
+    });
+
+    assert_eq!(applied, 3);
+
+    let source_water = Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+    let slab = store
+        .probe_block(BlockPos {
+            x: 34,
+            y: 1,
+            z: -45,
+        })
+        .unwrap();
+    assert_eq!(slab.block_name.as_deref(), Some("minecraft:oak_slab"));
+    assert_eq!(slab.material, TerrainMaterialClass::Opaque);
+    assert_eq!(slab.fluid, source_water);
+
+    let light = store
+        .probe_block(BlockPos {
+            x: 35,
+            y: 1,
+            z: -45,
+        })
+        .unwrap();
+    assert_eq!(light.block_name.as_deref(), Some("minecraft:light"));
+    assert_eq!(light.material, TerrainMaterialClass::Invisible);
+    assert_eq!(light.fluid, source_water);
+
+    let water = store
+        .probe_block(BlockPos {
+            x: 36,
+            y: 1,
+            z: -45,
+        })
+        .unwrap();
+    assert_eq!(water.block_name.as_deref(), Some("minecraft:water"));
+    assert_eq!(water.material, TerrainMaterialClass::Fluid);
+    assert_eq!(
+        water.fluid,
+        Some(TerrainFluidState::new(TerrainFluidKind::Water, 5, false))
+    );
+
+    let terrain = store
+        .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    assert_eq!(
+        terrain.cells[terrain_cell_index(2, 1, 3, 16)].fluid,
+        source_water
+    );
+    assert_eq!(
+        terrain.cells[terrain_cell_index(3, 1, 3, 16)].fluid,
+        source_water
+    );
+    assert_eq!(
+        terrain.cells[terrain_cell_index(4, 1, 3, 16)].fluid,
+        Some(TerrainFluidState::new(TerrainFluidKind::Water, 5, false))
+    );
+
+    let summary = terrain.summary();
+    assert_eq!(summary.fluid_state_blocks, 3);
+    assert_eq!(summary.fluid_blocks, 1);
+    assert_eq!(summary.invisible_blocks, 1);
+    assert_eq!(summary.opaque_blocks, 4094);
+    assert_eq!(
+        store
+            .probe_chunk(ChunkPos { x: 2, z: -3 })
+            .unwrap()
+            .sections[0]
+            .fluid_count,
+        3
     );
 }
 

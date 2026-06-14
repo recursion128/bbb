@@ -140,7 +140,7 @@ fn convert_terrain_snapshot(
                     cell.biome_id,
                     Some(position),
                 );
-            let fluid = terrain_fluid(cell.block_name.as_deref(), &cell.block_properties);
+            let fluid = cell.fluid.map(renderer_fluid);
             let (fluid_texture_indices, fluid_tint) = fluid
                 .map(|fluid| textures.fluid_render_data(fluid.kind, cell.biome_id, Some(position)))
                 .unwrap_or(([0; 6], [TerrainTint::WHITE; 6]));
@@ -180,34 +180,12 @@ fn convert_terrain_snapshot(
     )
 }
 
-fn terrain_fluid(
-    block_name: Option<&str>,
-    properties: &std::collections::BTreeMap<String, String>,
-) -> Option<TerrainFluid> {
-    let kind = match block_name? {
-        "minecraft:water" => TerrainFluidKind::Water,
-        "minecraft:lava" => TerrainFluidKind::Lava,
-        _ if is_waterlogged(properties) => {
-            return Some(TerrainFluid::new(TerrainFluidKind::Water, 8, false));
-        }
-        _ => return None,
+fn renderer_fluid(fluid: bbb_world::TerrainFluidState) -> TerrainFluid {
+    let kind = match fluid.kind {
+        bbb_world::TerrainFluidKind::Water => TerrainFluidKind::Water,
+        bbb_world::TerrainFluidKind::Lava => TerrainFluidKind::Lava,
     };
-    let level = properties
-        .get("level")
-        .and_then(|value| value.parse::<u8>().ok())
-        .unwrap_or(0);
-    let (amount, falling) = match level {
-        0 => (8, false),
-        1..=7 => (8 - level, false),
-        _ => (8, true),
-    };
-    Some(TerrainFluid::new(kind, amount, falling))
-}
-
-fn is_waterlogged(properties: &std::collections::BTreeMap<String, String>) -> bool {
-    properties
-        .get("waterlogged")
-        .is_some_and(|value| value == "true")
+    TerrainFluid::new(kind, fluid.amount, fluid.falling)
 }
 
 #[cfg(test)]
@@ -215,60 +193,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn terrain_fluid_maps_liquid_block_level_to_vanilla_amount() {
+    fn renderer_fluid_preserves_world_fluid_state() {
         assert_eq!(
-            terrain_fluid(Some("minecraft:water"), &properties([("level", "0")])),
-            Some(TerrainFluid::new(TerrainFluidKind::Water, 8, false))
+            renderer_fluid(bbb_world::TerrainFluidState::new(
+                bbb_world::TerrainFluidKind::Water,
+                5,
+                false,
+            )),
+            TerrainFluid::new(TerrainFluidKind::Water, 5, false)
         );
         assert_eq!(
-            terrain_fluid(Some("minecraft:water"), &properties([("level", "3")])),
-            Some(TerrainFluid::new(TerrainFluidKind::Water, 5, false))
+            renderer_fluid(bbb_world::TerrainFluidState::new(
+                bbb_world::TerrainFluidKind::Lava,
+                8,
+                true,
+            )),
+            TerrainFluid::new(TerrainFluidKind::Lava, 8, true)
         );
-        assert_eq!(
-            terrain_fluid(Some("minecraft:lava"), &properties([("level", "8")])),
-            Some(TerrainFluid::new(TerrainFluidKind::Lava, 8, true))
-        );
-        assert_eq!(
-            terrain_fluid(Some("minecraft:lava"), &properties([("level", "15")])),
-            Some(TerrainFluid::new(TerrainFluidKind::Lava, 8, true))
-        );
-        assert_eq!(
-            terrain_fluid(Some("minecraft:stone"), &properties([("level", "0")])),
-            None
-        );
-    }
-
-    #[test]
-    fn terrain_fluid_maps_waterlogged_blocks_to_source_water() {
-        assert_eq!(
-            terrain_fluid(
-                Some("minecraft:oak_slab"),
-                &properties([("waterlogged", "true")])
-            ),
-            Some(TerrainFluid::new(TerrainFluidKind::Water, 8, false))
-        );
-        assert_eq!(
-            terrain_fluid(
-                Some("minecraft:light"),
-                &properties([("waterlogged", "true")])
-            ),
-            Some(TerrainFluid::new(TerrainFluidKind::Water, 8, false))
-        );
-        assert_eq!(
-            terrain_fluid(
-                Some("minecraft:oak_slab"),
-                &properties([("waterlogged", "false")])
-            ),
-            None
-        );
-    }
-
-    fn properties<const N: usize>(
-        entries: [(&str, &str); N],
-    ) -> std::collections::BTreeMap<String, String> {
-        entries
-            .into_iter()
-            .map(|(key, value)| (key.to_string(), value.to_string()))
-            .collect()
     }
 }

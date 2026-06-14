@@ -17,6 +17,7 @@ pub struct BlockProbe {
     pub block_name: Option<String>,
     pub block_properties: BTreeMap<String, String>,
     pub material: TerrainMaterialClass,
+    pub fluid: Option<TerrainFluidState>,
     pub block_palette_kind: PaletteKind,
     pub block_palette_index: Option<usize>,
     pub biome_id: Option<i32>,
@@ -33,6 +34,29 @@ pub enum TerrainMaterialClass {
     Translucent,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TerrainFluidKind {
+    Water,
+    Lava,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerrainFluidState {
+    pub kind: TerrainFluidKind,
+    pub amount: u8,
+    pub falling: bool,
+}
+
+impl TerrainFluidState {
+    pub fn new(kind: TerrainFluidKind, amount: u8, falling: bool) -> Self {
+        Self {
+            kind,
+            amount: amount.clamp(1, 8),
+            falling,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TerrainBlockCell {
     pub block_state_id: i32,
@@ -40,6 +64,7 @@ pub struct TerrainBlockCell {
     pub block_properties: BTreeMap<String, String>,
     pub biome_id: Option<i32>,
     pub material: TerrainMaterialClass,
+    pub fluid: Option<TerrainFluidState>,
     pub light: TerrainLight,
 }
 
@@ -79,6 +104,7 @@ pub struct TerrainChunkSummary {
     pub opaque_blocks: usize,
     pub cutout_blocks: usize,
     pub fluid_blocks: usize,
+    pub fluid_state_blocks: usize,
     pub translucent_blocks: usize,
 }
 
@@ -99,6 +125,9 @@ impl TerrainChunkSnapshot {
                 TerrainMaterialClass::Fluid => summary.fluid_blocks += 1,
                 TerrainMaterialClass::Translucent => summary.translucent_blocks += 1,
             }
+            if cell.fluid.is_some() {
+                summary.fluid_state_blocks += 1;
+            }
         }
         summary
     }
@@ -118,6 +147,36 @@ pub(crate) fn classify_terrain_material(block_name: Option<&str>) -> TerrainMate
         name if is_translucent_block_name(name) => TerrainMaterialClass::Translucent,
         _ => TerrainMaterialClass::Opaque,
     }
+}
+
+pub(crate) fn terrain_fluid_state(
+    block_name: Option<&str>,
+    properties: &BTreeMap<String, String>,
+) -> Option<TerrainFluidState> {
+    let kind = match block_name? {
+        "minecraft:water" => TerrainFluidKind::Water,
+        "minecraft:lava" => TerrainFluidKind::Lava,
+        _ if is_waterlogged(properties) => {
+            return Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+        }
+        _ => return None,
+    };
+    let level = properties
+        .get("level")
+        .and_then(|value| value.parse::<u8>().ok())
+        .unwrap_or(0);
+    let (amount, falling) = match level {
+        0 => (8, false),
+        1..=7 => (8 - level, false),
+        _ => (8, true),
+    };
+    Some(TerrainFluidState::new(kind, amount, falling))
+}
+
+fn is_waterlogged(properties: &BTreeMap<String, String>) -> bool {
+    properties
+        .get("waterlogged")
+        .is_some_and(|value| value == "true")
 }
 
 fn is_invisible_render_block_name(name: &str) -> bool {
@@ -208,15 +267,44 @@ mod tests {
     }
 
     #[test]
+    fn maps_fluid_state_from_liquids_and_waterlogged_blocks() {
+        assert_eq!(
+            terrain_fluid_state(Some("minecraft:water"), &properties([("level", "3")])),
+            Some(TerrainFluidState::new(TerrainFluidKind::Water, 5, false))
+        );
+        assert_eq!(
+            terrain_fluid_state(Some("minecraft:lava"), &properties([("level", "8")])),
+            Some(TerrainFluidState::new(TerrainFluidKind::Lava, 8, true))
+        );
+        assert_eq!(
+            terrain_fluid_state(
+                Some("minecraft:oak_slab"),
+                &properties([("waterlogged", "true")])
+            ),
+            Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
+        );
+        assert_eq!(
+            terrain_fluid_state(
+                Some("minecraft:oak_slab"),
+                &properties([("waterlogged", "false")])
+            ),
+            None
+        );
+    }
+
+    #[test]
     fn summary_counts_invisible_blocks_separately() {
         let snapshot = TerrainChunkSnapshot {
             pos: ChunkPos { x: 0, z: 0 },
             min_y: 0,
             height: 1,
             cells: vec![
-                terrain_cell(TerrainMaterialClass::Invisible),
-                terrain_cell(TerrainMaterialClass::Empty),
-                terrain_cell(TerrainMaterialClass::Opaque),
+                terrain_cell(TerrainMaterialClass::Invisible, None),
+                terrain_cell(TerrainMaterialClass::Empty, None),
+                terrain_cell(
+                    TerrainMaterialClass::Opaque,
+                    Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false)),
+                ),
             ],
         };
 
@@ -226,16 +314,28 @@ mod tests {
         assert_eq!(summary.invisible_blocks, 1);
         assert_eq!(summary.empty_blocks, 1);
         assert_eq!(summary.opaque_blocks, 1);
+        assert_eq!(summary.fluid_state_blocks, 1);
     }
 
-    fn terrain_cell(material: TerrainMaterialClass) -> TerrainBlockCell {
+    fn terrain_cell(
+        material: TerrainMaterialClass,
+        fluid: Option<TerrainFluidState>,
+    ) -> TerrainBlockCell {
         TerrainBlockCell {
             block_state_id: 0,
             block_name: None,
             block_properties: BTreeMap::new(),
             biome_id: None,
             material,
+            fluid,
             light: TerrainLight::FULL_BRIGHT,
         }
+    }
+
+    fn properties<const N: usize>(entries: [(&str, &str); N]) -> BTreeMap<String, String> {
+        entries
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value.to_string()))
+            .collect()
     }
 }

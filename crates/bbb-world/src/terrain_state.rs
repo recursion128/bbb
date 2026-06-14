@@ -10,6 +10,6 @@ pub use crate::registries::{
     RegistrySet, RegistryTagState,
 };
 pub use crate::terrain::{
-    BlockProbe, TerrainBlockCell, TerrainChunkSnapshot, TerrainChunkSummary, TerrainLight,
-    TerrainMaterialClass,
+    BlockProbe, TerrainBlockCell, TerrainChunkSnapshot, TerrainChunkSummary, TerrainFluidKind,
+    TerrainFluidState, TerrainLight, TerrainMaterialClass,
 };
