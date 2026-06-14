@@ -70,6 +70,14 @@ impl<'a> AudioCommandResolver<'a> {
         &self,
         state: &SoundEntityEventState,
     ) -> Result<AudioCommand, AudioResolveError> {
+        self.play_entity_sound_at(state, None)
+    }
+
+    pub fn play_entity_sound_at(
+        &self,
+        state: &SoundEntityEventState,
+        position: Option<[f64; 3]>,
+    ) -> Result<AudioCommand, AudioResolveError> {
         let (event_id, fixed_range) = self.event_id_for_holder(&state.sound)?;
         let sound = self.resolve_event_for_seed(&event_id, state.seed)?;
         let category = AudioCategory::from_world_source(&state.source);
@@ -79,6 +87,7 @@ impl<'a> AudioCommandResolver<'a> {
             packet_volume: state.volume,
             packet_pitch: state.pitch,
             entity_id: state.entity_id,
+            position,
             seed: state.seed,
             fixed_range,
             category,

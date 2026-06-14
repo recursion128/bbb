@@ -60,7 +60,10 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
                 sync_client_audio_counters(counters, world);
                 if applied {
                     if let Some(state) = world.last_sound_entity() {
-                        emit_entity_sound(&mut audio_events, state);
+                        let position = world
+                            .probe_entity_transform(state.entity_id)
+                            .map(|entity| audio_position(entity.position));
+                        emit_entity_sound(&mut audio_events, state, position);
                     }
                 }
             }
@@ -449,9 +452,10 @@ fn emit_positioned_sound(
 fn emit_entity_sound(
     audio_events: &mut Option<&mut dyn AudioEventSink>,
     state: &bbb_world::SoundEntityEventState,
+    position: Option<[f64; 3]>,
 ) {
     if let Some(audio_events) = audio_events.as_deref_mut() {
-        audio_events.play_entity_sound(state);
+        audio_events.play_entity_sound(state, position);
     }
 }
 
@@ -462,4 +466,8 @@ fn emit_stop_sound(
     if let Some(audio_events) = audio_events.as_deref_mut() {
         audio_events.stop_sound(state);
     }
+}
+
+fn audio_position(position: bbb_world::EntityVec3) -> [f64; 3] {
+    [position.x, position.y, position.z]
 }

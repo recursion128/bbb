@@ -1,5 +1,6 @@
 use std::{path::PathBuf, time::Instant};
 
+use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{NetCounters, PlayerPose, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{CameraPose, ClearColor};
@@ -64,8 +65,18 @@ pub(crate) fn pump_network_and_terrain(
     terrain_textures: &TerrainTextureState,
     snapshot: &SharedSnapshot,
 ) -> bool {
+    let mut audio_events = audio_events;
     if let Some(rx) = net_events.as_mut() {
-        events::drain_net_events_with_audio(rx, world, net_counters, net_commands, audio_events);
+        let audio_events_for_drain = audio_events
+            .as_mut()
+            .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
+        events::drain_net_events_with_audio(
+            rx,
+            world,
+            net_counters,
+            net_commands,
+            audio_events_for_drain,
+        );
     }
     advance_player_input(input, world, net_counters, net_commands, Instant::now());
     let local_player = world.local_player();
@@ -88,6 +99,9 @@ pub(crate) fn pump_network_and_terrain(
         terrain_upload,
         terrain_textures,
     );
+    if let Some(audio_events) = audio_events.as_mut() {
+        audio_events.tick_entity_sound_positions(audio_scene_command_from_world(world));
+    }
     publish_snapshot(snapshot, renderer.counters(), net_counters, world)
 }
 
@@ -124,6 +138,28 @@ fn camera_pose_from_player(player: PlayerPose) -> CameraPose {
         y_rot: player.y_rot,
         x_rot: player.x_rot,
         eye_height: CameraPose::STANDING_EYE_HEIGHT,
+    }
+}
+
+fn audio_scene_command_from_world(world: &WorldStore) -> TickEntitySoundPositionsCommand {
+    TickEntitySoundPositionsCommand {
+        listener: world.local_player_pose().map(|pose| AudioListenerState {
+            position: [
+                pose.position.x,
+                pose.position.y + f64::from(CameraPose::STANDING_EYE_HEIGHT),
+                pose.position.z,
+            ],
+            y_rot: pose.y_rot,
+            x_rot: pose.x_rot,
+        }),
+        entities: world
+            .entity_transforms()
+            .into_iter()
+            .map(|entity| EntitySoundPosition {
+                entity_id: entity.id,
+                position: [entity.position.x, entity.position.y, entity.position.z],
+            })
+            .collect(),
     }
 }
 
@@ -165,5 +201,57 @@ mod tests {
         assert_eq!(pose.y_rot, 45.0);
         assert_eq!(pose.x_rot, -10.0);
         assert_eq!(pose.eye_height, CameraPose::STANDING_EYE_HEIGHT);
+    }
+
+    #[test]
+    fn audio_scene_command_tracks_listener_and_entity_positions() {
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+            position: bbb_control::NetVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -5.0,
+            },
+            y_rot: 90.0,
+            x_rot: -10.0,
+            ..PlayerPose::default()
+        }));
+        world.apply_add_entity(bbb_protocol::packets::AddEntity {
+            id: 123,
+            uuid: uuid::Uuid::from_u128(123),
+            entity_type_id: 7,
+            position: bbb_protocol::packets::Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            delta_movement: bbb_protocol::packets::Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+
+        let command = audio_scene_command_from_world(&world);
+
+        assert_eq!(
+            command.listener,
+            Some(AudioListenerState {
+                position: [
+                    10.0,
+                    64.0 + f64::from(CameraPose::STANDING_EYE_HEIGHT),
+                    -5.0
+                ],
+                y_rot: 90.0,
+                x_rot: -10.0,
+            })
+        );
+        assert_eq!(
+            command.entities,
+            vec![EntitySoundPosition {
+                entity_id: 123,
+                position: [1.0, 2.0, 3.0],
+            }]
+        );
     }
 }

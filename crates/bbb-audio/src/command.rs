@@ -7,7 +7,7 @@ pub enum AudioCommand {
     PlayPositionedSound(PlayPositionedSoundCommand),
     PlayEntitySound(PlayEntitySoundCommand),
     StopSound(StopSoundCommand),
-    TickEntitySoundPositions,
+    TickEntitySoundPositions(TickEntitySoundPositionsCommand),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,6 +28,7 @@ pub struct PlayEntitySoundCommand {
     pub sound: ResolvedSound,
     pub category: AudioCategory,
     pub entity_id: i32,
+    pub position: Option<[f64; 3]>,
     pub packet_volume: f32,
     pub packet_pitch: f32,
     pub gain: f32,
@@ -40,6 +41,25 @@ pub struct PlayEntitySoundCommand {
 pub struct StopSoundCommand {
     pub category: Option<AudioCategory>,
     pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TickEntitySoundPositionsCommand {
+    pub listener: Option<AudioListenerState>,
+    pub entities: Vec<EntitySoundPosition>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct AudioListenerState {
+    pub position: [f64; 3],
+    pub y_rot: f32,
+    pub x_rot: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntitySoundPosition {
+    pub entity_id: i32,
+    pub position: [f64; 3],
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

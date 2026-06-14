@@ -1,24 +1,34 @@
 use anyhow::{anyhow, Result};
 use kira::{
+    listener::ListenerHandle,
     sound::{
         static_sound::{StaticSoundData, StaticSoundHandle},
         streaming::{StreamingSoundData, StreamingSoundHandle},
-        FromFileError,
+        FromFileError, PlaybackState,
     },
+    track::{SpatialTrackBuilder, SpatialTrackHandle},
     AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Tween,
 };
 
-use crate::{AudioCategory, AudioCommand, ResolvedSound, StopSoundCommand};
+use crate::{
+    AudioCategory, AudioCommand, AudioListenerState, EntitySoundPosition, ResolvedSound,
+    StopSoundCommand, TickEntitySoundPositionsCommand,
+};
+
+const MIN_SPATIAL_DISTANCE: f32 = 1.0;
 
 pub struct KiraAudioRuntime {
     manager: AudioManager<DefaultBackend>,
+    listener: ListenerHandle,
     playing: Vec<KiraPlayingSound>,
 }
 
 struct KiraPlayingSound {
     event_id: String,
     category: AudioCategory,
+    entity_id: Option<i32>,
     handle: KiraSoundHandle,
+    track: Option<SpatialTrackHandle>,
 }
 
 enum KiraSoundHandle {
@@ -28,24 +38,35 @@ enum KiraSoundHandle {
 
 impl KiraAudioRuntime {
     pub fn new() -> Result<Self> {
+        let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
+            .map_err(|_| anyhow!("initialize Kira audio manager"))?;
+        let listener = manager
+            .add_listener([0.0, 0.0, 0.0], identity_quaternion())
+            .map_err(|_| anyhow!("initialize Kira audio listener"))?;
         Ok(Self {
-            manager: AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
-                .map_err(|_| anyhow!("initialize Kira audio manager"))?,
+            manager,
+            listener,
             playing: Vec::new(),
         })
     }
 
     pub fn handle_command(&mut self, command: &AudioCommand) -> Result<()> {
         match command {
-            AudioCommand::PlayPositionedSound(command) => self.play_resolved_sound(
+            AudioCommand::PlayPositionedSound(command) => self.play_spatial_sound(
                 &command.sound,
                 command.category.clone(),
+                None,
+                command.position,
+                command.fixed_range,
                 command.gain,
                 command.playback_rate,
             ),
-            AudioCommand::PlayEntitySound(command) => self.play_resolved_sound(
+            AudioCommand::PlayEntitySound(command) => self.play_spatial_sound(
                 &command.sound,
                 command.category.clone(),
+                Some(command.entity_id),
+                command.position.unwrap_or([0.0, 0.0, 0.0]),
+                command.fixed_range,
                 command.gain,
                 command.playback_rate,
             ),
@@ -53,33 +74,52 @@ impl KiraAudioRuntime {
                 self.stop_sounds(command);
                 Ok(())
             }
-            AudioCommand::TickEntitySoundPositions => Ok(()),
+            AudioCommand::TickEntitySoundPositions(command) => {
+                self.tick_entity_sound_positions(command);
+                Ok(())
+            }
         }
     }
 
-    fn play_resolved_sound(
+    fn play_spatial_sound(
         &mut self,
         sound: &ResolvedSound,
         category: AudioCategory,
+        entity_id: Option<i32>,
+        position: [f64; 3],
+        fixed_range: Option<f32>,
         gain: f32,
         playback_rate: f32,
     ) -> Result<()> {
+        self.retain_active_sounds();
+        let mut track = self.manager.add_spatial_sub_track(
+            &self.listener,
+            audio_position(position),
+            SpatialTrackBuilder::new()
+                .persist_until_sounds_finish(true)
+                .distances((
+                    MIN_SPATIAL_DISTANCE,
+                    spatial_max_distance(sound, fixed_range),
+                )),
+        )?;
         let volume = decibels_from_gain(gain);
         let handle = if sound.stream {
             let data = StreamingSoundData::from_file(&sound.ogg_path)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
-            KiraSoundHandle::Streaming(self.manager.play(data)?)
+            KiraSoundHandle::Streaming(track.play(data)?)
         } else {
             let data = StaticSoundData::from_file(&sound.ogg_path)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
-            KiraSoundHandle::Static(self.manager.play(data)?)
+            KiraSoundHandle::Static(track.play(data)?)
         };
         self.playing.push(KiraPlayingSound {
             event_id: sound.event_id.clone(),
             category,
+            entity_id,
             handle,
+            track: Some(track),
         });
         Ok(())
     }
@@ -95,6 +135,33 @@ impl KiraAudioRuntime {
         }
         self.playing = retained;
     }
+
+    fn tick_entity_sound_positions(&mut self, command: &TickEntitySoundPositionsCommand) {
+        if let Some(listener) = command.listener {
+            self.listener
+                .set_position(audio_position(listener.position), Tween::default());
+            self.listener
+                .set_orientation(listener_orientation(listener), Tween::default());
+        }
+        for entity in &command.entities {
+            self.update_entity_sound_position(*entity);
+        }
+        self.retain_active_sounds();
+    }
+
+    fn update_entity_sound_position(&mut self, entity: EntitySoundPosition) {
+        for sound in &mut self.playing {
+            if sound.entity_id == Some(entity.entity_id) {
+                if let Some(track) = &mut sound.track {
+                    track.set_position(audio_position(entity.position), Tween::default());
+                }
+            }
+        }
+    }
+
+    fn retain_active_sounds(&mut self) {
+        self.playing.retain(KiraPlayingSound::is_active);
+    }
 }
 
 impl KiraSoundHandle {
@@ -103,6 +170,19 @@ impl KiraSoundHandle {
             Self::Static(handle) => handle.stop(Tween::default()),
             Self::Streaming(handle) => handle.stop(Tween::default()),
         }
+    }
+
+    fn state(&self) -> PlaybackState {
+        match self {
+            Self::Static(handle) => handle.state(),
+            Self::Streaming(handle) => handle.state(),
+        }
+    }
+}
+
+impl KiraPlayingSound {
+    fn is_active(&self) -> bool {
+        self.handle.state() != PlaybackState::Stopped
     }
 }
 
@@ -134,6 +214,47 @@ fn decibels_from_gain(gain: f32) -> Decibels {
     }
 }
 
+fn spatial_max_distance(sound: &ResolvedSound, fixed_range: Option<f32>) -> f32 {
+    fixed_range
+        .unwrap_or(sound.attenuation_distance as f32)
+        .max(MIN_SPATIAL_DISTANCE + f32::EPSILON)
+}
+
+fn audio_position(position: [f64; 3]) -> [f32; 3] {
+    [position[0] as f32, position[1] as f32, position[2] as f32]
+}
+
+fn identity_quaternion() -> [f32; 4] {
+    [0.0, 0.0, 0.0, 1.0]
+}
+
+fn listener_orientation(listener: AudioListenerState) -> [f32; 4] {
+    let yaw = (180.0 - listener.y_rot).to_radians();
+    let pitch = listener.x_rot.to_radians();
+    quat_mul(quat_from_yaw(yaw), quat_from_pitch(pitch))
+}
+
+fn quat_from_yaw(yaw: f32) -> [f32; 4] {
+    let half = yaw * 0.5;
+    [0.0, half.sin(), 0.0, half.cos()]
+}
+
+fn quat_from_pitch(pitch: f32) -> [f32; 4] {
+    let half = pitch * 0.5;
+    [half.sin(), 0.0, 0.0, half.cos()]
+}
+
+fn quat_mul(lhs: [f32; 4], rhs: [f32; 4]) -> [f32; 4] {
+    let [ax, ay, az, aw] = lhs;
+    let [bx, by, bz, bw] = rhs;
+    [
+        aw * bx + ax * bw + ay * bz - az * by,
+        aw * by - ax * bz + ay * bw + az * bx,
+        aw * bz + ax * by - ay * bx + az * bw,
+        aw * bw - ax * bx - ay * by - az * bz,
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,6 +264,45 @@ mod tests {
         assert_eq!(decibels_from_gain(1.0), Decibels::IDENTITY);
         assert_eq!(decibels_from_gain(0.0), Decibels::SILENCE);
         assert_eq!(decibels_from_gain(f32::NAN), Decibels::SILENCE);
+    }
+
+    #[test]
+    fn spatial_max_distance_prefers_fixed_range_and_stays_valid() {
+        let sound = ResolvedSound {
+            event_id: "minecraft:entity.cat.ambient".to_string(),
+            sound_name: "minecraft:mob/cat/meow1".to_string(),
+            ogg_path: "sounds/mob/cat/meow1.ogg".into(),
+            stream: false,
+            preload: false,
+            attenuation_distance: 16,
+            entry_volume: 1.0,
+            entry_pitch: 1.0,
+        };
+
+        assert_eq!(spatial_max_distance(&sound, None), 16.0);
+        assert_eq!(spatial_max_distance(&sound, Some(32.0)), 32.0);
+        assert!(spatial_max_distance(&sound, Some(0.0)) > MIN_SPATIAL_DISTANCE);
+    }
+
+    #[test]
+    fn listener_orientation_matches_kira_forward_at_minecraft_north() {
+        assert_eq!(
+            listener_orientation(AudioListenerState {
+                position: [0.0, 0.0, 0.0],
+                y_rot: 180.0,
+                x_rot: 0.0,
+            }),
+            identity_quaternion()
+        );
+
+        let yaw_quarter = listener_orientation(AudioListenerState {
+            position: [0.0, 0.0, 0.0],
+            y_rot: 90.0,
+            x_rot: 0.0,
+        });
+        let expected = std::f32::consts::FRAC_1_SQRT_2;
+        assert!((yaw_quarter[1] - expected).abs() < 0.0001);
+        assert!((yaw_quarter[3] - expected).abs() < 0.0001);
     }
 
     #[test]

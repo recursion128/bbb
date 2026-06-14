@@ -1610,6 +1610,7 @@ fn client_audio_events_emit_runtime_commands_for_applied_events() {
         AudioCommand::PlayEntitySound(command) => {
             assert_eq!(command.category, AudioCategory::Neutral);
             assert_eq!(command.entity_id, 123);
+            assert_eq!(command.position, Some([1.0, 64.0, -2.0]));
             assert_eq!(command.packet_volume, 1.0);
             assert_eq!(command.packet_pitch, 0.5);
             assert_eq!(command.seed, -9);
@@ -3140,10 +3141,14 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
         self.record(command);
     }
 
-    fn play_entity_sound(&mut self, state: &bbb_world::SoundEntityEventState) {
+    fn play_entity_sound(
+        &mut self,
+        state: &bbb_world::SoundEntityEventState,
+        position: Option<[f64; 3]>,
+    ) {
         let command = {
             let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
-            resolver.play_entity_sound(state)
+            resolver.play_entity_sound_at(state, position)
         };
         self.record(command);
     }
@@ -3154,6 +3159,11 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
             resolver.stop_sound(state)
         };
         self.commands.push(command);
+    }
+
+    fn tick_entity_sound_positions(&mut self, command: bbb_audio::TickEntitySoundPositionsCommand) {
+        self.commands
+            .push(AudioCommand::TickEntitySoundPositions(command));
     }
 }
 
