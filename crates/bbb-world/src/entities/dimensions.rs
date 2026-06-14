@@ -24,6 +24,7 @@ const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
 const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
+const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
 const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
 const VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID: i32 = 153;
 const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
@@ -62,6 +63,8 @@ const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 const VANILLA_POSE_SPIN_ATTACK_ID: i32 = 4;
 const VANILLA_POSE_CROUCHING_ID: i32 = 5;
 const VANILLA_POSE_DYING_ID: i32 = 7;
+const VANILLA_POSE_EMERGING_ID: i32 = 13;
+const VANILLA_POSE_DIGGING_ID: i32 = 14;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -131,6 +134,8 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         avatar_pick_bounds(data_values)
     } else if is_living_sleeping(entity_type_id, data_values) {
         living_sleeping_pick_bounds()
+    } else if is_warden_fixed_pose(entity_type_id, data_values) {
+        EntityPickBoundsState::from_base_size(0.9, 1.0, 0.0)
     } else if let Some(bounds) = baby_pick_bounds(entity_type_id, data_values) {
         bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
@@ -504,6 +509,7 @@ fn scales_with_living_scale_attribute(
     vanilla_living_entity_type(entity_type_id)
         && !(is_living_sleeping(entity_type_id, data_values)
             || is_avatar_dying_pose(entity_type_id, data_values))
+        && !is_warden_fixed_pose(entity_type_id, data_values)
 }
 
 fn is_living_sleeping(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
@@ -515,6 +521,14 @@ fn is_avatar_dying_pose(entity_type_id: i32, data_values: &[EntityDataValue]) ->
     (entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_MANNEQUIN_ID)
         && entity_data_pose(data_values) == VANILLA_POSE_DYING_ID
+}
+
+fn is_warden_fixed_pose(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
+        && matches!(
+            entity_data_pose(data_values),
+            VANILLA_POSE_EMERGING_ID | VANILLA_POSE_DIGGING_ID
+        )
 }
 
 fn entity_data_pose(data_values: &[EntityDataValue]) -> i32 {

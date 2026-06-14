@@ -100,13 +100,14 @@ Known priority areas:
   frames/paintings/leash knots, slime/magma cube size metadata, armor stand
   small/marker flags, player spectator state, LivingEntity `scale` attribute
   bounds, player/mannequin Avatar pose bounds, selected baby metadata bounds
-  (pig/cow/chicken/villager/wandering trader/zombie family/piglin), and the
-  `redirectable_projectile` tag (`fireball`, `wind_charge`,
-  `breeze_wind_charge`); `bbb-native` routes left/right/middle mouse actions to
-  attack/interact/pick entity packets for those targets, using vanilla default
-  block/entity interaction ranges of 4.5/3.0 blocks. Owner: `bbb-world` +
-  `bbb-native`; status: partial; next action: apply dynamic bounding-box
-  semantics for remaining special baby variants and non-Avatar pose overrides.
+  (pig/cow/chicken/villager/wandering trader/zombie family/piglin), warden
+  emerging/digging pose bounds, and the `redirectable_projectile` tag
+  (`fireball`, `wind_charge`, `breeze_wind_charge`); `bbb-native` routes
+  left/right/middle mouse actions to attack/interact/pick entity packets for
+  those targets, using vanilla default block/entity interaction ranges of
+  4.5/3.0 blocks. Owner: `bbb-world` + `bbb-native`; status: partial; next
+  action: apply dynamic bounding-box semantics for remaining special baby
+  variants and other non-Avatar pose overrides.
 
 ## Phases
 
