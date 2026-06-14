@@ -78,9 +78,11 @@ pub(super) struct DepthTarget {
 }
 
 pub(super) struct TerrainAtlasGpu {
-    _texture: wgpu::Texture,
+    texture: wgpu::Texture,
     view: wgpu::TextureView,
     sampler: wgpu::Sampler,
+    width: u32,
+    height: u32,
 }
 
 pub(super) fn create_depth_target(device: &wgpu::Device, width: u32, height: u32) -> DepthTarget {
@@ -180,6 +182,54 @@ pub(super) fn create_terrain_atlas_gpu(
     height: u32,
     rgba: &[u8],
 ) -> Result<TerrainAtlasGpu> {
+    validate_terrain_atlas_rgba(width, height, rgba)?;
+
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-terrain-texture-atlas"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    write_texture_rgba(queue, &texture, width, height, rgba);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-terrain-texture-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    Ok(TerrainAtlasGpu {
+        texture,
+        view,
+        sampler,
+        width,
+        height,
+    })
+}
+
+pub(super) fn write_terrain_atlas_gpu(
+    queue: &wgpu::Queue,
+    atlas: &TerrainAtlasGpu,
+    rgba: &[u8],
+) -> Result<()> {
+    validate_terrain_atlas_rgba(atlas.width, atlas.height, rgba)?;
+    write_texture_rgba(queue, &atlas.texture, atlas.width, atlas.height, rgba);
+    Ok(())
+}
+
+fn validate_terrain_atlas_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {
     if width == 0 || height == 0 {
         bail!("terrain texture atlas dimensions must be non-zero");
     }
@@ -201,24 +251,19 @@ pub(super) fn create_terrain_atlas_gpu(
             height
         );
     }
+    Ok(())
+}
 
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("bbb-terrain-texture-atlas"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        view_formats: &[],
-    });
+fn write_texture_rgba(
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) {
     queue.write_texture(
         wgpu::ImageCopyTexture {
-            texture: &texture,
+            texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
@@ -235,22 +280,6 @@ pub(super) fn create_terrain_atlas_gpu(
             depth_or_array_layers: 1,
         },
     );
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("bbb-terrain-texture-sampler"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    });
-    Ok(TerrainAtlasGpu {
-        _texture: texture,
-        view,
-        sampler,
-    })
 }
 
 pub(super) fn create_terrain_pipeline(

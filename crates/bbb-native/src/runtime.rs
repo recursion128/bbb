@@ -9,7 +9,10 @@ use tokio::sync::mpsc;
 use crate::{
     crosshair::selection_outline_from_crosshair,
     input::{advance_player_input, ClientInputState},
-    terrain_runtime::{maybe_upload_decoded_terrain, TerrainTextureState, TerrainUploadState},
+    terrain_runtime::{
+        maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
+        TerrainUploadState,
+    },
 };
 
 mod events;
@@ -74,6 +77,7 @@ pub(crate) fn pump_network_and_terrain(
         world,
         net_counters.player_pose,
     ));
+    maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     maybe_upload_decoded_terrain(
         world,
         renderer,

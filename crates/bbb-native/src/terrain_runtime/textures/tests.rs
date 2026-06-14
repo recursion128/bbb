@@ -217,6 +217,49 @@ fn box_face_transparency_uses_model_uv_crop() {
 }
 
 #[test]
+fn animation_atlas_frame_uses_sprite_tick_frame() {
+    let mut image =
+        bbb_pack::SpriteImage::new("minecraft:block/animated", 1, 1, vec![10, 0, 0, 255]).unwrap();
+    image.animation = Some(bbb_pack::SpriteAnimation {
+        frame_count: 2,
+        default_frame_time: 1,
+        interpolate: false,
+        frames: vec![
+            bbb_pack::SpriteAnimationFrame { index: 0, time: 2 },
+            bbb_pack::SpriteAnimationFrame { index: 1, time: 1 },
+        ],
+    });
+    image.animation_frames_rgba = vec![vec![10, 0, 0, 255], vec![20, 0, 0, 255]];
+    let packer = bbb_pack::AtlasPacker::new(8, 1).unwrap();
+    let atlas = packer.stitch(std::slice::from_ref(&image)).unwrap();
+    let mut textures = TerrainTextureState::from_layout_and_images(
+        &atlas.layout,
+        std::slice::from_ref(&image),
+        None,
+        None,
+        None,
+    );
+    textures.animation = TerrainTextureAnimation::new(packer, vec![image]);
+
+    let tick_two = textures.animation_atlas_frame(2).unwrap().unwrap();
+    let tick_three = textures.animation_atlas_frame(3).unwrap().unwrap();
+
+    assert!(textures.has_texture_animation());
+    assert_eq!(
+        atlas_pixel(&tick_two.rgba, tick_two.layout.width, 1, 1),
+        [20, 0, 0, 255]
+    );
+    assert_eq!(
+        atlas_pixel(&tick_three.rgba, tick_three.layout.width, 1, 1),
+        [10, 0, 0, 255]
+    );
+    assert!(TerrainTextureState::default()
+        .animation_atlas_frame(1)
+        .unwrap()
+        .is_none());
+}
+
+#[test]
 fn fluid_material_overrides_particle_only_model_shape() {
     let textures = TerrainTextureState::default();
     let shape = textures.terrain_render_shape_for_block(
@@ -725,6 +768,16 @@ fn coordinate_colormap() -> bbb_pack::ColorMapImage {
         }
     }
     bbb_pack::ColorMapImage::new(4, 4, rgba).unwrap()
+}
+
+fn atlas_pixel(rgba: &[u8], atlas_width: u32, x: u32, y: u32) -> [u8; 4] {
+    let offset = ((y * atlas_width + x) * 4) as usize;
+    [
+        rgba[offset],
+        rgba[offset + 1],
+        rgba[offset + 2],
+        rgba[offset + 3],
+    ]
 }
 
 fn block_model_box_with_face_texture(

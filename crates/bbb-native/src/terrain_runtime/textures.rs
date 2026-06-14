@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use anyhow::Result;
 use bbb_pack::{
-    AtlasLayout, AtlasPacker, BiomeColorCatalog, BiomeColorProfile, BlockFaceTextures,
+    AtlasImage, AtlasLayout, AtlasPacker, BiomeColorCatalog, BiomeColorProfile, BlockFaceTextures,
     BlockModelCatalog, BlockModelFace, BlockModelShape, GrassColorModifier, PackRoots, SpriteImage,
     TerrainColorMaps,
 };
@@ -26,6 +26,7 @@ pub(crate) struct TerrainTextureState {
     transparencies: Vec<TerrainTransparency>,
     sprite_alphas: HashMap<String, SpriteAlpha>,
     fallback_index: u32,
+    animation: Option<TerrainTextureAnimation>,
 }
 
 impl Default for TerrainTextureState {
@@ -39,6 +40,7 @@ impl Default for TerrainTextureState {
             transparencies: vec![TerrainTransparency::OPAQUE],
             sprite_alphas: HashMap::new(),
             fallback_index: 0,
+            animation: None,
         }
     }
 }
@@ -56,6 +58,25 @@ struct SpriteAlpha {
     height: u32,
     transparency: TerrainTransparency,
     alpha: Vec<u8>,
+}
+
+#[derive(Debug, Clone)]
+struct TerrainTextureAnimation {
+    packer: AtlasPacker,
+    images: Vec<SpriteImage>,
+}
+
+impl TerrainTextureAnimation {
+    fn new(packer: AtlasPacker, images: Vec<SpriteImage>) -> Option<Self> {
+        images
+            .iter()
+            .any(|image| image.animation.is_some())
+            .then_some(Self { packer, images })
+    }
+
+    fn stitch_frame(&self, tick: u64) -> Result<AtlasImage> {
+        self.packer.stitch_animation_frame(&self.images, tick)
+    }
 }
 
 impl SpriteAlpha {
@@ -147,7 +168,19 @@ impl TerrainTextureState {
             transparencies,
             sprite_alphas,
             fallback_index,
+            animation: None,
         }
+    }
+
+    pub(super) fn has_texture_animation(&self) -> bool {
+        self.animation.is_some()
+    }
+
+    pub(super) fn animation_atlas_frame(&self, tick: u64) -> Result<Option<AtlasImage>> {
+        self.animation
+            .as_ref()
+            .map(|animation| animation.stitch_frame(tick))
+            .transpose()
     }
 
     fn texture_index(&self, texture_id: &str) -> u32 {
@@ -755,24 +788,32 @@ fn try_load_terrain_textures(renderer: &mut bbb_renderer::Renderer) -> Result<Te
             None
         }
     };
-    let atlas = AtlasPacker::new(4096, 1)?.stitch(&images)?;
+    let packer = AtlasPacker::new(4096, 1)?;
+    let atlas = packer.stitch(&images)?;
     renderer.upload_terrain_texture_atlas(atlas.layout.width, atlas.layout.height, &atlas.rgba)?;
+    let animated_sprites = images
+        .iter()
+        .filter(|image| image.animation.is_some())
+        .count();
     tracing::info!(
         width = atlas.layout.width,
         height = atlas.layout.height,
         sprites = atlas.layout.sprites.len(),
+        animated_sprites,
         blockstates = block_models.len(),
         colormaps = colormaps.is_some(),
         biome_colors = biome_colors.as_ref().map_or(0, |colors| colors.len()),
         "loaded terrain texture atlas"
     );
-    Ok(TerrainTextureState::from_layout_and_images(
+    let mut textures = TerrainTextureState::from_layout_and_images(
         &atlas.layout,
         &images,
         Some(block_models),
         colormaps,
         biome_colors,
-    ))
+    );
+    textures.animation = TerrainTextureAnimation::new(packer, images);
+    Ok(textures)
 }
 
 fn terrain_uv_rect(layout: &AtlasLayout, sprite: &bbb_pack::AtlasSprite) -> TerrainUvRect {

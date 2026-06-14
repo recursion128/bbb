@@ -11,6 +11,7 @@ mod textures;
 pub(crate) use textures::{load_terrain_textures, BlockRenderPosition, TerrainTextureState};
 
 const MAX_TERRAIN_UPLOAD_CHUNKS: usize = 49;
+const TERRAIN_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
 
 #[derive(Debug, Default)]
 pub(crate) struct TerrainUploadState {
@@ -24,12 +25,61 @@ pub(crate) struct TerrainUploadState {
     observed_light_updates_applied: usize,
     observed_biome_updates_applied: usize,
     last_observed_change: Option<Instant>,
+    texture_animation_tick: u64,
+    last_texture_animation_at: Option<Instant>,
 }
 
 impl TerrainUploadState {
     pub(crate) fn has_uploaded_chunks(&self) -> bool {
         self.uploaded_chunks > 0
     }
+}
+
+pub(crate) fn maybe_upload_terrain_texture_animation(
+    renderer: &mut bbb_renderer::Renderer,
+    upload: &mut TerrainUploadState,
+    textures: &TerrainTextureState,
+) {
+    if !textures.has_texture_animation() {
+        return;
+    }
+    let Some(tick) = advance_texture_animation_tick(upload, Instant::now()) else {
+        return;
+    };
+    match textures.animation_atlas_frame(tick) {
+        Ok(Some(atlas)) => {
+            if let Err(err) = renderer.update_terrain_texture_atlas(&atlas.rgba) {
+                tracing::warn!(?err, "failed to update animated terrain texture atlas");
+            }
+        }
+        Ok(None) => {}
+        Err(err) => {
+            tracing::warn!(
+                ?err,
+                "failed to stitch animated terrain texture atlas frame"
+            );
+        }
+    }
+}
+
+fn advance_texture_animation_tick(upload: &mut TerrainUploadState, now: Instant) -> Option<u64> {
+    let Some(last) = upload.last_texture_animation_at else {
+        upload.last_texture_animation_at = Some(now);
+        return None;
+    };
+    let elapsed = now.saturating_duration_since(last);
+    let ticks = elapsed.as_millis() / TERRAIN_TEXTURE_ANIMATION_INTERVAL.as_millis();
+    if ticks == 0 {
+        return None;
+    }
+
+    let ticks = u64::try_from(ticks).unwrap_or(u64::MAX);
+    upload.texture_animation_tick = upload.texture_animation_tick.saturating_add(ticks);
+    let advanced = Duration::from_millis(
+        ticks.saturating_mul(TERRAIN_TEXTURE_ANIMATION_INTERVAL.as_millis() as u64),
+    );
+    upload.last_texture_animation_at = last.checked_add(advanced).or(Some(now));
+    Some(upload.texture_animation_tick)
 }
 
 pub(crate) fn maybe_upload_decoded_terrain(
@@ -209,6 +259,34 @@ mod tests {
                 true,
             )),
             TerrainFluid::new(TerrainFluidKind::Lava, 8, true)
+        );
+    }
+
+    #[test]
+    fn texture_animation_tick_advances_at_client_tick_interval() {
+        let mut upload = TerrainUploadState::default();
+        let start = Instant::now();
+
+        assert_eq!(advance_texture_animation_tick(&mut upload, start), None);
+        assert_eq!(
+            advance_texture_animation_tick(&mut upload, start + Duration::from_millis(49)),
+            None
+        );
+        assert_eq!(
+            advance_texture_animation_tick(&mut upload, start + Duration::from_millis(50)),
+            Some(1)
+        );
+        assert_eq!(
+            advance_texture_animation_tick(&mut upload, start + Duration::from_millis(149)),
+            Some(2)
+        );
+        assert_eq!(
+            advance_texture_animation_tick(&mut upload, start + Duration::from_millis(250)),
+            Some(5)
+        );
+        assert_eq!(
+            advance_texture_animation_tick(&mut upload, start + Duration::from_millis(299)),
+            None
         );
     }
 }

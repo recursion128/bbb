@@ -8,7 +8,7 @@ use crate::{
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
         create_terrain_bind_group, create_terrain_bind_group_layout, create_terrain_pipeline,
-        create_terrain_translucent_pipeline, DepthTarget, TerrainAtlasGpu,
+        create_terrain_translucent_pipeline, write_terrain_atlas_gpu, DepthTarget, TerrainAtlasGpu,
     },
     hud::{create_hud_bind_group_layout, create_hud_pipeline, HudSpriteGpu},
     selection::{
@@ -297,6 +297,10 @@ impl Renderer {
         self.counters.atlas_width = width;
         self.counters.atlas_height = height;
         Ok(())
+    }
+
+    pub fn update_terrain_texture_atlas(&mut self, rgba: &[u8]) -> Result<()> {
+        write_terrain_atlas_gpu(&self.queue, &self.terrain_atlas, rgba)
     }
 
     pub(super) fn surface_size(&self) -> PhysicalSize<u32> {
