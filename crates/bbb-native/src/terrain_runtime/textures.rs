@@ -57,7 +57,7 @@ struct SpriteAlpha {
     width: u32,
     height: u32,
     transparency: TerrainTransparency,
-    alpha: Vec<u8>,
+    alpha: Vec<TerrainTransparency>,
 }
 
 #[derive(Debug, Clone)]
@@ -81,11 +81,19 @@ impl TerrainTextureAnimation {
 
 impl SpriteAlpha {
     fn from_image(image: &SpriteImage) -> Self {
+        let mut alpha = vec![TerrainTransparency::OPAQUE; (image.width * image.height) as usize];
+        if image.animation_frames_rgba.is_empty() {
+            accumulate_sprite_alpha(&mut alpha, &image.rgba);
+        } else {
+            for rgba in &image.animation_frames_rgba {
+                accumulate_sprite_alpha(&mut alpha, rgba);
+            }
+        }
         Self {
             width: image.width,
             height: image.height,
             transparency: terrain_transparency(image.transparency),
-            alpha: image.rgba.chunks_exact(4).map(|pixel| pixel[3]).collect(),
+            alpha,
         }
     }
 
@@ -114,15 +122,29 @@ impl SpriteAlpha {
         let mut transparency = TerrainTransparency::OPAQUE;
         for y in y0..y1 {
             for x in x0..x1 {
-                let alpha = self.alpha[(y * self.width + x) as usize];
-                if alpha == 0 {
-                    transparency.has_transparent = true;
-                } else if alpha != 255 {
-                    transparency.has_translucent = true;
-                }
+                transparency = transparency.or(self.alpha[(y * self.width + x) as usize]);
             }
         }
         transparency
+    }
+}
+
+fn accumulate_sprite_alpha(alpha: &mut [TerrainTransparency], rgba: &[u8]) {
+    for (slot, pixel) in alpha.iter_mut().zip(rgba.chunks_exact(4)) {
+        *slot = slot.or(alpha_transparency(pixel[3]));
+    }
+}
+
+fn alpha_transparency(alpha: u8) -> TerrainTransparency {
+    if alpha == 0 {
+        TerrainTransparency {
+            has_transparent: true,
+            has_translucent: false,
+        }
+    } else if alpha == 255 {
+        TerrainTransparency::OPAQUE
+    } else {
+        TerrainTransparency::TRANSLUCENT
     }
 }
 

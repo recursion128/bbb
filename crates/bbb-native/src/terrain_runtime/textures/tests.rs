@@ -217,6 +217,59 @@ fn box_face_transparency_uses_model_uv_crop() {
 }
 
 #[test]
+fn box_face_transparency_uses_all_animation_frames_for_model_uv_crop() {
+    let frame_zero = vec![10, 0, 0, 255, 20, 0, 0, 255, 30, 0, 0, 255, 40, 0, 0, 255];
+    let frame_one = vec![10, 0, 0, 255, 20, 0, 0, 0, 30, 0, 0, 255, 40, 0, 0, 255];
+    let mut image =
+        bbb_pack::SpriteImage::new("minecraft:block/animated_crop", 2, 2, frame_zero.clone())
+            .unwrap();
+    image.animation = Some(bbb_pack::SpriteAnimation {
+        frame_count: 2,
+        default_frame_time: 1,
+        interpolate: false,
+        frames: vec![
+            bbb_pack::SpriteAnimationFrame { index: 0, time: 1 },
+            bbb_pack::SpriteAnimationFrame { index: 1, time: 1 },
+        ],
+    });
+    image.animation_frames_rgba = vec![frame_zero, frame_one];
+    let atlas = bbb_pack::AtlasPacker::new(8, 1)
+        .unwrap()
+        .stitch(std::slice::from_ref(&image))
+        .unwrap();
+    let textures =
+        TerrainTextureState::from_layout_and_images(&atlas.layout, &[image], None, None, None);
+    let north = bbb_pack::BlockModelFace::North.index();
+    let mut animated_crop = block_model_box_with_face_texture(
+        bbb_pack::BlockModelFace::North,
+        "minecraft:block/animated_crop",
+        None,
+    );
+    animated_crop.face_uvs[north] = [8, 0, 16, 8];
+
+    let shape = textures.terrain_render_shape_for_block(
+        "minecraft:test_block",
+        &BTreeMap::new(),
+        bbb_world::TerrainMaterialClass::Opaque,
+        BlockModelShape::Box(animated_crop),
+        [0; 6],
+        [TerrainTint::WHITE; 6],
+        [TerrainTransparency::OPAQUE; 6],
+        None,
+        None,
+    );
+
+    let TerrainRenderShape::Box {
+        face_transparency, ..
+    } = shape
+    else {
+        panic!("expected animated crop box");
+    };
+    assert!(face_transparency[north].has_transparent);
+    assert!(!face_transparency[north].has_translucent);
+}
+
+#[test]
 fn animation_atlas_frame_uses_sprite_tick_frame() {
     let mut image =
         bbb_pack::SpriteImage::new("minecraft:block/animated", 1, 1, vec![10, 0, 0, 255]).unwrap();
