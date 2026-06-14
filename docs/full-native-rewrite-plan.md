@@ -14,6 +14,9 @@ they block a correct native client.
 
 ## Target Architecture
 
+Detailed architecture rules live in `docs/native-client-architecture.md`. This
+section is the short crate-level summary.
+
 - `bbb-protocol`: codecs, packet ids, packet structs, encode/decode tests.
 - `bbb-world`: canonical client state, packet application, counters, query APIs.
 - `bbb-net`: connection lifecycle, event stream, commands, probes.
