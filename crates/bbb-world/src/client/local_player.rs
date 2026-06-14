@@ -147,11 +147,7 @@ impl WorldStore {
     pub fn apply_set_camera(&mut self, packet: ProtocolSetCamera) -> bool {
         self.counters.set_camera_packets += 1;
         let follows_player = self.local_player_id == Some(packet.camera_id);
-        let entity_known = follows_player
-            || self
-                .entities
-                .iter()
-                .any(|entity| entity.id == packet.camera_id);
+        let entity_known = follows_player || self.entities.contains(packet.camera_id);
         if !entity_known {
             return false;
         }

@@ -33,7 +33,7 @@ pub struct WorldStore {
     pub(crate) block_events: Vec<BlockEventRecord>,
     #[serde(default)]
     pub(crate) level_events: Vec<LevelEventRecord>,
-    pub(crate) entities: Vec<crate::EntityState>,
+    pub(crate) entities: crate::entities::EntityStore,
     #[serde(default)]
     pub(crate) scoreboard: ScoreboardState,
     #[serde(default)]

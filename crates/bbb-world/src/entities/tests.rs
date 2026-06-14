@@ -373,6 +373,62 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
 }
 
 #[test]
+fn entity_store_round_trips_serde_and_replaces_by_protocol_id() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(10, 7));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    assert!(store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 20,
+        delta_movement: ProtocolVec3d {
+            x: 0.5,
+            y: 0.0,
+            z: -0.25,
+        },
+    }));
+
+    let value = serde_json::to_value(&store).unwrap();
+    let mut restored: WorldStore = serde_json::from_value(value).unwrap();
+    assert_eq!(restored.entity_count(), 2);
+    assert_eq!(
+        restored.probe_entity(20).unwrap().delta_movement,
+        EntityVec3 {
+            x: 0.5,
+            y: 0.0,
+            z: -0.25,
+        }
+    );
+
+    restored.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    assert_eq!(restored.entity_count(), 2);
+    assert_eq!(
+        restored.probe_entity(20).unwrap().entity_type_id,
+        VANILLA_ENTITY_TYPE_ITEM_ID
+    );
+    assert!(restored.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 20,
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.75,
+            z: 0.0,
+        },
+    }));
+    assert_eq!(
+        restored.probe_entity(20).unwrap().delta_movement,
+        EntityVec3 {
+            x: 0.0,
+            y: 0.75,
+            z: 0.0,
+        }
+    );
+}
+
+#[test]
 fn tracks_entity_passenger_updates() {
     let mut store = WorldStore::new();
     for id in [10, 20, 21, 30] {

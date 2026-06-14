@@ -78,47 +78,35 @@ impl WorldStore {
 
     pub fn apply_update_mob_effect(&mut self, packet: ProtocolUpdateMobEffect) -> bool {
         self.counters.update_mob_effect_packets += 1;
-        let Some(entity) = self
-            .entities
-            .iter_mut()
-            .find(|entity| entity.id == packet.entity_id)
-        else {
+        let Some(()) = self.entities.with_mut(packet.entity_id, |entity| {
+            entity
+                .mob_effects
+                .insert(packet.effect_id, MobEffectState::from(packet));
+        }) else {
             return false;
         };
-
-        entity
-            .mob_effects
-            .insert(packet.effect_id, MobEffectState::from(packet));
         self.update_active_mob_effect_count();
         true
     }
 
     pub fn apply_remove_mob_effect(&mut self, packet: ProtocolRemoveMobEffect) -> bool {
         self.counters.remove_mob_effect_packets += 1;
-        let Some(entity) = self
-            .entities
-            .iter_mut()
-            .find(|entity| entity.id == packet.entity_id)
-        else {
+        let Some(removed) = self.entities.with_mut(packet.entity_id, |entity| {
+            entity.mob_effects.remove(&packet.effect_id).is_some()
+        }) else {
             return false;
         };
-
-        let removed = entity.mob_effects.remove(&packet.effect_id).is_some();
         self.update_active_mob_effect_count();
         removed
     }
 
     pub fn apply_damage_event(&mut self, packet: ProtocolDamageEvent) -> bool {
         self.counters.damage_event_packets += 1;
-        let Some(entity) = self
-            .entities
-            .iter_mut()
-            .find(|entity| entity.id == packet.entity_id)
-        else {
+        let Some(()) = self.entities.with_mut(packet.entity_id, |entity| {
+            entity.last_damage = Some(EntityDamageEventState::from(packet));
+        }) else {
             return false;
         };
-
-        entity.last_damage = Some(EntityDamageEventState::from(packet));
         self.counters.damage_events_applied += 1;
         true
     }

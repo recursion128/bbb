@@ -17,10 +17,12 @@ mod movement;
 mod passengers;
 pub(crate) mod state;
 mod status;
+mod store;
 mod updates;
 
 use movement::entity_vec3;
 use status::{EntityDamageEventState, MobEffectState};
+pub(crate) use store::EntityStore;
 
 pub(crate) const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
 pub(crate) const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
@@ -109,44 +111,46 @@ impl WorldStore {
             minecart_lerp_steps: Vec::new(),
         };
 
-        if let Some(existing) = self
-            .entities
-            .iter_mut()
-            .find(|entity| entity.id == packet.id)
-        {
-            *existing = entity;
-        } else {
-            self.entities.push(entity);
-        }
+        self.entities.insert_or_replace(entity);
         self.update_entity_count();
         self.update_active_mob_effect_count();
     }
 
     pub fn apply_take_item_entity(&mut self, packet: ProtocolTakeItemEntity) -> bool {
         self.counters.take_item_entities_received += 1;
-        let Some(entity_index) = self
+        let Some(entity_type_id) = self
             .entities
-            .iter()
-            .position(|entity| entity.id == packet.item_id)
+            .get(packet.item_id)
+            .map(|entity| entity.entity_type_id)
         else {
             return false;
         };
 
         self.counters.take_item_entities_applied += 1;
-        let entity_type_id = self.entities[entity_index].entity_type_id;
         if entity_type_id == VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID {
             return true;
         }
 
         if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID {
-            if let Some(stack) = item_entity_stack_mut(&mut self.entities[entity_index]) {
-                if stack.count > 0 && packet.amount > 0 {
-                    stack.count = stack.count.saturating_sub(packet.amount).max(0);
-                    self.counters.item_entity_stack_shrinks += 1;
-                }
-                if stack.count > 0 {
-                    return true;
-                }
+            let mut stack_shrank = false;
+            let keep_entity = self
+                .entities
+                .with_mut(packet.item_id, |entity| {
+                    if let Some(stack) = item_entity_stack_mut(entity) {
+                        if stack.count > 0 && packet.amount > 0 {
+                            stack.count = stack.count.saturating_sub(packet.amount).max(0);
+                            stack_shrank = true;
+                        }
+                        return stack.count > 0;
+                    }
+                    false
+                })
+                .unwrap_or(false);
+            if stack_shrank {
+                self.counters.item_entity_stack_shrinks += 1;
+            }
+            if keep_entity {
+                return true;
             }
         }
 
@@ -161,17 +165,14 @@ impl WorldStore {
     }
 
     fn remove_entities_by_ids(&mut self, removed_ids: &[i32]) -> usize {
-        let before = self.entities.len();
-        self.entities
-            .retain(|entity| !removed_ids.contains(&entity.id));
-        let removed = before - self.entities.len();
+        let removed = self.entities.remove_ids(removed_ids);
         if self
             .local_player_vehicle_id
             .is_some_and(|vehicle_id| removed_ids.contains(&vehicle_id))
         {
             self.local_player_vehicle_id = None;
         }
-        for entity in &mut self.entities {
+        self.entities.for_each_mut(|entity| {
             if entity
                 .vehicle_id
                 .is_some_and(|vehicle_id| removed_ids.contains(&vehicle_id))
@@ -187,7 +188,7 @@ impl WorldStore {
             entity
                 .passengers
                 .retain(|passenger_id| !removed_ids.contains(passenger_id));
-        }
+        });
         self.counters.entities_removed += removed;
         self.update_entity_count();
         self.update_active_mob_effect_count();
@@ -195,7 +196,7 @@ impl WorldStore {
     }
 
     pub fn probe_entity(&self, id: i32) -> Option<&EntityState> {
-        self.entities.iter().find(|entity| entity.id == id)
+        self.entities.get(id)
     }
 
     pub fn local_player_id(&self) -> Option<i32> {

@@ -24,6 +24,7 @@ bytemuck = { version = "1", features = ["derive"] }
 clap = { version = "4", features = ["derive"] }
 flate2 = "1"
 glam = "0.29"
+hecs = "0.10"
 image = { version = "0.25", default-features = false, features = ["png"] }
 md5 = "0.7"
 pollster = "0.3"
