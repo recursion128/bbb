@@ -11,6 +11,8 @@ pub struct SpriteSource {
     pub id: String,
     pub width: u32,
     pub height: u32,
+    #[serde(default)]
+    pub animation: Option<SpriteAnimation>,
 }
 
 impl SpriteSource {
@@ -19,14 +21,20 @@ impl SpriteSource {
             id: id.into(),
             width,
             height,
+            animation: None,
         }
     }
 
     pub fn from_png_file(id: impl Into<String>, path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         let (image_width, image_height) = png_dimensions(path, "sprite source")?;
-        let (width, height) = sprite_frame_size(path, image_width, image_height)?;
-        Ok(Self::new(id, width, height))
+        let (width, height, animation) = sprite_frame_metadata(path, image_width, image_height)?;
+        Ok(Self {
+            id: id.into(),
+            width,
+            height,
+            animation,
+        })
     }
 }
 
@@ -36,7 +44,23 @@ pub struct SpriteImage {
     pub width: u32,
     pub height: u32,
     pub transparency: SpriteTransparency,
+    #[serde(default)]
+    pub animation: Option<SpriteAnimation>,
     pub rgba: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpriteAnimation {
+    pub frame_count: u32,
+    pub default_frame_time: u32,
+    pub interpolate: bool,
+    pub frames: Vec<SpriteAnimationFrame>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpriteAnimationFrame {
+    pub index: u32,
+    pub time: u32,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,7 +93,7 @@ impl SpriteTransparency {
 impl SpriteImage {
     pub fn new(id: impl Into<String>, width: u32, height: u32, rgba: Vec<u8>) -> Result<Self> {
         let transparency = SpriteTransparency::from_rgba(&rgba);
-        Self::new_with_transparency(id, width, height, rgba, transparency)
+        Self::new_with_transparency(id, width, height, rgba, transparency, None)
     }
 
     fn new_with_transparency(
@@ -78,6 +102,7 @@ impl SpriteImage {
         height: u32,
         rgba: Vec<u8>,
         transparency: SpriteTransparency,
+        animation: Option<SpriteAnimation>,
     ) -> Result<Self> {
         let expected = rgba_len(width, height)?;
         if rgba.len() != expected {
@@ -94,6 +119,7 @@ impl SpriteImage {
             width,
             height,
             transparency,
+            animation,
             rgba,
         })
     }
@@ -107,7 +133,7 @@ impl SpriteImage {
             .with_context(|| format!("decode png {}", path.display()))?
             .into_rgba8();
         let (image_width, image_height) = rgba.dimensions();
-        let (width, height) = sprite_frame_size(path, image_width, image_height)?;
+        let (width, height, animation) = sprite_frame_metadata(path, image_width, image_height)?;
         let source_rgba = rgba.into_raw();
         let transparency = SpriteTransparency::from_rgba(&source_rgba);
         let rgba = if (width, height) == (image_width, image_height) {
@@ -115,11 +141,16 @@ impl SpriteImage {
         } else {
             copy_first_frame_rgba(&source_rgba, image_width, width, height)?
         };
-        Self::new_with_transparency(id, width, height, rgba, transparency)
+        Self::new_with_transparency(id, width, height, rgba, transparency, animation)
     }
 
     pub(crate) fn source(&self) -> SpriteSource {
-        SpriteSource::new(self.id.clone(), self.width, self.height)
+        SpriteSource {
+            id: self.id.clone(),
+            width: self.width,
+            height: self.height,
+            animation: self.animation.clone(),
+        }
     }
 }
 
@@ -144,12 +175,16 @@ fn png_reader(path: &Path, label: &str) -> Result<ImageReader<std::io::BufReader
     Ok(reader)
 }
 
-fn sprite_frame_size(path: &Path, image_width: u32, image_height: u32) -> Result<(u32, u32)> {
+fn sprite_frame_metadata(
+    path: &Path,
+    image_width: u32,
+    image_height: u32,
+) -> Result<(u32, u32, Option<SpriteAnimation>)> {
     if image_width == 0 || image_height == 0 {
         bail!("sprite image {} must not be empty", path.display());
     }
     let Some(animation) = read_animation_metadata(path)? else {
-        return Ok((image_width, image_height));
+        return Ok((image_width, image_height, None));
     };
 
     let width = match animation.width {
@@ -173,7 +208,11 @@ fn sprite_frame_size(path: &Path, image_width: u32, image_height: u32) -> Result
             height
         );
     }
-    Ok((width, height))
+    let frame_count = (image_width / width)
+        .checked_mul(image_height / height)
+        .ok_or_else(|| anyhow::anyhow!("animation frame count overflow in {}", path.display()))?;
+    let animation = sprite_animation(path, animation, frame_count)?;
+    Ok((width, height, Some(animation)))
 }
 
 fn read_animation_metadata(path: &Path) -> Result<Option<RawAnimationMetadata>> {
@@ -200,6 +239,43 @@ fn positive_dimension(value: u32, name: &str, path: &Path) -> Result<u32> {
         bail!("{name} in {} must be positive", path.display());
     }
     Ok(value)
+}
+
+fn sprite_animation(
+    path: &Path,
+    metadata: RawAnimationMetadata,
+    frame_count: u32,
+) -> Result<SpriteAnimation> {
+    let default_frame_time =
+        positive_dimension(metadata.frametime.unwrap_or(1), "animation frametime", path)?;
+    let frames = match metadata.frames {
+        Some(frames) => frames
+            .into_iter()
+            .map(|frame| frame.into_frame(default_frame_time, path))
+            .collect::<Result<Vec<_>>>()?,
+        None => (0..frame_count)
+            .map(|index| SpriteAnimationFrame {
+                index,
+                time: default_frame_time,
+            })
+            .collect(),
+    };
+    for frame in &frames {
+        if frame.index >= frame_count {
+            bail!(
+                "animation frame {} in {} exceeds frame count {}",
+                frame.index,
+                path.display(),
+                frame_count
+            );
+        }
+    }
+    Ok(SpriteAnimation {
+        frame_count,
+        default_frame_time,
+        interpolate: metadata.interpolate.unwrap_or(false),
+        frames,
+    })
 }
 
 fn copy_first_frame_rgba(
@@ -231,6 +307,33 @@ struct RawSpriteMetadata {
 struct RawAnimationMetadata {
     width: Option<u32>,
     height: Option<u32>,
+    frametime: Option<u32>,
+    interpolate: Option<bool>,
+    frames: Option<Vec<RawAnimationFrame>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RawAnimationFrame {
+    Index(u32),
+    Object { index: u32, time: Option<u32> },
+}
+
+impl RawAnimationFrame {
+    fn into_frame(self, default_frame_time: u32, path: &Path) -> Result<SpriteAnimationFrame> {
+        let (index, time) = match self {
+            Self::Index(index) => (index, default_frame_time),
+            Self::Object { index, time } => (
+                index,
+                positive_dimension(
+                    time.unwrap_or(default_frame_time),
+                    "animation frame time",
+                    path,
+                )?,
+            ),
+        };
+        Ok(SpriteAnimationFrame { index, time })
+    }
 }
 
 #[cfg(test)]
@@ -238,7 +341,7 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{SpriteImage, SpriteSource};
+    use super::{SpriteAnimation, SpriteAnimationFrame, SpriteImage, SpriteSource};
 
     #[test]
     fn sprite_source_reads_png_dimensions() {
@@ -251,6 +354,15 @@ mod tests {
         assert_eq!(source, SpriteSource::new("test:sprite", 7, 11));
 
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_deserializes_without_animation_metadata() {
+        let source: SpriteSource =
+            serde_json::from_str(r#"{"id":"minecraft:block/stone","width":16,"height":16}"#)
+                .unwrap();
+
+        assert_eq!(source, SpriteSource::new("minecraft:block/stone", 16, 16));
     }
 
     #[test]
@@ -270,7 +382,58 @@ mod tests {
         let source = SpriteSource::from_png_file("minecraft:block/water_still", &path).unwrap();
         assert_eq!(
             source,
-            SpriteSource::new("minecraft:block/water_still", 16, 16)
+            SpriteSource {
+                id: "minecraft:block/water_still".to_string(),
+                width: 16,
+                height: 16,
+                animation: Some(SpriteAnimation {
+                    frame_count: 3,
+                    default_frame_time: 2,
+                    interpolate: false,
+                    frames: vec![
+                        SpriteAnimationFrame { index: 0, time: 2 },
+                        SpriteAnimationFrame { index: 1, time: 2 },
+                        SpriteAnimationFrame { index: 2, time: 2 },
+                    ],
+                }),
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_reads_explicit_animation_frames() {
+        let dir = unique_temp_dir("animation-explicit-frames");
+        let path = dir.join("locator_bar_arrow_down.png");
+        write_test_png(&path, 7, 10);
+        write_json(
+            &dir.join("locator_bar_arrow_down.png.mcmeta"),
+            r#"{
+              "animation": {
+                "height": 5,
+                "frames": [
+                  { "index": 0, "time": 10 },
+                  { "index": 1, "time": 4 }
+                ]
+              }
+            }"#,
+        );
+
+        let source =
+            SpriteSource::from_png_file("minecraft:hud/locator_bar_arrow_down", &path).unwrap();
+        assert_eq!((source.width, source.height), (7, 5));
+        assert_eq!(
+            source.animation,
+            Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 1,
+                interpolate: false,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 10 },
+                    SpriteAnimationFrame { index: 1, time: 4 },
+                ],
+            })
         );
 
         std::fs::remove_dir_all(dir).unwrap();
@@ -305,6 +468,50 @@ mod tests {
             vec![1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255]
         );
         assert!(image.transparency.has_translucent);
+        assert_eq!(
+            image.animation,
+            Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 1,
+                interpolate: false,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 1 },
+                    SpriteAnimationFrame { index: 1, time: 1 },
+                ],
+            })
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_records_interpolated_animation_metadata() {
+        let dir = unique_temp_dir("animation-interpolate");
+        let path = dir.join("sculk.png");
+        write_test_png(&path, 2, 4);
+        write_json(
+            &dir.join("sculk.png.mcmeta"),
+            r#"{
+              "animation": {
+                "frametime": 20,
+                "interpolate": true
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:block/sculk", &path).unwrap();
+        assert_eq!(
+            image.animation,
+            Some(SpriteAnimation {
+                frame_count: 2,
+                default_frame_time: 20,
+                interpolate: true,
+                frames: vec![
+                    SpriteAnimationFrame { index: 0, time: 20 },
+                    SpriteAnimationFrame { index: 1, time: 20 },
+                ],
+            })
+        );
 
         std::fs::remove_dir_all(dir).unwrap();
     }
@@ -341,6 +548,27 @@ mod tests {
 
         let err = SpriteSource::from_png_file("minecraft:bad", &path).unwrap_err();
         assert!(err.to_string().contains("not a multiple"));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_rejects_out_of_range_animation_frame() {
+        let dir = unique_temp_dir("animation-invalid-frame");
+        let path = dir.join("bad.png");
+        write_test_png(&path, 4, 8);
+        write_json(
+            &dir.join("bad.png.mcmeta"),
+            r#"{
+              "animation": {
+                "height": 4,
+                "frames": [0, 2]
+              }
+            }"#,
+        );
+
+        let err = SpriteSource::from_png_file("minecraft:bad", &path).unwrap_err();
+        assert!(err.to_string().contains("exceeds frame count"));
 
         std::fs::remove_dir_all(dir).unwrap();
     }

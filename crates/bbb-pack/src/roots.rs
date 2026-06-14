@@ -582,6 +582,10 @@ mod tests {
             .find(|source| source.id == "minecraft:block/water_still")
             .unwrap();
         assert_eq!((water.width, water.height), (16, 16));
+        let water_animation = water.animation.as_ref().unwrap();
+        assert_eq!(water_animation.frame_count, 32);
+        assert_eq!(water_animation.default_frame_time, 2);
+        assert_eq!(water_animation.frames.len(), 32);
         let water_flow = sources
             .iter()
             .find(|source| source.id == "minecraft:block/water_flow")
@@ -592,6 +596,11 @@ mod tests {
             .find(|source| source.id == "minecraft:block/lava_still")
             .unwrap();
         assert_eq!((lava.width, lava.height), (16, 16));
+        let lava_animation = lava.animation.as_ref().unwrap();
+        assert_eq!(lava_animation.frame_count, 20);
+        assert_eq!(lava_animation.default_frame_time, 2);
+        assert_eq!(lava_animation.frames.len(), 38);
+        assert_eq!(lava_animation.frames[20].index, 18);
         let fire = sources
             .iter()
             .find(|source| source.id == "minecraft:block/fire_0")
@@ -673,6 +682,10 @@ mod tests {
             .find(|source| source.id == "minecraft:hud/locator_bar_arrow_down")
             .unwrap();
         assert_eq!((locator_arrow.width, locator_arrow.height), (7, 5));
+        let locator_animation = locator_arrow.animation.as_ref().unwrap();
+        assert_eq!(locator_animation.frame_count, 2);
+        assert_eq!(locator_animation.frames[0].time, 10);
+        assert_eq!(locator_animation.frames[1].time, 4);
 
         let crosshair_image = roots.load_gui_sprite_image("hud/crosshair").unwrap();
         assert_eq!(crosshair_image.id, "minecraft:hud/crosshair");

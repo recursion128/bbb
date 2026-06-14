@@ -1,7 +1,9 @@
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::{rgba_len, rgba_offset, SpriteImage, SpriteSource, SpriteTransparency};
+use crate::{
+    rgba_len, rgba_offset, SpriteAnimation, SpriteImage, SpriteSource, SpriteTransparency,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AtlasRect {
@@ -17,6 +19,8 @@ pub struct AtlasSprite {
     pub source_width: u32,
     pub source_height: u32,
     pub transparency: SpriteTransparency,
+    #[serde(default)]
+    pub animation: Option<SpriteAnimation>,
     pub content: AtlasRect,
     pub padded: AtlasRect,
 }
@@ -112,6 +116,7 @@ impl AtlasPacker {
                 source_width: source.width,
                 source_height: source.height,
                 transparency: SpriteTransparency::default(),
+                animation: source.animation.clone(),
                 content,
                 padded,
             });
@@ -140,6 +145,7 @@ impl AtlasPacker {
         let mut layout = self.pack(&sources)?;
         for (sprite, image) in layout.sprites.iter_mut().zip(images) {
             sprite.transparency = image.transparency;
+            sprite.animation = image.animation.clone();
         }
         let mut rgba = vec![0; rgba_len(layout.width, layout.height)?];
 
@@ -181,7 +187,9 @@ fn copy_sprite_with_gutter(
 #[cfg(test)]
 mod tests {
     use super::{AtlasPacker, AtlasRect};
-    use crate::{SpriteImage, SpriteSource};
+    use crate::{
+        SpriteAnimation, SpriteAnimationFrame, SpriteImage, SpriteSource, SpriteTransparency,
+    };
 
     #[test]
     fn atlas_rects_preserve_content_dimensions_inside_padding() {
@@ -296,6 +304,29 @@ mod tests {
     }
 
     #[test]
+    fn atlas_layout_preserves_sprite_animation_metadata() {
+        let animation = SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 4,
+            interpolate: true,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 4 },
+                SpriteAnimationFrame { index: 1, time: 8 },
+            ],
+        };
+        let source = SpriteSource {
+            id: "minecraft:block/water_still".to_string(),
+            width: 16,
+            height: 16,
+            animation: Some(animation.clone()),
+        };
+
+        let layout = AtlasPacker::new(64, 1).unwrap().pack(&[source]).unwrap();
+
+        assert_eq!(layout.sprites[0].animation, Some(animation));
+    }
+
+    #[test]
     fn atlas_stitcher_extends_sprite_edges_into_padding() {
         let image = SpriteImage::new(
             "test:quad",
@@ -331,6 +362,31 @@ mod tests {
             pixel(&atlas.rgba, atlas.layout.width, 2, 2),
             [40, 0, 0, 255]
         );
+    }
+
+    #[test]
+    fn atlas_stitcher_preserves_image_animation_metadata() {
+        let animation = SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 2,
+            interpolate: false,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 2 },
+                SpriteAnimationFrame { index: 1, time: 2 },
+            ],
+        };
+        let image = SpriteImage {
+            id: "minecraft:block/campfire_fire".to_string(),
+            width: 1,
+            height: 1,
+            transparency: SpriteTransparency::default(),
+            animation: Some(animation.clone()),
+            rgba: vec![255, 255, 255, 255],
+        };
+
+        let atlas = AtlasPacker::new(8, 1).unwrap().stitch(&[image]).unwrap();
+
+        assert_eq!(atlas.layout.sprites[0].animation, Some(animation));
     }
 
     fn pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
