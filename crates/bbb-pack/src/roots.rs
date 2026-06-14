@@ -7,6 +7,7 @@ use crate::{
     atlas_sources::{load_atlas_texture_entries, AtlasTextureEntry},
     block_models::BlockModelCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
+    language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE},
     resources::{PackResourceStack, ResourceLocation},
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
@@ -176,6 +177,25 @@ impl PackRoots {
 
     pub fn load_sound_catalog(&self) -> Result<SoundCatalog> {
         SoundCatalog::load_resource_stack(&self.resource_stack())
+    }
+
+    pub fn load_language_catalog(&self, language_code: &str) -> Result<LanguageCatalog> {
+        let mut catalog = if language_code == DEFAULT_LANGUAGE_CODE {
+            LanguageCatalog::load_resource_stack(&self.resource_stack(), &[DEFAULT_LANGUAGE_CODE])
+        } else {
+            LanguageCatalog::load_resource_stack(
+                &self.resource_stack(),
+                &[DEFAULT_LANGUAGE_CODE, language_code],
+            )
+        }?;
+        let deprecated_path = self.assets_dir.join("lang").join("deprecated.json");
+        if deprecated_path.is_file() {
+            // Vanilla loads deprecated translations from the default resource, not overlays.
+            if let Ok(bytes) = std::fs::read(&deprecated_path) {
+                let _ = catalog.apply_deprecated_json_bytes(&bytes);
+            }
+        }
+        Ok(catalog)
     }
 }
 
