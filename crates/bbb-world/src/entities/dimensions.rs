@@ -13,8 +13,10 @@ const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
 const VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID: i32 = 20;
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+const VANILLA_ENTITY_TYPE_DOLPHIN_ID: i32 = 35;
 const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
+const VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID: i32 = 58;
 const VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID: i32 = 60;
 const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
@@ -26,6 +28,7 @@ const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_MANNEQUIN_ID: i32 = 83;
 const VANILLA_ENTITY_TYPE_MOOSHROOM_ID: i32 = 86;
 const VANILLA_ENTITY_TYPE_PAINTING_ID: i32 = 93;
+const VANILLA_ENTITY_TYPE_PANDA_ID: i32 = 96;
 const VANILLA_ENTITY_TYPE_PHANTOM_ID: i32 = 99;
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
@@ -72,9 +75,11 @@ const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
 const ARMADILLO_BABY_SCALE: f32 = 0.6;
 const CAMEL_SITTING_HEIGHT_DIFFERENCE: f32 = 1.43;
 const CAMEL_BABY_SCALE: f32 = 0.6;
+const DOLPHIN_BABY_SCALE: f32 = 0.65;
 const FOX_BABY_SCALE: f32 = 0.6;
 const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
 const GOAT_BABY_SCALE: f32 = 0.55;
+const HAPPY_GHAST_BABY_SCALE: f32 = 0.2375;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
 const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
@@ -336,9 +341,12 @@ fn baby_pick_bounds(
         | VANILLA_ENTITY_TYPE_AXOLOTL_ID
         | VANILLA_ENTITY_TYPE_CHICKEN_ID
         | VANILLA_ENTITY_TYPE_COW_ID
+        | VANILLA_ENTITY_TYPE_DOLPHIN_ID
         | VANILLA_ENTITY_TYPE_FOX_ID
         | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
+        | VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
         | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
+        | VANILLA_ENTITY_TYPE_PANDA_ID
         | VANILLA_ENTITY_TYPE_PIG_ID
         | VANILLA_ENTITY_TYPE_RABBIT_ID
         | VANILLA_ENTITY_TYPE_SQUID_ID
@@ -367,8 +375,14 @@ fn baby_pick_bounds(
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
             vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(ARMADILLO_BABY_SCALE)
         }
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID => {
+            vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(DOLPHIN_BABY_SCALE)
+        }
         VANILLA_ENTITY_TYPE_FOX_ID => {
             vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(FOX_BABY_SCALE)
+        }
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => {
+            vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(HAPPY_GHAST_BABY_SCALE)
         }
         VANILLA_ENTITY_TYPE_RABBIT_ID => EntityPickBoundsState::from_base_size(0.24, 0.4, 0.0),
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => EntityPickBoundsState::from_base_size(0.5, 0.25, 0.0),
