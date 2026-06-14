@@ -14,7 +14,7 @@ pub use crate::client::inventory::{
 };
 pub use crate::client::local_player::{
     CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerExperienceState,
-    LocalPlayerHealthState, LocalPlayerState,
+    LocalPlayerHealthState, LocalPlayerLookAtState, LocalPlayerPoseState, LocalPlayerState,
 };
 pub use crate::client::player_info::{
     PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState,

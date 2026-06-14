@@ -267,10 +267,10 @@ pub(in crate::runtime) fn drain_net_events(
                 world.apply_respawn(&respawn);
             }
             NetEvent::PlayerPosition(update) => {
-                apply_player_position_update(counters, update);
+                apply_player_position_update(counters, world, update);
             }
             NetEvent::PlayerRotation(update) => {
-                apply_player_rotation_update(counters, update);
+                apply_player_rotation_update(counters, world, update);
             }
             NetEvent::PlayerAbilities(abilities) => {
                 world.apply_player_abilities(abilities);

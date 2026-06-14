@@ -17,7 +17,10 @@ use crate::{
 
 mod events;
 
-pub(crate) use events::player_position_state_from_pose;
+pub(crate) use events::{
+    local_player_pose_from_player_pose, player_pose_from_local_player_pose,
+    player_position_state_from_local_player_pose,
+};
 
 pub(crate) fn snapshot_is_running(snapshot: &SharedSnapshot) -> bool {
     snapshot
@@ -62,8 +65,9 @@ pub(crate) fn pump_network_and_terrain(
     if let Some(rx) = net_events.as_mut() {
         events::drain_net_events(rx, world, net_counters, net_commands);
     }
-    advance_player_input(input, net_counters, net_commands, Instant::now());
+    advance_player_input(input, world, net_counters, net_commands, Instant::now());
     let local_player = world.local_player();
+    let player_pose = local_player.pose.map(player_pose_from_local_player_pose);
     renderer.set_hud_health(local_player.health.map(|health| health.health));
     renderer.set_hud_food(local_player.health.map(|health| health.food));
     renderer.set_hud_experience_progress(
@@ -72,11 +76,8 @@ pub(crate) fn pump_network_and_terrain(
             .map(|experience| experience.progress),
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
-    renderer.set_camera_pose(net_counters.player_pose.map(camera_pose_from_player));
-    renderer.set_selection_outline(selection_outline_from_crosshair(
-        world,
-        net_counters.player_pose,
-    ));
+    renderer.set_camera_pose(player_pose.map(camera_pose_from_player));
+    renderer.set_selection_outline(selection_outline_from_crosshair(world, player_pose));
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     maybe_upload_decoded_terrain(
         world,

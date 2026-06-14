@@ -8,8 +8,10 @@ use bbb_world::BlockPos;
 #[test]
 fn player_position_updates_absolute_and_relative_pose() {
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
     apply_player_position_update(
         &mut counters,
+        &mut world,
         player_position_update(1, [10.0, 64.0, -5.0], [0.125, 0.0, 0.0], 90.0, 15.0, 0),
     );
     let pose = counters.player_pose.unwrap();
@@ -22,6 +24,7 @@ fn player_position_updates_absolute_and_relative_pose() {
 
     apply_player_position_update(
         &mut counters,
+        &mut world,
         player_position_update(
             2,
             [1.5, -2.0, 7.0],
@@ -41,23 +44,24 @@ fn player_position_updates_absolute_and_relative_pose() {
     assert_eq!(pose.x_rot, -90.0);
     assert_eq!(pose.last_teleport_id, 2);
     assert_eq!(counters.player_position_packets, 2);
+    assert_eq!(world.local_player_pose().unwrap().last_teleport_id, 2);
 }
 
 #[test]
 fn player_rotation_updates_pose_orientation() {
-    let mut counters = NetCounters {
-        player_pose: Some(PlayerPose {
-            position: vec3(10.0, 64.0, -5.0),
-            delta_movement: vec3(0.125, 0.0, 0.0),
-            y_rot: 90.0,
-            x_rot: 15.0,
-            last_teleport_id: 7,
-        }),
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+        position: vec3(10.0, 64.0, -5.0),
+        delta_movement: vec3(0.125, 0.0, 0.0),
+        y_rot: 90.0,
+        x_rot: 15.0,
+        last_teleport_id: 7,
+    }));
 
     apply_player_rotation_update(
         &mut counters,
+        &mut world,
         bbb_protocol::packets::PlayerRotationUpdate {
             y_rot: 20.0,
             relative_y: true,
@@ -73,23 +77,24 @@ fn player_rotation_updates_pose_orientation() {
     assert_eq!(pose.x_rot, -90.0);
     assert_eq!(pose.last_teleport_id, 7);
     assert_eq!(counters.player_rotation_packets, 1);
+    assert_eq!(world.local_player_pose().unwrap().y_rot, 110.0);
 }
 
 #[test]
 fn player_look_at_updates_snapshot_and_pose_orientation() {
-    let mut counters = NetCounters {
-        player_pose: Some(PlayerPose {
-            position: vec3(0.0, 64.0, 0.0),
-            delta_movement: vec3(0.0, 0.0, 0.0),
-            y_rot: 90.0,
-            x_rot: 30.0,
-            last_teleport_id: 7,
-        }),
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+        position: vec3(0.0, 64.0, 0.0),
+        delta_movement: vec3(0.0, 0.0, 0.0),
+        y_rot: 90.0,
+        x_rot: 30.0,
+        last_teleport_id: 7,
+    }));
 
     apply_player_look_at_update(
         &mut counters,
+        &mut world,
         bbb_protocol::packets::PlayerLookAt {
             from_anchor: bbb_protocol::packets::EntityAnchor::Eyes,
             position: bbb_protocol::packets::Vec3d {

@@ -1,12 +1,17 @@
 use bbb_protocol::packets::{
-    PlayerAbilities as ProtocolPlayerAbilities, PlayerExperience as ProtocolPlayerExperience,
-    PlayerHealth as ProtocolPlayerHealth, SetCamera as ProtocolSetCamera,
+    EntityAnchor, PlayerAbilities as ProtocolPlayerAbilities,
+    PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
+    PlayerLookAt as ProtocolPlayerLookAt, PlayerPositionState as ProtocolPlayerPositionState,
+    PlayerPositionUpdate as ProtocolPlayerPositionUpdate,
+    PlayerRotationUpdate as ProtocolPlayerRotationUpdate, SetCamera as ProtocolSetCamera,
     SetDefaultSpawnPosition as ProtocolSetDefaultSpawnPosition, SetHeldSlot as ProtocolSetHeldSlot,
-    SetSimulationDistance as ProtocolSetSimulationDistance,
+    SetSimulationDistance as ProtocolSetSimulationDistance, Vec3d as ProtocolVec3d,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{protocol_block_pos, BlockPos, WorldStore};
+use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
+
+const STANDING_EYE_HEIGHT: f64 = 1.62;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocalPlayerState {
@@ -24,6 +29,10 @@ pub struct LocalPlayerState {
     pub simulation_distance: Option<i32>,
     #[serde(default)]
     pub camera: CameraState,
+    #[serde(default)]
+    pub pose: Option<LocalPlayerPoseState>,
+    #[serde(default)]
+    pub last_look_at: Option<LocalPlayerLookAtState>,
 }
 
 impl Default for LocalPlayerState {
@@ -36,6 +45,8 @@ impl Default for LocalPlayerState {
             default_spawn: None,
             simulation_distance: None,
             camera: CameraState::default(),
+            pose: None,
+            last_look_at: None,
         }
     }
 }
@@ -62,6 +73,44 @@ pub struct LocalPlayerExperienceState {
     pub progress: f32,
     pub level: i32,
     pub total: i32,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct LocalPlayerPoseState {
+    pub position: ProtocolVec3d,
+    pub delta_movement: ProtocolVec3d,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub last_teleport_id: i32,
+}
+
+impl LocalPlayerPoseState {
+    pub fn position_state(self) -> ProtocolPlayerPositionState {
+        ProtocolPlayerPositionState {
+            position: self.position,
+            delta_movement: self.delta_movement,
+            y_rot: self.y_rot,
+            x_rot: self.x_rot,
+        }
+    }
+
+    pub fn from_position_state(state: ProtocolPlayerPositionState, last_teleport_id: i32) -> Self {
+        Self {
+            position: state.position,
+            delta_movement: state.delta_movement,
+            y_rot: state.y_rot,
+            x_rot: state.x_rot,
+            last_teleport_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct LocalPlayerLookAtState {
+    pub from_anchor: EntityAnchor,
+    pub position: ProtocolVec3d,
+    pub target_entity_id: Option<i32>,
+    pub to_anchor: Option<EntityAnchor>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -159,15 +208,132 @@ impl WorldStore {
         true
     }
 
+    pub fn apply_player_position(
+        &mut self,
+        packet: ProtocolPlayerPositionUpdate,
+    ) -> Option<LocalPlayerPoseState> {
+        self.counters.player_position_packets += 1;
+        if self.local_player_vehicle_id.is_some() {
+            return None;
+        }
+        let current = self
+            .local_player
+            .pose
+            .map(LocalPlayerPoseState::position_state)
+            .unwrap_or_default();
+        let state = packet.apply_to_state(current);
+        let pose = LocalPlayerPoseState::from_position_state(state, packet.id);
+        self.local_player.pose = Some(pose);
+        Some(pose)
+    }
+
+    pub fn apply_player_rotation(
+        &mut self,
+        packet: ProtocolPlayerRotationUpdate,
+    ) -> LocalPlayerPoseState {
+        self.counters.player_rotation_packets += 1;
+        let current_pose = self.local_player.pose.unwrap_or_default();
+        let state = packet.apply_to_state(current_pose.position_state());
+        let pose = LocalPlayerPoseState::from_position_state(state, current_pose.last_teleport_id);
+        self.local_player.pose = Some(pose);
+        pose
+    }
+
+    pub fn apply_player_look_at(
+        &mut self,
+        packet: ProtocolPlayerLookAt,
+    ) -> Option<LocalPlayerPoseState> {
+        self.counters.player_look_at_packets += 1;
+        let target_position = self.resolve_look_at_target_position(packet);
+        self.local_player.last_look_at = Some(LocalPlayerLookAtState {
+            from_anchor: packet.from_anchor,
+            position: target_position,
+            target_entity_id: packet.target.map(|target| target.entity_id),
+            to_anchor: packet.target.map(|target| target.to_anchor),
+        });
+
+        let pose =
+            apply_look_at_to_pose(self.local_player.pose?, packet.from_anchor, target_position);
+        self.local_player.pose = Some(pose);
+        Some(pose)
+    }
+
+    pub fn set_local_player_pose(&mut self, pose: LocalPlayerPoseState) {
+        self.local_player.pose = Some(pose);
+    }
+
+    pub fn local_player_pose(&self) -> Option<LocalPlayerPoseState> {
+        self.local_player.pose
+    }
+
     pub fn local_player(&self) -> &LocalPlayerState {
         &self.local_player
     }
+
+    fn resolve_look_at_target_position(&self, packet: ProtocolPlayerLookAt) -> ProtocolVec3d {
+        packet
+            .target
+            .and_then(|target| {
+                self.probe_entity(target.entity_id)
+                    .map(|entity| entity_anchor_position(entity.position, target.to_anchor))
+            })
+            .unwrap_or(packet.position)
+    }
+}
+
+fn apply_look_at_to_pose(
+    pose: LocalPlayerPoseState,
+    from_anchor: EntityAnchor,
+    target_position: ProtocolVec3d,
+) -> LocalPlayerPoseState {
+    let from_y = match from_anchor {
+        EntityAnchor::Feet => pose.position.y,
+        EntityAnchor::Eyes => pose.position.y + STANDING_EYE_HEIGHT,
+    };
+    let dx = target_position.x - pose.position.x;
+    let dy = target_position.y - from_y;
+    let dz = target_position.z - pose.position.z;
+    let horizontal = (dx * dx + dz * dz).sqrt();
+    let x_rot = wrap_degrees_f32(-(dy.atan2(horizontal).to_degrees() as f32));
+    let y_rot = wrap_degrees_f32(dz.atan2(dx).to_degrees() as f32 - 90.0);
+
+    LocalPlayerPoseState {
+        y_rot,
+        x_rot,
+        ..pose
+    }
+}
+
+fn entity_anchor_position(position: EntityVec3, anchor: EntityAnchor) -> ProtocolVec3d {
+    ProtocolVec3d {
+        x: position.x,
+        y: position.y
+            + match anchor {
+                EntityAnchor::Feet => 0.0,
+                EntityAnchor::Eyes => STANDING_EYE_HEIGHT,
+            },
+        z: position.z,
+    }
+}
+
+fn wrap_degrees_f32(degrees: f32) -> f32 {
+    let mut wrapped = degrees % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{AddEntity as ProtocolAddEntity, Vec3d as ProtocolVec3d};
+    use bbb_protocol::packets::{
+        AddEntity as ProtocolAddEntity, PlayerLookAtTarget, Vec3d as ProtocolVec3d,
+        PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y_ROT,
+    };
     use uuid::Uuid;
 
     #[test]
@@ -290,16 +456,145 @@ mod tests {
         assert_eq!(store.counters().set_camera_packets, 3);
     }
 
+    #[test]
+    fn local_player_position_and_rotation_update_canonical_pose() {
+        let mut store = WorldStore::new();
+
+        let pose = store
+            .apply_player_position(ProtocolPlayerPositionUpdate {
+                id: 7,
+                position: vec3(10.0, 64.0, -5.0),
+                delta_movement: vec3(0.125, 0.0, 0.0),
+                y_rot: 90.0,
+                x_rot: 15.0,
+                relatives_mask: 0,
+            })
+            .unwrap();
+        assert_eq!(pose.position, vec3(10.0, 64.0, -5.0));
+        assert_eq!(pose.delta_movement, vec3(0.125, 0.0, 0.0));
+        assert_eq!(pose.last_teleport_id, 7);
+
+        let pose = store
+            .apply_player_position(ProtocolPlayerPositionUpdate {
+                id: 8,
+                position: vec3(1.5, -2.0, 7.0),
+                delta_movement: vec3(0.25, 0.5, 0.75),
+                y_rot: 20.0,
+                x_rot: -120.0,
+                relatives_mask: PLAYER_RELATIVE_X
+                    | PLAYER_RELATIVE_Y_ROT
+                    | PLAYER_RELATIVE_X_ROT
+                    | PLAYER_RELATIVE_DELTA_X,
+            })
+            .unwrap();
+        assert_eq!(pose.position, vec3(11.5, -2.0, 7.0));
+        assert_eq!(pose.delta_movement, vec3(0.375, 0.5, 0.75));
+        assert_eq!(pose.y_rot, 110.0);
+        assert_eq!(pose.x_rot, -90.0);
+        assert_eq!(pose.last_teleport_id, 8);
+
+        let pose = store.apply_player_rotation(ProtocolPlayerRotationUpdate {
+            y_rot: -10.0,
+            relative_y: true,
+            x_rot: 30.0,
+            relative_x: false,
+        });
+        assert_eq!(pose.position, vec3(11.5, -2.0, 7.0));
+        assert_eq!(pose.delta_movement, vec3(0.375, 0.5, 0.75));
+        assert_eq!(pose.y_rot, 100.0);
+        assert_eq!(pose.x_rot, 30.0);
+        assert_eq!(pose.last_teleport_id, 8);
+        assert_eq!(store.local_player_pose(), Some(pose));
+
+        let counters = store.counters();
+        assert_eq!(counters.player_position_packets, 2);
+        assert_eq!(counters.player_rotation_packets, 1);
+    }
+
+    #[test]
+    fn local_player_position_does_not_move_mounted_player() {
+        let mut store = WorldStore::new();
+        let initial_pose = LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            delta_movement: vec3(0.0, 0.0, 0.0),
+            y_rot: 0.0,
+            x_rot: 0.0,
+            last_teleport_id: 3,
+        };
+        store.set_local_player_pose(initial_pose);
+        store.local_player_vehicle_id = Some(10);
+
+        assert_eq!(
+            store.apply_player_position(ProtocolPlayerPositionUpdate {
+                id: 9,
+                position: vec3(10.0, 70.0, 10.0),
+                delta_movement: vec3(1.0, 1.0, 1.0),
+                y_rot: 90.0,
+                x_rot: 45.0,
+                relatives_mask: 0,
+            }),
+            None
+        );
+        assert_eq!(store.local_player_pose(), Some(initial_pose));
+        assert_eq!(store.counters().player_position_packets, 1);
+    }
+
+    #[test]
+    fn local_player_look_at_uses_known_target_entity_anchor() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            delta_movement: vec3(0.0, 0.0, 0.0),
+            y_rot: 90.0,
+            x_rot: 30.0,
+            last_teleport_id: 7,
+        });
+        store.apply_add_entity(protocol_add_entity_at(123, vec3(0.0, 70.0, 10.0)));
+
+        let pose = store
+            .apply_player_look_at(ProtocolPlayerLookAt {
+                from_anchor: EntityAnchor::Eyes,
+                position: vec3(50.0, 50.0, 50.0),
+                target: Some(PlayerLookAtTarget {
+                    entity_id: 123,
+                    to_anchor: EntityAnchor::Feet,
+                }),
+            })
+            .unwrap();
+
+        let expected_x_rot = -((70.0 - 65.62_f64).atan2(10.0).to_degrees() as f32);
+        assert!((pose.y_rot - 0.0).abs() < 0.001);
+        assert!((pose.x_rot - expected_x_rot).abs() < 0.001);
+        assert_eq!(pose.last_teleport_id, 7);
+        assert_eq!(
+            store.local_player().last_look_at,
+            Some(LocalPlayerLookAtState {
+                from_anchor: EntityAnchor::Eyes,
+                position: vec3(0.0, 70.0, 10.0),
+                target_entity_id: Some(123),
+                to_anchor: Some(EntityAnchor::Feet),
+            })
+        );
+        assert_eq!(store.counters().player_look_at_packets, 1);
+    }
+
     fn protocol_add_entity(id: i32) -> ProtocolAddEntity {
-        ProtocolAddEntity {
+        protocol_add_entity_at(
             id,
-            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
-            entity_type_id: 7,
-            position: ProtocolVec3d {
+            ProtocolVec3d {
                 x: 1.0,
                 y: 64.0,
                 z: -2.0,
             },
+        )
+    }
+
+    fn protocol_add_entity_at(id: i32, position: ProtocolVec3d) -> ProtocolAddEntity {
+        ProtocolAddEntity {
+            id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: 7,
+            position,
             delta_movement: ProtocolVec3d {
                 x: 0.0,
                 y: 0.0,
@@ -310,5 +605,9 @@ mod tests {
             y_head_rot: 30.0,
             data: 99,
         }
+    }
+
+    fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
+        ProtocolVec3d { x, y, z }
     }
 }

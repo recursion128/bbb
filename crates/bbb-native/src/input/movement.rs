@@ -2,9 +2,13 @@ use std::time::{Duration, Instant};
 
 use bbb_control::{NetCounters, NetVec3, PlayerPose};
 use bbb_net::{NetCommand, PlayerMoveCommand};
+use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 
-use crate::runtime::player_position_state_from_pose;
+use crate::runtime::{
+    local_player_pose_from_player_pose, player_pose_from_local_player_pose,
+    player_position_state_from_local_player_pose,
+};
 
 use super::ClientInputState;
 
@@ -15,6 +19,7 @@ const MOVE_COMMAND_INTERVAL: Duration = Duration::from_millis(50);
 
 pub(crate) fn advance_player_input(
     input: &mut ClientInputState,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     now: Instant,
@@ -27,7 +32,10 @@ pub(crate) fn advance_player_input(
         .min(0.25);
     input.last_step = Some(now);
 
-    let Some(current_pose) = counters.player_pose else {
+    let Some(current_pose) = world
+        .local_player_pose()
+        .map(player_pose_from_local_player_pose)
+    else {
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
@@ -36,6 +44,7 @@ pub(crate) fn advance_player_input(
     let pose = integrate_player_input_pose(current_pose, input, dt_seconds);
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
+    world.set_local_player_pose(local_player_pose_from_player_pose(pose));
     counters.player_pose = Some(pose);
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
 }
@@ -101,7 +110,9 @@ fn maybe_queue_player_move_command(
     }
 
     let command = NetCommand::MovePlayer(PlayerMoveCommand {
-        state: player_position_state_from_pose(pose),
+        state: player_position_state_from_local_player_pose(local_player_pose_from_player_pose(
+            pose,
+        )),
         on_ground: pose.delta_movement.y.abs() <= f64::EPSILON,
         horizontal_collision: false,
     });
@@ -180,15 +191,14 @@ mod tests {
         let commands = Some(tx);
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
-        let mut counters = NetCounters {
-            player_pose: Some(PlayerPose {
-                position: vec3(0.0, 64.0, 0.0),
-                ..PlayerPose::default()
-            }),
-            ..NetCounters::default()
-        };
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+            position: vec3(0.0, 64.0, 0.0),
+            ..PlayerPose::default()
+        }));
+        let mut counters = NetCounters::default();
 
-        advance_player_input(&mut input, &mut counters, &commands, start);
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
         let first = match rx.try_recv().unwrap() {
             NetCommand::MovePlayer(command) => command,
             other => panic!("expected move command, got {other:?}"),
@@ -200,6 +210,7 @@ mod tests {
         input.forward = true;
         advance_player_input(
             &mut input,
+            &mut world,
             &mut counters,
             &commands,
             start + Duration::from_millis(25),
@@ -208,6 +219,7 @@ mod tests {
 
         advance_player_input(
             &mut input,
+            &mut world,
             &mut counters,
             &commands,
             start + Duration::from_millis(50),

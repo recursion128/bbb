@@ -139,7 +139,7 @@ pub(super) fn apply_control_projection_event(
             counters.player_combat_kill_packets += 1;
         }
         NetEvent::PlayerLookAt(update) => {
-            apply_player_look_at_update(counters, update);
+            apply_player_look_at_update(counters, world, update);
         }
         NetEvent::PongResponse(update) => {
             world.apply_pong_response(update);

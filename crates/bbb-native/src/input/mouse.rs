@@ -6,6 +6,7 @@ use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton};
 
 use crate::crosshair::crosshair_block_hit_from_world;
+use crate::runtime::player_pose_from_local_player_pose;
 
 use super::{
     commands::{
@@ -34,9 +35,12 @@ pub(crate) fn handle_mouse_input(
     if !input.focused {
         return;
     }
+    let player_pose = world
+        .local_player_pose()
+        .map(player_pose_from_local_player_pose);
     match (button, state) {
         (MouseButton::Left, ElementState::Pressed) => {
-            if let Some(hit) = crosshair_block_hit_from_world(world, counters.player_pose) {
+            if let Some(hit) = crosshair_block_hit_from_world(world, player_pose) {
                 let sequence = input.next_prediction_sequence();
                 queue_player_action_command(
                     counters,
@@ -63,10 +67,10 @@ pub(crate) fn handle_mouse_input(
             }
         }
         (MouseButton::Right, ElementState::Pressed) => {
-            if let Some(hit) = crosshair_block_hit_from_world(world, counters.player_pose) {
+            if let Some(hit) = crosshair_block_hit_from_world(world, player_pose) {
                 let sequence = input.next_prediction_sequence();
                 queue_use_item_on_command(counters, net_commands, hit, sequence);
-            } else if let Some(pose) = counters.player_pose {
+            } else if let Some(pose) = player_pose {
                 let sequence = input.next_prediction_sequence();
                 input.using_item = queue_use_item_command(
                     counters,
@@ -88,7 +92,7 @@ pub(crate) fn handle_mouse_input(
             }
         }
         (MouseButton::Middle, ElementState::Pressed) => {
-            if let Some(hit) = crosshair_block_hit_from_world(world, counters.player_pose) {
+            if let Some(hit) = crosshair_block_hit_from_world(world, player_pose) {
                 queue_pick_item_from_block_command(counters, net_commands, hit.pos, input.sprint);
             }
         }
@@ -104,6 +108,7 @@ mod tests {
     use bbb_world::BlockPos;
 
     use crate::crosshair::CrosshairBlockHit;
+    use crate::runtime::local_player_pose_from_player_pose;
 
     #[test]
     fn left_mouse_press_queues_main_hand_swing() {
@@ -204,15 +209,13 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
-        let world = WorldStore::new();
-        let mut counters = NetCounters {
-            player_pose: Some(PlayerPose {
-                y_rot: 45.0,
-                x_rot: -20.0,
-                ..PlayerPose::default()
-            }),
-            ..NetCounters::default()
-        };
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+            y_rot: 45.0,
+            x_rot: -20.0,
+            ..PlayerPose::default()
+        }));
+        let mut counters = NetCounters::default();
 
         handle_mouse_input(
             &mut input,

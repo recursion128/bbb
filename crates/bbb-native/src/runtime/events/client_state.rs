@@ -3,9 +3,7 @@ use bbb_control::{
     PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose, SystemChatLine,
 };
 use bbb_protocol::packets::PlayerPositionState;
-use bbb_world::WorldStore;
-
-const STANDING_EYE_HEIGHT: f64 = 1.62;
+use bbb_world::{LocalPlayerLookAtState, LocalPlayerPoseState, WorldStore};
 
 pub(super) fn apply_system_chat_update(
     counters: &mut NetCounters,
@@ -148,6 +146,8 @@ pub(super) fn sync_local_player_counters(counters: &mut NetCounters, world: &Wor
         follows_player: local.camera.follows_player,
         entity_known: local.camera.entity_known,
     };
+    counters.player_pose = local.pose.map(player_pose_from_local_player_pose);
+    counters.last_player_look_at = local.last_look_at.map(control_player_look_at);
 
     let world_counters = world.counters();
     counters.player_abilities_packets = world_counters.player_abilities_packets;
@@ -157,114 +157,62 @@ pub(super) fn sync_local_player_counters(counters: &mut NetCounters, world: &Wor
     counters.default_spawn_position_packets = world_counters.default_spawn_position_packets;
     counters.simulation_distance_packets = world_counters.simulation_distance_packets;
     counters.set_camera_packets = world_counters.set_camera_packets;
+    counters.player_position_packets = world_counters.player_position_packets;
+    counters.player_rotation_packets = world_counters.player_rotation_packets;
+    counters.player_look_at_packets = world_counters.player_look_at_packets;
 }
 
 pub(super) fn apply_player_position_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     update: bbb_protocol::packets::PlayerPositionUpdate,
 ) {
-    let current = counters
-        .player_pose
-        .map(player_position_state_from_pose)
-        .unwrap_or_default();
-    let state = update.apply_to_state(current);
-
-    counters.player_pose = Some(PlayerPose {
-        position: net_vec3_from_protocol(state.position),
-        delta_movement: net_vec3_from_protocol(state.delta_movement),
-        y_rot: state.y_rot,
-        x_rot: state.x_rot,
-        last_teleport_id: update.id,
-    });
-    counters.player_position_packets += 1;
+    world.apply_player_position(update);
+    sync_local_player_counters(counters, world);
 }
 
 pub(super) fn apply_player_rotation_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     update: bbb_protocol::packets::PlayerRotationUpdate,
 ) {
-    let current = counters
-        .player_pose
-        .map(player_position_state_from_pose)
-        .unwrap_or_default();
-    let state = update.apply_to_state(current);
-    let last_teleport_id = counters
-        .player_pose
-        .map(|pose| pose.last_teleport_id)
-        .unwrap_or_default();
-
-    counters.player_pose = Some(PlayerPose {
-        position: net_vec3_from_protocol(state.position),
-        delta_movement: net_vec3_from_protocol(state.delta_movement),
-        y_rot: state.y_rot,
-        x_rot: state.x_rot,
-        last_teleport_id,
-    });
-    counters.player_rotation_packets += 1;
+    world.apply_player_rotation(update);
+    sync_local_player_counters(counters, world);
 }
 
 pub(super) fn apply_player_look_at_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     update: bbb_protocol::packets::PlayerLookAt,
 ) {
-    counters.last_player_look_at = Some(PlayerLookAtState {
-        from_anchor: update.from_anchor.as_str().to_string(),
-        position: net_vec3_from_protocol(update.position),
-        target_entity_id: update.target.map(|target| target.entity_id),
-        to_anchor: update
-            .target
-            .map(|target| target.to_anchor.as_str().to_string()),
-    });
-
-    if let Some(pose) = counters.player_pose {
-        counters.player_pose = Some(apply_look_at_to_pose(pose, update));
-    }
-
-    counters.player_look_at_packets += 1;
+    world.apply_player_look_at(update);
+    sync_local_player_counters(counters, world);
 }
 
-pub(crate) fn player_position_state_from_pose(player: PlayerPose) -> PlayerPositionState {
-    PlayerPositionState {
+pub(crate) fn player_position_state_from_local_player_pose(
+    player: LocalPlayerPoseState,
+) -> PlayerPositionState {
+    player.position_state()
+}
+
+pub(crate) fn player_pose_from_local_player_pose(player: LocalPlayerPoseState) -> PlayerPose {
+    PlayerPose {
+        position: net_vec3_from_protocol(player.position),
+        delta_movement: net_vec3_from_protocol(player.delta_movement),
+        y_rot: player.y_rot,
+        x_rot: player.x_rot,
+        last_teleport_id: player.last_teleport_id,
+    }
+}
+
+pub(crate) fn local_player_pose_from_player_pose(player: PlayerPose) -> LocalPlayerPoseState {
+    LocalPlayerPoseState {
         position: protocol_vec3_from_net(player.position),
         delta_movement: protocol_vec3_from_net(player.delta_movement),
         y_rot: player.y_rot,
         x_rot: player.x_rot,
+        last_teleport_id: player.last_teleport_id,
     }
-}
-
-fn apply_look_at_to_pose(
-    pose: PlayerPose,
-    update: bbb_protocol::packets::PlayerLookAt,
-) -> PlayerPose {
-    let from_y = match update.from_anchor {
-        bbb_protocol::packets::EntityAnchor::Feet => pose.position.y,
-        bbb_protocol::packets::EntityAnchor::Eyes => pose.position.y + STANDING_EYE_HEIGHT,
-    };
-    let dx = update.position.x - pose.position.x;
-    let dy = update.position.y - from_y;
-    let dz = update.position.z - pose.position.z;
-    let horizontal = (dx * dx + dz * dz).sqrt();
-    let x_rot = wrap_degrees_f32(-(dy.atan2(horizontal).to_degrees() as f32));
-    let y_rot = wrap_degrees_f32(dz.atan2(dx).to_degrees() as f32 - 90.0);
-
-    PlayerPose {
-        position: pose.position,
-        delta_movement: pose.delta_movement,
-        y_rot,
-        x_rot,
-        last_teleport_id: pose.last_teleport_id,
-    }
-}
-
-fn wrap_degrees_f32(degrees: f32) -> f32 {
-    let mut wrapped = degrees % 360.0;
-    if wrapped >= 180.0 {
-        wrapped -= 360.0;
-    }
-    if wrapped < -180.0 {
-        wrapped += 360.0;
-    }
-    wrapped
 }
 
 fn protocol_vec3_from_net(vec: NetVec3) -> bbb_protocol::packets::Vec3d {
@@ -280,6 +228,15 @@ fn net_vec3_from_protocol(vec: bbb_protocol::packets::Vec3d) -> NetVec3 {
         x: vec.x,
         y: vec.y,
         z: vec.z,
+    }
+}
+
+fn control_player_look_at(look_at: LocalPlayerLookAtState) -> PlayerLookAtState {
+    PlayerLookAtState {
+        from_anchor: look_at.from_anchor.as_str().to_string(),
+        position: net_vec3_from_protocol(look_at.position),
+        target_entity_id: look_at.target_entity_id,
+        to_anchor: look_at.to_anchor.map(|anchor| anchor.as_str().to_string()),
     }
 }
 

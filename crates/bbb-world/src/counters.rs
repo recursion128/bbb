@@ -57,6 +57,12 @@ pub struct WorldCounters {
     pub simulation_distance_packets: usize,
     #[serde(default)]
     pub set_camera_packets: usize,
+    #[serde(default)]
+    pub player_position_packets: usize,
+    #[serde(default)]
+    pub player_rotation_packets: usize,
+    #[serde(default)]
+    pub player_look_at_packets: usize,
     pub chunks_received: usize,
     pub chunks_decoded: usize,
     pub sections_decoded: usize,
