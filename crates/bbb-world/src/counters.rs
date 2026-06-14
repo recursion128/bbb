@@ -327,6 +327,22 @@ pub struct WorldCounters {
     #[serde(default)]
     pub projectile_power_updates_ignored: usize,
     #[serde(default)]
+    pub debug_block_value_packets: usize,
+    #[serde(default)]
+    pub debug_chunk_value_packets: usize,
+    #[serde(default)]
+    pub debug_entity_value_packets: usize,
+    #[serde(default)]
+    pub debug_event_packets: usize,
+    #[serde(default)]
+    pub debug_sample_packets: usize,
+    #[serde(default)]
+    pub game_rule_value_packets: usize,
+    #[serde(default)]
+    pub game_test_highlight_pos_packets: usize,
+    #[serde(default)]
+    pub test_instance_block_status_packets: usize,
+    #[serde(default)]
     pub waypoint_packets: usize,
     #[serde(default)]
     pub waypoints_tracked: usize,

@@ -10,6 +10,11 @@ pub use crate::client::command_suggestions::{
     CommandSuggestionState, CommandSuggestionsResultState, CommandSuggestionsState,
     CustomChatCompletionUpdateState,
 };
+pub use crate::client::debug_game::{
+    ClientDebugGameState, DebugBlockValueState, DebugChunkValueState, DebugEntityValueState,
+    DebugEventState, DebugSampleState, DebugVec3iState, GameRuleValueState, GameRuleValuesState,
+    GameTestHighlightPosState, TestInstanceBlockStatusState,
+};
 pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseState};
 pub use crate::client::effects::{
     ClientEffectsState, ExplosionEventState, LevelParticlesEventState,

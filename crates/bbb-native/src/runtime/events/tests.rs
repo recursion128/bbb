@@ -1766,6 +1766,84 @@ fn debug_game_events_update_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         8
     );
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.debug_block_value_packets, 1);
+    assert_eq!(world_counters.debug_chunk_value_packets, 1);
+    assert_eq!(world_counters.debug_entity_value_packets, 1);
+    assert_eq!(world_counters.debug_event_packets, 1);
+    assert_eq!(world_counters.debug_sample_packets, 1);
+    assert_eq!(world_counters.game_rule_value_packets, 1);
+    assert_eq!(world_counters.game_test_highlight_pos_packets, 1);
+    assert_eq!(world_counters.test_instance_block_status_packets, 1);
+    assert_eq!(
+        world.last_debug_block_value(),
+        Some(&bbb_world::DebugBlockValueState {
+            pos: BlockPos { x: 1, y: 64, z: -2 },
+            raw_update_payload_len: 3,
+        })
+    );
+    assert_eq!(
+        world.last_debug_chunk_value(),
+        Some(&bbb_world::DebugChunkValueState {
+            pos: ChunkPos { x: 3, z: -4 },
+            raw_update_payload_len: 2,
+        })
+    );
+    assert_eq!(
+        world.last_debug_entity_value(),
+        Some(&bbb_world::DebugEntityValueState {
+            entity_id: 123,
+            raw_update_payload_len: 3,
+        })
+    );
+    assert_eq!(
+        world.last_debug_event(),
+        Some(&bbb_world::DebugEventState {
+            raw_event_payload_len: 2,
+        })
+    );
+    assert_eq!(
+        world.last_debug_sample(),
+        Some(&bbb_world::DebugSampleState {
+            sample_len: 2,
+            sample_type: "tick_time".to_string(),
+        })
+    );
+    assert_eq!(
+        world.last_game_rule_values(),
+        Some(&bbb_world::GameRuleValuesState {
+            values: vec![
+                bbb_world::GameRuleValueState {
+                    rule: "minecraft:do_daylight_cycle".to_string(),
+                    value: "false".to_string(),
+                },
+                bbb_world::GameRuleValueState {
+                    rule: "minecraft:random_tick_speed".to_string(),
+                    value: "3".to_string(),
+                },
+            ],
+        })
+    );
+    assert_eq!(
+        world.last_game_test_highlight_pos(),
+        Some(&bbb_world::GameTestHighlightPosState {
+            absolute_pos: BlockPos {
+                x: -10,
+                y: 70,
+                z: 22,
+            },
+            relative_pos: BlockPos { x: 1, y: 2, z: 3 },
+        })
+    );
+    assert_eq!(
+        world.last_test_instance_block_status(),
+        Some(&bbb_world::TestInstanceBlockStatusState {
+            status: "Ready".to_string(),
+            size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
+        })
+    );
+
     assert_eq!(counters.debug_block_value_packets, 1);
     assert_eq!(
         counters.last_debug_block_value,

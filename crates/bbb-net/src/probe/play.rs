@@ -45,11 +45,21 @@ impl ProbeContext {
             PlayClientbound::DamageEvent(update) => {
                 self.world.apply_damage_event(update);
             }
-            PlayClientbound::DebugBlockValue(_)
-            | PlayClientbound::DebugChunkValue(_)
-            | PlayClientbound::DebugEntityValue(_)
-            | PlayClientbound::DebugEvent(_)
-            | PlayClientbound::DebugSample(_) => {}
+            PlayClientbound::DebugBlockValue(update) => {
+                self.world.apply_debug_block_value(update);
+            }
+            PlayClientbound::DebugChunkValue(update) => {
+                self.world.apply_debug_chunk_value(update);
+            }
+            PlayClientbound::DebugEntityValue(update) => {
+                self.world.apply_debug_entity_value(update);
+            }
+            PlayClientbound::DebugEvent(update) => {
+                self.world.apply_debug_event(update);
+            }
+            PlayClientbound::DebugSample(update) => {
+                self.world.apply_debug_sample(update);
+            }
             PlayClientbound::DeleteChat(update) => {
                 self.world.apply_delete_chat(update);
             }
@@ -320,7 +330,9 @@ impl ProbeContext {
             PlayClientbound::ShowDialog(update) => {
                 self.world.apply_show_dialog(update);
             }
-            PlayClientbound::TestInstanceBlockStatus(_) => {}
+            PlayClientbound::TestInstanceBlockStatus(update) => {
+                self.world.apply_test_instance_block_status(update);
+            }
             PlayClientbound::TabList(update) => {
                 self.world.apply_tab_list(update);
             }
@@ -337,7 +349,12 @@ impl ProbeContext {
             PlayClientbound::GameEvent(update) => {
                 self.world.apply_game_event(update);
             }
-            PlayClientbound::GameRuleValues(_) | PlayClientbound::GameTestHighlightPos(_) => {}
+            PlayClientbound::GameRuleValues(update) => {
+                self.world.apply_game_rule_values(update);
+            }
+            PlayClientbound::GameTestHighlightPos(update) => {
+                self.world.apply_game_test_highlight_pos(update);
+            }
             PlayClientbound::SetTime(update) => {
                 self.world.apply_world_time(update);
             }
@@ -438,5 +455,148 @@ impl ProbeContext {
             PlayClientbound::Unknown { .. } => {}
         }
         Ok(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::connection::RawConnection;
+    use bbb_protocol::packets::{
+        BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, DebugBlockValue,
+        DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, GameRuleValue, GameRuleValues,
+        GameTestHighlightPos, RemoteDebugSampleType, TestInstanceBlockStatus,
+        Vec3i as ProtocolVec3i,
+    };
+    use bbb_world::{BlockPos, ChunkPos};
+    use bytes::BytesMut;
+    use tokio::net::TcpListener;
+
+    #[tokio::test]
+    async fn probe_applies_debug_game_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::DebugBlockValue(DebugBlockValue {
+                pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
+                raw_update_payload: vec![5, 1, 0xaa],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::DebugChunkValue(DebugChunkValue {
+                pos: ProtocolChunkPos { x: 3, z: -4 },
+                raw_update_payload: vec![7, 0],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::DebugEntityValue(DebugEntityValue {
+                entity_id: 123,
+                raw_update_payload: vec![9, 1, 0xbb],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::DebugEvent(DebugEvent {
+                raw_event_payload: vec![4, 0xcc],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::DebugSample(DebugSample {
+                sample: vec![100, -50],
+                sample_type: RemoteDebugSampleType::TickTime,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::GameRuleValues(GameRuleValues {
+                values: vec![
+                    GameRuleValue {
+                        rule: "minecraft:do_daylight_cycle".to_string(),
+                        value: "false".to_string(),
+                    },
+                    GameRuleValue {
+                        rule: "minecraft:random_tick_speed".to_string(),
+                        value: "3".to_string(),
+                    },
+                ],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::GameTestHighlightPos(
+                GameTestHighlightPos {
+                    absolute_pos: ProtocolBlockPos {
+                        x: -10,
+                        y: 70,
+                        z: 22,
+                    },
+                    relative_pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::TestInstanceBlockStatus(
+                TestInstanceBlockStatus {
+                    status: "Ready".to_string(),
+                    size: Some(ProtocolVec3i { x: 3, y: 4, z: 5 }),
+                },
+            ))
+            .await
+            .unwrap();
+
+        let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.debug_block_value_packets, 1);
+        assert_eq!(report.world_counters.debug_chunk_value_packets, 1);
+        assert_eq!(report.world_counters.debug_entity_value_packets, 1);
+        assert_eq!(report.world_counters.debug_event_packets, 1);
+        assert_eq!(report.world_counters.debug_sample_packets, 1);
+        assert_eq!(report.world_counters.game_rule_value_packets, 1);
+        assert_eq!(report.world_counters.game_test_highlight_pos_packets, 1);
+        assert_eq!(report.world_counters.test_instance_block_status_packets, 1);
+        assert_eq!(
+            report.world.last_debug_block_value(),
+            Some(&bbb_world::DebugBlockValueState {
+                pos: BlockPos { x: 1, y: 64, z: -2 },
+                raw_update_payload_len: 3,
+            })
+        );
+        assert_eq!(
+            report
+                .world
+                .last_game_rule_values()
+                .map(|state| state.len()),
+            Some(2)
+        );
+        assert_eq!(
+            report.world.last_test_instance_block_status(),
+            Some(&bbb_world::TestInstanceBlockStatusState {
+                status: "Ready".to_string(),
+                size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
+            })
+        );
+    }
+
+    async fn raw_connection_pair() -> (RawConnection, RawConnection) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let client = tokio::spawn(async move {
+            RawConnection::connect(&addr.to_string(), None)
+                .await
+                .unwrap()
+        });
+        let (server_stream, _) = listener.accept().await.unwrap();
+        let client = client.await.unwrap();
+        let server = RawConnection {
+            stream: server_stream,
+            read_buf: BytesMut::with_capacity(8192),
+            compression_threshold: None,
+        };
+        (client, server)
     }
 }

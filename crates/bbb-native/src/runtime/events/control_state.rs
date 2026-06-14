@@ -141,38 +141,24 @@ pub(super) fn apply_control_projection_event(
             sync_entity_projectile_counters(counters, world);
         }
         NetEvent::DebugBlockValue(update) => {
-            counters.last_debug_block_value = Some(bbb_control::DebugBlockValueState {
-                pos: control_block_pos(update.pos),
-                raw_update_payload_len: update.raw_update_payload.len(),
-            });
-            counters.debug_block_value_packets += 1;
+            world.apply_debug_block_value(update);
+            sync_debug_game_counters(counters, world);
         }
         NetEvent::DebugChunkValue(update) => {
-            counters.last_debug_chunk_value = Some(bbb_control::DebugChunkValueState {
-                pos: control_chunk_pos(update.pos),
-                raw_update_payload_len: update.raw_update_payload.len(),
-            });
-            counters.debug_chunk_value_packets += 1;
+            world.apply_debug_chunk_value(update);
+            sync_debug_game_counters(counters, world);
         }
         NetEvent::DebugEntityValue(update) => {
-            counters.last_debug_entity_value = Some(bbb_control::DebugEntityValueState {
-                entity_id: update.entity_id,
-                raw_update_payload_len: update.raw_update_payload.len(),
-            });
-            counters.debug_entity_value_packets += 1;
+            world.apply_debug_entity_value(update);
+            sync_debug_game_counters(counters, world);
         }
         NetEvent::DebugEvent(update) => {
-            counters.last_debug_event = Some(bbb_control::DebugEventState {
-                raw_event_payload_len: update.raw_event_payload.len(),
-            });
-            counters.debug_event_packets += 1;
+            world.apply_debug_event(update);
+            sync_debug_game_counters(counters, world);
         }
         NetEvent::DebugSample(update) => {
-            counters.last_debug_sample = Some(bbb_control::DebugSampleState {
-                sample_len: update.sample.len(),
-                sample_type: update.sample_type.as_str().to_string(),
-            });
-            counters.debug_sample_packets += 1;
+            world.apply_debug_sample(update);
+            sync_debug_game_counters(counters, world);
         }
         NetEvent::DeleteChat(update) => {
             world.apply_delete_chat(update);
@@ -187,25 +173,16 @@ pub(super) fn apply_control_projection_event(
             sync_chat_counters(counters, world);
         }
         NetEvent::GameRuleValues(update) => {
-            counters.last_game_rule_values = Some(bbb_control::GameRuleValuesState {
-                values: update.values.len(),
-            });
-            counters.game_rule_value_packets += 1;
+            world.apply_game_rule_values(update);
+            sync_debug_game_counters(counters, world);
         }
         NetEvent::GameTestHighlightPos(update) => {
-            counters.last_game_test_highlight_pos = Some(bbb_control::GameTestHighlightPosState {
-                absolute_pos: control_block_pos(update.absolute_pos),
-                relative_pos: control_block_pos(update.relative_pos),
-            });
-            counters.game_test_highlight_pos_packets += 1;
+            world.apply_game_test_highlight_pos(update);
+            sync_debug_game_counters(counters, world);
         }
         NetEvent::TestInstanceBlockStatus(update) => {
-            counters.last_test_instance_block_status =
-                Some(bbb_control::TestInstanceBlockStatusState {
-                    status: update.status,
-                    size: update.size.map(control_vec3i),
-                });
-            counters.test_instance_block_status_packets += 1;
+            world.apply_test_instance_block_status(update);
+            sync_debug_game_counters(counters, world);
         }
         NetEvent::Sound(update) => {
             world.apply_sound_event(update);
@@ -379,26 +356,6 @@ fn net_vec3(vec: bbb_protocol::packets::Vec3d) -> bbb_control::NetVec3 {
     }
 }
 
-fn control_block_pos(pos: bbb_protocol::packets::BlockPos) -> bbb_world::BlockPos {
-    bbb_world::BlockPos {
-        x: pos.x,
-        y: pos.y,
-        z: pos.z,
-    }
-}
-
-fn control_chunk_pos(pos: bbb_protocol::packets::ChunkPos) -> bbb_world::ChunkPos {
-    bbb_world::ChunkPos { x: pos.x, z: pos.z }
-}
-
-fn control_vec3i(pos: bbb_protocol::packets::Vec3i) -> bbb_control::NetVec3i {
-    bbb_control::NetVec3i {
-        x: pos.x,
-        y: pos.y,
-        z: pos.z,
-    }
-}
-
 fn control_waypoint_vec3i(pos: bbb_world::WaypointVec3iState) -> bbb_control::NetVec3i {
     bbb_control::NetVec3i {
         x: pos.x,
@@ -564,6 +521,114 @@ fn control_projectile_power_update(
     bbb_control::ProjectilePowerState {
         entity_id: state.entity_id,
         acceleration_power: state.acceleration_power,
+    }
+}
+
+fn sync_debug_game_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.debug_block_value_packets = world_counters.debug_block_value_packets;
+    counters.debug_chunk_value_packets = world_counters.debug_chunk_value_packets;
+    counters.debug_entity_value_packets = world_counters.debug_entity_value_packets;
+    counters.debug_event_packets = world_counters.debug_event_packets;
+    counters.debug_sample_packets = world_counters.debug_sample_packets;
+    counters.game_rule_value_packets = world_counters.game_rule_value_packets;
+    counters.game_test_highlight_pos_packets = world_counters.game_test_highlight_pos_packets;
+    counters.test_instance_block_status_packets = world_counters.test_instance_block_status_packets;
+    counters.last_debug_block_value = world
+        .last_debug_block_value()
+        .map(control_debug_block_value_state);
+    counters.last_debug_chunk_value = world
+        .last_debug_chunk_value()
+        .map(control_debug_chunk_value_state);
+    counters.last_debug_entity_value = world
+        .last_debug_entity_value()
+        .map(control_debug_entity_value_state);
+    counters.last_debug_event = world.last_debug_event().map(control_debug_event_state);
+    counters.last_debug_sample = world.last_debug_sample().map(control_debug_sample_state);
+    counters.last_game_rule_values = world
+        .last_game_rule_values()
+        .map(control_game_rule_values_state);
+    counters.last_game_test_highlight_pos = world
+        .last_game_test_highlight_pos()
+        .map(control_game_test_highlight_pos_state);
+    counters.last_test_instance_block_status = world
+        .last_test_instance_block_status()
+        .map(control_test_instance_block_status_state);
+}
+
+fn control_debug_block_value_state(
+    state: &bbb_world::DebugBlockValueState,
+) -> bbb_control::DebugBlockValueState {
+    bbb_control::DebugBlockValueState {
+        pos: state.pos,
+        raw_update_payload_len: state.raw_update_payload_len,
+    }
+}
+
+fn control_debug_chunk_value_state(
+    state: &bbb_world::DebugChunkValueState,
+) -> bbb_control::DebugChunkValueState {
+    bbb_control::DebugChunkValueState {
+        pos: state.pos,
+        raw_update_payload_len: state.raw_update_payload_len,
+    }
+}
+
+fn control_debug_entity_value_state(
+    state: &bbb_world::DebugEntityValueState,
+) -> bbb_control::DebugEntityValueState {
+    bbb_control::DebugEntityValueState {
+        entity_id: state.entity_id,
+        raw_update_payload_len: state.raw_update_payload_len,
+    }
+}
+
+fn control_debug_event_state(state: &bbb_world::DebugEventState) -> bbb_control::DebugEventState {
+    bbb_control::DebugEventState {
+        raw_event_payload_len: state.raw_event_payload_len,
+    }
+}
+
+fn control_debug_sample_state(
+    state: &bbb_world::DebugSampleState,
+) -> bbb_control::DebugSampleState {
+    bbb_control::DebugSampleState {
+        sample_len: state.sample_len,
+        sample_type: state.sample_type.clone(),
+    }
+}
+
+fn control_game_rule_values_state(
+    state: &bbb_world::GameRuleValuesState,
+) -> bbb_control::GameRuleValuesState {
+    bbb_control::GameRuleValuesState {
+        values: state.len(),
+    }
+}
+
+fn control_game_test_highlight_pos_state(
+    state: &bbb_world::GameTestHighlightPosState,
+) -> bbb_control::GameTestHighlightPosState {
+    bbb_control::GameTestHighlightPosState {
+        absolute_pos: state.absolute_pos,
+        relative_pos: state.relative_pos,
+    }
+}
+
+fn control_test_instance_block_status_state(
+    state: &bbb_world::TestInstanceBlockStatusState,
+) -> bbb_control::TestInstanceBlockStatusState {
+    bbb_control::TestInstanceBlockStatusState {
+        status: state.status.clone(),
+        size: state.size.map(control_debug_vec3i_state),
+    }
+}
+
+fn control_debug_vec3i_state(pos: bbb_world::DebugVec3iState) -> bbb_control::NetVec3i {
+    bbb_control::NetVec3i {
+        x: pos.x,
+        y: pos.y,
+        z: pos.z,
     }
 }
 
