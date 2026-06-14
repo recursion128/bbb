@@ -156,6 +156,9 @@ pub(crate) fn terrain_fluid_state(
     let kind = match block_name? {
         "minecraft:water" => TerrainFluidKind::Water,
         "minecraft:lava" => TerrainFluidKind::Lava,
+        name if is_fixed_source_water_block_name(name) => {
+            return Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+        }
         _ if is_waterlogged(properties) => {
             return Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
         }
@@ -177,6 +180,17 @@ fn is_waterlogged(properties: &BTreeMap<String, String>) -> bool {
     properties
         .get("waterlogged")
         .is_some_and(|value| value == "true")
+}
+
+fn is_fixed_source_water_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:bubble_column"
+            | "minecraft:seagrass"
+            | "minecraft:tall_seagrass"
+            | "minecraft:kelp"
+            | "minecraft:kelp_plant"
+    )
 }
 
 fn is_invisible_render_block_name(name: &str) -> bool {
@@ -290,6 +304,18 @@ mod tests {
             ),
             None
         );
+        for name in [
+            "minecraft:bubble_column",
+            "minecraft:seagrass",
+            "minecraft:tall_seagrass",
+            "minecraft:kelp",
+            "minecraft:kelp_plant",
+        ] {
+            assert_eq!(
+                terrain_fluid_state(Some(name), &BTreeMap::new()),
+                Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
+            );
+        }
     }
 
     #[test]
