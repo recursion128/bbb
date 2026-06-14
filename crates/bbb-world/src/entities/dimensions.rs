@@ -8,6 +8,7 @@ use super::EntityVec3;
 
 const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
 const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
+const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
 const VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID: i32 = 20;
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
@@ -15,6 +16,7 @@ const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
 const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 const VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID: i32 = 60;
+const VANILLA_ENTITY_TYPE_GLOW_SQUID_ID: i32 = 61;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
 const VANILLA_ENTITY_TYPE_HUSK_ID: i32 = 67;
 const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
@@ -33,6 +35,8 @@ const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
 const VANILLA_ENTITY_TYPE_SALMON_ID: i32 = 110;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
+const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
+const VANILLA_ENTITY_TYPE_TURTLE_ID: i32 = 137;
 const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
 const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
 const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
@@ -329,12 +333,16 @@ fn baby_pick_bounds(
         }
         VANILLA_ENTITY_TYPE_PIGLIN_ID => entity_data_bool(data_values, PIGLIN_BABY_DATA_ID, false),
         VANILLA_ENTITY_TYPE_ARMADILLO_ID
+        | VANILLA_ENTITY_TYPE_AXOLOTL_ID
         | VANILLA_ENTITY_TYPE_CHICKEN_ID
         | VANILLA_ENTITY_TYPE_COW_ID
         | VANILLA_ENTITY_TYPE_FOX_ID
+        | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
         | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
         | VANILLA_ENTITY_TYPE_PIG_ID
         | VANILLA_ENTITY_TYPE_RABBIT_ID
+        | VANILLA_ENTITY_TYPE_SQUID_ID
+        | VANILLA_ENTITY_TYPE_TURTLE_ID
         | VANILLA_ENTITY_TYPE_VILLAGER_ID
         | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => {
             entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
@@ -363,6 +371,13 @@ fn baby_pick_bounds(
             vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(FOX_BABY_SCALE)
         }
         VANILLA_ENTITY_TYPE_RABBIT_ID => EntityPickBoundsState::from_base_size(0.24, 0.4, 0.0),
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID => EntityPickBoundsState::from_base_size(0.5, 0.25, 0.0),
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID | VANILLA_ENTITY_TYPE_SQUID_ID => {
+            EntityPickBoundsState::from_base_size(0.5, 0.63, 0.0)
+        }
+        VANILLA_ENTITY_TYPE_TURTLE_ID => {
+            vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(0.3)
+        }
         _ => vanilla_pick_bounds_for_type(entity_type_id)?
             .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE),
     })
