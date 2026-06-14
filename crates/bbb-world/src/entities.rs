@@ -22,8 +22,8 @@ mod store;
 mod updates;
 
 pub(crate) use components::{
-    EntityAttributes, EntityEquipment, EntityIdentity, EntityLeash, EntityMetadata, EntityMount,
-    EntityTransform, EntityTransientEvents,
+    EntityAttributes, EntityDamage, EntityEquipment, EntityIdentity, EntityLeash, EntityMetadata,
+    EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
 };
 use movement::entity_vec3;
 use status::{EntityDamageEventState, MobEffectState};

@@ -78,10 +78,10 @@ impl WorldStore {
 
     pub fn apply_update_mob_effect(&mut self, packet: ProtocolUpdateMobEffect) -> bool {
         self.counters.update_mob_effect_packets += 1;
-        let Some(()) = self.entities.with_mut(packet.entity_id, |entity| {
-            entity
-                .mob_effects
-                .insert(packet.effect_id, MobEffectState::from(packet));
+        let entity_id = packet.entity_id;
+        let effect = MobEffectState::from(packet);
+        let Some(()) = self.entities.with_mob_effects_mut(entity_id, |effects| {
+            effects.effects.insert(effect.effect_id, effect);
         }) else {
             return false;
         };
@@ -91,9 +91,12 @@ impl WorldStore {
 
     pub fn apply_remove_mob_effect(&mut self, packet: ProtocolRemoveMobEffect) -> bool {
         self.counters.remove_mob_effect_packets += 1;
-        let Some(removed) = self.entities.with_mut(packet.entity_id, |entity| {
-            entity.mob_effects.remove(&packet.effect_id).is_some()
-        }) else {
+        let Some(removed) = self
+            .entities
+            .with_mob_effects_mut(packet.entity_id, |effects| {
+                effects.effects.remove(&packet.effect_id).is_some()
+            })
+        else {
             return false;
         };
         self.update_active_mob_effect_count();
@@ -102,8 +105,10 @@ impl WorldStore {
 
     pub fn apply_damage_event(&mut self, packet: ProtocolDamageEvent) -> bool {
         self.counters.damage_event_packets += 1;
-        let Some(()) = self.entities.with_mut(packet.entity_id, |entity| {
-            entity.last_damage = Some(EntityDamageEventState::from(packet));
+        let entity_id = packet.entity_id;
+        let damage_event = EntityDamageEventState::from(packet);
+        let Some(()) = self.entities.with_damage_mut(entity_id, |damage| {
+            damage.last_damage = Some(damage_event);
         }) else {
             return false;
         };
@@ -138,11 +143,7 @@ impl WorldStore {
     }
 
     pub(crate) fn update_active_mob_effect_count(&mut self) {
-        self.counters.active_mob_effects_tracked = self
-            .entities
-            .iter()
-            .map(|entity| entity.mob_effects.len())
-            .sum();
+        self.counters.active_mob_effects_tracked = self.entities.total_mob_effects();
     }
 }
 
@@ -207,6 +208,10 @@ mod tests {
         assert!(effect.visible);
         assert!(!effect.show_icon);
         assert!(effect.blend);
+        assert_eq!(
+            store.entities.mob_effects(7).unwrap().effects.get(&3),
+            Some(effect)
+        );
         assert_eq!(store.counters().update_mob_effect_packets, 1);
         assert_eq!(store.counters().active_mob_effects_tracked, 1);
 
@@ -225,6 +230,7 @@ mod tests {
             effect_id: 3,
         }));
         assert!(store.entity_effect(7, 3).is_none());
+        assert!(store.entities.mob_effects(7).unwrap().effects.is_empty());
         assert_eq!(store.counters().remove_mob_effect_packets, 1);
         assert_eq!(store.counters().active_mob_effects_tracked, 0);
     }
@@ -258,6 +264,7 @@ mod tests {
                 z: 3.0,
             })
         );
+        assert_eq!(store.entities.damage(7).unwrap().last_damage, Some(*damage));
         assert_eq!(store.counters().damage_event_packets, 1);
         assert_eq!(store.counters().damage_events_applied, 1);
 

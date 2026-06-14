@@ -1,9 +1,12 @@
+use std::collections::BTreeMap;
+
 use bbb_protocol::packets::{
     AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
     EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
 };
 use uuid::Uuid;
 
+use super::status::{EntityDamageEventState, MobEffectState};
 use super::{EntityState, EntityVec3};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,6 +59,16 @@ pub(crate) struct EntityMount {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EntityLeash {
     pub(crate) holder_id: Option<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct EntityMobEffects {
+    pub(crate) effects: BTreeMap<i32, MobEffectState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityDamage {
+    pub(crate) last_damage: Option<EntityDamageEventState>,
 }
 
 impl From<&EntityState> for EntityIdentity {
@@ -134,6 +147,22 @@ impl From<&EntityState> for EntityLeash {
     }
 }
 
+impl From<&EntityState> for EntityMobEffects {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            effects: state.mob_effects.clone(),
+        }
+    }
+}
+
+impl From<&EntityState> for EntityDamage {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            last_damage: state.last_damage,
+        }
+    }
+}
+
 impl EntityTransform {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.position = self.position;
@@ -182,5 +211,17 @@ impl EntityMount {
 impl EntityLeash {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.leash_holder_id = self.holder_id;
+    }
+}
+
+impl EntityMobEffects {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.mob_effects = self.effects;
+    }
+}
+
+impl EntityDamage {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.last_damage = self.last_damage;
     }
 }

@@ -4,8 +4,9 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{
-    EntityAttributes, EntityEquipment, EntityIdentity, EntityLeash, EntityMetadata, EntityMount,
-    EntityState, EntityTransform, EntityTransformState, EntityTransientEvents,
+    EntityAttributes, EntityDamage, EntityEquipment, EntityIdentity, EntityLeash, EntityMetadata,
+    EntityMobEffects, EntityMount, EntityState, EntityTransform, EntityTransformState,
+    EntityTransientEvents,
 };
 
 pub(crate) struct EntityStore {
@@ -37,6 +38,8 @@ impl EntityStore {
             EntityTransientEvents::from(&state),
             EntityMount::from(&state),
             EntityLeash::from(&state),
+            EntityMobEffects::from(&state),
+            EntityDamage::from(&state),
             state.clone(),
         ));
         self.by_protocol_id.insert(id, entity);
@@ -92,6 +95,24 @@ impl EntityStore {
             .get::<&EntityLeash>(entity)
             .ok()
             .map(|leash| *leash)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn mob_effects(&self, id: i32) -> Option<EntityMobEffects> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityMobEffects>(entity)
+            .ok()
+            .map(|effects| (*effects).clone())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn damage(&self, id: i32) -> Option<EntityDamage> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityDamage>(entity)
+            .ok()
+            .map(|damage| *damage)
     }
 
     pub(crate) fn transform_states(&self) -> Vec<EntityTransformState> {
@@ -256,6 +277,34 @@ impl EntityStore {
         Some(result)
     }
 
+    pub(crate) fn with_mob_effects_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityMobEffects) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut effects = self.ecs.get::<&mut EntityMobEffects>(entity).ok()?;
+        let result = update(&mut effects);
+        let snapshot_effects = (*effects).clone();
+        drop(effects);
+        self.sync_mob_effects_to_state(entity, snapshot_effects);
+        Some(result)
+    }
+
+    pub(crate) fn with_damage_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityDamage) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut damage = self.ecs.get::<&mut EntityDamage>(entity).ok()?;
+        let result = update(&mut damage);
+        let snapshot_damage = *damage;
+        drop(damage);
+        self.sync_damage_to_state(entity, snapshot_damage);
+        Some(result)
+    }
+
     pub(crate) fn for_each_mount_mut(&mut self, mut update: impl FnMut(i32, &mut EntityMount)) {
         let ids = self.order.clone();
         for id in ids {
@@ -272,6 +321,15 @@ impl EntityStore {
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &EntityState> {
         self.snapshots.iter()
+    }
+
+    pub(crate) fn total_mob_effects(&self) -> usize {
+        self.order
+            .iter()
+            .filter_map(|id| self.by_protocol_id.get(id).copied())
+            .filter_map(|entity| self.ecs.get::<&EntityMobEffects>(entity).ok())
+            .map(|effects| effects.effects.len())
+            .sum()
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -355,6 +413,12 @@ impl EntityStore {
         if let Ok(mut leash) = self.ecs.get::<&mut EntityLeash>(entity) {
             *leash = EntityLeash::from(state);
         }
+        if let Ok(mut effects) = self.ecs.get::<&mut EntityMobEffects>(entity) {
+            *effects = EntityMobEffects::from(state);
+        }
+        if let Ok(mut damage) = self.ecs.get::<&mut EntityDamage>(entity) {
+            *damage = EntityDamage::from(state);
+        }
     }
 
     fn sync_transform_to_state(&mut self, entity: Entity, transform: EntityTransform) {
@@ -422,6 +486,26 @@ impl EntityStore {
             return;
         };
         leash.write_to_state(&mut state);
+        let snapshot = (*state).clone();
+        drop(state);
+        self.update_snapshot(snapshot);
+    }
+
+    fn sync_mob_effects_to_state(&mut self, entity: Entity, effects: EntityMobEffects) {
+        let Ok(mut state) = self.ecs.get::<&mut EntityState>(entity) else {
+            return;
+        };
+        effects.write_to_state(&mut state);
+        let snapshot = (*state).clone();
+        drop(state);
+        self.update_snapshot(snapshot);
+    }
+
+    fn sync_damage_to_state(&mut self, entity: Entity, damage: EntityDamage) {
+        let Ok(mut state) = self.ecs.get::<&mut EntityState>(entity) else {
+            return;
+        };
+        damage.write_to_state(&mut state);
         let snapshot = (*state).clone();
         drop(state);
         self.update_snapshot(snapshot);
