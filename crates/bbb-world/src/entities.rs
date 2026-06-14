@@ -23,7 +23,7 @@ mod updates;
 
 pub(crate) use components::{
     EntityAttributes, EntityDamage, EntityEquipment, EntityIdentity, EntityLeash, EntityMetadata,
-    EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
+    EntityMinecartLerp, EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
 };
 use movement::entity_vec3;
 use status::{EntityDamageEventState, MobEffectState};
@@ -169,8 +169,8 @@ impl WorldStore {
             let mut stack_shrank = false;
             let keep_entity = self
                 .entities
-                .with_mut(packet.item_id, |entity| {
-                    if let Some(stack) = item_entity_stack_mut(entity) {
+                .with_metadata_mut(packet.item_id, |metadata| {
+                    if let Some(stack) = item_entity_stack_mut(&mut metadata.data_values) {
                         if stack.count > 0 && packet.amount > 0 {
                             stack.count = stack.count.saturating_sub(packet.amount).max(0);
                             stack_shrank = true;
@@ -231,7 +231,7 @@ impl WorldStore {
         removed
     }
 
-    pub fn probe_entity(&self, id: i32) -> Option<&EntityState> {
+    pub fn probe_entity(&self, id: i32) -> Option<EntityState> {
         self.entities.get(id)
     }
 
@@ -260,8 +260,10 @@ impl WorldStore {
     }
 }
 
-fn item_entity_stack_mut(entity: &mut EntityState) -> Option<&mut ProtocolItemStackSummary> {
-    entity.data_values.iter_mut().find_map(|value| {
+fn item_entity_stack_mut(
+    data_values: &mut [ProtocolEntityDataValue],
+) -> Option<&mut ProtocolItemStackSummary> {
+    data_values.iter_mut().find_map(|value| {
         if value.data_id == VANILLA_ITEM_ENTITY_STACK_DATA_ID {
             if let EntityDataValueKind::ItemStack(stack) = &mut value.value {
                 return Some(stack);

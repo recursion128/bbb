@@ -837,6 +837,7 @@ fn minecart_along_track_updates_entity_from_latest_step() {
     assert_eq!(entity.y_rot, 90.0);
     assert_eq!(entity.x_rot, 5.0);
     assert_eq!(entity.minecart_lerp_steps.len(), 2);
+    assert_eq!(store.entities.minecart_lerp(10).unwrap().steps.len(), 2);
 
     assert!(
         store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {
@@ -847,6 +848,7 @@ fn minecart_along_track_updates_entity_from_latest_step() {
         })
     );
     assert_eq!(store.probe_entity(10).unwrap().minecart_lerp_steps.len(), 1);
+    assert_eq!(store.entities.minecart_lerp(10).unwrap().steps.len(), 1);
 
     assert!(
         !store.apply_move_minecart_along_track(ProtocolMoveMinecartAlongTrack {

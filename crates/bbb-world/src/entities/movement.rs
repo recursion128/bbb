@@ -87,17 +87,16 @@ impl WorldStore {
                 return false;
             };
         }
-        let Some(()) = self.entities.with_mut(packet.entity_id, |entity| {
-            entity.minecart_lerp_steps = packet.lerp_steps;
-        }) else {
+        let Some(()) = self
+            .entities
+            .with_minecart_lerp_mut(packet.entity_id, |lerp| {
+                lerp.steps = packet.lerp_steps;
+            })
+        else {
             return false;
         };
         self.counters.minecart_moves_applied += 1;
-        self.counters.minecart_lerp_steps_tracked = self
-            .entities
-            .iter()
-            .map(|entity| entity.minecart_lerp_steps.len())
-            .sum();
+        self.counters.minecart_lerp_steps_tracked = self.entities.total_minecart_lerp_steps();
         true
     }
 

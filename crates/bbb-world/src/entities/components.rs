@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::packets::{
     AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
-    EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+    EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, MinecartStep as ProtocolMinecartStep,
 };
 use uuid::Uuid;
 
@@ -69,6 +69,11 @@ pub(crate) struct EntityMobEffects {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct EntityDamage {
     pub(crate) last_damage: Option<EntityDamageEventState>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EntityMinecartLerp {
+    pub(crate) steps: Vec<ProtocolMinecartStep>,
 }
 
 impl From<&EntityState> for EntityIdentity {
@@ -163,6 +168,14 @@ impl From<&EntityState> for EntityDamage {
     }
 }
 
+impl From<&EntityState> for EntityMinecartLerp {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            steps: state.minecart_lerp_steps.clone(),
+        }
+    }
+}
+
 impl EntityTransform {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.position = self.position;
@@ -223,5 +236,11 @@ impl EntityMobEffects {
 impl EntityDamage {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.last_damage = self.last_damage;
+    }
+}
+
+impl EntityMinecartLerp {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.minecart_lerp_steps = self.steps;
     }
 }

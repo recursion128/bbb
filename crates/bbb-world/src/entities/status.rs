@@ -124,18 +124,22 @@ impl WorldStore {
         self.cooldowns.get(cooldown_group)
     }
 
-    pub fn entity_effects(&self, entity_id: i32) -> Option<&BTreeMap<i32, MobEffectState>> {
-        self.probe_entity(entity_id)
-            .map(|entity| &entity.mob_effects)
+    pub fn entity_effects(&self, entity_id: i32) -> Option<BTreeMap<i32, MobEffectState>> {
+        self.entities
+            .mob_effects(entity_id)
+            .map(|effects| effects.effects)
     }
 
-    pub fn entity_effect(&self, entity_id: i32, effect_id: i32) -> Option<&MobEffectState> {
-        self.probe_entity(entity_id)?.mob_effects.get(&effect_id)
+    pub fn entity_effect(&self, entity_id: i32, effect_id: i32) -> Option<MobEffectState> {
+        self.entities
+            .mob_effects(entity_id)?
+            .effects
+            .get(&effect_id)
+            .copied()
     }
 
-    pub fn entity_last_damage(&self, entity_id: i32) -> Option<&EntityDamageEventState> {
-        self.probe_entity(entity_id)
-            .and_then(|entity| entity.last_damage.as_ref())
+    pub fn entity_last_damage(&self, entity_id: i32) -> Option<EntityDamageEventState> {
+        self.entities.damage(entity_id)?.last_damage
     }
 
     fn update_cooldown_count(&mut self) {
@@ -210,7 +214,7 @@ mod tests {
         assert!(effect.blend);
         assert_eq!(
             store.entities.mob_effects(7).unwrap().effects.get(&3),
-            Some(effect)
+            Some(&effect)
         );
         assert_eq!(store.counters().update_mob_effect_packets, 1);
         assert_eq!(store.counters().active_mob_effects_tracked, 1);
@@ -264,7 +268,7 @@ mod tests {
                 z: 3.0,
             })
         );
-        assert_eq!(store.entities.damage(7).unwrap().last_damage, Some(*damage));
+        assert_eq!(store.entities.damage(7).unwrap().last_damage, Some(damage));
         assert_eq!(store.counters().damage_event_packets, 1);
         assert_eq!(store.counters().damage_events_applied, 1);
 
