@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use super::EntityVec3;
 
 const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
+const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
+const VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID: i32 = 20;
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
@@ -57,6 +59,8 @@ const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 const ARMOR_STAND_WIDTH: f32 = 0.5;
 const ARMOR_STAND_HEIGHT: f32 = 1.975;
 const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
+const CAMEL_SITTING_HEIGHT_DIFFERENCE: f32 = 1.43;
+const CAMEL_BABY_SCALE: f32 = 0.6;
 const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
 const GOAT_BABY_SCALE: f32 = 0.55;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
@@ -70,6 +74,7 @@ const VANILLA_POSE_SPIN_ATTACK_ID: i32 = 4;
 const VANILLA_POSE_CROUCHING_ID: i32 = 5;
 const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
 const VANILLA_POSE_DYING_ID: i32 = 7;
+const VANILLA_POSE_SITTING_ID: i32 = 10;
 const VANILLA_POSE_EMERGING_ID: i32 = 13;
 const VANILLA_POSE_DIGGING_ID: i32 = 14;
 const SNIFFER_STATE_DATA_ID: u8 = 18;
@@ -146,6 +151,10 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         living_sleeping_pick_bounds()
     } else if is_warden_fixed_pose(entity_type_id, data_values) {
         EntityPickBoundsState::from_base_size(0.9, 1.0, 0.0)
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
+    {
+        camel_pick_bounds(entity_type_id, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID {
         goat_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SNIFFER_ID {
@@ -231,6 +240,26 @@ fn avatar_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState 
 
 fn living_sleeping_pick_bounds() -> EntityPickBoundsState {
     EntityPickBoundsState::from_base_size(0.2, 0.2, 0.0)
+}
+
+fn camel_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> EntityPickBoundsState {
+    let height = if entity_data_pose(data_values) == VANILLA_POSE_SITTING_ID {
+        2.375 - CAMEL_SITTING_HEIGHT_DIFFERENCE
+    } else {
+        2.375
+    };
+    let bounds = EntityPickBoundsState::from_base_size(1.7, height, 0.0);
+
+    if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
+        && entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
+    {
+        bounds.scale_dimensions(CAMEL_BABY_SCALE)
+    } else {
+        bounds
+    }
 }
 
 fn goat_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {

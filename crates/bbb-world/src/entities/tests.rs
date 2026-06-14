@@ -1048,6 +1048,113 @@ fn warden_pick_bounds_follow_vanilla_pose_metadata() {
 }
 
 #[test]
+fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+    const ENTITY_DATA_POSE_ID: u8 = 6;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    const POSE_STANDING: i32 = 0;
+    const POSE_SITTING: i32 = 10;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(43, 19));
+    store.apply_add_entity(protocol_add_entity_with_type(44, 20));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(43),
+        Some(EntityPickBoundsState::from_base_size(1.7, 2.375, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 43,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(43),
+        Some(EntityPickBoundsState::from_base_size(
+            1.7,
+            2.375 - 1.43,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 43,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(43),
+        Some(EntityPickBoundsState::from_base_size(
+            1.7 * 0.6,
+            (2.375 - 1.43) * 0.6,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 43,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(43),
+        Some(EntityPickBoundsState::from_base_size(
+            1.7 * 0.6 * 2.0,
+            (2.375 - 1.43) * 0.6 * 2.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 43,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(43),
+        Some(EntityPickBoundsState::from_base_size(
+            1.7 * 0.6 * 2.0,
+            2.375 * 0.6 * 2.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 44,
+        values: vec![
+            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
+        ],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(44),
+        Some(EntityPickBoundsState::from_base_size(
+            1.7,
+            2.375 - 1.43,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 44,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(44),
+        Some(EntityPickBoundsState::from_base_size(
+            1.7 * 2.0,
+            (2.375 - 1.43) * 2.0,
+            0.0,
+        ))
+    );
+}
+
+#[test]
 fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const ENTITY_DATA_POSE_ID: u8 = 6;
