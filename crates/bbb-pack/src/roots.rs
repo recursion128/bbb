@@ -4,9 +4,10 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    atlas_sources::{load_atlas_texture_entries, AtlasTextureEntry, ResourceLocation},
+    atlas_sources::{load_atlas_texture_entries, AtlasTextureEntry},
     block_models::BlockModelCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
+    resources::{PackResourceStack, ResourceLocation},
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
 };
@@ -19,6 +20,8 @@ pub struct PackRoots {
     pub mc_code_root: PathBuf,
     pub sources_dir: PathBuf,
     pub assets_dir: PathBuf,
+    #[serde(default)]
+    pub resource_pack_dirs: Vec<PathBuf>,
 }
 
 impl PackRoots {
@@ -41,7 +44,23 @@ impl PackRoots {
             mc_code_root,
             sources_dir,
             assets_dir,
+            resource_pack_dirs: Vec::new(),
         })
+    }
+
+    pub fn with_resource_pack_dirs(
+        mut self,
+        dirs: impl IntoIterator<Item = impl Into<PathBuf>>,
+    ) -> Self {
+        self.resource_pack_dirs = dirs.into_iter().map(Into::into).collect();
+        self
+    }
+
+    pub fn resource_stack(&self) -> PackResourceStack {
+        let mut roots = Vec::with_capacity(1 + self.resource_pack_dirs.len());
+        roots.push(self.sources_dir.clone());
+        roots.extend(self.resource_pack_dirs.iter().cloned());
+        PackResourceStack::from_roots(roots)
     }
 
     pub fn vanilla_source(&self, relative: impl AsRef<Path>) -> PathBuf {

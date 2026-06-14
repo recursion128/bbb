@@ -5,6 +5,7 @@ mod colors;
 mod exports;
 mod image;
 mod mipmap;
+mod resources;
 mod roots;
 mod sounds;
 mod sprites;

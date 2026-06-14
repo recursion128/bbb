@@ -6,7 +6,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::atlas_sources::ResourceLocation;
+use crate::resources::ResourceLocation;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SoundCatalog {

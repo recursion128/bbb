@@ -9,6 +9,7 @@ use regex::Regex;
 use serde::Deserialize;
 
 use crate::{
+    resources::{validate_resource_path, PackResourceStack, ResourceLocation},
     roots::PackRoots,
     sprites::{SpriteImage, SpriteSource},
 };
@@ -17,73 +18,89 @@ pub(crate) fn load_atlas_texture_entries(
     roots: &PackRoots,
     atlas_name: &str,
 ) -> Result<Vec<AtlasTextureEntry>> {
-    let path = roots.atlas_definition(atlas_name);
-    let bytes = std::fs::read(&path).with_context(|| format!("read atlas {}", path.display()))?;
-    let atlas: RawAtlas = serde_json::from_slice(&bytes)
-        .with_context(|| format!("parse atlas {}", path.display()))?;
-
+    let atlas_location = atlas_definition_location(atlas_name)?;
+    let stack = roots.resource_stack();
+    let atlas_resources = stack.get_resource_stack(&atlas_location);
+    if atlas_resources.is_empty() {
+        bail!("missing atlas {atlas_name}");
+    }
     let loader = AtlasTextureLoader::new(roots);
     let mut entries = Vec::new();
-    for source in atlas.sources {
-        match source.source_type.as_str() {
-            "minecraft:directory" => {
-                let source_path = source.required_path("source")?;
-                let prefix = source.required_field("prefix")?;
-                loader.append_directory_atlas_entries(&mut entries, source_path, prefix)?;
+
+    for resource in atlas_resources {
+        let bytes = std::fs::read(&resource.path)
+            .with_context(|| format!("read atlas {}", resource.path.display()))?;
+        let atlas: RawAtlas = serde_json::from_slice(&bytes)
+            .with_context(|| format!("parse atlas {}", resource.path.display()))?;
+
+        for source in atlas.sources {
+            match source.source_type.as_str() {
+                "minecraft:directory" => {
+                    let source_path = source.required_path("source")?;
+                    let prefix = source.required_field("prefix")?;
+                    loader.append_directory_atlas_entries(&mut entries, source_path, prefix)?;
+                }
+                "minecraft:single" => {
+                    let resource = source.required_location("resource")?;
+                    let sprite = source
+                        .optional_location("sprite")?
+                        .unwrap_or(resource.clone());
+                    loader.append_single_entry(&mut entries, &resource, &sprite)?;
+                }
+                "minecraft:paletted_permutations" => {
+                    let textures = source.required_locations("textures")?;
+                    let palette_key = source.required_location("palette_key")?;
+                    let permutations = source.required_permutations()?;
+                    let separator = source.separator.as_deref().unwrap_or("_");
+                    loader.append_paletted_permutation_entries(
+                        &mut entries,
+                        &textures,
+                        &palette_key,
+                        &permutations,
+                        separator,
+                    )?;
+                }
+                "minecraft:filter" => {
+                    let pattern = source.required_pattern()?;
+                    remove_matching_entries(&mut entries, &pattern)?;
+                }
+                "minecraft:unstitch" => {
+                    let resource = source.required_location("resource")?;
+                    let regions = source.required_unstitch_regions()?;
+                    let divisor_x = source.divisor_x.unwrap_or(1.0);
+                    let divisor_y = source.divisor_y.unwrap_or(1.0);
+                    loader.append_unstitch_entries(
+                        &mut entries,
+                        &resource,
+                        &regions,
+                        divisor_x,
+                        divisor_y,
+                    )?;
+                }
+                other => bail!("unsupported atlas source type {other:?} in atlas {atlas_name}"),
             }
-            "minecraft:single" => {
-                let resource = source.required_location("resource")?;
-                let sprite = source
-                    .optional_location("sprite")?
-                    .unwrap_or(resource.clone());
-                entries.push(AtlasTextureEntry::File {
-                    id: sprite.id(),
-                    path: loader.texture_path(&resource),
-                });
-            }
-            "minecraft:paletted_permutations" => {
-                let textures = source.required_locations("textures")?;
-                let palette_key = source.required_location("palette_key")?;
-                let permutations = source.required_permutations()?;
-                let separator = source.separator.as_deref().unwrap_or("_");
-                loader.append_paletted_permutation_entries(
-                    &mut entries,
-                    &textures,
-                    &palette_key,
-                    &permutations,
-                    separator,
-                )?;
-            }
-            "minecraft:filter" => {
-                let pattern = source.required_pattern()?;
-                remove_matching_entries(&mut entries, &pattern)?;
-            }
-            "minecraft:unstitch" => {
-                let resource = source.required_location("resource")?;
-                let regions = source.required_unstitch_regions()?;
-                let divisor_x = source.divisor_x.unwrap_or(1.0);
-                let divisor_y = source.divisor_y.unwrap_or(1.0);
-                loader.append_unstitch_entries(
-                    &mut entries,
-                    &resource,
-                    &regions,
-                    divisor_x,
-                    divisor_y,
-                )?;
-            }
-            other => bail!("unsupported atlas source type {other:?} in atlas {atlas_name}"),
         }
     }
     Ok(entries)
 }
 
-struct AtlasTextureLoader<'a> {
-    roots: &'a PackRoots,
+fn atlas_definition_location(atlas_name: &str) -> Result<ResourceLocation> {
+    let atlas_id = ResourceLocation::parse(atlas_name)?;
+    ResourceLocation::new(
+        atlas_id.namespace().to_string(),
+        format!("atlases/{}.json", atlas_id.path()),
+    )
 }
 
-impl<'a> AtlasTextureLoader<'a> {
-    fn new(roots: &'a PackRoots) -> Self {
-        Self { roots }
+struct AtlasTextureLoader {
+    stack: PackResourceStack,
+}
+
+impl AtlasTextureLoader {
+    fn new(roots: &PackRoots) -> Self {
+        Self {
+            stack: roots.resource_stack(),
+        }
     }
 
     fn append_directory_atlas_entries(
@@ -92,26 +109,34 @@ impl<'a> AtlasTextureLoader<'a> {
         source_path: &str,
         prefix: &str,
     ) -> Result<()> {
-        for (namespace, assets_dir) in self.namespace_assets_dirs()? {
-            let dir = assets_dir.join("textures").join(source_path);
-            if !dir.is_dir() {
-                continue;
-            }
-            let mut files = Vec::new();
-            collect_png_files(&dir, &mut files)
-                .with_context(|| format!("read atlas texture directory {}", dir.display()))?;
-            files.sort();
+        let texture_prefix = resource_texture_prefix(source_path);
+        for resource in self.stack.list_resources(&texture_prefix, ".png")? {
+            let id = directory_sprite_id(&resource.location, source_path, prefix)?;
+            append_or_replace_entry(
+                entries,
+                AtlasTextureEntry::File {
+                    id,
+                    path: resource.path,
+                },
+            );
+        }
+        Ok(())
+    }
 
-            for path in files {
-                let relative = path
-                    .strip_prefix(&dir)
-                    .with_context(|| format!("strip texture directory {}", dir.display()))?;
-                let relative = texture_id_suffix(relative)?;
-                entries.push(AtlasTextureEntry::File {
-                    id: format!("{namespace}:{prefix}{relative}"),
+    fn append_single_entry(
+        &self,
+        entries: &mut Vec<AtlasTextureEntry>,
+        resource: &ResourceLocation,
+        sprite: &ResourceLocation,
+    ) -> Result<()> {
+        if let Some(path) = self.texture_path(resource)? {
+            append_or_replace_entry(
+                entries,
+                AtlasTextureEntry::File {
+                    id: sprite.id(),
                     path,
-                });
-            }
+                },
+            );
         }
         Ok(())
     }
@@ -124,25 +149,30 @@ impl<'a> AtlasTextureLoader<'a> {
         permutations: &BTreeMap<String, ResourceLocation>,
         separator: &str,
     ) -> Result<()> {
-        let key = SpriteImage::from_png_file(palette_key.id(), self.texture_path(palette_key))?;
+        let key =
+            SpriteImage::from_png_file(palette_key.id(), self.required_texture_path(palette_key)?)?;
         let mut palettes = Vec::with_capacity(permutations.len());
         for (suffix, palette) in permutations {
             palettes.push((
                 suffix.as_str(),
-                SpriteImage::from_png_file(palette.id(), self.texture_path(palette))?,
+                SpriteImage::from_png_file(palette.id(), self.required_texture_path(palette)?)?,
             ));
         }
 
         for texture in textures {
-            let base = SpriteImage::from_png_file(texture.id(), self.texture_path(texture))?;
+            let base =
+                SpriteImage::from_png_file(texture.id(), self.required_texture_path(texture)?)?;
             for (suffix, palette) in &palettes {
                 let permutation = texture.with_suffix(&format!("{separator}{suffix}"))?;
-                entries.push(AtlasTextureEntry::Image(apply_palette_permutation(
-                    permutation.id(),
-                    &base,
-                    &key,
-                    palette,
-                )?));
+                append_or_replace_entry(
+                    entries,
+                    AtlasTextureEntry::Image(apply_palette_permutation(
+                        permutation.id(),
+                        &base,
+                        &key,
+                        palette,
+                    )?),
+                );
             }
         }
         Ok(())
@@ -156,56 +186,72 @@ impl<'a> AtlasTextureLoader<'a> {
         divisor_x: f64,
         divisor_y: f64,
     ) -> Result<()> {
-        let (source_width, source_height, rgba) = read_raw_png(self.texture_path(resource))?;
+        let (source_width, source_height, rgba) =
+            read_raw_png(self.required_texture_path(resource)?)?;
         for region in regions {
-            entries.push(AtlasTextureEntry::Image(unstitch_region(
-                source_width,
-                source_height,
-                &rgba,
-                region,
-                divisor_x,
-                divisor_y,
-            )?));
+            append_or_replace_entry(
+                entries,
+                AtlasTextureEntry::Image(unstitch_region(
+                    source_width,
+                    source_height,
+                    &rgba,
+                    region,
+                    divisor_x,
+                    divisor_y,
+                )?),
+            );
         }
         Ok(())
     }
 
-    fn namespace_assets_dirs(&self) -> Result<Vec<(String, PathBuf)>> {
-        let assets_root = self.roots.sources_dir.join("assets");
-        let mut dirs = Vec::new();
-        for entry in std::fs::read_dir(&assets_root)
-            .with_context(|| format!("read assets directory {}", assets_root.display()))?
-        {
-            let entry =
-                entry.with_context(|| format!("read assets entry in {}", assets_root.display()))?;
-            let path = entry.path();
-            if !entry
-                .file_type()
-                .with_context(|| format!("read file type {}", path.display()))?
-                .is_dir()
-            {
-                continue;
-            }
-            let namespace = entry
-                .file_name()
-                .into_string()
-                .map_err(|name| anyhow::anyhow!("non-utf8 asset namespace {name:?}"))?;
-            validate_resource_namespace(&namespace)?;
-            dirs.push((namespace, path));
-        }
-        dirs.sort_by(|left, right| left.0.cmp(&right.0));
-        Ok(dirs)
+    fn required_texture_path(&self, location: &ResourceLocation) -> Result<PathBuf> {
+        self.texture_path(location)?
+            .ok_or_else(|| anyhow::anyhow!("missing atlas texture {}", location.id()))
     }
 
-    fn namespace_assets_dir(&self, namespace: &str) -> PathBuf {
-        self.roots.sources_dir.join("assets").join(namespace)
+    fn texture_path(&self, location: &ResourceLocation) -> Result<Option<PathBuf>> {
+        let resource = texture_resource_location(location)?;
+        Ok(self
+            .stack
+            .get_resource(&resource)
+            .map(|resource| resource.path))
     }
+}
 
-    fn texture_path(&self, location: &ResourceLocation) -> PathBuf {
-        self.namespace_assets_dir(&location.namespace)
-            .join("textures")
-            .join(format!("{}.png", location.path))
+fn texture_resource_location(location: &ResourceLocation) -> Result<ResourceLocation> {
+    ResourceLocation::new(
+        location.namespace().to_string(),
+        format!("textures/{}.png", location.path()),
+    )
+}
+
+fn resource_texture_prefix(source_path: &str) -> String {
+    if source_path.is_empty() {
+        "textures".to_string()
+    } else {
+        format!("textures/{source_path}")
     }
+}
+
+fn directory_sprite_id(
+    resource: &ResourceLocation,
+    source_path: &str,
+    prefix: &str,
+) -> Result<String> {
+    let texture_prefix = resource_texture_prefix(source_path);
+    let texture_prefix = format!("{texture_prefix}/");
+    let suffix = resource
+        .path()
+        .strip_prefix(&texture_prefix)
+        .ok_or_else(|| anyhow::anyhow!("texture {} is outside atlas source", resource.id()))?;
+    let suffix = suffix
+        .strip_suffix(".png")
+        .ok_or_else(|| anyhow::anyhow!("texture {} is not a png", resource.id()))?;
+    ResourceLocation::new(
+        resource.namespace().to_string(),
+        format!("{prefix}{suffix}"),
+    )
+    .map(|location| location.id())
 }
 
 #[derive(Debug, Deserialize)]
@@ -365,11 +411,11 @@ impl IdentifierPattern {
     fn matches(&self, id: &ResourceLocation) -> bool {
         self.namespace
             .as_ref()
-            .map_or(true, |pattern| pattern.is_match(&id.namespace))
+            .map_or(true, |pattern| pattern.is_match(id.namespace()))
             && self
                 .path
                 .as_ref()
-                .map_or(true, |pattern| pattern.is_match(&id.path))
+                .map_or(true, |pattern| pattern.is_match(id.path()))
     }
 }
 
@@ -380,45 +426,6 @@ fn compile_optional_regex(pattern: Option<&str>, field: &str) -> Result<Option<R
                 .with_context(|| format!("compile atlas filter {field} regex {pattern:?}"))
         })
         .transpose()
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ResourceLocation {
-    namespace: String,
-    path: String,
-}
-
-impl ResourceLocation {
-    pub(crate) fn parse(value: &str) -> Result<Self> {
-        let (namespace, path) = value.split_once(':').unwrap_or(("minecraft", value));
-        validate_resource_namespace(namespace)?;
-        validate_resource_path(path)?;
-        Ok(Self {
-            namespace: namespace.to_string(),
-            path: path.to_string(),
-        })
-    }
-
-    pub(crate) fn id(&self) -> String {
-        format!("{}:{}", self.namespace, self.path)
-    }
-
-    pub(crate) fn namespace(&self) -> &str {
-        &self.namespace
-    }
-
-    pub(crate) fn path(&self) -> &str {
-        &self.path
-    }
-
-    fn with_suffix(&self, suffix: &str) -> Result<Self> {
-        let path = format!("{}{}", self.path, suffix);
-        validate_resource_path(&path)?;
-        Ok(Self {
-            namespace: self.namespace.clone(),
-            path,
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -447,6 +454,15 @@ impl AtlasTextureEntry {
             AtlasTextureEntry::File { id, path } => SpriteImage::from_png_file(id, path),
             AtlasTextureEntry::Image(image) => Ok(image),
         }
+    }
+}
+
+fn append_or_replace_entry(entries: &mut Vec<AtlasTextureEntry>, entry: AtlasTextureEntry) {
+    let id = entry.id().to_string();
+    if let Some(existing) = entries.iter_mut().find(|existing| existing.id() == id) {
+        *existing = entry;
+    } else {
+        entries.push(entry);
     }
 }
 
@@ -553,72 +569,6 @@ fn scaled_floor(value: f64, scale: f64, label: &str) -> Result<u32> {
         bail!("{label} is outside supported bounds");
     }
     Ok(scaled as u32)
-}
-
-fn collect_png_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
-    for entry in std::fs::read_dir(dir)
-        .with_context(|| format!("read texture directory {}", dir.display()))?
-    {
-        let entry =
-            entry.with_context(|| format!("read texture directory entry in {}", dir.display()))?;
-        let path = entry.path();
-        let file_type = entry
-            .file_type()
-            .with_context(|| format!("read file type {}", path.display()))?;
-        if file_type.is_dir() {
-            collect_png_files(&path, files)?;
-            continue;
-        }
-        if path.extension().and_then(|extension| extension.to_str()) == Some("png") {
-            files.push(path);
-        }
-    }
-    Ok(())
-}
-
-fn texture_id_suffix(path: &Path) -> Result<String> {
-    let mut parts = Vec::new();
-    for component in path.components() {
-        let std::path::Component::Normal(part) = component else {
-            bail!("invalid texture path component in {}", path.display());
-        };
-        let part = part
-            .to_str()
-            .ok_or_else(|| anyhow::anyhow!("non-utf8 texture path {}", path.display()))?;
-        parts.push(part.to_string());
-    }
-    let Some(last) = parts.last_mut() else {
-        bail!("empty texture path");
-    };
-    let Some(stem) = last.strip_suffix(".png") else {
-        bail!("texture path {} does not end with .png", path.display());
-    };
-    *last = stem.to_string();
-    Ok(parts.join("/"))
-}
-
-fn validate_resource_namespace(namespace: &str) -> Result<()> {
-    if namespace.is_empty() {
-        bail!("resource namespace must not be empty");
-    }
-    if !namespace.bytes().all(|byte| {
-        byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-' | b'.')
-    }) {
-        bail!("invalid resource namespace {namespace:?}");
-    }
-    Ok(())
-}
-
-fn validate_resource_path(path: &str) -> Result<()> {
-    if path.is_empty() || path.starts_with('/') || path.contains('\\') {
-        bail!("invalid resource path {path:?}");
-    }
-    for segment in path.split('/') {
-        if segment.is_empty() || matches!(segment, "." | "..") {
-            bail!("invalid resource path segment {segment:?} in {path:?}");
-        }
-    }
-    Ok(())
 }
 
 fn apply_palette_permutation(
@@ -793,6 +743,223 @@ mod tests {
     }
 
     #[test]
+    fn atlas_definition_stack_appends_sources_in_pack_order() {
+        let root = unique_temp_dir("atlas-stack-order");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        write_file(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png"),
+        );
+        write_file(
+            &overlay
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("deepslate.png"),
+        );
+        write_json(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("atlases")
+                .join("blocks.json"),
+            r#"{"sources":[{"type":"minecraft:single","resource":"minecraft:block/stone"}]}"#,
+        );
+        write_json(
+            &overlay
+                .join("assets")
+                .join("minecraft")
+                .join("atlases")
+                .join("blocks.json"),
+            r#"{"sources":[{"type":"minecraft:single","resource":"minecraft:block/deepslate"}]}"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+        let entries = load_atlas_texture_entries(&roots, "blocks").unwrap();
+        let ids = entries.iter().map(entry_id).collect::<Vec<_>>();
+
+        assert_eq!(
+            ids,
+            vec!["minecraft:block/stone", "minecraft:block/deepslate"]
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn atlas_duplicate_sprite_id_keeps_later_entry() {
+        let root = unique_temp_dir("atlas-duplicate-sprite");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        write_file(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png"),
+        );
+        let overlay_texture = overlay
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("dirt.png");
+        write_file(&overlay_texture);
+        write_json(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("atlases")
+                .join("blocks.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:single",
+                  "resource": "minecraft:block/stone",
+                  "sprite": "minecraft:block/shared"
+                }
+              ]
+            }"#,
+        );
+        write_json(
+            &overlay
+                .join("assets")
+                .join("minecraft")
+                .join("atlases")
+                .join("blocks.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:single",
+                  "resource": "minecraft:block/dirt",
+                  "sprite": "minecraft:block/shared"
+                }
+              ]
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+        let entries = load_atlas_texture_entries(&roots, "blocks").unwrap();
+
+        assert_eq!(
+            entries.iter().map(entry_id).collect::<Vec<_>>(),
+            vec!["minecraft:block/shared"]
+        );
+        assert!(entry_path(&entries[0]).ends_with(&overlay_texture));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn atlas_filter_removes_current_entry_but_later_source_can_readd() {
+        let root = unique_temp_dir("atlas-filter-readd");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        write_file(&assets_dir.join("textures").join("block").join("stone.png"));
+        let dirt = assets_dir.join("textures").join("block").join("dirt.png");
+        write_file(&dirt);
+        write_json(
+            &assets_dir.join("atlases").join("blocks.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:single",
+                  "resource": "minecraft:block/stone"
+                },
+                {
+                  "type": "minecraft:filter",
+                  "pattern": {
+                    "namespace": "minecraft",
+                    "path": "block/stone"
+                  }
+                },
+                {
+                  "type": "minecraft:single",
+                  "resource": "minecraft:block/dirt",
+                  "sprite": "minecraft:block/stone"
+                }
+              ]
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let entries = load_atlas_texture_entries(&roots, "blocks").unwrap();
+
+        assert_eq!(
+            entries.iter().map(entry_id).collect::<Vec<_>>(),
+            vec!["minecraft:block/stone"]
+        );
+        assert!(entry_path(&entries[0]).ends_with(&dirt));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn directory_source_uses_highest_precedence_texture_resource() {
+        let root = unique_temp_dir("atlas-directory-precedence");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        write_file(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png"),
+        );
+        let overlay_texture = overlay
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        write_file(&overlay_texture);
+        write_json(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("atlases")
+                .join("blocks.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "source": "block",
+                  "prefix": "block/"
+                }
+              ]
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+        let entries = load_atlas_texture_entries(&roots, "blocks").unwrap();
+
+        assert_eq!(
+            entries.iter().map(entry_id).collect::<Vec<_>>(),
+            vec!["minecraft:block/stone"]
+        );
+        assert!(entry_path(&entries[0]).ends_with(&overlay_texture));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn atlas_filter_without_pattern_rejects_source() {
         let root = unique_temp_dir("atlas-filter-missing-pattern");
         let assets_dir = root
@@ -884,6 +1051,13 @@ mod tests {
         }
     }
 
+    fn entry_path(entry: &AtlasTextureEntry) -> &Path {
+        match entry {
+            AtlasTextureEntry::File { path, .. } => path,
+            AtlasTextureEntry::Image(_) => panic!("expected file atlas texture entry"),
+        }
+    }
+
     fn unique_temp_dir(label: &str) -> PathBuf {
         let mut dir = std::env::temp_dir();
         let nanos = SystemTime::now()
@@ -897,5 +1071,15 @@ mod tests {
     fn write_rgba_png(path: &Path, width: u32, height: u32, rgba: &[u8]) {
         let image = image::RgbaImage::from_raw(width, height, rgba.to_vec()).unwrap();
         image.save(path).unwrap();
+    }
+
+    fn write_file(path: &Path) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, []).unwrap();
+    }
+
+    fn write_json(path: &Path, contents: &str) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, contents).unwrap();
     }
 }
