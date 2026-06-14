@@ -137,11 +137,8 @@ pub(super) fn apply_control_projection_event(
             sync_client_effect_counters(counters, world);
         }
         NetEvent::ProjectilePower(update) => {
-            counters.last_projectile_power = Some(bbb_control::ProjectilePowerState {
-                entity_id: update.entity_id,
-                acceleration_power: update.acceleration_power,
-            });
-            counters.projectile_power_packets += 1;
+            world.apply_projectile_power(update);
+            sync_entity_projectile_counters(counters, world);
         }
         NetEvent::DebugBlockValue(update) => {
             counters.last_debug_block_value = Some(bbb_control::DebugBlockValueState {
@@ -549,6 +546,25 @@ fn sync_client_effect_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.last_level_particles = world
         .last_level_particles()
         .map(control_level_particles_state);
+}
+
+fn sync_entity_projectile_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.projectile_power_packets = world_counters.projectile_power_packets;
+    counters.projectile_power_updates_applied = world_counters.projectile_power_updates_applied;
+    counters.projectile_power_updates_ignored = world_counters.projectile_power_updates_ignored;
+    counters.last_projectile_power = world
+        .last_projectile_power_update()
+        .map(control_projectile_power_update);
+}
+
+fn control_projectile_power_update(
+    state: &bbb_world::ProjectilePowerUpdateState,
+) -> bbb_control::ProjectilePowerState {
+    bbb_control::ProjectilePowerState {
+        entity_id: state.entity_id,
+        acceleration_power: state.acceleration_power,
+    }
 }
 
 fn control_explosion_state(state: &bbb_world::ExplosionEventState) -> bbb_control::ExplosionState {

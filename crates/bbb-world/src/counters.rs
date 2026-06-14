@@ -321,6 +321,12 @@ pub struct WorldCounters {
     #[serde(default)]
     pub level_particles_packets: usize,
     #[serde(default)]
+    pub projectile_power_packets: usize,
+    #[serde(default)]
+    pub projectile_power_updates_applied: usize,
+    #[serde(default)]
+    pub projectile_power_updates_ignored: usize,
+    #[serde(default)]
     pub waypoint_packets: usize,
     #[serde(default)]
     pub waypoints_tracked: usize,

@@ -16,20 +16,26 @@ mod components;
 mod metadata;
 mod movement;
 mod passengers;
+mod projectiles;
 pub(crate) mod state;
 mod status;
 mod store;
 mod updates;
 
 pub(crate) use components::{
-    EntityAttributes, EntityDamage, EntityEquipment, EntityIdentity, EntityLeash, EntityMetadata,
-    EntityMinecartLerp, EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
+    EntityAttributes, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount,
+    EntityTransform, EntityTransientEvents,
 };
 use movement::entity_vec3;
+use projectiles::initial_hurting_projectile_state;
 use status::{EntityDamageEventState, MobEffectState};
 pub(crate) use store::EntityStore;
 
+pub(crate) const VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID: i32 = 18;
+pub(crate) const VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID: i32 = 37;
 pub(crate) const VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID: i32 = 49;
+pub(crate) const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 pub(crate) const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 pub(crate) const VANILLA_ENTITY_TYPE_CHEST_MINECART_ID: i32 = 25;
 pub(crate) const VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID: i32 = 29;
@@ -37,7 +43,10 @@ pub(crate) const VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID: i32 = 56;
 pub(crate) const VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID: i32 = 65;
 pub(crate) const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 pub(crate) const VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID: i32 = 122;
+pub(crate) const VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID: i32 = 118;
 pub(crate) const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
+pub(crate) const VANILLA_ENTITY_TYPE_WIND_CHARGE_ID: i32 = 143;
+pub(crate) const VANILLA_ENTITY_TYPE_WITHER_SKULL_ID: i32 = 147;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
@@ -75,6 +84,20 @@ pub struct EntityState {
     pub last_damage: Option<EntityDamageEventState>,
     #[serde(default)]
     pub minecart_lerp_steps: Vec<ProtocolMinecartStep>,
+    #[serde(default)]
+    pub hurting_projectile: Option<HurtingProjectileState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct HurtingProjectileState {
+    pub acceleration_power: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ProjectilePowerUpdateState {
+    pub entity_id: i32,
+    pub acceleration_power: f64,
+    pub applied: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -147,6 +170,7 @@ impl WorldStore {
             mob_effects: BTreeMap::new(),
             last_damage: None,
             minecart_lerp_steps: Vec::new(),
+            hurting_projectile: initial_hurting_projectile_state(packet.entity_type_id),
         };
 
         self.entities.insert_or_replace(entity);
@@ -253,6 +277,16 @@ impl WorldStore {
 
     pub fn entity_count(&self) -> usize {
         self.entities.len()
+    }
+
+    pub fn hurting_projectile(&self, id: i32) -> Option<HurtingProjectileState> {
+        self.entities
+            .hurting_projectile(id)
+            .map(HurtingProjectileState::from)
+    }
+
+    pub fn last_projectile_power_update(&self) -> Option<&ProjectilePowerUpdateState> {
+        self.last_projectile_power.as_ref()
     }
 
     pub(crate) fn update_entity_count(&mut self) {

@@ -263,6 +263,10 @@ pub struct NetCounters {
     pub explosion_packets: usize,
     pub level_particles_packets: usize,
     pub projectile_power_packets: usize,
+    #[serde(default)]
+    pub projectile_power_updates_applied: usize,
+    #[serde(default)]
+    pub projectile_power_updates_ignored: usize,
     pub debug_block_value_packets: usize,
     pub debug_chunk_value_packets: usize,
     pub debug_entity_value_packets: usize,

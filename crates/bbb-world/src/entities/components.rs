@@ -7,7 +7,7 @@ use bbb_protocol::packets::{
 use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
-use super::{EntityState, EntityVec3};
+use super::{EntityState, EntityVec3, HurtingProjectileState};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EntityIdentity {
@@ -74,6 +74,11 @@ pub(crate) struct EntityDamage {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct EntityMinecartLerp {
     pub(crate) steps: Vec<ProtocolMinecartStep>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityHurtingProjectile {
+    pub(crate) acceleration_power: f64,
 }
 
 impl From<&EntityState> for EntityIdentity {
@@ -176,6 +181,22 @@ impl From<&EntityState> for EntityMinecartLerp {
     }
 }
 
+impl From<HurtingProjectileState> for EntityHurtingProjectile {
+    fn from(state: HurtingProjectileState) -> Self {
+        Self {
+            acceleration_power: state.acceleration_power,
+        }
+    }
+}
+
+impl From<EntityHurtingProjectile> for HurtingProjectileState {
+    fn from(projectile: EntityHurtingProjectile) -> Self {
+        Self {
+            acceleration_power: projectile.acceleration_power,
+        }
+    }
+}
+
 impl EntityTransform {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.position = self.position;
@@ -242,5 +263,11 @@ impl EntityDamage {
 impl EntityMinecartLerp {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.minecart_lerp_steps = self.steps;
+    }
+}
+
+impl EntityHurtingProjectile {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.hurting_projectile = Some(HurtingProjectileState::from(self));
     }
 }

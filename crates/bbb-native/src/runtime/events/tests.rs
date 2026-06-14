@@ -1512,7 +1512,7 @@ fn client_audio_events_update_snapshot_counters() {
 
 #[test]
 fn world_effect_events_update_snapshot_counters() {
-    let (tx, mut rx) = mpsc::channel(3);
+    let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Explosion(Explosion {
         center: ProtocolVec3d {
             x: 1.0,
@@ -1550,18 +1550,12 @@ fn world_effect_events_update_snapshot_counters() {
         },
     }))
     .unwrap();
-    tx.try_send(NetEvent::ProjectilePower(ProjectilePower {
-        entity_id: 123,
-        acceleration_power: 0.75,
-    }))
-    .unwrap();
-
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        3
+        2
     );
     assert_eq!(world.counters().explosion_packets, 1);
     assert_eq!(
@@ -1645,12 +1639,67 @@ fn world_effect_events_update_snapshot_counters() {
             raw_options_len: 2,
         })
     );
-    assert_eq!(counters.projectile_power_packets, 1);
+}
+
+#[test]
+fn projectile_power_updates_world_entity_state_and_snapshot_counters() {
+    const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
+
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::ProjectilePower(ProjectilePower {
+        entity_id: 123,
+        acceleration_power: 0.75,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ProjectilePower(ProjectilePower {
+        entity_id: 456,
+        acceleration_power: 0.25,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ProjectilePower(ProjectilePower {
+        entity_id: 404,
+        acceleration_power: 0.5,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_type(
+        123,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID,
+    ));
+    world.apply_add_entity(protocol_add_entity_with_type(456, 7));
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+    assert_eq!(
+        world.hurting_projectile(123),
+        Some(bbb_world::HurtingProjectileState {
+            acceleration_power: 0.75,
+        })
+    );
+    assert_eq!(world.hurting_projectile(456), None);
+    assert_eq!(world.counters().projectile_power_packets, 3);
+    assert_eq!(world.counters().projectile_power_updates_applied, 1);
+    assert_eq!(world.counters().projectile_power_updates_ignored, 2);
+    assert_eq!(
+        world.last_projectile_power_update(),
+        Some(&bbb_world::ProjectilePowerUpdateState {
+            entity_id: 404,
+            acceleration_power: 0.5,
+            applied: false,
+        })
+    );
+    assert_eq!(counters.projectile_power_packets, 3);
+    assert_eq!(counters.projectile_power_updates_applied, 1);
+    assert_eq!(counters.projectile_power_updates_ignored, 2);
     assert_eq!(
         counters.last_projectile_power,
         Some(bbb_control::ProjectilePowerState {
-            entity_id: 123,
-            acceleration_power: 0.75,
+            entity_id: 404,
+            acceleration_power: 0.5,
         })
     );
 }

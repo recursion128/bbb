@@ -4,10 +4,11 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{
-    EntityAttributes, EntityDamage, EntityEquipment, EntityIdentity, EntityLeash, EntityMetadata,
-    EntityMinecartLerp, EntityMobEffects, EntityMount, EntityState, EntityTransform,
-    EntityTransformState, EntityTransientEvents,
+    EntityAttributes, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount, EntityState,
+    EntityTransform, EntityTransformState, EntityTransientEvents,
 };
+use crate::entities::projectiles::entity_hurting_projectile_from_state;
 
 pub(crate) struct EntityStore {
     ecs: World,
@@ -44,6 +45,11 @@ impl EntityStore {
             EntityDamage::from(&state),
             EntityMinecartLerp::from(&state),
         ));
+        if let Some(projectile) =
+            entity_hurting_projectile_from_state(state.entity_type_id, state.hurting_projectile)
+        {
+            let _ = self.ecs.insert_one(entity, projectile);
+        }
         self.by_protocol_id.insert(id, entity);
     }
 
@@ -121,6 +127,14 @@ impl EntityStore {
             .get::<&EntityMinecartLerp>(entity)
             .ok()
             .map(|lerp| (*lerp).clone())
+    }
+
+    pub(crate) fn hurting_projectile(&self, id: i32) -> Option<EntityHurtingProjectile> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityHurtingProjectile>(entity)
+            .ok()
+            .map(|projectile| *projectile)
     }
 
     pub(crate) fn transform_states(&self) -> Vec<EntityTransformState> {
@@ -282,6 +296,17 @@ impl EntityStore {
         Some(result)
     }
 
+    pub(crate) fn with_hurting_projectile_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityHurtingProjectile) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut projectile = self.ecs.get::<&mut EntityHurtingProjectile>(entity).ok()?;
+        let result = update(&mut projectile);
+        Some(result)
+    }
+
     pub(crate) fn for_each_mount_mut(&mut self, mut update: impl FnMut(i32, &mut EntityMount)) {
         let ids = self.order.clone();
         for id in ids {
@@ -385,6 +410,27 @@ impl EntityStore {
         if let Ok(mut lerp) = self.ecs.get::<&mut EntityMinecartLerp>(entity) {
             *lerp = EntityMinecartLerp::from(state);
         }
+        self.sync_hurting_projectile_from_state(entity, state);
+    }
+
+    fn sync_hurting_projectile_from_state(&mut self, entity: Entity, state: &EntityState) {
+        if let Some(projectile) =
+            entity_hurting_projectile_from_state(state.entity_type_id, state.hurting_projectile)
+        {
+            let updated = {
+                if let Ok(mut existing) = self.ecs.get::<&mut EntityHurtingProjectile>(entity) {
+                    *existing = projectile;
+                    true
+                } else {
+                    false
+                }
+            };
+            if !updated {
+                let _ = self.ecs.insert_one(entity, projectile);
+            }
+        } else {
+            let _ = self.ecs.remove_one::<EntityHurtingProjectile>(entity);
+        }
     }
 
     fn project_entity(&self, entity: Entity) -> Option<EntityState> {
@@ -399,6 +445,7 @@ impl EntityStore {
         let effects = self.ecs.get::<&EntityMobEffects>(entity).ok()?;
         let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
         let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok()?;
+        let hurting_projectile = self.ecs.get::<&EntityHurtingProjectile>(entity).ok();
 
         let mut state = EntityState {
             id: identity.id,
@@ -424,6 +471,7 @@ impl EntityStore {
             mob_effects: BTreeMap::new(),
             last_damage: None,
             minecart_lerp_steps: Vec::new(),
+            hurting_projectile: None,
         };
         (*transform).write_to_state(&mut state);
         (*metadata).clone().write_to_state(&mut state);
@@ -435,6 +483,9 @@ impl EntityStore {
         (*effects).clone().write_to_state(&mut state);
         (*damage).write_to_state(&mut state);
         (*minecart_lerp).clone().write_to_state(&mut state);
+        if let Some(projectile) = hurting_projectile {
+            (*projectile).write_to_state(&mut state);
+        }
         Some(state)
     }
 }

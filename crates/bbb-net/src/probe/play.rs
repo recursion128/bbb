@@ -414,7 +414,9 @@ impl ProbeContext {
             PlayClientbound::SetChunkCacheRadius(update) => {
                 self.world.apply_set_chunk_cache_radius(update);
             }
-            PlayClientbound::ProjectilePower(_) => {}
+            PlayClientbound::ProjectilePower(update) => {
+                self.world.apply_projectile_power(update);
+            }
             PlayClientbound::Waypoint(update) => {
                 self.world.apply_waypoint(update);
             }

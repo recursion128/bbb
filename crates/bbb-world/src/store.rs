@@ -8,8 +8,8 @@ use crate::{
     ClientDebugQueryState, ClientEffectsState, ClientFeatureState, ClientHudState,
     ClientRecipesState, ClientUiState, ClientWaypointsState, CommandSuggestionsState,
     CommandTreeState, InventoryState, ItemCooldownState, LevelEventRecord, LocalPlayerState,
-    MapItemState, PlayerInfoState, RegistrySet, ScoreboardState, ServerPresentationState,
-    WorldBorderState, WorldCounters, WorldDimension, WorldLevelInfo,
+    MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet, ScoreboardState,
+    ServerPresentationState, WorldBorderState, WorldCounters, WorldDimension, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -79,6 +79,8 @@ pub struct WorldStore {
     pub(crate) local_player_id: Option<i32>,
     #[serde(default)]
     pub(crate) local_player_vehicle_id: Option<i32>,
+    #[serde(default)]
+    pub(crate) last_projectile_power: Option<ProjectilePowerUpdateState>,
     pub(crate) inventory: InventoryState,
     pub(crate) counters: WorldCounters,
 }
