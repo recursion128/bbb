@@ -947,6 +947,7 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
 #[test]
 fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order() {
     assert_eq!(ids::play::SERVERBOUND_ATTACK, 1);
+    assert_eq!(ids::play::SERVERBOUND_CHAT_COMMAND, 7);
     assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
     assert_eq!(ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY, 37);
 }
@@ -1097,6 +1098,21 @@ fn encodes_player_action_packet() {
     );
     assert_eq!(decoder.read_u8().unwrap(), 2);
     assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_chat_command_packet() {
+    let (id, payload) = encode_play_chat_command(&ChatCommand {
+        command: "give @p minecraft:stone".to_string(),
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHAT_COMMAND);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(
+        decoder.read_string(32767).unwrap(),
+        "give @p minecraft:stone"
+    );
     assert!(decoder.is_empty());
 }
 

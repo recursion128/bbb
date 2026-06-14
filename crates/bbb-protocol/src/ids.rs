@@ -204,6 +204,7 @@ pub mod play {
 
     pub const SERVERBOUND_ACCEPT_TELEPORTATION: i32 = 0;
     pub const SERVERBOUND_ATTACK: i32 = 1;
+    pub const SERVERBOUND_CHAT_COMMAND: i32 = 7;
     pub const SERVERBOUND_CHUNK_BATCH_RECEIVED: i32 = 11;
     pub const SERVERBOUND_CLIENT_COMMAND: i32 = 12;
     pub const SERVERBOUND_CLIENT_TICK_END: i32 = 13;

@@ -43,6 +43,11 @@ pub struct PlayerAction {
     pub sequence: i32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatCommand {
+    pub command: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AttackEntity {
     pub entity_id: i32,
@@ -359,6 +364,12 @@ pub fn encode_play_player_action(action: PlayerAction) -> (i32, Vec<u8>) {
     out.write_u8(action.direction.id());
     out.write_var_i32(action.sequence);
     (ids::play::SERVERBOUND_PLAYER_ACTION, out.into_inner())
+}
+
+pub fn encode_play_chat_command(packet: &ChatCommand) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_string(&packet.command);
+    (ids::play::SERVERBOUND_CHAT_COMMAND, out.into_inner())
 }
 
 pub fn encode_play_attack_entity(packet: AttackEntity) -> (i32, Vec<u8>) {

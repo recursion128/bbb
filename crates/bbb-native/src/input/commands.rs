@@ -1,9 +1,10 @@
 use bbb_control::{NetCounters, PlayerPose};
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    AttackEntity, CommandSuggestionRequest, Direction as ProtocolDirection, InteractEntity,
-    InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind,
-    PlayerCommand, PlayerCommandAction, PlayerInput, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    AttackEntity, ChatCommand, CommandSuggestionRequest, Direction as ProtocolDirection,
+    InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction,
+    PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem, UseItemOn,
+    Vec3d as ProtocolVec3d,
 };
 use bbb_world::BlockPos;
 use tokio::sync::mpsc;
@@ -105,6 +106,21 @@ pub(super) fn queue_player_action_command(
     };
     if tx.try_send(NetCommand::PlayerAction(action)).is_ok() {
         counters.player_action_commands_queued += 1;
+    }
+}
+
+fn queue_chat_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: impl Into<String>,
+) {
+    if let Some(tx) = net_commands {
+        let packet = ChatCommand {
+            command: command.into(),
+        };
+        if tx.try_send(NetCommand::ChatCommand(packet)).is_ok() {
+            counters.chat_command_commands_queued += 1;
+        }
     }
 }
 
@@ -290,8 +306,9 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
-        CommandSuggestionRequest, Direction as ProtocolDirection, InteractEntity, InteractionHand,
-        PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind, UseItemOn,
+        ChatCommand, CommandSuggestionRequest, Direction as ProtocolDirection, InteractEntity,
+        InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind,
+        UseItemOn,
     };
     use bbb_world::BlockPos;
 
@@ -311,6 +328,23 @@ mod tests {
             NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
                 id: 18,
                 command: "/give @p minecraft:stone".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn queues_chat_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_chat_command(&mut counters, &commands, "give @p minecraft:stone");
+
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatCommand(ChatCommand {
+                command: "give @p minecraft:stone".to_string(),
             })
         );
     }

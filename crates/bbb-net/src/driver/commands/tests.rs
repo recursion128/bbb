@@ -1,9 +1,10 @@
 use super::{
-    maybe_send_perform_respawn, send_attack_entity, send_command_suggestion_request,
-    send_container_button_click, send_container_click, send_container_close,
-    send_container_slot_state_changed, send_interact_entity, send_pick_item_from_block,
-    send_pick_item_from_entity, send_player_action, send_player_command, send_player_input_command,
-    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
+    maybe_send_perform_respawn, send_attack_entity, send_chat_command,
+    send_command_suggestion_request, send_container_button_click, send_container_click,
+    send_container_close, send_container_slot_state_changed, send_interact_entity,
+    send_pick_item_from_block, send_pick_item_from_entity, send_player_action, send_player_command,
+    send_player_input_command, send_set_held_slot_command, send_swing_command, send_use_item,
+    send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -13,7 +14,7 @@ use bbb_protocol::{
     codec::Decoder,
     ids,
     packets::{
-        AttackEntity, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+        AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
         ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedComponentPatch,
         HashedItemStack, HashedStack, InteractEntity, InteractionHand, PickItemFromEntity,
         PlayerAction, PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState, Vec3d,
@@ -129,6 +130,45 @@ async fn send_player_action_encodes_player_action_packet() {
             pos: bbb_protocol::packets::BlockPos { x: 1, y: 64, z: -2 },
             direction: bbb_protocol::packets::Direction::West,
             sequence: 9,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_chat_command_encodes_chat_command_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("chat command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_COMMAND);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decoder.read_string(32767).unwrap(),
+            "give @p minecraft:stone"
+        );
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_chat_command(
+        &mut conn,
+        ChatCommand {
+            command: "give @p minecraft:stone".to_string(),
         },
     )
     .await
