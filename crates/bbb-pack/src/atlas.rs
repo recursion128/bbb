@@ -381,6 +381,7 @@ mod tests {
             height: 1,
             transparency: SpriteTransparency::default(),
             animation: Some(animation.clone()),
+            animation_frames_rgba: vec![vec![255, 255, 255, 255]; 2],
             rgba: vec![255, 255, 255, 255],
         };
 

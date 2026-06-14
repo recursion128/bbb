@@ -586,6 +586,11 @@ mod tests {
         assert_eq!(water_animation.frame_count, 32);
         assert_eq!(water_animation.default_frame_time, 2);
         assert_eq!(water_animation.frames.len(), 32);
+        let water_image = roots
+            .load_atlas_texture_image("blocks", "minecraft:block/water_still")
+            .unwrap();
+        assert_eq!(water_image.animation_frames_rgba.len(), 32);
+        assert_eq!(water_image.frame_rgba(31).unwrap().len(), 16 * 16 * 4);
         let water_flow = sources
             .iter()
             .find(|source| source.id == "minecraft:block/water_flow")

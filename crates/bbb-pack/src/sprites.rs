@@ -46,6 +46,8 @@ pub struct SpriteImage {
     pub transparency: SpriteTransparency,
     #[serde(default)]
     pub animation: Option<SpriteAnimation>,
+    #[serde(default)]
+    pub animation_frames_rgba: Vec<Vec<u8>>,
     pub rgba: Vec<u8>,
 }
 
@@ -120,6 +122,7 @@ impl SpriteImage {
             height,
             transparency,
             animation,
+            animation_frames_rgba: Vec::new(),
             rgba,
         })
     }
@@ -136,12 +139,21 @@ impl SpriteImage {
         let (width, height, animation) = sprite_frame_metadata(path, image_width, image_height)?;
         let source_rgba = rgba.into_raw();
         let transparency = SpriteTransparency::from_rgba(&source_rgba);
+        let animation_frames_rgba = match animation.as_ref() {
+            Some(animation) => {
+                copy_animation_frames_rgba(&source_rgba, image_width, width, height, animation)?
+            }
+            None => Vec::new(),
+        };
         let rgba = if (width, height) == (image_width, image_height) {
             source_rgba
         } else {
             copy_first_frame_rgba(&source_rgba, image_width, width, height)?
         };
-        Self::new_with_transparency(id, width, height, rgba, transparency, animation)
+        let mut image =
+            Self::new_with_transparency(id, width, height, rgba, transparency, animation)?;
+        image.animation_frames_rgba = animation_frames_rgba;
+        Ok(image)
     }
 
     pub(crate) fn source(&self) -> SpriteSource {
@@ -151,6 +163,20 @@ impl SpriteImage {
             height: self.height,
             animation: self.animation.clone(),
         }
+    }
+
+    pub fn frame_rgba(&self, frame_index: u32) -> Option<&[u8]> {
+        if self.animation.is_some() {
+            return self
+                .animation_frames_rgba
+                .get(frame_index as usize)
+                .map(Vec::as_slice)
+                .or_else(|| {
+                    (frame_index == 0 && self.animation_frames_rgba.is_empty())
+                        .then_some(self.rgba.as_slice())
+                });
+        }
+        (frame_index == 0).then_some(self.rgba.as_slice())
     }
 }
 
@@ -284,14 +310,51 @@ fn copy_first_frame_rgba(
     frame_width: u32,
     frame_height: u32,
 ) -> Result<Vec<u8>> {
+    copy_frame_rgba(rgba, image_width, frame_width, frame_height, 0)
+}
+
+fn copy_animation_frames_rgba(
+    rgba: &[u8],
+    image_width: u32,
+    frame_width: u32,
+    frame_height: u32,
+    animation: &SpriteAnimation,
+) -> Result<Vec<Vec<u8>>> {
+    (0..animation.frame_count)
+        .map(|frame| copy_frame_rgba(rgba, image_width, frame_width, frame_height, frame))
+        .collect()
+}
+
+fn copy_frame_rgba(
+    rgba: &[u8],
+    image_width: u32,
+    frame_width: u32,
+    frame_height: u32,
+    frame_index: u32,
+) -> Result<Vec<u8>> {
+    let frames_per_row = image_width
+        .checked_div(frame_width)
+        .ok_or_else(|| anyhow::anyhow!("invalid animation frame width"))?;
+    if frames_per_row == 0 {
+        bail!("invalid animation frame row size");
+    }
+    let frame_x = (frame_index % frames_per_row)
+        .checked_mul(frame_width)
+        .ok_or_else(|| anyhow::anyhow!("animation frame x offset overflow"))?;
+    let frame_y = (frame_index / frames_per_row)
+        .checked_mul(frame_height)
+        .ok_or_else(|| anyhow::anyhow!("animation frame y offset overflow"))?;
     let source_stride = image_width as usize * 4;
     let frame_stride = frame_width as usize * 4;
     let mut frame = Vec::with_capacity(frame_stride * frame_height as usize);
     for y in 0..frame_height as usize {
-        let start = y * source_stride;
+        let start = (frame_y as usize + y)
+            .checked_mul(source_stride)
+            .and_then(|row| row.checked_add(frame_x as usize * 4))
+            .ok_or_else(|| anyhow::anyhow!("animation frame offset overflow"))?;
         let end = start + frame_stride;
         if end > rgba.len() {
-            bail!("first animation frame exceeds source image bounds");
+            bail!("animation frame exceeds source image bounds");
         }
         frame.extend_from_slice(&rgba[start..end]);
     }
@@ -467,6 +530,15 @@ mod tests {
             image.rgba,
             vec![1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255, 10, 11, 12, 255]
         );
+        assert_eq!(image.frame_rgba(0), Some(image.rgba.as_slice()));
+        assert_eq!(
+            image.frame_rgba(1),
+            Some(
+                vec![13, 14, 15, 255, 16, 17, 18, 127, 19, 20, 21, 255, 22, 23, 24, 255,]
+                    .as_slice()
+            )
+        );
+        assert_eq!(image.frame_rgba(2), None);
         assert!(image.transparency.has_translucent);
         assert_eq!(
             image.animation,
@@ -479,6 +551,40 @@ mod tests {
                     SpriteAnimationFrame { index: 1, time: 1 },
                 ],
             })
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_reads_animation_frames_in_row_major_order() {
+        let dir = unique_temp_dir("animation-row-major-frames");
+        let path = dir.join("grid.png");
+        write_test_rgba_png(
+            &path,
+            4,
+            4,
+            &[
+                1, 0, 0, 255, 2, 0, 0, 255, 3, 0, 0, 255, 4, 0, 0, 255, 5, 0, 0, 255, 6, 0, 0, 255,
+                7, 0, 0, 255, 8, 0, 0, 255, 9, 0, 0, 255, 10, 0, 0, 255, 11, 0, 0, 255, 12, 0, 0,
+                255, 13, 0, 0, 255, 14, 0, 0, 255, 15, 0, 0, 255, 16, 0, 0, 255,
+            ],
+        );
+        write_json(
+            &dir.join("grid.png.mcmeta"),
+            r#"{
+              "animation": {
+                "width": 2,
+                "height": 2
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:block/grid", &path).unwrap();
+
+        assert_eq!(
+            image.frame_rgba(2),
+            Some(vec![9, 0, 0, 255, 10, 0, 0, 255, 13, 0, 0, 255, 14, 0, 0, 255].as_slice())
         );
 
         std::fs::remove_dir_all(dir).unwrap();
@@ -521,6 +627,8 @@ mod tests {
         let opaque = SpriteImage::new("test:opaque", 1, 1, vec![1, 2, 3, 255]).unwrap();
         assert!(!opaque.transparency.has_transparent);
         assert!(!opaque.transparency.has_translucent);
+        assert_eq!(opaque.frame_rgba(0), Some([1, 2, 3, 255].as_slice()));
+        assert_eq!(opaque.frame_rgba(1), None);
 
         let transparent = SpriteImage::new("test:transparent", 1, 1, vec![1, 2, 3, 0]).unwrap();
         assert!(transparent.transparency.has_transparent);
