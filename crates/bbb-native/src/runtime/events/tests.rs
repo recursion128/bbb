@@ -2190,16 +2190,28 @@ fn entity_status_events_update_world_and_counters() {
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(entity_id));
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        cooldown_packets: 99,
+        cooldowns_tracked: 99,
+        damage_event_packets: 99,
+        damage_events_applied: 99,
+        update_mob_effect_packets: 99,
+        remove_mob_effect_packets: 99,
+        active_mob_effects_tracked: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         4
     );
     assert_eq!(counters.cooldown_packets, 1);
+    assert_eq!(counters.cooldowns_tracked, 1);
     assert_eq!(counters.damage_event_packets, 1);
+    assert_eq!(counters.damage_events_applied, 1);
     assert_eq!(counters.update_mob_effect_packets, 1);
     assert_eq!(counters.remove_mob_effect_packets, 1);
+    assert_eq!(counters.active_mob_effects_tracked, 1);
 
     let cooldown = world.cooldown("minecraft:ender_pearl").unwrap();
     assert_eq!(cooldown.duration, 20);

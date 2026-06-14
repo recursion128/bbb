@@ -111,9 +111,15 @@ pub struct NetCounters {
     #[serde(default)]
     pub resource_packs_tracked: usize,
     pub cooldown_packets: usize,
+    #[serde(default)]
+    pub cooldowns_tracked: usize,
     pub damage_event_packets: usize,
+    #[serde(default)]
+    pub damage_events_applied: usize,
     pub update_mob_effect_packets: usize,
     pub remove_mob_effect_packets: usize,
+    #[serde(default)]
+    pub active_mob_effects_tracked: usize,
     pub cookie_request_packets: usize,
     pub cookie_response_hits: usize,
     pub cookie_response_misses: usize,

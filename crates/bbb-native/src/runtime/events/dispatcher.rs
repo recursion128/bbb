@@ -8,8 +8,9 @@ use crate::input::queue_vehicle_move_command;
 use super::client_state::*;
 use super::control_state::{
     apply_control_projection_event, sync_block_event_counters, sync_command_counters,
-    sync_hud_session_counters, sync_player_info_counters, sync_registry_counters,
-    sync_scoreboard_counters, sync_server_presentation_counters, sync_world_border_counters,
+    sync_entity_status_counters, sync_hud_session_counters, sync_player_info_counters,
+    sync_registry_counters, sync_scoreboard_counters, sync_server_presentation_counters,
+    sync_world_border_counters,
 };
 use super::{apply_block_changed_ack, sync_weather_counters, sync_world_time_counters};
 
@@ -72,20 +73,20 @@ pub(in crate::runtime) fn drain_net_events(
                 sync_server_presentation_counters(counters, world);
             }
             NetEvent::Cooldown(update) => {
-                counters.cooldown_packets += 1;
                 world.apply_cooldown(update);
+                sync_entity_status_counters(counters, world);
             }
             NetEvent::DamageEvent(update) => {
-                counters.damage_event_packets += 1;
                 world.apply_damage_event(update);
+                sync_entity_status_counters(counters, world);
             }
             NetEvent::UpdateMobEffect(update) => {
-                counters.update_mob_effect_packets += 1;
                 world.apply_update_mob_effect(update);
+                sync_entity_status_counters(counters, world);
             }
             NetEvent::RemoveMobEffect(update) => {
-                counters.remove_mob_effect_packets += 1;
                 world.apply_remove_mob_effect(update);
+                sync_entity_status_counters(counters, world);
             }
             NetEvent::ContainerClose(update) => {
                 world.apply_container_close(update);
