@@ -153,8 +153,8 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::{
-        colors::VANILLA_BIOME_ORDER, AtlasPacker, GrassColorModifier, SpriteMipmapStrategy,
-        SpriteSource,
+        colors::VANILLA_BIOME_ORDER, AtlasPacker, GrassColorModifier, SpriteGuiScaling,
+        SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource,
     };
 
     #[test]
@@ -727,6 +727,38 @@ mod tests {
         let crosshair_image = roots.load_gui_sprite_image("hud/crosshair").unwrap();
         assert_eq!(crosshair_image.id, "minecraft:hud/crosshair");
         assert_eq!((crosshair_image.width, crosshair_image.height), (15, 15));
+
+        let button = gui_sources
+            .iter()
+            .find(|source| source.id == "minecraft:widget/button")
+            .unwrap();
+        assert_eq!(
+            button.gui_metadata.scaling,
+            SpriteGuiScaling::NineSlice {
+                width: 200,
+                height: 20,
+                border: SpriteNineSliceBorder::uniform(3),
+                stretch_inner: false,
+            }
+        );
+        let locator_background = gui_sources
+            .iter()
+            .find(|source| source.id == "minecraft:hud/locator_bar_background")
+            .unwrap();
+        assert_eq!(
+            locator_background.gui_metadata.scaling,
+            SpriteGuiScaling::NineSlice {
+                width: 12,
+                height: 5,
+                border: SpriteNineSliceBorder {
+                    left: 5,
+                    right: 5,
+                    top: 1,
+                    bottom: 1,
+                },
+                stretch_inner: false,
+            }
+        );
     }
 
     fn write_test_png(path: &Path, width: u32, height: u32) {

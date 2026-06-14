@@ -18,6 +18,8 @@ pub struct SpriteSource {
     pub animation: Option<SpriteAnimation>,
     #[serde(default)]
     pub texture_metadata: SpriteTextureMetadata,
+    #[serde(default)]
+    pub gui_metadata: SpriteGuiMetadata,
 }
 
 impl SpriteSource {
@@ -28,6 +30,7 @@ impl SpriteSource {
             height,
             animation: None,
             texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
         }
     }
 
@@ -36,6 +39,7 @@ impl SpriteSource {
         let (image_width, image_height) = png_dimensions(path, "sprite source")?;
         let metadata = read_sprite_metadata(path)?;
         let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
+        let gui_metadata = metadata.gui.unwrap_or_default().into_metadata(path)?;
         let (width, height, animation) =
             sprite_frame_metadata(path, image_width, image_height, metadata.animation)?;
         Ok(Self {
@@ -44,6 +48,7 @@ impl SpriteSource {
             height,
             animation,
             texture_metadata,
+            gui_metadata,
         })
     }
 }
@@ -58,6 +63,8 @@ pub struct SpriteImage {
     pub animation: Option<SpriteAnimation>,
     #[serde(default)]
     pub texture_metadata: SpriteTextureMetadata,
+    #[serde(default)]
+    pub gui_metadata: SpriteGuiMetadata,
     #[serde(default)]
     pub animation_frames_rgba: Vec<Vec<u8>>,
     pub rgba: Vec<u8>,
@@ -91,6 +98,58 @@ pub enum SpriteMipmapStrategy {
     Cutout,
     StrictCutout,
     DarkCutout,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpriteGuiMetadata {
+    #[serde(default)]
+    pub scaling: SpriteGuiScaling,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SpriteGuiScaling {
+    #[default]
+    Stretch,
+    Tile {
+        width: u32,
+        height: u32,
+    },
+    NineSlice {
+        width: u32,
+        height: u32,
+        border: SpriteNineSliceBorder,
+        #[serde(default)]
+        stretch_inner: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct SpriteNineSliceBorder {
+    pub left: u32,
+    pub top: u32,
+    pub right: u32,
+    pub bottom: u32,
+}
+
+impl SpriteNineSliceBorder {
+    pub fn uniform(size: u32) -> Self {
+        Self {
+            left: size,
+            top: size,
+            right: size,
+            bottom: size,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SpriteNineSliceBorder {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        RawNineSliceBorder::deserialize(deserializer).map(RawNineSliceBorder::into_border_unchecked)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -209,6 +268,7 @@ impl SpriteImage {
             transparency,
             animation,
             texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
             animation_frames_rgba: Vec::new(),
             rgba,
         })
@@ -225,6 +285,7 @@ impl SpriteImage {
         let (image_width, image_height) = rgba.dimensions();
         let metadata = read_sprite_metadata(path)?;
         let texture_metadata = metadata.texture.unwrap_or_default().into_metadata();
+        let gui_metadata = metadata.gui.unwrap_or_default().into_metadata(path)?;
         let (width, height, animation) =
             sprite_frame_metadata(path, image_width, image_height, metadata.animation)?;
         let source_rgba = rgba.into_raw();
@@ -243,6 +304,7 @@ impl SpriteImage {
         let mut image =
             Self::new_with_transparency(id, width, height, rgba, transparency, animation)?;
         image.texture_metadata = texture_metadata;
+        image.gui_metadata = gui_metadata;
         image.animation_frames_rgba = animation_frames_rgba;
         Ok(image)
     }
@@ -254,6 +316,7 @@ impl SpriteImage {
             height: self.height,
             animation: self.animation.clone(),
             texture_metadata: self.texture_metadata,
+            gui_metadata: self.gui_metadata,
         }
     }
 
@@ -515,6 +578,7 @@ fn copy_frame_rgba(
 struct RawSpriteMetadata {
     animation: Option<RawAnimationMetadata>,
     texture: Option<RawTextureMetadata>,
+    gui: Option<RawGuiMetadata>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -552,6 +616,145 @@ impl RawTextureMetadata {
     }
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct RawGuiMetadata {
+    scaling: Option<RawGuiScaling>,
+}
+
+impl RawGuiMetadata {
+    fn into_metadata(self, path: &Path) -> Result<SpriteGuiMetadata> {
+        Ok(SpriteGuiMetadata {
+            scaling: self
+                .scaling
+                .map(|scaling| scaling.into_scaling(path))
+                .transpose()?
+                .unwrap_or_default(),
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum RawGuiScaling {
+    Stretch,
+    Tile {
+        width: u32,
+        height: u32,
+    },
+    NineSlice {
+        width: u32,
+        height: u32,
+        border: RawNineSliceBorder,
+        stretch_inner: Option<bool>,
+    },
+}
+
+impl RawGuiScaling {
+    fn into_scaling(self, path: &Path) -> Result<SpriteGuiScaling> {
+        match self {
+            Self::Stretch => Ok(SpriteGuiScaling::Stretch),
+            Self::Tile { width, height } => Ok(SpriteGuiScaling::Tile {
+                width: positive_dimension(width, "gui tile width", path)?,
+                height: positive_dimension(height, "gui tile height", path)?,
+            }),
+            Self::NineSlice {
+                width,
+                height,
+                border,
+                stretch_inner,
+            } => {
+                let width = positive_dimension(width, "gui nine-slice width", path)?;
+                let height = positive_dimension(height, "gui nine-slice height", path)?;
+                let border = border.into_border(path)?;
+                let horizontal_border = border
+                    .left
+                    .checked_add(border.right)
+                    .ok_or_else(|| anyhow::anyhow!("gui nine-slice horizontal border overflow"))?;
+                if horizontal_border >= width {
+                    bail!(
+                        "gui nine-slice in {} has no horizontal center slice: {} + {} >= {}",
+                        path.display(),
+                        border.left,
+                        border.right,
+                        width
+                    );
+                }
+                let vertical_border = border
+                    .top
+                    .checked_add(border.bottom)
+                    .ok_or_else(|| anyhow::anyhow!("gui nine-slice vertical border overflow"))?;
+                if vertical_border >= height {
+                    bail!(
+                        "gui nine-slice in {} has no vertical center slice: {} + {} >= {}",
+                        path.display(),
+                        border.top,
+                        border.bottom,
+                        height
+                    );
+                }
+                Ok(SpriteGuiScaling::NineSlice {
+                    width,
+                    height,
+                    border,
+                    stretch_inner: stretch_inner.unwrap_or(false),
+                })
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RawNineSliceBorder {
+    Uniform(u32),
+    Sides {
+        left: u32,
+        top: u32,
+        right: u32,
+        bottom: u32,
+    },
+}
+
+impl RawNineSliceBorder {
+    fn into_border_unchecked(self) -> SpriteNineSliceBorder {
+        match self {
+            Self::Uniform(size) => SpriteNineSliceBorder::uniform(size),
+            Self::Sides {
+                left,
+                top,
+                right,
+                bottom,
+            } => SpriteNineSliceBorder {
+                left,
+                top,
+                right,
+                bottom,
+            },
+        }
+    }
+
+    fn into_border(self, path: &Path) -> Result<SpriteNineSliceBorder> {
+        match self {
+            Self::Uniform(size) => Ok(SpriteNineSliceBorder::uniform(positive_dimension(
+                size,
+                "gui nine-slice border",
+                path,
+            )?)),
+            Self::Sides {
+                left,
+                top,
+                right,
+                bottom,
+            } => Ok(SpriteNineSliceBorder {
+                left,
+                top,
+                right,
+                bottom,
+            }),
+        }
+    }
+}
+
 impl RawAnimationFrame {
     fn into_frame(self, default_frame_time: u32, path: &Path) -> Result<SpriteAnimationFrame> {
         let (index, time) = match self {
@@ -575,8 +778,9 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteImage,
-        SpriteMipmapStrategy, SpriteSource, SpriteTextureMetadata,
+        SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteGuiMetadata,
+        SpriteGuiScaling, SpriteImage, SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource,
+        SpriteTextureMetadata,
     };
 
     #[test]
@@ -589,7 +793,74 @@ mod tests {
         let source = SpriteSource::from_png_file("test:sprite", &path).unwrap();
         assert_eq!(source, SpriteSource::new("test:sprite", 7, 11));
         assert_eq!(source.texture_metadata, SpriteTextureMetadata::default());
+        assert_eq!(source.gui_metadata, SpriteGuiMetadata::default());
 
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_reads_gui_nine_slice_metadata_from_mcmeta() {
+        let dir = unique_temp_dir("gui-nine-slice-source");
+        let path = dir.join("button.png");
+        write_test_png(&path, 200, 20);
+        write_json(
+            &dir.join("button.png.mcmeta"),
+            r#"{
+              "gui": {
+                "scaling": {
+                  "type": "nine_slice",
+                  "width": 200,
+                  "height": 20,
+                  "border": 3
+                }
+              }
+            }"#,
+        );
+
+        let source = SpriteSource::from_png_file("minecraft:widget/button", &path).unwrap();
+
+        assert_eq!(
+            source.gui_metadata,
+            SpriteGuiMetadata {
+                scaling: SpriteGuiScaling::NineSlice {
+                    width: 200,
+                    height: 20,
+                    border: SpriteNineSliceBorder::uniform(3),
+                    stretch_inner: false,
+                },
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_rejects_gui_nine_slice_without_center() {
+        let dir = unique_temp_dir("gui-nine-slice-invalid");
+        let path = dir.join("bad_button.png");
+        write_test_png(&path, 10, 10);
+        write_json(
+            &dir.join("bad_button.png.mcmeta"),
+            r#"{
+              "gui": {
+                "scaling": {
+                  "type": "nine_slice",
+                  "width": 10,
+                  "height": 10,
+                  "border": {
+                    "left": 5,
+                    "right": 5,
+                    "top": 1,
+                    "bottom": 1
+                  }
+                }
+              }
+            }"#,
+        );
+
+        let err = SpriteSource::from_png_file("minecraft:widget/bad_button", &path).unwrap_err();
+
+        assert!(err.to_string().contains("no horizontal center slice"));
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -666,6 +937,7 @@ mod tests {
                     ],
                 }),
                 texture_metadata: SpriteTextureMetadata::default(),
+                gui_metadata: SpriteGuiMetadata::default(),
             }
         );
 
@@ -925,6 +1197,39 @@ mod tests {
                 clamp: false,
                 mipmap_strategy: SpriteMipmapStrategy::Mean,
                 alpha_cutoff_bias: 0.0,
+            }
+        );
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_image_records_gui_tile_metadata() {
+        let dir = unique_temp_dir("gui-tile-image");
+        let path = dir.join("panel.png");
+        write_test_png(&path, 8, 8);
+        write_json(
+            &dir.join("panel.png.mcmeta"),
+            r#"{
+              "gui": {
+                "scaling": {
+                  "type": "tile",
+                  "width": 4,
+                  "height": 5
+                }
+              }
+            }"#,
+        );
+
+        let image = SpriteImage::from_png_file("minecraft:panel", &path).unwrap();
+
+        assert_eq!(
+            image.gui_metadata,
+            SpriteGuiMetadata {
+                scaling: SpriteGuiScaling::Tile {
+                    width: 4,
+                    height: 5,
+                },
             }
         );
 

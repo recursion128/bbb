@@ -232,8 +232,8 @@ fn copy_sprite_rgba_with_gutter(
 mod tests {
     use super::{AtlasPacker, AtlasRect};
     use crate::{
-        SpriteAnimation, SpriteAnimationFrame, SpriteImage, SpriteSource, SpriteTextureMetadata,
-        SpriteTransparency,
+        SpriteAnimation, SpriteAnimationFrame, SpriteGuiMetadata, SpriteImage, SpriteSource,
+        SpriteTextureMetadata, SpriteTransparency,
     };
 
     #[test]
@@ -365,6 +365,7 @@ mod tests {
             height: 16,
             animation: Some(animation.clone()),
             texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
         };
 
         let layout = AtlasPacker::new(64, 1).unwrap().pack(&[source]).unwrap();
@@ -428,6 +429,7 @@ mod tests {
             transparency: SpriteTransparency::default(),
             animation: Some(animation.clone()),
             texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
             animation_frames_rgba: vec![vec![255, 255, 255, 255]; 2],
             rgba: vec![255, 255, 255, 255],
         };
@@ -455,6 +457,7 @@ mod tests {
             transparency: SpriteTransparency::default(),
             animation: Some(animation),
             texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
             animation_frames_rgba: vec![vec![10, 0, 0, 255], vec![20, 0, 0, 255]],
             rgba: vec![10, 0, 0, 255],
         };
@@ -503,6 +506,7 @@ mod tests {
                 ],
             }),
             texture_metadata: SpriteTextureMetadata::default(),
+            gui_metadata: SpriteGuiMetadata::default(),
             animation_frames_rgba: vec![vec![0, 0, 100, 255], vec![100, 40, 0, 127]],
             rgba: vec![0, 0, 100, 255],
         };
