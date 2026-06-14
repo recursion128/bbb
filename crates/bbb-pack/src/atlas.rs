@@ -2,7 +2,8 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rgba_len, rgba_offset, SpriteAnimation, SpriteImage, SpriteSource, SpriteTransparency,
+    rgba_len, rgba_offset, SpriteAnimation, SpriteGuiMetadata, SpriteImage, SpriteSource,
+    SpriteTextureMetadata, SpriteTransparency,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -13,7 +14,7 @@ pub struct AtlasRect {
     pub height: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AtlasSprite {
     pub id: String,
     pub source_width: u32,
@@ -21,11 +22,15 @@ pub struct AtlasSprite {
     pub transparency: SpriteTransparency,
     #[serde(default)]
     pub animation: Option<SpriteAnimation>,
+    #[serde(default)]
+    pub texture_metadata: SpriteTextureMetadata,
+    #[serde(default)]
+    pub gui_metadata: SpriteGuiMetadata,
     pub content: AtlasRect,
     pub padded: AtlasRect,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AtlasLayout {
     pub width: u32,
     pub height: u32,
@@ -33,7 +38,7 @@ pub struct AtlasLayout {
     pub sprites: Vec<AtlasSprite>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AtlasImage {
     pub layout: AtlasLayout,
     pub rgba: Vec<u8>,
@@ -117,6 +122,8 @@ impl AtlasPacker {
                 source_height: source.height,
                 transparency: SpriteTransparency::default(),
                 animation: source.animation.clone(),
+                texture_metadata: source.texture_metadata,
+                gui_metadata: source.gui_metadata,
                 content,
                 padded,
             });
@@ -158,6 +165,8 @@ impl AtlasPacker {
         for (sprite, image) in layout.sprites.iter_mut().zip(images) {
             sprite.transparency = image.transparency;
             sprite.animation = image.animation.clone();
+            sprite.texture_metadata = image.texture_metadata;
+            sprite.gui_metadata = image.gui_metadata;
         }
         let mut rgba = vec![0; rgba_len(layout.width, layout.height)?];
 
@@ -232,8 +241,9 @@ fn copy_sprite_rgba_with_gutter(
 mod tests {
     use super::{AtlasPacker, AtlasRect};
     use crate::{
-        SpriteAnimation, SpriteAnimationFrame, SpriteGuiMetadata, SpriteImage, SpriteSource,
-        SpriteTextureMetadata, SpriteTransparency,
+        SpriteAnimation, SpriteAnimationFrame, SpriteGuiMetadata, SpriteGuiScaling, SpriteImage,
+        SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource, SpriteTextureMetadata,
+        SpriteTransparency,
     };
 
     #[test]
@@ -349,7 +359,7 @@ mod tests {
     }
 
     #[test]
-    fn atlas_layout_preserves_sprite_animation_metadata() {
+    fn atlas_layout_preserves_sprite_metadata() {
         let animation = SpriteAnimation {
             frame_count: 2,
             default_frame_time: 4,
@@ -359,18 +369,34 @@ mod tests {
                 SpriteAnimationFrame { index: 1, time: 8 },
             ],
         };
+        let texture_metadata = SpriteTextureMetadata {
+            blur: false,
+            clamp: false,
+            mipmap_strategy: SpriteMipmapStrategy::StrictCutout,
+            alpha_cutoff_bias: 0.125,
+        };
+        let gui_metadata = SpriteGuiMetadata {
+            scaling: SpriteGuiScaling::NineSlice {
+                width: 16,
+                height: 16,
+                border: SpriteNineSliceBorder::uniform(2),
+                stretch_inner: false,
+            },
+        };
         let source = SpriteSource {
             id: "minecraft:block/water_still".to_string(),
             width: 16,
             height: 16,
             animation: Some(animation.clone()),
-            texture_metadata: SpriteTextureMetadata::default(),
-            gui_metadata: SpriteGuiMetadata::default(),
+            texture_metadata,
+            gui_metadata,
         };
 
         let layout = AtlasPacker::new(64, 1).unwrap().pack(&[source]).unwrap();
 
         assert_eq!(layout.sprites[0].animation, Some(animation));
+        assert_eq!(layout.sprites[0].texture_metadata, texture_metadata);
+        assert_eq!(layout.sprites[0].gui_metadata, gui_metadata);
     }
 
     #[test]
@@ -412,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn atlas_stitcher_preserves_image_animation_metadata() {
+    fn atlas_stitcher_preserves_image_metadata() {
         let animation = SpriteAnimation {
             frame_count: 2,
             default_frame_time: 2,
@@ -422,14 +448,26 @@ mod tests {
                 SpriteAnimationFrame { index: 1, time: 2 },
             ],
         };
+        let texture_metadata = SpriteTextureMetadata {
+            blur: true,
+            clamp: true,
+            mipmap_strategy: SpriteMipmapStrategy::Mean,
+            alpha_cutoff_bias: 0.0,
+        };
+        let gui_metadata = SpriteGuiMetadata {
+            scaling: SpriteGuiScaling::Tile {
+                width: 4,
+                height: 4,
+            },
+        };
         let image = SpriteImage {
             id: "minecraft:block/campfire_fire".to_string(),
             width: 1,
             height: 1,
             transparency: SpriteTransparency::default(),
             animation: Some(animation.clone()),
-            texture_metadata: SpriteTextureMetadata::default(),
-            gui_metadata: SpriteGuiMetadata::default(),
+            texture_metadata,
+            gui_metadata,
             animation_frames_rgba: vec![vec![255, 255, 255, 255]; 2],
             rgba: vec![255, 255, 255, 255],
         };
@@ -437,6 +475,8 @@ mod tests {
         let atlas = AtlasPacker::new(8, 1).unwrap().stitch(&[image]).unwrap();
 
         assert_eq!(atlas.layout.sprites[0].animation, Some(animation));
+        assert_eq!(atlas.layout.sprites[0].texture_metadata, texture_metadata);
+        assert_eq!(atlas.layout.sprites[0].gui_metadata, gui_metadata);
     }
 
     #[test]
