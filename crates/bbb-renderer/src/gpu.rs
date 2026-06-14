@@ -83,6 +83,7 @@ pub(super) struct TerrainAtlasGpu {
     sampler: wgpu::Sampler,
     width: u32,
     height: u32,
+    mip_level_count: u32,
 }
 
 pub(super) fn create_depth_target(device: &wgpu::Device, width: u32, height: u32) -> DepthTarget {
@@ -182,7 +183,18 @@ pub(super) fn create_terrain_atlas_gpu(
     height: u32,
     rgba: &[u8],
 ) -> Result<TerrainAtlasGpu> {
-    validate_terrain_atlas_rgba(width, height, rgba)?;
+    create_terrain_atlas_mips_gpu(device, queue, width, height, &[rgba])
+}
+
+pub(super) fn create_terrain_atlas_mips_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    width: u32,
+    height: u32,
+    mip_rgba: &[&[u8]],
+) -> Result<TerrainAtlasGpu> {
+    let mip_dimensions = validate_terrain_atlas_mips(width, height, mip_rgba)?;
+    let mip_level_count = mip_rgba.len() as u32;
 
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("bbb-terrain-texture-atlas"),
@@ -191,14 +203,18 @@ pub(super) fn create_terrain_atlas_gpu(
             height,
             depth_or_array_layers: 1,
         },
-        mip_level_count: 1,
+        mip_level_count,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8UnormSrgb,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
-    write_texture_rgba(queue, &texture, width, height, rgba);
+    for (level, (rgba, (mip_width, mip_height))) in
+        mip_rgba.iter().zip(mip_dimensions.iter()).enumerate()
+    {
+        write_texture_rgba(queue, &texture, level as u32, *mip_width, *mip_height, rgba);
+    }
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("bbb-terrain-texture-sampler"),
@@ -207,7 +223,11 @@ pub(super) fn create_terrain_atlas_gpu(
         address_mode_w: wgpu::AddressMode::ClampToEdge,
         mag_filter: wgpu::FilterMode::Nearest,
         min_filter: wgpu::FilterMode::Nearest,
-        mipmap_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: if mip_level_count > 1 {
+            wgpu::FilterMode::Linear
+        } else {
+            wgpu::FilterMode::Nearest
+        },
         ..Default::default()
     });
     Ok(TerrainAtlasGpu {
@@ -216,6 +236,7 @@ pub(super) fn create_terrain_atlas_gpu(
         sampler,
         width,
         height,
+        mip_level_count,
     })
 }
 
@@ -224,9 +245,71 @@ pub(super) fn write_terrain_atlas_gpu(
     atlas: &TerrainAtlasGpu,
     rgba: &[u8],
 ) -> Result<()> {
+    if atlas.mip_level_count != 1 {
+        bail!(
+            "terrain texture atlas has {} mip levels; use mip-chain update",
+            atlas.mip_level_count
+        );
+    }
     validate_terrain_atlas_rgba(atlas.width, atlas.height, rgba)?;
-    write_texture_rgba(queue, &atlas.texture, atlas.width, atlas.height, rgba);
+    write_texture_rgba(queue, &atlas.texture, 0, atlas.width, atlas.height, rgba);
     Ok(())
+}
+
+pub(super) fn write_terrain_atlas_mips_gpu(
+    queue: &wgpu::Queue,
+    atlas: &TerrainAtlasGpu,
+    mip_rgba: &[&[u8]],
+) -> Result<()> {
+    if mip_rgba.len() as u32 != atlas.mip_level_count {
+        bail!(
+            "terrain texture atlas has {} mip levels, update supplied {}",
+            atlas.mip_level_count,
+            mip_rgba.len()
+        );
+    }
+    let mip_dimensions = validate_terrain_atlas_mips(atlas.width, atlas.height, mip_rgba)?;
+    for (level, (rgba, (mip_width, mip_height))) in
+        mip_rgba.iter().zip(mip_dimensions.iter()).enumerate()
+    {
+        write_texture_rgba(
+            queue,
+            &atlas.texture,
+            level as u32,
+            *mip_width,
+            *mip_height,
+            rgba,
+        );
+    }
+    Ok(())
+}
+
+fn validate_terrain_atlas_mips(
+    width: u32,
+    height: u32,
+    mip_rgba: &[&[u8]],
+) -> Result<Vec<(u32, u32)>> {
+    if mip_rgba.is_empty() {
+        bail!("terrain texture atlas must include at least one mip level");
+    }
+    let mut dimensions = Vec::with_capacity(mip_rgba.len());
+    for (level, rgba) in mip_rgba.iter().enumerate() {
+        let level =
+            u32::try_from(level).map_err(|_| anyhow!("terrain atlas mip level overflow"))?;
+        let mip_width = width.checked_shr(level).unwrap_or(0);
+        let mip_height = height.checked_shr(level).unwrap_or(0);
+        if mip_width == 0 || mip_height == 0 {
+            bail!(
+                "terrain texture atlas mip level {} has zero-sized dimensions from {}x{}",
+                level,
+                width,
+                height
+            );
+        }
+        validate_terrain_atlas_rgba(mip_width, mip_height, rgba)?;
+        dimensions.push((mip_width, mip_height));
+    }
+    Ok(dimensions)
 }
 
 fn validate_terrain_atlas_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<()> {
@@ -257,6 +340,7 @@ fn validate_terrain_atlas_rgba(width: u32, height: u32, rgba: &[u8]) -> Result<(
 fn write_texture_rgba(
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
+    mip_level: u32,
     width: u32,
     height: u32,
     rgba: &[u8],
@@ -264,7 +348,7 @@ fn write_texture_rgba(
     queue.write_texture(
         wgpu::ImageCopyTexture {
             texture,
-            mip_level: 0,
+            mip_level,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
@@ -406,5 +490,37 @@ mod tests {
         assert!(TERRAIN_SHADER.contains("@location(6) ambient_occlusion: f32"));
         assert!(TERRAIN_SHADER.contains("* input.shade * input.ambient_occlusion"));
         assert!(!TERRAIN_SHADER.contains("light_dir"));
+    }
+
+    #[test]
+    fn terrain_atlas_mip_validation_tracks_shifted_dimensions() {
+        let base = vec![0; 4 * 4 * 4];
+        let mip1 = vec![0; 2 * 2 * 4];
+        let mip2 = vec![0; 4];
+
+        let dimensions =
+            validate_terrain_atlas_mips(4, 4, &[base.as_slice(), mip1.as_slice(), mip2.as_slice()])
+                .unwrap();
+
+        assert_eq!(dimensions, vec![(4, 4), (2, 2), (1, 1)]);
+    }
+
+    #[test]
+    fn terrain_atlas_mip_validation_rejects_missing_or_invalid_levels() {
+        let empty = validate_terrain_atlas_mips(4, 4, &[]).unwrap_err();
+        assert!(empty
+            .to_string()
+            .contains("must include at least one mip level"));
+
+        let wrong_size = vec![0; 3];
+        let err = validate_terrain_atlas_mips(4, 4, &[wrong_size.as_slice()]).unwrap_err();
+        assert!(err.to_string().contains("expected 64 for 4x4 RGBA"));
+
+        let base = vec![0; 4];
+        let too_deep =
+            validate_terrain_atlas_mips(1, 1, &[base.as_slice(), base.as_slice()]).unwrap_err();
+        assert!(too_deep
+            .to_string()
+            .contains("mip level 1 has zero-sized dimensions"));
     }
 }

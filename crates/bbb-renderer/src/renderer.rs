@@ -7,8 +7,9 @@ use crate::{
     camera::{CameraPose, CameraUniform, ClearColor, TerrainBounds},
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
-        create_terrain_bind_group, create_terrain_bind_group_layout, create_terrain_pipeline,
-        create_terrain_translucent_pipeline, write_terrain_atlas_gpu, DepthTarget, TerrainAtlasGpu,
+        create_terrain_atlas_mips_gpu, create_terrain_bind_group, create_terrain_bind_group_layout,
+        create_terrain_pipeline, create_terrain_translucent_pipeline, write_terrain_atlas_gpu,
+        write_terrain_atlas_mips_gpu, DepthTarget, TerrainAtlasGpu,
     },
     hud::{create_hud_bind_group_layout, create_hud_pipeline, HudSpriteGpu},
     selection::{
@@ -284,8 +285,17 @@ impl Renderer {
         height: u32,
         rgba: &[u8],
     ) -> Result<()> {
+        self.upload_terrain_texture_atlas_mips(width, height, &[rgba])
+    }
+
+    pub fn upload_terrain_texture_atlas_mips(
+        &mut self,
+        width: u32,
+        height: u32,
+        mip_rgba: &[&[u8]],
+    ) -> Result<()> {
         self.terrain_atlas =
-            create_terrain_atlas_gpu(&self.device, &self.queue, width, height, rgba)?;
+            create_terrain_atlas_mips_gpu(&self.device, &self.queue, width, height, mip_rgba)?;
         self.terrain_bind_group = create_terrain_bind_group(
             &self.device,
             &self.terrain_bind_group_layout,
@@ -301,6 +311,10 @@ impl Renderer {
 
     pub fn update_terrain_texture_atlas(&mut self, rgba: &[u8]) -> Result<()> {
         write_terrain_atlas_gpu(&self.queue, &self.terrain_atlas, rgba)
+    }
+
+    pub fn update_terrain_texture_atlas_mips(&mut self, mip_rgba: &[&[u8]]) -> Result<()> {
+        write_terrain_atlas_mips_gpu(&self.queue, &self.terrain_atlas, mip_rgba)
     }
 
     pub(super) fn surface_size(&self) -> PhysicalSize<u32> {
