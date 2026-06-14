@@ -1511,6 +1511,13 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
     store.apply_add_entity(protocol_add_entity_with_type(52, 35));
     store.apply_add_entity(protocol_add_entity_with_type(53, 58));
     store.apply_add_entity(protocol_add_entity_with_type(54, 96));
+    store.apply_add_entity(protocol_add_entity_with_type(55, 36));
+    store.apply_add_entity(protocol_add_entity_with_type(56, 87));
+    store.apply_add_entity(protocol_add_entity_with_type(57, 66));
+    store.apply_add_entity(protocol_add_entity_with_type(58, 116));
+    store.apply_add_entity(protocol_add_entity_with_type(59, 151));
+    store.apply_add_entity(protocol_add_entity_with_type(60, 78));
+    store.apply_add_entity(protocol_add_entity_with_type(61, 134));
 
     assert_eq!(
         store.probe_entity_pick_bounds(34),
@@ -1772,6 +1779,113 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         Some(EntityPickBoundsState::from_base_size(
             1.3 * 0.5,
             1.25 * 0.5,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 55,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(55),
+        Some(EntityPickBoundsState::from_base_size(
+            1.3964844 * 0.5,
+            1.5 * 0.5,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 56,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(56),
+        Some(EntityPickBoundsState::from_base_size(
+            1.3964844 * 0.5,
+            1.6 * 0.5,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 57,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(57),
+        Some(EntityPickBoundsState::from_base_size(
+            1.3964844 * 0.7,
+            1.6 * 0.7,
+            0.0,
+        ))
+    );
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 57,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(57),
+        Some(EntityPickBoundsState::from_base_size(
+            1.3964844 * 0.7 * 2.0,
+            1.6 * 0.7 * 2.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 58,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(58),
+        Some(EntityPickBoundsState::from_base_size(
+            1.3964844 * 0.7,
+            1.6 * 0.7,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 59,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(59),
+        Some(EntityPickBoundsState::from_base_size(
+            1.3964844 * 0.7,
+            1.6 * 0.7,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 60,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(60),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * 0.5,
+            1.87 * 0.5,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 61,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(61),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * 0.5,
+            1.87 * 0.5,
             0.0,
         ))
     );
