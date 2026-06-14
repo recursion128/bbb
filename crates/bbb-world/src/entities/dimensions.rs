@@ -49,6 +49,7 @@ const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
 const VANILLA_ENTITY_TYPE_SALMON_ID: i32 = 110;
 const VANILLA_ENTITY_TYPE_SHEEP_ID: i32 = 111;
 const VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID: i32 = 116;
+const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
 const VANILLA_ENTITY_TYPE_SQUID_ID: i32 = 127;
@@ -99,7 +100,9 @@ const FOX_BABY_SCALE: f32 = 0.6;
 const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
 const GOAT_BABY_SCALE: f32 = 0.55;
 const HAPPY_GHAST_BABY_SCALE: f32 = 0.2375;
+const HAPPY_GHAST_MAX_SCALE: f32 = 1.0;
 const HORSE_BABY_SCALE: f32 = 0.7;
+const SHULKER_MAX_SCALE: f32 = 3.0;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
 const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
@@ -707,7 +710,7 @@ fn apply_living_scale(
     let Some(scale) = vanilla_scale_attribute(attributes) else {
         return bounds;
     };
-    bounds.scale_dimensions(scale)
+    bounds.scale_dimensions(entity_scale(entity_type_id, scale))
 }
 
 fn vanilla_scale_attribute(attributes: &[AttributeSnapshot]) -> Option<f32> {
@@ -738,6 +741,14 @@ fn vanilla_attribute_value(attribute: &AttributeSnapshot) -> f32 {
     }
 
     sanitize_vanilla_scale(result) as f32
+}
+
+fn entity_scale(entity_type_id: i32, scale: f32) -> f32 {
+    match entity_type_id {
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => scale.min(HAPPY_GHAST_MAX_SCALE),
+        VANILLA_ENTITY_TYPE_SHULKER_ID => scale.min(SHULKER_MAX_SCALE),
+        _ => scale,
+    }
 }
 
 fn sanitize_vanilla_scale(value: f64) -> f64 {

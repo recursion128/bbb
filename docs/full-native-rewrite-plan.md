@@ -99,7 +99,8 @@ Known priority areas:
   `interaction` entity metadata width/height, direction-aware item
   frames/paintings/leash knots, slime/magma cube size metadata, armor stand
   small/marker flags, player spectator state, LivingEntity `scale` attribute
-  bounds, player/mannequin Avatar pose bounds, selected baby metadata bounds
+  bounds with Happy Ghast/Shulker vanilla scale caps, player/mannequin Avatar
+  pose bounds, selected baby metadata bounds
   (armadillo/axolotl/bee/cat/dolphin/donkey/fox/happy ghast/hoglin/horse/llama/mule/nautilus/ocelot/panda/polar bear/rabbit/sheep/skeleton horse/squid/glow squid/strider/trader llama/turtle/wolf/zoglin/pig/cow/chicken/villager/wandering trader/zombie horse/zombie family/piglin/camel/goat/sniffer),
   pufferfish puff-state bounds, salmon variant bounds, camel/camel husk
   sitting pose bounds, goat long-jumping pose bounds, phantom size metadata

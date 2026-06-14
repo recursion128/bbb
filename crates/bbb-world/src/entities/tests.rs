@@ -1087,6 +1087,62 @@ fn living_pick_bounds_scale_with_vanilla_scale_attribute() {
 }
 
 #[test]
+fn living_pick_bounds_apply_vanilla_entity_specific_scale_caps() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(73, 58));
+    store.apply_add_entity(protocol_add_entity_with_type(74, 112));
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 73,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(73),
+        Some(EntityPickBoundsState::from_base_size(4.0, 4.0, 0.0))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 73,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 0.5,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(73),
+        Some(EntityPickBoundsState::from_base_size(
+            4.0 * 0.5,
+            4.0 * 0.5,
+            0.0
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 74,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 4.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(74),
+        Some(EntityPickBoundsState::from_base_size(
+            1.0 * 3.0,
+            1.0 * 3.0,
+            0.0
+        ))
+    );
+}
+
+#[test]
 fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const ENTITY_DATA_POSE_ID: u8 = 6;
@@ -1781,8 +1837,8 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
     assert_eq!(
         store.probe_entity_pick_bounds(53),
         Some(EntityPickBoundsState::from_base_size(
-            4.0 * 0.2375 * 2.0,
-            4.0 * 0.2375 * 2.0,
+            4.0 * 0.2375,
+            4.0 * 0.2375,
             0.0,
         ))
     );
