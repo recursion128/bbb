@@ -89,6 +89,12 @@ pub struct PickItemFromBlock {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PickItemFromEntity {
+    pub entity_id: i32,
+    pub include_data: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContainerButtonClick {
     pub container_id: i32,
     pub button_id: i32,
@@ -399,6 +405,16 @@ pub fn encode_play_pick_item_from_block(packet: PickItemFromBlock) -> (i32, Vec<
     out.write_bool(packet.include_data);
     (
         ids::play::SERVERBOUND_PICK_ITEM_FROM_BLOCK,
+        out.into_inner(),
+    )
+}
+
+pub fn encode_play_pick_item_from_entity(packet: PickItemFromEntity) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.entity_id);
+    out.write_bool(packet.include_data);
+    (
+        ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY,
         out.into_inner(),
     )
 }

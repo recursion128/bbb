@@ -2,8 +2,8 @@ use bbb_control::{NetCounters, PlayerPose};
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
     AttackEntity, CommandSuggestionRequest, Direction as ProtocolDirection, InteractEntity,
-    InteractionHand, PickItemFromBlock, PlayerAction, PlayerActionKind, PlayerCommand,
-    PlayerCommandAction, PlayerInput, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind,
+    PlayerCommand, PlayerCommandAction, PlayerInput, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::BlockPos;
 use tokio::sync::mpsc;
@@ -226,6 +226,23 @@ pub(super) fn queue_pick_item_from_block_command(
     }
 }
 
+pub(super) fn queue_pick_item_from_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    entity_id: i32,
+    include_data: bool,
+) {
+    if let Some(tx) = net_commands {
+        let packet = PickItemFromEntity {
+            entity_id,
+            include_data,
+        };
+        if tx.try_send(NetCommand::PickItemFromEntity(packet)).is_ok() {
+            counters.pick_item_from_entity_commands_queued += 1;
+        }
+    }
+}
+
 fn queue_command_suggestion_request(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -274,7 +291,7 @@ mod tests {
     use bbb_protocol::packets::{
         AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
         CommandSuggestionRequest, Direction as ProtocolDirection, InteractEntity, InteractionHand,
-        PickItemFromBlock, PlayerAction, PlayerActionKind, UseItemOn,
+        PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind, UseItemOn,
     };
     use bbb_world::BlockPos;
 
@@ -436,6 +453,24 @@ mod tests {
                     y: 70,
                     z: 12,
                 },
+                include_data: true,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_pick_item_from_entity() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_pick_item_from_entity_command(&mut counters, &commands, 123, true);
+
+        assert_eq!(counters.pick_item_from_entity_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PickItemFromEntity(PickItemFromEntity {
+                entity_id: 123,
                 include_data: true,
             })
         );

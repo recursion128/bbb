@@ -948,6 +948,7 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
 fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order() {
     assert_eq!(ids::play::SERVERBOUND_ATTACK, 1);
     assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
+    assert_eq!(ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY, 37);
 }
 
 #[test]
@@ -1236,6 +1237,20 @@ fn encodes_pick_item_from_block_packet() {
             z: 12,
         }
     );
+    assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_pick_item_from_entity_packet() {
+    let (id, payload) = encode_play_pick_item_from_entity(PickItemFromEntity {
+        entity_id: 123,
+        include_data: true,
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 123);
     assert!(decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
 }

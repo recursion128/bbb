@@ -500,6 +500,8 @@ pub struct NetCounters {
     pub use_item_on_commands_queued: usize,
     pub use_item_commands_queued: usize,
     pub pick_item_from_block_commands_queued: usize,
+    #[serde(default)]
+    pub pick_item_from_entity_commands_queued: usize,
     pub command_suggestion_commands_queued: usize,
     pub world_time_packets: usize,
     pub game_event_packets: usize,
