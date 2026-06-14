@@ -403,6 +403,14 @@ impl ResourceLocation {
         format!("{}:{}", self.namespace, self.path)
     }
 
+    pub(crate) fn namespace(&self) -> &str {
+        &self.namespace
+    }
+
+    pub(crate) fn path(&self) -> &str {
+        &self.path
+    }
+
     fn with_suffix(&self, suffix: &str) -> Result<Self> {
         let path = format!("{}{}", self.path, suffix);
         validate_resource_path(&path)?;

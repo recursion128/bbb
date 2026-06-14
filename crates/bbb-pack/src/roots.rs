@@ -7,6 +7,7 @@ use crate::{
     atlas_sources::{load_atlas_texture_entries, AtlasTextureEntry, ResourceLocation},
     block_models::BlockModelCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
+    sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
 };
 
@@ -61,6 +62,14 @@ impl PackRoots {
 
     pub fn atlases_dir(&self) -> PathBuf {
         self.assets_dir.join("atlases")
+    }
+
+    pub fn sounds_definition(&self) -> PathBuf {
+        self.assets_dir.join("sounds.json")
+    }
+
+    pub fn sounds_dir(&self) -> PathBuf {
+        self.assets_dir.join("sounds")
     }
 
     pub fn atlas_definition(&self, name: &str) -> PathBuf {
@@ -144,6 +153,10 @@ impl PackRoots {
 
     pub fn load_biome_color_catalog(&self) -> Result<BiomeColorCatalog> {
         BiomeColorCatalog::load_vanilla_26_1(self)
+    }
+
+    pub fn load_sound_catalog(&self) -> Result<SoundCatalog> {
+        SoundCatalog::load_minecraft_assets_dir(&self.assets_dir)
     }
 }
 

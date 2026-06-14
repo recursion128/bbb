@@ -6,6 +6,7 @@ mod exports;
 mod image;
 mod mipmap;
 mod roots;
+mod sounds;
 mod sprites;
 
 pub use exports::*;

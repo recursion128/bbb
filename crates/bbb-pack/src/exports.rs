@@ -10,6 +10,7 @@ pub use crate::colors::{
 };
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};
 pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};
+pub use crate::sounds::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
 pub use crate::sprites::{
     SpriteAnimation, SpriteAnimationFrame, SpriteAnimationFrameTick, SpriteGuiMetadata,
     SpriteGuiScaling, SpriteImage, SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource,
