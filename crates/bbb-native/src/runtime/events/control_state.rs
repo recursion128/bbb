@@ -194,11 +194,7 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::SelectAdvancementsTab(update) => {
             world.apply_select_advancements_tab(update);
-            let world_counters = world.counters();
-            counters.selected_advancements_tab =
-                world.selected_advancements_tab().map(str::to_string);
-            counters.select_advancements_tab_packets =
-                world_counters.select_advancements_tab_packets;
+            sync_advancement_counters(counters, world);
         }
         NetEvent::TagQuery(update) => {
             world.apply_tag_query(update);
@@ -321,6 +317,48 @@ pub(super) fn sync_command_counters(counters: &mut NetCounters, world: &WorldSto
     counters.last_command_root_index = world_counters.last_command_root_index;
     counters.command_suggestion_packets = world_counters.command_suggestion_packets;
     counters.command_suggestion_entries_tracked = world_counters.command_suggestion_entries_tracked;
+}
+
+pub(super) fn sync_recipe_book_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.recipe_book_add_packets = world_counters.recipe_book_add_packets;
+    counters.recipe_book_remove_packets = world_counters.recipe_book_remove_packets;
+    counters.recipe_book_settings_packets = world_counters.recipe_book_settings_packets;
+    counters.recipe_book_replace_packets = world_counters.recipe_book_replace_packets;
+    counters.recipe_book_entries_received = world_counters.recipe_book_entries_received;
+    counters.recipe_book_removed_entries_received =
+        world_counters.recipe_book_removed_entries_received;
+    counters.recipe_book_entries_tracked = world_counters.recipe_book_entries_tracked;
+    counters.recipe_book_highlights_tracked = world_counters.recipe_book_highlights_tracked;
+    counters.recipe_book_notifications_received = world_counters.recipe_book_notifications_received;
+}
+
+pub(super) fn sync_recipe_access_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.update_recipes_packets = world_counters.update_recipes_packets;
+    counters.recipe_property_sets_tracked = world_counters.recipe_property_sets_tracked;
+    counters.recipe_property_set_items_tracked = world_counters.recipe_property_set_items_tracked;
+    counters.stonecutter_recipes_tracked = world_counters.stonecutter_recipes_tracked;
+}
+
+pub(super) fn sync_advancement_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.selected_advancements_tab = world.selected_advancements_tab().map(str::to_string);
+    counters.select_advancements_tab_packets = world_counters.select_advancements_tab_packets;
+    counters.update_advancements_packets = world_counters.update_advancements_packets;
+    counters.update_advancements_reset_packets = world_counters.update_advancements_reset_packets;
+    counters.update_advancements_show_packets = world_counters.update_advancements_show_packets;
+    counters.advancements_added_received = world_counters.advancements_added_received;
+    counters.advancements_removed_received = world_counters.advancements_removed_received;
+    counters.advancements_adds_ignored = world_counters.advancements_adds_ignored;
+    counters.advancement_progress_received = world_counters.advancement_progress_received;
+    counters.advancement_progress_updates_ignored =
+        world_counters.advancement_progress_updates_ignored;
+    counters.advancements_tracked = world_counters.advancements_tracked;
+    counters.advancement_roots_tracked = world_counters.advancement_roots_tracked;
+    counters.advancement_progress_tracked = world_counters.advancement_progress_tracked;
+    counters.advancement_progress_criteria_tracked =
+        world_counters.advancement_progress_criteria_tracked;
 }
 
 fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore) {

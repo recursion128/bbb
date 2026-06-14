@@ -8,9 +8,10 @@ use crate::input::queue_vehicle_move_command;
 
 use super::client_state::*;
 use super::control_state::{
-    apply_control_projection_event, sync_block_event_counters, sync_client_audio_counters,
-    sync_command_counters, sync_entity_interaction_counters, sync_entity_status_counters,
-    sync_hud_session_counters, sync_player_info_counters, sync_registry_counters,
+    apply_control_projection_event, sync_advancement_counters, sync_block_event_counters,
+    sync_client_audio_counters, sync_command_counters, sync_entity_interaction_counters,
+    sync_entity_status_counters, sync_hud_session_counters, sync_player_info_counters,
+    sync_recipe_access_counters, sync_recipe_book_counters, sync_registry_counters,
     sync_scoreboard_counters, sync_server_presentation_counters, sync_world_border_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
@@ -76,18 +77,23 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
             }
             NetEvent::RecipeBookAdd(update) => {
                 world.apply_recipe_book_add(update);
+                sync_recipe_book_counters(counters, world);
             }
             NetEvent::RecipeBookRemove(update) => {
                 world.apply_recipe_book_remove(update);
+                sync_recipe_book_counters(counters, world);
             }
             NetEvent::RecipeBookSettings(update) => {
                 world.apply_recipe_book_settings(update);
+                sync_recipe_book_counters(counters, world);
             }
             NetEvent::UpdateAdvancements(update) => {
                 world.apply_update_advancements(update);
+                sync_advancement_counters(counters, world);
             }
             NetEvent::UpdateRecipes(update) => {
                 world.apply_update_recipes(update);
+                sync_recipe_access_counters(counters, world);
             }
             NetEvent::PlayerInfoUpdate(update) => {
                 world.apply_player_info_update(update);

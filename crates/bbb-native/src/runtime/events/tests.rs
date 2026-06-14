@@ -1067,6 +1067,16 @@ fn recipe_book_events_update_world_state() {
     assert_eq!(world_counters.recipe_book_entries_tracked, 1);
     assert_eq!(world_counters.recipe_book_highlights_tracked, 1);
     assert_eq!(world_counters.recipe_book_notifications_received, 1);
+
+    assert_eq!(counters.recipe_book_add_packets, 1);
+    assert_eq!(counters.recipe_book_remove_packets, 1);
+    assert_eq!(counters.recipe_book_settings_packets, 1);
+    assert_eq!(counters.recipe_book_replace_packets, 1);
+    assert_eq!(counters.recipe_book_entries_received, 2);
+    assert_eq!(counters.recipe_book_removed_entries_received, 1);
+    assert_eq!(counters.recipe_book_entries_tracked, 1);
+    assert_eq!(counters.recipe_book_highlights_tracked, 1);
+    assert_eq!(counters.recipe_book_notifications_received, 1);
 }
 
 #[test]
@@ -1120,6 +1130,19 @@ fn update_advancements_event_updates_world_state() {
     assert_eq!(world_counters.advancement_roots_tracked, 1);
     assert_eq!(world_counters.advancement_progress_tracked, 1);
     assert_eq!(world_counters.advancement_progress_criteria_tracked, 2);
+
+    assert_eq!(counters.update_advancements_packets, 1);
+    assert_eq!(counters.update_advancements_reset_packets, 1);
+    assert_eq!(counters.update_advancements_show_packets, 1);
+    assert_eq!(counters.advancements_added_received, 1);
+    assert_eq!(counters.advancements_removed_received, 0);
+    assert_eq!(counters.advancements_adds_ignored, 0);
+    assert_eq!(counters.advancement_progress_received, 1);
+    assert_eq!(counters.advancement_progress_updates_ignored, 0);
+    assert_eq!(counters.advancements_tracked, 1);
+    assert_eq!(counters.advancement_roots_tracked, 1);
+    assert_eq!(counters.advancement_progress_tracked, 1);
+    assert_eq!(counters.advancement_progress_criteria_tracked, 2);
 }
 
 #[test]
@@ -1161,6 +1184,11 @@ fn update_recipes_event_replaces_world_recipe_access_state() {
     assert_eq!(world_counters.recipe_property_sets_tracked, 1);
     assert_eq!(world_counters.recipe_property_set_items_tracked, 2);
     assert_eq!(world_counters.stonecutter_recipes_tracked, 1);
+
+    assert_eq!(counters.update_recipes_packets, 1);
+    assert_eq!(counters.recipe_property_sets_tracked, 1);
+    assert_eq!(counters.recipe_property_set_items_tracked, 2);
+    assert_eq!(counters.stonecutter_recipes_tracked, 1);
 }
 
 #[test]

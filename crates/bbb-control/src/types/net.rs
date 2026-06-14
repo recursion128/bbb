@@ -202,6 +202,32 @@ pub struct NetCounters {
     pub command_suggestion_packets: usize,
     #[serde(default)]
     pub command_suggestion_entries_tracked: usize,
+    #[serde(default)]
+    pub recipe_book_add_packets: usize,
+    #[serde(default)]
+    pub recipe_book_remove_packets: usize,
+    #[serde(default)]
+    pub recipe_book_settings_packets: usize,
+    #[serde(default)]
+    pub recipe_book_replace_packets: usize,
+    #[serde(default)]
+    pub recipe_book_entries_received: usize,
+    #[serde(default)]
+    pub recipe_book_removed_entries_received: usize,
+    #[serde(default)]
+    pub recipe_book_entries_tracked: usize,
+    #[serde(default)]
+    pub recipe_book_highlights_tracked: usize,
+    #[serde(default)]
+    pub recipe_book_notifications_received: usize,
+    #[serde(default)]
+    pub update_recipes_packets: usize,
+    #[serde(default)]
+    pub recipe_property_sets_tracked: usize,
+    #[serde(default)]
+    pub recipe_property_set_items_tracked: usize,
+    #[serde(default)]
+    pub stonecutter_recipes_tracked: usize,
     pub player_combat_end_packets: usize,
     pub player_combat_enter_packets: usize,
     pub player_combat_kill_packets: usize,
@@ -286,6 +312,30 @@ pub struct NetCounters {
     pub game_test_highlight_pos_packets: usize,
     pub test_instance_block_status_packets: usize,
     pub select_advancements_tab_packets: usize,
+    #[serde(default)]
+    pub update_advancements_packets: usize,
+    #[serde(default)]
+    pub update_advancements_reset_packets: usize,
+    #[serde(default)]
+    pub update_advancements_show_packets: usize,
+    #[serde(default)]
+    pub advancements_added_received: usize,
+    #[serde(default)]
+    pub advancements_removed_received: usize,
+    #[serde(default)]
+    pub advancements_adds_ignored: usize,
+    #[serde(default)]
+    pub advancement_progress_received: usize,
+    #[serde(default)]
+    pub advancement_progress_updates_ignored: usize,
+    #[serde(default)]
+    pub advancements_tracked: usize,
+    #[serde(default)]
+    pub advancement_roots_tracked: usize,
+    #[serde(default)]
+    pub advancement_progress_tracked: usize,
+    #[serde(default)]
+    pub advancement_progress_criteria_tracked: usize,
     pub tag_query_packets: usize,
     pub last_block_changed_ack_sequence: Option<i32>,
     pub held_slot_commands_queued: usize,
