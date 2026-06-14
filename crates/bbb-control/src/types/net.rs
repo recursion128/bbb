@@ -280,6 +280,74 @@ pub struct NetCounters {
     pub ticking_state_packets: usize,
     pub ticking_step_packets: usize,
     pub set_camera_packets: usize,
+    #[serde(default)]
+    pub entities_tracked: usize,
+    #[serde(default)]
+    pub entities_received: usize,
+    #[serde(default)]
+    pub entity_position_syncs_received: usize,
+    #[serde(default)]
+    pub entity_position_syncs_applied: usize,
+    #[serde(default)]
+    pub entity_moves_received: usize,
+    #[serde(default)]
+    pub entity_moves_applied: usize,
+    #[serde(default)]
+    pub entity_teleports_received: usize,
+    #[serde(default)]
+    pub entity_teleports_applied: usize,
+    #[serde(default)]
+    pub entity_animation_updates_received: usize,
+    #[serde(default)]
+    pub entity_animation_updates_applied: usize,
+    #[serde(default)]
+    pub entity_events_received: usize,
+    #[serde(default)]
+    pub entity_events_applied: usize,
+    #[serde(default)]
+    pub entity_hurt_animations_received: usize,
+    #[serde(default)]
+    pub entity_hurt_animations_applied: usize,
+    #[serde(default)]
+    pub entity_data_updates_received: usize,
+    #[serde(default)]
+    pub entity_data_values_received: usize,
+    #[serde(default)]
+    pub entity_data_updates_applied: usize,
+    #[serde(default)]
+    pub entity_equipment_updates_received: usize,
+    #[serde(default)]
+    pub entity_equipment_slots_received: usize,
+    #[serde(default)]
+    pub entity_equipment_updates_applied: usize,
+    #[serde(default)]
+    pub entity_attribute_updates_received: usize,
+    #[serde(default)]
+    pub entity_attributes_received: usize,
+    #[serde(default)]
+    pub entity_attribute_updates_applied: usize,
+    #[serde(default)]
+    pub entity_passenger_updates_received: usize,
+    #[serde(default)]
+    pub entity_passenger_ids_received: usize,
+    #[serde(default)]
+    pub entity_passenger_updates_applied: usize,
+    #[serde(default)]
+    pub entity_link_updates_received: usize,
+    #[serde(default)]
+    pub entity_link_updates_applied: usize,
+    #[serde(default)]
+    pub entity_motion_updates_received: usize,
+    #[serde(default)]
+    pub entity_motion_updates_applied: usize,
+    #[serde(default)]
+    pub entity_head_rotations_received: usize,
+    #[serde(default)]
+    pub entity_head_rotations_applied: usize,
+    #[serde(default)]
+    pub entity_removes_received: usize,
+    #[serde(default)]
+    pub entities_removed: usize,
     pub transfer_packets: usize,
     pub take_item_entity_packets: usize,
     #[serde(default)]

@@ -279,6 +279,44 @@ pub(super) fn sync_entity_interaction_counters(counters: &mut NetCounters, world
     counters.take_item_entities_removed = world_counters.take_item_entities_removed;
 }
 
+pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.entities_tracked = world_counters.entities_tracked;
+    counters.entities_received = world_counters.entities_received;
+    counters.entity_position_syncs_received = world_counters.entity_position_syncs_received;
+    counters.entity_position_syncs_applied = world_counters.entity_position_syncs_applied;
+    counters.entity_moves_received = world_counters.entity_moves_received;
+    counters.entity_moves_applied = world_counters.entity_moves_applied;
+    counters.entity_teleports_received = world_counters.entity_teleports_received;
+    counters.entity_teleports_applied = world_counters.entity_teleports_applied;
+    counters.entity_animation_updates_received = world_counters.entity_animation_updates_received;
+    counters.entity_animation_updates_applied = world_counters.entity_animation_updates_applied;
+    counters.entity_events_received = world_counters.entity_events_received;
+    counters.entity_events_applied = world_counters.entity_events_applied;
+    counters.entity_hurt_animations_received = world_counters.entity_hurt_animations_received;
+    counters.entity_hurt_animations_applied = world_counters.entity_hurt_animations_applied;
+    counters.entity_data_updates_received = world_counters.entity_data_updates_received;
+    counters.entity_data_values_received = world_counters.entity_data_values_received;
+    counters.entity_data_updates_applied = world_counters.entity_data_updates_applied;
+    counters.entity_equipment_updates_received = world_counters.entity_equipment_updates_received;
+    counters.entity_equipment_slots_received = world_counters.entity_equipment_slots_received;
+    counters.entity_equipment_updates_applied = world_counters.entity_equipment_updates_applied;
+    counters.entity_attribute_updates_received = world_counters.entity_attribute_updates_received;
+    counters.entity_attributes_received = world_counters.entity_attributes_received;
+    counters.entity_attribute_updates_applied = world_counters.entity_attribute_updates_applied;
+    counters.entity_passenger_updates_received = world_counters.entity_passenger_updates_received;
+    counters.entity_passenger_ids_received = world_counters.entity_passenger_ids_received;
+    counters.entity_passenger_updates_applied = world_counters.entity_passenger_updates_applied;
+    counters.entity_link_updates_received = world_counters.entity_link_updates_received;
+    counters.entity_link_updates_applied = world_counters.entity_link_updates_applied;
+    counters.entity_motion_updates_received = world_counters.entity_motion_updates_received;
+    counters.entity_motion_updates_applied = world_counters.entity_motion_updates_applied;
+    counters.entity_head_rotations_received = world_counters.entity_head_rotations_received;
+    counters.entity_head_rotations_applied = world_counters.entity_head_rotations_applied;
+    counters.entity_removes_received = world_counters.entity_removes_received;
+    counters.entities_removed = world_counters.entities_removed;
+}
+
 pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.block_changed_ack_packets = world_counters.block_changed_ack_packets;

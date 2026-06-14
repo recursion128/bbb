@@ -7,27 +7,31 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_pack::SoundCatalog;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
-    BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, ChunkPos as ProtocolChunkPos,
-    CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent, ContainerSetData, ContainerSetSlot,
-    CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
-    DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat,
-    DialogHolder, DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind,
-    GameRuleValue, GameRuleValues, GameTestHighlightPos, IngredientSummary, InteractionHand,
-    ItemCostSummary, ItemStackSummary, LevelParticles, MapColorPatch, MapDecoration, MapItemData,
-    MerchantOffer, MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen,
-    MoveMinecartAlongTrack, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
-    ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill,
-    PlayerLookAt, PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd,
-    RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
-    RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
-    RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType,
-    SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
-    SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetPassengers, SetPlayerInventory,
-    ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
-    SoundEventHolder, SoundSource, StonecutterSelectableRecipeSummary, StopSound,
-    TagNetworkPayload, TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
-    UpdateAdvancements, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
-    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    AttributeSnapshot, BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder,
+    ChunkPos as ProtocolChunkPos, CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent,
+    ContainerSetData, ContainerSetSlot, CustomChatCompletions, CustomChatCompletionsAction,
+    CustomPayload, CustomPayloadBody, DebugBlockValue, DebugChunkValue, DebugEntityValue,
+    DebugEvent, DebugSample, DeleteChat, DialogHolder, DisguisedChat, EntityAnchor,
+    EntityAnimation, EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove,
+    EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind,
+    GameRuleValue, GameRuleValues, GameTestHighlightPos, HurtAnimation, IngredientSummary,
+    InteractionHand, ItemCostSummary, ItemStackSummary, LevelParticles, MapColorPatch,
+    MapDecoration, MapItemData, MerchantOffer, MerchantOffers, MessageSignature, MinecartStep,
+    MountScreenOpen, MoveMinecartAlongTrack, OpenBook, OpenScreen, OpenSignEditor,
+    PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat,
+    PlayerCombatEnd, PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse,
+    ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
+    RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
+    RecipeDisplayType, RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags,
+    RemoteDebugSampleType, RemoveEntities, RotateHead, SelectAdvancementsTab, ServerLinkEntry,
+    ServerLinkKnownType, ServerLinkType, ServerLinks, SetChunkCacheCenter, SetChunkCacheRadius,
+    SetCursorItem, SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetPassengers,
+    SetPlayerInventory, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
+    SoundEvent, SoundEventHolder, SoundSource, StonecutterSelectableRecipeSummary, StopSound,
+    TagNetworkPayload, TagQuery, TeleportEntity, TestInstanceBlockStatus, TrackedWaypoint,
+    TrackedWaypointPacket, UpdateAdvancements, UpdateAttributes, UpdateRecipes, UpdateTags,
+    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
+    WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, RegistryPacketEntry, WorldStore};
 use std::collections::BTreeMap;
@@ -1032,6 +1036,180 @@ fn inventory_events_update_world_and_snapshot_counters() {
     assert_eq!(counters.inventory_slot_updates_received, 1);
     assert_eq!(counters.inventory_slots_tracked, 1);
     assert_eq!(counters.cursor_item_updates_received, 1);
+}
+
+#[test]
+fn entity_events_update_world_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(16);
+    tx.try_send(NetEvent::AddEntity(protocol_add_entity(123)))
+        .unwrap();
+    tx.try_send(NetEvent::AddEntity(protocol_add_entity(456)))
+        .unwrap();
+    tx.try_send(NetEvent::EntityPositionSync(EntityPositionSync {
+        id: 123,
+        position: ProtocolVec3d {
+            x: 2.0,
+            y: 65.0,
+            z: -3.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.25,
+            z: 0.0,
+        },
+        y_rot: 180.0,
+        x_rot: 30.0,
+        on_ground: true,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::MoveEntity(EntityMove {
+        id: 123,
+        delta_x: 4096,
+        delta_y: 0,
+        delta_z: -2048,
+        y_rot: Some(-90.0),
+        x_rot: Some(45.0),
+        on_ground: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::TeleportEntity(TeleportEntity {
+        id: 123,
+        position: ProtocolVec3d {
+            x: 0.5,
+            y: 70.0,
+            z: -4.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.0,
+            y: 0.2,
+            z: 0.0,
+        },
+        y_rot: 10.0,
+        x_rot: -120.0,
+        relatives_mask: 0,
+        on_ground: true,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetEntityMotion(SetEntityMotion {
+        id: 123,
+        delta_movement: ProtocolVec3d {
+            x: 0.1,
+            y: 0.0,
+            z: -0.1,
+        },
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::RotateHead(RotateHead {
+        id: 123,
+        y_head_rot: 90.0,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::EntityAnimation(EntityAnimation {
+        id: 123,
+        action: 3,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::EntityEvent(EntityEvent {
+        entity_id: 123,
+        event_id: 35,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::HurtAnimation(HurtAnimation {
+        id: 123,
+        yaw: 45.5,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetEntityData(SetEntityData {
+        id: 123,
+        values: vec![EntityDataValue {
+            data_id: 0,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(0x20),
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetEquipment(SetEquipment {
+        entity_id: 123,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Head,
+            item: item_stack(42, 1),
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::UpdateAttributes(UpdateAttributes {
+        entity_id: 123,
+        attributes: vec![AttributeSnapshot {
+            attribute_id: 21,
+            base: 20.0,
+            modifiers: Vec::new(),
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetEntityLink(SetEntityLink {
+        source_id: 123,
+        dest_id: 456,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetPassengers(SetPassengers {
+        vehicle_id: 123,
+        passenger_ids: vec![456],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::RemoveEntities(RemoveEntities {
+        entity_ids: vec![456],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        16
+    );
+
+    let world_counters = world.counters();
+    macro_rules! assert_entity_counter {
+        ($field:ident, $value:expr) => {
+            assert_eq!(world_counters.$field, $value);
+            assert_eq!(counters.$field, $value);
+        };
+    }
+
+    assert_entity_counter!(entities_received, 2);
+    assert_entity_counter!(entities_tracked, 1);
+    assert_entity_counter!(entity_position_syncs_received, 1);
+    assert_entity_counter!(entity_position_syncs_applied, 1);
+    assert_entity_counter!(entity_moves_received, 1);
+    assert_entity_counter!(entity_moves_applied, 1);
+    assert_entity_counter!(entity_teleports_received, 1);
+    assert_entity_counter!(entity_teleports_applied, 1);
+    assert_entity_counter!(entity_motion_updates_received, 1);
+    assert_entity_counter!(entity_motion_updates_applied, 1);
+    assert_entity_counter!(entity_head_rotations_received, 1);
+    assert_entity_counter!(entity_head_rotations_applied, 1);
+    assert_entity_counter!(entity_animation_updates_received, 1);
+    assert_entity_counter!(entity_animation_updates_applied, 1);
+    assert_entity_counter!(entity_events_received, 1);
+    assert_entity_counter!(entity_events_applied, 1);
+    assert_entity_counter!(entity_hurt_animations_received, 1);
+    assert_entity_counter!(entity_hurt_animations_applied, 1);
+    assert_entity_counter!(entity_data_updates_received, 1);
+    assert_entity_counter!(entity_data_values_received, 1);
+    assert_entity_counter!(entity_data_updates_applied, 1);
+    assert_entity_counter!(entity_equipment_updates_received, 1);
+    assert_entity_counter!(entity_equipment_slots_received, 1);
+    assert_entity_counter!(entity_equipment_updates_applied, 1);
+    assert_entity_counter!(entity_attribute_updates_received, 1);
+    assert_entity_counter!(entity_attributes_received, 1);
+    assert_entity_counter!(entity_attribute_updates_applied, 1);
+    assert_entity_counter!(entity_link_updates_received, 1);
+    assert_entity_counter!(entity_link_updates_applied, 1);
+    assert_entity_counter!(entity_passenger_updates_received, 1);
+    assert_entity_counter!(entity_passenger_ids_received, 1);
+    assert_entity_counter!(entity_passenger_updates_applied, 1);
+    assert_entity_counter!(entity_removes_received, 1);
+    assert_entity_counter!(entities_removed, 1);
 }
 
 #[test]
