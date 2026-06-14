@@ -6,7 +6,10 @@ use tokio::sync::mpsc;
 use crate::input::queue_vehicle_move_command;
 
 use super::client_state::*;
-use super::control_state::{apply_control_projection_event, sync_registry_counters};
+use super::control_state::{
+    apply_control_projection_event, sync_player_info_counters, sync_registry_counters,
+    sync_server_presentation_counters,
+};
 use super::{apply_block_changed_ack, sync_weather_counters, sync_world_time_counters};
 
 pub(in crate::runtime) fn drain_net_events(
@@ -48,24 +51,24 @@ pub(in crate::runtime) fn drain_net_events(
                 world.apply_update_recipes(update);
             }
             NetEvent::PlayerInfoUpdate(update) => {
-                counters.player_info_update_packets += 1;
                 world.apply_player_info_update(update);
+                sync_player_info_counters(counters, world);
             }
             NetEvent::PlayerInfoRemove(update) => {
-                counters.player_info_remove_packets += 1;
                 world.apply_player_info_remove(update);
+                sync_player_info_counters(counters, world);
             }
             NetEvent::ServerData(update) => {
-                counters.server_data_packets += 1;
                 world.apply_server_data(update);
+                sync_server_presentation_counters(counters, world);
             }
             NetEvent::ResourcePackPush(update) => {
-                counters.resource_pack_push_packets += 1;
                 world.apply_resource_pack_push(update);
+                sync_server_presentation_counters(counters, world);
             }
             NetEvent::ResourcePackPop(update) => {
-                counters.resource_pack_pop_packets += 1;
                 world.apply_resource_pack_pop(update);
+                sync_server_presentation_counters(counters, world);
             }
             NetEvent::Cooldown(update) => {
                 counters.cooldown_packets += 1;

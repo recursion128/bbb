@@ -1993,7 +1993,13 @@ fn player_info_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        player_info_update_packets: 99,
+        player_info_remove_packets: 99,
+        player_info_entries_tracked: 99,
+        listed_players_tracked: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -2001,6 +2007,8 @@ fn player_info_events_update_world_and_counters() {
     );
     assert_eq!(counters.player_info_update_packets, 1);
     assert_eq!(counters.player_info_remove_packets, 1);
+    assert_eq!(counters.player_info_entries_tracked, 1);
+    assert_eq!(counters.listed_players_tracked, 1);
 
     let entry = world.player_info_entry(profile_id).unwrap();
     assert_eq!(entry.profile.uuid, profile_id);
@@ -2049,7 +2057,13 @@ fn server_presentation_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        server_data_packets: 99,
+        resource_pack_push_packets: 99,
+        resource_pack_pop_packets: 99,
+        resource_packs_tracked: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -2058,6 +2072,7 @@ fn server_presentation_events_update_world_and_counters() {
     assert_eq!(counters.server_data_packets, 1);
     assert_eq!(counters.resource_pack_push_packets, 1);
     assert_eq!(counters.resource_pack_pop_packets, 1);
+    assert_eq!(counters.resource_packs_tracked, 0);
 
     let server_data = world.server_data().unwrap();
     assert_eq!(server_data.motd, "Native test server");

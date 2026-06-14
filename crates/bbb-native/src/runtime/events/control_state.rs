@@ -314,6 +314,22 @@ pub(super) fn sync_registry_counters(counters: &mut NetCounters, world: &WorldSt
     counters.last_registry_data_entry_count = world_counters.last_registry_data_entry_count;
 }
 
+pub(super) fn sync_player_info_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.player_info_update_packets = world_counters.player_info_update_packets;
+    counters.player_info_remove_packets = world_counters.player_info_remove_packets;
+    counters.player_info_entries_tracked = world_counters.player_info_entries_tracked;
+    counters.listed_players_tracked = world_counters.listed_players_tracked;
+}
+
+pub(super) fn sync_server_presentation_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.server_data_packets = world_counters.server_data_packets;
+    counters.resource_pack_push_packets = world_counters.resource_pack_push_packets;
+    counters.resource_pack_pop_packets = world_counters.resource_pack_pop_packets;
+    counters.resource_packs_tracked = world_counters.resource_packs_tracked;
+}
+
 fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.update_enabled_features_packets = world_counters.update_enabled_features_packets;
