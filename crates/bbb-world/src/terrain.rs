@@ -238,6 +238,22 @@ fn is_cutout_block_name(name: &str) -> bool {
         || name.contains("kelp")
         || name.contains("seagrass")
         || is_copper_grate_block_name(name)
+        || is_bar_block_name(name)
+}
+
+fn is_bar_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:iron_bars"
+            | "minecraft:copper_bars"
+            | "minecraft:exposed_copper_bars"
+            | "minecraft:weathered_copper_bars"
+            | "minecraft:oxidized_copper_bars"
+            | "minecraft:waxed_copper_bars"
+            | "minecraft:waxed_exposed_copper_bars"
+            | "minecraft:waxed_weathered_copper_bars"
+            | "minecraft:waxed_oxidized_copper_bars"
+    )
 }
 
 fn is_translucent_block_name(name: &str) -> bool {
@@ -274,6 +290,22 @@ mod tests {
             "minecraft:waxed_exposed_copper_grate",
             "minecraft:waxed_weathered_copper_grate",
             "minecraft:waxed_oxidized_copper_grate",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:iron_bars",
+            "minecraft:copper_bars",
+            "minecraft:exposed_copper_bars",
+            "minecraft:weathered_copper_bars",
+            "minecraft:oxidized_copper_bars",
+            "minecraft:waxed_copper_bars",
+            "minecraft:waxed_exposed_copper_bars",
+            "minecraft:waxed_weathered_copper_bars",
+            "minecraft:waxed_oxidized_copper_bars",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),
