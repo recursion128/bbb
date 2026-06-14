@@ -4,6 +4,7 @@ mod block_models;
 mod colors;
 mod exports;
 mod image;
+mod mipmap;
 mod roots;
 mod sprites;
 
