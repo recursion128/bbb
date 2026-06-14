@@ -69,7 +69,8 @@ fn selection_outline_for_box(pos: BlockPos, outline: BlockOutlineBox) -> Selecti
 fn is_selectable_crosshair_material(material: TerrainMaterialClass) -> bool {
     matches!(
         material,
-        TerrainMaterialClass::Opaque
+        TerrainMaterialClass::Invisible
+            | TerrainMaterialClass::Opaque
             | TerrainMaterialClass::Cutout
             | TerrainMaterialClass::Translucent
     )

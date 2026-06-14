@@ -26,6 +26,7 @@ pub struct BlockProbe {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerrainMaterialClass {
     Empty,
+    Invisible,
     Opaque,
     Cutout,
     Fluid,
@@ -74,6 +75,7 @@ pub struct TerrainChunkSummary {
     pub height: usize,
     pub total_blocks: usize,
     pub empty_blocks: usize,
+    pub invisible_blocks: usize,
     pub opaque_blocks: usize,
     pub cutout_blocks: usize,
     pub fluid_blocks: usize,
@@ -91,6 +93,7 @@ impl TerrainChunkSnapshot {
         for cell in &self.cells {
             match cell.material {
                 TerrainMaterialClass::Empty => summary.empty_blocks += 1,
+                TerrainMaterialClass::Invisible => summary.invisible_blocks += 1,
                 TerrainMaterialClass::Opaque => summary.opaque_blocks += 1,
                 TerrainMaterialClass::Cutout => summary.cutout_blocks += 1,
                 TerrainMaterialClass::Fluid => summary.fluid_blocks += 1,
@@ -110,10 +113,24 @@ pub(crate) fn classify_terrain_material(block_name: Option<&str>) -> TerrainMate
             TerrainMaterialClass::Empty
         }
         "minecraft:water" | "minecraft:lava" => TerrainMaterialClass::Fluid,
+        name if is_invisible_render_block_name(name) => TerrainMaterialClass::Invisible,
         name if is_cutout_block_name(name) => TerrainMaterialClass::Cutout,
         name if is_translucent_block_name(name) => TerrainMaterialClass::Translucent,
         _ => TerrainMaterialClass::Opaque,
     }
+}
+
+fn is_invisible_render_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:barrier"
+            | "minecraft:bubble_column"
+            | "minecraft:structure_void"
+            | "minecraft:end_gateway"
+            | "minecraft:end_portal"
+            | "minecraft:light"
+            | "minecraft:moving_piston"
+    )
 }
 
 fn is_cutout_block_name(name: &str) -> bool {
@@ -160,5 +177,65 @@ mod tests {
             classify_terrain_material(Some("minecraft:water")),
             TerrainMaterialClass::Fluid
         );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:barrier")),
+            TerrainMaterialClass::Invisible
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:bubble_column")),
+            TerrainMaterialClass::Invisible
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:structure_void")),
+            TerrainMaterialClass::Invisible
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:end_gateway")),
+            TerrainMaterialClass::Invisible
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:end_portal")),
+            TerrainMaterialClass::Invisible
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:light")),
+            TerrainMaterialClass::Invisible
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:moving_piston")),
+            TerrainMaterialClass::Invisible
+        );
+    }
+
+    #[test]
+    fn summary_counts_invisible_blocks_separately() {
+        let snapshot = TerrainChunkSnapshot {
+            pos: ChunkPos { x: 0, z: 0 },
+            min_y: 0,
+            height: 1,
+            cells: vec![
+                terrain_cell(TerrainMaterialClass::Invisible),
+                terrain_cell(TerrainMaterialClass::Empty),
+                terrain_cell(TerrainMaterialClass::Opaque),
+            ],
+        };
+
+        let summary = snapshot.summary();
+
+        assert_eq!(summary.total_blocks, 3);
+        assert_eq!(summary.invisible_blocks, 1);
+        assert_eq!(summary.empty_blocks, 1);
+        assert_eq!(summary.opaque_blocks, 1);
+    }
+
+    fn terrain_cell(material: TerrainMaterialClass) -> TerrainBlockCell {
+        TerrainBlockCell {
+            block_state_id: 0,
+            block_name: None,
+            block_properties: BTreeMap::new(),
+            biome_id: None,
+            material,
+            light: TerrainLight::FULL_BRIGHT,
+        }
     }
 }

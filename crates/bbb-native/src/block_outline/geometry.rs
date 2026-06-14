@@ -61,6 +61,14 @@ impl BlockOutlineBox {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 1.0, 1.0],
     };
+    pub(super) const STRUCTURE_VOID: Self = Self {
+        min: [5.0 / 16.0, 5.0 / 16.0, 5.0 / 16.0],
+        max: [11.0 / 16.0, 11.0 / 16.0, 11.0 / 16.0],
+    };
+    pub(super) const END_PORTAL: Self = Self {
+        min: [0.0, 6.0 / 16.0, 0.0],
+        max: [1.0, 12.0 / 16.0, 1.0],
+    };
     pub(super) const BOTTOM_SLAB: Self = Self {
         min: [0.0, 0.0, 0.0],
         max: [1.0, 0.5, 1.0],

@@ -9,6 +9,18 @@ pub(super) fn outline_shape_for_block(
     properties: &BTreeMap<String, String>,
 ) -> Option<BlockOutlineShape> {
     let block_name = block_name?;
+    match block_name {
+        "minecraft:bubble_column" | "minecraft:light" | "minecraft:moving_piston" => {
+            return None;
+        }
+        "minecraft:structure_void" => {
+            return Some(BlockOutlineShape::single(BlockOutlineBox::STRUCTURE_VOID));
+        }
+        "minecraft:end_portal" => {
+            return Some(BlockOutlineShape::single(BlockOutlineBox::END_PORTAL));
+        }
+        _ => {}
+    }
     if block_name == "minecraft:snow" {
         return snow_layer_outline_box(properties).map(BlockOutlineShape::single);
     }

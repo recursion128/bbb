@@ -40,6 +40,57 @@ fn selection_outline_uses_flat_carpet_bounds() {
 }
 
 #[test]
+fn invisible_material_can_clip_when_block_has_outline_shape() {
+    let target = BlockOutlineTarget::full_block(TerrainMaterialClass::Invisible);
+
+    assert_eq!(
+        target.clip(
+            [0.5, 0.5, -1.0],
+            [0.0, 0.0, 1.0],
+            4.5,
+            BlockPos { x: 0, y: 0, z: 0 },
+        ),
+        Some(BlockOutlineHit {
+            distance: 1.0,
+            face: ProtocolDirection::North,
+            inside: false,
+        })
+    );
+}
+
+#[test]
+fn invisible_render_blocks_use_vanilla_outline_shapes() {
+    assert!(outline_shape_for_block(Some("minecraft:bubble_column"), &BTreeMap::new()).is_none());
+    assert!(outline_shape_for_block(Some("minecraft:light"), &BTreeMap::new()).is_none());
+    assert!(outline_shape_for_block(Some("minecraft:moving_piston"), &BTreeMap::new()).is_none());
+
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:barrier"), &BTreeMap::new())
+            .unwrap()
+            .selection_outline(BlockPos { x: -2, y: 63, z: 4 }),
+        SelectionOutline::from_box([-2.0, 63.0, 4.0], [-1.0, 64.0, 5.0])
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:end_gateway"), &BTreeMap::new())
+            .unwrap()
+            .selection_outline(BlockPos { x: -2, y: 63, z: 4 }),
+        SelectionOutline::from_box([-2.0, 63.0, 4.0], [-1.0, 64.0, 5.0])
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:structure_void"), &BTreeMap::new())
+            .unwrap()
+            .selection_outline(BlockPos { x: -2, y: 63, z: 4 }),
+        SelectionOutline::from_box([-1.6875, 63.3125, 4.3125], [-1.3125, 63.6875, 4.6875])
+    );
+    assert_eq!(
+        outline_shape_for_block(Some("minecraft:end_portal"), &BTreeMap::new())
+            .unwrap()
+            .selection_outline(BlockPos { x: -2, y: 63, z: 4 }),
+        SelectionOutline::from_box([-2.0, 63.375, 4.0], [-1.0, 63.75, 5.0])
+    );
+}
+
+#[test]
 fn pressure_plate_outline_clip_uses_thin_shape() {
     let target = BlockOutlineTarget {
         material: TerrainMaterialClass::Opaque,

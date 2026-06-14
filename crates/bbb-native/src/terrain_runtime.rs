@@ -148,6 +148,7 @@ fn convert_terrain_snapshot(
                 ambient_occlusion,
                 material: match cell.material {
                     bbb_world::TerrainMaterialClass::Empty => TerrainMaterialClass::Empty,
+                    bbb_world::TerrainMaterialClass::Invisible => TerrainMaterialClass::Empty,
                     bbb_world::TerrainMaterialClass::Opaque => TerrainMaterialClass::Opaque,
                     bbb_world::TerrainMaterialClass::Cutout => TerrainMaterialClass::Cutout,
                     bbb_world::TerrainMaterialClass::Fluid => TerrainMaterialClass::Fluid,
