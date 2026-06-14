@@ -11,8 +11,11 @@ const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
 const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
 const VANILLA_ENTITY_TYPE_LEASH_KNOT_ID: i32 = 76;
 const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
+const VANILLA_ENTITY_TYPE_MANNEQUIN_ID: i32 = 83;
 const VANILLA_ENTITY_TYPE_PAINTING_ID: i32 = 93;
+const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
+const ENTITY_DATA_POSE_ID: u8 = 6;
 const HANGING_DATA_DIRECTION_ID: u8 = 8;
 const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
 const PAINTING_DATA_VARIANT_ID: u8 = 9;
@@ -38,6 +41,12 @@ const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
 const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
 const VANILLA_SCALE_MAX: f64 = 16.0;
+const VANILLA_POSE_FALL_FLYING_ID: i32 = 1;
+const VANILLA_POSE_SLEEPING_ID: i32 = 2;
+const VANILLA_POSE_SWIMMING_ID: i32 = 3;
+const VANILLA_POSE_SPIN_ATTACK_ID: i32 = 4;
+const VANILLA_POSE_CROUCHING_ID: i32 = 5;
+const VANILLA_POSE_DYING_ID: i32 = 7;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -98,27 +107,39 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     data_values: &[EntityDataValue],
     attributes: &[AttributeSnapshot],
 ) -> Option<EntityPickBoundsState> {
+    let scale_dimensions = scales_with_living_scale_attribute(entity_type_id, data_values);
     let bounds = if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
-        armor_stand_pick_bounds(data_values)
+        armor_stand_pick_bounds(data_values)?
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_MANNEQUIN_ID
+    {
+        avatar_pick_bounds(data_values)
+    } else if is_living_sleeping(entity_type_id, data_values) {
+        living_sleeping_pick_bounds()
     } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
-        Some(interaction_pick_bounds(data_values))
+        interaction_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID
     {
-        Some(item_frame_pick_bounds(add_entity_data, data_values))
+        item_frame_pick_bounds(add_entity_data, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PAINTING_ID {
-        painting_pick_bounds(add_entity_data, data_values)
+        painting_pick_bounds(add_entity_data, data_values)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
-        Some(EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0))
+        EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_SLIME_ID
     {
-        Some(slime_pick_bounds(data_values))
+        slime_pick_bounds(data_values)
     } else {
-        vanilla_pick_bounds_for_type(entity_type_id)
+        vanilla_pick_bounds_for_type(entity_type_id)?
     };
 
-    bounds.map(|bounds| apply_living_scale(entity_type_id, bounds, attributes))
+    Some(apply_living_scale(
+        entity_type_id,
+        bounds,
+        attributes,
+        scale_dimensions,
+    ))
 }
 
 pub(crate) fn vanilla_client_position_for_entity_data(
@@ -159,6 +180,21 @@ fn interaction_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsS
         ),
         0.0,
     )
+}
+
+fn avatar_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
+    match entity_data_pose(data_values) {
+        VANILLA_POSE_SLEEPING_ID | VANILLA_POSE_DYING_ID => living_sleeping_pick_bounds(),
+        VANILLA_POSE_FALL_FLYING_ID | VANILLA_POSE_SWIMMING_ID | VANILLA_POSE_SPIN_ATTACK_ID => {
+            EntityPickBoundsState::from_base_size(0.6, 0.6, 0.0)
+        }
+        VANILLA_POSE_CROUCHING_ID => EntityPickBoundsState::from_base_size(0.6, 1.5, 0.0),
+        _ => EntityPickBoundsState::from_base_size(0.6, 1.8, 0.0),
+    }
+}
+
+fn living_sleeping_pick_bounds() -> EntityPickBoundsState {
+    EntityPickBoundsState::from_base_size(0.2, 0.2, 0.0)
 }
 
 fn item_frame_pick_bounds(
@@ -325,6 +361,9 @@ fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPick
     if flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
         return None;
     }
+    if entity_data_pose(data_values) == VANILLA_POSE_SLEEPING_ID {
+        return Some(living_sleeping_pick_bounds());
+    }
     let scale = if flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0 {
         ARMOR_STAND_SMALL_SCALE
     } else {
@@ -341,7 +380,11 @@ fn apply_living_scale(
     entity_type_id: i32,
     bounds: EntityPickBoundsState,
     attributes: &[AttributeSnapshot],
+    scale_dimensions: bool,
 ) -> EntityPickBoundsState {
+    if !scale_dimensions {
+        return bounds;
+    }
     if !vanilla_living_entity_type(entity_type_id) {
         return bounds;
     }
@@ -393,6 +436,38 @@ fn vanilla_living_entity_type(entity_type_id: i32) -> bool {
     VANILLA_LIVING_ENTITY_TYPE_IDS
         .binary_search(&entity_type_id)
         .is_ok()
+}
+
+fn scales_with_living_scale_attribute(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> bool {
+    vanilla_living_entity_type(entity_type_id)
+        && !(is_living_sleeping(entity_type_id, data_values)
+            || is_avatar_dying_pose(entity_type_id, data_values))
+}
+
+fn is_living_sleeping(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_living_entity_type(entity_type_id)
+        && entity_data_pose(data_values) == VANILLA_POSE_SLEEPING_ID
+}
+
+fn is_avatar_dying_pose(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    (entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_MANNEQUIN_ID)
+        && entity_data_pose(data_values) == VANILLA_POSE_DYING_ID
+}
+
+fn entity_data_pose(data_values: &[EntityDataValue]) -> i32 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == ENTITY_DATA_POSE_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Pose(value) => Some(*value),
+            _ => None,
+        })
+        .filter(|value| (0..=17).contains(value))
+        .unwrap_or(0)
 }
 
 fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {

@@ -99,13 +99,13 @@ Known priority areas:
   `interaction` entity metadata width/height, direction-aware item
   frames/paintings/leash knots, slime/magma cube size metadata, armor stand
   small/marker flags, player spectator state, LivingEntity `scale` attribute
-  bounds, and the
+  bounds, player/mannequin Avatar pose bounds, and the
   `redirectable_projectile` tag (`fireball`, `wind_charge`,
   `breeze_wind_charge`); `bbb-native` routes left/right/middle mouse actions to
   attack/interact/pick entity packets for those targets, using vanilla default
   block/entity interaction ranges of 4.5/3.0 blocks. Owner: `bbb-world` +
   `bbb-native`; status: partial; next action: apply dynamic bounding-box
-  semantics for baby and pose variants.
+  semantics for baby variants and non-Avatar pose overrides.
 
 ## Phases
 

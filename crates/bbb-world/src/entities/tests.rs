@@ -900,6 +900,89 @@ fn living_pick_bounds_scale_with_vanilla_scale_attribute() {
 }
 
 #[test]
+fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+    const ENTITY_DATA_POSE_ID: u8 = 6;
+    const POSE_SLEEPING: i32 = 2;
+    const POSE_SWIMMING: i32 = 3;
+    const POSE_CROUCHING: i32 = 5;
+    const POSE_DYING: i32 = 7;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        32,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(33, 83));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 32,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_CROUCHING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(32),
+        Some(EntityPickBoundsState::from_base_size(0.6, 1.5, 0.0))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 32,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(32),
+        Some(EntityPickBoundsState::from_base_size(
+            0.6 * 2.0,
+            1.5 * 2.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 32,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SWIMMING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(32),
+        Some(EntityPickBoundsState::from_base_size(
+            0.6 * 2.0,
+            0.6 * 2.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 32,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SLEEPING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(32),
+        Some(EntityPickBoundsState::from_base_size(0.2, 0.2, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 32,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_DYING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(32),
+        Some(EntityPickBoundsState::from_base_size(0.2, 0.2, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 33,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_CROUCHING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(33),
+        Some(EntityPickBoundsState::from_base_size(0.6, 1.5, 0.0))
+    );
+}
+
+#[test]
 fn armor_stand_pick_bounds_follow_client_flags() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(26, 5));
@@ -1530,6 +1613,14 @@ fn protocol_player_info_entry_with_mode(
         show_hat: true,
         list_order: 0,
         chat_session: None,
+    }
+}
+
+fn protocol_pose_data(data_id: u8, pose_id: i32) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 20,
+        value: EntityDataValueKind::Pose(pose_id),
     }
 }
 
