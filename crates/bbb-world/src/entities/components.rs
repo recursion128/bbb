@@ -1,3 +1,7 @@
+use bbb_protocol::packets::{
+    AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
+    EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate,
+};
 use uuid::Uuid;
 
 use super::{EntityState, EntityVec3};
@@ -19,6 +23,28 @@ pub(crate) struct EntityTransform {
     pub(crate) x_rot: f32,
     pub(crate) y_head_rot: f32,
     pub(crate) on_ground: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EntityMetadata {
+    pub(crate) data_values: Vec<ProtocolEntityDataValue>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EntityEquipment {
+    pub(crate) equipment: Vec<ProtocolEquipmentSlotUpdate>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct EntityAttributes {
+    pub(crate) attributes: Vec<ProtocolAttributeSnapshot>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityTransientEvents {
+    pub(crate) last_animation_action: Option<u8>,
+    pub(crate) last_event_id: Option<i8>,
+    pub(crate) last_hurt_yaw: Option<f32>,
 }
 
 impl From<&EntityState> for EntityIdentity {
@@ -46,6 +72,40 @@ impl From<&EntityState> for EntityTransform {
     }
 }
 
+impl From<&EntityState> for EntityMetadata {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            data_values: state.data_values.clone(),
+        }
+    }
+}
+
+impl From<&EntityState> for EntityEquipment {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            equipment: state.equipment.clone(),
+        }
+    }
+}
+
+impl From<&EntityState> for EntityAttributes {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            attributes: state.attributes.clone(),
+        }
+    }
+}
+
+impl From<&EntityState> for EntityTransientEvents {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            last_animation_action: state.last_animation_action,
+            last_event_id: state.last_event_id,
+            last_hurt_yaw: state.last_hurt_yaw,
+        }
+    }
+}
+
 impl EntityTransform {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.position = self.position;
@@ -55,5 +115,31 @@ impl EntityTransform {
         state.x_rot = self.x_rot;
         state.y_head_rot = self.y_head_rot;
         state.on_ground = self.on_ground;
+    }
+}
+
+impl EntityMetadata {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.data_values = self.data_values;
+    }
+}
+
+impl EntityEquipment {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.equipment = self.equipment;
+    }
+}
+
+impl EntityAttributes {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.attributes = self.attributes;
+    }
+}
+
+impl EntityTransientEvents {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.last_animation_action = self.last_animation_action;
+        state.last_event_id = self.last_event_id;
+        state.last_hurt_yaw = self.last_hurt_yaw;
     }
 }

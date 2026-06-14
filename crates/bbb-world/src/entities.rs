@@ -21,7 +21,10 @@ mod status;
 mod store;
 mod updates;
 
-pub(crate) use components::{EntityIdentity, EntityTransform};
+pub(crate) use components::{
+    EntityAttributes, EntityEquipment, EntityIdentity, EntityMetadata, EntityTransform,
+    EntityTransientEvents,
+};
 use movement::entity_vec3;
 use status::{EntityDamageEventState, MobEffectState};
 pub(crate) use store::EntityStore;

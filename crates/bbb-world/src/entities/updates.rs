@@ -11,9 +11,12 @@ use super::movement::entity_vec3;
 impl WorldStore {
     pub fn apply_entity_animation(&mut self, packet: ProtocolEntityAnimation) -> bool {
         self.counters.entity_animation_updates_received += 1;
-        let Some(()) = self.entities.with_mut(packet.id, |entity| {
-            entity.last_animation_action = Some(packet.action)
-        }) else {
+        let Some(()) = self
+            .entities
+            .with_transient_events_mut(packet.id, |events| {
+                events.last_animation_action = Some(packet.action)
+            })
+        else {
             return false;
         };
         self.counters.entity_animation_updates_applied += 1;
@@ -22,9 +25,12 @@ impl WorldStore {
 
     pub fn apply_entity_event(&mut self, packet: ProtocolEntityEvent) -> bool {
         self.counters.entity_events_received += 1;
-        let Some(()) = self.entities.with_mut(packet.entity_id, |entity| {
-            entity.last_event_id = Some(packet.event_id)
-        }) else {
+        let Some(()) = self
+            .entities
+            .with_transient_events_mut(packet.entity_id, |events| {
+                events.last_event_id = Some(packet.event_id)
+            })
+        else {
             return false;
         };
         self.counters.entity_events_applied += 1;
@@ -35,7 +41,7 @@ impl WorldStore {
         self.counters.entity_hurt_animations_received += 1;
         let Some(()) = self
             .entities
-            .with_mut(packet.id, |entity| entity.last_hurt_yaw = Some(packet.yaw))
+            .with_transient_events_mut(packet.id, |events| events.last_hurt_yaw = Some(packet.yaw))
         else {
             return false;
         };

@@ -3,7 +3,10 @@ use std::{collections::BTreeMap, fmt};
 use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{EntityIdentity, EntityState, EntityTransform};
+use super::{
+    EntityAttributes, EntityEquipment, EntityIdentity, EntityMetadata, EntityState,
+    EntityTransform, EntityTransientEvents,
+};
 
 pub(crate) struct EntityStore {
     ecs: World,
@@ -28,6 +31,10 @@ impl EntityStore {
         let entity = self.ecs.spawn((
             EntityIdentity::from(&state),
             EntityTransform::from(&state),
+            EntityMetadata::from(&state),
+            EntityEquipment::from(&state),
+            EntityAttributes::from(&state),
+            EntityTransientEvents::from(&state),
             state.clone(),
         ));
         self.by_protocol_id.insert(id, entity);
@@ -63,6 +70,42 @@ impl EntityStore {
             .map(|transform| *transform)
     }
 
+    #[cfg(test)]
+    pub(crate) fn metadata(&self, id: i32) -> Option<EntityMetadata> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityMetadata>(entity)
+            .ok()
+            .map(|metadata| (*metadata).clone())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn equipment(&self, id: i32) -> Option<EntityEquipment> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityEquipment>(entity)
+            .ok()
+            .map(|equipment| (*equipment).clone())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn attributes(&self, id: i32) -> Option<EntityAttributes> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityAttributes>(entity)
+            .ok()
+            .map(|attributes| (*attributes).clone())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn transient_events(&self, id: i32) -> Option<EntityTransientEvents> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.ecs
+            .get::<&EntityTransientEvents>(entity)
+            .ok()
+            .map(|events| *events)
+    }
+
     pub(crate) fn with_mut<R>(
         &mut self,
         id: i32,
@@ -89,6 +132,62 @@ impl EntityStore {
         let snapshot_transform = *transform;
         drop(transform);
         self.sync_transform_to_state(entity, snapshot_transform);
+        Some(result)
+    }
+
+    pub(crate) fn with_metadata_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityMetadata) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+        let result = update(&mut metadata);
+        let snapshot_metadata = (*metadata).clone();
+        drop(metadata);
+        self.sync_metadata_to_state(entity, snapshot_metadata);
+        Some(result)
+    }
+
+    pub(crate) fn with_equipment_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityEquipment) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut equipment = self.ecs.get::<&mut EntityEquipment>(entity).ok()?;
+        let result = update(&mut equipment);
+        let snapshot_equipment = (*equipment).clone();
+        drop(equipment);
+        self.sync_equipment_to_state(entity, snapshot_equipment);
+        Some(result)
+    }
+
+    pub(crate) fn with_attributes_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityAttributes) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut attributes = self.ecs.get::<&mut EntityAttributes>(entity).ok()?;
+        let result = update(&mut attributes);
+        let snapshot_attributes = (*attributes).clone();
+        drop(attributes);
+        self.sync_attributes_to_state(entity, snapshot_attributes);
+        Some(result)
+    }
+
+    pub(crate) fn with_transient_events_mut<R>(
+        &mut self,
+        id: i32,
+        update: impl FnOnce(&mut EntityTransientEvents) -> R,
+    ) -> Option<R> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let mut events = self.ecs.get::<&mut EntityTransientEvents>(entity).ok()?;
+        let result = update(&mut events);
+        let snapshot_events = *events;
+        drop(events);
+        self.sync_transient_events_to_state(entity, snapshot_events);
         Some(result)
     }
 
@@ -160,6 +259,18 @@ impl EntityStore {
         if let Ok(mut transform) = self.ecs.get::<&mut EntityTransform>(entity) {
             *transform = EntityTransform::from(state);
         }
+        if let Ok(mut metadata) = self.ecs.get::<&mut EntityMetadata>(entity) {
+            *metadata = EntityMetadata::from(state);
+        }
+        if let Ok(mut equipment) = self.ecs.get::<&mut EntityEquipment>(entity) {
+            *equipment = EntityEquipment::from(state);
+        }
+        if let Ok(mut attributes) = self.ecs.get::<&mut EntityAttributes>(entity) {
+            *attributes = EntityAttributes::from(state);
+        }
+        if let Ok(mut events) = self.ecs.get::<&mut EntityTransientEvents>(entity) {
+            *events = EntityTransientEvents::from(state);
+        }
     }
 
     fn sync_transform_to_state(&mut self, entity: Entity, transform: EntityTransform) {
@@ -167,6 +278,46 @@ impl EntityStore {
             return;
         };
         transform.write_to_state(&mut state);
+        let snapshot = (*state).clone();
+        drop(state);
+        self.update_snapshot(snapshot);
+    }
+
+    fn sync_metadata_to_state(&mut self, entity: Entity, metadata: EntityMetadata) {
+        let Ok(mut state) = self.ecs.get::<&mut EntityState>(entity) else {
+            return;
+        };
+        metadata.write_to_state(&mut state);
+        let snapshot = (*state).clone();
+        drop(state);
+        self.update_snapshot(snapshot);
+    }
+
+    fn sync_equipment_to_state(&mut self, entity: Entity, equipment: EntityEquipment) {
+        let Ok(mut state) = self.ecs.get::<&mut EntityState>(entity) else {
+            return;
+        };
+        equipment.write_to_state(&mut state);
+        let snapshot = (*state).clone();
+        drop(state);
+        self.update_snapshot(snapshot);
+    }
+
+    fn sync_attributes_to_state(&mut self, entity: Entity, attributes: EntityAttributes) {
+        let Ok(mut state) = self.ecs.get::<&mut EntityState>(entity) else {
+            return;
+        };
+        attributes.write_to_state(&mut state);
+        let snapshot = (*state).clone();
+        drop(state);
+        self.update_snapshot(snapshot);
+    }
+
+    fn sync_transient_events_to_state(&mut self, entity: Entity, events: EntityTransientEvents) {
+        let Ok(mut state) = self.ecs.get::<&mut EntityState>(entity) else {
+            return;
+        };
+        events.write_to_state(&mut state);
         let snapshot = (*state).clone();
         drop(state);
         self.update_snapshot(snapshot);

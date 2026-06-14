@@ -212,6 +212,10 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
             },
         ]
     );
+    assert_eq!(
+        store.entities.metadata(123).unwrap().data_values,
+        entity.data_values
+    );
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 123,
@@ -265,6 +269,10 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
                 },
             },
         ]
+    );
+    assert_eq!(
+        store.entities.equipment(123).unwrap().equipment,
+        entity.equipment
     );
 
     assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
@@ -329,6 +337,10 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
                 }],
             },
         ]
+    );
+    assert_eq!(
+        store.entities.attributes(123).unwrap().attributes,
+        entity.attributes
     );
 
     assert!(
@@ -411,6 +423,32 @@ fn entity_store_round_trips_serde_and_replaces_by_protocol_id() {
             x: 0.5,
             y: 0.0,
             z: -0.25,
+        }
+    );
+    assert!(restored
+        .entities
+        .metadata(20)
+        .unwrap()
+        .data_values
+        .is_empty());
+    assert!(restored
+        .entities
+        .equipment(20)
+        .unwrap()
+        .equipment
+        .is_empty());
+    assert!(restored
+        .entities
+        .attributes(20)
+        .unwrap()
+        .attributes
+        .is_empty());
+    assert_eq!(
+        restored.entities.transient_events(20).unwrap(),
+        EntityTransientEvents {
+            last_animation_action: None,
+            last_event_id: None,
+            last_hurt_yaw: None,
         }
     );
 
@@ -838,6 +876,14 @@ fn tracks_entity_transient_events() {
     assert_eq!(entity.last_animation_action, Some(3));
     assert_eq!(entity.last_event_id, Some(35));
     assert_eq!(entity.last_hurt_yaw, Some(45.5));
+    assert_eq!(
+        store.entities.transient_events(123).unwrap(),
+        EntityTransientEvents {
+            last_animation_action: Some(3),
+            last_event_id: Some(35),
+            last_hurt_yaw: Some(45.5),
+        }
+    );
 
     assert!(!store.apply_entity_animation(ProtocolEntityAnimation { id: 999, action: 4 }));
     assert!(!store.apply_entity_event(ProtocolEntityEvent {
