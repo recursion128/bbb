@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{
     EntityAttributes, EntityEquipment, EntityIdentity, EntityMetadata, EntityState,
-    EntityTransform, EntityTransientEvents,
+    EntityTransform, EntityTransformState, EntityTransientEvents,
 };
 
 pub(crate) struct EntityStore {
@@ -68,6 +68,24 @@ impl EntityStore {
             .get::<&EntityTransform>(entity)
             .ok()
             .map(|transform| *transform)
+    }
+
+    pub(crate) fn transform_state(&self, id: i32) -> Option<EntityTransformState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        self.transform_state_for_entity(entity)
+    }
+
+    pub(crate) fn transform_states(&self) -> Vec<EntityTransformState> {
+        let mut transforms = Vec::with_capacity(self.by_protocol_id.len());
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            if let Some(transform) = self.transform_state_for_entity(entity) {
+                transforms.push(transform);
+            }
+        }
+        transforms
     }
 
     #[cfg(test)]
@@ -233,6 +251,12 @@ impl EntityStore {
         let index = self.snapshots.len();
         self.snapshot_index.insert(state.id, index);
         self.snapshots.push(state);
+    }
+
+    fn transform_state_for_entity(&self, entity: Entity) -> Option<EntityTransformState> {
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        Some(EntityTransformState::from_components(&identity, *transform))
     }
 
     fn replace_existing_components(&mut self, entity: Entity, state: EntityState) -> bool {

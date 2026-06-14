@@ -87,6 +87,39 @@ pub struct VehicleMoveReport {
     pub snapped: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntityTransformState {
+    pub id: i32,
+    pub uuid: Uuid,
+    pub entity_type_id: i32,
+    pub data: i32,
+    pub position: EntityVec3,
+    pub position_base: EntityVec3,
+    pub delta_movement: EntityVec3,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub y_head_rot: f32,
+    pub on_ground: Option<bool>,
+}
+
+impl EntityTransformState {
+    pub(crate) fn from_components(identity: &EntityIdentity, transform: EntityTransform) -> Self {
+        Self {
+            id: identity.id,
+            uuid: identity.uuid,
+            entity_type_id: identity.entity_type_id,
+            data: identity.data,
+            position: transform.position,
+            position_base: transform.position_base,
+            delta_movement: transform.delta_movement,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            y_head_rot: transform.y_head_rot,
+            on_ground: transform.on_ground,
+        }
+    }
+}
+
 impl WorldStore {
     pub fn apply_add_entity(&mut self, packet: ProtocolAddEntity) {
         self.counters.entities_received += 1;
@@ -198,6 +231,14 @@ impl WorldStore {
 
     pub fn probe_entity(&self, id: i32) -> Option<&EntityState> {
         self.entities.get(id)
+    }
+
+    pub fn probe_entity_transform(&self, id: i32) -> Option<EntityTransformState> {
+        self.entities.transform_state(id)
+    }
+
+    pub fn entity_transforms(&self) -> Vec<EntityTransformState> {
+        self.entities.transform_states()
     }
 
     pub fn local_player_id(&self) -> Option<i32> {

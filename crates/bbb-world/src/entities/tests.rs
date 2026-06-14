@@ -484,6 +484,71 @@ fn entity_store_round_trips_serde_and_replaces_by_protocol_id() {
 }
 
 #[test]
+fn entity_transform_queries_read_components_without_full_entity_snapshot() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(10, 7));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 20,
+            position: ProtocolVec3d {
+                x: 5.0,
+                y: 70.0,
+                z: -8.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.1,
+                y: 0.2,
+                z: 0.3,
+            },
+            y_rot: 45.0,
+            x_rot: -15.0,
+            on_ground: true,
+        })
+    );
+
+    let transform = store.probe_entity_transform(20).unwrap();
+    assert_eq!(transform.id, 20);
+    assert_eq!(transform.entity_type_id, VANILLA_ENTITY_TYPE_MINECART_ID);
+    assert_eq!(transform.position, store.probe_entity(20).unwrap().position);
+    assert_eq!(
+        transform.delta_movement,
+        store.probe_entity(20).unwrap().delta_movement
+    );
+    assert_eq!(transform.y_rot, 45.0);
+    assert_eq!(transform.x_rot, -15.0);
+    assert_eq!(transform.on_ground, Some(true));
+
+    let transforms = store.entity_transforms();
+    assert_eq!(
+        transforms
+            .iter()
+            .map(|entity| entity.id)
+            .collect::<Vec<_>>(),
+        vec![10, 20]
+    );
+
+    assert_eq!(
+        store.apply_remove_entities(ProtocolRemoveEntities {
+            entity_ids: vec![10],
+        }),
+        1
+    );
+    assert!(store.probe_entity_transform(10).is_none());
+    assert_eq!(
+        store
+            .entity_transforms()
+            .iter()
+            .map(|entity| entity.id)
+            .collect::<Vec<_>>(),
+        vec![20]
+    );
+}
+
+#[test]
 fn tracks_entity_passenger_updates() {
     let mut store = WorldStore::new();
     for id in [10, 20, 21, 30] {
