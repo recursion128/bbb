@@ -87,23 +87,6 @@ pub(super) fn sync_hud_text_counters(counters: &mut NetCounters, world: &WorldSt
     counters.titles_animation_packets = world_counters.titles_animation_packets;
 }
 
-pub(super) fn apply_ticking_state_update(
-    counters: &mut NetCounters,
-    ticking: bbb_protocol::packets::TickingState,
-) {
-    counters.ticking.tick_rate = ticking.clamped_tick_rate();
-    counters.ticking.frozen = ticking.frozen;
-    counters.ticking_state_packets += 1;
-}
-
-pub(super) fn apply_ticking_step_update(
-    counters: &mut NetCounters,
-    step: bbb_protocol::packets::TickingStep,
-) {
-    counters.ticking.frozen_ticks_to_run = step.tick_steps;
-    counters.ticking_step_packets += 1;
-}
-
 pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldStore) {
     let ticking = world.ticking();
     counters.ticking.tick_rate = ticking.tick_rate;

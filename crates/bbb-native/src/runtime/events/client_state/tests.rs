@@ -311,17 +311,12 @@ fn hud_text_and_ticking_updates_snapshot_counters() {
             fade_out: -1,
         },
     );
-    apply_ticking_state_update(
-        &mut counters,
-        bbb_protocol::packets::TickingState {
-            tick_rate: 0.25,
-            frozen: true,
-        },
-    );
-    apply_ticking_step_update(
-        &mut counters,
-        bbb_protocol::packets::TickingStep { tick_steps: 7 },
-    );
+    world.apply_ticking_state(bbb_protocol::packets::TickingState {
+        tick_rate: 0.25,
+        frozen: true,
+    });
+    world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 7 });
+    sync_ticking_counters(&mut counters, &world);
 
     assert_eq!(counters.title.title.as_deref(), Some("Quest complete"));
     assert_eq!(counters.title.subtitle.as_deref(), Some("Return to camp"));
