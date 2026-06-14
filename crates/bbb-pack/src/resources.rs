@@ -4,6 +4,8 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use regex::Regex;
+use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResourceLocation {
@@ -113,13 +115,19 @@ impl PackResourceStack {
     }
 
     fn get_resource_in(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
-        self.roots.iter().rev().find_map(|root| {
+        for root in self.roots.iter().rev() {
             let path = resource_path_in(root, domain, location);
-            path.is_file().then(|| PackResource {
-                location: location.clone(),
-                path,
-            })
-        })
+            if path.is_file() {
+                return Some(PackResource {
+                    location: location.clone(),
+                    path,
+                });
+            }
+            if pack_filter(root).is_some_and(|filter| filter.is_filtered(location)) {
+                return None;
+            }
+        }
+        None
     }
 
     pub fn get_resource_stack(&self, location: &ResourceLocation) -> Vec<PackResource> {
@@ -135,16 +143,20 @@ impl PackResourceStack {
         domain: &str,
         location: &ResourceLocation,
     ) -> Vec<PackResource> {
-        self.roots
-            .iter()
-            .filter_map(|root| {
-                let path = resource_path_in(root, domain, location);
-                path.is_file().then(|| PackResource {
+        let mut resources = Vec::new();
+        for root in &self.roots {
+            if pack_filter(root).is_some_and(|filter| filter.is_filtered(location)) {
+                resources.clear();
+            }
+            let path = resource_path_in(root, domain, location);
+            if path.is_file() {
+                resources.push(PackResource {
                     location: location.clone(),
                     path,
-                })
-            })
-            .collect()
+                });
+            }
+        }
+        resources
     }
 
     pub fn list_resources(&self, path_prefix: &str, extension: &str) -> Result<Vec<PackResource>> {
@@ -168,6 +180,9 @@ impl PackResourceStack {
         validate_resource_path_prefix(path_prefix)?;
         let mut resources = BTreeMap::new();
         for root in &self.roots {
+            if let Some(filter) = pack_filter(root) {
+                resources.retain(|location, _| !filter.is_filtered(location));
+            }
             let domain_root = root.join(domain);
             if !domain_root.is_dir() {
                 continue;
@@ -223,6 +238,9 @@ impl PackResourceStack {
         validate_resource_path_prefix(path_prefix)?;
         let mut resources: BTreeMap<ResourceLocation, Vec<PackResource>> = BTreeMap::new();
         for root in &self.roots {
+            if let Some(filter) = pack_filter(root) {
+                resources.retain(|location, _| !filter.is_filtered(location));
+            }
             let domain_root = root.join(domain);
             if !domain_root.is_dir() {
                 continue;
@@ -355,6 +373,79 @@ fn resource_path_in(root: &Path, domain: &str, location: &ResourceLocation) -> P
         .join(location.path())
 }
 
+#[derive(Debug)]
+struct PackFilter {
+    blocks: Vec<ResourceFilterPattern>,
+}
+
+impl PackFilter {
+    fn is_filtered(&self, location: &ResourceLocation) -> bool {
+        self.blocks
+            .iter()
+            .any(|pattern| pattern.is_match(location.namespace(), location.path()))
+    }
+}
+
+#[derive(Debug)]
+struct ResourceFilterPattern {
+    namespace: Option<Regex>,
+    path: Option<Regex>,
+}
+
+impl ResourceFilterPattern {
+    fn is_match(&self, namespace: &str, path: &str) -> bool {
+        self.namespace
+            .as_ref()
+            .map_or(true, |pattern| pattern.is_match(namespace))
+            && self
+                .path
+                .as_ref()
+                .map_or(true, |pattern| pattern.is_match(path))
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct RawPackMetadata {
+    filter: Option<RawResourceFilterSection>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawResourceFilterSection {
+    block: Vec<RawResourceFilterPattern>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawResourceFilterPattern {
+    namespace: Option<String>,
+    path: Option<String>,
+}
+
+impl RawResourceFilterPattern {
+    fn into_pattern(self) -> Result<ResourceFilterPattern> {
+        Ok(ResourceFilterPattern {
+            namespace: self
+                .namespace
+                .map(|pattern| Regex::new(&pattern))
+                .transpose()?,
+            path: self.path.map(|pattern| Regex::new(&pattern)).transpose()?,
+        })
+    }
+}
+
+fn pack_filter(root: &Path) -> Option<PackFilter> {
+    let metadata_path = root.join("pack.mcmeta");
+    let bytes = std::fs::read(metadata_path).ok()?;
+    let metadata: RawPackMetadata = serde_json::from_slice(&bytes).ok()?;
+    let filter = metadata.filter?;
+    let blocks = filter
+        .block
+        .into_iter()
+        .map(RawResourceFilterPattern::into_pattern)
+        .collect::<Result<Vec<_>>>()
+        .ok()?;
+    Some(PackFilter { blocks })
+}
+
 pub(crate) fn validate_resource_namespace(namespace: &str) -> Result<()> {
     if namespace.is_empty() || namespace == ".." {
         bail!("invalid resource namespace {namespace:?}");
@@ -461,6 +552,135 @@ mod tests {
                 "minecraft:textures/block/stone.png"
             ]
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn resource_stack_filter_blocks_lower_priority_assets() {
+        let root = unique_temp_dir("resource-filter-assets");
+        let base = root.join("base");
+        let filter = root.join("filter");
+        write_file(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png"),
+            b"base-stone",
+        );
+        write_file(
+            &filter.join("pack.mcmeta"),
+            br#"{
+              "filter": {
+                "block": [
+                  {
+                    "namespace": "minecraft",
+                    "path": "textures/block/stone\\.png"
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let stack = PackResourceStack::from_roots(vec![base, filter]);
+        let stone = ResourceLocation::parse("minecraft:textures/block/stone.png").unwrap();
+
+        assert!(stack.get_resource(&stone).is_none());
+        assert!(stack.get_resource_stack(&stone).is_empty());
+        assert!(stack
+            .list_resources("textures/block", ".png")
+            .unwrap()
+            .is_empty());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn resource_stack_filter_keeps_current_pack_resource() {
+        let root = unique_temp_dir("resource-filter-current-pack");
+        let base = root.join("base");
+        let overlay = root.join("overlay");
+        let overlay_stone = overlay
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        write_file(
+            &base
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png"),
+            b"base-stone",
+        );
+        write_file(&overlay_stone, b"overlay-stone");
+        write_file(
+            &overlay.join("pack.mcmeta"),
+            br#"{
+              "filter": {
+                "block": [
+                  {
+                    "namespace": "minecraft",
+                    "path": "textures/block/stone\\.png"
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let stack = PackResourceStack::from_roots(vec![base, overlay]);
+        let stone = ResourceLocation::parse("minecraft:textures/block/stone.png").unwrap();
+        let resolved = stack.get_resource(&stone).unwrap();
+        let resource_stack = stack.get_resource_stack(&stone);
+
+        assert!(resolved.path.ends_with(&overlay_stone));
+        assert_eq!(resource_stack.len(), 1);
+        assert!(resource_stack[0].path.ends_with(&overlay_stone));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn resource_stack_filter_blocks_lower_priority_data_resources() {
+        let root = unique_temp_dir("resource-filter-data");
+        let base = root.join("base");
+        let filter = root.join("filter");
+        write_file(
+            &base
+                .join("data")
+                .join("minecraft")
+                .join("tags")
+                .join("block")
+                .join("logs.json"),
+            br#"{"values":["minecraft:oak_log"]}"#,
+        );
+        write_file(
+            &filter.join("pack.mcmeta"),
+            br#"{
+              "filter": {
+                "block": [
+                  {
+                    "namespace": "minecraft",
+                    "path": "tags/block/logs\\.json"
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let stack = PackResourceStack::from_roots(vec![base, filter]);
+        let logs = ResourceLocation::parse("minecraft:tags/block/logs.json").unwrap();
+
+        assert!(stack.get_data_resource(&logs).is_none());
+        assert!(stack.get_data_resource_stack(&logs).is_empty());
+        assert!(stack
+            .list_data_resource_stacks("tags/block", ".json")
+            .unwrap()
+            .is_empty());
 
         std::fs::remove_dir_all(root).unwrap();
     }
