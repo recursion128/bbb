@@ -100,7 +100,7 @@ Known priority areas:
   frames/paintings/leash knots, slime/magma cube size metadata, armor stand
   small/marker flags, player spectator state, LivingEntity `scale` attribute
   bounds, player/mannequin Avatar pose bounds, selected baby metadata bounds
-  (armadillo/axolotl/dolphin/donkey/fox/happy ghast/horse/llama/mule/panda/rabbit/skeleton horse/squid/glow squid/trader llama/turtle/pig/cow/chicken/villager/wandering trader/zombie horse/zombie family/piglin/camel/goat/sniffer),
+  (armadillo/axolotl/bee/cat/dolphin/donkey/fox/happy ghast/hoglin/horse/llama/mule/nautilus/ocelot/panda/rabbit/sheep/skeleton horse/squid/glow squid/strider/trader llama/turtle/wolf/zoglin/pig/cow/chicken/villager/wandering trader/zombie horse/zombie family/piglin/camel/goat/sniffer),
   pufferfish puff-state bounds, salmon variant bounds, camel/camel husk
   sitting pose bounds, goat long-jumping pose bounds, phantom size metadata
   bounds, sniffer digging state bounds, warden emerging/digging pose bounds,
