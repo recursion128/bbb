@@ -937,6 +937,45 @@ fn encodes_set_carried_item() {
 }
 
 #[test]
+fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order() {
+    assert_eq!(ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK, 17);
+    assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLICK, 18);
+    assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLOSE, 19);
+    assert_eq!(ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED, 20);
+}
+
+#[test]
+fn encodes_container_inventory_packets() {
+    let (id, payload) = encode_play_container_button_click(ContainerButtonClick {
+        container_id: 7,
+        button_id: 2,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert_eq!(decoder.read_var_i32().unwrap(), 2);
+    assert!(decoder.is_empty());
+
+    let (id, payload) = encode_play_container_close(ContainerCloseRequest { container_id: 7 });
+    assert_eq!(id, ids::play::SERVERBOUND_CONTAINER_CLOSE);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert!(decoder.is_empty());
+
+    let (id, payload) = encode_play_container_slot_state_changed(ContainerSlotStateChanged {
+        slot_id: 12,
+        container_id: 7,
+        new_state: true,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 12);
+    assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_player_input_flags() {
     let (id, payload) = encode_play_player_input(PlayerInput {
         forward: true,

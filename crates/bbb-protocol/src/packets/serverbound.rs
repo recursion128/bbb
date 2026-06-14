@@ -71,6 +71,24 @@ pub struct PickItemFromBlock {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerButtonClick {
+    pub container_id: i32,
+    pub button_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerCloseRequest {
+    pub container_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerSlotStateChanged {
+    pub slot_id: i32,
+    pub container_id: i32,
+    pub new_state: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlayerActionKind {
     StartDestroyBlock,
     AbortDestroyBlock,
@@ -287,6 +305,35 @@ pub fn encode_play_pick_item_from_block(packet: PickItemFromBlock) -> (i32, Vec<
     out.write_bool(packet.include_data);
     (
         ids::play::SERVERBOUND_PICK_ITEM_FROM_BLOCK,
+        out.into_inner(),
+    )
+}
+
+pub fn encode_play_container_button_click(packet: ContainerButtonClick) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.container_id);
+    out.write_var_i32(packet.button_id);
+    (
+        ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK,
+        out.into_inner(),
+    )
+}
+
+pub fn encode_play_container_close(packet: ContainerCloseRequest) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.container_id);
+    (ids::play::SERVERBOUND_CONTAINER_CLOSE, out.into_inner())
+}
+
+pub fn encode_play_container_slot_state_changed(
+    packet: ContainerSlotStateChanged,
+) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.slot_id);
+    out.write_var_i32(packet.container_id);
+    out.write_bool(packet.new_state);
+    (
+        ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED,
         out.into_inner(),
     )
 }

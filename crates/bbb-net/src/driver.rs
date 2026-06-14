@@ -10,7 +10,8 @@ use crate::{
 mod commands;
 
 pub(crate) use commands::{
-    maybe_send_perform_respawn, send_command_suggestion_request, send_pick_item_from_block,
+    maybe_send_perform_respawn, send_command_suggestion_request, send_container_button_click,
+    send_container_close, send_container_slot_state_changed, send_pick_item_from_block,
     send_player_action, send_player_command, send_player_input_command, send_set_held_slot_command,
     send_swing_command, send_use_item, send_use_item_on,
 };
@@ -100,6 +101,15 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::PickItemFromBlock(packet)) => {
                         send_pick_item_from_block(conn, packet).await?;
                     }
+                    Some(NetCommand::ContainerButtonClick(packet)) => {
+                        send_container_button_click(conn, packet).await?;
+                    }
+                    Some(NetCommand::ContainerClose(packet)) => {
+                        send_container_close(conn, packet).await?;
+                    }
+                    Some(NetCommand::ContainerSlotStateChanged(packet)) => {
+                        send_container_slot_state_changed(conn, packet).await?;
+                    }
                     Some(NetCommand::CommandSuggestionRequest(request)) => {
                         send_command_suggestion_request(conn, request).await?;
                     }
@@ -134,6 +144,9 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::UseItemOn(_)) => {}
                     Some(NetCommand::UseItem(_)) => {}
                     Some(NetCommand::PickItemFromBlock(_)) => {}
+                    Some(NetCommand::ContainerButtonClick(_)) => {}
+                    Some(NetCommand::ContainerClose(_)) => {}
+                    Some(NetCommand::ContainerSlotStateChanged(_)) => {}
                     Some(NetCommand::CommandSuggestionRequest(_)) => {}
                     Some(NetCommand::Disconnect) | None => {
                         return Ok(ConnectionDrive::Disconnect);

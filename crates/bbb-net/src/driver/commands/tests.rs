@@ -1,5 +1,6 @@
 use super::{
-    maybe_send_perform_respawn, send_command_suggestion_request, send_pick_item_from_block,
+    maybe_send_perform_respawn, send_command_suggestion_request, send_container_button_click,
+    send_container_close, send_container_slot_state_changed, send_pick_item_from_block,
     send_player_action, send_player_command, send_player_input_command, send_set_held_slot_command,
     send_swing_command, send_use_item, send_use_item_on,
 };
@@ -11,7 +12,8 @@ use bbb_protocol::{
     codec::Decoder,
     ids,
     packets::{
-        CommandSuggestionRequest, InteractionHand, PlayerAction, PlayerCommand, PlayerHealth,
+        CommandSuggestionRequest, ContainerButtonClick, ContainerCloseRequest,
+        ContainerSlotStateChanged, InteractionHand, PlayerAction, PlayerCommand, PlayerHealth,
         PlayerInput, PlayerPositionState, Vec3d,
     },
 };
@@ -430,6 +432,81 @@ async fn send_pick_item_from_block_encodes_pick_packet() {
                 z: 12,
             },
             include_data: true,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_container_inventory_commands_encode_packets() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("container button click should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("container close should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_CLOSE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("container slot state should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 12);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_container_button_click(
+        &mut conn,
+        ContainerButtonClick {
+            container_id: 7,
+            button_id: 2,
+        },
+    )
+    .await
+    .unwrap();
+    send_container_close(&mut conn, ContainerCloseRequest { container_id: 7 })
+        .await
+        .unwrap();
+    send_container_slot_state_changed(
+        &mut conn,
+        ContainerSlotStateChanged {
+            slot_id: 12,
+            container_id: 7,
+            new_state: true,
         },
     )
     .await

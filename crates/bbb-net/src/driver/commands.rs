@@ -1,7 +1,8 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
-    self, CommandSuggestionRequest, InteractionHand, PickItemFromBlock, PlayerAction,
-    PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState, UseItem, UseItemOn,
+    self, CommandSuggestionRequest, ContainerButtonClick, ContainerCloseRequest,
+    ContainerSlotStateChanged, InteractionHand, PickItemFromBlock, PlayerAction, PlayerCommand,
+    PlayerHealth, PlayerInput, PlayerPositionState, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -80,6 +81,30 @@ pub(crate) async fn send_pick_item_from_block(
     packet: PickItemFromBlock,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_pick_item_from_block(packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_container_button_click(
+    conn: &mut RawConnection,
+    packet: ContainerButtonClick,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_container_button_click(packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_container_close(
+    conn: &mut RawConnection,
+    packet: ContainerCloseRequest,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_container_close(packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_container_slot_state_changed(
+    conn: &mut RawConnection,
+    packet: ContainerSlotStateChanged,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_container_slot_state_changed(packet);
     conn.send_packet(id, &payload).await
 }
 
