@@ -806,6 +806,100 @@ fn slime_pick_bounds_scale_with_vanilla_size_metadata() {
 }
 
 #[test]
+fn living_pick_bounds_scale_with_vanilla_scale_attribute() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(30, 14));
+    store.apply_add_entity(protocol_add_entity_with_type(31, 51));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(30),
+        Some(EntityPickBoundsState::from_base_size(0.6, 1.8, 0.0))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 30,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(30),
+        Some(EntityPickBoundsState::from_base_size(
+            0.6 * 2.0,
+            1.8 * 2.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 30,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 1.0,
+            modifiers: vec![
+                ProtocolAttributeModifier {
+                    id: "minecraft:add_scale".to_string(),
+                    amount: 1.0,
+                    operation_id: 0,
+                },
+                ProtocolAttributeModifier {
+                    id: "minecraft:add_base_scale".to_string(),
+                    amount: 0.5,
+                    operation_id: 1,
+                },
+                ProtocolAttributeModifier {
+                    id: "minecraft:multiply_total_scale".to_string(),
+                    amount: 1.0,
+                    operation_id: 2,
+                },
+            ],
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(30),
+        Some(EntityPickBoundsState::from_base_size(
+            0.6 * 6.0,
+            1.8 * 6.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 30,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: -1.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(30),
+        Some(EntityPickBoundsState::from_base_size(
+            0.6 * 0.0625,
+            1.8 * 0.0625,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 31,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 4.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(31),
+        Some(EntityPickBoundsState::from_base_size(0.98, 0.98, 0.0))
+    );
+}
+
+#[test]
 fn armor_stand_pick_bounds_follow_client_flags() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(26, 5));

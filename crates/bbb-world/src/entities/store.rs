@@ -89,10 +89,12 @@ impl EntityStore {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
         vanilla_pick_bounds_for_entity_data(
             identity.entity_type_id,
             identity.data,
             &metadata.data_values,
+            &attributes.attributes,
         )
     }
 

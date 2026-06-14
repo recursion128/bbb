@@ -1,4 +1,6 @@
-use bbb_protocol::packets::{EntityDataValue, EntityDataValueKind, ItemStackSummary};
+use bbb_protocol::packets::{
+    AttributeSnapshot, EntityDataValue, EntityDataValueKind, ItemStackSummary,
+};
 use serde::{Deserialize, Serialize};
 
 use super::EntityVec3;
@@ -33,6 +35,9 @@ const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 const ARMOR_STAND_WIDTH: f32 = 0.5;
 const ARMOR_STAND_HEIGHT: f32 = 1.975;
 const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
+const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+const VANILLA_SCALE_MIN: f64 = 0.0625;
+const VANILLA_SCALE_MAX: f64 = 16.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -62,6 +67,22 @@ impl EntityPickBoundsState {
             pick_radius,
         }
     }
+
+    fn scale_dimensions(self, scale: f32) -> Self {
+        Self {
+            min: [
+                self.min[0] * scale,
+                self.min[1] * scale,
+                self.min[2] * scale,
+            ],
+            max: [
+                self.max[0] * scale,
+                self.max[1] * scale,
+                self.max[2] * scale,
+            ],
+            pick_radius: self.pick_radius,
+        }
+    }
 }
 
 pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<EntityPickBoundsState> {
@@ -75,30 +96,29 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     entity_type_id: i32,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
+    attributes: &[AttributeSnapshot],
 ) -> Option<EntityPickBoundsState> {
-    if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
-        return armor_stand_pick_bounds(data_values);
-    }
-    if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
-        return Some(interaction_pick_bounds(data_values));
-    }
-    if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
+    let bounds = if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
+        armor_stand_pick_bounds(data_values)
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
+        Some(interaction_pick_bounds(data_values))
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID
     {
-        return Some(item_frame_pick_bounds(add_entity_data, data_values));
-    }
-    if entity_type_id == VANILLA_ENTITY_TYPE_PAINTING_ID {
-        return painting_pick_bounds(add_entity_data, data_values);
-    }
-    if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
-        return Some(EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0));
-    }
-    if entity_type_id == VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
+        Some(item_frame_pick_bounds(add_entity_data, data_values))
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_PAINTING_ID {
+        painting_pick_bounds(add_entity_data, data_values)
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
+        Some(EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0))
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_SLIME_ID
     {
-        return Some(slime_pick_bounds(data_values));
-    }
-    vanilla_pick_bounds_for_type(entity_type_id)
+        Some(slime_pick_bounds(data_values))
+    } else {
+        vanilla_pick_bounds_for_type(entity_type_id)
+    };
+
+    bounds.map(|bounds| apply_living_scale(entity_type_id, bounds, attributes))
 }
 
 pub(crate) fn vanilla_client_position_for_entity_data(
@@ -315,6 +335,64 @@ fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPick
         ARMOR_STAND_HEIGHT * scale,
         0.0,
     ))
+}
+
+fn apply_living_scale(
+    entity_type_id: i32,
+    bounds: EntityPickBoundsState,
+    attributes: &[AttributeSnapshot],
+) -> EntityPickBoundsState {
+    if !vanilla_living_entity_type(entity_type_id) {
+        return bounds;
+    }
+    let Some(scale) = vanilla_scale_attribute(attributes) else {
+        return bounds;
+    };
+    bounds.scale_dimensions(scale)
+}
+
+fn vanilla_scale_attribute(attributes: &[AttributeSnapshot]) -> Option<f32> {
+    attributes
+        .iter()
+        .find(|attribute| attribute.attribute_id == VANILLA_ATTRIBUTE_SCALE_ID)
+        .map(vanilla_attribute_value)
+}
+
+fn vanilla_attribute_value(attribute: &AttributeSnapshot) -> f32 {
+    let mut base = attribute.base;
+    for modifier in &attribute.modifiers {
+        if modifier.operation_id != 1 && modifier.operation_id != 2 {
+            base += modifier.amount;
+        }
+    }
+
+    let mut result = base;
+    for modifier in &attribute.modifiers {
+        if modifier.operation_id == 1 {
+            result += base * modifier.amount;
+        }
+    }
+    for modifier in &attribute.modifiers {
+        if modifier.operation_id == 2 {
+            result *= 1.0 + modifier.amount;
+        }
+    }
+
+    sanitize_vanilla_scale(result) as f32
+}
+
+fn sanitize_vanilla_scale(value: f64) -> f64 {
+    if value.is_nan() {
+        VANILLA_SCALE_MIN
+    } else {
+        value.clamp(VANILLA_SCALE_MIN, VANILLA_SCALE_MAX)
+    }
+}
+
+fn vanilla_living_entity_type(entity_type_id: i32) -> bool {
+    VANILLA_LIVING_ENTITY_TYPE_IDS
+        .binary_search(&entity_type_id)
+        .is_ok()
 }
 
 fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {
@@ -595,4 +673,100 @@ const VANILLA_ENTITY_PICK_BOUNDS: &[(i32, EntityPickBoundsState)] = &[
     (153, pick(0.6, 1.95, 0.0)),      // minecraft:zombie_villager
     (154, pick(0.6, 1.95, 0.0)),      // minecraft:zombified_piglin
     (155, pick(0.6, 1.8, 0.0)),       // minecraft:player
+];
+
+// IDs are vanilla 26.1 EntityType registry ids whose client class extends
+// LivingEntity. ClientboundUpdateAttributes is only valid for this set.
+const VANILLA_LIVING_ENTITY_TYPE_IDS: &[i32] = &[
+    2,   // minecraft:allay
+    4,   // minecraft:armadillo
+    5,   // minecraft:armor_stand
+    7,   // minecraft:axolotl
+    10,  // minecraft:bat
+    11,  // minecraft:bee
+    14,  // minecraft:blaze
+    16,  // minecraft:bogged
+    17,  // minecraft:breeze
+    19,  // minecraft:camel
+    20,  // minecraft:camel_husk
+    21,  // minecraft:cat
+    22,  // minecraft:cave_spider
+    26,  // minecraft:chicken
+    27,  // minecraft:cod
+    28,  // minecraft:copper_golem
+    30,  // minecraft:cow
+    31,  // minecraft:creaking
+    32,  // minecraft:creeper
+    35,  // minecraft:dolphin
+    36,  // minecraft:donkey
+    38,  // minecraft:drowned
+    40,  // minecraft:elder_guardian
+    41,  // minecraft:enderman
+    42,  // minecraft:endermite
+    46,  // minecraft:evoker
+    54,  // minecraft:fox
+    55,  // minecraft:frog
+    57,  // minecraft:ghast
+    58,  // minecraft:happy_ghast
+    59,  // minecraft:giant
+    61,  // minecraft:glow_squid
+    62,  // minecraft:goat
+    63,  // minecraft:guardian
+    64,  // minecraft:hoglin
+    66,  // minecraft:horse
+    67,  // minecraft:husk
+    68,  // minecraft:illusioner
+    70,  // minecraft:iron_golem
+    78,  // minecraft:llama
+    80,  // minecraft:magma_cube
+    83,  // minecraft:mannequin
+    86,  // minecraft:mooshroom
+    87,  // minecraft:mule
+    88,  // minecraft:nautilus
+    91,  // minecraft:ocelot
+    96,  // minecraft:panda
+    97,  // minecraft:parched
+    98,  // minecraft:parrot
+    99,  // minecraft:phantom
+    100, // minecraft:pig
+    101, // minecraft:piglin
+    102, // minecraft:piglin_brute
+    103, // minecraft:pillager
+    104, // minecraft:polar_bear
+    107, // minecraft:pufferfish
+    108, // minecraft:rabbit
+    109, // minecraft:ravager
+    110, // minecraft:salmon
+    111, // minecraft:sheep
+    112, // minecraft:shulker
+    114, // minecraft:silverfish
+    115, // minecraft:skeleton
+    116, // minecraft:skeleton_horse
+    117, // minecraft:slime
+    119, // minecraft:sniffer
+    121, // minecraft:snow_golem
+    124, // minecraft:spider
+    127, // minecraft:squid
+    128, // minecraft:stray
+    129, // minecraft:strider
+    130, // minecraft:tadpole
+    134, // minecraft:trader_llama
+    136, // minecraft:tropical_fish
+    137, // minecraft:turtle
+    138, // minecraft:vex
+    139, // minecraft:villager
+    140, // minecraft:vindicator
+    141, // minecraft:wandering_trader
+    142, // minecraft:warden
+    144, // minecraft:witch
+    145, // minecraft:wither
+    146, // minecraft:wither_skeleton
+    148, // minecraft:wolf
+    149, // minecraft:zoglin
+    150, // minecraft:zombie
+    151, // minecraft:zombie_horse
+    152, // minecraft:zombie_nautilus
+    153, // minecraft:zombie_villager
+    154, // minecraft:zombified_piglin
+    155, // minecraft:player
 ];
