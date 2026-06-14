@@ -77,30 +77,33 @@ impl PackResourceStack {
 
     fn namespaces_in(&self, domain: &str) -> Result<Vec<String>> {
         let mut namespaces = BTreeMap::new();
-        for root in &self.roots {
-            let domain_root = root.join(domain);
-            if !domain_root.is_dir() {
-                continue;
-            }
-            for entry in std::fs::read_dir(&domain_root)
-                .with_context(|| format!("read {domain} directory {}", domain_root.display()))?
-            {
-                let entry = entry
-                    .with_context(|| format!("read {domain} entry in {}", domain_root.display()))?;
-                let path = entry.path();
-                if !entry
-                    .file_type()
-                    .with_context(|| format!("read file type {}", path.display()))?
-                    .is_dir()
-                {
+        for pack in self.pack_entries(domain) {
+            for content_root in pack.content_roots {
+                let domain_root = content_root.join(domain);
+                if !domain_root.is_dir() {
                     continue;
                 }
-                let namespace = entry
-                    .file_name()
-                    .into_string()
-                    .map_err(|name| anyhow::anyhow!("non-utf8 asset namespace {name:?}"))?;
-                validate_resource_namespace(&namespace)?;
-                namespaces.insert(namespace.clone(), namespace);
+                for entry in std::fs::read_dir(&domain_root)
+                    .with_context(|| format!("read {domain} directory {}", domain_root.display()))?
+                {
+                    let entry = entry.with_context(|| {
+                        format!("read {domain} entry in {}", domain_root.display())
+                    })?;
+                    let path = entry.path();
+                    if !entry
+                        .file_type()
+                        .with_context(|| format!("read file type {}", path.display()))?
+                        .is_dir()
+                    {
+                        continue;
+                    }
+                    let namespace = entry
+                        .file_name()
+                        .into_string()
+                        .map_err(|name| anyhow::anyhow!("non-utf8 {domain} namespace {name:?}"))?;
+                    validate_resource_namespace(&namespace)?;
+                    namespaces.insert(namespace.clone(), namespace);
+                }
             }
         }
         Ok(namespaces.into_values().collect())
@@ -115,15 +118,12 @@ impl PackResourceStack {
     }
 
     fn get_resource_in(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
-        for root in self.roots.iter().rev() {
-            let path = resource_path_in(root, domain, location);
-            if path.is_file() {
-                return Some(PackResource {
-                    location: location.clone(),
-                    path,
-                });
+        let pack_entries = self.pack_entries(domain);
+        for pack in pack_entries.iter().rev() {
+            if let Some(resource) = pack.get_resource(domain, location) {
+                return Some(resource);
             }
-            if pack_filter(root).is_some_and(|filter| filter.is_filtered(location)) {
+            if pack.is_filtered(location) {
                 return None;
             }
         }
@@ -144,16 +144,12 @@ impl PackResourceStack {
         location: &ResourceLocation,
     ) -> Vec<PackResource> {
         let mut resources = Vec::new();
-        for root in &self.roots {
-            if pack_filter(root).is_some_and(|filter| filter.is_filtered(location)) {
+        for pack in self.pack_entries(domain) {
+            if pack.is_filtered(location) {
                 resources.clear();
             }
-            let path = resource_path_in(root, domain, location);
-            if path.is_file() {
-                resources.push(PackResource {
-                    location: location.clone(),
-                    path,
-                });
+            if let Some(resource) = pack.get_resource(domain, location) {
+                resources.push(resource);
             }
         }
         resources
@@ -179,43 +175,12 @@ impl PackResourceStack {
     ) -> Result<Vec<PackResource>> {
         validate_resource_path_prefix(path_prefix)?;
         let mut resources = BTreeMap::new();
-        for root in &self.roots {
-            if let Some(filter) = pack_filter(root) {
+        for pack in self.pack_entries(domain) {
+            if let Some(filter) = &pack.filter {
                 resources.retain(|location, _| !filter.is_filtered(location));
             }
-            let domain_root = root.join(domain);
-            if !domain_root.is_dir() {
-                continue;
-            }
-            for namespace_entry in std::fs::read_dir(&domain_root)
-                .with_context(|| format!("read {domain} directory {}", domain_root.display()))?
-            {
-                let namespace_entry = namespace_entry
-                    .with_context(|| format!("read {domain} entry in {}", domain_root.display()))?;
-                let namespace_dir = namespace_entry.path();
-                if !namespace_entry
-                    .file_type()
-                    .with_context(|| format!("read file type {}", namespace_dir.display()))?
-                    .is_dir()
-                {
-                    continue;
-                }
-                let namespace = namespace_entry
-                    .file_name()
-                    .into_string()
-                    .map_err(|name| anyhow::anyhow!("non-utf8 asset namespace {name:?}"))?;
-                validate_resource_namespace(&namespace)?;
-                let list_root = namespace_dir.join(path_prefix);
-                if !list_root.is_dir() {
-                    continue;
-                }
-                collect_resources(
-                    &namespace_dir,
-                    &list_root,
-                    &namespace,
-                    extension,
-                    &mut resources,
-                )?;
+            for (location, resource) in pack.list_resources(domain, path_prefix, extension)? {
+                resources.insert(location, resource);
             }
         }
         Ok(resources.into_values().collect())
@@ -237,46 +202,23 @@ impl PackResourceStack {
     ) -> Result<BTreeMap<ResourceLocation, Vec<PackResource>>> {
         validate_resource_path_prefix(path_prefix)?;
         let mut resources: BTreeMap<ResourceLocation, Vec<PackResource>> = BTreeMap::new();
-        for root in &self.roots {
-            if let Some(filter) = pack_filter(root) {
+        for pack in self.pack_entries(domain) {
+            if let Some(filter) = &pack.filter {
                 resources.retain(|location, _| !filter.is_filtered(location));
             }
-            let domain_root = root.join(domain);
-            if !domain_root.is_dir() {
-                continue;
-            }
-            for namespace_entry in std::fs::read_dir(&domain_root)
-                .with_context(|| format!("read {domain} directory {}", domain_root.display()))?
-            {
-                let namespace_entry = namespace_entry
-                    .with_context(|| format!("read {domain} entry in {}", domain_root.display()))?;
-                let namespace_dir = namespace_entry.path();
-                if !namespace_entry
-                    .file_type()
-                    .with_context(|| format!("read file type {}", namespace_dir.display()))?
-                    .is_dir()
-                {
-                    continue;
-                }
-                let namespace = namespace_entry
-                    .file_name()
-                    .into_string()
-                    .map_err(|name| anyhow::anyhow!("non-utf8 {domain} namespace {name:?}"))?;
-                validate_resource_namespace(&namespace)?;
-                let list_root = namespace_dir.join(path_prefix);
-                if !list_root.is_dir() {
-                    continue;
-                }
-                collect_resource_stacks(
-                    &namespace_dir,
-                    &list_root,
-                    &namespace,
-                    extension,
-                    &mut resources,
-                )?;
+            for (location, resource) in pack.list_resources(domain, path_prefix, extension)? {
+                resources.entry(location).or_default().push(resource);
             }
         }
         Ok(resources)
+    }
+
+    fn pack_entries(&self, domain: &str) -> Vec<PackEntry> {
+        self.roots
+            .iter()
+            .cloned()
+            .map(|root| PackEntry::new(root, domain))
+            .collect()
     }
 }
 
@@ -315,41 +257,6 @@ fn collect_resources(
     Ok(())
 }
 
-fn collect_resource_stacks(
-    namespace_dir: &Path,
-    dir: &Path,
-    namespace: &str,
-    extension: &str,
-    resources: &mut BTreeMap<ResourceLocation, Vec<PackResource>>,
-) -> Result<()> {
-    for entry in std::fs::read_dir(dir)
-        .with_context(|| format!("read resource directory {}", dir.display()))?
-    {
-        let entry = entry.with_context(|| format!("read resource entry in {}", dir.display()))?;
-        let path = entry.path();
-        let file_type = entry
-            .file_type()
-            .with_context(|| format!("read file type {}", path.display()))?;
-        if file_type.is_dir() {
-            collect_resource_stacks(namespace_dir, &path, namespace, extension, resources)?;
-            continue;
-        }
-        let resource_path = relative_resource_path(namespace_dir, &path)?;
-        if !resource_path.ends_with(extension) {
-            continue;
-        }
-        let location = ResourceLocation::new(namespace, resource_path)?;
-        resources
-            .entry(location.clone())
-            .or_default()
-            .push(PackResource {
-                location,
-                path: path.clone(),
-            });
-    }
-    Ok(())
-}
-
 fn relative_resource_path(root: &Path, path: &Path) -> Result<String> {
     let relative = path
         .strip_prefix(root)
@@ -371,6 +278,111 @@ fn resource_path_in(root: &Path, domain: &str, location: &ResourceLocation) -> P
     root.join(domain)
         .join(location.namespace())
         .join(location.path())
+}
+
+#[derive(Debug)]
+struct PackEntry {
+    content_roots: Vec<PathBuf>,
+    filter: Option<PackFilter>,
+}
+
+impl PackEntry {
+    fn new(root: PathBuf, domain: &str) -> Self {
+        let mut content_roots = vec![root.clone()];
+        content_roots.extend(
+            applicable_overlays(&root, pack_format_for_domain(domain))
+                .into_iter()
+                .map(|overlay| root.join(overlay)),
+        );
+        Self {
+            filter: pack_filter(&root),
+            content_roots,
+        }
+    }
+
+    fn is_filtered(&self, location: &ResourceLocation) -> bool {
+        self.filter
+            .as_ref()
+            .is_some_and(|filter| filter.is_filtered(location))
+    }
+
+    fn get_resource(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
+        self.content_roots.iter().rev().find_map(|root| {
+            let path = resource_path_in(root, domain, location);
+            path.is_file().then(|| PackResource {
+                location: location.clone(),
+                path,
+            })
+        })
+    }
+
+    fn list_resources(
+        &self,
+        domain: &str,
+        path_prefix: &str,
+        extension: &str,
+    ) -> Result<BTreeMap<ResourceLocation, PackResource>> {
+        let mut resources = BTreeMap::new();
+        for root in &self.content_roots {
+            let domain_root = root.join(domain);
+            if !domain_root.is_dir() {
+                continue;
+            }
+            for namespace_entry in std::fs::read_dir(&domain_root)
+                .with_context(|| format!("read {domain} directory {}", domain_root.display()))?
+            {
+                let namespace_entry = namespace_entry
+                    .with_context(|| format!("read {domain} entry in {}", domain_root.display()))?;
+                let namespace_dir = namespace_entry.path();
+                if !namespace_entry
+                    .file_type()
+                    .with_context(|| format!("read file type {}", namespace_dir.display()))?
+                    .is_dir()
+                {
+                    continue;
+                }
+                let namespace = namespace_entry
+                    .file_name()
+                    .into_string()
+                    .map_err(|name| anyhow::anyhow!("non-utf8 {domain} namespace {name:?}"))?;
+                validate_resource_namespace(&namespace)?;
+                let list_root = namespace_dir.join(path_prefix);
+                if !list_root.is_dir() {
+                    continue;
+                }
+                collect_resources(
+                    &namespace_dir,
+                    &list_root,
+                    &namespace,
+                    extension,
+                    &mut resources,
+                )?;
+            }
+        }
+        Ok(resources)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct PackFormat {
+    major: u32,
+    minor: u32,
+}
+
+const CLIENT_RESOURCE_PACK_FORMAT: PackFormat = PackFormat {
+    major: 84,
+    minor: 0,
+};
+const SERVER_DATA_PACK_FORMAT: PackFormat = PackFormat {
+    major: 101,
+    minor: 1,
+};
+
+fn pack_format_for_domain(domain: &str) -> PackFormat {
+    match domain {
+        "data" => SERVER_DATA_PACK_FORMAT,
+        _ => CLIENT_RESOURCE_PACK_FORMAT,
+    }
 }
 
 #[derive(Debug)]
@@ -407,6 +419,77 @@ impl ResourceFilterPattern {
 #[derive(Debug, Deserialize)]
 struct RawPackMetadata {
     filter: Option<RawResourceFilterSection>,
+    overlays: Option<RawOverlaySection>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawOverlaySection {
+    entries: Vec<RawOverlayEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawOverlayEntry {
+    directory: String,
+    min_format: Option<RawPackFormat>,
+    max_format: Option<RawPackFormat>,
+    formats: Option<RawMajorFormatRange>,
+}
+
+impl RawOverlayEntry {
+    fn applies_to(&self, current: PackFormat) -> bool {
+        if !is_valid_overlay_directory(&self.directory) {
+            return false;
+        }
+        if let (Some(min), Some(max)) = (self.min_format, self.max_format) {
+            return current >= min.into_pack_format(0) && current <= max.into_pack_format(u32::MAX);
+        }
+        self.formats
+            .is_some_and(|range| range.contains(current.major))
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(untagged)]
+enum RawPackFormat {
+    Major(u32),
+    Full([u32; 2]),
+}
+
+impl RawPackFormat {
+    fn into_pack_format(self, default_minor: u32) -> PackFormat {
+        match self {
+            Self::Major(major) => PackFormat {
+                major,
+                minor: default_minor,
+            },
+            Self::Full([major, minor]) => PackFormat { major, minor },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(untagged)]
+enum RawMajorFormatRange {
+    Single(u32),
+    Pair([u32; 2]),
+    Object {
+        min_inclusive: u32,
+        max_inclusive: u32,
+    },
+}
+
+impl RawMajorFormatRange {
+    fn contains(self, value: u32) -> bool {
+        let (min, max) = match self {
+            Self::Single(value) => (value, value),
+            Self::Pair([min, max]) => (min, max),
+            Self::Object {
+                min_inclusive,
+                max_inclusive,
+            } => (min_inclusive, max_inclusive),
+        };
+        min <= value && value <= max
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -444,6 +527,34 @@ fn pack_filter(root: &Path) -> Option<PackFilter> {
         .collect::<Result<Vec<_>>>()
         .ok()?;
     Some(PackFilter { blocks })
+}
+
+fn applicable_overlays(root: &Path, current_format: PackFormat) -> Vec<String> {
+    let metadata_path = root.join("pack.mcmeta");
+    let Ok(bytes) = std::fs::read(metadata_path) else {
+        return Vec::new();
+    };
+    let Ok(metadata) = serde_json::from_slice::<RawPackMetadata>(&bytes) else {
+        return Vec::new();
+    };
+    metadata
+        .overlays
+        .map(|overlays| {
+            overlays
+                .entries
+                .into_iter()
+                .filter(|entry| entry.applies_to(current_format))
+                .map(|entry| entry.directory)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn is_valid_overlay_directory(directory: &str) -> bool {
+    !directory.is_empty()
+        && directory
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
 pub(crate) fn validate_resource_namespace(namespace: &str) -> Result<()> {
@@ -681,6 +792,116 @@ mod tests {
             .list_data_resource_stacks("tags/block", ".json")
             .unwrap()
             .is_empty());
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn resource_stack_overlay_overrides_primary_within_same_pack() {
+        let root = unique_temp_dir("resource-overlay-assets");
+        let pack = root.join("pack");
+        let primary_stone = pack
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        let overlay_stone = pack
+            .join("overlay_84")
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        write_file(&primary_stone, b"primary-stone");
+        write_file(&overlay_stone, b"overlay-stone");
+        write_file(
+            &pack.join("pack.mcmeta"),
+            br#"{
+              "overlays": {
+                "entries": [
+                  {
+                    "directory": "overlay_84",
+                    "min_format": [84, 0],
+                    "max_format": [84, 0]
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let stack = PackResourceStack::from_roots([pack]);
+        let stone = ResourceLocation::parse("minecraft:textures/block/stone.png").unwrap();
+        let resolved = stack.get_resource(&stone).unwrap();
+        let resource_stack = stack.get_resource_stack(&stone);
+        let listed = stack.list_resources("textures/block", ".png").unwrap();
+
+        assert!(resolved.path.ends_with(&overlay_stone));
+        assert_eq!(resource_stack.len(), 1);
+        assert!(resource_stack[0].path.ends_with(&overlay_stone));
+        assert_eq!(listed.len(), 1);
+        assert!(listed[0].path.ends_with(&overlay_stone));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn resource_stack_overlays_are_selected_by_pack_type_format() {
+        let root = unique_temp_dir("resource-overlay-formats");
+        let pack = root.join("pack");
+        let primary_texture = pack
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        let data_overlay_texture = pack
+            .join("data_overlay")
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        let primary_tag = pack
+            .join("data")
+            .join("minecraft")
+            .join("tags")
+            .join("block")
+            .join("logs.json");
+        let data_overlay_tag = pack
+            .join("data_overlay")
+            .join("data")
+            .join("minecraft")
+            .join("tags")
+            .join("block")
+            .join("logs.json");
+        write_file(&primary_texture, b"primary-texture");
+        write_file(&data_overlay_texture, b"data-overlay-texture");
+        write_file(&primary_tag, br#"{"values":["minecraft:oak_log"]}"#);
+        write_file(&data_overlay_tag, br#"{"values":["minecraft:birch_log"]}"#);
+        write_file(
+            &pack.join("pack.mcmeta"),
+            br#"{
+              "overlays": {
+                "entries": [
+                  {
+                    "directory": "data_overlay",
+                    "min_format": [101, 1],
+                    "max_format": [101, 1]
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let stack = PackResourceStack::from_roots([pack]);
+        let stone = ResourceLocation::parse("minecraft:textures/block/stone.png").unwrap();
+        let logs = ResourceLocation::parse("minecraft:tags/block/logs.json").unwrap();
+        let texture = stack.get_resource(&stone).unwrap();
+        let tag = stack.get_data_resource(&logs).unwrap();
+
+        assert!(texture.path.ends_with(&primary_texture));
+        assert!(tag.path.ends_with(&data_overlay_tag));
 
         std::fs::remove_dir_all(root).unwrap();
     }
