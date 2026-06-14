@@ -5,25 +5,28 @@ use bbb_audio::{
 };
 use bbb_net::{NetCommand, NetEvent};
 use bbb_pack::SoundCatalog;
+use bbb_protocol::codec::Encoder;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
-    AttributeSnapshot, BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder,
-    ChunkPos as ProtocolChunkPos, CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent,
-    ContainerSetData, ContainerSetSlot, CustomChatCompletions, CustomChatCompletionsAction,
-    CustomPayload, CustomPayloadBody, DebugBlockValue, DebugChunkValue, DebugEntityValue,
-    DebugEvent, DebugSample, DeleteChat, DialogHolder, DisguisedChat, EntityAnchor,
-    EntityAnimation, EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove,
-    EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind,
-    GameRuleValue, GameRuleValues, GameTestHighlightPos, HurtAnimation, IngredientSummary,
-    InteractionHand, ItemCostSummary, ItemStackSummary, LevelParticles, MapColorPatch,
-    MapDecoration, MapItemData, MerchantOffer, MerchantOffers, MessageSignature, MinecartStep,
-    MountScreenOpen, MoveMinecartAlongTrack, OpenBook, OpenScreen, OpenSignEditor,
-    PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat,
-    PlayerCombatEnd, PlayerCombatKill, PlayerLookAt, PlayerLookAtTarget, PongResponse,
-    ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
-    RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
-    RecipeDisplayType, RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags,
-    RemoteDebugSampleType, RemoveEntities, RotateHead, SelectAdvancementsTab, ServerLinkEntry,
+    AttributeSnapshot, BlockEntityData, BlockPos as ProtocolBlockPos, BlockUpdate, ChatTypeBound,
+    ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ChunksBiomes,
+    CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent, ContainerSetData, ContainerSetSlot,
+    CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
+    DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat,
+    DialogHolder, DisguisedChat, EntityAnchor, EntityAnimation, EntityDataValue,
+    EntityDataValueKind, EntityEvent, EntityMove, EntityPositionSync, EquipmentSlot,
+    EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameRuleValue,
+    GameRuleValues, GameTestHighlightPos, HurtAnimation, IngredientSummary, InteractionHand,
+    ItemCostSummary, ItemStackSummary, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight,
+    LevelParticles, LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
+    MerchantOffer, MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen,
+    MoveMinecartAlongTrack, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
+    ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill,
+    PlayerLookAt, PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd,
+    RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
+    RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
+    RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType,
+    RemoveEntities, RotateHead, SectionBlocksUpdate, SelectAdvancementsTab, ServerLinkEntry,
     ServerLinkKnownType, ServerLinkType, ServerLinks, SetChunkCacheCenter, SetChunkCacheRadius,
     SetCursorItem, SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetPassengers,
     SetPlayerInventory, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
@@ -90,6 +93,101 @@ fn chunk_cache_events_update_world_and_snapshot_counters() {
     let world_counters = world.counters();
     assert_eq!(world_counters.chunk_cache_center_updates_received, 1);
     assert_eq!(world_counters.chunk_cache_radius_updates_received, 1);
+    assert_eq!(counters.chunk_cache_center_updates_received, 1);
+    assert_eq!(counters.chunk_cache_radius_updates_received, 1);
+}
+
+#[test]
+fn terrain_chunk_events_update_world_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(7);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        block_state_id: 5,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SectionBlocksUpdate(SectionBlocksUpdate {
+        section_x: 1,
+        section_y: 0,
+        section_z: -2,
+        updates: vec![BlockUpdate {
+            pos: ProtocolBlockPos {
+                x: 17,
+                y: -64,
+                z: -31,
+            },
+            block_state_id: 6,
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        block_entity_type_id: 7,
+        raw_nbt: vec![0],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LightUpdate(LightUpdate {
+        chunk_x: 1,
+        chunk_z: -2,
+        light_data: empty_light_update_data(),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ChunksBiomes(ChunksBiomes {
+        chunks: vec![ChunkBiomeData {
+            pos: ProtocolChunkPos { x: 1, z: -2 },
+            raw_biomes: single_biome_payload(7),
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ForgetLevelChunk(ForgetLevelChunk {
+        pos: ProtocolChunkPos { x: 1, z: -2 },
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        7
+    );
+    assert_eq!(counters.first_chunk, Some(ChunkPos { x: 1, z: -2 }));
+    assert!(world.probe_chunk(ChunkPos { x: 1, z: -2 }).is_none());
+
+    let world_counters = world.counters();
+    macro_rules! assert_chunk_counter {
+        ($field:ident, $value:expr) => {
+            assert_eq!(world_counters.$field, $value);
+            assert_eq!(counters.$field, $value);
+        };
+    }
+
+    assert_chunk_counter!(chunks_received, 1);
+    assert_chunk_counter!(chunks_decoded, 1);
+    assert_chunk_counter!(sections_decoded, 1);
+    assert_chunk_counter!(block_entities_seen, 1);
+    assert_chunk_counter!(light_arrays_seen, 0);
+    assert_chunk_counter!(block_updates_received, 2);
+    assert_chunk_counter!(block_updates_applied, 2);
+    assert_chunk_counter!(block_entity_updates_received, 1);
+    assert_chunk_counter!(block_entity_updates_applied, 1);
+    assert_chunk_counter!(light_updates_received, 1);
+    assert_chunk_counter!(light_updates_applied, 1);
+    assert_chunk_counter!(biome_updates_received, 1);
+    assert_chunk_counter!(biome_updates_applied, 1);
+    assert_chunk_counter!(chunk_forgets_received, 1);
+    assert_chunk_counter!(chunks_forgotten, 1);
 }
 
 #[test]
@@ -3485,6 +3583,53 @@ fn test_sound_catalog() -> SoundCatalog {
 
 fn protocol_add_entity(id: i32) -> AddEntity {
     protocol_add_entity_with_type(id, 7)
+}
+
+fn synthetic_native_level_chunk_packet() -> LevelChunkWithLight {
+    let mut sections = Encoder::new();
+    sections.write_i16(0);
+    sections.write_i16(0);
+    sections.write_u8(0);
+    sections.write_var_i32(0);
+    sections.write_u8(0);
+    sections.write_var_i32(0);
+
+    LevelChunkWithLight {
+        x: 1,
+        z: -2,
+        chunk_data: LevelChunkData {
+            heightmaps: vec![ChunkHeightmapData {
+                kind_id: 1,
+                data: vec![42],
+            }],
+            section_data: sections.into_inner(),
+            block_entities: vec![LevelChunkBlockEntity {
+                packed_xz: 0,
+                y: -64,
+                block_entity_type_id: 7,
+                raw_nbt: vec![0],
+            }],
+        },
+        light_data: empty_light_update_data(),
+    }
+}
+
+fn empty_light_update_data() -> LightUpdateData {
+    LightUpdateData {
+        sky_y_mask: Vec::new(),
+        block_y_mask: Vec::new(),
+        empty_sky_y_mask: Vec::new(),
+        empty_block_y_mask: Vec::new(),
+        sky_updates: Vec::new(),
+        block_updates: Vec::new(),
+    }
+}
+
+fn single_biome_payload(biome_id: i32) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_u8(0);
+    payload.write_var_i32(biome_id);
+    payload.into_inner()
 }
 
 fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
