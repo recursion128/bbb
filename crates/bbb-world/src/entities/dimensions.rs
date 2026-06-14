@@ -13,6 +13,7 @@ const VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID: i32 = 20;
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
+const VANILLA_ENTITY_TYPE_FOX_ID: i32 = 54;
 const VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID: i32 = 60;
 const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
 const VANILLA_ENTITY_TYPE_HUSK_ID: i32 = 67;
@@ -66,6 +67,7 @@ const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
 const ARMADILLO_BABY_SCALE: f32 = 0.6;
 const CAMEL_SITTING_HEIGHT_DIFFERENCE: f32 = 1.43;
 const CAMEL_BABY_SCALE: f32 = 0.6;
+const FOX_BABY_SCALE: f32 = 0.6;
 const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
 const GOAT_BABY_SCALE: f32 = 0.55;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
@@ -328,6 +330,7 @@ fn baby_pick_bounds(
         VANILLA_ENTITY_TYPE_ARMADILLO_ID
         | VANILLA_ENTITY_TYPE_CHICKEN_ID
         | VANILLA_ENTITY_TYPE_COW_ID
+        | VANILLA_ENTITY_TYPE_FOX_ID
         | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
         | VANILLA_ENTITY_TYPE_PIG_ID
         | VANILLA_ENTITY_TYPE_VILLAGER_ID
@@ -353,6 +356,9 @@ fn baby_pick_bounds(
         }
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
             vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(ARMADILLO_BABY_SCALE)
+        }
+        VANILLA_ENTITY_TYPE_FOX_ID => {
+            vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(FOX_BABY_SCALE)
         }
         _ => vanilla_pick_bounds_for_type(entity_type_id)?
             .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE),
