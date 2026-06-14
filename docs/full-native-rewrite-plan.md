@@ -108,9 +108,9 @@ Known priority areas:
   (`fireball`, `wind_charge`, `breeze_wind_charge`); `bbb-native` routes
   left/right/middle mouse actions to attack/interact/pick entity packets for
   those targets, using vanilla default block/entity interaction ranges of
-  4.5/3.0 blocks. Owner: `bbb-world` + `bbb-native`; status: partial; next
-  action: drive `WorldStore::advance_entity_client_animations` from a stable
-  native 20Hz accumulator and continue remaining pose/state overrides.
+  4.5/3.0 blocks. `bbb-native` drives world client animations from a stable
+  20Hz accumulator. Owner: `bbb-world` + `bbb-native`; status: partial; next
+  action: continue remaining dynamic pose/state bounding-box overrides.
 
 ## Phases
 

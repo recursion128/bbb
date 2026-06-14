@@ -1,4 +1,7 @@
-use std::{path::PathBuf, time::Instant};
+use std::{
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{NetCounters, PlayerPose, RendererCounters, SharedSnapshot};
@@ -19,10 +22,17 @@ use crate::{
 
 mod events;
 
+const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
+
 pub(crate) use events::{
     local_player_pose_from_player_pose, player_pose_from_local_player_pose,
     player_position_state_from_local_player_pose,
 };
+
+#[derive(Debug, Default)]
+pub(crate) struct ClientAnimationTickState {
+    last_entity_animation_at: Option<Instant>,
+}
 
 pub(crate) fn snapshot_is_running(snapshot: &SharedSnapshot) -> bool {
     snapshot
@@ -61,6 +71,7 @@ pub(crate) fn pump_network_and_terrain(
     world: &mut WorldStore,
     renderer: &mut bbb_renderer::Renderer,
     net_counters: &mut NetCounters,
+    client_animation_ticks: &mut ClientAnimationTickState,
     terrain_upload: &mut TerrainUploadState,
     terrain_textures: &TerrainTextureState,
     snapshot: &SharedSnapshot,
@@ -78,7 +89,9 @@ pub(crate) fn pump_network_and_terrain(
             audio_events_for_drain,
         );
     }
-    advance_player_input(input, world, net_counters, net_commands, Instant::now());
+    let now = Instant::now();
+    advance_entity_client_animations(world, client_animation_ticks, now);
+    advance_player_input(input, world, net_counters, net_commands, now);
     let local_player = world.local_player();
     let player_pose = local_player.pose.map(player_pose_from_local_player_pose);
     renderer.set_hud_health(local_player.health.map(|health| health.health));
@@ -103,6 +116,31 @@ pub(crate) fn pump_network_and_terrain(
         audio_events.tick_entity_sound_positions(audio_scene_command_from_world(world));
     }
     publish_snapshot(snapshot, renderer.counters(), net_counters, world)
+}
+
+fn advance_entity_client_animations(
+    world: &mut WorldStore,
+    ticks: &mut ClientAnimationTickState,
+    now: Instant,
+) -> u32 {
+    let Some(last) = ticks.last_entity_animation_at else {
+        ticks.last_entity_animation_at = Some(now);
+        return 0;
+    };
+    let elapsed = now.saturating_duration_since(last);
+    let raw_ticks = elapsed.as_millis() / CLIENT_ENTITY_ANIMATION_TICK_INTERVAL.as_millis();
+    if raw_ticks == 0 {
+        return 0;
+    }
+
+    let advanced_ticks = u32::try_from(raw_ticks).unwrap_or(u32::MAX);
+    world.advance_entity_client_animations(advanced_ticks);
+    let advanced = Duration::from_millis(
+        u64::from(advanced_ticks)
+            .saturating_mul(CLIENT_ENTITY_ANIMATION_TICK_INTERVAL.as_millis() as u64),
+    );
+    ticks.last_entity_animation_at = last.checked_add(advanced).or(Some(now));
+    advanced_ticks
 }
 
 pub(crate) fn clear_color_for_world(world: &WorldStore) -> ClearColor {
@@ -253,5 +291,126 @@ mod tests {
                 position: [1.0, 2.0, 3.0],
             }]
         );
+    }
+
+    #[test]
+    fn entity_client_animations_advance_at_vanilla_tick_interval() {
+        let start = Instant::now();
+        let mut ticks = ClientAnimationTickState::default();
+        let mut world = WorldStore::new();
+        world.apply_add_entity(test_add_entity(123, 104));
+        assert!(
+            world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+                id: 123,
+                values: vec![test_bool_data(18, true)],
+            })
+        );
+
+        assert_eq!(
+            world.probe_entity_pick_bounds(123),
+            Some(bbb_world::EntityPickBoundsState::from_base_size(
+                1.4, 1.4, 0.0
+            ))
+        );
+
+        assert_eq!(
+            advance_entity_client_animations(&mut world, &mut ticks, start),
+            0
+        );
+        assert_eq!(
+            advance_entity_client_animations(
+                &mut world,
+                &mut ticks,
+                start + Duration::from_millis(49),
+            ),
+            0
+        );
+        assert_eq!(
+            world.probe_entity_pick_bounds(123),
+            Some(bbb_world::EntityPickBoundsState::from_base_size(
+                1.4, 1.4, 0.0
+            ))
+        );
+
+        assert_eq!(
+            advance_entity_client_animations(
+                &mut world,
+                &mut ticks,
+                start + Duration::from_millis(50),
+            ),
+            1
+        );
+        assert_eq!(
+            advance_entity_client_animations(
+                &mut world,
+                &mut ticks,
+                start + Duration::from_millis(50),
+            ),
+            0
+        );
+        assert_eq!(
+            world.probe_entity_pick_bounds(123),
+            Some(bbb_world::EntityPickBoundsState::from_base_size(
+                1.4, 1.4, 0.0
+            ))
+        );
+
+        assert_eq!(
+            advance_entity_client_animations(
+                &mut world,
+                &mut ticks,
+                start + Duration::from_millis(100),
+            ),
+            1
+        );
+        assert_eq!(
+            world.probe_entity_pick_bounds(123),
+            Some(bbb_world::EntityPickBoundsState::from_base_size(
+                1.4,
+                1.4 * (1.0 + 1.0 / 6.0),
+                0.0,
+            ))
+        );
+
+        assert_eq!(
+            advance_entity_client_animations(
+                &mut world,
+                &mut ticks,
+                start + Duration::from_millis(350),
+            ),
+            5
+        );
+        assert_eq!(
+            world.probe_entity_pick_bounds(123),
+            Some(bbb_world::EntityPickBoundsState::from_base_size(
+                1.4, 2.8, 0.0
+            ))
+        );
+    }
+
+    fn test_add_entity(id: i32, entity_type_id: i32) -> bbb_protocol::packets::AddEntity {
+        bbb_protocol::packets::AddEntity {
+            id,
+            uuid: uuid::Uuid::from_u128(id as u128),
+            entity_type_id,
+            position: bbb_protocol::packets::Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            delta_movement: bbb_protocol::packets::Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        }
+    }
+
+    fn test_bool_data(data_id: u8, value: bool) -> bbb_protocol::packets::EntityDataValue {
+        bbb_protocol::packets::EntityDataValue {
+            data_id,
+            serializer_id: 8,
+            value: bbb_protocol::packets::EntityDataValueKind::Boolean(value),
+        }
     }
 }

@@ -24,7 +24,7 @@ use input::{
 };
 use runtime::{
     clear_color_for_world, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
-    snapshot_is_running, take_control_screenshot,
+    snapshot_is_running, take_control_screenshot, ClientAnimationTickState,
 };
 use startup::{
     build_window, create_event_loop, init_tracing, load_pack_roots, parse_args,
@@ -76,6 +76,7 @@ fn main() -> Result<()> {
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
     let mut terrain_upload = TerrainUploadState::default();
+    let mut client_animation_ticks = ClientAnimationTickState::default();
     let mut net_disconnect_requested = false;
 
     event_loop.run(move |event, target| {
@@ -117,6 +118,7 @@ fn main() -> Result<()> {
                         &mut world,
                         &mut renderer,
                         &mut net_counters,
+                        &mut client_animation_ticks,
                         &mut terrain_upload,
                         &terrain_textures,
                         &snapshot,
@@ -188,6 +190,7 @@ fn main() -> Result<()> {
                     &mut world,
                     &mut renderer,
                     &mut net_counters,
+                    &mut client_animation_ticks,
                     &mut terrain_upload,
                     &terrain_textures,
                     &snapshot,
