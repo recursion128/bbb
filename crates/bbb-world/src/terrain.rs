@@ -245,6 +245,9 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_rail_block_name(name)
         || is_ladder_block_name(name)
         || is_torch_block_name(name)
+        || is_lever_block_name(name)
+        || is_button_block_name(name)
+        || is_pressure_plate_block_name(name)
 }
 
 fn is_bar_block_name(name: &str) -> bool {
@@ -356,6 +359,52 @@ fn is_torch_block_name(name: &str) -> bool {
             | "minecraft:soul_wall_torch"
             | "minecraft:copper_torch"
             | "minecraft:copper_wall_torch"
+    )
+}
+
+fn is_lever_block_name(name: &str) -> bool {
+    matches!(name, "minecraft:lever")
+}
+
+fn is_button_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:stone_button"
+            | "minecraft:oak_button"
+            | "minecraft:spruce_button"
+            | "minecraft:birch_button"
+            | "minecraft:jungle_button"
+            | "minecraft:acacia_button"
+            | "minecraft:cherry_button"
+            | "minecraft:dark_oak_button"
+            | "minecraft:pale_oak_button"
+            | "minecraft:mangrove_button"
+            | "minecraft:bamboo_button"
+            | "minecraft:crimson_button"
+            | "minecraft:warped_button"
+            | "minecraft:polished_blackstone_button"
+    )
+}
+
+fn is_pressure_plate_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:stone_pressure_plate"
+            | "minecraft:oak_pressure_plate"
+            | "minecraft:spruce_pressure_plate"
+            | "minecraft:birch_pressure_plate"
+            | "minecraft:jungle_pressure_plate"
+            | "minecraft:acacia_pressure_plate"
+            | "minecraft:cherry_pressure_plate"
+            | "minecraft:dark_oak_pressure_plate"
+            | "minecraft:pale_oak_pressure_plate"
+            | "minecraft:mangrove_pressure_plate"
+            | "minecraft:bamboo_pressure_plate"
+            | "minecraft:crimson_pressure_plate"
+            | "minecraft:warped_pressure_plate"
+            | "minecraft:light_weighted_pressure_plate"
+            | "minecraft:heavy_weighted_pressure_plate"
+            | "minecraft:polished_blackstone_pressure_plate"
     )
 }
 
@@ -515,6 +564,54 @@ mod tests {
             "minecraft:soul_wall_torch",
             "minecraft:copper_torch",
             "minecraft:copper_wall_torch",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:lever")),
+            TerrainMaterialClass::Cutout
+        );
+        for name in [
+            "minecraft:stone_button",
+            "minecraft:oak_button",
+            "minecraft:spruce_button",
+            "minecraft:birch_button",
+            "minecraft:jungle_button",
+            "minecraft:acacia_button",
+            "minecraft:cherry_button",
+            "minecraft:dark_oak_button",
+            "minecraft:pale_oak_button",
+            "minecraft:mangrove_button",
+            "minecraft:bamboo_button",
+            "minecraft:crimson_button",
+            "minecraft:warped_button",
+            "minecraft:polished_blackstone_button",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:stone_pressure_plate",
+            "minecraft:oak_pressure_plate",
+            "minecraft:spruce_pressure_plate",
+            "minecraft:birch_pressure_plate",
+            "minecraft:jungle_pressure_plate",
+            "minecraft:acacia_pressure_plate",
+            "minecraft:cherry_pressure_plate",
+            "minecraft:dark_oak_pressure_plate",
+            "minecraft:pale_oak_pressure_plate",
+            "minecraft:mangrove_pressure_plate",
+            "minecraft:bamboo_pressure_plate",
+            "minecraft:crimson_pressure_plate",
+            "minecraft:warped_pressure_plate",
+            "minecraft:light_weighted_pressure_plate",
+            "minecraft:heavy_weighted_pressure_plate",
+            "minecraft:polished_blackstone_pressure_plate",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),

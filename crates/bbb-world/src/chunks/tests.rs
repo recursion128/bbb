@@ -861,6 +861,166 @@ fn terrain_cells_classify_ladders_and_torches_as_cutout() {
 }
 
 #[test]
+fn terrain_cells_classify_redstone_controls_as_cutout() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let applied = store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+        section_x: 2,
+        section_y: 0,
+        section_z: -3,
+        updates: vec![
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 34,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 6772,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 35,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 6896,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 36,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 10676,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 37,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 10844,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 38,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 21467,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 39,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 22746,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 40,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 6796,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 41,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 6862,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 42,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 11231,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 43,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 11247,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 44,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 21047,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 45,
+                    y: 1,
+                    z: -42,
+                },
+                block_state_id: 22744,
+            },
+        ],
+    });
+
+    assert_eq!(applied, 12);
+
+    for (x, block_name) in [
+        (34, "minecraft:lever"),
+        (35, "minecraft:stone_button"),
+        (36, "minecraft:oak_button"),
+        (37, "minecraft:pale_oak_button"),
+        (38, "minecraft:crimson_button"),
+        (39, "minecraft:polished_blackstone_button"),
+        (40, "minecraft:stone_pressure_plate"),
+        (41, "minecraft:oak_pressure_plate"),
+        (42, "minecraft:light_weighted_pressure_plate"),
+        (43, "minecraft:heavy_weighted_pressure_plate"),
+        (44, "minecraft:crimson_pressure_plate"),
+        (45, "minecraft:polished_blackstone_pressure_plate"),
+    ] {
+        let probe = store.probe_block(BlockPos { x, y: 1, z: -42 }).unwrap();
+        assert_eq!(probe.block_name.as_deref(), Some(block_name));
+        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.fluid, None);
+    }
+
+    let terrain = store
+        .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    for local_x in 2..=13 {
+        assert_eq!(
+            terrain.cells[terrain_cell_index(local_x, 1, 6, 16)].fluid,
+            None
+        );
+    }
+
+    let summary = terrain.summary();
+    assert_eq!(summary.fluid_state_blocks, 0);
+    assert_eq!(summary.cutout_blocks, 12);
+    assert_eq!(summary.opaque_blocks, 4084);
+    assert_eq!(
+        store
+            .probe_chunk(ChunkPos { x: 2, z: -3 })
+            .unwrap()
+            .sections[0]
+            .fluid_count,
+        0
+    );
+}
+
+#[test]
 fn applies_single_block_update_and_reuploads_palette() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
