@@ -22,8 +22,8 @@ mod store;
 mod updates;
 
 pub(crate) use components::{
-    EntityAttributes, EntityEquipment, EntityIdentity, EntityMetadata, EntityTransform,
-    EntityTransientEvents,
+    EntityAttributes, EntityEquipment, EntityIdentity, EntityLeash, EntityMetadata, EntityMount,
+    EntityTransform, EntityTransientEvents,
 };
 use movement::entity_vec3;
 use status::{EntityDamageEventState, MobEffectState};
@@ -206,22 +206,24 @@ impl WorldStore {
         {
             self.local_player_vehicle_id = None;
         }
-        self.entities.for_each_mut(|entity| {
-            if entity
+        self.entities.for_each_mount_mut(|_, mount| {
+            if mount
                 .vehicle_id
                 .is_some_and(|vehicle_id| removed_ids.contains(&vehicle_id))
             {
-                entity.vehicle_id = None;
+                mount.vehicle_id = None;
             }
-            if entity
-                .leash_holder_id
-                .is_some_and(|holder_id| removed_ids.contains(&holder_id))
-            {
-                entity.leash_holder_id = None;
-            }
-            entity
+            mount
                 .passengers
                 .retain(|passenger_id| !removed_ids.contains(passenger_id));
+        });
+        self.entities.for_each_leash_mut(|_, leash| {
+            if leash
+                .holder_id
+                .is_some_and(|holder_id| removed_ids.contains(&holder_id))
+            {
+                leash.holder_id = None;
+            }
         });
         self.counters.entities_removed += removed;
         self.update_entity_count();

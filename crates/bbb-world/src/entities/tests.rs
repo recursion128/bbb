@@ -562,6 +562,8 @@ fn tracks_entity_passenger_updates() {
     assert_eq!(store.probe_entity(10).unwrap().passengers, vec![20, 21]);
     assert_eq!(store.probe_entity(20).unwrap().vehicle_id, Some(10));
     assert_eq!(store.probe_entity(21).unwrap().vehicle_id, Some(10));
+    assert_eq!(store.entities.mount(10).unwrap().passengers, vec![20, 21]);
+    assert_eq!(store.entities.mount(20).unwrap().vehicle_id, Some(10));
 
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 30,
@@ -570,6 +572,8 @@ fn tracks_entity_passenger_updates() {
     assert_eq!(store.probe_entity(10).unwrap().passengers, vec![21]);
     assert_eq!(store.probe_entity(20).unwrap().vehicle_id, Some(30));
     assert_eq!(store.probe_entity(30).unwrap().passengers, vec![20]);
+    assert_eq!(store.entities.mount(20).unwrap().vehicle_id, Some(30));
+    assert_eq!(store.entities.mount(30).unwrap().passengers, vec![20]);
 
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 10,
@@ -590,6 +594,7 @@ fn tracks_entity_passenger_updates() {
     );
     assert_eq!(store.probe_entity(20).unwrap().vehicle_id, None);
     assert!(store.probe_entity(30).is_none());
+    assert_eq!(store.entities.mount(20).unwrap().vehicle_id, None);
 
     assert_eq!(store.counters().entity_passenger_updates_received, 4);
     assert_eq!(store.counters().entity_passenger_ids_received, 6);
@@ -976,12 +981,14 @@ fn tracks_entity_link_updates() {
         dest_id: 20,
     }));
     assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, Some(20));
+    assert_eq!(store.entities.leash(10).unwrap().holder_id, Some(20));
 
     assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
         source_id: 10,
         dest_id: 999,
     }));
     assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, Some(999));
+    assert_eq!(store.entities.leash(10).unwrap().holder_id, Some(999));
 
     assert!(!store.apply_set_entity_link(ProtocolSetEntityLink {
         source_id: 999,
@@ -993,6 +1000,7 @@ fn tracks_entity_link_updates() {
         dest_id: 0,
     }));
     assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, None);
+    assert_eq!(store.entities.leash(10).unwrap().holder_id, None);
 
     assert!(store.apply_set_entity_link(ProtocolSetEntityLink {
         source_id: 10,
@@ -1005,6 +1013,7 @@ fn tracks_entity_link_updates() {
         1
     );
     assert_eq!(store.probe_entity(10).unwrap().leash_holder_id, None);
+    assert_eq!(store.entities.leash(10).unwrap().holder_id, None);
 
     assert_eq!(store.counters().entity_link_updates_received, 5);
     assert_eq!(store.counters().entity_link_updates_applied, 4);

@@ -51,8 +51,8 @@ impl WorldStore {
 
     pub fn apply_set_entity_link(&mut self, packet: ProtocolSetEntityLink) -> bool {
         self.counters.entity_link_updates_received += 1;
-        let Some(()) = self.entities.with_mut(packet.source_id, |entity| {
-            entity.leash_holder_id = if packet.dest_id == 0 {
+        let Some(()) = self.entities.with_leash_mut(packet.source_id, |leash| {
+            leash.holder_id = if packet.dest_id == 0 {
                 None
             } else {
                 Some(packet.dest_id)

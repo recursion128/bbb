@@ -22,13 +22,13 @@ impl WorldStore {
             return false;
         }
 
-        self.entities.for_each_mut(|entity| {
-            if entity.vehicle_id == Some(packet.vehicle_id) {
-                entity.vehicle_id = None;
+        self.entities.for_each_mount_mut(|_, mount| {
+            if mount.vehicle_id == Some(packet.vehicle_id) {
+                mount.vehicle_id = None;
             }
         });
         self.entities
-            .with_mut(packet.vehicle_id, |vehicle| vehicle.passengers.clear());
+            .with_mount_mut(packet.vehicle_id, |vehicle| vehicle.passengers.clear());
 
         let mut mounted = Vec::new();
         let mut local_player_mounted_here = false;
@@ -46,35 +46,30 @@ impl WorldStore {
                 self.local_player_vehicle_id = Some(packet.vehicle_id);
                 local_player_mounted_here = true;
             }
-            let Some(old_vehicle_id) = self
-                .entities
-                .get(passenger_id)
-                .and_then(|entity| entity.vehicle_id)
-            else {
-                let known_passenger = self
-                    .entities
-                    .with_mut(passenger_id, |passenger| {
+            match self.entities.mount(passenger_id) {
+                Some(passenger_mount) => {
+                    if let Some(old_vehicle_id) = passenger_mount.vehicle_id {
+                        if old_vehicle_id != packet.vehicle_id {
+                            self.remove_passenger_from_vehicle(old_vehicle_id, passenger_id);
+                        }
+                    }
+                    self.entities.with_mount_mut(passenger_id, |passenger| {
                         passenger.vehicle_id = Some(packet.vehicle_id);
-                    })
-                    .is_some();
-                if known_passenger || is_local_player {
+                    });
                     mounted.push(passenger_id);
                 }
-                continue;
-            };
-            if old_vehicle_id != packet.vehicle_id {
-                self.remove_passenger_from_vehicle(old_vehicle_id, passenger_id);
+                None => {
+                    if is_local_player {
+                        mounted.push(passenger_id);
+                    }
+                }
             }
-            self.entities.with_mut(passenger_id, |passenger| {
-                passenger.vehicle_id = Some(packet.vehicle_id);
-            });
-            mounted.push(passenger_id);
         }
 
         if local_player_was_on_packet_vehicle && !local_player_mounted_here {
             self.local_player_vehicle_id = None;
         }
-        self.entities.with_mut(packet.vehicle_id, |vehicle| {
+        self.entities.with_mount_mut(packet.vehicle_id, |vehicle| {
             vehicle.passengers = mounted;
         });
         self.counters.entity_passenger_updates_applied += 1;
@@ -120,18 +115,18 @@ impl WorldStore {
 
     pub(crate) fn clear_local_player_mount(&mut self, local_player_id: i32) {
         self.local_player_vehicle_id = None;
-        self.entities.for_each_mut(|entity| {
-            if entity.id == local_player_id {
-                entity.vehicle_id = None;
+        self.entities.for_each_mount_mut(|entity_id, mount| {
+            if entity_id == local_player_id {
+                mount.vehicle_id = None;
             }
-            entity
+            mount
                 .passengers
                 .retain(|passenger_id| *passenger_id != local_player_id);
         });
     }
 
     fn remove_passenger_from_vehicle(&mut self, vehicle_id: i32, passenger_id: i32) {
-        self.entities.with_mut(vehicle_id, |vehicle| {
+        self.entities.with_mount_mut(vehicle_id, |vehicle| {
             vehicle
                 .passengers
                 .retain(|existing| *existing != passenger_id);
@@ -141,8 +136,8 @@ impl WorldStore {
     fn resolve_root_vehicle_id(&self, vehicle_id: i32) -> Option<i32> {
         let mut root_vehicle_id = vehicle_id;
         for _ in 0..self.entities.len() {
-            let vehicle = self.probe_entity(root_vehicle_id)?;
-            let Some(parent_vehicle_id) = vehicle.vehicle_id else {
+            let mount = self.entities.mount(root_vehicle_id)?;
+            let Some(parent_vehicle_id) = mount.vehicle_id else {
                 return Some(root_vehicle_id);
             };
             root_vehicle_id = parent_vehicle_id;

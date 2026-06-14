@@ -47,6 +47,17 @@ pub(crate) struct EntityTransientEvents {
     pub(crate) last_hurt_yaw: Option<f32>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct EntityMount {
+    pub(crate) vehicle_id: Option<i32>,
+    pub(crate) passengers: Vec<i32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EntityLeash {
+    pub(crate) holder_id: Option<i32>,
+}
+
 impl From<&EntityState> for EntityIdentity {
     fn from(state: &EntityState) -> Self {
         Self {
@@ -106,6 +117,23 @@ impl From<&EntityState> for EntityTransientEvents {
     }
 }
 
+impl From<&EntityState> for EntityMount {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            vehicle_id: state.vehicle_id,
+            passengers: state.passengers.clone(),
+        }
+    }
+}
+
+impl From<&EntityState> for EntityLeash {
+    fn from(state: &EntityState) -> Self {
+        Self {
+            holder_id: state.leash_holder_id,
+        }
+    }
+}
+
 impl EntityTransform {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.position = self.position;
@@ -141,5 +169,18 @@ impl EntityTransientEvents {
         state.last_animation_action = self.last_animation_action;
         state.last_event_id = self.last_event_id;
         state.last_hurt_yaw = self.last_hurt_yaw;
+    }
+}
+
+impl EntityMount {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.vehicle_id = self.vehicle_id;
+        state.passengers = self.passengers;
+    }
+}
+
+impl EntityLeash {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.leash_holder_id = self.holder_id;
     }
 }
