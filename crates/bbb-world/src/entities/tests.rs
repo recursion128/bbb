@@ -983,6 +983,122 @@ fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
 }
 
 #[test]
+fn baby_pick_bounds_follow_vanilla_metadata() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    const ZOMBIE_BABY_DATA_ID: u8 = 16;
+    const PIGLIN_BABY_DATA_ID: u8 = 17;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(34, 100));
+    store.apply_add_entity(protocol_add_entity_with_type(35, 26));
+    store.apply_add_entity(protocol_add_entity_with_type(36, 139));
+    store.apply_add_entity(protocol_add_entity_with_type(37, 150));
+    store.apply_add_entity(protocol_add_entity_with_type(38, 101));
+    store.apply_add_entity(protocol_add_entity_with_type(39, 30));
+    store.apply_add_entity(protocol_add_entity_with_type(40, 141));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(34),
+        Some(EntityPickBoundsState::from_base_size(0.9, 0.9, 0.0))
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 34,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(34),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * 0.5,
+            0.9 * 0.5,
+            0.0
+        ))
+    );
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 34,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(34),
+        Some(EntityPickBoundsState::from_base_size(0.9, 0.9, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 35,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(35),
+        Some(EntityPickBoundsState::from_base_size(0.3, 0.4, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 36,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(36),
+        Some(EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 37,
+        values: vec![protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(37),
+        Some(EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 38,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(38),
+        Some(EntityPickBoundsState::from_base_size(0.6, 1.95, 0.0))
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 38,
+        values: vec![protocol_bool_data(PIGLIN_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(38),
+        Some(EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 39,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(39),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * 0.5,
+            1.4 * 0.5,
+            0.0
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 40,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(40),
+        Some(EntityPickBoundsState::from_base_size(
+            0.6 * 0.5,
+            1.95 * 0.5,
+            0.0,
+        ))
+    );
+}
+
+#[test]
 fn armor_stand_pick_bounds_follow_client_flags() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(26, 5));
@@ -1621,6 +1737,14 @@ fn protocol_pose_data(data_id: u8, pose_id: i32) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: 20,
         value: EntityDataValueKind::Pose(pose_id),
+    }
+}
+
+fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 8,
+        value: EntityDataValueKind::Boolean(value),
     }
 }
 

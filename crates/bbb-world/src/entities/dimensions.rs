@@ -6,16 +6,31 @@ use serde::{Deserialize, Serialize};
 use super::EntityVec3;
 
 const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
+const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
+const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
 const VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID: i32 = 60;
+const VANILLA_ENTITY_TYPE_HUSK_ID: i32 = 67;
 const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
 const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
 const VANILLA_ENTITY_TYPE_LEASH_KNOT_ID: i32 = 76;
 const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_MANNEQUIN_ID: i32 = 83;
+const VANILLA_ENTITY_TYPE_MOOSHROOM_ID: i32 = 86;
 const VANILLA_ENTITY_TYPE_PAINTING_ID: i32 = 93;
+const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
+const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
+const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
+const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
+const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
+const VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID: i32 = 153;
+const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
 const ENTITY_DATA_POSE_ID: u8 = 6;
+const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
+const PIGLIN_BABY_DATA_ID: u8 = 17;
+const ZOMBIE_BABY_DATA_ID: u8 = 16;
 const HANGING_DATA_DIRECTION_ID: u8 = 8;
 const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
 const PAINTING_DATA_VARIANT_ID: u8 = 9;
@@ -116,6 +131,8 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         avatar_pick_bounds(data_values)
     } else if is_living_sleeping(entity_type_id, data_values) {
         living_sleeping_pick_bounds()
+    } else if let Some(bounds) = baby_pick_bounds(entity_type_id, data_values) {
+        bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
         interaction_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
@@ -195,6 +212,48 @@ fn avatar_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState 
 
 fn living_sleeping_pick_bounds() -> EntityPickBoundsState {
     EntityPickBoundsState::from_base_size(0.2, 0.2, 0.0)
+}
+
+fn baby_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    let baby = match entity_type_id {
+        VANILLA_ENTITY_TYPE_DROWNED_ID
+        | VANILLA_ENTITY_TYPE_HUSK_ID
+        | VANILLA_ENTITY_TYPE_ZOMBIE_ID
+        | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+        | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
+            entity_data_bool(data_values, ZOMBIE_BABY_DATA_ID, false)
+        }
+        VANILLA_ENTITY_TYPE_PIGLIN_ID => entity_data_bool(data_values, PIGLIN_BABY_DATA_ID, false),
+        VANILLA_ENTITY_TYPE_CHICKEN_ID
+        | VANILLA_ENTITY_TYPE_COW_ID
+        | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
+        | VANILLA_ENTITY_TYPE_PIG_ID
+        | VANILLA_ENTITY_TYPE_VILLAGER_ID
+        | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => {
+            entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
+        }
+        _ => false,
+    };
+    if !baby {
+        return None;
+    }
+
+    Some(match entity_type_id {
+        VANILLA_ENTITY_TYPE_CHICKEN_ID => EntityPickBoundsState::from_base_size(0.3, 0.4, 0.0),
+        VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0),
+        VANILLA_ENTITY_TYPE_DROWNED_ID
+        | VANILLA_ENTITY_TYPE_HUSK_ID
+        | VANILLA_ENTITY_TYPE_PIGLIN_ID
+        | VANILLA_ENTITY_TYPE_ZOMBIE_ID
+        | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+        | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
+            EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0)
+        }
+        _ => vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(0.5),
+    })
 }
 
 fn item_frame_pick_bounds(
@@ -487,6 +546,17 @@ fn entity_data_byte(data_values: &[EntityDataValue], data_id: u8, fallback: i8) 
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Byte(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
+}
+
+fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, fallback: bool) -> bool {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Boolean(value) => Some(*value),
             _ => None,
         })
         .unwrap_or(fallback)
