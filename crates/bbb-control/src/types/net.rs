@@ -120,6 +120,30 @@ pub struct NetCounters {
     pub remove_mob_effect_packets: usize,
     #[serde(default)]
     pub active_mob_effects_tracked: usize,
+    #[serde(default)]
+    pub inventory_slot_updates_received: usize,
+    #[serde(default)]
+    pub inventory_slots_tracked: usize,
+    #[serde(default)]
+    pub cursor_item_updates_received: usize,
+    #[serde(default)]
+    pub container_open_updates_received: usize,
+    #[serde(default)]
+    pub container_content_updates_received: usize,
+    #[serde(default)]
+    pub container_slot_updates_received: usize,
+    #[serde(default)]
+    pub container_data_updates_received: usize,
+    #[serde(default)]
+    pub container_close_updates_received: usize,
+    #[serde(default)]
+    pub merchant_offer_packets_received: usize,
+    #[serde(default)]
+    pub merchant_offer_packets_applied: usize,
+    #[serde(default)]
+    pub merchant_offer_packets_ignored: usize,
+    #[serde(default)]
+    pub merchant_offers_tracked: usize,
     pub cookie_request_packets: usize,
     pub cookie_response_hits: usize,
     pub cookie_response_misses: usize,

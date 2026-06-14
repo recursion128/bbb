@@ -251,6 +251,22 @@ pub(super) fn sync_entity_status_counters(counters: &mut NetCounters, world: &Wo
     counters.active_mob_effects_tracked = world_counters.active_mob_effects_tracked;
 }
 
+pub(super) fn sync_inventory_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.inventory_slot_updates_received = world_counters.inventory_slot_updates_received;
+    counters.inventory_slots_tracked = world_counters.inventory_slots_tracked;
+    counters.cursor_item_updates_received = world_counters.cursor_item_updates_received;
+    counters.container_open_updates_received = world_counters.container_open_updates_received;
+    counters.container_content_updates_received = world_counters.container_content_updates_received;
+    counters.container_slot_updates_received = world_counters.container_slot_updates_received;
+    counters.container_data_updates_received = world_counters.container_data_updates_received;
+    counters.container_close_updates_received = world_counters.container_close_updates_received;
+    counters.merchant_offer_packets_received = world_counters.merchant_offer_packets_received;
+    counters.merchant_offer_packets_applied = world_counters.merchant_offer_packets_applied;
+    counters.merchant_offer_packets_ignored = world_counters.merchant_offer_packets_ignored;
+    counters.merchant_offers_tracked = world_counters.merchant_offers_tracked;
+}
+
 pub(super) fn sync_entity_interaction_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.move_vehicle_packets = world_counters.vehicle_moves_received;

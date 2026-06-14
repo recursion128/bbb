@@ -8,9 +8,10 @@ use bbb_pack::SoundCatalog;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
     BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, ChunkPos as ProtocolChunkPos,
-    CommonPlayerSpawnInfo, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
-    CustomPayloadBody, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample,
-    DeleteChat, DialogHolder, DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind,
+    CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent, ContainerSetData, ContainerSetSlot,
+    CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
+    DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat,
+    DialogHolder, DisguisedChat, EntityAnchor, Explosion, FilterMask, FilterMaskKind,
     GameRuleValue, GameRuleValues, GameTestHighlightPos, IngredientSummary, InteractionHand,
     ItemCostSummary, ItemStackSummary, LevelParticles, MapColorPatch, MapDecoration, MapItemData,
     MerchantOffer, MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen,
@@ -21,12 +22,12 @@ use bbb_protocol::packets::{
     RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
     RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType,
     SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
-    SetChunkCacheCenter, SetChunkCacheRadius, SetPassengers, ShowDialog, SignedMessageBody,
-    SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
-    StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload, TagQuery,
-    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateAdvancements,
-    UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData,
-    WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetPassengers, SetPlayerInventory,
+    ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
+    SoundEventHolder, SoundSource, StonecutterSelectableRecipeSummary, StopSound,
+    TagNetworkPayload, TagQuery, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
+    UpdateAdvancements, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, RegistryPacketEntry, WorldStore};
 use std::collections::BTreeMap;
@@ -954,6 +955,81 @@ fn client_feature_events_update_world_and_snapshot_counters() {
 }
 
 #[test]
+fn inventory_events_update_world_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(7);
+    tx.try_send(NetEvent::OpenScreen(OpenScreen {
+        container_id: 7,
+        menu_type_id: 18,
+        title: "Inventory".to_string(),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ContainerSetContent(ContainerSetContent {
+        container_id: 7,
+        state_id: 1,
+        items: vec![item_stack(42, 1), item_stack(43, 2)],
+        carried_item: item_stack(99, 1),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ContainerSetSlot(ContainerSetSlot {
+        container_id: 7,
+        state_id: 2,
+        slot: 1,
+        item: item_stack(44, 3),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ContainerSetData(ContainerSetData {
+        container_id: 7,
+        id: 3,
+        value: 11,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetPlayerInventory(SetPlayerInventory {
+        slot: 5,
+        item: item_stack(12, 1),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetCursorItem(SetCursorItem {
+        item: item_stack(100, 4),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ContainerClose(ContainerClose { container_id: 7 }))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        7
+    );
+
+    assert!(world.inventory().open_container.is_none());
+    assert_eq!(world.inventory().cursor_item, item_stack(100, 4));
+    assert_eq!(world.inventory().player_slots.len(), 1);
+    assert_eq!(world.inventory().player_slots[0].slot, 5);
+    assert_eq!(world.inventory().player_slots[0].item, item_stack(12, 1));
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.container_open_updates_received, 1);
+    assert_eq!(world_counters.container_content_updates_received, 1);
+    assert_eq!(world_counters.container_slot_updates_received, 1);
+    assert_eq!(world_counters.container_data_updates_received, 1);
+    assert_eq!(world_counters.container_close_updates_received, 1);
+    assert_eq!(world_counters.inventory_slot_updates_received, 1);
+    assert_eq!(world_counters.inventory_slots_tracked, 1);
+    assert_eq!(world_counters.cursor_item_updates_received, 1);
+
+    assert_eq!(counters.container_open_updates_received, 1);
+    assert_eq!(counters.container_content_updates_received, 1);
+    assert_eq!(counters.container_slot_updates_received, 1);
+    assert_eq!(counters.container_data_updates_received, 1);
+    assert_eq!(counters.container_close_updates_received, 1);
+    assert_eq!(counters.inventory_slot_updates_received, 1);
+    assert_eq!(counters.inventory_slots_tracked, 1);
+    assert_eq!(counters.cursor_item_updates_received, 1);
+}
+
+#[test]
 fn merchant_offers_event_updates_world_inventory_state() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::OpenScreen(OpenScreen {
@@ -1007,6 +1083,12 @@ fn merchant_offers_event_updates_world_inventory_state() {
     assert_eq!(world_counters.merchant_offer_packets_received, 1);
     assert_eq!(world_counters.merchant_offer_packets_applied, 1);
     assert_eq!(world_counters.merchant_offers_tracked, 1);
+
+    assert_eq!(counters.container_open_updates_received, 1);
+    assert_eq!(counters.merchant_offer_packets_received, 1);
+    assert_eq!(counters.merchant_offer_packets_applied, 1);
+    assert_eq!(counters.merchant_offer_packets_ignored, 0);
+    assert_eq!(counters.merchant_offers_tracked, 1);
 }
 
 #[test]
