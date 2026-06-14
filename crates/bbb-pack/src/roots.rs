@@ -8,6 +8,7 @@ use crate::{
     block_models::BlockModelCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
     language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE},
+    metadata::PackMetadataCatalog,
     resources::{PackResourceStack, ResourceLocation},
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
@@ -181,14 +182,35 @@ impl PackRoots {
     }
 
     pub fn load_language_catalog(&self, language_code: &str) -> Result<LanguageCatalog> {
-        let mut catalog = if language_code == DEFAULT_LANGUAGE_CODE {
-            LanguageCatalog::load_resource_stack(&self.resource_stack(), &[DEFAULT_LANGUAGE_CODE])
+        if language_code == DEFAULT_LANGUAGE_CODE {
+            self.load_language_stack([DEFAULT_LANGUAGE_CODE])
         } else {
-            LanguageCatalog::load_resource_stack(
-                &self.resource_stack(),
-                &[DEFAULT_LANGUAGE_CODE, language_code],
-            )
-        }?;
+            self.load_language_stack([DEFAULT_LANGUAGE_CODE, language_code])
+        }
+    }
+
+    pub fn load_client_language_catalog(
+        &self,
+        selected_language_code: &str,
+    ) -> Result<LanguageCatalog> {
+        let metadata = self.load_pack_metadata_catalog();
+        self.load_language_stack(metadata.language_stack(selected_language_code))
+    }
+
+    pub fn load_pack_metadata_catalog(&self) -> PackMetadataCatalog {
+        PackMetadataCatalog::load_resource_stack(&self.resource_stack())
+    }
+
+    fn load_language_stack(
+        &self,
+        language_codes: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Result<LanguageCatalog> {
+        let language_codes = language_codes
+            .into_iter()
+            .map(|code| code.as_ref().to_string())
+            .collect::<Vec<_>>();
+        let mut catalog =
+            LanguageCatalog::load_resource_stack(&self.resource_stack(), &language_codes)?;
         let deprecated_path = self.assets_dir.join("lang").join("deprecated.json");
         if deprecated_path.is_file() {
             // Vanilla loads deprecated translations from the default resource, not overlays.

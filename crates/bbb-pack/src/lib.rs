@@ -5,6 +5,7 @@ mod colors;
 mod exports;
 mod image;
 mod language;
+mod metadata;
 mod mipmap;
 mod resources;
 mod roots;

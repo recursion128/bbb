@@ -334,6 +334,46 @@ mod tests {
     }
 
     #[test]
+    fn pack_roots_client_language_catalog_uses_pack_metadata_for_selected_language() {
+        let root = unique_temp_dir("language-metadata-aware");
+        let sources_dir = root.join("sources").join(MC_VERSION);
+        let assets_dir = sources_dir.join("assets").join("minecraft");
+        write_json(
+            &assets_dir.join("lang").join("en_us.json"),
+            r#"{
+              "menu.play": "Play"
+            }"#,
+        );
+        write_json(
+            &assets_dir.join("lang").join("pirate.json"),
+            r#"{
+              "menu.play": "Sail"
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let fallback_catalog = roots.load_client_language_catalog("pirate").unwrap();
+        assert_eq!(fallback_catalog.get("menu.play"), Some("Play"));
+
+        write_json(
+            &sources_dir.join("pack.mcmeta"),
+            r#"{
+              "language": {
+                "pirate": {
+                  "region": "Seven Seas",
+                  "name": "Pirate Speak"
+                }
+              }
+            }"#,
+        );
+
+        let selected_catalog = roots.load_client_language_catalog("pirate").unwrap();
+        assert_eq!(selected_catalog.get("menu.play"), Some("Sail"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn pack_roots_language_catalog_applies_default_deprecated_translations() {
         let root = unique_temp_dir("language-deprecated");
         let assets_dir = root

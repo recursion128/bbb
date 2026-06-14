@@ -9,6 +9,7 @@ pub use crate::colors::{
     BiomeColorCatalog, BiomeColorProfile, ColorMapImage, GrassColorModifier, TerrainColorMaps,
 };
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
+pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};
 pub use crate::resources::{PackResource, PackResourceStack, ResourceLocation};
 pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};
