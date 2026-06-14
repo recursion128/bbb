@@ -242,6 +242,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_chain_block_name(name)
         || is_door_block_name(name)
         || is_trapdoor_block_name(name)
+        || is_rail_block_name(name)
 }
 
 fn is_bar_block_name(name: &str) -> bool {
@@ -325,6 +326,16 @@ fn is_trapdoor_block_name(name: &str) -> bool {
             | "minecraft:waxed_exposed_copper_trapdoor"
             | "minecraft:waxed_weathered_copper_trapdoor"
             | "minecraft:waxed_oxidized_copper_trapdoor"
+    )
+}
+
+fn is_rail_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:rail"
+            | "minecraft:powered_rail"
+            | "minecraft:detector_rail"
+            | "minecraft:activator_rail"
     )
 }
 
@@ -454,6 +465,17 @@ mod tests {
             "minecraft:waxed_exposed_copper_trapdoor",
             "minecraft:waxed_weathered_copper_trapdoor",
             "minecraft:waxed_oxidized_copper_trapdoor",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:rail",
+            "minecraft:powered_rail",
+            "minecraft:detector_rail",
+            "minecraft:activator_rail",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),

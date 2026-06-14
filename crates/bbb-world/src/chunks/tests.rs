@@ -634,6 +634,95 @@ fn terrain_cells_include_vanilla_fluid_state() {
 }
 
 #[test]
+fn terrain_cells_classify_waterlogged_rails_as_cutout() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let applied = store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+        section_x: 2,
+        section_y: 0,
+        section_z: -3,
+        updates: vec![
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 34,
+                    y: 1,
+                    z: -44,
+                },
+                block_state_id: 2187,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 35,
+                    y: 1,
+                    z: -44,
+                },
+                block_state_id: 2211,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 36,
+                    y: 1,
+                    z: -44,
+                },
+                block_state_id: 5727,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 37,
+                    y: 1,
+                    z: -44,
+                },
+                block_state_id: 11408,
+            },
+        ],
+    });
+
+    assert_eq!(applied, 4);
+
+    let source_water = Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+    for (x, block_name) in [
+        (34, "minecraft:powered_rail"),
+        (35, "minecraft:detector_rail"),
+        (36, "minecraft:rail"),
+        (37, "minecraft:activator_rail"),
+    ] {
+        let probe = store.probe_block(BlockPos { x, y: 1, z: -44 }).unwrap();
+        assert_eq!(probe.block_name.as_deref(), Some(block_name));
+        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.fluid, source_water);
+    }
+
+    let terrain = store
+        .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    for local_x in 2..=5 {
+        assert_eq!(
+            terrain.cells[terrain_cell_index(local_x, 1, 4, 16)].fluid,
+            source_water
+        );
+    }
+
+    let summary = terrain.summary();
+    assert_eq!(summary.fluid_state_blocks, 4);
+    assert_eq!(summary.cutout_blocks, 4);
+    assert_eq!(summary.opaque_blocks, 4092);
+    assert_eq!(
+        store
+            .probe_chunk(ChunkPos { x: 2, z: -3 })
+            .unwrap()
+            .sections[0]
+            .fluid_count,
+        4
+    );
+}
+
+#[test]
 fn applies_single_block_update_and_reuploads_palette() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
