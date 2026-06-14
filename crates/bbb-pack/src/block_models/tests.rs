@@ -2,8 +2,13 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use serde::Deserialize;
+
 use super::{BlockModelFace, BlockModelShape};
 use crate::{PackRoots, MC_VERSION};
+
+const VANILLA_BLOCK_STATES_JSON: &str =
+    include_str!("../../../bbb-world/data/block_states_26_1.json");
 
 #[test]
 fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {
@@ -1071,6 +1076,50 @@ fn block_model_catalog_combines_multipart_boxes() {
 }
 
 #[test]
+fn block_model_catalog_preserves_empty_multipart_selection() {
+    let root = unique_temp_dir("block-model-empty-multipart");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("cobblestone_wall.json"),
+        r##"{
+            "multipart": [
+                {
+                    "when": { "up": "true" },
+                    "apply": { "model": "minecraft:block/template_wall_post" }
+                },
+                {
+                    "when": { "north": "low" },
+                    "apply": { "model": "minecraft:block/template_wall_side" }
+                }
+            ]
+        }"##,
+    );
+    std::fs::create_dir_all(asset_root.join("models").join("block")).unwrap();
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let mut properties = BTreeMap::new();
+    properties.insert("north".to_string(), "none".to_string());
+    properties.insert("up".to_string(), "false".to_string());
+    let render_model = catalog
+        .block_render_model("minecraft:cobblestone_wall", &properties)
+        .unwrap();
+    let BlockModelShape::Boxes(boxes) = render_model.shape else {
+        panic!("empty multipart selection should resolve to empty box geometry");
+    };
+
+    assert!(boxes.is_empty());
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_applies_blockstate_rotation_to_faces() {
     let root = unique_temp_dir("block-model-rotation");
     let asset_root = root
@@ -1289,6 +1338,21 @@ fn loads_local_vanilla_block_model_catalog() {
     assert_eq!(fence_boxes[3].from, [0, 12, 7]);
     assert_eq!(fence_boxes[4].from, [0, 6, 7]);
 
+    let mut wall = BTreeMap::new();
+    wall.insert("east".to_string(), "none".to_string());
+    wall.insert("north".to_string(), "none".to_string());
+    wall.insert("south".to_string(), "none".to_string());
+    wall.insert("up".to_string(), "false".to_string());
+    wall.insert("waterlogged".to_string(), "false".to_string());
+    wall.insert("west".to_string(), "none".to_string());
+    let wall_model = catalog
+        .block_render_model("minecraft:cobblestone_wall", &wall)
+        .unwrap();
+    let BlockModelShape::Boxes(wall_boxes) = wall_model.shape else {
+        panic!("cobblestone_wall can legally resolve to no multipart boxes");
+    };
+    assert!(wall_boxes.is_empty());
+
     let mut lever = BTreeMap::new();
     lever.insert("face".to_string(), "floor".to_string());
     lever.insert("facing".to_string(), "north".to_string());
@@ -1343,6 +1407,51 @@ fn loads_local_vanilla_block_model_catalog() {
         water.face_textures.get(BlockModelFace::Up),
         "minecraft:block/water_still"
     );
+}
+
+#[test]
+#[ignore = "requires local vanilla 26.1 sources"]
+fn resolves_all_local_vanilla_block_state_models() {
+    let roots = PackRoots::discover().unwrap();
+    let catalog = roots.load_block_model_catalog().unwrap();
+    let report: BlockStateReport = serde_json::from_str(VANILLA_BLOCK_STATES_JSON).unwrap();
+    assert_eq!(report.version, "26.1");
+
+    let mut failures = Vec::new();
+    for state in &report.states {
+        if catalog
+            .block_render_model(&state.name, &state.properties)
+            .is_none()
+        {
+            failures.push(format!("{}#{}", state.id, state.name));
+        }
+    }
+
+    assert!(
+        failures.is_empty(),
+        "failed to resolve {} vanilla block state models: {}",
+        failures.len(),
+        failures
+            .iter()
+            .take(32)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+}
+
+#[derive(Debug, Deserialize)]
+struct BlockStateReport {
+    version: String,
+    states: Vec<BlockStateInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BlockStateInfo {
+    id: i32,
+    name: String,
+    #[serde(default)]
+    properties: BTreeMap<String, String>,
 }
 
 fn write_json(path: &Path, contents: &str) {

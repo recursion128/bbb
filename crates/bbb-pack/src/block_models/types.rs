@@ -63,6 +63,15 @@ pub struct BlockFaceTextures {
 }
 
 impl BlockFaceTextures {
+    pub(crate) fn uniform(texture: impl Into<String>) -> Self {
+        let texture = texture.into();
+        Self {
+            textures: std::array::from_fn(|_| texture.clone()),
+            tint_indices: [None; 6],
+            force_translucent: [false; 6],
+        }
+    }
+
     pub fn get(&self, face: BlockModelFace) -> &str {
         &self.textures[face.index()]
     }
@@ -98,6 +107,16 @@ pub struct BlockRenderModel {
     pub face_textures: BlockFaceTextures,
     pub shape: BlockModelShape,
     pub use_ambient_occlusion: bool,
+}
+
+impl BlockRenderModel {
+    pub(crate) fn empty() -> Self {
+        Self {
+            face_textures: BlockFaceTextures::uniform("minecraft:block/stone"),
+            shape: BlockModelShape::Boxes(Vec::new()),
+            use_ambient_occlusion: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

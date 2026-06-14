@@ -355,7 +355,7 @@ pub(super) fn emit_quads(
             let (dx, dy, dz) = cull_offset(cull_face);
             let neighbor = lookup.cell(x + dx, y + dy, z + dz);
             if neighbor
-                .map(|neighbor| mode.culls_face_between(face_material, neighbor.material))
+                .map(|neighbor| culls_face_between_cells(mode, face_material, None, neighbor))
                 .unwrap_or(false)
             {
                 mesh.culled_faces += 1;
@@ -611,7 +611,7 @@ fn light_sample(
 ) -> (bool, TerrainLight) {
     lookup
         .cell(x, y, z)
-        .map(|cell| (mode.is_occluded_by(cell.material), cell.light))
+        .map(|cell| (mode.is_occluded_by_cell(cell), cell.light))
         .unwrap_or((false, fallback))
 }
 
@@ -780,7 +780,7 @@ fn ambient_sample(
 ) -> (bool, f32) {
     let occludes = lookup
         .cell(x, y, z)
-        .map(|cell| mode.is_occluded_by(cell.material))
+        .map(|cell| mode.is_occluded_by_cell(cell))
         .unwrap_or(false);
     (occludes, if occludes { 0.2 } else { 1.0 })
 }

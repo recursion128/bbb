@@ -15,7 +15,7 @@ impl RawBlockstate {
         &self,
         properties: &BTreeMap<String, String>,
         seed: Option<i64>,
-    ) -> Option<Vec<RawModelVariant>> {
+    ) -> Option<RawBlockstateSelection> {
         let mut best_variant = None;
         let mut best_score = 0usize;
         for (key, variant) in &self.variants {
@@ -28,7 +28,11 @@ impl RawBlockstate {
             }
         }
         if best_variant.is_some() {
-            return best_variant.map(|variant| vec![variant]);
+            return best_variant.map(|variant| RawBlockstateSelection::Variants(vec![variant]));
+        }
+
+        if self.multipart.is_empty() {
+            return None;
         }
 
         let multipart_seed = seed.map(legacy_random_next_long);
@@ -38,8 +42,18 @@ impl RawBlockstate {
             .filter(|case| case.matches(properties))
             .filter_map(|case| case.apply.select_model(multipart_seed))
             .collect();
-        (!variants.is_empty()).then_some(variants)
+        Some(if variants.is_empty() {
+            RawBlockstateSelection::Empty
+        } else {
+            RawBlockstateSelection::Variants(variants)
+        })
     }
+}
+
+#[derive(Debug, Clone)]
+pub(super) enum RawBlockstateSelection {
+    Variants(Vec<RawModelVariant>),
+    Empty,
 }
 
 #[derive(Debug, Clone, Deserialize)]

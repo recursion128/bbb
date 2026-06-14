@@ -724,6 +724,33 @@ fn multi_box_model_skips_absent_faces() {
 }
 
 #[test]
+fn empty_multi_box_model_emits_no_geometry_or_occlusion() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(2, 0, 2, 1)] = TerrainCell::with_shape(
+        4,
+        TerrainMaterialClass::Opaque,
+        0,
+        TerrainRenderShape::Boxes(Vec::new()),
+    );
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let mesh = build_opaque_terrain_meshes_with_atlas(&[snapshot], &TerrainTextureAtlas::unit())
+        .into_iter()
+        .next()
+        .unwrap();
+
+    assert_eq!(mesh.opaque_faces, 6);
+    assert_eq!(mesh.culled_faces, 0);
+    assert_eq!(mesh.vertices.len(), 24);
+    assert_eq!(mesh.indices.len(), 36);
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.block_state_id == 1));
+}
+
+#[test]
 fn boxes_use_per_box_texture_and_tint() {
     let grass_tint = TerrainTint::from_rgb_u8(0x91, 0xbd, 0x59);
     let foliage_tint = TerrainTint::from_rgb_u8(0x48, 0xb5, 0x18);

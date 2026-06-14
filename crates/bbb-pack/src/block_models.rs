@@ -11,7 +11,7 @@ mod rotation;
 mod shape;
 mod types;
 
-use blockstates::RawBlockstate;
+use blockstates::{RawBlockstate, RawBlockstateSelection};
 use raw_model::{RawBlockElement, RawBlockElementRotation, RawBlockModel};
 use resolver::{resolve_texture_alias, ResolvedTextureReference};
 use rotation::{apply_variant_rotation, rotate_model_shape};
@@ -112,7 +112,10 @@ impl BlockModelCatalog {
         seed: Option<i64>,
     ) -> Option<BlockRenderModel> {
         let blockstate = self.blockstates.get(&normalize_block_id(block_name))?;
-        let variants = blockstate.select_variants(properties, seed)?;
+        let variants = match blockstate.select_variants(properties, seed)? {
+            RawBlockstateSelection::Variants(variants) => variants,
+            RawBlockstateSelection::Empty => return Some(BlockRenderModel::empty()),
+        };
         let mut face_textures = None;
         let mut use_ambient_occlusion = None;
         let mut shapes = Vec::with_capacity(variants.len());

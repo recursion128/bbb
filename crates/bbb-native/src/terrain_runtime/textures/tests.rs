@@ -568,6 +568,54 @@ fn block_render_data_preserves_model_ambient_occlusion() {
 }
 
 #[test]
+fn block_render_data_preserves_empty_multipart_geometry() {
+    let root = unique_temp_dir("block-render-empty-multipart");
+    let asset_root = root
+        .join("sources")
+        .join(bbb_pack::MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("cobblestone_wall.json"),
+        r##"{
+            "multipart": [
+                {
+                    "when": { "up": "true" },
+                    "apply": { "model": "minecraft:block/template_wall_post" }
+                },
+                {
+                    "when": { "north": "low" },
+                    "apply": { "model": "minecraft:block/template_wall_side" }
+                }
+            ]
+        }"##,
+    );
+    std::fs::create_dir_all(asset_root.join("models").join("block")).unwrap();
+
+    let mut texture_state = TerrainTextureState::default();
+    texture_state.block_models = Some(
+        bbb_pack::PackRoots::from_root(&root)
+            .unwrap()
+            .load_block_model_catalog()
+            .unwrap(),
+    );
+
+    let (_, _, _, shape, _) = texture_state.block_render_data(
+        Some("minecraft:cobblestone_wall"),
+        &properties([("north", "none"), ("up", "false")]),
+        bbb_world::TerrainMaterialClass::Opaque,
+        None,
+        None,
+    );
+
+    let TerrainRenderShape::Boxes(boxes) = shape else {
+        panic!("empty multipart geometry must not fall back to a cube");
+    };
+    assert!(boxes.is_empty());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_tint_uses_default_vanilla_color_classes() {
     let textures = TerrainTextureState::default();
     assert_eq!(

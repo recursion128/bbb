@@ -43,14 +43,8 @@ impl TerrainMeshMode {
         }
     }
 
-    fn culls_face_between(
-        self,
-        current: TerrainMaterialClass,
-        neighbor: TerrainMaterialClass,
-    ) -> bool {
-        self.is_occluded_by(neighbor)
-            || (matches!(current, TerrainMaterialClass::Fluid)
-                && matches!(neighbor, TerrainMaterialClass::Fluid))
+    fn is_occluded_by_cell(self, cell: &TerrainCell) -> bool {
+        render_shape_has_geometry(&cell.render_shape) && self.is_occluded_by(cell.material)
     }
 }
 
@@ -361,7 +355,18 @@ pub(super) fn culls_face_between_cells(
             return true;
         }
     }
-    mode.culls_face_between(current, neighbor.material)
+    mode.is_occluded_by_cell(neighbor)
+}
+
+fn render_shape_has_geometry(shape: &TerrainRenderShape) -> bool {
+    match shape {
+        TerrainRenderShape::Boxes(boxes) => !boxes.is_empty(),
+        TerrainRenderShape::Crosses(crosses) => !crosses.is_empty(),
+        TerrainRenderShape::Quads(quads) => !quads.is_empty(),
+        TerrainRenderShape::Cube
+        | TerrainRenderShape::Cross { .. }
+        | TerrainRenderShape::Box { .. } => true,
+    }
 }
 
 fn is_opaque_transparency(transparency: super::TerrainTransparency) -> bool {
