@@ -964,6 +964,21 @@ fn layer_builder_splits_opaque_and_cutout_meshes() {
 }
 
 #[test]
+fn cutout_blocks_do_not_occlude_neighbor_opaque_faces() {
+    let mut cells = vec![TerrainCell::EMPTY; 16 * 1 * 16];
+    cells[cell_index(1, 0, 2, 1)] = TerrainCell::with_texture(1, TerrainMaterialClass::Opaque, 0);
+    cells[cell_index(2, 0, 2, 1)] = TerrainCell::with_texture(2, TerrainMaterialClass::Cutout, 0);
+    let snapshot = TerrainChunkSnapshot::new(0, 0, 0, 1, cells);
+
+    let layers = build_terrain_mesh_layers_with_atlas(&[snapshot], &TerrainTextureAtlas::unit());
+
+    assert_eq!(layers.opaque[0].opaque_faces, 6);
+    assert_eq!(layers.opaque[0].culled_faces, 0);
+    assert_eq!(layers.cutout[0].cutout_faces, 5);
+    assert_eq!(layers.cutout[0].culled_faces, 1);
+}
+
+#[test]
 fn forced_translucent_cube_faces_emit_in_translucent_layer() {
     let mut face_transparency = [TerrainTransparency::OPAQUE; 6];
     face_transparency[TerrainFace::Up.index()] = TerrainTransparency::TRANSLUCENT;

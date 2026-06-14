@@ -163,7 +163,7 @@ pub(crate) fn terrain_fluid_state(
             return Some(TerrainFluidState::new(
                 TerrainFluidKind::Water,
                 8,
-                is_falling_source_waterlogged_block_name(name),
+                is_copper_grate_block_name(name),
             ));
         }
         _ => return None,
@@ -197,7 +197,7 @@ fn is_fixed_source_water_block_name(name: &str) -> bool {
     )
 }
 
-fn is_falling_source_waterlogged_block_name(name: &str) -> bool {
+fn is_copper_grate_block_name(name: &str) -> bool {
     matches!(
         name,
         "minecraft:copper_grate"
@@ -237,6 +237,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || name.contains("vine")
         || name.contains("kelp")
         || name.contains("seagrass")
+        || is_copper_grate_block_name(name)
 }
 
 fn is_translucent_block_name(name: &str) -> bool {
@@ -264,6 +265,21 @@ mod tests {
             classify_terrain_material(Some("minecraft:short_grass")),
             TerrainMaterialClass::Cutout
         );
+        for name in [
+            "minecraft:copper_grate",
+            "minecraft:exposed_copper_grate",
+            "minecraft:weathered_copper_grate",
+            "minecraft:oxidized_copper_grate",
+            "minecraft:waxed_copper_grate",
+            "minecraft:waxed_exposed_copper_grate",
+            "minecraft:waxed_weathered_copper_grate",
+            "minecraft:waxed_oxidized_copper_grate",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
         assert_eq!(
             classify_terrain_material(Some("minecraft:water")),
             TerrainMaterialClass::Fluid

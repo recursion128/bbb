@@ -439,6 +439,7 @@ fn terrain_cells_include_vanilla_fluid_state() {
         copper_grate.block_name.as_deref(),
         Some("minecraft:copper_grate")
     );
+    assert_eq!(copper_grate.material, TerrainMaterialClass::Cutout);
     assert_eq!(copper_grate.fluid, falling_source_water);
 
     let terrain = store
@@ -473,8 +474,8 @@ fn terrain_cells_include_vanilla_fluid_state() {
     assert_eq!(summary.fluid_state_blocks, 6);
     assert_eq!(summary.fluid_blocks, 1);
     assert_eq!(summary.invisible_blocks, 2);
-    assert_eq!(summary.cutout_blocks, 1);
-    assert_eq!(summary.opaque_blocks, 4092);
+    assert_eq!(summary.cutout_blocks, 2);
+    assert_eq!(summary.opaque_blocks, 4091);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })
