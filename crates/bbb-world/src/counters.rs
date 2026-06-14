@@ -63,6 +63,18 @@ pub struct WorldCounters {
     pub player_rotation_packets: usize,
     #[serde(default)]
     pub player_look_at_packets: usize,
+    #[serde(default)]
+    pub system_chat_packets: usize,
+    #[serde(default)]
+    pub action_bar_packets: usize,
+    #[serde(default)]
+    pub title_text_packets: usize,
+    #[serde(default)]
+    pub subtitle_text_packets: usize,
+    #[serde(default)]
+    pub clear_titles_packets: usize,
+    #[serde(default)]
+    pub titles_animation_packets: usize,
     pub chunks_received: usize,
     pub chunks_decoded: usize,
     pub sections_decoded: usize,

@@ -3,7 +3,10 @@ use std::collections::BTreeMap;
 use bbb_protocol::packets::{
     BossBarColor as ProtocolBossBarColor, BossBarOverlay as ProtocolBossBarOverlay,
     BossEvent as ProtocolBossEvent, BossEventOperation as ProtocolBossEventOperation,
-    ChangeDifficulty as ProtocolChangeDifficulty, Difficulty as ProtocolDifficulty,
+    ChangeDifficulty as ProtocolChangeDifficulty, ClearTitles as ProtocolClearTitles,
+    Difficulty as ProtocolDifficulty, SetActionBarText as ProtocolSetActionBarText,
+    SetSubtitleText as ProtocolSetSubtitleText, SetTitleText as ProtocolSetTitleText,
+    SetTitlesAnimation as ProtocolSetTitlesAnimation, SystemChat as ProtocolSystemChat,
     TabList as ProtocolTabList,
 };
 use serde::{Deserialize, Serialize};
@@ -19,6 +22,12 @@ pub struct ClientHudState {
     pub tab_list: TabListState,
     #[serde(default)]
     pub difficulty: DifficultyState,
+    #[serde(default)]
+    pub system_chat: Option<SystemChatLineState>,
+    #[serde(default)]
+    pub action_bar: Option<ActionBarState>,
+    #[serde(default)]
+    pub title: HudTitleState,
 }
 
 impl Default for ClientHudState {
@@ -27,6 +36,9 @@ impl Default for ClientHudState {
             boss_bars: BTreeMap::new(),
             tab_list: TabListState::default(),
             difficulty: DifficultyState::default(),
+            system_chat: None,
+            action_bar: None,
+            title: HudTitleState::default(),
         }
     }
 }
@@ -59,6 +71,41 @@ impl Default for DifficultyState {
         Self {
             difficulty: difficulty_name(ProtocolDifficulty::Normal).to_string(),
             difficulty_locked: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SystemChatLineState {
+    pub content: String,
+    pub overlay: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActionBarState {
+    pub content: String,
+    pub display_ticks: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HudTitleState {
+    pub title: Option<String>,
+    pub subtitle: Option<String>,
+    pub fade_in: i32,
+    pub stay: i32,
+    pub fade_out: i32,
+    pub title_time: i32,
+}
+
+impl Default for HudTitleState {
+    fn default() -> Self {
+        Self {
+            title: None,
+            subtitle: None,
+            fade_in: 10,
+            stay: 70,
+            fade_out: 20,
+            title_time: 0,
         }
     }
 }
@@ -145,6 +192,63 @@ impl WorldStore {
         };
     }
 
+    pub fn apply_system_chat(&mut self, packet: ProtocolSystemChat) {
+        self.counters.system_chat_packets += 1;
+        let line = SystemChatLineState {
+            content: packet.content,
+            overlay: packet.overlay,
+        };
+        if line.overlay {
+            self.set_overlay_message(line.content.clone());
+        }
+        self.client_hud.system_chat = Some(line);
+    }
+
+    pub fn apply_action_bar_text(&mut self, packet: ProtocolSetActionBarText) {
+        self.counters.action_bar_packets += 1;
+        self.set_overlay_message(packet.content);
+    }
+
+    pub fn apply_title_text(&mut self, packet: ProtocolSetTitleText) {
+        self.counters.title_text_packets += 1;
+        self.client_hud.title.title = Some(packet.content);
+        self.client_hud.title.title_time = title_total_ticks(&self.client_hud.title);
+    }
+
+    pub fn apply_subtitle_text(&mut self, packet: ProtocolSetSubtitleText) {
+        self.counters.subtitle_text_packets += 1;
+        self.client_hud.title.subtitle = Some(packet.content);
+    }
+
+    pub fn apply_clear_titles(&mut self, packet: ProtocolClearTitles) {
+        self.counters.clear_titles_packets += 1;
+        self.client_hud.title.title = None;
+        self.client_hud.title.subtitle = None;
+        self.client_hud.title.title_time = 0;
+        if packet.reset_times {
+            let defaults = HudTitleState::default();
+            self.client_hud.title.fade_in = defaults.fade_in;
+            self.client_hud.title.stay = defaults.stay;
+            self.client_hud.title.fade_out = defaults.fade_out;
+        }
+    }
+
+    pub fn apply_titles_animation(&mut self, packet: ProtocolSetTitlesAnimation) {
+        self.counters.titles_animation_packets += 1;
+        if packet.fade_in >= 0 {
+            self.client_hud.title.fade_in = packet.fade_in;
+        }
+        if packet.stay >= 0 {
+            self.client_hud.title.stay = packet.stay;
+        }
+        if packet.fade_out >= 0 {
+            self.client_hud.title.fade_out = packet.fade_out;
+        }
+        if self.client_hud.title.title_time > 0 {
+            self.client_hud.title.title_time = title_total_ticks(&self.client_hud.title);
+        }
+    }
+
     pub fn client_hud(&self) -> &ClientHudState {
         &self.client_hud
     }
@@ -161,9 +265,35 @@ impl WorldStore {
         &self.client_hud.difficulty
     }
 
+    pub fn system_chat(&self) -> Option<&SystemChatLineState> {
+        self.client_hud.system_chat.as_ref()
+    }
+
+    pub fn action_bar(&self) -> Option<&ActionBarState> {
+        self.client_hud.action_bar.as_ref()
+    }
+
+    pub fn title(&self) -> &HudTitleState {
+        &self.client_hud.title
+    }
+
     fn update_boss_bar_count(&mut self) {
         self.counters.boss_bars_tracked = self.client_hud.boss_bars.len();
     }
+
+    fn set_overlay_message(&mut self, content: String) {
+        self.client_hud.action_bar = Some(ActionBarState {
+            content,
+            display_ticks: 60,
+        });
+    }
+}
+
+fn title_total_ticks(title: &HudTitleState) -> i32 {
+    title
+        .fade_in
+        .saturating_add(title.stay)
+        .saturating_add(title.fade_out)
 }
 
 fn non_empty_component_string(component: Option<String>) -> Option<String> {
@@ -204,7 +334,12 @@ fn difficulty_name(difficulty: ProtocolDifficulty) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::BossEventFlags as ProtocolBossEventFlags;
+    use bbb_protocol::packets::{
+        BossEventFlags as ProtocolBossEventFlags, ClearTitles as ProtocolClearTitles,
+        SetActionBarText as ProtocolSetActionBarText, SetSubtitleText as ProtocolSetSubtitleText,
+        SetTitleText as ProtocolSetTitleText, SetTitlesAnimation as ProtocolSetTitlesAnimation,
+        SystemChat as ProtocolSystemChat,
+    };
 
     #[test]
     fn boss_events_add_update_remove_and_ignore_unknown_updates() {
@@ -342,5 +477,115 @@ mod tests {
         assert_eq!(store.difficulty().difficulty, "peaceful");
         assert!(!store.difficulty().difficulty_locked);
         assert_eq!(store.counters().change_difficulty_packets, 2);
+    }
+
+    #[test]
+    fn hud_text_packets_update_canonical_state() {
+        let mut store = WorldStore::new();
+
+        store.apply_system_chat(ProtocolSystemChat {
+            content: "Server restart soon".to_string(),
+            overlay: false,
+        });
+        assert_eq!(
+            store.system_chat(),
+            Some(&SystemChatLineState {
+                content: "Server restart soon".to_string(),
+                overlay: false,
+            })
+        );
+        assert_eq!(store.action_bar(), None);
+
+        store.apply_system_chat(ProtocolSystemChat {
+            content: "Overlay warning".to_string(),
+            overlay: true,
+        });
+        assert_eq!(
+            store.action_bar(),
+            Some(&ActionBarState {
+                content: "Overlay warning".to_string(),
+                display_ticks: 60,
+            })
+        );
+
+        store.apply_action_bar_text(ProtocolSetActionBarText {
+            content: "Action ready".to_string(),
+        });
+        assert_eq!(
+            store.action_bar(),
+            Some(&ActionBarState {
+                content: "Action ready".to_string(),
+                display_ticks: 60,
+            })
+        );
+
+        let counters = store.counters();
+        assert_eq!(counters.system_chat_packets, 2);
+        assert_eq!(counters.action_bar_packets, 1);
+    }
+
+    #[test]
+    fn title_packets_match_vanilla_timing_rules() {
+        let mut store = WorldStore::new();
+        assert_eq!(
+            store.title(),
+            &HudTitleState {
+                title: None,
+                subtitle: None,
+                fade_in: 10,
+                stay: 70,
+                fade_out: 20,
+                title_time: 0,
+            }
+        );
+
+        store.apply_titles_animation(ProtocolSetTitlesAnimation {
+            fade_in: 5,
+            stay: -1,
+            fade_out: 15,
+        });
+        assert_eq!(store.title().fade_in, 5);
+        assert_eq!(store.title().stay, 70);
+        assert_eq!(store.title().fade_out, 15);
+        assert_eq!(store.title().title_time, 0);
+
+        store.apply_title_text(ProtocolSetTitleText {
+            content: "Quest complete".to_string(),
+        });
+        store.apply_subtitle_text(ProtocolSetSubtitleText {
+            content: "Return to camp".to_string(),
+        });
+        assert_eq!(store.title().title.as_deref(), Some("Quest complete"));
+        assert_eq!(store.title().subtitle.as_deref(), Some("Return to camp"));
+        assert_eq!(store.title().title_time, 90);
+
+        store.apply_titles_animation(ProtocolSetTitlesAnimation {
+            fade_in: -1,
+            stay: 40,
+            fade_out: -1,
+        });
+        assert_eq!(store.title().fade_in, 5);
+        assert_eq!(store.title().stay, 40);
+        assert_eq!(store.title().fade_out, 15);
+        assert_eq!(store.title().title_time, 60);
+
+        store.apply_clear_titles(ProtocolClearTitles { reset_times: false });
+        assert_eq!(store.title().title, None);
+        assert_eq!(store.title().subtitle, None);
+        assert_eq!(store.title().title_time, 0);
+        assert_eq!(store.title().fade_in, 5);
+        assert_eq!(store.title().stay, 40);
+        assert_eq!(store.title().fade_out, 15);
+
+        store.apply_clear_titles(ProtocolClearTitles { reset_times: true });
+        assert_eq!(store.title().fade_in, 10);
+        assert_eq!(store.title().stay, 70);
+        assert_eq!(store.title().fade_out, 20);
+
+        let counters = store.counters();
+        assert_eq!(counters.titles_animation_packets, 2);
+        assert_eq!(counters.title_text_packets, 1);
+        assert_eq!(counters.subtitle_text_packets, 1);
+        assert_eq!(counters.clear_titles_packets, 2);
     }
 }

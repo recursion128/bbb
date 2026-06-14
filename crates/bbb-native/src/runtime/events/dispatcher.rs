@@ -297,22 +297,22 @@ pub(in crate::runtime) fn drain_net_events(
                 sync_local_player_counters(counters, world);
             }
             NetEvent::SystemChat(chat) => {
-                apply_system_chat_update(counters, chat);
+                apply_system_chat_update(counters, world, chat);
             }
             NetEvent::SetActionBarText(text) => {
-                apply_action_bar_update(counters, text);
+                apply_action_bar_update(counters, world, text);
             }
             NetEvent::SetTitleText(text) => {
-                apply_title_text_update(counters, text);
+                apply_title_text_update(counters, world, text);
             }
             NetEvent::SetSubtitleText(text) => {
-                apply_subtitle_text_update(counters, text);
+                apply_subtitle_text_update(counters, world, text);
             }
             NetEvent::ClearTitles(clear) => {
-                apply_clear_titles_update(counters, clear);
+                apply_clear_titles_update(counters, world, clear);
             }
             NetEvent::SetTitlesAnimation(animation) => {
-                apply_titles_animation_update(counters, animation);
+                apply_titles_animation_update(counters, world, animation);
             }
             NetEvent::TickingState(ticking) => {
                 world.apply_ticking_state(ticking);

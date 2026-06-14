@@ -7,83 +7,84 @@ use bbb_world::{LocalPlayerLookAtState, LocalPlayerPoseState, WorldStore};
 
 pub(super) fn apply_system_chat_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     chat: bbb_protocol::packets::SystemChat,
 ) {
-    counters.last_system_chat = Some(SystemChatLine {
-        content: chat.content,
-        overlay: chat.overlay,
-    });
-    counters.system_chat_packets += 1;
+    world.apply_system_chat(chat);
+    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_action_bar_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     text: bbb_protocol::packets::SetActionBarText,
 ) {
-    counters.last_action_bar = Some(ActionBarText {
-        content: text.content,
-        display_ticks: 60,
-    });
-    counters.action_bar_packets += 1;
+    world.apply_action_bar_text(text);
+    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_title_text_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     text: bbb_protocol::packets::SetTitleText,
 ) {
-    counters.title.title = Some(text.content);
-    counters.title.title_time = title_total_ticks(&counters.title);
-    counters.title_text_packets += 1;
+    world.apply_title_text(text);
+    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_subtitle_text_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     text: bbb_protocol::packets::SetSubtitleText,
 ) {
-    counters.title.subtitle = Some(text.content);
-    counters.subtitle_text_packets += 1;
+    world.apply_subtitle_text(text);
+    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_clear_titles_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     clear: bbb_protocol::packets::ClearTitles,
 ) {
-    counters.title.title = None;
-    counters.title.subtitle = None;
-    counters.title.title_time = 0;
-    if clear.reset_times {
-        let defaults = bbb_control::TitleState::default();
-        counters.title.fade_in = defaults.fade_in;
-        counters.title.stay = defaults.stay;
-        counters.title.fade_out = defaults.fade_out;
-    }
-    counters.clear_titles_packets += 1;
+    world.apply_clear_titles(clear);
+    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_titles_animation_update(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     animation: bbb_protocol::packets::SetTitlesAnimation,
 ) {
-    if animation.fade_in >= 0 {
-        counters.title.fade_in = animation.fade_in;
-    }
-    if animation.stay >= 0 {
-        counters.title.stay = animation.stay;
-    }
-    if animation.fade_out >= 0 {
-        counters.title.fade_out = animation.fade_out;
-    }
-    if counters.title.title_time > 0 {
-        counters.title.title_time = title_total_ticks(&counters.title);
-    }
-    counters.titles_animation_packets += 1;
+    world.apply_titles_animation(animation);
+    sync_hud_text_counters(counters, world);
 }
 
-fn title_total_ticks(title: &bbb_control::TitleState) -> i32 {
-    title
-        .fade_in
-        .saturating_add(title.stay)
-        .saturating_add(title.fade_out)
+pub(super) fn sync_hud_text_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let hud = world.client_hud();
+    counters.last_system_chat = hud.system_chat.as_ref().map(|line| SystemChatLine {
+        content: line.content.clone(),
+        overlay: line.overlay,
+    });
+    counters.last_action_bar = hud.action_bar.as_ref().map(|action_bar| ActionBarText {
+        content: action_bar.content.clone(),
+        display_ticks: action_bar.display_ticks,
+    });
+    counters.title = bbb_control::TitleState {
+        title: hud.title.title.clone(),
+        subtitle: hud.title.subtitle.clone(),
+        fade_in: hud.title.fade_in,
+        stay: hud.title.stay,
+        fade_out: hud.title.fade_out,
+        title_time: hud.title.title_time,
+    };
+
+    let world_counters = world.counters();
+    counters.system_chat_packets = world_counters.system_chat_packets;
+    counters.action_bar_packets = world_counters.action_bar_packets;
+    counters.title_text_packets = world_counters.title_text_packets;
+    counters.subtitle_text_packets = world_counters.subtitle_text_packets;
+    counters.clear_titles_packets = world_counters.clear_titles_packets;
+    counters.titles_animation_packets = world_counters.titles_animation_packets;
 }
 
 pub(super) fn apply_ticking_state_update(

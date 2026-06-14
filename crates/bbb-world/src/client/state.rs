@@ -8,7 +8,10 @@ pub use crate::client::command_suggestions::{
 };
 pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseState};
 pub use crate::client::features::ClientFeatureState;
-pub use crate::client::hud::{BossBarState, ClientHudState, DifficultyState, TabListState};
+pub use crate::client::hud::{
+    ActionBarState, BossBarState, ClientHudState, DifficultyState, HudTitleState,
+    SystemChatLineState, TabListState,
+};
 pub use crate::client::inventory::{
     ContainerDataValue, ContainerSlot, ContainerState, InventorySlot, InventoryState,
 };
