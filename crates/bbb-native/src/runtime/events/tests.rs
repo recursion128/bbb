@@ -1518,6 +1518,25 @@ fn world_effect_events_update_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         3
     );
+    assert_eq!(world.counters().explosion_packets, 1);
+    assert_eq!(
+        world.last_explosion(),
+        Some(&bbb_world::ExplosionEventState {
+            center: ProtocolVec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            radius: 4.5,
+            block_count: 7,
+            player_knockback: Some(ProtocolVec3d {
+                x: 0.25,
+                y: -0.5,
+                z: 1.5,
+            }),
+            raw_effect_payload_len: 4,
+        })
+    );
     assert_eq!(counters.explosion_packets, 1);
     assert_eq!(
         counters.last_explosion,
@@ -1535,6 +1554,28 @@ fn world_effect_events_update_snapshot_counters() {
                 z: 1.5,
             }),
             raw_effect_payload_len: 4,
+        })
+    );
+    assert_eq!(world.counters().level_particles_packets, 1);
+    assert_eq!(
+        world.last_level_particles(),
+        Some(&bbb_world::LevelParticlesEventState {
+            override_limiter: true,
+            always_show: false,
+            position: ProtocolVec3d {
+                x: 10.0,
+                y: 64.5,
+                z: -3.25,
+            },
+            offset: ProtocolVec3d {
+                x: f64::from(0.1_f32),
+                y: f64::from(0.2_f32),
+                z: f64::from(0.3_f32),
+            },
+            max_speed: 1.5,
+            count: 16,
+            particle_type_id: 45,
+            raw_options_len: 2,
         })
     );
     assert_eq!(counters.level_particles_packets, 1);

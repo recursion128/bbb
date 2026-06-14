@@ -2,6 +2,7 @@ mod audio;
 mod chat;
 mod command_suggestions;
 mod debug_query;
+mod effects;
 mod features;
 mod hud;
 mod inventory;

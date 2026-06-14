@@ -309,6 +309,10 @@ pub struct WorldCounters {
     #[serde(default)]
     pub stop_sound_packets: usize,
     #[serde(default)]
+    pub explosion_packets: usize,
+    #[serde(default)]
+    pub level_particles_packets: usize,
+    #[serde(default)]
     pub waypoint_packets: usize,
     #[serde(default)]
     pub waypoints_tracked: usize,

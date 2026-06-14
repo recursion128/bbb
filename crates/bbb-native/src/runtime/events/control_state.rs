@@ -146,27 +146,12 @@ pub(super) fn apply_control_projection_event(
             sync_client_ui_counters(counters, world);
         }
         NetEvent::Explosion(update) => {
-            counters.last_explosion = Some(bbb_control::ExplosionState {
-                center: net_vec3(update.center),
-                radius: update.radius,
-                block_count: update.block_count,
-                player_knockback: update.player_knockback.map(net_vec3),
-                raw_effect_payload_len: update.raw_effect_payload.len(),
-            });
-            counters.explosion_packets += 1;
+            world.apply_explosion(update);
+            sync_client_effect_counters(counters, world);
         }
         NetEvent::LevelParticles(update) => {
-            counters.last_level_particles = Some(bbb_control::LevelParticlesState {
-                override_limiter: update.override_limiter,
-                always_show: update.always_show,
-                position: net_vec3(update.position),
-                offset: net_vec3(update.offset),
-                max_speed: update.max_speed,
-                count: update.count,
-                particle_type_id: update.particle.particle_type_id,
-                raw_options_len: update.particle.raw_options.len(),
-            });
-            counters.level_particles_packets += 1;
+            world.apply_level_particles(update);
+            sync_client_effect_counters(counters, world);
         }
         NetEvent::ProjectilePower(update) => {
             counters.last_projectile_power = Some(bbb_control::ProjectilePowerState {
@@ -569,6 +554,41 @@ fn control_stop_sound_state(state: &bbb_world::StopSoundEventState) -> bbb_contr
     bbb_control::StopSoundState {
         source: state.source.clone(),
         name: state.name.clone(),
+    }
+}
+
+fn sync_client_effect_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.explosion_packets = world_counters.explosion_packets;
+    counters.level_particles_packets = world_counters.level_particles_packets;
+    counters.last_explosion = world.last_explosion().map(control_explosion_state);
+    counters.last_level_particles = world
+        .last_level_particles()
+        .map(control_level_particles_state);
+}
+
+fn control_explosion_state(state: &bbb_world::ExplosionEventState) -> bbb_control::ExplosionState {
+    bbb_control::ExplosionState {
+        center: net_vec3(state.center),
+        radius: state.radius,
+        block_count: state.block_count,
+        player_knockback: state.player_knockback.map(net_vec3),
+        raw_effect_payload_len: state.raw_effect_payload_len,
+    }
+}
+
+fn control_level_particles_state(
+    state: &bbb_world::LevelParticlesEventState,
+) -> bbb_control::LevelParticlesState {
+    bbb_control::LevelParticlesState {
+        override_limiter: state.override_limiter,
+        always_show: state.always_show,
+        position: net_vec3(state.position),
+        offset: net_vec3(state.offset),
+        max_speed: state.max_speed,
+        count: state.count,
+        particle_type_id: state.particle_type_id,
+        raw_options_len: state.raw_options_len,
     }
 }
 

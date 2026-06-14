@@ -10,6 +10,9 @@ pub use crate::client::command_suggestions::{
     CustomChatCompletionUpdateState,
 };
 pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseState};
+pub use crate::client::effects::{
+    ClientEffectsState, ExplosionEventState, LevelParticlesEventState,
+};
 pub use crate::client::features::ClientFeatureState;
 pub use crate::client::hud::{
     ActionBarState, BossBarState, ClientHudState, DifficultyState, HudTitleState,

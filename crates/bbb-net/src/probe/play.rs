@@ -154,7 +154,9 @@ impl ProbeContext {
             PlayClientbound::EntityPositionSync(update) => {
                 self.world.apply_entity_position_sync(update);
             }
-            PlayClientbound::Explosion(_) => {}
+            PlayClientbound::Explosion(update) => {
+                self.world.apply_explosion(update);
+            }
             PlayClientbound::EntityEvent(update) => {
                 self.world.apply_entity_event(update);
             }
@@ -379,7 +381,9 @@ impl ProbeContext {
             PlayClientbound::LevelChunkWithLight(chunk) => {
                 return Ok(Some(self.world.insert_level_chunk_with_light(chunk)?));
             }
-            PlayClientbound::LevelParticles(_) => {}
+            PlayClientbound::LevelParticles(update) => {
+                self.world.apply_level_particles(update);
+            }
             PlayClientbound::LightUpdate(update) => {
                 self.world.apply_light_update(update)?;
             }
