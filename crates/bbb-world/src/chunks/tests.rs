@@ -376,10 +376,26 @@ fn terrain_cells_include_vanilla_fluid_state() {
                 },
                 block_state_id: 8118,
             },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 42,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 8246,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 43,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 8276,
+            },
         ],
     });
 
-    assert_eq!(applied, 8);
+    assert_eq!(applied, 10);
 
     let source_water = Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
     let falling_source_water = Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, true));
@@ -483,6 +499,34 @@ fn terrain_cells_include_vanilla_fluid_state() {
     assert_eq!(waxed_copper_bars.material, TerrainMaterialClass::Cutout);
     assert_eq!(waxed_copper_bars.fluid, source_water);
 
+    let iron_chain = store
+        .probe_block(BlockPos {
+            x: 42,
+            y: 1,
+            z: -45,
+        })
+        .unwrap();
+    assert_eq!(
+        iron_chain.block_name.as_deref(),
+        Some("minecraft:iron_chain")
+    );
+    assert_eq!(iron_chain.material, TerrainMaterialClass::Cutout);
+    assert_eq!(iron_chain.fluid, source_water);
+
+    let waxed_copper_chain = store
+        .probe_block(BlockPos {
+            x: 43,
+            y: 1,
+            z: -45,
+        })
+        .unwrap();
+    assert_eq!(
+        waxed_copper_chain.block_name.as_deref(),
+        Some("minecraft:waxed_copper_chain")
+    );
+    assert_eq!(waxed_copper_chain.material, TerrainMaterialClass::Cutout);
+    assert_eq!(waxed_copper_chain.fluid, source_water);
+
     let terrain = store
         .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
         .unwrap();
@@ -518,20 +562,28 @@ fn terrain_cells_include_vanilla_fluid_state() {
         terrain.cells[terrain_cell_index(9, 1, 3, 16)].fluid,
         source_water
     );
+    assert_eq!(
+        terrain.cells[terrain_cell_index(10, 1, 3, 16)].fluid,
+        source_water
+    );
+    assert_eq!(
+        terrain.cells[terrain_cell_index(11, 1, 3, 16)].fluid,
+        source_water
+    );
 
     let summary = terrain.summary();
-    assert_eq!(summary.fluid_state_blocks, 8);
+    assert_eq!(summary.fluid_state_blocks, 10);
     assert_eq!(summary.fluid_blocks, 1);
     assert_eq!(summary.invisible_blocks, 2);
-    assert_eq!(summary.cutout_blocks, 4);
-    assert_eq!(summary.opaque_blocks, 4089);
+    assert_eq!(summary.cutout_blocks, 6);
+    assert_eq!(summary.opaque_blocks, 4087);
     assert_eq!(
         store
             .probe_chunk(ChunkPos { x: 2, z: -3 })
             .unwrap()
             .sections[0]
             .fluid_count,
-        8
+        10
     );
 }
 

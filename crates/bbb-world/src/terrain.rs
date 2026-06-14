@@ -239,6 +239,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || name.contains("seagrass")
         || is_copper_grate_block_name(name)
         || is_bar_block_name(name)
+        || is_chain_block_name(name)
 }
 
 fn is_bar_block_name(name: &str) -> bool {
@@ -253,6 +254,21 @@ fn is_bar_block_name(name: &str) -> bool {
             | "minecraft:waxed_exposed_copper_bars"
             | "minecraft:waxed_weathered_copper_bars"
             | "minecraft:waxed_oxidized_copper_bars"
+    )
+}
+
+fn is_chain_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:iron_chain"
+            | "minecraft:copper_chain"
+            | "minecraft:exposed_copper_chain"
+            | "minecraft:weathered_copper_chain"
+            | "minecraft:oxidized_copper_chain"
+            | "minecraft:waxed_copper_chain"
+            | "minecraft:waxed_exposed_copper_chain"
+            | "minecraft:waxed_weathered_copper_chain"
+            | "minecraft:waxed_oxidized_copper_chain"
     )
 }
 
@@ -312,6 +328,26 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
+        for name in [
+            "minecraft:iron_chain",
+            "minecraft:copper_chain",
+            "minecraft:exposed_copper_chain",
+            "minecraft:weathered_copper_chain",
+            "minecraft:oxidized_copper_chain",
+            "minecraft:waxed_copper_chain",
+            "minecraft:waxed_exposed_copper_chain",
+            "minecraft:waxed_weathered_copper_chain",
+            "minecraft:waxed_oxidized_copper_chain",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:chain_command_block")),
+            TerrainMaterialClass::Opaque
+        );
         assert_eq!(
             classify_terrain_material(Some("minecraft:water")),
             TerrainMaterialClass::Fluid
