@@ -26,6 +26,9 @@ impl WorldStore {
         }) else {
             return false;
         };
+        let _ = self
+            .entities
+            .sync_client_animation_targets_from_metadata(id);
         let _ = self.entities.refresh_client_position_from_entity_data(id);
         self.counters.entity_data_updates_applied += 1;
         true

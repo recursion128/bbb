@@ -4,9 +4,10 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{
-    EntityAttributes, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount, EntityState,
-    EntityTransform, EntityTransformState, EntityTransientEvents,
+    EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
+    EntityMobEffects, EntityMount, EntityState, EntityTransform, EntityTransformState,
+    EntityTransientEvents,
 };
 use crate::entities::dimensions::{
     vanilla_client_position_for_entity_data, vanilla_pick_bounds_for_entity_data,
@@ -45,6 +46,7 @@ impl EntityStore {
             EntityMount::from(&state),
             EntityLeash::from(&state),
             EntityMobEffects::from(&state),
+            EntityClientAnimations::from(&state),
             EntityDamage::from(&state),
             EntityMinecartLerp::from(&state),
         ));
@@ -90,11 +92,13 @@ impl EntityStore {
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         vanilla_pick_bounds_for_entity_data(
             identity.entity_type_id,
             identity.data,
             &metadata.data_values,
             &attributes.attributes,
+            Some(client_animations.animations),
         )
     }
 
@@ -350,6 +354,30 @@ impl EntityStore {
         Some(result)
     }
 
+    pub(crate) fn sync_client_animation_targets_from_metadata(&mut self, id: i32) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?.clone();
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?.clone();
+        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+        animations
+            .animations
+            .sync_targets_from_metadata(identity.entity_type_id, &metadata.data_values);
+        Some(())
+    }
+
+    pub(crate) fn advance_client_animations(&mut self, ticks: u32) {
+        for _ in 0..ticks {
+            for (_, (identity, animations)) in self
+                .ecs
+                .query_mut::<(&EntityIdentity, &mut EntityClientAnimations)>()
+            {
+                animations
+                    .animations
+                    .advance_client_tick(identity.entity_type_id);
+            }
+        }
+    }
+
     pub(crate) fn for_each_mount_mut(&mut self, mut update: impl FnMut(i32, &mut EntityMount)) {
         let ids = self.order.clone();
         for id in ids {
@@ -447,6 +475,9 @@ impl EntityStore {
         if let Ok(mut effects) = self.ecs.get::<&mut EntityMobEffects>(entity) {
             *effects = EntityMobEffects::from(state);
         }
+        if let Ok(mut animations) = self.ecs.get::<&mut EntityClientAnimations>(entity) {
+            *animations = EntityClientAnimations::from(state);
+        }
         if let Ok(mut damage) = self.ecs.get::<&mut EntityDamage>(entity) {
             *damage = EntityDamage::from(state);
         }
@@ -486,6 +517,7 @@ impl EntityStore {
         let mount = self.ecs.get::<&EntityMount>(entity).ok()?;
         let leash = self.ecs.get::<&EntityLeash>(entity).ok()?;
         let effects = self.ecs.get::<&EntityMobEffects>(entity).ok()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
         let damage = self.ecs.get::<&EntityDamage>(entity).ok()?;
         let minecart_lerp = self.ecs.get::<&EntityMinecartLerp>(entity).ok()?;
         let hurting_projectile = self.ecs.get::<&EntityHurtingProjectile>(entity).ok();
@@ -512,6 +544,7 @@ impl EntityStore {
             last_event_id: None,
             last_hurt_yaw: None,
             mob_effects: BTreeMap::new(),
+            client_animations: Default::default(),
             last_damage: None,
             minecart_lerp_steps: Vec::new(),
             hurting_projectile: None,
@@ -524,6 +557,7 @@ impl EntityStore {
         (*mount).clone().write_to_state(&mut state);
         (*leash).write_to_state(&mut state);
         (*effects).clone().write_to_state(&mut state);
+        (*client_animations).write_to_state(&mut state);
         (*damage).write_to_state(&mut state);
         (*minecart_lerp).clone().write_to_state(&mut state);
         if let Some(projectile) = hurting_projectile {

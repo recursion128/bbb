@@ -103,14 +103,14 @@ Known priority areas:
   (armadillo/axolotl/bee/cat/dolphin/donkey/fox/happy ghast/hoglin/horse/llama/mule/nautilus/ocelot/panda/polar bear/rabbit/sheep/skeleton horse/squid/glow squid/strider/trader llama/turtle/wolf/zoglin/pig/cow/chicken/villager/wandering trader/zombie horse/zombie family/piglin/camel/goat/sniffer),
   pufferfish puff-state bounds, salmon variant bounds, camel/camel husk
   sitting pose bounds, goat long-jumping pose bounds, phantom size metadata
-  bounds, sniffer digging state bounds, warden emerging/digging pose bounds,
-  and the `redirectable_projectile` tag
+  bounds, sniffer digging state bounds, polar bear standing animation bounds,
+  warden emerging/digging pose bounds, and the `redirectable_projectile` tag
   (`fireball`, `wind_charge`, `breeze_wind_charge`); `bbb-native` routes
   left/right/middle mouse actions to attack/interact/pick entity packets for
   those targets, using vanilla default block/entity interaction ranges of
   4.5/3.0 blocks. Owner: `bbb-world` + `bbb-native`; status: partial; next
-  action: apply dynamic bounding-box semantics for remaining pose/state
-  overrides, including polar bear standing animation.
+  action: drive `WorldStore::advance_entity_client_animations` from a stable
+  native 20Hz accumulator and continue remaining pose/state overrides.
 
 ## Phases
 

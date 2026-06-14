@@ -2093,6 +2093,137 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
 }
 
 #[test]
+fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
+    const POLAR_BEAR_TYPE_ID: i32 = 104;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(80, POLAR_BEAR_TYPE_ID));
+
+    let adult_bounds = Some(EntityPickBoundsState::from_base_size(1.4, 1.4, 0.0));
+    assert_eq!(store.probe_entity_pick_bounds(80), adult_bounds);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true)],
+    }));
+    assert_eq!(store.probe_entity_pick_bounds(80), adult_bounds);
+
+    store.advance_entity_client_animations(0);
+    assert_eq!(store.probe_entity_pick_bounds(80), adult_bounds);
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(store.probe_entity_pick_bounds(80), adult_bounds);
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.probe_entity_pick_bounds(80),
+        Some(EntityPickBoundsState::from_base_size(
+            1.4,
+            1.4 * (1.0 + 1.0 / 6.0),
+            0.0,
+        ))
+    );
+
+    store.advance_entity_client_animations(5);
+    assert_eq!(
+        store.probe_entity_pick_bounds(80),
+        Some(EntityPickBoundsState::from_base_size(1.4, 2.8, 0.0))
+    );
+
+    let cloned = store.clone();
+    assert_eq!(
+        cloned.probe_entity_pick_bounds(80),
+        Some(EntityPickBoundsState::from_base_size(1.4, 2.8, 0.0))
+    );
+    let restored: WorldStore =
+        serde_json::from_value(serde_json::to_value(&store).unwrap()).unwrap();
+    assert_eq!(
+        restored.probe_entity_pick_bounds(80),
+        Some(EntityPickBoundsState::from_base_size(1.4, 2.8, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 80,
+        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, false)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.probe_entity_pick_bounds(80),
+        Some(EntityPickBoundsState::from_base_size(1.4, 2.8, 0.0))
+    );
+
+    store.advance_entity_client_animations(1);
+    assert_eq!(
+        store.probe_entity_pick_bounds(80),
+        Some(EntityPickBoundsState::from_base_size(
+            1.4,
+            1.4 * (1.0 + 5.0 / 6.0),
+            0.0,
+        ))
+    );
+
+    store.advance_entity_client_animations(5);
+    assert_eq!(store.probe_entity_pick_bounds(80), adult_bounds);
+
+    store.apply_add_entity(protocol_add_entity_with_type(81, POLAR_BEAR_TYPE_ID));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 81,
+        values: vec![
+            protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
+            protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true),
+        ],
+    }));
+    store.advance_entity_client_animations(7);
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 81,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(81),
+        Some(EntityPickBoundsState::from_base_size(
+            0.7 * 2.0,
+            1.4 * 2.0,
+            0.0
+        ))
+    );
+}
+
+#[test]
+fn advancing_entity_client_animations_in_batches_matches_single_ticks() {
+    const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
+    const POLAR_BEAR_TYPE_ID: i32 = 104;
+
+    let mut batch = WorldStore::new();
+    batch.apply_add_entity(protocol_add_entity_with_type(90, POLAR_BEAR_TYPE_ID));
+    assert!(batch.apply_set_entity_data(ProtocolSetEntityData {
+        id: 90,
+        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true)],
+    }));
+
+    let mut repeated = batch.clone();
+    batch.advance_entity_client_animations(7);
+    for _ in 0..7 {
+        repeated.advance_entity_client_animations(1);
+    }
+
+    assert_eq!(
+        batch.probe_entity_pick_bounds(90),
+        repeated.probe_entity_pick_bounds(90)
+    );
+    assert_eq!(
+        batch.probe_entity(90).unwrap().client_animations,
+        repeated.probe_entity(90).unwrap().client_animations
+    );
+}
+
+#[test]
 fn armor_stand_pick_bounds_follow_client_flags() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(26, 5));

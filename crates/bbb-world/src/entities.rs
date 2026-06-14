@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::WorldStore;
 
+mod animations;
 mod components;
 mod dimensions;
 mod metadata;
@@ -23,10 +24,11 @@ mod status;
 mod store;
 mod updates;
 
+pub use animations::{EntityClientAnimationState, PolarBearStandingAnimationState};
 pub(crate) use components::{
-    EntityAttributes, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount,
-    EntityTransform, EntityTransientEvents,
+    EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
+    EntityMobEffects, EntityMount, EntityTransform, EntityTransientEvents,
 };
 use dimensions::vanilla_client_position_for_entity_data;
 pub use dimensions::EntityPickBoundsState;
@@ -84,6 +86,8 @@ pub struct EntityState {
     pub last_hurt_yaw: Option<f32>,
     #[serde(default)]
     pub mob_effects: BTreeMap<i32, MobEffectState>,
+    #[serde(default)]
+    pub client_animations: EntityClientAnimationState,
     #[serde(default)]
     pub last_damage: Option<EntityDamageEventState>,
     #[serde(default)]
@@ -179,6 +183,7 @@ impl WorldStore {
             last_event_id: None,
             last_hurt_yaw: None,
             mob_effects: BTreeMap::new(),
+            client_animations: EntityClientAnimationState::default(),
             last_damage: None,
             minecart_lerp_steps: Vec::new(),
             hurting_projectile: initial_hurting_projectile_state(packet.entity_type_id),

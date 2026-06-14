@@ -4,7 +4,7 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::EntityVec3;
+use super::{EntityClientAnimationState, EntityVec3};
 
 const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
 const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
@@ -163,6 +163,14 @@ impl EntityPickBoundsState {
             pick_radius: self.pick_radius,
         }
     }
+
+    fn scale_height(self, scale: f32) -> Self {
+        Self {
+            min: [self.min[0], self.min[1] * scale, self.min[2]],
+            max: [self.max[0], self.max[1] * scale, self.max[2]],
+            pick_radius: self.pick_radius,
+        }
+    }
 }
 
 pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<EntityPickBoundsState> {
@@ -177,6 +185,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     add_entity_data: i32,
     data_values: &[EntityDataValue],
     attributes: &[AttributeSnapshot],
+    client_animations: Option<EntityClientAnimationState>,
 ) -> Option<EntityPickBoundsState> {
     let scale_dimensions = scales_with_living_scale_attribute(entity_type_id, data_values);
     let bounds = if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
@@ -197,6 +206,8 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         goat_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SNIFFER_ID {
         sniffer_pick_bounds(data_values)
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_POLAR_BEAR_ID {
+        polar_bear_pick_bounds(data_values, client_animations)?
     } else if let Some(bounds) = baby_pick_bounds(entity_type_id, data_values) {
         bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
@@ -253,6 +264,24 @@ pub(crate) fn vanilla_client_position_for_entity_data(
         return Some(leash_knot_position(packet_position));
     }
     None
+}
+
+fn polar_bear_pick_bounds(
+    data_values: &[EntityDataValue],
+    client_animations: Option<EntityClientAnimationState>,
+) -> Option<EntityPickBoundsState> {
+    let bounds = if entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false) {
+        vanilla_pick_bounds_for_type(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID)?
+            .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE)
+    } else {
+        vanilla_pick_bounds_for_type(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID)?
+    };
+
+    let height_scale = client_animations
+        .and_then(|animations| animations.polar_bear_standing)
+        .map(|standing| standing.dimensions_height_scale())
+        .unwrap_or(1.0);
+    Some(bounds.scale_height(height_scale))
 }
 
 fn interaction_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {

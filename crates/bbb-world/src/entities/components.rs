@@ -7,7 +7,7 @@ use bbb_protocol::packets::{
 use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
-use super::{EntityState, EntityVec3, HurtingProjectileState};
+use super::{EntityClientAnimationState, EntityState, EntityVec3, HurtingProjectileState};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EntityIdentity {
@@ -64,6 +64,11 @@ pub(crate) struct EntityLeash {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EntityMobEffects {
     pub(crate) effects: BTreeMap<i32, MobEffectState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EntityClientAnimations {
+    pub(crate) animations: EntityClientAnimationState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -165,6 +170,14 @@ impl From<&EntityState> for EntityMobEffects {
     }
 }
 
+impl From<&EntityState> for EntityClientAnimations {
+    fn from(state: &EntityState) -> Self {
+        let mut animations = state.client_animations;
+        animations.sync_targets_from_metadata(state.entity_type_id, &state.data_values);
+        Self { animations }
+    }
+}
+
 impl From<&EntityState> for EntityDamage {
     fn from(state: &EntityState) -> Self {
         Self {
@@ -251,6 +264,12 @@ impl EntityLeash {
 impl EntityMobEffects {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.mob_effects = self.effects;
+    }
+}
+
+impl EntityClientAnimations {
+    pub(crate) fn write_to_state(self, state: &mut EntityState) {
+        state.client_animations = self.animations;
     }
 }
 
