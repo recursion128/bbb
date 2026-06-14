@@ -247,6 +247,16 @@ pub struct NetCounters {
     pub waypoint_updates_ignored: usize,
     #[serde(default)]
     pub waypoint_untracks_ignored: usize,
+    #[serde(default)]
+    pub map_item_data_packets: usize,
+    #[serde(default)]
+    pub maps_tracked: usize,
+    #[serde(default)]
+    pub map_decorations_tracked: usize,
+    #[serde(default)]
+    pub map_color_patches_applied: usize,
+    #[serde(default)]
+    pub map_color_patches_ignored: usize,
     pub low_disk_space_warnings: usize,
     pub mount_screen_open_packets: usize,
     pub open_book_packets: usize,

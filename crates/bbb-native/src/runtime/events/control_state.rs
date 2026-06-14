@@ -80,6 +80,7 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::MapItemData(update) => {
             world.apply_map_item_data(update);
+            sync_map_counters(counters, world);
         }
         NetEvent::MountScreenOpen(update) => {
             world.apply_mount_screen_open(update);
@@ -702,6 +703,15 @@ fn sync_waypoint_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.waypoint_updates_ignored = world_counters.waypoint_updates_ignored;
     counters.waypoint_untracks_ignored = world_counters.waypoint_untracks_ignored;
     counters.last_waypoint = world.last_waypoint_event().map(control_waypoint_event);
+}
+
+fn sync_map_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.map_item_data_packets = world_counters.map_item_data_packets;
+    counters.maps_tracked = world_counters.maps_tracked;
+    counters.map_decorations_tracked = world_counters.map_decorations_tracked;
+    counters.map_color_patches_applied = world_counters.map_color_patches_applied;
+    counters.map_color_patches_ignored = world_counters.map_color_patches_ignored;
 }
 
 fn sync_client_combat_counters(counters: &mut NetCounters, world: &WorldStore) {

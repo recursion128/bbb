@@ -567,6 +567,12 @@ fn map_item_data_event_updates_world_state() {
     assert_eq!(world_counters.maps_tracked, 1);
     assert_eq!(world_counters.map_decorations_tracked, 1);
     assert_eq!(world_counters.map_color_patches_applied, 1);
+
+    assert_eq!(counters.map_item_data_packets, 1);
+    assert_eq!(counters.maps_tracked, 1);
+    assert_eq!(counters.map_decorations_tracked, 1);
+    assert_eq!(counters.map_color_patches_applied, 1);
+    assert_eq!(counters.map_color_patches_ignored, 0);
 }
 
 #[test]
