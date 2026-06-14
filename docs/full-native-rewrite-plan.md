@@ -102,8 +102,9 @@ Known priority areas:
   bounds, player/mannequin Avatar pose bounds, selected baby metadata bounds
   (pig/cow/chicken/villager/wandering trader/zombie family/piglin/camel/goat/sniffer),
   pufferfish puff-state bounds, salmon variant bounds, camel/camel husk
-  sitting pose bounds, goat long-jumping pose bounds, sniffer digging state
-  bounds, warden emerging/digging pose bounds, and the `redirectable_projectile` tag
+  sitting pose bounds, goat long-jumping pose bounds, phantom size metadata
+  bounds, sniffer digging state bounds, warden emerging/digging pose bounds,
+  and the `redirectable_projectile` tag
   (`fireball`, `wind_charge`, `breeze_wind_charge`); `bbb-native` routes
   left/right/middle mouse actions to attack/interact/pick entity packets for
   those targets, using vanilla default block/entity interaction ranges of

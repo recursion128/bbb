@@ -940,6 +940,54 @@ fn salmon_pick_bounds_scale_with_vanilla_variant_metadata() {
 }
 
 #[test]
+fn phantom_pick_bounds_scale_with_vanilla_size_metadata() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+    const PHANTOM_SIZE_DATA_ID: u8 = 16;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(28, 99));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(28),
+        Some(EntityPickBoundsState::from_base_size(0.9, 0.5, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 28,
+        values: vec![ProtocolEntityDataValue {
+            data_id: PHANTOM_SIZE_DATA_ID,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(4),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(28),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * (1.0 + 0.15 * 4.0),
+            0.5 * (1.0 + 0.15 * 4.0),
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 28,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(28),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * (1.0 + 0.15 * 4.0) * 2.0,
+            0.5 * (1.0 + 0.15 * 4.0) * 2.0,
+            0.0,
+        ))
+    );
+}
+
+#[test]
 fn living_pick_bounds_scale_with_vanilla_scale_attribute() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 

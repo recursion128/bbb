@@ -22,6 +22,7 @@ const VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID: i32 = 80;
 const VANILLA_ENTITY_TYPE_MANNEQUIN_ID: i32 = 83;
 const VANILLA_ENTITY_TYPE_MOOSHROOM_ID: i32 = 86;
 const VANILLA_ENTITY_TYPE_PAINTING_ID: i32 = 93;
+const VANILLA_ENTITY_TYPE_PHANTOM_ID: i32 = 99;
 const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
@@ -84,6 +85,7 @@ const SNIFFER_STATE_DIGGING_ID: i32 = 5;
 const SNIFFER_DIGGING_HEIGHT_OFFSET: f32 = 0.4;
 const PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
 const SALMON_VARIANT_DATA_ID: u8 = 17;
+const PHANTOM_SIZE_DATA_ID: u8 = 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -183,6 +185,8 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         pufferfish_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SALMON_ID {
         salmon_pick_bounds(data_values)
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_PHANTOM_ID {
+        phantom_pick_bounds(data_values)
     } else {
         vanilla_pick_bounds_for_type(entity_type_id)?
     };
@@ -526,6 +530,11 @@ fn salmon_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState 
         _ => 1.5,
     };
     EntityPickBoundsState::from_base_size(0.7, 0.4, 0.0).scale_dimensions(scale)
+}
+
+fn phantom_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
+    let size = entity_data_int(data_values, PHANTOM_SIZE_DATA_ID, 0) as f32;
+    EntityPickBoundsState::from_base_size(0.9, 0.5, 0.0).scale_dimensions(1.0 + 0.15 * size)
 }
 
 fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPickBoundsState> {
