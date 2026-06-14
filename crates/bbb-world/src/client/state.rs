@@ -1,3 +1,6 @@
+pub use crate::client::audio::{
+    ClientAudioState, SoundEntityEventState, SoundEventState, SoundHolderState, StopSoundEventState,
+};
 pub use crate::client::chat::{
     ChatMessageKind, ChatMessageState, ChatSignatureState, ChatTypeState, ChatValidationState,
     ClientChatState, DeletedChatState,

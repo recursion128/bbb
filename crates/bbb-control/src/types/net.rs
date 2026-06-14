@@ -255,6 +255,10 @@ pub struct NetCounters {
     pub pong_response_packets: usize,
     pub sound_packets: usize,
     pub sound_entity_packets: usize,
+    #[serde(default)]
+    pub sound_entity_events_applied: usize,
+    #[serde(default)]
+    pub sound_entity_events_ignored: usize,
     pub stop_sound_packets: usize,
     pub explosion_packets: usize,
     pub level_particles_packets: usize,

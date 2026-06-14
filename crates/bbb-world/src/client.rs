@@ -1,3 +1,4 @@
+mod audio;
 mod chat;
 mod command_suggestions;
 mod debug_query;

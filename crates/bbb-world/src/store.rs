@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkViewState,
-    ClientAdvancementsState, ClientChatState, ClientDebugQueryState, ClientFeatureState,
-    ClientHudState, ClientRecipesState, ClientUiState, ClientWaypointsState,
+    ClientAdvancementsState, ClientAudioState, ClientChatState, ClientDebugQueryState,
+    ClientFeatureState, ClientHudState, ClientRecipesState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState, LevelEventRecord,
     LocalPlayerState, MapItemState, PlayerInfoState, RegistrySet, ScoreboardState,
     ServerPresentationState, WorldBorderState, WorldCounters, WorldDimension, WorldLevelInfo,
@@ -38,6 +38,8 @@ pub struct WorldStore {
     pub(crate) scoreboard: ScoreboardState,
     #[serde(default)]
     pub(crate) client_hud: ClientHudState,
+    #[serde(default)]
+    pub(crate) client_audio: ClientAudioState,
     #[serde(default)]
     pub(crate) client_ui: ClientUiState,
     #[serde(default)]

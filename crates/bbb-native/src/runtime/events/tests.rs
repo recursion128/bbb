@@ -1349,13 +1349,46 @@ fn client_audio_events_update_snapshot_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    world.apply_add_entity(protocol_add_entity(123));
+    let mut counters = NetCounters {
+        sound_packets: 99,
+        sound_entity_packets: 99,
+        sound_entity_events_applied: 99,
+        sound_entity_events_ignored: 99,
+        stop_sound_packets: 99,
+        last_stop_sound: Some(bbb_control::StopSoundState {
+            source: Some("stale".to_string()),
+            name: Some("stale".to_string()),
+        }),
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         3
     );
     assert_eq!(counters.sound_packets, 1);
+    assert_eq!(world.counters().sound_packets, 1);
+    assert_eq!(
+        world.last_sound(),
+        Some(&bbb_world::SoundEventState {
+            sound: bbb_world::SoundHolderState {
+                kind: "reference".to_string(),
+                registry_id: Some(41),
+                location: None,
+                fixed_range: None,
+            },
+            source: "block".to_string(),
+            position: ProtocolVec3d {
+                x: 2.5,
+                y: -1.0,
+                z: 0.0,
+            },
+            volume: 0.75,
+            pitch: 1.25,
+            seed: 123456789,
+        })
+    );
     assert_eq!(
         counters.last_sound,
         Some(bbb_control::ClientSoundState {
@@ -1377,6 +1410,27 @@ fn client_audio_events_update_snapshot_counters() {
         })
     );
     assert_eq!(counters.sound_entity_packets, 1);
+    assert_eq!(counters.sound_entity_events_applied, 1);
+    assert_eq!(counters.sound_entity_events_ignored, 0);
+    assert_eq!(world.counters().sound_entity_packets, 1);
+    assert_eq!(world.counters().sound_entity_events_applied, 1);
+    assert_eq!(world.counters().sound_entity_events_ignored, 0);
+    assert_eq!(
+        world.last_sound_entity(),
+        Some(&bbb_world::SoundEntityEventState {
+            sound: bbb_world::SoundHolderState {
+                kind: "direct".to_string(),
+                registry_id: None,
+                location: Some("minecraft:entity.cat.ambient".to_string()),
+                fixed_range: Some(32.0),
+            },
+            source: "neutral".to_string(),
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
+        })
+    );
     assert_eq!(
         counters.last_sound_entity,
         Some(bbb_control::ClientSoundEntityState {
@@ -1394,6 +1448,14 @@ fn client_audio_events_update_snapshot_counters() {
         })
     );
     assert_eq!(counters.stop_sound_packets, 1);
+    assert_eq!(world.counters().stop_sound_packets, 1);
+    assert_eq!(
+        world.last_stop_sound(),
+        Some(&bbb_world::StopSoundEventState {
+            source: Some("music".to_string()),
+            name: Some("minecraft:music.menu".to_string()),
+        })
+    );
     assert_eq!(
         counters.last_stop_sound,
         Some(bbb_control::StopSoundState {

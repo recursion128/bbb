@@ -215,7 +215,9 @@ impl ProbeContext {
             PlayClientbound::SetSimulationDistance(update) => {
                 self.world.apply_simulation_distance(update);
             }
-            PlayClientbound::SystemChat(_) => {}
+            PlayClientbound::SystemChat(update) => {
+                self.world.apply_system_chat(update);
+            }
             PlayClientbound::PlayerCombatEnd(_)
             | PlayClientbound::PlayerCombatEnter
             | PlayClientbound::PlayerCombatKill(_)
@@ -223,14 +225,30 @@ impl ProbeContext {
             PlayClientbound::MapItemData(update) => {
                 self.world.apply_map_item_data(update);
             }
-            PlayClientbound::SetActionBarText(_)
-            | PlayClientbound::SetTitleText(_)
-            | PlayClientbound::SetSubtitleText(_)
-            | PlayClientbound::ClearTitles(_)
-            | PlayClientbound::SetTitlesAnimation(_)
-            | PlayClientbound::Sound(_)
-            | PlayClientbound::SoundEntity(_)
-            | PlayClientbound::StopSound(_) => {}
+            PlayClientbound::SetActionBarText(update) => {
+                self.world.apply_action_bar_text(update);
+            }
+            PlayClientbound::SetTitleText(update) => {
+                self.world.apply_title_text(update);
+            }
+            PlayClientbound::SetSubtitleText(update) => {
+                self.world.apply_subtitle_text(update);
+            }
+            PlayClientbound::ClearTitles(update) => {
+                self.world.apply_clear_titles(update);
+            }
+            PlayClientbound::SetTitlesAnimation(update) => {
+                self.world.apply_titles_animation(update);
+            }
+            PlayClientbound::Sound(update) => {
+                self.world.apply_sound_event(update);
+            }
+            PlayClientbound::SoundEntity(update) => {
+                self.world.apply_sound_entity_event(update);
+            }
+            PlayClientbound::StopSound(update) => {
+                self.world.apply_stop_sound(update);
+            }
             PlayClientbound::TickingState(update) => {
                 self.world.apply_ticking_state(update);
             }
