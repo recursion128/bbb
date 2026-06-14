@@ -340,6 +340,52 @@ mod tests {
     }
 
     #[test]
+    fn resolves_reference_sound_with_vanilla_26_1_registry() {
+        let assets_dir = unique_assets_dir("vanilla-registry");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "ambient.cave": {
+                "sounds": ["ambient/cave/cave1"]
+              }
+            }"#,
+        );
+        let registry = SoundEventRegistry::vanilla_26_1();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+
+        let command = resolver
+            .play_positioned_sound(&SoundEventState {
+                sound: SoundHolderState {
+                    kind: "reference".to_string(),
+                    registry_id: Some(7),
+                    location: None,
+                    fixed_range: None,
+                },
+                source: "ambient".to_string(),
+                position: Vec3d {
+                    x: 4.0,
+                    y: 5.0,
+                    z: 6.0,
+                },
+                volume: 1.0,
+                pitch: 1.0,
+                seed: 0,
+            })
+            .unwrap();
+
+        let AudioCommand::PlayPositionedSound(play) = command else {
+            panic!("expected positioned sound command");
+        };
+        assert_eq!(play.category, AudioCategory::Ambient);
+        assert_eq!(play.sound.event_id, "minecraft:ambient.cave");
+        assert_eq!(play.sound.sound_name, "minecraft:ambient/cave/cave1");
+        assert_eq!(
+            play.sound.ogg_path,
+            assets_dir.join("sounds").join("ambient/cave/cave1.ogg")
+        );
+    }
+
+    #[test]
     fn rejects_unknown_sound_registry_id() {
         let assets_dir = unique_assets_dir("unknown-registry");
         let catalog = test_catalog(&assets_dir, br#"{}"#);
