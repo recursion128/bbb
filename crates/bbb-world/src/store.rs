@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkViewState,
+    BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkViewState,
     ClientAdvancementsState, ClientAudioState, ClientChatState, ClientCombatState,
     ClientDebugGameState, ClientDebugQueryState, ClientEffectsState, ClientFeatureState,
     ClientHudState, ClientRecipesState, ClientUiState, ClientWaypointsState,
@@ -35,6 +35,8 @@ pub struct WorldStore {
     pub(crate) block_events: Vec<BlockEventRecord>,
     #[serde(default)]
     pub(crate) level_events: Vec<LevelEventRecord>,
+    #[serde(default)]
+    pub(crate) last_block_changed_ack: Option<BlockChangedAckState>,
     pub(crate) entities: crate::entities::EntityStore,
     #[serde(default)]
     pub(crate) scoreboard: ScoreboardState,

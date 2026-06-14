@@ -31,13 +31,25 @@ use uuid::Uuid;
 
 #[test]
 fn block_changed_ack_updates_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::BlockChangedAck(
+        bbb_protocol::packets::BlockChangedAck { sequence: 17 },
+    ))
+    .unwrap();
+
+    let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
 
-    apply_block_changed_ack(
-        &mut counters,
-        bbb_protocol::packets::BlockChangedAck { sequence: 17 },
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
     );
 
+    assert_eq!(
+        world.last_block_changed_ack(),
+        Some(&bbb_world::BlockChangedAckState { sequence: 17 })
+    );
+    assert_eq!(world.counters().block_changed_ack_packets, 1);
     assert_eq!(counters.block_changed_ack_packets, 1);
     assert_eq!(counters.last_block_changed_ack_sequence, Some(17));
 }

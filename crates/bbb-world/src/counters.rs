@@ -99,6 +99,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub block_destructions_removed: usize,
     #[serde(default)]
+    pub block_changed_ack_packets: usize,
+    #[serde(default)]
     pub block_events_received: usize,
     #[serde(default)]
     pub block_events_tracked: usize,

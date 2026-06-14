@@ -280,6 +280,9 @@ pub(super) fn sync_entity_interaction_counters(counters: &mut NetCounters, world
 
 pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
+    counters.block_changed_ack_packets = world_counters.block_changed_ack_packets;
+    counters.last_block_changed_ack_sequence =
+        world.last_block_changed_ack().map(|ack| ack.sequence);
     counters.block_destruction_packets = world_counters.block_destructions_received;
     counters.block_destructions_tracked = world_counters.block_destructions_tracked;
     counters.block_event_packets = world_counters.block_events_received;

@@ -1,6 +1,6 @@
 use bbb_protocol::packets::{
-    BlockDestruction as ProtocolBlockDestruction, BlockEvent as ProtocolBlockEvent,
-    LevelEvent as ProtocolLevelEvent,
+    BlockChangedAck as ProtocolBlockChangedAck, BlockDestruction as ProtocolBlockDestruction,
+    BlockEvent as ProtocolBlockEvent, LevelEvent as ProtocolLevelEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +29,19 @@ pub struct LevelEventRecord {
     pub global: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockChangedAckState {
+    pub sequence: i32,
+}
+
 impl WorldStore {
+    pub fn apply_block_changed_ack(&mut self, ack: ProtocolBlockChangedAck) {
+        self.counters.block_changed_ack_packets += 1;
+        self.last_block_changed_ack = Some(BlockChangedAckState {
+            sequence: ack.sequence,
+        });
+    }
+
     pub fn apply_block_destruction(&mut self, update: ProtocolBlockDestruction) -> bool {
         self.counters.block_destructions_received += 1;
         if update.progress < 10 {
@@ -99,15 +111,40 @@ impl WorldStore {
     pub fn level_events(&self) -> &[LevelEventRecord] {
         &self.level_events
     }
+
+    pub fn last_block_changed_ack(&self) -> Option<&BlockChangedAckState> {
+        self.last_block_changed_ack.as_ref()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
+        BlockChangedAck, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
         PlayLogin as ProtocolPlayLogin,
     };
+
+    #[test]
+    fn tracks_block_changed_ack_sequence_and_counter() {
+        let mut store = WorldStore::new();
+
+        store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
+
+        assert_eq!(
+            store.last_block_changed_ack(),
+            Some(&BlockChangedAckState { sequence: 17 })
+        );
+        assert_eq!(store.counters().block_changed_ack_packets, 1);
+
+        store.apply_block_changed_ack(BlockChangedAck { sequence: 18 });
+
+        assert_eq!(
+            store.last_block_changed_ack(),
+            Some(&BlockChangedAckState { sequence: 18 })
+        );
+        assert_eq!(store.counters().block_changed_ack_packets, 2);
+    }
 
     #[test]
     fn tracks_block_destruction_progress_by_id() {

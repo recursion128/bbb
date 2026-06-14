@@ -12,7 +12,7 @@ use super::control_state::{
     sync_player_info_counters, sync_registry_counters, sync_scoreboard_counters,
     sync_server_presentation_counters, sync_world_border_counters,
 };
-use super::{apply_block_changed_ack, sync_weather_counters, sync_world_time_counters};
+use super::{sync_weather_counters, sync_world_time_counters};
 
 pub(in crate::runtime) fn drain_net_events(
     rx: &mut mpsc::Receiver<NetEvent>,
@@ -333,7 +333,8 @@ pub(in crate::runtime) fn drain_net_events(
                 sync_local_player_counters(counters, world);
             }
             NetEvent::BlockChangedAck(ack) => {
-                apply_block_changed_ack(counters, ack);
+                world.apply_block_changed_ack(ack);
+                sync_block_event_counters(counters, world);
             }
             NetEvent::BlockEntityData(update) => match world.apply_block_entity_data(update) {
                 Ok(_) => {}

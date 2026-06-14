@@ -336,7 +336,9 @@ impl ProbeContext {
             PlayClientbound::TabList(update) => {
                 self.world.apply_tab_list(update);
             }
-            PlayClientbound::BlockChangedAck(_) => {}
+            PlayClientbound::BlockChangedAck(update) => {
+                self.world.apply_block_changed_ack(update);
+            }
             PlayClientbound::BlockEntityData(update) => {
                 self.world.apply_block_entity_data(update)?;
             }
@@ -463,9 +465,9 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
-        BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, DebugBlockValue,
-        DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, GameRuleValue, GameRuleValues,
-        GameTestHighlightPos, RemoteDebugSampleType, TestInstanceBlockStatus,
+        BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos,
+        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, GameRuleValue,
+        GameRuleValues, GameTestHighlightPos, RemoteDebugSampleType, TestInstanceBlockStatus,
         Vec3i as ProtocolVec3i,
     };
     use bbb_world::{BlockPos, ChunkPos};
@@ -579,6 +581,27 @@ mod tests {
                 status: "Ready".to_string(),
                 size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
             })
+        );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_block_changed_ack_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::BlockChangedAck(BlockChangedAck {
+                sequence: 17,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.block_changed_ack_packets, 1);
+        assert_eq!(
+            report.world.last_block_changed_ack(),
+            Some(&bbb_world::BlockChangedAckState { sequence: 17 })
         );
     }
 

@@ -1,4 +1,6 @@
-pub use crate::block_events::{BlockDestructionProgress, BlockEventRecord, LevelEventRecord};
+pub use crate::block_events::{
+    BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
+};
 pub use crate::chunks::{
     decode_level_chunk_with_light, BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState,
     ChunkViewState, HeightmapData, LightData, NbtPayloadSummary, PaletteDomain, PaletteKind,

@@ -30,13 +30,5 @@ fn sync_weather_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.game_event_packets = world.counters().game_event_packets;
 }
 
-fn apply_block_changed_ack(
-    counters: &mut NetCounters,
-    ack: bbb_protocol::packets::BlockChangedAck,
-) {
-    counters.block_changed_ack_packets += 1;
-    counters.last_block_changed_ack_sequence = Some(ack.sequence);
-}
-
 #[cfg(test)]
 mod tests;
