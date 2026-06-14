@@ -105,14 +105,16 @@ Known priority areas:
   pufferfish puff-state bounds, salmon variant bounds, camel/camel husk
   sitting pose bounds, goat long-jumping pose bounds, phantom size metadata
   bounds, sniffer digging state bounds, polar bear standing animation bounds,
-  warden emerging/digging pose bounds, wind charge/breeze wind charge Y-offset
-  projectile bounds, and the `redirectable_projectile` tag
+  Shulker attach-face/peek animation bounds, warden emerging/digging pose
+  bounds, wind charge/breeze wind charge Y-offset projectile bounds, and the
+  `redirectable_projectile` tag
   (`fireball`, `wind_charge`, `breeze_wind_charge`); `bbb-native` routes
   left/right/middle mouse actions to attack/interact/pick entity packets for
   those targets, using vanilla default block/entity interaction ranges of
   4.5/3.0 blocks. `bbb-native` drives world client animations from a stable
   20Hz accumulator. Owner: `bbb-world` + `bbb-native`; status: partial; next
-  action: continue remaining dynamic pose/state bounding-box overrides.
+  action: continue larger remaining dynamic or multi-part bounds, especially
+  Ender Dragon parts.
 
 ## Phases
 

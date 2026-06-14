@@ -102,6 +102,7 @@ const GOAT_BABY_SCALE: f32 = 0.55;
 const HAPPY_GHAST_BABY_SCALE: f32 = 0.2375;
 const HAPPY_GHAST_MAX_SCALE: f32 = 1.0;
 const HORSE_BABY_SCALE: f32 = 0.7;
+const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
 const SHULKER_MAX_SCALE: f32 = 3.0;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
 const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
@@ -216,6 +217,8 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         sniffer_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_POLAR_BEAR_ID {
         polar_bear_pick_bounds(data_values, client_animations)?
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
+        shulker_pick_bounds(data_values, client_animations)
     } else if let Some(bounds) = baby_pick_bounds(entity_type_id, data_values) {
         bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
@@ -294,6 +297,38 @@ fn polar_bear_pick_bounds(
         .map(|standing| standing.dimensions_height_scale())
         .unwrap_or(1.0);
     Some(bounds.scale_height(height_scale))
+}
+
+fn shulker_pick_bounds(
+    data_values: &[EntityDataValue],
+    client_animations: Option<EntityClientAnimationState>,
+) -> EntityPickBoundsState {
+    let direction = entity_data_direction(data_values, SHULKER_ATTACH_FACE_DATA_ID)
+        .unwrap_or(VanillaDirection::Down)
+        .opposite();
+    let peek_amount = client_animations
+        .and_then(|animations| animations.shulker_peek)
+        .map(|peek| peek.current_peek_amount)
+        .unwrap_or(0.0);
+    let physical_peek = 0.5 - ((0.5 + peek_amount) * std::f32::consts::PI).sin() * 0.5;
+    shulker_progress_pick_bounds(direction, physical_peek)
+}
+
+fn shulker_progress_pick_bounds(
+    direction: VanillaDirection,
+    progress: f32,
+) -> EntityPickBoundsState {
+    let mut bounds = EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0);
+    let step = direction.step();
+    for (axis, step) in step.into_iter().enumerate() {
+        let delta = step as f32 * progress;
+        if delta < 0.0 {
+            bounds.min[axis] += delta;
+        } else {
+            bounds.max[axis] += delta;
+        }
+    }
+    bounds
 }
 
 fn interaction_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
@@ -579,13 +614,7 @@ fn painting_size_for_direction(
 }
 
 fn hanging_direction(add_entity_data: i32, data_values: &[EntityDataValue]) -> VanillaDirection {
-    data_values
-        .iter()
-        .find(|value| value.data_id == HANGING_DATA_DIRECTION_ID)
-        .and_then(|value| match &value.value {
-            EntityDataValueKind::Direction(value) => Some(vanilla_direction_from_3d_data(*value)),
-            _ => None,
-        })
+    entity_data_direction(data_values, HANGING_DATA_DIRECTION_ID)
         .unwrap_or_else(|| vanilla_direction_from_3d_data(add_entity_data))
 }
 
@@ -828,6 +857,16 @@ fn entity_data_byte(data_values: &[EntityDataValue], data_id: u8, fallback: i8) 
         .unwrap_or(fallback)
 }
 
+fn entity_data_direction(data_values: &[EntityDataValue], data_id: u8) -> Option<VanillaDirection> {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Direction(value) => Some(vanilla_direction_from_3d_data(*value)),
+            _ => None,
+        })
+}
+
 fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, fallback: bool) -> bool {
     data_values
         .iter()
@@ -903,6 +942,17 @@ impl VanillaDirection {
             Self::South => [0, 0, 1],
             Self::West => [-1, 0, 0],
             Self::East => [1, 0, 0],
+        }
+    }
+
+    fn opposite(self) -> Self {
+        match self {
+            Self::Down => Self::Up,
+            Self::Up => Self::Down,
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::West => Self::East,
+            Self::East => Self::West,
         }
     }
 }

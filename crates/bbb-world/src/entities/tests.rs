@@ -2154,6 +2154,141 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
 }
 
 #[test]
+fn shulker_pick_bounds_follow_attach_face_and_peek_metadata() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(82, SHULKER_TYPE_ID));
+
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(82),
+        shulker_pick_bounds(DIRECTION_DOWN, 0.0, 1.0),
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![shulker_peek_data(100)],
+    }));
+    store.advance_entity_client_animations(20);
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(82),
+        shulker_pick_bounds(DIRECTION_DOWN, 1.0, 1.0),
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 82,
+        values: vec![shulker_attach_face_data(DIRECTION_UP)],
+    }));
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(82),
+        shulker_pick_bounds(DIRECTION_UP, 1.0, 1.0),
+    );
+
+    for (id, attach_face) in [
+        (83, DIRECTION_UP),
+        (84, DIRECTION_NORTH),
+        (85, DIRECTION_SOUTH),
+        (86, DIRECTION_WEST),
+        (87, DIRECTION_EAST),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, SHULKER_TYPE_ID));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![
+                shulker_attach_face_data(attach_face),
+                shulker_peek_data(100),
+            ],
+        }));
+        store.advance_entity_client_animations(20);
+        assert_pick_bounds_close(
+            store.probe_entity_pick_bounds(id),
+            shulker_pick_bounds(attach_face, 1.0, 1.0),
+        );
+    }
+}
+
+#[test]
+fn shulker_peek_pick_bounds_advance_toward_metadata_target() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(88, SHULKER_TYPE_ID));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 88,
+        values: vec![shulker_peek_data(100)],
+    }));
+    store.advance_entity_client_animations(0);
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(88),
+        shulker_pick_bounds(DIRECTION_DOWN, 0.0, 1.0),
+    );
+
+    store.advance_entity_client_animations(1);
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(88),
+        shulker_pick_bounds(DIRECTION_DOWN, 0.05, 1.0),
+    );
+
+    store.advance_entity_client_animations(9);
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(88),
+        shulker_pick_bounds(DIRECTION_DOWN, 0.5, 1.0),
+    );
+
+    let cloned = store.clone();
+    assert_pick_bounds_close(
+        cloned.probe_entity_pick_bounds(88),
+        shulker_pick_bounds(DIRECTION_DOWN, 0.5, 1.0),
+    );
+    let restored: WorldStore =
+        serde_json::from_value(serde_json::to_value(&store).unwrap()).unwrap();
+    assert_pick_bounds_close(
+        restored.probe_entity_pick_bounds(88),
+        shulker_pick_bounds(DIRECTION_DOWN, 0.5, 1.0),
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 88,
+        values: vec![shulker_peek_data(0)],
+    }));
+    store.advance_entity_client_animations(1);
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(88),
+        shulker_pick_bounds(DIRECTION_DOWN, 0.45, 1.0),
+    );
+
+    store.advance_entity_client_animations(9);
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(88),
+        shulker_pick_bounds(DIRECTION_DOWN, 0.0, 1.0),
+    );
+}
+
+#[test]
+fn shulker_pick_bounds_apply_vanilla_scale_cap() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(89, SHULKER_TYPE_ID));
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 89,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 4.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 89,
+        values: vec![shulker_peek_data(100)],
+    }));
+
+    store.advance_entity_client_animations(20);
+    assert_pick_bounds_close(
+        store.probe_entity_pick_bounds(89),
+        shulker_pick_bounds(DIRECTION_DOWN, 1.0, 3.0),
+    );
+}
+
+#[test]
 fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
@@ -2859,6 +2994,16 @@ fn minecart_step(
     }
 }
 
+const SHULKER_TYPE_ID: i32 = 112;
+const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
+const SHULKER_PEEK_DATA_ID: u8 = 17;
+const DIRECTION_DOWN: i32 = 0;
+const DIRECTION_UP: i32 = 1;
+const DIRECTION_NORTH: i32 = 2;
+const DIRECTION_SOUTH: i32 = 3;
+const DIRECTION_WEST: i32 = 4;
+const DIRECTION_EAST: i32 = 5;
+
 fn protocol_add_entity(id: i32) -> ProtocolAddEntity {
     protocol_add_entity_with_type(id, 7)
 }
@@ -2904,6 +3049,91 @@ fn wind_charge_pick_bounds() -> EntityPickBoundsState {
         max: [half_width, -0.15 + 0.3125, half_width],
         pick_radius: 1.0,
     }
+}
+
+fn shulker_attach_face_data(direction_id: i32) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id: SHULKER_ATTACH_FACE_DATA_ID,
+        serializer_id: 12,
+        value: EntityDataValueKind::Direction(direction_id),
+    }
+}
+
+fn shulker_peek_data(raw_peek: i8) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id: SHULKER_PEEK_DATA_ID,
+        serializer_id: 0,
+        value: EntityDataValueKind::Byte(raw_peek),
+    }
+}
+
+fn shulker_pick_bounds(
+    attach_face_id: i32,
+    client_peek_amount: f32,
+    scale: f32,
+) -> EntityPickBoundsState {
+    let physical_peek = 0.5 - ((0.5 + client_peek_amount) * std::f32::consts::PI).sin() * 0.5;
+    let half_size = scale * 0.5;
+    let mut min = [-half_size, 0.0, -half_size];
+    let mut max = [half_size, scale, half_size];
+    let extension = physical_peek * scale;
+
+    match opposite_direction_id(attach_face_id) {
+        DIRECTION_DOWN => min[1] -= extension,
+        DIRECTION_UP => max[1] += extension,
+        DIRECTION_NORTH => min[2] -= extension,
+        DIRECTION_SOUTH => max[2] += extension,
+        DIRECTION_WEST => min[0] -= extension,
+        DIRECTION_EAST => max[0] += extension,
+        _ => unreachable!("unexpected vanilla direction id"),
+    }
+
+    EntityPickBoundsState {
+        min,
+        max,
+        pick_radius: 0.0,
+    }
+}
+
+fn opposite_direction_id(direction_id: i32) -> i32 {
+    match direction_id {
+        DIRECTION_DOWN => DIRECTION_UP,
+        DIRECTION_UP => DIRECTION_DOWN,
+        DIRECTION_NORTH => DIRECTION_SOUTH,
+        DIRECTION_SOUTH => DIRECTION_NORTH,
+        DIRECTION_WEST => DIRECTION_EAST,
+        DIRECTION_EAST => DIRECTION_WEST,
+        _ => unreachable!("unexpected vanilla direction id"),
+    }
+}
+
+fn assert_pick_bounds_close(
+    actual: Option<EntityPickBoundsState>,
+    expected: EntityPickBoundsState,
+) {
+    const EPSILON: f32 = 0.000_01;
+
+    let actual = actual.expect("entity should have pick bounds");
+    for axis in 0..3 {
+        assert!(
+            (actual.min[axis] - expected.min[axis]).abs() <= EPSILON,
+            "min[{axis}] expected {:?}, got {:?}",
+            expected.min,
+            actual.min,
+        );
+        assert!(
+            (actual.max[axis] - expected.max[axis]).abs() <= EPSILON,
+            "max[{axis}] expected {:?}, got {:?}",
+            expected.max,
+            actual.max,
+        );
+    }
+    assert!(
+        (actual.pick_radius - expected.pick_radius).abs() <= EPSILON,
+        "pick_radius expected {}, got {}",
+        expected.pick_radius,
+        actual.pick_radius,
+    );
 }
 
 fn protocol_player_info_entry_with_mode(
