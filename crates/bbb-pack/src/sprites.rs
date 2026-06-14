@@ -65,6 +65,30 @@ pub struct SpriteAnimationFrame {
     pub time: u32,
 }
 
+impl SpriteAnimation {
+    pub fn frame_index_at_tick(&self, tick: u64) -> Option<u32> {
+        if self.frames.is_empty() {
+            return None;
+        }
+        let total_duration = self.frames.iter().try_fold(0u64, |total, frame| {
+            total.checked_add(u64::from(frame.time))
+        })?;
+        if total_duration == 0 {
+            return None;
+        }
+
+        let mut remaining = tick % total_duration;
+        for frame in &self.frames {
+            let duration = u64::from(frame.time);
+            if remaining < duration {
+                return Some(frame.index);
+            }
+            remaining -= duration;
+        }
+        self.frames.last().map(|frame| frame.index)
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpriteTransparency {
     pub has_transparent: bool,
@@ -286,6 +310,12 @@ fn sprite_animation(
             })
             .collect(),
     };
+    if frames.is_empty() {
+        bail!(
+            "animation in {} must contain at least one frame",
+            path.display()
+        );
+    }
     for frame in &frames {
         if frame.index >= frame_count {
             bail!(
@@ -503,6 +533,24 @@ mod tests {
     }
 
     #[test]
+    fn sprite_animation_selects_frame_by_tick_duration() {
+        let animation = SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 1,
+            interpolate: false,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 2 },
+                SpriteAnimationFrame { index: 1, time: 1 },
+            ],
+        };
+
+        assert_eq!(animation.frame_index_at_tick(0), Some(0));
+        assert_eq!(animation.frame_index_at_tick(1), Some(0));
+        assert_eq!(animation.frame_index_at_tick(2), Some(1));
+        assert_eq!(animation.frame_index_at_tick(3), Some(0));
+    }
+
+    #[test]
     fn sprite_image_crops_first_animation_frame() {
         let dir = unique_temp_dir("animation-first-frame");
         let path = dir.join("arrow.png");
@@ -677,6 +725,27 @@ mod tests {
 
         let err = SpriteSource::from_png_file("minecraft:bad", &path).unwrap_err();
         assert!(err.to_string().contains("exceeds frame count"));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn sprite_source_rejects_empty_animation_frames() {
+        let dir = unique_temp_dir("animation-empty-frames");
+        let path = dir.join("bad.png");
+        write_test_png(&path, 4, 8);
+        write_json(
+            &dir.join("bad.png.mcmeta"),
+            r#"{
+              "animation": {
+                "height": 4,
+                "frames": []
+              }
+            }"#,
+        );
+
+        let err = SpriteSource::from_png_file("minecraft:bad", &path).unwrap_err();
+        assert!(err.to_string().contains("must contain at least one frame"));
 
         std::fs::remove_dir_all(dir).unwrap();
     }

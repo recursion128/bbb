@@ -141,6 +141,18 @@ impl AtlasPacker {
     }
 
     pub fn stitch(&self, images: &[SpriteImage]) -> Result<AtlasImage> {
+        self.stitch_with_animation_tick(images, None)
+    }
+
+    pub fn stitch_animation_frame(&self, images: &[SpriteImage], tick: u64) -> Result<AtlasImage> {
+        self.stitch_with_animation_tick(images, Some(tick))
+    }
+
+    fn stitch_with_animation_tick(
+        &self,
+        images: &[SpriteImage],
+        tick: Option<u64>,
+    ) -> Result<AtlasImage> {
         let sources = images.iter().map(SpriteImage::source).collect::<Vec<_>>();
         let mut layout = self.pack(&sources)?;
         for (sprite, image) in layout.sprites.iter_mut().zip(images) {
@@ -150,7 +162,7 @@ impl AtlasPacker {
         let mut rgba = vec![0; rgba_len(layout.width, layout.height)?];
 
         for (sprite, image) in layout.sprites.iter().zip(images) {
-            copy_sprite_with_gutter(&mut rgba, layout.width, sprite, image)?;
+            copy_sprite_with_gutter(&mut rgba, layout.width, sprite, image, tick)?;
         }
 
         Ok(AtlasImage { layout, rgba })
@@ -162,23 +174,64 @@ fn copy_sprite_with_gutter(
     atlas_width: u32,
     sprite: &AtlasSprite,
     image: &SpriteImage,
+    tick: Option<u64>,
 ) -> Result<()> {
+    let animation_at_tick =
+        tick.and_then(|tick| image.animation.as_ref().map(|animation| (tick, animation)));
+    let source_rgba = match animation_at_tick {
+        Some((tick, animation)) => {
+            let frame_index = animation
+                .frame_index_at_tick(tick)
+                .ok_or_else(|| anyhow::anyhow!("animated sprite {} has no frames", image.id))?;
+            image.frame_rgba(frame_index).ok_or_else(|| {
+                anyhow::anyhow!("animated sprite {} missing frame {frame_index}", image.id)
+            })?
+        }
+        None => &image.rgba,
+    };
+    copy_sprite_rgba_with_gutter(
+        atlas,
+        atlas_width,
+        sprite,
+        image.width,
+        image.height,
+        source_rgba,
+    )
+}
+
+fn copy_sprite_rgba_with_gutter(
+    atlas: &mut [u8],
+    atlas_width: u32,
+    sprite: &AtlasSprite,
+    source_width: u32,
+    source_height: u32,
+    source_rgba: &[u8],
+) -> Result<()> {
+    let expected_len = rgba_len(source_width, source_height)?;
+    if source_rgba.len() != expected_len {
+        bail!(
+            "sprite {} frame has {} RGBA bytes, expected {}",
+            sprite.id,
+            source_rgba.len(),
+            expected_len
+        );
+    }
     for local_y in 0..sprite.padded.height {
         let source_y = local_y
             .saturating_sub(sprite.content.y - sprite.padded.y)
-            .min(image.height - 1);
+            .min(source_height - 1);
         for local_x in 0..sprite.padded.width {
             let source_x = local_x
                 .saturating_sub(sprite.content.x - sprite.padded.x)
-                .min(image.width - 1);
-            let source_offset = rgba_offset(image.width, source_x, source_y)?;
+                .min(source_width - 1);
+            let source_offset = rgba_offset(source_width, source_x, source_y)?;
             let atlas_offset = rgba_offset(
                 atlas_width,
                 sprite.padded.x + local_x,
                 sprite.padded.y + local_y,
             )?;
             atlas[atlas_offset..atlas_offset + 4]
-                .copy_from_slice(&image.rgba[source_offset..source_offset + 4]);
+                .copy_from_slice(&source_rgba[source_offset..source_offset + 4]);
         }
     }
     Ok(())
@@ -388,6 +441,54 @@ mod tests {
         let atlas = AtlasPacker::new(8, 1).unwrap().stitch(&[image]).unwrap();
 
         assert_eq!(atlas.layout.sprites[0].animation, Some(animation));
+    }
+
+    #[test]
+    fn atlas_stitcher_can_render_animation_frame_for_tick() {
+        let animation = SpriteAnimation {
+            frame_count: 2,
+            default_frame_time: 1,
+            interpolate: false,
+            frames: vec![
+                SpriteAnimationFrame { index: 0, time: 2 },
+                SpriteAnimationFrame { index: 1, time: 1 },
+            ],
+        };
+        let image = SpriteImage {
+            id: "minecraft:block/water_still".to_string(),
+            width: 1,
+            height: 1,
+            transparency: SpriteTransparency::default(),
+            animation: Some(animation),
+            animation_frames_rgba: vec![vec![10, 0, 0, 255], vec![20, 0, 0, 255]],
+            rgba: vec![10, 0, 0, 255],
+        };
+
+        let initial = AtlasPacker::new(8, 1)
+            .unwrap()
+            .stitch(std::slice::from_ref(&image))
+            .unwrap();
+        let tick_two = AtlasPacker::new(8, 1)
+            .unwrap()
+            .stitch_animation_frame(std::slice::from_ref(&image), 2)
+            .unwrap();
+        let tick_three = AtlasPacker::new(8, 1)
+            .unwrap()
+            .stitch_animation_frame(&[image], 3)
+            .unwrap();
+
+        assert_eq!(
+            pixel(&initial.rgba, initial.layout.width, 1, 1),
+            [10, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&tick_two.rgba, tick_two.layout.width, 1, 1),
+            [20, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&tick_three.rgba, tick_three.layout.width, 1, 1),
+            [10, 0, 0, 255]
+        );
     }
 
     fn pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
