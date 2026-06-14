@@ -3,7 +3,7 @@ use crate::{
     codec::{offline_player_uuid, Decoder, Encoder},
     ids,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
 #[test]
@@ -954,6 +954,51 @@ fn encodes_container_inventory_packets() {
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 7);
     assert_eq!(decoder.read_var_i32().unwrap(), 2);
+    assert!(decoder.is_empty());
+
+    let mut added_components = BTreeMap::new();
+    added_components.insert(10, 0x0102_0304);
+    let mut removed_components = BTreeSet::new();
+    removed_components.insert(20);
+    let mut changed_slots = BTreeMap::new();
+    changed_slots.insert(
+        5,
+        HashedStack::Item(HashedItemStack {
+            item_id: 42,
+            count: 64,
+            components: HashedComponentPatch {
+                added_components,
+                removed_components,
+            },
+        }),
+    );
+    let (id, payload) = encode_play_container_click(ContainerClick {
+        container_id: 7,
+        state_id: 33,
+        slot_num: 5,
+        button_num: 1,
+        input: ContainerInput::Pickup,
+        changed_slots,
+        carried_item: HashedStack::empty(),
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_CONTAINER_CLICK);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert_eq!(decoder.read_var_i32().unwrap(), 33);
+    assert_eq!(decoder.read_i16().unwrap(), 5);
+    assert_eq!(decoder.read_i8().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_i16().unwrap(), 5);
+    assert!(decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_var_i32().unwrap(), 64);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 10);
+    assert_eq!(decoder.read_i32().unwrap(), 0x0102_0304);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 20);
+    assert!(!decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
 
     let (id, payload) = encode_play_container_close(ContainerCloseRequest { container_id: 7 });

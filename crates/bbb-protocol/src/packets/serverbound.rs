@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use serde::{Deserialize, Serialize};
 
 use crate::{codec::Encoder, ids};
@@ -76,6 +78,17 @@ pub struct ContainerButtonClick {
     pub button_id: i32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerClick {
+    pub container_id: i32,
+    pub state_id: i32,
+    pub slot_num: i16,
+    pub button_num: i8,
+    pub input: ContainerInput,
+    pub changed_slots: BTreeMap<i16, HashedStack>,
+    pub carried_item: HashedStack,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContainerCloseRequest {
     pub container_id: i32,
@@ -86,6 +99,56 @@ pub struct ContainerSlotStateChanged {
     pub slot_id: i32,
     pub container_id: i32,
     pub new_state: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ContainerInput {
+    Pickup,
+    QuickMove,
+    Swap,
+    Clone,
+    Throw,
+    QuickCraft,
+    PickupAll,
+}
+
+impl ContainerInput {
+    fn id(self) -> i32 {
+        match self {
+            Self::Pickup => 0,
+            Self::QuickMove => 1,
+            Self::Swap => 2,
+            Self::Clone => 3,
+            Self::Throw => 4,
+            Self::QuickCraft => 5,
+            Self::PickupAll => 6,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HashedStack {
+    Empty,
+    Item(HashedItemStack),
+}
+
+impl HashedStack {
+    pub fn empty() -> Self {
+        Self::Empty
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HashedItemStack {
+    pub item_id: i32,
+    pub count: i32,
+    pub components: HashedComponentPatch,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HashedComponentPatch {
+    pub added_components: BTreeMap<i32, i32>,
+    pub removed_components: BTreeSet<i32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -319,6 +382,22 @@ pub fn encode_play_container_button_click(packet: ContainerButtonClick) -> (i32,
     )
 }
 
+pub fn encode_play_container_click(packet: ContainerClick) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.container_id);
+    out.write_var_i32(packet.state_id);
+    out.write_i16(packet.slot_num);
+    out.write_i8(packet.button_num);
+    out.write_var_i32(packet.input.id());
+    out.write_var_i32(packet.changed_slots.len() as i32);
+    for (slot, stack) in &packet.changed_slots {
+        out.write_i16(*slot);
+        encode_hashed_stack(&mut out, stack);
+    }
+    encode_hashed_stack(&mut out, &packet.carried_item);
+    (ids::play::SERVERBOUND_CONTAINER_CLICK, out.into_inner())
+}
+
 pub fn encode_play_container_close(packet: ContainerCloseRequest) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(packet.container_id);
@@ -336,6 +415,31 @@ pub fn encode_play_container_slot_state_changed(
         ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED,
         out.into_inner(),
     )
+}
+
+fn encode_hashed_stack(out: &mut Encoder, stack: &HashedStack) {
+    match stack {
+        HashedStack::Empty => out.write_bool(false),
+        HashedStack::Item(stack) => {
+            out.write_bool(true);
+            out.write_var_i32(stack.item_id);
+            out.write_var_i32(stack.count);
+            encode_hashed_component_patch(out, &stack.components);
+        }
+    }
+}
+
+fn encode_hashed_component_patch(out: &mut Encoder, patch: &HashedComponentPatch) {
+    out.write_var_i32(patch.added_components.len() as i32);
+    for (component_type_id, hash) in &patch.added_components {
+        out.write_var_i32(*component_type_id);
+        out.write_i32(*hash);
+    }
+
+    out.write_var_i32(patch.removed_components.len() as i32);
+    for component_type_id in &patch.removed_components {
+        out.write_var_i32(*component_type_id);
+    }
 }
 
 pub fn encode_play_set_carried_item(slot: i16) -> (i32, Vec<u8>) {

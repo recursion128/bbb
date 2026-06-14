@@ -1,5 +1,5 @@
 use bbb_protocol::packets::{
-    self, CommandSuggestionRequest, ContainerButtonClick, ContainerCloseRequest,
+    self, CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
     ContainerSlotStateChanged, InteractionHand, PickItemFromBlock, PlayerAction, PlayerCommand,
     PlayerInput, PlayerPositionState, UseItem, UseItemOn, Vec3d,
 };
@@ -60,6 +60,7 @@ pub enum NetCommand {
     UseItem(UseItem),
     PickItemFromBlock(PickItemFromBlock),
     ContainerButtonClick(ContainerButtonClick),
+    ContainerClick(ContainerClick),
     ContainerClose(ContainerCloseRequest),
     ContainerSlotStateChanged(ContainerSlotStateChanged),
     CommandSuggestionRequest(CommandSuggestionRequest),

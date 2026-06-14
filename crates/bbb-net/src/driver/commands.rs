@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
-    self, CommandSuggestionRequest, ContainerButtonClick, ContainerCloseRequest,
+    self, CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
     ContainerSlotStateChanged, InteractionHand, PickItemFromBlock, PlayerAction, PlayerCommand,
     PlayerHealth, PlayerInput, PlayerPositionState, UseItem, UseItemOn,
 };
@@ -89,6 +89,14 @@ pub(crate) async fn send_container_button_click(
     packet: ContainerButtonClick,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_container_button_click(packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_container_click(
+    conn: &mut RawConnection,
+    packet: ContainerClick,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_container_click(packet);
     conn.send_packet(id, &payload).await
 }
 

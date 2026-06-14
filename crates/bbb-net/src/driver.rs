@@ -11,9 +11,9 @@ mod commands;
 
 pub(crate) use commands::{
     maybe_send_perform_respawn, send_command_suggestion_request, send_container_button_click,
-    send_container_close, send_container_slot_state_changed, send_pick_item_from_block,
-    send_player_action, send_player_command, send_player_input_command, send_set_held_slot_command,
-    send_swing_command, send_use_item, send_use_item_on,
+    send_container_click, send_container_close, send_container_slot_state_changed,
+    send_pick_item_from_block, send_player_action, send_player_command, send_player_input_command,
+    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -104,6 +104,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::ContainerButtonClick(packet)) => {
                         send_container_button_click(conn, packet).await?;
                     }
+                    Some(NetCommand::ContainerClick(packet)) => {
+                        send_container_click(conn, packet).await?;
+                    }
                     Some(NetCommand::ContainerClose(packet)) => {
                         send_container_close(conn, packet).await?;
                     }
@@ -145,6 +148,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::UseItem(_)) => {}
                     Some(NetCommand::PickItemFromBlock(_)) => {}
                     Some(NetCommand::ContainerButtonClick(_)) => {}
+                    Some(NetCommand::ContainerClick(_)) => {}
                     Some(NetCommand::ContainerClose(_)) => {}
                     Some(NetCommand::ContainerSlotStateChanged(_)) => {}
                     Some(NetCommand::CommandSuggestionRequest(_)) => {}

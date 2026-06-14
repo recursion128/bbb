@@ -1,8 +1,8 @@
 use super::{
     maybe_send_perform_respawn, send_command_suggestion_request, send_container_button_click,
-    send_container_close, send_container_slot_state_changed, send_pick_item_from_block,
-    send_player_action, send_player_command, send_player_input_command, send_set_held_slot_command,
-    send_swing_command, send_use_item, send_use_item_on,
+    send_container_click, send_container_close, send_container_slot_state_changed,
+    send_pick_item_from_block, send_player_action, send_player_command, send_player_input_command,
+    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -12,13 +12,17 @@ use bbb_protocol::{
     codec::Decoder,
     ids,
     packets::{
-        CommandSuggestionRequest, ContainerButtonClick, ContainerCloseRequest,
-        ContainerSlotStateChanged, InteractionHand, PlayerAction, PlayerCommand, PlayerHealth,
-        PlayerInput, PlayerPositionState, Vec3d,
+        CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
+        ContainerInput, ContainerSlotStateChanged, HashedComponentPatch, HashedItemStack,
+        HashedStack, InteractionHand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
+        PlayerPositionState, Vec3d,
     },
 };
 use bytes::BytesMut;
-use std::time::Duration;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Duration,
+};
 use tokio::time::timeout;
 
 #[test]
@@ -464,6 +468,30 @@ async fn send_container_inventory_commands_encode_packets() {
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
+            .expect("container click should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_CLICK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), 33);
+        assert_eq!(decoder.read_i16().unwrap(), 5);
+        assert_eq!(decoder.read_i8().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_i16().unwrap(), 5);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 42);
+        assert_eq!(decoder.read_var_i32().unwrap(), 64);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 10);
+        assert_eq!(decoder.read_i32().unwrap(), 0x0102_0304);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 20);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
             .expect("container close should be sent")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_CLOSE);
@@ -494,6 +522,36 @@ async fn send_container_inventory_commands_encode_packets() {
         ContainerButtonClick {
             container_id: 7,
             button_id: 2,
+        },
+    )
+    .await
+    .unwrap();
+    let mut added_components = BTreeMap::new();
+    added_components.insert(10, 0x0102_0304);
+    let mut removed_components = BTreeSet::new();
+    removed_components.insert(20);
+    let mut changed_slots = BTreeMap::new();
+    changed_slots.insert(
+        5,
+        HashedStack::Item(HashedItemStack {
+            item_id: 42,
+            count: 64,
+            components: HashedComponentPatch {
+                added_components,
+                removed_components,
+            },
+        }),
+    );
+    send_container_click(
+        &mut conn,
+        ContainerClick {
+            container_id: 7,
+            state_id: 33,
+            slot_num: 5,
+            button_num: 1,
+            input: ContainerInput::Pickup,
+            changed_slots,
+            carried_item: HashedStack::empty(),
         },
     )
     .await
