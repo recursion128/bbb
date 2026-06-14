@@ -29,6 +29,7 @@ const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_PUFFERFISH_ID: i32 = 107;
+const VANILLA_ENTITY_TYPE_RABBIT_ID: i32 = 108;
 const VANILLA_ENTITY_TYPE_SALMON_ID: i32 = 110;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
 const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
@@ -333,6 +334,7 @@ fn baby_pick_bounds(
         | VANILLA_ENTITY_TYPE_FOX_ID
         | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
         | VANILLA_ENTITY_TYPE_PIG_ID
+        | VANILLA_ENTITY_TYPE_RABBIT_ID
         | VANILLA_ENTITY_TYPE_VILLAGER_ID
         | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => {
             entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false)
@@ -360,6 +362,7 @@ fn baby_pick_bounds(
         VANILLA_ENTITY_TYPE_FOX_ID => {
             vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(FOX_BABY_SCALE)
         }
+        VANILLA_ENTITY_TYPE_RABBIT_ID => EntityPickBoundsState::from_base_size(0.24, 0.4, 0.0),
         _ => vanilla_pick_bounds_for_type(entity_type_id)?
             .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE),
     })
