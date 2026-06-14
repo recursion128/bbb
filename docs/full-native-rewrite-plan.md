@@ -95,14 +95,14 @@ Known priority areas:
   playback runtime.
 - Native crosshair entity interaction is partially wired: `bbb-world` exposes
   verified 26.1 base pick bounds for vanilla `LivingEntity` types, boats,
-  minecarts, TNT, falling blocks, end crystals, shulker bullets, and the
-  `redirectable_projectile` tag (`fireball`, `wind_charge`,
+  minecarts, TNT, falling blocks, end crystals, shulker bullets,
+  `interaction` entity metadata width/height, and the `redirectable_projectile`
+  tag (`fireball`, `wind_charge`,
   `breeze_wind_charge`); `bbb-native` routes left/right/middle mouse actions to
   attack/interact/pick entity packets for those targets. Owner: `bbb-world` +
   `bbb-native`; status: partial; next action: apply dynamic bounding-box
   semantics for baby/pose/scale variants, armor stand marker state, player
-  spectator state, slime/magma cube size, item frames/paintings/leash knots, and
-  `interaction` entity metadata.
+  spectator state, slime/magma cube size, and item frames/paintings/leash knots.
 
 ## Phases
 
