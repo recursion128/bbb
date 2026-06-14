@@ -153,9 +153,17 @@ pub struct NetCounters {
     pub player_chat_fully_filtered_packets: usize,
     pub block_changed_ack_packets: usize,
     pub block_destruction_packets: usize,
+    #[serde(default)]
+    pub block_destructions_tracked: usize,
     pub block_event_packets: usize,
+    #[serde(default)]
+    pub block_events_tracked: usize,
     pub level_event_packets: usize,
+    #[serde(default)]
+    pub level_events_tracked: usize,
     pub boss_event_packets: usize,
+    #[serde(default)]
+    pub boss_bars_tracked: usize,
     pub change_difficulty_packets: usize,
     pub tab_list_packets: usize,
     pub initialize_border_packets: usize,
@@ -171,7 +179,23 @@ pub struct NetCounters {
     pub set_score_packets: usize,
     #[serde(default)]
     pub command_tree_packets: usize,
+    #[serde(default)]
+    pub command_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_literal_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_argument_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_redirect_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_executable_nodes_tracked: usize,
+    #[serde(default)]
+    pub command_restricted_nodes_tracked: usize,
+    #[serde(default)]
+    pub last_command_root_index: Option<i32>,
     pub command_suggestion_packets: usize,
+    #[serde(default)]
+    pub command_suggestion_entries_tracked: usize,
     pub player_combat_end_packets: usize,
     pub player_combat_enter_packets: usize,
     pub player_combat_kill_packets: usize,

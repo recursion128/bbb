@@ -330,6 +330,59 @@ pub(super) fn sync_server_presentation_counters(counters: &mut NetCounters, worl
     counters.resource_packs_tracked = world_counters.resource_packs_tracked;
 }
 
+pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.block_destruction_packets = world_counters.block_destructions_received;
+    counters.block_destructions_tracked = world_counters.block_destructions_tracked;
+    counters.block_event_packets = world_counters.block_events_received;
+    counters.block_events_tracked = world_counters.block_events_tracked;
+    counters.level_event_packets = world_counters.level_events_received;
+    counters.level_events_tracked = world_counters.level_events_tracked;
+}
+
+pub(super) fn sync_hud_session_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.boss_event_packets = world_counters.boss_event_packets;
+    counters.boss_bars_tracked = world_counters.boss_bars_tracked;
+    counters.tab_list_packets = world_counters.tab_list_packets;
+    counters.change_difficulty_packets = world_counters.change_difficulty_packets;
+}
+
+pub(super) fn sync_world_border_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.initialize_border_packets = world_counters.world_border_initializes_received;
+    counters.set_border_center_packets = world_counters.world_border_center_updates_received;
+    counters.set_border_lerp_size_packets = world_counters.world_border_lerp_size_updates_received;
+    counters.set_border_size_packets = world_counters.world_border_size_updates_received;
+    counters.set_border_warning_delay_packets =
+        world_counters.world_border_warning_delay_updates_received;
+    counters.set_border_warning_distance_packets =
+        world_counters.world_border_warning_distance_updates_received;
+}
+
+pub(super) fn sync_scoreboard_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.reset_score_packets = world_counters.reset_score_packets;
+    counters.set_display_objective_packets = world_counters.set_display_objective_packets;
+    counters.set_objective_packets = world_counters.set_objective_packets;
+    counters.set_player_team_packets = world_counters.set_player_team_packets;
+    counters.set_score_packets = world_counters.set_score_packets;
+}
+
+pub(super) fn sync_command_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.command_tree_packets = world_counters.command_tree_packets;
+    counters.command_nodes_tracked = world_counters.command_nodes_tracked;
+    counters.command_literal_nodes_tracked = world_counters.command_literal_nodes_tracked;
+    counters.command_argument_nodes_tracked = world_counters.command_argument_nodes_tracked;
+    counters.command_redirect_nodes_tracked = world_counters.command_redirect_nodes_tracked;
+    counters.command_executable_nodes_tracked = world_counters.command_executable_nodes_tracked;
+    counters.command_restricted_nodes_tracked = world_counters.command_restricted_nodes_tracked;
+    counters.last_command_root_index = world_counters.last_command_root_index;
+    counters.command_suggestion_packets = world_counters.command_suggestion_packets;
+    counters.command_suggestion_entries_tracked = world_counters.command_suggestion_entries_tracked;
+}
+
 fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.update_enabled_features_packets = world_counters.update_enabled_features_packets;

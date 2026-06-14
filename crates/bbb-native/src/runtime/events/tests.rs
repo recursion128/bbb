@@ -614,13 +614,18 @@ fn command_suggestions_event_updates_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        command_suggestion_packets: 99,
+        command_suggestion_entries_tracked: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
     assert_eq!(counters.command_suggestion_packets, 1);
+    assert_eq!(counters.command_suggestion_entries_tracked, 2);
     assert_eq!(world.counters().command_suggestion_packets, 1);
     assert_eq!(world.counters().command_suggestion_entries_tracked, 2);
 
@@ -640,13 +645,30 @@ fn commands_event_updates_world_and_counters() {
         .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        command_tree_packets: 99,
+        command_nodes_tracked: 99,
+        command_literal_nodes_tracked: 99,
+        command_argument_nodes_tracked: 99,
+        command_redirect_nodes_tracked: 99,
+        command_executable_nodes_tracked: 99,
+        command_restricted_nodes_tracked: 99,
+        last_command_root_index: Some(99),
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
     assert_eq!(counters.command_tree_packets, 1);
+    assert_eq!(counters.command_nodes_tracked, 3);
+    assert_eq!(counters.command_literal_nodes_tracked, 1);
+    assert_eq!(counters.command_argument_nodes_tracked, 1);
+    assert_eq!(counters.command_redirect_nodes_tracked, 0);
+    assert_eq!(counters.command_executable_nodes_tracked, 1);
+    assert_eq!(counters.command_restricted_nodes_tracked, 1);
+    assert_eq!(counters.last_command_root_index, Some(0));
     assert_eq!(world.counters().command_tree_packets, 1);
     assert_eq!(world.counters().command_nodes_tracked, 3);
     assert_eq!(world.counters().command_literal_nodes_tracked, 1);
@@ -1621,13 +1643,18 @@ fn block_destruction_event_updates_world_and_counter() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        block_destruction_packets: 99,
+        block_destructions_tracked: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
     assert_eq!(counters.block_destruction_packets, 1);
+    assert_eq!(counters.block_destructions_tracked, 1);
     assert_eq!(world.counters().block_destructions_received, 1);
     assert_eq!(world.counters().block_destructions_tracked, 1);
     assert_eq!(world.block_destruction(4).unwrap().progress, 6);
@@ -1656,14 +1683,22 @@ fn block_and_level_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        block_event_packets: 99,
+        block_events_tracked: 99,
+        level_event_packets: 99,
+        level_events_tracked: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         2
     );
     assert_eq!(counters.block_event_packets, 1);
+    assert_eq!(counters.block_events_tracked, 1);
     assert_eq!(counters.level_event_packets, 1);
+    assert_eq!(counters.level_events_tracked, 1);
 
     let world_counters = world.counters();
     assert_eq!(world_counters.block_events_received, 1);
@@ -1736,7 +1771,15 @@ fn border_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        initialize_border_packets: 99,
+        set_border_center_packets: 99,
+        set_border_lerp_size_packets: 99,
+        set_border_size_packets: 99,
+        set_border_warning_delay_packets: 99,
+        set_border_warning_distance_packets: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -1822,7 +1865,14 @@ fn scoreboard_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        set_objective_packets: 99,
+        set_display_objective_packets: 99,
+        set_score_packets: 99,
+        set_player_team_packets: 99,
+        reset_score_packets: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -1895,13 +1945,20 @@ fn hud_session_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        boss_event_packets: 99,
+        boss_bars_tracked: 99,
+        tab_list_packets: 99,
+        change_difficulty_packets: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         4
     );
     assert_eq!(counters.boss_event_packets, 2);
+    assert_eq!(counters.boss_bars_tracked, 1);
     assert_eq!(counters.tab_list_packets, 1);
     assert_eq!(counters.change_difficulty_packets, 1);
 

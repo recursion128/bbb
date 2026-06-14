@@ -7,8 +7,9 @@ use crate::input::queue_vehicle_move_command;
 
 use super::client_state::*;
 use super::control_state::{
-    apply_control_projection_event, sync_player_info_counters, sync_registry_counters,
-    sync_server_presentation_counters,
+    apply_control_projection_event, sync_block_event_counters, sync_command_counters,
+    sync_hud_session_counters, sync_player_info_counters, sync_registry_counters,
+    sync_scoreboard_counters, sync_server_presentation_counters, sync_world_border_counters,
 };
 use super::{apply_block_changed_ack, sync_weather_counters, sync_world_time_counters};
 
@@ -111,80 +112,80 @@ pub(in crate::runtime) fn drain_net_events(
                 world.apply_set_player_inventory(update);
             }
             NetEvent::BlockDestruction(update) => {
-                counters.block_destruction_packets += 1;
                 world.apply_block_destruction(update);
+                sync_block_event_counters(counters, world);
             }
             NetEvent::BossEvent(update) => {
-                counters.boss_event_packets += 1;
                 world.apply_boss_event(update);
+                sync_hud_session_counters(counters, world);
             }
             NetEvent::ChangeDifficulty(update) => {
-                counters.change_difficulty_packets += 1;
                 world.apply_change_difficulty(update);
+                sync_hud_session_counters(counters, world);
             }
             NetEvent::BlockEvent(event) => {
-                counters.block_event_packets += 1;
                 world.apply_block_event(event);
+                sync_block_event_counters(counters, world);
             }
             NetEvent::LevelEvent(event) => {
-                counters.level_event_packets += 1;
                 world.apply_level_event(event);
+                sync_block_event_counters(counters, world);
             }
             NetEvent::InitializeBorder(border) => {
-                counters.initialize_border_packets += 1;
                 world.apply_initialize_border(border);
+                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderCenter(update) => {
-                counters.set_border_center_packets += 1;
                 world.apply_set_border_center(update);
+                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderLerpSize(update) => {
-                counters.set_border_lerp_size_packets += 1;
                 world.apply_set_border_lerp_size(update);
+                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderSize(update) => {
-                counters.set_border_size_packets += 1;
                 world.apply_set_border_size(update);
+                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderWarningDelay(update) => {
-                counters.set_border_warning_delay_packets += 1;
                 world.apply_set_border_warning_delay(update);
+                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderWarningDistance(update) => {
-                counters.set_border_warning_distance_packets += 1;
                 world.apply_set_border_warning_distance(update);
+                sync_world_border_counters(counters, world);
             }
             NetEvent::ResetScore(update) => {
-                counters.reset_score_packets += 1;
                 world.apply_reset_score(update);
+                sync_scoreboard_counters(counters, world);
             }
             NetEvent::SetDisplayObjective(update) => {
-                counters.set_display_objective_packets += 1;
                 world.apply_set_display_objective(update);
+                sync_scoreboard_counters(counters, world);
             }
             NetEvent::SetObjective(update) => {
-                counters.set_objective_packets += 1;
                 world.apply_set_objective(update);
+                sync_scoreboard_counters(counters, world);
             }
             NetEvent::SetPlayerTeam(update) => {
-                counters.set_player_team_packets += 1;
                 world.apply_set_player_team(update);
+                sync_scoreboard_counters(counters, world);
             }
             NetEvent::SetScore(update) => {
-                counters.set_score_packets += 1;
                 world.apply_set_score(update);
+                sync_scoreboard_counters(counters, world);
             }
             NetEvent::Commands(update) => {
-                counters.command_tree_packets += 1;
                 world.apply_commands(update);
+                sync_command_counters(counters, world);
             }
             NetEvent::CommandSuggestions(update) => {
-                counters.command_suggestion_packets += 1;
                 world.apply_command_suggestions(update);
+                sync_command_counters(counters, world);
             }
             NetEvent::TabList(update) => {
-                counters.tab_list_packets += 1;
                 world.apply_tab_list(update);
+                sync_hud_session_counters(counters, world);
             }
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
