@@ -8,9 +8,9 @@ use crate::input::queue_vehicle_move_command;
 use super::client_state::*;
 use super::control_state::{
     apply_control_projection_event, sync_block_event_counters, sync_command_counters,
-    sync_entity_status_counters, sync_hud_session_counters, sync_player_info_counters,
-    sync_registry_counters, sync_scoreboard_counters, sync_server_presentation_counters,
-    sync_world_border_counters,
+    sync_entity_interaction_counters, sync_entity_status_counters, sync_hud_session_counters,
+    sync_player_info_counters, sync_registry_counters, sync_scoreboard_counters,
+    sync_server_presentation_counters, sync_world_border_counters,
 };
 use super::{apply_block_changed_ack, sync_weather_counters, sync_world_time_counters};
 
@@ -207,8 +207,9 @@ pub(in crate::runtime) fn drain_net_events(
                 world.apply_move_minecart_along_track(update);
             }
             NetEvent::MoveVehicle(update) => {
-                counters.move_vehicle_packets += 1;
-                if let Some(report) = world.apply_move_vehicle(update) {
+                let report = world.apply_move_vehicle(update);
+                sync_entity_interaction_counters(counters, world);
+                if let Some(report) = report {
                     queue_vehicle_move_command(counters, net_commands, report);
                 }
             }
@@ -232,7 +233,7 @@ pub(in crate::runtime) fn drain_net_events(
             }
             NetEvent::TakeItemEntity(update) => {
                 world.apply_take_item_entity(update);
-                counters.take_item_entity_packets += 1;
+                sync_entity_interaction_counters(counters, world);
             }
             NetEvent::SetPassengers(update) => {
                 world.apply_set_passengers(update);

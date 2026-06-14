@@ -341,6 +341,18 @@ pub(super) fn sync_entity_status_counters(counters: &mut NetCounters, world: &Wo
     counters.active_mob_effects_tracked = world_counters.active_mob_effects_tracked;
 }
 
+pub(super) fn sync_entity_interaction_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.move_vehicle_packets = world_counters.vehicle_moves_received;
+    counters.vehicle_moves_applied = world_counters.vehicle_moves_applied;
+    counters.vehicle_moves_acked = world_counters.vehicle_moves_acked;
+    counters.vehicle_moves_snapped = world_counters.vehicle_moves_snapped;
+    counters.take_item_entity_packets = world_counters.take_item_entities_received;
+    counters.take_item_entities_applied = world_counters.take_item_entities_applied;
+    counters.item_entity_stack_shrinks = world_counters.item_entity_stack_shrinks;
+    counters.take_item_entities_removed = world_counters.take_item_entities_removed;
+}
+
 pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.block_destruction_packets = world_counters.block_destructions_received;

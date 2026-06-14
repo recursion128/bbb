@@ -208,6 +208,12 @@ pub struct NetCounters {
     pub player_look_at_packets: usize,
     pub player_rotation_packets: usize,
     pub move_vehicle_packets: usize,
+    #[serde(default)]
+    pub vehicle_moves_applied: usize,
+    #[serde(default)]
+    pub vehicle_moves_acked: usize,
+    #[serde(default)]
+    pub vehicle_moves_snapped: usize,
     pub action_bar_packets: usize,
     pub title_text_packets: usize,
     pub subtitle_text_packets: usize,
@@ -218,6 +224,12 @@ pub struct NetCounters {
     pub set_camera_packets: usize,
     pub transfer_packets: usize,
     pub take_item_entity_packets: usize,
+    #[serde(default)]
+    pub take_item_entities_applied: usize,
+    #[serde(default)]
+    pub item_entity_stack_shrinks: usize,
+    #[serde(default)]
+    pub take_item_entities_removed: usize,
     pub custom_chat_completion_packets: usize,
     pub custom_payload_packets: usize,
     #[serde(default)]
