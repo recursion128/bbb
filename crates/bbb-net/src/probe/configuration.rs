@@ -37,7 +37,9 @@ impl ProbeContext {
             ConfigurationClientbound::UpdateTags(update) => {
                 self.world.apply_update_tags(update);
             }
-            ConfigurationClientbound::ResetChat => {}
+            ConfigurationClientbound::ResetChat => {
+                self.world.apply_reset_chat();
+            }
             ConfigurationClientbound::ResourcePackPush(update) => {
                 let (id, payload) = packets::encode_configuration_resource_pack_response(
                     update.id,

@@ -51,10 +51,8 @@ pub(super) fn apply_control_projection_event(
             sync_custom_report_detail_counters(counters, world);
         }
         NetEvent::ResetChat => {
-            counters.reset_chat_packets += 1;
-            counters.last_player_chat = None;
-            counters.last_disguised_chat = None;
-            counters.last_deleted_chat = None;
+            world.apply_reset_chat();
+            sync_chat_counters(counters, world);
         }
         NetEvent::UpdateEnabledFeatures(update) => {
             world.apply_update_enabled_features(update);
@@ -430,6 +428,7 @@ fn control_waypoint_vec3i(pos: bbb_world::WaypointVec3iState) -> bbb_control::Ne
 fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.player_chat_packets = world_counters.player_chat_packets;
+    counters.reset_chat_packets = world_counters.reset_chat_packets;
     counters.disguised_chat_packets = world_counters.disguised_chat_packets;
     counters.delete_chat_packets = world_counters.delete_chat_packets;
     counters.chat_messages_tracked = world_counters.chat_messages_tracked;

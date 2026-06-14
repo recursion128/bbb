@@ -261,6 +261,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub advancement_progress_criteria_tracked: usize,
     #[serde(default)]
+    pub reset_chat_packets: usize,
+    #[serde(default)]
     pub player_chat_packets: usize,
     #[serde(default)]
     pub disguised_chat_packets: usize,

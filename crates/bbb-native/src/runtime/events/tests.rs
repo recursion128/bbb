@@ -188,6 +188,32 @@ fn configuration_state_events_update_snapshot_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
+    world.apply_player_chat(PlayerChat {
+        global_index: 0,
+        sender: Uuid::from_u128(1),
+        index: 0,
+        signature: Some(MessageSignature {
+            bytes: vec![7; 256],
+        }),
+        body: SignedMessageBody {
+            content: "previous".to_string(),
+            timestamp_millis: 1,
+            salt: 2,
+            last_seen: Vec::new(),
+        },
+        unsigned_content: None,
+        filter_mask: FilterMask {
+            kind: FilterMaskKind::PassThrough,
+            mask_words: Vec::new(),
+        },
+        chat_type: ChatTypeBound {
+            chat_type: ChatTypeHolder::Registry { id: 0 },
+            name: "Alice".to_string(),
+            target_name: None,
+        },
+    });
+    assert_eq!(world.counters().chat_messages_tracked, 1);
+    assert_eq!(world.counters().chat_signature_cache_entries, 1);
     let mut counters = NetCounters {
         last_player_chat: Some(bbb_control::ClientChatLine {
             content: "previous".to_string(),
@@ -214,6 +240,13 @@ fn configuration_state_events_update_snapshot_counters() {
     assert_eq!(world.counters().enabled_features_tracked, 2);
     assert_eq!(counters.reset_chat_packets, 1);
     assert!(counters.last_player_chat.is_none());
+    assert!(world.client_chat().messages.is_empty());
+    assert!(world.client_chat().deleted_messages.is_empty());
+    assert_eq!(world.client_chat().expected_player_chat_global_index, 0);
+    assert_eq!(world.counters().reset_chat_packets, 1);
+    assert_eq!(world.counters().chat_messages_tracked, 0);
+    assert_eq!(world.counters().deleted_chat_messages_tracked, 0);
+    assert_eq!(world.counters().chat_signature_cache_entries, 0);
     assert_eq!(counters.code_of_conduct_packets, 1);
     assert_eq!(
         counters.last_code_of_conduct_len,

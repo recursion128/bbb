@@ -101,6 +101,12 @@ impl ChatValidationState {
 }
 
 impl WorldStore {
+    pub fn apply_reset_chat(&mut self) {
+        self.counters.reset_chat_packets += 1;
+        self.client_chat = ClientChatState::default();
+        refresh_chat_counters(self);
+    }
+
     pub fn apply_player_chat(&mut self, packet: PlayerChat) {
         self.counters.player_chat_packets += 1;
         let mut validation_state = if packet.signature.is_some() {
@@ -410,6 +416,52 @@ mod tests {
         assert_eq!(message.content, "notice");
         assert_eq!(message.sender_name, "Server");
         assert_eq!(store.counters().disguised_chat_packets, 1);
+    }
+
+    #[test]
+    fn reset_chat_clears_messages_and_signature_state() {
+        let mut store = WorldStore::new();
+        store.apply_player_chat(PlayerChat {
+            global_index: 0,
+            sender: Uuid::from_u128(1),
+            index: 0,
+            signature: Some(signature(9)),
+            body: SignedMessageBody {
+                content: "hello".to_string(),
+                timestamp_millis: 1,
+                salt: 2,
+                last_seen: Vec::new(),
+            },
+            unsigned_content: None,
+            filter_mask: FilterMask {
+                kind: FilterMaskKind::PassThrough,
+                mask_words: Vec::new(),
+            },
+            chat_type: chat_type("Alice"),
+        });
+        store.apply_delete_chat(ProtocolDeleteChat {
+            message_signature: PackedMessageSignature {
+                cache_id: Some(0),
+                full_signature: None,
+            },
+        });
+
+        store.apply_reset_chat();
+
+        assert!(store.client_chat().messages.is_empty());
+        assert!(store.client_chat().deleted_messages.is_empty());
+        assert_eq!(store.client_chat().expected_player_chat_global_index, 0);
+        assert!(store
+            .client_chat()
+            .signature_cache
+            .iter()
+            .all(Option::is_none));
+        assert_eq!(store.counters().reset_chat_packets, 1);
+        assert_eq!(store.counters().player_chat_packets, 1);
+        assert_eq!(store.counters().delete_chat_packets, 1);
+        assert_eq!(store.counters().chat_messages_tracked, 0);
+        assert_eq!(store.counters().deleted_chat_messages_tracked, 0);
+        assert_eq!(store.counters().chat_signature_cache_entries, 0);
     }
 
     fn signature(byte: u8) -> MessageSignature {
