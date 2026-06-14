@@ -285,6 +285,12 @@ pub struct WorldCounters {
     #[serde(default)]
     pub player_chat_fully_filtered_packets: usize,
     #[serde(default)]
+    pub player_combat_end_packets: usize,
+    #[serde(default)]
+    pub player_combat_enter_packets: usize,
+    #[serde(default)]
+    pub player_combat_kill_packets: usize,
+    #[serde(default)]
     pub low_disk_space_warnings: usize,
     #[serde(default)]
     pub clear_dialog_packets: usize,

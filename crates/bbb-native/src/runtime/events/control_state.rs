@@ -110,31 +110,16 @@ pub(super) fn apply_control_projection_event(
             sync_waypoint_counters(counters, world);
         }
         NetEvent::PlayerCombatEnd(update) => {
-            counters.last_player_combat = Some(bbb_control::PlayerCombatState {
-                kind: "end".to_string(),
-                duration: Some(update.duration),
-                player_id: None,
-                message: None,
-            });
-            counters.player_combat_end_packets += 1;
+            world.apply_player_combat_end(update);
+            sync_client_combat_counters(counters, world);
         }
         NetEvent::PlayerCombatEnter => {
-            counters.last_player_combat = Some(bbb_control::PlayerCombatState {
-                kind: "enter".to_string(),
-                duration: None,
-                player_id: None,
-                message: None,
-            });
-            counters.player_combat_enter_packets += 1;
+            world.apply_player_combat_enter();
+            sync_client_combat_counters(counters, world);
         }
         NetEvent::PlayerCombatKill(update) => {
-            counters.last_player_combat = Some(bbb_control::PlayerCombatState {
-                kind: "kill".to_string(),
-                duration: None,
-                player_id: Some(update.player_id),
-                message: Some(update.message),
-            });
-            counters.player_combat_kill_packets += 1;
+            world.apply_player_combat_kill(update);
+            sync_client_combat_counters(counters, world);
         }
         NetEvent::PlayerLookAt(update) => {
             apply_player_look_at_update(counters, world, update);
@@ -645,6 +630,25 @@ fn sync_waypoint_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.waypoint_updates_ignored = world_counters.waypoint_updates_ignored;
     counters.waypoint_untracks_ignored = world_counters.waypoint_untracks_ignored;
     counters.last_waypoint = world.last_waypoint_event().map(control_waypoint_event);
+}
+
+fn sync_client_combat_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.player_combat_end_packets = world_counters.player_combat_end_packets;
+    counters.player_combat_enter_packets = world_counters.player_combat_enter_packets;
+    counters.player_combat_kill_packets = world_counters.player_combat_kill_packets;
+    counters.last_player_combat = world.last_player_combat().map(control_player_combat_state);
+}
+
+fn control_player_combat_state(
+    state: &bbb_world::PlayerCombatEventState,
+) -> bbb_control::PlayerCombatState {
+    bbb_control::PlayerCombatState {
+        kind: state.kind.clone(),
+        duration: state.duration,
+        player_id: state.player_id,
+        message: state.message.clone(),
+    }
 }
 
 fn control_waypoint_event(event: &bbb_world::WaypointEventState) -> bbb_control::WaypointState {

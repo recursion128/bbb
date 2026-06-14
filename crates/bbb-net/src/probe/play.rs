@@ -220,10 +220,16 @@ impl ProbeContext {
             PlayClientbound::SystemChat(update) => {
                 self.world.apply_system_chat(update);
             }
-            PlayClientbound::PlayerCombatEnd(_)
-            | PlayClientbound::PlayerCombatEnter
-            | PlayClientbound::PlayerCombatKill(_)
-            | PlayClientbound::PlayerLookAt(_) => {}
+            PlayClientbound::PlayerCombatEnd(update) => {
+                self.world.apply_player_combat_end(update);
+            }
+            PlayClientbound::PlayerCombatEnter => {
+                self.world.apply_player_combat_enter();
+            }
+            PlayClientbound::PlayerCombatKill(update) => {
+                self.world.apply_player_combat_kill(update);
+            }
+            PlayClientbound::PlayerLookAt(_) => {}
             PlayClientbound::MapItemData(update) => {
                 self.world.apply_map_item_data(update);
             }

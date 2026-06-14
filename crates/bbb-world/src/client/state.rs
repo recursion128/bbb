@@ -5,6 +5,7 @@ pub use crate::client::chat::{
     ChatMessageKind, ChatMessageState, ChatSignatureState, ChatTypeState, ChatValidationState,
     ClientChatState, DeletedChatState,
 };
+pub use crate::client::combat::{ClientCombatState, PlayerCombatEventState};
 pub use crate::client::command_suggestions::{
     CommandSuggestionState, CommandSuggestionsResultState, CommandSuggestionsState,
     CustomChatCompletionUpdateState,

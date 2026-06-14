@@ -1322,6 +1322,18 @@ fn player_action_events_update_snapshot_counters() {
     assert_eq!(counters.player_combat_enter_packets, 1);
     assert_eq!(counters.player_combat_end_packets, 1);
     assert_eq!(counters.player_combat_kill_packets, 1);
+    assert_eq!(world.counters().player_combat_enter_packets, 1);
+    assert_eq!(world.counters().player_combat_end_packets, 1);
+    assert_eq!(world.counters().player_combat_kill_packets, 1);
+    assert_eq!(
+        world.last_player_combat(),
+        Some(&bbb_world::PlayerCombatEventState {
+            kind: "kill".to_string(),
+            duration: None,
+            player_id: Some(123),
+            message: Some("You died".to_string()),
+        })
+    );
     assert_eq!(
         counters.last_player_combat,
         Some(bbb_control::PlayerCombatState {
