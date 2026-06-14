@@ -28,7 +28,6 @@ pub(crate) use components::{
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount,
     EntityTransform, EntityTransientEvents,
 };
-use dimensions::vanilla_pick_bounds_for_type;
 pub use dimensions::EntityPickBoundsState;
 use movement::entity_vec3;
 use projectiles::initial_hurting_projectile_state;
@@ -267,8 +266,7 @@ impl WorldStore {
     }
 
     pub fn probe_entity_pick_bounds(&self, id: i32) -> Option<EntityPickBoundsState> {
-        let entity_type_id = self.entities.entity_type_id(id)?;
-        vanilla_pick_bounds_for_type(entity_type_id)
+        self.entities.pick_bounds(id)
     }
 
     pub fn entity_transforms(&self) -> Vec<EntityTransformState> {

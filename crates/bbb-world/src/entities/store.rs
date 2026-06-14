@@ -8,6 +8,7 @@ use super::{
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount, EntityState,
     EntityTransform, EntityTransformState, EntityTransientEvents,
 };
+use crate::entities::dimensions::vanilla_pick_bounds_for_entity_data;
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
 
 pub(crate) struct EntityStore {
@@ -72,6 +73,13 @@ impl EntityStore {
             .get::<&EntityIdentity>(entity)
             .ok()
             .map(|identity| identity.entity_type_id)
+    }
+
+    pub(crate) fn pick_bounds(&self, id: i32) -> Option<super::EntityPickBoundsState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        vanilla_pick_bounds_for_entity_data(identity.entity_type_id, &metadata.data_values)
     }
 
     pub(crate) fn transform(&self, id: i32) -> Option<EntityTransform> {

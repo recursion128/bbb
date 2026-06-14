@@ -1,4 +1,11 @@
+use bbb_protocol::packets::{EntityDataValue, EntityDataValueKind};
 use serde::{Deserialize, Serialize};
+
+const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
+const INTERACTION_DATA_WIDTH_ID: u8 = 8;
+const INTERACTION_DATA_HEIGHT_ID: u8 = 9;
+const INTERACTION_DEFAULT_WIDTH: f32 = 1.0;
+const INTERACTION_DEFAULT_HEIGHT: f32 = 1.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -12,6 +19,43 @@ pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<Entity
         .binary_search_by_key(&entity_type_id, |(id, _)| *id)
         .ok()
         .map(|index| VANILLA_ENTITY_PICK_BOUNDS[index].1)
+}
+
+pub(crate) fn vanilla_pick_bounds_for_entity_data(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
+        return Some(interaction_pick_bounds(data_values));
+    }
+    vanilla_pick_bounds_for_type(entity_type_id)
+}
+
+fn interaction_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
+    EntityPickBoundsState {
+        width: entity_data_float(
+            data_values,
+            INTERACTION_DATA_WIDTH_ID,
+            INTERACTION_DEFAULT_WIDTH,
+        ),
+        height: entity_data_float(
+            data_values,
+            INTERACTION_DATA_HEIGHT_ID,
+            INTERACTION_DEFAULT_HEIGHT,
+        ),
+        pick_radius: 0.0,
+    }
+}
+
+fn entity_data_float(data_values: &[EntityDataValue], data_id: u8, fallback: f32) -> f32 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Float(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
 }
 
 const fn pick(width: f32, height: f32, pick_radius: f32) -> EntityPickBoundsState {

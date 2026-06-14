@@ -10,7 +10,8 @@ use crate::block_outline::{
     selection_outline_for_block, selection_outline_for_probe, BlockOutlineTarget,
 };
 
-const SELECTION_MAX_DISTANCE: f64 = 4.5;
+const DEFAULT_BLOCK_INTERACTION_RANGE: f64 = 4.5;
+const DEFAULT_ENTITY_INTERACTION_RANGE: f64 = 3.0;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct CrosshairBlockHit {
@@ -48,7 +49,7 @@ pub(crate) fn crosshair_block_hit_from_world(
     world: &WorldStore,
     pose: Option<PlayerPose>,
 ) -> Option<CrosshairBlockHit> {
-    raycast_crosshair_block_hit(pose?, SELECTION_MAX_DISTANCE, |pos| {
+    raycast_crosshair_block_hit(pose?, DEFAULT_BLOCK_INTERACTION_RANGE, |pos| {
         world
             .probe_block(pos)
             .map(|probe| BlockOutlineTarget::from_probe(&probe))
@@ -65,28 +66,37 @@ pub(crate) fn crosshair_target_from_world(
     let block_distance_sq = block_hit
         .map(|hit| distance_sq(eye, block_hit_location(hit)))
         .unwrap_or(f64::INFINITY);
-    let entity_max_distance = block_distance_sq.sqrt().min(SELECTION_MAX_DISTANCE);
+    let entity_max_distance = block_distance_sq
+        .sqrt()
+        .min(DEFAULT_BLOCK_INTERACTION_RANGE);
     let entity_hit = crosshair_entity_hit_from_world(world, Some(pose), entity_max_distance);
 
-    choose_crosshair_target(eye, block_hit, entity_hit)
+    choose_crosshair_target(eye, block_hit, entity_hit, DEFAULT_ENTITY_INTERACTION_RANGE)
 }
 
 fn choose_crosshair_target(
     eye: [f64; 3],
     block_hit: Option<CrosshairBlockHit>,
     entity_hit: Option<RaycastEntityHit>,
+    entity_interaction_range: f64,
 ) -> Option<CrosshairTarget> {
     let block_distance_sq = block_hit
         .map(|hit| distance_sq(eye, block_hit_location(hit)))
         .unwrap_or(f64::INFINITY);
     match (block_hit, entity_hit) {
         (Some(_block), Some(entity)) if entity.distance_sq < block_distance_sq => {
-            Some(CrosshairTarget::Entity(entity.hit))
+            entity_in_interaction_range(entity, entity_interaction_range)
+                .then_some(CrosshairTarget::Entity(entity.hit))
         }
         (Some(block), _) => Some(CrosshairTarget::Block(block)),
-        (None, Some(entity)) => Some(CrosshairTarget::Entity(entity.hit)),
+        (None, Some(entity)) => entity_in_interaction_range(entity, entity_interaction_range)
+            .then_some(CrosshairTarget::Entity(entity.hit)),
         (None, None) => None,
     }
+}
+
+fn entity_in_interaction_range(entity: RaycastEntityHit, entity_interaction_range: f64) -> bool {
+    entity.distance_sq < entity_interaction_range * entity_interaction_range
 }
 
 fn crosshair_entity_hit_from_world(
@@ -497,9 +507,12 @@ fn look_direction_from_player_pose(pose: PlayerPose) -> [f64; 3] {
 mod tests {
     use super::*;
     use bbb_control::NetVec3;
-    use bbb_protocol::packets::{AddEntity, Vec3d as ProtocolVec3d};
+    use bbb_protocol::packets::{
+        AddEntity, EntityDataValue, EntityDataValueKind, SetEntityData, Vec3d as ProtocolVec3d,
+    };
     use uuid::Uuid;
 
+    const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 
@@ -632,7 +645,7 @@ mod tests {
     #[test]
     fn crosshair_raycast_uses_vanilla_default_block_interaction_range() {
         let pose = player_pose(0.0, 0.0, 0.0);
-        let hit = raycast_crosshair_block(pose, SELECTION_MAX_DISTANCE, |pos| {
+        let hit = raycast_crosshair_block(pose, DEFAULT_BLOCK_INTERACTION_RANGE, |pos| {
             if pos == (BlockPos { x: 0, y: 1, z: 5 }) {
                 Some(bbb_world::TerrainMaterialClass::Opaque)
             } else {
@@ -640,7 +653,7 @@ mod tests {
             }
         });
 
-        assert_eq!(SELECTION_MAX_DISTANCE, 4.5);
+        assert_eq!(DEFAULT_BLOCK_INTERACTION_RANGE, 4.5);
         assert_eq!(hit, None);
     }
 
@@ -673,8 +686,60 @@ mod tests {
             VANILLA_ENTITY_TYPE_ITEM_ID,
             [0.0, 1.0, 3.0],
         ));
-        world.apply_add_entity(protocol_add_entity(11, 7, [0.0, 1.0, 2.0]));
+        world.apply_add_entity(protocol_add_entity(11, 999, [0.0, 1.0, 2.0]));
 
+        assert_eq!(
+            crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0))),
+            None
+        );
+    }
+
+    #[test]
+    fn crosshair_target_hits_interaction_entity_with_metadata_bounds() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_INTERACTION_ID,
+            [0.0, 1.0, 3.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 12,
+            values: vec![
+                EntityDataValue {
+                    data_id: 8,
+                    serializer_id: 3,
+                    value: EntityDataValueKind::Float(2.0),
+                },
+                EntityDataValue {
+                    data_id: 9,
+                    serializer_id: 3,
+                    value: EntityDataValueKind::Float(1.25),
+                },
+            ],
+        }));
+
+        let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected interaction entity hit");
+        };
+        assert_eq!(hit.entity_id, 12);
+        assert_vec3_close(hit.relative_location, [0.0, 0.6200000047683716, -1.0]);
+    }
+
+    #[test]
+    fn crosshair_target_skips_entity_beyond_vanilla_default_entity_interaction_range() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 4.0],
+        ));
+
+        assert_eq!(
+            DEFAULT_ENTITY_INTERACTION_RANGE, 3.0,
+            "vanilla Player.DEFAULT_ENTITY_INTERACTION_RANGE"
+        );
         assert_eq!(
             crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0))),
             None
@@ -708,7 +773,12 @@ mod tests {
         };
 
         assert_eq!(
-            choose_crosshair_target(eye, Some(block), Some(entity)),
+            choose_crosshair_target(
+                eye,
+                Some(block),
+                Some(entity),
+                DEFAULT_ENTITY_INTERACTION_RANGE
+            ),
             Some(CrosshairTarget::Block(block))
         );
     }
@@ -741,8 +811,50 @@ mod tests {
         };
 
         assert_eq!(
-            choose_crosshair_target(eye, Some(block), Some(entity)),
+            choose_crosshair_target(
+                eye,
+                Some(block),
+                Some(entity),
+                DEFAULT_ENTITY_INTERACTION_RANGE
+            ),
             Some(CrosshairTarget::Entity(entity_hit))
+        );
+    }
+
+    #[test]
+    fn crosshair_target_misses_when_nearer_entity_exceeds_entity_interaction_range() {
+        let eye = [0.0, 1.6200000047683716, 0.0];
+        let block = CrosshairBlockHit {
+            pos: BlockPos { x: 0, y: 1, z: 4 },
+            face: ProtocolDirection::North,
+            cursor: [0.0, 0.62, 0.0],
+            inside: false,
+        };
+        let entity = RaycastEntityHit {
+            hit: CrosshairEntityHit {
+                entity_id: 10,
+                location: ProtocolVec3d {
+                    x: 0.0,
+                    y: eye[1],
+                    z: 3.5,
+                },
+                relative_location: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.62,
+                    z: -0.5,
+                },
+            },
+            distance_sq: 3.5 * 3.5,
+        };
+
+        assert_eq!(
+            choose_crosshair_target(
+                eye,
+                Some(block),
+                Some(entity),
+                DEFAULT_ENTITY_INTERACTION_RANGE
+            ),
+            None
         );
     }
 

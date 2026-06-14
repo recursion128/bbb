@@ -99,10 +99,12 @@ Known priority areas:
   `interaction` entity metadata width/height, and the `redirectable_projectile`
   tag (`fireball`, `wind_charge`,
   `breeze_wind_charge`); `bbb-native` routes left/right/middle mouse actions to
-  attack/interact/pick entity packets for those targets. Owner: `bbb-world` +
+  attack/interact/pick entity packets for those targets, using vanilla default
+  block/entity interaction ranges of 4.5/3.0 blocks. Owner: `bbb-world` +
   `bbb-native`; status: partial; next action: apply dynamic bounding-box
   semantics for baby/pose/scale variants, armor stand marker state, player
-  spectator state, slime/magma cube size, and item frames/paintings/leash knots.
+  spectator state, slime/magma cube size, and direction-aware
+  item frames/paintings/leash knots.
 
 ## Phases
 

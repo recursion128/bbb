@@ -573,7 +573,6 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     ));
     store.apply_add_entity(protocol_add_entity_with_type(18, 43));
     store.apply_add_entity(protocol_add_entity_with_type(19, 69));
-    store.apply_add_entity(protocol_add_entity_with_type(20, 73));
 
     assert_eq!(
         store.probe_entity_pick_bounds(10),
@@ -631,10 +630,44 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
             pick_radius: 1.0,
         })
     );
+    assert_eq!(
+        store.probe_entity_pick_bounds(19),
+        Some(EntityPickBoundsState {
+            width: 1.0,
+            height: 1.0,
+            pick_radius: 0.0,
+        })
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 19,
+        values: vec![
+            ProtocolEntityDataValue {
+                data_id: 8,
+                serializer_id: 3,
+                value: EntityDataValueKind::Float(2.5),
+            },
+            ProtocolEntityDataValue {
+                data_id: 9,
+                serializer_id: 3,
+                value: EntityDataValueKind::Float(0.75),
+            },
+            ProtocolEntityDataValue {
+                data_id: 10,
+                serializer_id: 8,
+                value: EntityDataValueKind::Boolean(true),
+            },
+        ],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(19),
+        Some(EntityPickBoundsState {
+            width: 2.5,
+            height: 0.75,
+            pick_radius: 0.0,
+        })
+    );
     assert_eq!(store.probe_entity_pick_bounds(17), None);
     assert_eq!(store.probe_entity_pick_bounds(18), None);
-    assert_eq!(store.probe_entity_pick_bounds(19), None);
-    assert_eq!(store.probe_entity_pick_bounds(20), None);
     assert_eq!(store.probe_entity_pick_bounds(99), None);
 }
 
