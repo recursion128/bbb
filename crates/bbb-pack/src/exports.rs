@@ -18,5 +18,6 @@ pub use crate::sprites::{
     SpriteGuiScaling, SpriteImage, SpriteMipmapStrategy, SpriteNineSliceBorder, SpriteSource,
     SpriteTextureMetadata, SpriteTransparency,
 };
+pub use crate::tags::{TagCatalog, TagDefinition};
 
 pub(crate) use crate::image::{rgba_len, rgba_offset};

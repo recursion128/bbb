@@ -10,6 +10,7 @@ mod resources;
 mod roots;
 mod sounds;
 mod sprites;
+mod tags;
 
 pub use exports::*;
 pub(crate) use exports::{rgba_len, rgba_offset};

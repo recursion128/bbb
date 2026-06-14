@@ -66,17 +66,25 @@ impl PackResourceStack {
     }
 
     pub fn namespaces(&self) -> Result<Vec<String>> {
+        self.namespaces_in("assets")
+    }
+
+    pub fn data_namespaces(&self) -> Result<Vec<String>> {
+        self.namespaces_in("data")
+    }
+
+    fn namespaces_in(&self, domain: &str) -> Result<Vec<String>> {
         let mut namespaces = BTreeMap::new();
         for root in &self.roots {
-            let assets_root = root.join("assets");
-            if !assets_root.is_dir() {
+            let domain_root = root.join(domain);
+            if !domain_root.is_dir() {
                 continue;
             }
-            for entry in std::fs::read_dir(&assets_root)
-                .with_context(|| format!("read assets directory {}", assets_root.display()))?
+            for entry in std::fs::read_dir(&domain_root)
+                .with_context(|| format!("read {domain} directory {}", domain_root.display()))?
             {
                 let entry = entry
-                    .with_context(|| format!("read assets entry in {}", assets_root.display()))?;
+                    .with_context(|| format!("read {domain} entry in {}", domain_root.display()))?;
                 let path = entry.path();
                 if !entry
                     .file_type()
@@ -97,8 +105,16 @@ impl PackResourceStack {
     }
 
     pub fn get_resource(&self, location: &ResourceLocation) -> Option<PackResource> {
+        self.get_resource_in("assets", location)
+    }
+
+    pub fn get_data_resource(&self, location: &ResourceLocation) -> Option<PackResource> {
+        self.get_resource_in("data", location)
+    }
+
+    fn get_resource_in(&self, domain: &str, location: &ResourceLocation) -> Option<PackResource> {
         self.roots.iter().rev().find_map(|root| {
-            let path = resource_path(root, location);
+            let path = resource_path_in(root, domain, location);
             path.is_file().then(|| PackResource {
                 location: location.clone(),
                 path,
@@ -107,10 +123,22 @@ impl PackResourceStack {
     }
 
     pub fn get_resource_stack(&self, location: &ResourceLocation) -> Vec<PackResource> {
+        self.get_resource_stack_in("assets", location)
+    }
+
+    pub fn get_data_resource_stack(&self, location: &ResourceLocation) -> Vec<PackResource> {
+        self.get_resource_stack_in("data", location)
+    }
+
+    fn get_resource_stack_in(
+        &self,
+        domain: &str,
+        location: &ResourceLocation,
+    ) -> Vec<PackResource> {
         self.roots
             .iter()
             .filter_map(|root| {
-                let path = resource_path(root, location);
+                let path = resource_path_in(root, domain, location);
                 path.is_file().then(|| PackResource {
                     location: location.clone(),
                     path,
@@ -120,18 +148,35 @@ impl PackResourceStack {
     }
 
     pub fn list_resources(&self, path_prefix: &str, extension: &str) -> Result<Vec<PackResource>> {
+        self.list_resources_in("assets", path_prefix, extension)
+    }
+
+    pub fn list_data_resources(
+        &self,
+        path_prefix: &str,
+        extension: &str,
+    ) -> Result<Vec<PackResource>> {
+        self.list_resources_in("data", path_prefix, extension)
+    }
+
+    fn list_resources_in(
+        &self,
+        domain: &str,
+        path_prefix: &str,
+        extension: &str,
+    ) -> Result<Vec<PackResource>> {
         validate_resource_path_prefix(path_prefix)?;
         let mut resources = BTreeMap::new();
         for root in &self.roots {
-            let assets_root = root.join("assets");
-            if !assets_root.is_dir() {
+            let domain_root = root.join(domain);
+            if !domain_root.is_dir() {
                 continue;
             }
-            for namespace_entry in std::fs::read_dir(&assets_root)
-                .with_context(|| format!("read assets directory {}", assets_root.display()))?
+            for namespace_entry in std::fs::read_dir(&domain_root)
+                .with_context(|| format!("read {domain} directory {}", domain_root.display()))?
             {
                 let namespace_entry = namespace_entry
-                    .with_context(|| format!("read assets entry in {}", assets_root.display()))?;
+                    .with_context(|| format!("read {domain} entry in {}", domain_root.display()))?;
                 let namespace_dir = namespace_entry.path();
                 if !namespace_entry
                     .file_type()
@@ -159,6 +204,61 @@ impl PackResourceStack {
             }
         }
         Ok(resources.into_values().collect())
+    }
+
+    pub fn list_data_resource_stacks(
+        &self,
+        path_prefix: &str,
+        extension: &str,
+    ) -> Result<BTreeMap<ResourceLocation, Vec<PackResource>>> {
+        self.list_resource_stacks_in("data", path_prefix, extension)
+    }
+
+    fn list_resource_stacks_in(
+        &self,
+        domain: &str,
+        path_prefix: &str,
+        extension: &str,
+    ) -> Result<BTreeMap<ResourceLocation, Vec<PackResource>>> {
+        validate_resource_path_prefix(path_prefix)?;
+        let mut resources: BTreeMap<ResourceLocation, Vec<PackResource>> = BTreeMap::new();
+        for root in &self.roots {
+            let domain_root = root.join(domain);
+            if !domain_root.is_dir() {
+                continue;
+            }
+            for namespace_entry in std::fs::read_dir(&domain_root)
+                .with_context(|| format!("read {domain} directory {}", domain_root.display()))?
+            {
+                let namespace_entry = namespace_entry
+                    .with_context(|| format!("read {domain} entry in {}", domain_root.display()))?;
+                let namespace_dir = namespace_entry.path();
+                if !namespace_entry
+                    .file_type()
+                    .with_context(|| format!("read file type {}", namespace_dir.display()))?
+                    .is_dir()
+                {
+                    continue;
+                }
+                let namespace = namespace_entry
+                    .file_name()
+                    .into_string()
+                    .map_err(|name| anyhow::anyhow!("non-utf8 {domain} namespace {name:?}"))?;
+                validate_resource_namespace(&namespace)?;
+                let list_root = namespace_dir.join(path_prefix);
+                if !list_root.is_dir() {
+                    continue;
+                }
+                collect_resource_stacks(
+                    &namespace_dir,
+                    &list_root,
+                    &namespace,
+                    extension,
+                    &mut resources,
+                )?;
+            }
+        }
+        Ok(resources)
     }
 }
 
@@ -197,6 +297,41 @@ fn collect_resources(
     Ok(())
 }
 
+fn collect_resource_stacks(
+    namespace_dir: &Path,
+    dir: &Path,
+    namespace: &str,
+    extension: &str,
+    resources: &mut BTreeMap<ResourceLocation, Vec<PackResource>>,
+) -> Result<()> {
+    for entry in std::fs::read_dir(dir)
+        .with_context(|| format!("read resource directory {}", dir.display()))?
+    {
+        let entry = entry.with_context(|| format!("read resource entry in {}", dir.display()))?;
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .with_context(|| format!("read file type {}", path.display()))?;
+        if file_type.is_dir() {
+            collect_resource_stacks(namespace_dir, &path, namespace, extension, resources)?;
+            continue;
+        }
+        let resource_path = relative_resource_path(namespace_dir, &path)?;
+        if !resource_path.ends_with(extension) {
+            continue;
+        }
+        let location = ResourceLocation::new(namespace, resource_path)?;
+        resources
+            .entry(location.clone())
+            .or_default()
+            .push(PackResource {
+                location,
+                path: path.clone(),
+            });
+    }
+    Ok(())
+}
+
 fn relative_resource_path(root: &Path, path: &Path) -> Result<String> {
     let relative = path
         .strip_prefix(root)
@@ -214,8 +349,8 @@ fn relative_resource_path(root: &Path, path: &Path) -> Result<String> {
     Ok(parts.join("/"))
 }
 
-fn resource_path(root: &Path, location: &ResourceLocation) -> PathBuf {
-    root.join("assets")
+fn resource_path_in(root: &Path, domain: &str, location: &ResourceLocation) -> PathBuf {
+    root.join(domain)
         .join(location.namespace())
         .join(location.path())
 }

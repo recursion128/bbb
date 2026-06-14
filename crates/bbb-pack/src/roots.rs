@@ -11,6 +11,7 @@ use crate::{
     resources::{PackResourceStack, ResourceLocation},
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
+    tags::TagCatalog,
 };
 
 pub const MC_VERSION: &str = "26.1";
@@ -196,6 +197,10 @@ impl PackRoots {
             }
         }
         Ok(catalog)
+    }
+
+    pub fn load_tag_catalog(&self, registry_path: &str) -> Result<TagCatalog> {
+        TagCatalog::load_resource_stack(&self.resource_stack(), registry_path)
     }
 }
 
