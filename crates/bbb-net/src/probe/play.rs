@@ -239,7 +239,9 @@ impl ProbeContext {
             PlayClientbound::PlayerCombatKill(update) => {
                 self.world.apply_player_combat_kill(update);
             }
-            PlayClientbound::PlayerLookAt(_) => {}
+            PlayClientbound::PlayerLookAt(update) => {
+                self.world.apply_player_look_at(update);
+            }
             PlayClientbound::MapItemData(update) => {
                 self.world.apply_map_item_data(update);
             }
@@ -466,9 +468,9 @@ mod tests {
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
         BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos,
-        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, GameRuleValue,
-        GameRuleValues, GameTestHighlightPos, RemoteDebugSampleType, TestInstanceBlockStatus,
-        Vec3i as ProtocolVec3i,
+        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, EntityAnchor,
+        GameRuleValue, GameRuleValues, GameTestHighlightPos, PlayerLookAt, RemoteDebugSampleType,
+        TestInstanceBlockStatus, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
     };
     use bbb_world::{BlockPos, ChunkPos};
     use bytes::BytesMut;
@@ -602,6 +604,42 @@ mod tests {
         assert_eq!(
             report.world.last_block_changed_ack(),
             Some(&bbb_world::BlockChangedAckState { sequence: 17 })
+        );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_player_look_at_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerLookAt(PlayerLookAt {
+                from_anchor: EntityAnchor::Eyes,
+                position: ProtocolVec3d {
+                    x: 12.0,
+                    y: 65.0,
+                    z: -7.0,
+                },
+                target: None,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.player_look_at_packets, 1);
+        assert_eq!(
+            report.world.local_player().last_look_at,
+            Some(bbb_world::LocalPlayerLookAtState {
+                from_anchor: EntityAnchor::Eyes,
+                position: ProtocolVec3d {
+                    x: 12.0,
+                    y: 65.0,
+                    z: -7.0,
+                },
+                target_entity_id: None,
+                to_anchor: None,
+            })
         );
     }
 
