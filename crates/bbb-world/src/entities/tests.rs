@@ -1501,6 +1501,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
     store.apply_add_entity(protocol_add_entity_with_type(38, 101));
     store.apply_add_entity(protocol_add_entity_with_type(39, 30));
     store.apply_add_entity(protocol_add_entity_with_type(40, 141));
+    store.apply_add_entity(protocol_add_entity_with_type(45, 4));
 
     assert_eq!(
         store.probe_entity_pick_bounds(34),
@@ -1597,6 +1598,35 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         Some(EntityPickBoundsState::from_base_size(
             0.6 * 0.5,
             1.95 * 0.5,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 45,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(45),
+        Some(EntityPickBoundsState::from_base_size(
+            0.7 * 0.6,
+            0.65 * 0.6,
+            0.0,
+        ))
+    );
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 45,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(45),
+        Some(EntityPickBoundsState::from_base_size(
+            0.7 * 0.6 * 2.0,
+            0.65 * 0.6 * 2.0,
             0.0,
         ))
     );

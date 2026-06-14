@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::EntityVec3;
 
 const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
+const VANILLA_ENTITY_TYPE_ARMADILLO_ID: i32 = 4;
 const VANILLA_ENTITY_TYPE_CAMEL_ID: i32 = 19;
 const VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID: i32 = 20;
 const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
@@ -62,6 +63,7 @@ const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 const ARMOR_STAND_WIDTH: f32 = 0.5;
 const ARMOR_STAND_HEIGHT: f32 = 1.975;
 const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
+const ARMADILLO_BABY_SCALE: f32 = 0.6;
 const CAMEL_SITTING_HEIGHT_DIFFERENCE: f32 = 1.43;
 const CAMEL_BABY_SCALE: f32 = 0.6;
 const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
@@ -323,7 +325,8 @@ fn baby_pick_bounds(
             entity_data_bool(data_values, ZOMBIE_BABY_DATA_ID, false)
         }
         VANILLA_ENTITY_TYPE_PIGLIN_ID => entity_data_bool(data_values, PIGLIN_BABY_DATA_ID, false),
-        VANILLA_ENTITY_TYPE_CHICKEN_ID
+        VANILLA_ENTITY_TYPE_ARMADILLO_ID
+        | VANILLA_ENTITY_TYPE_CHICKEN_ID
         | VANILLA_ENTITY_TYPE_COW_ID
         | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
         | VANILLA_ENTITY_TYPE_PIG_ID
@@ -347,6 +350,9 @@ fn baby_pick_bounds(
         | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
         | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
             EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0)
+        }
+        VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
+            vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(ARMADILLO_BABY_SCALE)
         }
         _ => vanilla_pick_bounds_for_type(entity_type_id)?
             .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE),
