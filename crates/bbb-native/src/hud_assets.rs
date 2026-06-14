@@ -3,15 +3,18 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use bbb_pack::{PackRoots, SpriteImage};
 
-pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer) {
-    if let Err(err) = try_load_hud_textures(renderer) {
+pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
+    let Some(roots) = roots else {
+        tracing::warn!("continuing without vanilla HUD sprites because pack roots are unavailable");
+        return;
+    };
+    if let Err(err) = try_load_hud_textures(renderer, roots) {
         tracing::warn!(?err, "continuing without vanilla HUD sprites");
     }
 }
 
-fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer) -> Result<()> {
-    let roots = PackRoots::discover()?;
-    let sprites = load_gui_sprites(&roots)?;
+fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoots) -> Result<()> {
+    let sprites = load_gui_sprites(roots)?;
     let crosshair = hud_sprite(&sprites, "hud/crosshair")?;
     renderer.upload_hud_crosshair(crosshair.width, crosshair.height, &crosshair.rgba)?;
     let hotbar = hud_sprite(&sprites, "hud/hotbar")?;

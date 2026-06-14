@@ -9,7 +9,7 @@ pub(crate) use client_state::{
     local_player_pose_from_player_pose, player_pose_from_local_player_pose,
     player_position_state_from_local_player_pose,
 };
-pub(super) use dispatcher::drain_net_events;
+pub(super) use dispatcher::{drain_net_events, drain_net_events_with_audio};
 
 fn sync_world_time_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.world_time = world.world_time().map(|time| bbb_control::WorldTime {

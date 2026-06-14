@@ -184,18 +184,6 @@ pub(super) fn apply_control_projection_event(
             world.apply_test_instance_block_status(update);
             sync_debug_game_counters(counters, world);
         }
-        NetEvent::Sound(update) => {
-            world.apply_sound_event(update);
-            sync_client_audio_counters(counters, world);
-        }
-        NetEvent::SoundEntity(update) => {
-            world.apply_sound_entity_event(update);
-            sync_client_audio_counters(counters, world);
-        }
-        NetEvent::StopSound(update) => {
-            world.apply_stop_sound(update);
-            sync_client_audio_counters(counters, world);
-        }
         NetEvent::Transfer(transfer) => {
             world.apply_transfer(transfer);
             sync_transfer_counters(counters, world);
@@ -455,7 +443,7 @@ fn control_custom_payload_state(
     }
 }
 
-fn sync_client_audio_counters(counters: &mut NetCounters, world: &WorldStore) {
+pub(super) fn sync_client_audio_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.sound_packets = world_counters.sound_packets;
     counters.sound_entity_packets = world_counters.sound_entity_packets;

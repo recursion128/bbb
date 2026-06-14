@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
+bbb-audio = { path = "../bbb-audio", features = ["device"] }
 bbb-control = { path = "../bbb-control" }
 bbb-net = { path = "../bbb-net" }
 bbb-pack = { path = "../bbb-pack" }

@@ -793,8 +793,15 @@ impl TerrainTextureState {
     }
 }
 
-pub(crate) fn load_terrain_textures(renderer: &mut bbb_renderer::Renderer) -> TerrainTextureState {
-    match try_load_terrain_textures(renderer) {
+pub(crate) fn load_terrain_textures(
+    renderer: &mut bbb_renderer::Renderer,
+    roots: Option<&PackRoots>,
+) -> TerrainTextureState {
+    let Some(roots) = roots else {
+        tracing::warn!("falling back to default terrain texture atlas without pack roots");
+        return TerrainTextureState::default();
+    };
+    match try_load_terrain_textures(renderer, roots) {
         Ok(textures) => textures,
         Err(err) => {
             tracing::warn!(?err, "falling back to default terrain texture atlas");
@@ -803,8 +810,10 @@ pub(crate) fn load_terrain_textures(renderer: &mut bbb_renderer::Renderer) -> Te
     }
 }
 
-fn try_load_terrain_textures(renderer: &mut bbb_renderer::Renderer) -> Result<TerrainTextureState> {
-    let roots = PackRoots::discover()?;
+fn try_load_terrain_textures(
+    renderer: &mut bbb_renderer::Renderer,
+    roots: &PackRoots,
+) -> Result<TerrainTextureState> {
     let images = roots.load_block_texture_images()?;
     let block_models = roots.load_block_model_catalog()?;
     let colormaps = match roots.load_terrain_colormaps() {

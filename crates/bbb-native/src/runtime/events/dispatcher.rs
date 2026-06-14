@@ -3,14 +3,15 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_world::{ChunkPos, WorldStore};
 use tokio::sync::mpsc;
 
+use crate::audio_runtime::AudioEventSink;
 use crate::input::queue_vehicle_move_command;
 
 use super::client_state::*;
 use super::control_state::{
-    apply_control_projection_event, sync_block_event_counters, sync_command_counters,
-    sync_entity_interaction_counters, sync_entity_status_counters, sync_hud_session_counters,
-    sync_player_info_counters, sync_registry_counters, sync_scoreboard_counters,
-    sync_server_presentation_counters, sync_world_border_counters,
+    apply_control_projection_event, sync_block_event_counters, sync_client_audio_counters,
+    sync_command_counters, sync_entity_interaction_counters, sync_entity_status_counters,
+    sync_hud_session_counters, sync_player_info_counters, sync_registry_counters,
+    sync_scoreboard_counters, sync_server_presentation_counters, sync_world_border_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -19,6 +20,16 @@ pub(in crate::runtime) fn drain_net_events(
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+) -> usize {
+    drain_net_events_with_audio(rx, world, counters, net_commands, None)
+}
+
+pub(in crate::runtime) fn drain_net_events_with_audio(
+    rx: &mut mpsc::Receiver<NetEvent>,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    mut audio_events: Option<&mut dyn AudioEventSink>,
 ) -> usize {
     let mut drained = 0;
     while drained < 4096 {
@@ -37,6 +48,29 @@ pub(in crate::runtime) fn drain_net_events(
         };
 
         match event {
+            NetEvent::Sound(update) => {
+                world.apply_sound_event(update);
+                sync_client_audio_counters(counters, world);
+                if let Some(state) = world.last_sound() {
+                    emit_positioned_sound(&mut audio_events, state);
+                }
+            }
+            NetEvent::SoundEntity(update) => {
+                let applied = world.apply_sound_entity_event(update);
+                sync_client_audio_counters(counters, world);
+                if applied {
+                    if let Some(state) = world.last_sound_entity() {
+                        emit_entity_sound(&mut audio_events, state);
+                    }
+                }
+            }
+            NetEvent::StopSound(update) => {
+                world.apply_stop_sound(update);
+                sync_client_audio_counters(counters, world);
+                if let Some(state) = world.last_stop_sound() {
+                    emit_stop_sound(&mut audio_events, state);
+                }
+            }
             NetEvent::RecipeBookAdd(update) => {
                 world.apply_recipe_book_add(update);
             }
@@ -401,4 +435,31 @@ pub(in crate::runtime) fn drain_net_events(
 fn sync_chunk_cache_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.chunk_cache_center = world.chunk_cache_center();
     counters.chunk_cache_radius = world.chunk_cache_radius();
+}
+
+fn emit_positioned_sound(
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+    state: &bbb_world::SoundEventState,
+) {
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        audio_events.play_positioned_sound(state);
+    }
+}
+
+fn emit_entity_sound(
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+    state: &bbb_world::SoundEntityEventState,
+) {
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        audio_events.play_entity_sound(state);
+    }
+}
+
+fn emit_stop_sound(
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+    state: &bbb_world::StopSoundEventState,
+) {
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        audio_events.stop_sound(state);
+    }
 }

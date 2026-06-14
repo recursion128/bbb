@@ -3,6 +3,7 @@ use std::{net::SocketAddr, path::PathBuf, thread, time::Duration};
 use anyhow::{Context, Result};
 use bbb_control::SharedSnapshot;
 use bbb_net::{ConnectionOptions, NetCommand, NetEvent};
+use bbb_pack::PackRoots;
 use bbb_platform::WindowConfig;
 use clap::Parser;
 use tokio::{runtime::Runtime, sync::mpsc};
@@ -54,6 +55,16 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
     let report = runtime.block_on(bbb_net::run_offline_probe(options))?;
     println!("{}", serde_json::to_string_pretty(&report)?);
     Ok(true)
+}
+
+pub(crate) fn load_pack_roots() -> Option<PackRoots> {
+    match PackRoots::discover() {
+        Ok(roots) => Some(roots),
+        Err(err) => {
+            tracing::warn!(?err, "vanilla 26.1 pack roots unavailable");
+            None
+        }
+    }
 }
 
 pub(crate) fn start_network_if_requested(runtime: &Runtime, args: &Args) -> Result<NetworkHandles> {

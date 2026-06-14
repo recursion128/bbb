@@ -243,6 +243,7 @@ name = "bbb-native"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bbb-audio",
  "bbb-control",
  "bbb-net",
  "bbb-pack",

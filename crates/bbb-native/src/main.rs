@@ -6,6 +6,7 @@ use winit::{
     event_loop::ControlFlow,
 };
 
+mod audio_runtime;
 mod biome_tint;
 mod block_outline;
 mod crosshair;
@@ -15,6 +16,7 @@ mod runtime;
 mod startup;
 mod terrain_runtime;
 
+use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use hud_assets::load_hud_textures;
 use input::{
     handle_focus_change, handle_key_input, handle_mouse_input, handle_mouse_motion,
@@ -25,8 +27,9 @@ use runtime::{
     snapshot_is_running, take_control_screenshot,
 };
 use startup::{
-    build_window, create_event_loop, init_tracing, parse_args, run_probe_if_requested,
-    spawn_frame_tick, start_control_api, start_network_if_requested, NetworkHandles,
+    build_window, create_event_loop, init_tracing, load_pack_roots, parse_args,
+    run_probe_if_requested, spawn_frame_tick, start_control_api, start_network_if_requested,
+    NetworkHandles,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 
@@ -39,6 +42,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    let pack_roots = load_pack_roots();
     let snapshot = shared_snapshot(format!(
         "bbb-native {} / protocol {}",
         bbb_protocol::MC_VERSION,
@@ -51,6 +55,14 @@ fn main() -> Result<()> {
         commands: net_commands,
     } = start_network_if_requested(&runtime, &args)?;
     start_control_api(&runtime, args.control, &snapshot);
+    let mut audio_runtime = pack_roots.as_ref().and_then(|roots| {
+        NativeAudioRuntime::load(roots)
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native audio runtime");
+                err
+            })
+            .ok()
+    });
 
     let event_loop = create_event_loop()?;
     let window = build_window(&event_loop)?;
@@ -58,8 +70,8 @@ fn main() -> Result<()> {
     spawn_frame_tick(&event_loop);
 
     let mut renderer = pollster::block_on(bbb_renderer::Renderer::new(&window))?;
-    let terrain_textures = load_terrain_textures(&mut renderer);
-    load_hud_textures(&mut renderer);
+    let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
+    load_hud_textures(&mut renderer, pack_roots.as_ref());
     let mut screenshot = args.screenshot;
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
@@ -98,6 +110,9 @@ fn main() -> Result<()> {
                     if !pump_network_and_terrain(
                         &mut net_events,
                         &net_commands,
+                        audio_runtime
+                            .as_mut()
+                            .map(|runtime| runtime as &mut dyn AudioEventSink),
                         &mut input,
                         &mut world,
                         &mut renderer,
@@ -166,6 +181,9 @@ fn main() -> Result<()> {
                 if !pump_network_and_terrain(
                     &mut net_events,
                     &net_commands,
+                    audio_runtime
+                        .as_mut()
+                        .map(|runtime| runtime as &mut dyn AudioEventSink),
                     &mut input,
                     &mut world,
                     &mut renderer,

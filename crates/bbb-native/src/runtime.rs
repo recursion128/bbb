@@ -7,6 +7,7 @@ use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 
 use crate::{
+    audio_runtime::AudioEventSink,
     crosshair::selection_outline_from_crosshair,
     input::{advance_player_input, ClientInputState},
     terrain_runtime::{
@@ -54,6 +55,7 @@ pub(crate) fn take_control_screenshot(snapshot: &SharedSnapshot) -> Option<PathB
 pub(crate) fn pump_network_and_terrain(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: Option<&mut dyn AudioEventSink>,
     input: &mut ClientInputState,
     world: &mut WorldStore,
     renderer: &mut bbb_renderer::Renderer,
@@ -63,7 +65,7 @@ pub(crate) fn pump_network_and_terrain(
     snapshot: &SharedSnapshot,
 ) -> bool {
     if let Some(rx) = net_events.as_mut() {
-        events::drain_net_events(rx, world, net_counters, net_commands);
+        events::drain_net_events_with_audio(rx, world, net_counters, net_commands, audio_events);
     }
     advance_player_input(input, world, net_counters, net_commands, Instant::now());
     let local_player = world.local_player();

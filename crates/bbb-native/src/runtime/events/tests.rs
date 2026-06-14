@@ -1,6 +1,10 @@
 use super::*;
 use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
+use bbb_audio::{
+    AudioCategory, AudioCommand, AudioCommandResolver, AudioResolveError, SoundEventRegistry,
+};
 use bbb_net::{NetCommand, NetEvent};
+use bbb_pack::SoundCatalog;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
     BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, ChunkPos as ProtocolChunkPos,
@@ -1523,6 +1527,108 @@ fn client_audio_events_update_snapshot_counters() {
 }
 
 #[test]
+fn client_audio_events_emit_runtime_commands_for_applied_events() {
+    let (tx, mut rx) = mpsc::channel(4);
+    tx.try_send(NetEvent::Sound(SoundEvent {
+        sound: SoundEventHolder::Reference { registry_id: 0 },
+        source: SoundSource::Ambient,
+        position: ProtocolVec3d {
+            x: 2.5,
+            y: -1.0,
+            z: 0.0,
+        },
+        volume: 0.75,
+        pitch: 1.25,
+        seed: 123456789,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SoundEntity(SoundEntityEvent {
+        sound: SoundEventHolder::Direct {
+            location: "minecraft:entity.cat.ambient".to_string(),
+            fixed_range: Some(32.0),
+        },
+        source: SoundSource::Neutral,
+        entity_id: 123,
+        volume: 1.0,
+        pitch: 0.5,
+        seed: -9,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SoundEntity(SoundEntityEvent {
+        sound: SoundEventHolder::Direct {
+            location: "minecraft:entity.cat.ambient".to_string(),
+            fixed_range: None,
+        },
+        source: SoundSource::Neutral,
+        entity_id: 404,
+        volume: 0.2,
+        pitch: 1.8,
+        seed: 7,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::StopSound(StopSound {
+        source: Some(SoundSource::Music),
+        name: Some("minecraft:music.menu".to_string()),
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(123));
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(
+        test_sound_catalog(),
+        SoundEventRegistry::from_ids(["minecraft:ambient.cave"]),
+    );
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        4
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 3);
+    assert_eq!(counters.sound_packets, 1);
+    assert_eq!(counters.sound_entity_packets, 2);
+    assert_eq!(counters.sound_entity_events_applied, 1);
+    assert_eq!(counters.sound_entity_events_ignored, 1);
+    assert_eq!(counters.stop_sound_packets, 1);
+
+    match &audio.commands[0] {
+        AudioCommand::PlayPositionedSound(command) => {
+            assert_eq!(command.category, AudioCategory::Ambient);
+            assert_eq!(command.position, [2.5, -1.0, 0.0]);
+            assert_eq!(command.packet_volume, 0.75);
+            assert_eq!(command.packet_pitch, 1.25);
+            assert_eq!(command.seed, 123456789);
+            assert_eq!(command.fixed_range, None);
+            assert_eq!(command.sound.event_id, "minecraft:ambient.cave");
+            assert_eq!(command.sound.sound_name, "minecraft:ambient/cave/cave1");
+        }
+        other => panic!("expected positioned sound command, got {other:?}"),
+    }
+    match &audio.commands[1] {
+        AudioCommand::PlayEntitySound(command) => {
+            assert_eq!(command.category, AudioCategory::Neutral);
+            assert_eq!(command.entity_id, 123);
+            assert_eq!(command.packet_volume, 1.0);
+            assert_eq!(command.packet_pitch, 0.5);
+            assert_eq!(command.seed, -9);
+            assert_eq!(command.fixed_range, Some(32.0));
+            assert_eq!(command.sound.event_id, "minecraft:entity.cat.ambient");
+            assert_eq!(command.sound.sound_name, "minecraft:mob/cat/meow1");
+        }
+        other => panic!("expected entity sound command, got {other:?}"),
+    }
+    match &audio.commands[2] {
+        AudioCommand::StopSound(command) => {
+            assert_eq!(command.category, Some(AudioCategory::Music));
+            assert_eq!(command.name.as_deref(), Some("minecraft:music.menu"));
+        }
+        other => panic!("expected stop sound command, got {other:?}"),
+    }
+}
+
+#[test]
 fn world_effect_events_update_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Explosion(Explosion {
@@ -2998,6 +3104,74 @@ fn protocol_chat_type(name: &str) -> ChatTypeBound {
         name: name.to_string(),
         target_name: None,
     }
+}
+
+struct RecordingAudioSink {
+    catalog: SoundCatalog,
+    registry: SoundEventRegistry,
+    commands: Vec<AudioCommand>,
+    errors: Vec<String>,
+}
+
+impl RecordingAudioSink {
+    fn new(catalog: SoundCatalog, registry: SoundEventRegistry) -> Self {
+        Self {
+            catalog,
+            registry,
+            commands: Vec::new(),
+            errors: Vec::new(),
+        }
+    }
+
+    fn record(&mut self, command: std::result::Result<AudioCommand, AudioResolveError>) {
+        match command {
+            Ok(command) => self.commands.push(command),
+            Err(err) => self.errors.push(err.to_string()),
+        }
+    }
+}
+
+impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
+    fn play_positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            resolver.play_positioned_sound(state)
+        };
+        self.record(command);
+    }
+
+    fn play_entity_sound(&mut self, state: &bbb_world::SoundEntityEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            resolver.play_entity_sound(state)
+        };
+        self.record(command);
+    }
+
+    fn stop_sound(&mut self, state: &bbb_world::StopSoundEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            resolver.stop_sound(state)
+        };
+        self.commands.push(command);
+    }
+}
+
+fn test_sound_catalog() -> SoundCatalog {
+    let assets_dir = std::env::temp_dir().join("bbb-native-audio-test-assets");
+    SoundCatalog::from_json_bytes(
+        "minecraft",
+        &assets_dir,
+        br#"{
+            "ambient.cave": {
+                "sounds": ["ambient/cave/cave1"]
+            },
+            "entity.cat.ambient": {
+                "sounds": ["mob/cat/meow1"]
+            }
+        }"#,
+    )
+    .unwrap()
 }
 
 fn protocol_add_entity(id: i32) -> AddEntity {
