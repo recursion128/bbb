@@ -93,15 +93,16 @@ Known priority areas:
   world apply API exists.
 - Keep audio split into world-observed audio events and a future Kira-backed
   playback runtime.
-- Native crosshair entity interaction is partially wired: `bbb-world` currently
-  exposes verified pick bounds for minecarts and the 26.1
+- Native crosshair entity interaction is partially wired: `bbb-world` exposes
+  verified 26.1 base pick bounds for vanilla `LivingEntity` types, boats,
+  minecarts, TNT, falling blocks, end crystals, shulker bullets, and the
   `redirectable_projectile` tag (`fireball`, `wind_charge`,
-  `breeze_wind_charge`), and `bbb-native` can route left/right/middle mouse
-  actions to attack/interact/pick entity packets for those targets. Owner:
-  `bbb-world` + `bbb-native`; status: partial; next action: derive the complete
-  26.1 entity type dimensions and `isPickable`/pick-radius semantics from the
-  official entity registry/tags, including living entities, boats, item frames,
-  falling blocks, TNT, shulker bullets, and dynamic-size interaction entities.
+  `breeze_wind_charge`); `bbb-native` routes left/right/middle mouse actions to
+  attack/interact/pick entity packets for those targets. Owner: `bbb-world` +
+  `bbb-native`; status: partial; next action: apply dynamic bounding-box
+  semantics for baby/pose/scale variants, armor stand marker state, player
+  spectator state, slime/magma cube size, item frames/paintings/leash knots, and
+  `interaction` entity metadata.
 
 ## Phases
 

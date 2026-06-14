@@ -551,26 +551,48 @@ fn entity_transform_queries_read_components_without_full_entity_snapshot() {
 #[test]
 fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(10, 14));
+    store.apply_add_entity(protocol_add_entity_with_type(11, 0));
     store.apply_add_entity(protocol_add_entity_with_type(
-        10,
+        12,
         VANILLA_ENTITY_TYPE_MINECART_ID,
     ));
     store.apply_add_entity(protocol_add_entity_with_type(
-        11,
+        13,
         VANILLA_ENTITY_TYPE_FIREBALL_ID,
     ));
     store.apply_add_entity(protocol_add_entity_with_type(
-        12,
+        14,
         VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
     ));
+    store.apply_add_entity(protocol_add_entity_with_type(15, 45));
+    store.apply_add_entity(protocol_add_entity_with_type(16, 113));
     store.apply_add_entity(protocol_add_entity_with_type(
-        13,
+        17,
         VANILLA_ENTITY_TYPE_ITEM_ID,
     ));
-    store.apply_add_entity(protocol_add_entity_with_type(14, 7));
+    store.apply_add_entity(protocol_add_entity_with_type(18, 43));
+    store.apply_add_entity(protocol_add_entity_with_type(19, 69));
+    store.apply_add_entity(protocol_add_entity_with_type(20, 73));
 
     assert_eq!(
         store.probe_entity_pick_bounds(10),
+        Some(EntityPickBoundsState {
+            width: 0.6,
+            height: 1.8,
+            pick_radius: 0.0,
+        })
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(11),
+        Some(EntityPickBoundsState {
+            width: 1.375,
+            height: 0.5625,
+            pick_radius: 0.0,
+        })
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(12),
         Some(EntityPickBoundsState {
             width: 0.98,
             height: 0.7,
@@ -578,7 +600,7 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
         })
     );
     assert_eq!(
-        store.probe_entity_pick_bounds(11),
+        store.probe_entity_pick_bounds(13),
         Some(EntityPickBoundsState {
             width: 1.0,
             height: 1.0,
@@ -586,15 +608,33 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
         })
     );
     assert_eq!(
-        store.probe_entity_pick_bounds(12),
+        store.probe_entity_pick_bounds(14),
         Some(EntityPickBoundsState {
             width: 0.3125,
             height: 0.3125,
             pick_radius: 1.0,
         })
     );
-    assert_eq!(store.probe_entity_pick_bounds(13), None);
-    assert_eq!(store.probe_entity_pick_bounds(14), None);
+    assert_eq!(
+        store.probe_entity_pick_bounds(15),
+        Some(EntityPickBoundsState {
+            width: 2.0,
+            height: 2.0,
+            pick_radius: 0.0,
+        })
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(16),
+        Some(EntityPickBoundsState {
+            width: 0.3125,
+            height: 0.3125,
+            pick_radius: 1.0,
+        })
+    );
+    assert_eq!(store.probe_entity_pick_bounds(17), None);
+    assert_eq!(store.probe_entity_pick_bounds(18), None);
+    assert_eq!(store.probe_entity_pick_bounds(19), None);
+    assert_eq!(store.probe_entity_pick_bounds(20), None);
     assert_eq!(store.probe_entity_pick_bounds(99), None);
 }
 
