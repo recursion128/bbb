@@ -250,6 +250,9 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_pressure_plate_block_name(name)
         || is_lantern_block_name(name)
         || is_lightning_rod_block_name(name)
+        || is_end_rod_block_name(name)
+        || is_campfire_block_name(name)
+        || is_pointed_dripstone_block_name(name)
 }
 
 fn is_bar_block_name(name: &str) -> bool {
@@ -438,6 +441,18 @@ fn is_lightning_rod_block_name(name: &str) -> bool {
             | "minecraft:waxed_weathered_lightning_rod"
             | "minecraft:waxed_oxidized_lightning_rod"
     )
+}
+
+fn is_end_rod_block_name(name: &str) -> bool {
+    matches!(name, "minecraft:end_rod")
+}
+
+fn is_campfire_block_name(name: &str) -> bool {
+    matches!(name, "minecraft:campfire" | "minecraft:soul_campfire")
+}
+
+fn is_pointed_dripstone_block_name(name: &str) -> bool {
+    matches!(name, "minecraft:pointed_dripstone")
 }
 
 fn is_translucent_block_name(name: &str) -> bool {
@@ -676,6 +691,17 @@ mod tests {
             "minecraft:waxed_exposed_lightning_rod",
             "minecraft:waxed_weathered_lightning_rod",
             "minecraft:waxed_oxidized_lightning_rod",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:end_rod",
+            "minecraft:campfire",
+            "minecraft:soul_campfire",
+            "minecraft:pointed_dripstone",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),

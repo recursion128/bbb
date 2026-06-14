@@ -1199,6 +1199,106 @@ fn terrain_cells_classify_waterlogged_lightning_rods_as_cutout() {
 }
 
 #[test]
+fn terrain_cells_classify_dripstone_campfires_and_end_rods_as_cutout() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let applied = store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+        section_x: 2,
+        section_y: 0,
+        section_z: -3,
+        updates: vec![
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 34,
+                    y: 1,
+                    z: -39,
+                },
+                block_state_id: 14636,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 35,
+                    y: 1,
+                    z: -39,
+                },
+                block_state_id: 20877,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 36,
+                    y: 1,
+                    z: -39,
+                },
+                block_state_id: 20909,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 37,
+                    y: 1,
+                    z: -39,
+                },
+                block_state_id: 27735,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 38,
+                    y: 1,
+                    z: -39,
+                },
+                block_state_id: 27754,
+            },
+        ],
+    });
+
+    assert_eq!(applied, 5);
+
+    let source_water = Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false));
+    for (x, block_name, fluid) in [
+        (34, "minecraft:end_rod", None),
+        (35, "minecraft:campfire", source_water),
+        (36, "minecraft:soul_campfire", source_water),
+        (37, "minecraft:pointed_dripstone", source_water),
+        (38, "minecraft:pointed_dripstone", None),
+    ] {
+        let probe = store.probe_block(BlockPos { x, y: 1, z: -39 }).unwrap();
+        assert_eq!(probe.block_name.as_deref(), Some(block_name));
+        assert_eq!(probe.material, TerrainMaterialClass::Cutout);
+        assert_eq!(probe.fluid, fluid);
+    }
+
+    let terrain = store
+        .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
+        .unwrap();
+    assert_eq!(terrain.cells[terrain_cell_index(2, 1, 9, 16)].fluid, None);
+    for local_x in 3..=5 {
+        assert_eq!(
+            terrain.cells[terrain_cell_index(local_x, 1, 9, 16)].fluid,
+            source_water
+        );
+    }
+    assert_eq!(terrain.cells[terrain_cell_index(6, 1, 9, 16)].fluid, None);
+
+    let summary = terrain.summary();
+    assert_eq!(summary.fluid_state_blocks, 3);
+    assert_eq!(summary.cutout_blocks, 5);
+    assert_eq!(summary.opaque_blocks, 4091);
+    assert_eq!(
+        store
+            .probe_chunk(ChunkPos { x: 2, z: -3 })
+            .unwrap()
+            .sections[0]
+            .fluid_count,
+        3
+    );
+}
+
+#[test]
 fn applies_single_block_update_and_reuploads_palette() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
