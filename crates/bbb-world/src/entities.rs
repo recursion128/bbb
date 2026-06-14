@@ -33,6 +33,7 @@ pub(crate) use components::{
 };
 use dimensions::vanilla_client_position_for_entity_data;
 pub use dimensions::EntityPickBoundsState;
+pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
 use projectiles::initial_hurting_projectile_state;
 use status::{EntityDamageEventState, MobEffectState};

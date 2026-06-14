@@ -118,7 +118,16 @@ impl EntityStore {
                 continue;
             };
             if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
-                targets.extend(ender_dragon_part_pick_targets(identity.id, *transform));
+                let dragon_animation = self
+                    .ecs
+                    .get::<&EntityClientAnimations>(entity)
+                    .ok()
+                    .and_then(|animations| animations.animations.ender_dragon);
+                targets.extend(ender_dragon_part_pick_targets(
+                    identity.id,
+                    *transform,
+                    dragon_animation,
+                ));
             } else if let Some(bounds) = self.pick_bounds(identity.id) {
                 targets.push(super::EntityPickTargetState {
                     entity_id: identity.id,
@@ -395,13 +404,14 @@ impl EntityStore {
 
     pub(crate) fn advance_client_animations(&mut self, ticks: u32) {
         for _ in 0..ticks {
-            for (_, (identity, animations)) in self
-                .ecs
-                .query_mut::<(&EntityIdentity, &mut EntityClientAnimations)>()
-            {
+            for (_, (identity, transform, animations)) in self.ecs.query_mut::<(
+                &EntityIdentity,
+                &EntityTransform,
+                &mut EntityClientAnimations,
+            )>() {
                 animations
                     .animations
-                    .advance_client_tick(identity.entity_type_id);
+                    .advance_client_tick(identity.entity_type_id, *transform);
             }
         }
     }

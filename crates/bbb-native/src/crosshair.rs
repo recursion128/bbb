@@ -760,8 +760,9 @@ mod tests {
         world.apply_add_entity(protocol_add_entity(
             100,
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
-            [0.0, 1.0, 9.0],
+            [0.0, 2.0, 9.0],
         ));
+        world.advance_entity_client_animations(1);
         let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
 
         let CrosshairTarget::Entity(hit) = target.unwrap() else {

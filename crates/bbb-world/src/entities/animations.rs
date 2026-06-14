@@ -3,6 +3,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+use super::dragon::{
+    EnderDragonAnimationState, ENDER_DRAGON_PHASE_DATA_ID, ENDER_DRAGON_PHASE_HOVERING_ID,
+    VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+};
+use super::EntityTransform;
+
 const VANILLA_ENTITY_TYPE_POLAR_BEAR_ID: i32 = 104;
 const VANILLA_ENTITY_TYPE_SHULKER_ID: i32 = 112;
 const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
@@ -17,6 +23,8 @@ pub struct EntityClientAnimationState {
     pub polar_bear_standing: Option<PolarBearStandingAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shulker_peek: Option<ShulkerPeekAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ender_dragon: Option<EnderDragonAnimationState>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -128,11 +136,26 @@ impl EntityClientAnimationState {
                     });
                 }
             }
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
+                let phase_id = entity_data_int(
+                    data_values,
+                    ENDER_DRAGON_PHASE_DATA_ID,
+                    ENDER_DRAGON_PHASE_HOVERING_ID,
+                );
+                if let Some(dragon) = self.ender_dragon.as_mut() {
+                    dragon.set_phase(phase_id);
+                } else {
+                    self.ender_dragon = Some(EnderDragonAnimationState {
+                        phase_id,
+                        ..EnderDragonAnimationState::default()
+                    });
+                }
+            }
             _ => {}
         }
     }
 
-    pub(crate) fn advance_client_tick(&mut self, entity_type_id: i32) {
+    pub(crate) fn advance_client_tick(&mut self, entity_type_id: i32, transform: EntityTransform) {
         match entity_type_id {
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
                 if let Some(standing) = self.polar_bear_standing.as_mut() {
@@ -144,6 +167,10 @@ impl EntityClientAnimationState {
                     peek.advance_client_tick();
                 }
             }
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => self
+                .ender_dragon
+                .get_or_insert_with(EnderDragonAnimationState::default)
+                .advance_client_tick(transform),
             _ => {}
         }
     }
@@ -179,4 +206,15 @@ fn entity_data_byte(data_values: &[EntityDataValue], data_id: u8, default: i8) -
             _ => None,
         })
         .unwrap_or(default)
+}
+
+fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Int(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
 }

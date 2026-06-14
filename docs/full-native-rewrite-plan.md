@@ -107,16 +107,17 @@ Known priority areas:
   bounds, sniffer digging state bounds, polar bear standing animation bounds,
   Shulker attach-face/peek animation bounds, warden emerging/digging pose
   bounds, wind charge/breeze wind charge Y-offset projectile bounds, Ender
-  Dragon part pick targets with vanilla part ids and fixed part dimensions, and
-  the `redirectable_projectile` tag
+  Dragon part pick targets with vanilla part ids, fixed part dimensions, and
+  `DragonFlightHistory`/phase-based part placement, and the
+  `redirectable_projectile` tag
   (`fireball`, `wind_charge`, `breeze_wind_charge`); `bbb-native` routes
   left/right/middle mouse actions to attack/interact/pick entity packets for
   those targets, using vanilla default block/entity interaction ranges of
   4.5/3.0 blocks. `bbb-native` drives world client animations from a stable
   20Hz accumulator. Owner: `bbb-world` + `bbb-native`; status: partial; next
-  action: make Ender Dragon part placement exact by carrying the vanilla
-  `DragonFlightHistory`/`yRotA`/phase-derived head and tail offsets instead of
-  the current flat-yaw approximation.
+  action: align Ender Dragon placement with vanilla interpolation timing,
+  validate any future `yRotA` source, and broaden debug/render coverage around
+  dragon part targets.
 
 ## Phases
 

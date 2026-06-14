@@ -653,6 +653,7 @@ fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
         ENDER_DRAGON_TYPE_ID,
         0.0,
     ));
+    store.advance_entity_client_animations(1);
 
     assert_eq!(store.probe_entity_pick_bounds(100), None);
     let targets = store.entity_pick_targets();
@@ -668,7 +669,7 @@ fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
         (
             EntityVec3 {
                 x: 1.0,
-                y: 64.0,
+                y: 63.0,
                 z: -8.5,
             },
             EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0),
@@ -676,7 +677,7 @@ fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
         (
             EntityVec3 {
                 x: 1.0,
-                y: 64.0,
+                y: 63.0,
                 z: -7.5,
             },
             EntityPickBoundsState::from_base_size(3.0, 3.0, 0.0),
@@ -735,6 +736,97 @@ fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
         assert_entity_vec3_close(target.position, position);
         assert_eq!(target.bounds, bounds);
     }
+}
+
+#[test]
+fn ender_dragon_pick_targets_follow_flight_history_and_phase() {
+    const ENDER_DRAGON_TYPE_ID: i32 = 43;
+    const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
+    const HOLDING_PATTERN_PHASE_ID: i32 = 0;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        120,
+        ENDER_DRAGON_TYPE_ID,
+        0.0,
+    ));
+    store.advance_entity_client_animations(1);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 120,
+        values: vec![protocol_int_data(
+            ENDER_DRAGON_PHASE_DATA_ID,
+            HOLDING_PATTERN_PHASE_ID,
+        )],
+    }));
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 120,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 70.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 90.0,
+            x_rot: 0.0,
+            on_ground: false,
+        })
+    );
+    store.advance_entity_client_animations(1);
+
+    let targets = store.entity_pick_targets();
+    assert_entity_vec3_close(
+        pick_target(&targets, 121).position,
+        EntityVec3 {
+            x: 7.5,
+            y: 64.0,
+            z: -2.0,
+        },
+    );
+    assert_eq!(
+        pick_target(&targets, 121).bounds,
+        EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0)
+    );
+    assert_entity_vec3_close(
+        pick_target(&targets, 122).position,
+        EntityVec3 {
+            x: 6.5,
+            y: 64.0,
+            z: -2.0,
+        },
+    );
+    assert_entity_vec3_close(
+        pick_target(&targets, 124).position,
+        EntityVec3 {
+            x: -2.5,
+            y: 71.5,
+            z: -2.0,
+        },
+    );
+
+    let cloned = store.clone();
+    let cloned_targets = cloned.entity_pick_targets();
+    assert_entity_vec3_close(
+        pick_target(&cloned_targets, 121).position,
+        pick_target(&targets, 121).position,
+    );
+
+    let restored: WorldStore = serde_json::from_value(serde_json::to_value(&store).unwrap())
+        .expect("world store should roundtrip");
+    let restored_targets = restored.entity_pick_targets();
+    assert_entity_vec3_close(
+        pick_target(&restored_targets, 121).position,
+        pick_target(&targets, 121).position,
+    );
+    assert_entity_vec3_close(
+        pick_target(&restored_targets, 124).position,
+        pick_target(&targets, 124).position,
+    );
 }
 
 #[test]
@@ -3264,6 +3356,13 @@ fn assert_entity_vec3_close(actual: EntityVec3, expected: EntityVec3) {
     );
 }
 
+fn pick_target(targets: &[EntityPickTargetState], entity_id: i32) -> &EntityPickTargetState {
+    targets
+        .iter()
+        .find(|target| target.entity_id == entity_id)
+        .unwrap_or_else(|| panic!("missing pick target {entity_id}"))
+}
+
 fn protocol_player_info_entry_with_mode(
     profile_id: Uuid,
     game_mode: ProtocolGameType,
@@ -3298,6 +3397,14 @@ fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: 8,
         value: EntityDataValueKind::Boolean(value),
+    }
+}
+
+fn protocol_int_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: 1,
+        value: EntityDataValueKind::Int(value),
     }
 }
 
