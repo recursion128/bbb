@@ -4,7 +4,7 @@ use bbb_protocol::packets::{
     Direction as ProtocolDirection, Vec3d as ProtocolVec3d,
 };
 use bbb_renderer::{CameraPose, SelectionOutline};
-use bbb_world::{BlockPos, EntityPickBoundsState, EntityTransformState, WorldStore};
+use bbb_world::{BlockPos, EntityPickTargetState, WorldStore};
 
 use crate::block_outline::{
     selection_outline_for_block, selection_outline_for_probe, BlockOutlineTarget,
@@ -105,14 +105,16 @@ fn crosshair_entity_hit_from_world(
     max_distance: f64,
 ) -> Option<RaycastEntityHit> {
     let local_player_id = world.local_player_id();
-    let targets = world.entity_transforms().into_iter().filter_map(|entity| {
-        if local_player_id.is_some_and(|id| id == entity.id) {
-            return None;
-        }
-        world
-            .probe_entity_pick_bounds(entity.id)
-            .map(|bounds| EntityRaycastTarget { entity, bounds })
-    });
+    let targets = world
+        .entity_pick_targets()
+        .into_iter()
+        .filter_map(|target| {
+            if local_player_id.is_some_and(|id| id == target.entity_id) {
+                None
+            } else {
+                Some(EntityRaycastTarget { target })
+            }
+        });
     raycast_crosshair_entity_hit(pose?, max_distance, targets)
 }
 
@@ -180,8 +182,7 @@ where
 
 #[derive(Debug, Clone, Copy)]
 struct EntityRaycastTarget {
-    entity: EntityTransformState,
-    bounds: EntityPickBoundsState,
+    target: EntityPickTargetState,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -225,12 +226,12 @@ where
         };
         nearest = Some(RaycastEntityHit {
             hit: CrosshairEntityHit {
-                entity_id: target.entity.id,
+                entity_id: target.target.entity_id,
                 location,
                 relative_location: ProtocolVec3d {
-                    x: location.x - target.entity.position.x,
-                    y: location.y - target.entity.position.y,
-                    z: location.z - target.entity.position.z,
+                    x: location.x - target.target.position.x,
+                    y: location.y - target.target.position.y,
+                    z: location.z - target.target.position.z,
                 },
             },
             distance_sq,
@@ -245,16 +246,16 @@ fn raycast_entity_target_distance(
     max_distance: f64,
     target: EntityRaycastTarget,
 ) -> Option<f64> {
-    let inflate = f64::from(target.bounds.pick_radius);
+    let inflate = f64::from(target.target.bounds.pick_radius);
     let min = [
-        target.entity.position.x + f64::from(target.bounds.min[0]) - inflate,
-        target.entity.position.y + f64::from(target.bounds.min[1]) - inflate,
-        target.entity.position.z + f64::from(target.bounds.min[2]) - inflate,
+        target.target.position.x + f64::from(target.target.bounds.min[0]) - inflate,
+        target.target.position.y + f64::from(target.target.bounds.min[1]) - inflate,
+        target.target.position.z + f64::from(target.target.bounds.min[2]) - inflate,
     ];
     let max = [
-        target.entity.position.x + f64::from(target.bounds.max[0]) + inflate,
-        target.entity.position.y + f64::from(target.bounds.max[1]) + inflate,
-        target.entity.position.z + f64::from(target.bounds.max[2]) + inflate,
+        target.target.position.x + f64::from(target.target.bounds.max[0]) + inflate,
+        target.target.position.y + f64::from(target.target.bounds.max[1]) + inflate,
+        target.target.position.z + f64::from(target.target.bounds.max[2]) + inflate,
     ];
     ray_box_distance(eye, direction, max_distance, min, max)
 }
@@ -749,6 +750,26 @@ mod tests {
         };
         assert_eq!(hit.entity_id, 12);
         assert_vec3_close(hit.relative_location, [0.0, 0.6200000047683716, -1.0]);
+    }
+
+    #[test]
+    fn crosshair_target_hits_ender_dragon_part_id_from_world_state() {
+        const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            100,
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            [0.0, 1.0, 9.0],
+        ));
+        let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected dragon part entity hit");
+        };
+        assert_eq!(hit.entity_id, 101);
+        assert_vec3_close(hit.location, [0.0, 1.6200000047683716, 2.0]);
+        assert_vec3_close(hit.relative_location, [0.0, 0.6200000047683716, -0.5]);
     }
 
     #[test]

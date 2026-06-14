@@ -12,6 +12,9 @@ use super::{
 use crate::entities::dimensions::{
     vanilla_client_position_for_entity_data, vanilla_pick_bounds_for_entity_data,
 };
+use crate::entities::dragon::{
+    ender_dragon_part_pick_targets, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+};
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
 
 pub(crate) struct EntityStore {
@@ -100,6 +103,31 @@ impl EntityStore {
             &attributes.attributes,
             Some(client_animations.animations),
         )
+    }
+
+    pub(crate) fn pick_targets(&self) -> Vec<super::EntityPickTargetState> {
+        let mut targets = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                continue;
+            };
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
+                targets.extend(ender_dragon_part_pick_targets(identity.id, *transform));
+            } else if let Some(bounds) = self.pick_bounds(identity.id) {
+                targets.push(super::EntityPickTargetState {
+                    entity_id: identity.id,
+                    position: transform.position,
+                    bounds,
+                });
+            }
+        }
+        targets
     }
 
     pub(crate) fn refresh_client_position_from_entity_data(&mut self, id: i32) -> Option<()> {

@@ -644,6 +644,100 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
 }
 
 #[test]
+fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
+    const ENDER_DRAGON_TYPE_ID: i32 = 43;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        100,
+        ENDER_DRAGON_TYPE_ID,
+        0.0,
+    ));
+
+    assert_eq!(store.probe_entity_pick_bounds(100), None);
+    let targets = store.entity_pick_targets();
+    assert_eq!(
+        targets
+            .iter()
+            .map(|target| target.entity_id)
+            .collect::<Vec<_>>(),
+        vec![101, 102, 103, 104, 105, 106, 107, 108]
+    );
+
+    let expected = [
+        (
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -8.5,
+            },
+            EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0),
+        ),
+        (
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -7.5,
+            },
+            EntityPickBoundsState::from_base_size(3.0, 3.0, 0.0),
+        ),
+        (
+            EntityVec3 {
+                x: 1.0,
+                y: 64.0,
+                z: -2.5,
+            },
+            EntityPickBoundsState::from_base_size(5.0, 3.0, 0.0),
+        ),
+        (
+            EntityVec3 {
+                x: 1.0,
+                y: 65.5,
+                z: 1.5,
+            },
+            EntityPickBoundsState::from_base_size(2.0, 2.0, 0.0),
+        ),
+        (
+            EntityVec3 {
+                x: 1.0,
+                y: 65.5,
+                z: 3.5,
+            },
+            EntityPickBoundsState::from_base_size(2.0, 2.0, 0.0),
+        ),
+        (
+            EntityVec3 {
+                x: 1.0,
+                y: 65.5,
+                z: 5.5,
+            },
+            EntityPickBoundsState::from_base_size(2.0, 2.0, 0.0),
+        ),
+        (
+            EntityVec3 {
+                x: 5.5,
+                y: 66.0,
+                z: -2.0,
+            },
+            EntityPickBoundsState::from_base_size(4.0, 2.0, 0.0),
+        ),
+        (
+            EntityVec3 {
+                x: -3.5,
+                y: 66.0,
+                z: -2.0,
+            },
+            EntityPickBoundsState::from_base_size(4.0, 2.0, 0.0),
+        ),
+    ];
+
+    for (target, (position, bounds)) in targets.iter().zip(expected) {
+        assert_entity_vec3_close(target.position, position);
+        assert_eq!(target.bounds, bounds);
+    }
+}
+
+#[test]
 fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_data(20, 73, 2));
@@ -3012,6 +3106,17 @@ fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEnt
     protocol_add_entity_with_type_data(id, entity_type_id, 99)
 }
 
+fn protocol_add_entity_with_type_y_rot(
+    id: i32,
+    entity_type_id: i32,
+    y_rot: f32,
+) -> ProtocolAddEntity {
+    ProtocolAddEntity {
+        y_rot,
+        ..protocol_add_entity_with_type(id, entity_type_id)
+    }
+}
+
 fn protocol_add_entity_with_type_data(
     id: i32,
     entity_type_id: i32,
@@ -3133,6 +3238,29 @@ fn assert_pick_bounds_close(
         "pick_radius expected {}, got {}",
         expected.pick_radius,
         actual.pick_radius,
+    );
+}
+
+fn assert_entity_vec3_close(actual: EntityVec3, expected: EntityVec3) {
+    const EPSILON: f64 = 0.000_000_1;
+
+    assert!(
+        (actual.x - expected.x).abs() <= EPSILON,
+        "x: expected {}, got {}",
+        expected.x,
+        actual.x
+    );
+    assert!(
+        (actual.y - expected.y).abs() <= EPSILON,
+        "y: expected {}, got {}",
+        expected.y,
+        actual.y
+    );
+    assert!(
+        (actual.z - expected.z).abs() <= EPSILON,
+        "z: expected {}, got {}",
+        expected.z,
+        actual.z
     );
 }
 

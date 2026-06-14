@@ -15,6 +15,7 @@ use crate::WorldStore;
 mod animations;
 mod components;
 mod dimensions;
+mod dragon;
 mod metadata;
 mod movement;
 mod passengers;
@@ -131,6 +132,13 @@ pub struct EntityTransformState {
     pub x_rot: f32,
     pub y_head_rot: f32,
     pub on_ground: Option<bool>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntityPickTargetState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub bounds: EntityPickBoundsState,
 }
 
 impl EntityTransformState {
@@ -289,6 +297,22 @@ impl WorldStore {
             return None;
         }
         self.entities.pick_bounds(id)
+    }
+
+    pub fn entity_pick_targets(&self) -> Vec<EntityPickTargetState> {
+        self.entities
+            .pick_targets()
+            .into_iter()
+            .filter(|target| {
+                let Some(identity) = self.entities.identity(target.entity_id) else {
+                    return true;
+                };
+                identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
+                    || !self
+                        .player_info_entry(identity.uuid)
+                        .is_some_and(|info| info.is_spectator())
+            })
+            .collect()
     }
 
     pub fn entity_transforms(&self) -> Vec<EntityTransformState> {
