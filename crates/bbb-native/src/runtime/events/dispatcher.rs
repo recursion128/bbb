@@ -340,6 +340,7 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
             }
             NetEvent::Respawn(respawn) => {
                 world.apply_respawn(&respawn);
+                sync_local_player_counters(counters, world);
             }
             NetEvent::PlayerPosition(update) => {
                 apply_player_position_update(counters, world, update);

@@ -315,6 +315,10 @@ pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStor
     counters.entity_head_rotations_applied = world_counters.entity_head_rotations_applied;
     counters.entity_removes_received = world_counters.entity_removes_received;
     counters.entities_removed = world_counters.entities_removed;
+    counters.minecart_moves_received = world_counters.minecart_moves_received;
+    counters.minecart_moves_applied = world_counters.minecart_moves_applied;
+    counters.minecart_lerp_steps_received = world_counters.minecart_lerp_steps_received;
+    counters.minecart_lerp_steps_tracked = world_counters.minecart_lerp_steps_tracked;
 }
 
 pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &WorldStore) {
@@ -324,6 +328,7 @@ pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &Worl
         world.last_block_changed_ack().map(|ack| ack.sequence);
     counters.block_destruction_packets = world_counters.block_destructions_received;
     counters.block_destructions_tracked = world_counters.block_destructions_tracked;
+    counters.block_destructions_removed = world_counters.block_destructions_removed;
     counters.block_event_packets = world_counters.block_events_received;
     counters.block_events_tracked = world_counters.block_events_tracked;
     counters.level_event_packets = world_counters.level_events_received;

@@ -26,15 +26,15 @@ use bbb_protocol::packets::{
     RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
     RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
     RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType,
-    RemoveEntities, RotateHead, SectionBlocksUpdate, SelectAdvancementsTab, ServerLinkEntry,
-    ServerLinkKnownType, ServerLinkType, ServerLinks, SetChunkCacheCenter, SetChunkCacheRadius,
-    SetCursorItem, SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetPassengers,
-    SetPlayerInventory, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
-    SoundEvent, SoundEventHolder, SoundSource, StonecutterSelectableRecipeSummary, StopSound,
-    TagNetworkPayload, TagQuery, TeleportEntity, TestInstanceBlockStatus, TrackedWaypoint,
-    TrackedWaypointPacket, UpdateAdvancements, UpdateAttributes, UpdateRecipes, UpdateTags,
-    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
-    WaypointOperation, WaypointVec3i,
+    RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SelectAdvancementsTab,
+    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetChunkCacheCenter,
+    SetChunkCacheRadius, SetCursorItem, SetEntityData, SetEntityLink, SetEntityMotion,
+    SetEquipment, SetPassengers, SetPlayerInventory, ShowDialog, SignedMessageBody,
+    SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
+    StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload, TagQuery, TeleportEntity,
+    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateAdvancements,
+    UpdateAttributes, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, RegistryPacketEntry, WorldStore};
 use std::collections::BTreeMap;
@@ -2428,7 +2428,7 @@ fn debug_game_events_update_snapshot_counters() {
 
 #[test]
 fn block_destruction_event_updates_world_and_counter() {
-    let (tx, mut rx) = mpsc::channel(1);
+    let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::BlockDestruction(
         bbb_protocol::packets::BlockDestruction {
             id: 4,
@@ -2441,23 +2441,38 @@ fn block_destruction_event_updates_world_and_counter() {
         },
     ))
     .unwrap();
+    tx.try_send(NetEvent::BlockDestruction(
+        bbb_protocol::packets::BlockDestruction {
+            id: 4,
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 64,
+                z: -5,
+            },
+            progress: 10,
+        },
+    ))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters {
         block_destruction_packets: 99,
         block_destructions_tracked: 99,
+        block_destructions_removed: 99,
         ..NetCounters::default()
     };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        1
+        2
     );
-    assert_eq!(counters.block_destruction_packets, 1);
-    assert_eq!(counters.block_destructions_tracked, 1);
-    assert_eq!(world.counters().block_destructions_received, 1);
-    assert_eq!(world.counters().block_destructions_tracked, 1);
-    assert_eq!(world.block_destruction(4).unwrap().progress, 6);
+    assert_eq!(counters.block_destruction_packets, 2);
+    assert_eq!(counters.block_destructions_tracked, 0);
+    assert_eq!(counters.block_destructions_removed, 1);
+    assert_eq!(world.counters().block_destructions_received, 2);
+    assert_eq!(world.counters().block_destructions_tracked, 0);
+    assert_eq!(world.counters().block_destructions_removed, 1);
+    assert!(world.block_destruction(4).is_none());
 }
 
 #[test]
@@ -3160,24 +3175,41 @@ fn minecart_along_track_event_updates_world_state() {
     );
     assert_eq!(entity.y_rot, 90.0);
     assert_eq!(entity.x_rot, 5.0);
+    assert_eq!(world.counters().minecart_moves_received, 1);
     assert_eq!(world.counters().minecart_moves_applied, 1);
+    assert_eq!(world.counters().minecart_lerp_steps_received, 1);
+    assert_eq!(world.counters().minecart_lerp_steps_tracked, 1);
+    assert_eq!(counters.minecart_moves_received, 1);
+    assert_eq!(counters.minecart_moves_applied, 1);
+    assert_eq!(counters.minecart_lerp_steps_received, 1);
+    assert_eq!(counters.minecart_lerp_steps_tracked, 1);
 }
 
 #[test]
 fn login_projects_local_player_id_from_world() {
-    let (tx, mut rx) = mpsc::channel(1);
+    let (tx, mut rx) = mpsc::channel(2);
+    let respawn_info = protocol_play_login(9).common_spawn_info;
     tx.try_send(NetEvent::Login(protocol_play_login(9)))
         .unwrap();
+    tx.try_send(NetEvent::Respawn(Respawn {
+        common_spawn_info: respawn_info,
+        data_to_keep: 0,
+    }))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        1
+        2
     );
     assert_eq!(world.local_player_id(), Some(9));
+    assert_eq!(world.counters().play_logins_received, 1);
+    assert_eq!(world.counters().respawns_received, 1);
     assert_eq!(counters.player_entity_id, Some(9));
+    assert_eq!(counters.play_logins_received, 1);
+    assert_eq!(counters.respawns_received, 1);
 }
 
 #[test]

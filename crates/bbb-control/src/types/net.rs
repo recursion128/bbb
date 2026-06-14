@@ -84,6 +84,10 @@ pub struct NetCounters {
     #[serde(default)]
     pub chunks_forgotten: usize,
     pub player_entity_id: Option<i32>,
+    #[serde(default)]
+    pub play_logins_received: usize,
+    #[serde(default)]
+    pub respawns_received: usize,
     pub player_pose: Option<PlayerPose>,
     pub last_player_combat: Option<PlayerCombatState>,
     pub last_player_look_at: Option<PlayerLookAtState>,
@@ -227,6 +231,8 @@ pub struct NetCounters {
     pub block_destruction_packets: usize,
     #[serde(default)]
     pub block_destructions_tracked: usize,
+    #[serde(default)]
+    pub block_destructions_removed: usize,
     pub block_event_packets: usize,
     #[serde(default)]
     pub block_events_tracked: usize,
@@ -382,6 +388,14 @@ pub struct NetCounters {
     pub entity_removes_received: usize,
     #[serde(default)]
     pub entities_removed: usize,
+    #[serde(default)]
+    pub minecart_moves_received: usize,
+    #[serde(default)]
+    pub minecart_moves_applied: usize,
+    #[serde(default)]
+    pub minecart_lerp_steps_received: usize,
+    #[serde(default)]
+    pub minecart_lerp_steps_tracked: usize,
     pub transfer_packets: usize,
     pub take_item_entity_packets: usize,
     #[serde(default)]

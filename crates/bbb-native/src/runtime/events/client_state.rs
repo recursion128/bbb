@@ -135,6 +135,8 @@ pub(super) fn sync_local_player_counters(counters: &mut NetCounters, world: &Wor
     counters.last_player_look_at = local.last_look_at.map(control_player_look_at);
 
     let world_counters = world.counters();
+    counters.play_logins_received = world_counters.play_logins_received;
+    counters.respawns_received = world_counters.respawns_received;
     counters.player_abilities_packets = world_counters.player_abilities_packets;
     counters.player_health_packets = world_counters.player_health_packets;
     counters.player_experience_packets = world_counters.player_experience_packets;
