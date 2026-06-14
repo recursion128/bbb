@@ -1,8 +1,9 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
-    self, CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-    ContainerSlotStateChanged, InteractionHand, PickItemFromBlock, PlayerAction, PlayerCommand,
-    PlayerHealth, PlayerInput, PlayerPositionState, UseItem, UseItemOn,
+    self, AttackEntity, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+    ContainerCloseRequest, ContainerSlotStateChanged, InteractEntity, InteractionHand,
+    PickItemFromBlock, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
+    UseItem, UseItemOn,
 };
 
 use crate::{
@@ -34,6 +35,22 @@ pub(crate) async fn send_player_action(
     action: PlayerAction,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_player_action(action);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_attack_entity(
+    conn: &mut RawConnection,
+    packet: AttackEntity,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_attack_entity(packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_interact_entity(
+    conn: &mut RawConnection,
+    packet: InteractEntity,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_interact_entity(packet);
     conn.send_packet(id, &payload).await
 }
 

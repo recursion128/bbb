@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{codec::Encoder, ids};
 
-use super::{chunks, connection, BlockPos};
+use super::{chunks, connection, BlockPos, Vec3d};
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
 const PLAYER_INPUT_BACKWARD: u8 = 2;
@@ -13,6 +13,9 @@ const PLAYER_INPUT_RIGHT: u8 = 8;
 const PLAYER_INPUT_JUMP: u8 = 16;
 const PLAYER_INPUT_SHIFT: u8 = 32;
 const PLAYER_INPUT_SPRINT: u8 = 64;
+const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
+const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
+const LP_VEC3_MAX_QUANTIZED_VALUE: f64 = 32766.0;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerInput {
@@ -38,6 +41,19 @@ pub struct PlayerAction {
     pub pos: BlockPos,
     pub direction: Direction,
     pub sequence: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AttackEntity {
+    pub entity_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct InteractEntity {
+    pub entity_id: i32,
+    pub hand: InteractionHand,
+    pub location: Vec3d,
+    pub using_secondary_action: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -339,6 +355,21 @@ pub fn encode_play_player_action(action: PlayerAction) -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_PLAYER_ACTION, out.into_inner())
 }
 
+pub fn encode_play_attack_entity(packet: AttackEntity) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.entity_id);
+    (ids::play::SERVERBOUND_ATTACK, out.into_inner())
+}
+
+pub fn encode_play_interact_entity(packet: InteractEntity) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.entity_id);
+    out.write_var_i32(packet.hand.id());
+    encode_lp_vec3(&mut out, packet.location);
+    out.write_bool(packet.using_secondary_action);
+    (ids::play::SERVERBOUND_INTERACT, out.into_inner())
+}
+
 pub fn encode_play_swing(hand: InteractionHand) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(hand.id());
@@ -440,6 +471,44 @@ fn encode_hashed_component_patch(out: &mut Encoder, patch: &HashedComponentPatch
     for component_type_id in &patch.removed_components {
         out.write_var_i32(*component_type_id);
     }
+}
+
+fn encode_lp_vec3(out: &mut Encoder, value: Vec3d) {
+    let x = sanitize_lp_vec3_value(value.x);
+    let y = sanitize_lp_vec3_value(value.y);
+    let z = sanitize_lp_vec3_value(value.z);
+    let chessboard_length = x.abs().max(y.abs()).max(z.abs());
+    if chessboard_length < LP_VEC3_ABS_MIN_VALUE {
+        out.write_u8(0);
+        return;
+    }
+
+    let scale = chessboard_length.ceil() as u64;
+    let is_partial = (scale & 3) != scale;
+    let markers = if is_partial { (scale & 3) | 4 } else { scale };
+    let buffer = markers
+        | (pack_lp_vec3_component(x / scale as f64) << 3)
+        | (pack_lp_vec3_component(y / scale as f64) << 18)
+        | (pack_lp_vec3_component(z / scale as f64) << 33);
+
+    out.write_u8(buffer as u8);
+    out.write_u8((buffer >> 8) as u8);
+    out.write_i32((buffer >> 16) as i32);
+    if is_partial {
+        out.write_var_i32((scale >> 2) as i32);
+    }
+}
+
+fn sanitize_lp_vec3_value(value: f64) -> f64 {
+    if value.is_nan() {
+        0.0
+    } else {
+        value.clamp(-LP_VEC3_ABS_MAX_VALUE, LP_VEC3_ABS_MAX_VALUE)
+    }
+}
+
+fn pack_lp_vec3_component(value: f64) -> u64 {
+    ((value * 0.5 + 0.5) * LP_VEC3_MAX_QUANTIZED_VALUE).round() as u64
 }
 
 pub fn encode_play_set_carried_item(slot: i16) -> (i32, Vec<u8>) {

@@ -10,10 +10,11 @@ use crate::{
 mod commands;
 
 pub(crate) use commands::{
-    maybe_send_perform_respawn, send_command_suggestion_request, send_container_button_click,
-    send_container_click, send_container_close, send_container_slot_state_changed,
-    send_pick_item_from_block, send_player_action, send_player_command, send_player_input_command,
-    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
+    maybe_send_perform_respawn, send_attack_entity, send_command_suggestion_request,
+    send_container_button_click, send_container_click, send_container_close,
+    send_container_slot_state_changed, send_interact_entity, send_pick_item_from_block,
+    send_player_action, send_player_command, send_player_input_command, send_set_held_slot_command,
+    send_swing_command, send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -86,6 +87,12 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::PlayerInput(input)) => {
                         send_player_input_command(conn, input).await?;
                     }
+                    Some(NetCommand::AttackEntity(packet)) => {
+                        send_attack_entity(conn, packet).await?;
+                    }
+                    Some(NetCommand::InteractEntity(packet)) => {
+                        send_interact_entity(conn, packet).await?;
+                    }
                     Some(NetCommand::SetHeldSlot(slot)) => {
                         send_set_held_slot_command(conn, slot).await?;
                     }
@@ -142,6 +149,8 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::PlayerAction(_)) => {}
                     Some(NetCommand::PlayerCommand(_)) => {}
                     Some(NetCommand::PlayerInput(_)) => {}
+                    Some(NetCommand::AttackEntity(_)) => {}
+                    Some(NetCommand::InteractEntity(_)) => {}
                     Some(NetCommand::SetHeldSlot(_)) => {}
                     Some(NetCommand::Swing(_)) => {}
                     Some(NetCommand::UseItemOn(_)) => {}

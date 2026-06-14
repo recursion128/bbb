@@ -945,6 +945,12 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
 }
 
 #[test]
+fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order() {
+    assert_eq!(ids::play::SERVERBOUND_ATTACK, 1);
+    assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
+}
+
+#[test]
 fn encodes_container_inventory_packets() {
     let (id, payload) = encode_play_container_button_click(ContainerButtonClick {
         container_id: 7,
@@ -1090,6 +1096,49 @@ fn encodes_player_action_packet() {
     );
     assert_eq!(decoder.read_u8().unwrap(), 2);
     assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_entity_interaction_packets() {
+    let (id, payload) = encode_play_attack_entity(AttackEntity { entity_id: 123 });
+    assert_eq!(id, ids::play::SERVERBOUND_ATTACK);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 123);
+    assert!(decoder.is_empty());
+
+    let (id, payload) = encode_play_interact_entity(InteractEntity {
+        entity_id: 123,
+        hand: InteractionHand::OffHand,
+        location: Vec3d::default(),
+        using_secondary_action: true,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_INTERACT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 123);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_u8().unwrap(), 0);
+    assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+
+    let (_, payload) = encode_play_interact_entity(InteractEntity {
+        entity_id: 5,
+        hand: InteractionHand::MainHand,
+        location: Vec3d {
+            x: 1.0,
+            y: 0.0,
+            z: -1.0,
+        },
+        using_secondary_action: false,
+    });
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 5);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(
+        decoder.read_exact(6, "lp_vec3").unwrap(),
+        &[0xf1, 0xff, 0x00, 0x00, 0xff, 0xff]
+    );
+    assert!(!decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
 }
 

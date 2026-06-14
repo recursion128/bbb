@@ -1,8 +1,9 @@
 use super::{
-    maybe_send_perform_respawn, send_command_suggestion_request, send_container_button_click,
-    send_container_click, send_container_close, send_container_slot_state_changed,
-    send_pick_item_from_block, send_player_action, send_player_command, send_player_input_command,
-    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
+    maybe_send_perform_respawn, send_attack_entity, send_command_suggestion_request,
+    send_container_button_click, send_container_click, send_container_close,
+    send_container_slot_state_changed, send_interact_entity, send_pick_item_from_block,
+    send_player_action, send_player_command, send_player_input_command, send_set_held_slot_command,
+    send_swing_command, send_use_item, send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -12,10 +13,10 @@ use bbb_protocol::{
     codec::Decoder,
     ids,
     packets::{
-        CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-        ContainerInput, ContainerSlotStateChanged, HashedComponentPatch, HashedItemStack,
-        HashedStack, InteractionHand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
-        PlayerPositionState, Vec3d,
+        AttackEntity, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+        ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedComponentPatch,
+        HashedItemStack, HashedStack, InteractEntity, InteractionHand, PlayerAction, PlayerCommand,
+        PlayerHealth, PlayerInput, PlayerPositionState, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -128,6 +129,68 @@ async fn send_player_action_encodes_player_action_packet() {
             pos: bbb_protocol::packets::BlockPos { x: 1, y: 64, z: -2 },
             direction: bbb_protocol::packets::Direction::West,
             sequence: 9,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_entity_interaction_commands_encode_packets() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("attack entity command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ATTACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 123);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("interact entity command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_INTERACT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 5);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(
+            decoder.read_exact(6, "lp_vec3").unwrap(),
+            &[0xf1, 0xff, 0x00, 0x00, 0xff, 0xff]
+        );
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_attack_entity(&mut conn, AttackEntity { entity_id: 123 })
+        .await
+        .unwrap();
+    send_interact_entity(
+        &mut conn,
+        InteractEntity {
+            entity_id: 5,
+            hand: InteractionHand::MainHand,
+            location: Vec3d {
+                x: 1.0,
+                y: 0.0,
+                z: -1.0,
+            },
+            using_secondary_action: false,
         },
     )
     .await
