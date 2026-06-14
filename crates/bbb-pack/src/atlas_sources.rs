@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use regex::Regex;
 use serde::Deserialize;
 
 use crate::{
@@ -51,6 +52,10 @@ pub(crate) fn load_atlas_texture_entries(
                     &permutations,
                     separator,
                 )?;
+            }
+            "minecraft:filter" => {
+                let pattern = source.required_pattern()?;
+                remove_matching_entries(&mut entries, &pattern)?;
             }
             other => bail!("unsupported atlas source type {other:?} in atlas {atlas_name}"),
         }
@@ -181,6 +186,7 @@ struct RawAtlasSource {
     resource: Option<String>,
     sprite: Option<String>,
     palette_key: Option<String>,
+    pattern: Option<RawIdentifierPattern>,
     permutations: Option<BTreeMap<String, String>>,
     textures: Option<Vec<String>>,
     separator: Option<String>,
@@ -245,6 +251,55 @@ impl RawAtlasSource {
             .map(|(suffix, location)| Ok((suffix.clone(), ResourceLocation::parse(location)?)))
             .collect()
     }
+
+    fn required_pattern(&self) -> Result<IdentifierPattern> {
+        self.pattern
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("missing atlas source pattern"))?
+            .compile()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct RawIdentifierPattern {
+    namespace: Option<String>,
+    path: Option<String>,
+}
+
+#[derive(Debug)]
+struct IdentifierPattern {
+    namespace: Option<Regex>,
+    path: Option<Regex>,
+}
+
+impl RawIdentifierPattern {
+    fn compile(&self) -> Result<IdentifierPattern> {
+        Ok(IdentifierPattern {
+            namespace: compile_optional_regex(self.namespace.as_deref(), "namespace")?,
+            path: compile_optional_regex(self.path.as_deref(), "path")?,
+        })
+    }
+}
+
+impl IdentifierPattern {
+    fn matches(&self, id: &ResourceLocation) -> bool {
+        self.namespace
+            .as_ref()
+            .map_or(true, |pattern| pattern.is_match(&id.namespace))
+            && self
+                .path
+                .as_ref()
+                .map_or(true, |pattern| pattern.is_match(&id.path))
+    }
+}
+
+fn compile_optional_regex(pattern: Option<&str>, field: &str) -> Result<Option<Regex>> {
+    pattern
+        .map(|pattern| {
+            Regex::new(pattern)
+                .with_context(|| format!("compile atlas filter {field} regex {pattern:?}"))
+        })
+        .transpose()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -285,6 +340,13 @@ pub(crate) enum AtlasTextureEntry {
 }
 
 impl AtlasTextureEntry {
+    fn id(&self) -> &str {
+        match self {
+            AtlasTextureEntry::File { id, .. } => id,
+            AtlasTextureEntry::Image(image) => &image.id,
+        }
+    }
+
     pub(crate) fn into_source(self) -> Result<SpriteSource> {
         match self {
             AtlasTextureEntry::File { id, path } => SpriteSource::from_png_file(id, path),
@@ -298,6 +360,21 @@ impl AtlasTextureEntry {
             AtlasTextureEntry::Image(image) => Ok(image),
         }
     }
+}
+
+fn remove_matching_entries(
+    entries: &mut Vec<AtlasTextureEntry>,
+    pattern: &IdentifierPattern,
+) -> Result<()> {
+    let mut retained = Vec::with_capacity(entries.len());
+    for entry in entries.drain(..) {
+        let id = ResourceLocation::parse(entry.id())?;
+        if !pattern.matches(&id) {
+            retained.push(entry);
+        }
+    }
+    *entries = retained;
+    Ok(())
 }
 
 fn collect_png_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
@@ -420,7 +497,11 @@ fn create_palette_mapping(
 
 #[cfg(test)]
 mod tests {
-    use super::apply_palette_permutation;
+    use super::{apply_palette_permutation, load_atlas_texture_entries, AtlasTextureEntry};
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use crate::{PackRoots, MC_VERSION};
     use crate::{SpriteImage, SpriteMipmapStrategy, SpriteTextureMetadata};
 
     #[test]
@@ -468,5 +549,109 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("different sizes"));
+    }
+
+    #[test]
+    fn atlas_filter_removes_previous_entries_matching_identifier_pattern() {
+        let root = unique_temp_dir("atlas-filter");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        std::fs::create_dir_all(assets_dir.join("textures").join("block")).unwrap();
+        std::fs::create_dir_all(assets_dir.join("textures").join("entity")).unwrap();
+        std::fs::create_dir_all(assets_dir.join("atlases")).unwrap();
+        std::fs::write(
+            assets_dir.join("textures").join("block").join("stone.png"),
+            [],
+        )
+        .unwrap();
+        std::fs::write(
+            assets_dir
+                .join("textures")
+                .join("block")
+                .join("filtered_stone.png"),
+            [],
+        )
+        .unwrap();
+        std::fs::write(
+            assets_dir.join("textures").join("entity").join("bell.png"),
+            [],
+        )
+        .unwrap();
+        std::fs::write(
+            assets_dir.join("atlases").join("filtered.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "source": "block",
+                  "prefix": "block/"
+                },
+                {
+                  "type": "minecraft:single",
+                  "resource": "minecraft:entity/bell"
+                },
+                {
+                  "type": "minecraft:filter",
+                  "pattern": {
+                    "namespace": "minecraft",
+                    "path": "filtered|entity/"
+                  }
+                }
+              ]
+            }"#,
+        )
+        .unwrap();
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let entries = load_atlas_texture_entries(&roots, "filtered").unwrap();
+        let ids = entries.iter().map(entry_id).collect::<Vec<_>>();
+
+        assert_eq!(ids, vec!["minecraft:block/stone"]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn atlas_filter_without_pattern_rejects_source() {
+        let root = unique_temp_dir("atlas-filter-missing-pattern");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft")
+            .join("atlases");
+        std::fs::create_dir_all(&assets_dir).unwrap();
+        std::fs::write(
+            assets_dir.join("bad.json"),
+            r#"{"sources":[{"type":"minecraft:filter"}]}"#,
+        )
+        .unwrap();
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let err = load_atlas_texture_entries(&roots, "bad").unwrap_err();
+
+        assert!(err.to_string().contains("missing atlas source pattern"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn entry_id(entry: &AtlasTextureEntry) -> &str {
+        match entry {
+            AtlasTextureEntry::File { id, .. } => id,
+            AtlasTextureEntry::Image(image) => &image.id,
+        }
+    }
+
+    fn unique_temp_dir(label: &str) -> PathBuf {
+        let mut dir = std::env::temp_dir();
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        dir.push(format!("bbb-pack-{label}-{nanos}"));
+        dir
     }
 }
