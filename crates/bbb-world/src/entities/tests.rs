@@ -3,8 +3,9 @@ use super::*;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
-    EntityAnimation as ProtocolEntityAnimation, EntityDataValue as ProtocolEntityDataValue,
-    EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
+    DataComponentPatchSummary, EntityAnimation as ProtocolEntityAnimation,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+    EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
     HurtAnimation as ProtocolHurtAnimation, ItemStackSummary,
     ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
@@ -576,67 +577,35 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
 
     assert_eq!(
         store.probe_entity_pick_bounds(10),
-        Some(EntityPickBoundsState {
-            width: 0.6,
-            height: 1.8,
-            pick_radius: 0.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(0.6, 1.8, 0.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(11),
-        Some(EntityPickBoundsState {
-            width: 1.375,
-            height: 0.5625,
-            pick_radius: 0.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(1.375, 0.5625, 0.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(12),
-        Some(EntityPickBoundsState {
-            width: 0.98,
-            height: 0.7,
-            pick_radius: 0.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(0.98, 0.7, 0.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(13),
-        Some(EntityPickBoundsState {
-            width: 1.0,
-            height: 1.0,
-            pick_radius: 1.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(1.0, 1.0, 1.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(14),
-        Some(EntityPickBoundsState {
-            width: 0.3125,
-            height: 0.3125,
-            pick_radius: 1.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(0.3125, 0.3125, 1.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(15),
-        Some(EntityPickBoundsState {
-            width: 2.0,
-            height: 2.0,
-            pick_radius: 0.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(2.0, 2.0, 0.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(16),
-        Some(EntityPickBoundsState {
-            width: 0.3125,
-            height: 0.3125,
-            pick_radius: 1.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(0.3125, 0.3125, 1.0))
     );
     assert_eq!(
         store.probe_entity_pick_bounds(19),
-        Some(EntityPickBoundsState {
-            width: 1.0,
-            height: 1.0,
-            pick_radius: 0.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0))
     );
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 19,
@@ -660,15 +629,128 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(19),
-        Some(EntityPickBoundsState {
-            width: 2.5,
-            height: 0.75,
-            pick_radius: 0.0,
-        })
+        Some(EntityPickBoundsState::from_base_size(2.5, 0.75, 0.0))
     );
     assert_eq!(store.probe_entity_pick_bounds(17), None);
     assert_eq!(store.probe_entity_pick_bounds(18), None);
     assert_eq!(store.probe_entity_pick_bounds(99), None);
+}
+
+#[test]
+fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_data(20, 73, 2));
+    store.apply_add_entity(protocol_add_entity_with_type_data(21, 60, 5));
+    store.apply_add_entity(protocol_add_entity_with_type_data(22, 93, 3));
+    store.apply_add_entity(protocol_add_entity_with_type_data(23, 76, 0));
+
+    assert_eq!(
+        store.probe_entity_transform(20).unwrap().position,
+        EntityVec3 {
+            x: 1.5,
+            y: 64.5,
+            z: -1.03125,
+        }
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(20),
+        Some(EntityPickBoundsState::from_centered_size(
+            0.75, 0.75, 0.0625, 0.0,
+        ))
+    );
+
+    assert_eq!(
+        store.probe_entity_transform(21).unwrap().position,
+        EntityVec3 {
+            x: 1.03125,
+            y: 64.5,
+            z: -1.5,
+        }
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(21),
+        Some(EntityPickBoundsState::from_centered_size(
+            0.0625, 0.75, 0.75, 0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 21,
+        values: vec![ProtocolEntityDataValue {
+            data_id: 9,
+            serializer_id: 7,
+            value: EntityDataValueKind::ItemStack(ItemStackSummary {
+                item_id: Some(999),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![41],
+                    removed_type_ids: Vec::new(),
+                },
+            }),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(21),
+        Some(EntityPickBoundsState::from_centered_size(
+            0.0625, 1.0, 1.0, 0.0,
+        ))
+    );
+
+    assert_eq!(
+        store.probe_entity_transform(22).unwrap().position,
+        EntityVec3 {
+            x: 1.5,
+            y: 64.5,
+            z: -1.96875,
+        }
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(22),
+        Some(EntityPickBoundsState::from_centered_size(
+            1.0, 1.0, 0.0625, 0.0,
+        ))
+    );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 22,
+        values: vec![ProtocolEntityDataValue {
+            data_id: 9,
+            serializer_id: 34,
+            value: EntityDataValueKind::PaintingVariant(
+                bbb_protocol::packets::PaintingVariantData {
+                    registry_id: Some(21),
+                    direct: None,
+                }
+            ),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_transform(22).unwrap().position,
+        EntityVec3 {
+            x: 2.0,
+            y: 65.0,
+            z: -1.96875,
+        }
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(22),
+        Some(EntityPickBoundsState::from_centered_size(
+            4.0, 4.0, 0.0625, 0.0,
+        ))
+    );
+
+    assert_eq!(
+        store.probe_entity_transform(23).unwrap().position,
+        EntityVec3 {
+            x: 1.5,
+            y: 64.375,
+            z: -1.5,
+        }
+    );
+    assert_eq!(
+        store.probe_entity_pick_bounds(23),
+        Some(EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0))
+    );
 }
 
 #[test]
@@ -1173,6 +1255,14 @@ fn protocol_add_entity(id: i32) -> ProtocolAddEntity {
 }
 
 fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEntity {
+    protocol_add_entity_with_type_data(id, entity_type_id, 99)
+}
+
+fn protocol_add_entity_with_type_data(
+    id: i32,
+    entity_type_id: i32,
+    data: i32,
+) -> ProtocolAddEntity {
     ProtocolAddEntity {
         id,
         uuid: Uuid::from_u128(0x12345678123456781234567812345678),
@@ -1190,7 +1280,7 @@ fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEnt
         x_rot: -10.0,
         y_rot: 20.0,
         y_head_rot: 30.0,
-        data: 99,
+        data,
     }
 }
 

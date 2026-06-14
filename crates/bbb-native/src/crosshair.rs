@@ -246,16 +246,15 @@ fn raycast_entity_target_distance(
     target: EntityRaycastTarget,
 ) -> Option<f64> {
     let inflate = f64::from(target.bounds.pick_radius);
-    let half_width = f64::from(target.bounds.width) / 2.0 + inflate;
     let min = [
-        target.entity.position.x - half_width,
-        target.entity.position.y - inflate,
-        target.entity.position.z - half_width,
+        target.entity.position.x + f64::from(target.bounds.min[0]) - inflate,
+        target.entity.position.y + f64::from(target.bounds.min[1]) - inflate,
+        target.entity.position.z + f64::from(target.bounds.min[2]) - inflate,
     ];
     let max = [
-        target.entity.position.x + half_width,
-        target.entity.position.y + f64::from(target.bounds.height) + inflate,
-        target.entity.position.z + half_width,
+        target.entity.position.x + f64::from(target.bounds.max[0]) + inflate,
+        target.entity.position.y + f64::from(target.bounds.max[1]) + inflate,
+        target.entity.position.z + f64::from(target.bounds.max[2]) + inflate,
     ];
     ray_box_distance(eye, direction, max_distance, min, max)
 }
@@ -513,6 +512,7 @@ mod tests {
     use uuid::Uuid;
 
     const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
+    const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 
@@ -728,6 +728,27 @@ mod tests {
     }
 
     #[test]
+    fn crosshair_target_hits_direction_aware_item_frame_bounds() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity_with_data(
+            13,
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            [0.0, 1.0, 2.0],
+            2,
+        ));
+
+        let target =
+            crosshair_target_from_world(&world, Some(player_pose_at([0.5, 0.0, 0.0], 0.0, 0.0)));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected item frame entity hit");
+        };
+        assert_eq!(hit.entity_id, 13);
+        assert_vec3_close(hit.location, [0.5, 1.6200000047683716, 2.9375]);
+        assert_vec3_close(hit.relative_location, [0.0, 0.12000000476837158, -0.03125]);
+    }
+
+    #[test]
     fn crosshair_target_skips_entity_beyond_vanilla_default_entity_interaction_range() {
         let mut world = WorldStore::new();
         world.apply_add_entity(protocol_add_entity(
@@ -867,8 +888,16 @@ mod tests {
     }
 
     fn player_pose(y_rot: f32, x_rot: f32, z: f64) -> PlayerPose {
+        player_pose_at([0.0, 0.0, z], y_rot, x_rot)
+    }
+
+    fn player_pose_at(position: [f64; 3], y_rot: f32, x_rot: f32) -> PlayerPose {
         PlayerPose {
-            position: NetVec3 { x: 0.0, y: 0.0, z },
+            position: NetVec3 {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            },
             y_rot,
             x_rot,
             ..PlayerPose::default()
@@ -876,6 +905,15 @@ mod tests {
     }
 
     fn protocol_add_entity(id: i32, entity_type_id: i32, position: [f64; 3]) -> AddEntity {
+        protocol_add_entity_with_data(id, entity_type_id, position, 0)
+    }
+
+    fn protocol_add_entity_with_data(
+        id: i32,
+        entity_type_id: i32,
+        position: [f64; 3],
+        data: i32,
+    ) -> AddEntity {
         AddEntity {
             id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678 + id as u128),
@@ -889,7 +927,7 @@ mod tests {
             x_rot: 0.0,
             y_rot: 0.0,
             y_head_rot: 0.0,
-            data: 0,
+            data,
         }
     }
 

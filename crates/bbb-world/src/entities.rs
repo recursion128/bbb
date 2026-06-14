@@ -28,6 +28,7 @@ pub(crate) use components::{
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount,
     EntityTransform, EntityTransientEvents,
 };
+use dimensions::vanilla_client_position_for_entity_data;
 pub use dimensions::EntityPickBoundsState;
 use movement::entity_vec3;
 use projectiles::initial_hurting_projectile_state;
@@ -148,13 +149,20 @@ impl EntityTransformState {
 impl WorldStore {
     pub fn apply_add_entity(&mut self, packet: ProtocolAddEntity) {
         self.counters.entities_received += 1;
+        let packet_position = entity_vec3(packet.position);
         let entity = EntityState {
             id: packet.id,
             uuid: packet.uuid,
             entity_type_id: packet.entity_type_id,
             data: packet.data,
-            position: entity_vec3(packet.position),
-            position_base: entity_vec3(packet.position),
+            position: vanilla_client_position_for_entity_data(
+                packet.entity_type_id,
+                packet_position,
+                packet.data,
+                &[],
+            )
+            .unwrap_or(packet_position),
+            position_base: packet_position,
             delta_movement: entity_vec3(packet.delta_movement),
             y_rot: packet.y_rot,
             x_rot: packet.x_rot,

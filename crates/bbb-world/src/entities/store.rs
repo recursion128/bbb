@@ -8,7 +8,9 @@ use super::{
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount, EntityState,
     EntityTransform, EntityTransformState, EntityTransientEvents,
 };
-use crate::entities::dimensions::vanilla_pick_bounds_for_entity_data;
+use crate::entities::dimensions::{
+    vanilla_client_position_for_entity_data, vanilla_pick_bounds_for_entity_data,
+};
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
 
 pub(crate) struct EntityStore {
@@ -79,7 +81,30 @@ impl EntityStore {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
-        vanilla_pick_bounds_for_entity_data(identity.entity_type_id, &metadata.data_values)
+        vanilla_pick_bounds_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+        )
+    }
+
+    pub(crate) fn refresh_client_position_from_entity_data(&mut self, id: i32) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?.clone();
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?.clone();
+        let packet_position = {
+            let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+            transform.position_base
+        };
+        let position = vanilla_client_position_for_entity_data(
+            identity.entity_type_id,
+            packet_position,
+            identity.data,
+            &metadata.data_values,
+        )?;
+        let mut transform = self.ecs.get::<&mut EntityTransform>(entity).ok()?;
+        transform.position = position;
+        Some(())
     }
 
     pub(crate) fn transform(&self, id: i32) -> Option<EntityTransform> {

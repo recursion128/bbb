@@ -9,7 +9,8 @@ impl WorldStore {
     pub fn apply_set_entity_data(&mut self, packet: ProtocolSetEntityData) -> bool {
         self.counters.entity_data_updates_received += 1;
         self.counters.entity_data_values_received += packet.values.len();
-        let Some(()) = self.entities.with_metadata_mut(packet.id, |metadata| {
+        let id = packet.id;
+        let Some(()) = self.entities.with_metadata_mut(id, |metadata| {
             for value in packet.values {
                 if let Some(existing) = metadata
                     .data_values
@@ -25,6 +26,7 @@ impl WorldStore {
         }) else {
             return false;
         };
+        let _ = self.entities.refresh_client_position_from_entity_data(id);
         self.counters.entity_data_updates_applied += 1;
         true
     }
