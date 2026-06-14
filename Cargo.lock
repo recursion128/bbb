@@ -188,11 +188,13 @@ name = "bbb-control"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bbb-protocol",
  "bbb-world",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

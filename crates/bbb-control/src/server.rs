@@ -119,6 +119,23 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             };
             Ok(result)
         }
+        "world.probe_entity_transform" => {
+            let id = i32_param(&request.params, "id");
+            let result = match id {
+                Some(id) => snapshot_guard
+                    .world_store
+                    .probe_entity_transform(id)
+                    .map(|entity| {
+                        serde_json::to_value(entity).expect("entity transform state serializes")
+                    })
+                    .unwrap_or(serde_json::Value::Null),
+                None => serde_json::Value::Null,
+            };
+            Ok(result)
+        }
+        "world.entity_transforms" => {
+            serde_json::to_value(snapshot_guard.world_store.entity_transforms())
+        }
         "world.probe_block" => {
             let x = i32_param(&request.params, "x");
             let y = i32_param(&request.params, "y");
@@ -195,6 +212,10 @@ fn chunk_probe_summary(chunk: &ChunkColumn) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::packets::{
+        AddEntity as ProtocolAddEntity, EntityPositionSync as ProtocolEntityPositionSync,
+        Vec3d as ProtocolVec3d,
+    };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
         PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
@@ -313,6 +334,80 @@ mod tests {
         assert!(missing_response.result.unwrap().is_null());
     }
 
+    #[test]
+    fn probes_entity_transforms_from_world_store_components() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_add_entity(protocol_add_entity(7, 3));
+            store.apply_add_entity(protocol_add_entity(9, 85));
+            assert!(
+                store.apply_entity_position_sync(ProtocolEntityPositionSync {
+                    id: 9,
+                    position: ProtocolVec3d {
+                        x: 5.0,
+                        y: 70.0,
+                        z: -8.0,
+                    },
+                    delta_movement: ProtocolVec3d {
+                        x: 0.1,
+                        y: 0.2,
+                        z: 0.3,
+                    },
+                    y_rot: 45.0,
+                    x_rot: -15.0,
+                    on_ground: true,
+                })
+            );
+
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let one_response = dispatch(
+            ControlRequest {
+                method: "world.probe_entity_transform".to_string(),
+                params: json!({"id": 9}),
+            },
+            &snapshot,
+        );
+        assert!(one_response.ok);
+        let one = one_response.result.unwrap();
+        assert_eq!(one["id"], 9);
+        assert_eq!(one["entity_type_id"], 85);
+        assert_eq!(one["position"]["x"], 5.0);
+        assert_eq!(one["delta_movement"]["z"], 0.3);
+        assert_eq!(one["y_rot"], 45.0);
+        assert_eq!(one["x_rot"], -15.0);
+        assert_eq!(one["on_ground"], true);
+
+        let all_response = dispatch(
+            ControlRequest {
+                method: "world.entity_transforms".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+        assert!(all_response.ok);
+        let all = all_response.result.unwrap();
+        let ids: Vec<i64> = all
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|entity| entity["id"].as_i64().unwrap())
+            .collect();
+        assert_eq!(ids, vec![7, 9]);
+
+        let missing_response = dispatch(
+            ControlRequest {
+                method: "world.probe_entity_transform".to_string(),
+                params: json!({"id": 999}),
+            },
+            &snapshot,
+        );
+        assert!(missing_response.ok);
+        assert!(missing_response.result.unwrap().is_null());
+    }
+
     fn single_section_chunk() -> ChunkColumn {
         ChunkColumn {
             pos: ChunkPos { x: 1, z: -2 },
@@ -344,6 +439,28 @@ mod tests {
             palette_global_ids: vec![global_id],
             packed_data: Vec::new(),
             entry_count,
+        }
+    }
+
+    fn protocol_add_entity(id: i32, entity_type_id: i32) -> ProtocolAddEntity {
+        ProtocolAddEntity {
+            id,
+            uuid: uuid::Uuid::from_u128(id as u128 + 1),
+            entity_type_id,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: -10.0,
+            y_rot: 20.0,
+            y_head_rot: 30.0,
+            data: 99,
         }
     }
 }
