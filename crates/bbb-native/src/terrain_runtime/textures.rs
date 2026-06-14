@@ -2,9 +2,9 @@ use std::collections::{BTreeMap, HashMap};
 
 use anyhow::Result;
 use bbb_pack::{
-    AtlasImage, AtlasLayout, AtlasPacker, BiomeColorCatalog, BiomeColorProfile, BlockFaceTextures,
-    BlockModelCatalog, BlockModelFace, BlockModelShape, GrassColorModifier, PackRoots, SpriteImage,
-    TerrainColorMaps,
+    AtlasLayout, AtlasMipImage, AtlasPacker, BiomeColorCatalog, BiomeColorProfile,
+    BlockFaceTextures, BlockModelCatalog, BlockModelFace, BlockModelShape, GrassColorModifier,
+    PackRoots, SpriteImage, TerrainColorMaps,
 };
 use bbb_renderer::terrain::{
     TerrainCross, TerrainFace, TerrainFluidKind, TerrainQuad, TerrainRenderShape,
@@ -15,6 +15,8 @@ use crate::biome_tint::{
     apply_grass_color_modifier, biome_colormap_climate, is_dry_foliage_tinted_block,
     is_foliage_tinted_block, is_grass_tinted_block, terrain_tint_from_rgb,
 };
+
+const VANILLA_DEFAULT_MIPMAP_LEVELS: u32 = 4;
 
 #[derive(Debug, Clone)]
 pub(crate) struct TerrainTextureState {
@@ -64,18 +66,27 @@ struct SpriteAlpha {
 struct TerrainTextureAnimation {
     packer: AtlasPacker,
     images: Vec<SpriteImage>,
+    max_mipmap_levels: u32,
 }
 
 impl TerrainTextureAnimation {
-    fn new(packer: AtlasPacker, images: Vec<SpriteImage>) -> Option<Self> {
+    fn new(packer: AtlasPacker, images: Vec<SpriteImage>, max_mipmap_levels: u32) -> Option<Self> {
         images
             .iter()
             .any(|image| image.animation.is_some())
-            .then_some(Self { packer, images })
+            .then_some(Self {
+                packer,
+                images,
+                max_mipmap_levels,
+            })
     }
 
-    fn stitch_frame(&self, tick: u64) -> Result<AtlasImage> {
-        self.packer.stitch_animation_frame(&self.images, tick)
+    fn stitch_frame(&self, tick: u64) -> Result<AtlasMipImage> {
+        self.packer.stitch_animation_frame_mips_with_max_level(
+            &self.images,
+            tick,
+            self.max_mipmap_levels,
+        )
     }
 }
 
@@ -198,7 +209,7 @@ impl TerrainTextureState {
         self.animation.is_some()
     }
 
-    pub(super) fn animation_atlas_frame(&self, tick: u64) -> Result<Option<AtlasImage>> {
+    pub(super) fn animation_atlas_frame(&self, tick: u64) -> Result<Option<AtlasMipImage>> {
         self.animation
             .as_ref()
             .map(|animation| animation.stitch_frame(tick))
@@ -811,8 +822,13 @@ fn try_load_terrain_textures(renderer: &mut bbb_renderer::Renderer) -> Result<Te
         }
     };
     let packer = AtlasPacker::new(4096, 1)?;
-    let atlas = packer.stitch(&images)?;
-    renderer.upload_terrain_texture_atlas(atlas.layout.width, atlas.layout.height, &atlas.rgba)?;
+    let atlas = packer.stitch_mips_with_max_level(&images, VANILLA_DEFAULT_MIPMAP_LEVELS)?;
+    let mip_rgba = atlas.rgba_slices();
+    renderer.upload_terrain_texture_atlas_mips(
+        atlas.layout.width,
+        atlas.layout.height,
+        &mip_rgba,
+    )?;
     let animated_sprites = images
         .iter()
         .filter(|image| image.animation.is_some())
@@ -820,6 +836,7 @@ fn try_load_terrain_textures(renderer: &mut bbb_renderer::Renderer) -> Result<Te
     tracing::info!(
         width = atlas.layout.width,
         height = atlas.layout.height,
+        mip_level = atlas.mip_level(),
         sprites = atlas.layout.sprites.len(),
         animated_sprites,
         blockstates = block_models.len(),
@@ -834,7 +851,8 @@ fn try_load_terrain_textures(renderer: &mut bbb_renderer::Renderer) -> Result<Te
         colormaps,
         biome_colors,
     );
-    textures.animation = TerrainTextureAnimation::new(packer, images);
+    textures.animation =
+        TerrainTextureAnimation::new(packer, images, VANILLA_DEFAULT_MIPMAP_LEVELS);
     Ok(textures)
 }
 

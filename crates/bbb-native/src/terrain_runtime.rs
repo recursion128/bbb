@@ -48,7 +48,8 @@ pub(crate) fn maybe_upload_terrain_texture_animation(
     };
     match textures.animation_atlas_frame(tick) {
         Ok(Some(atlas)) => {
-            if let Err(err) = renderer.update_terrain_texture_atlas(&atlas.rgba) {
+            let mip_rgba = atlas.rgba_slices();
+            if let Err(err) = renderer.update_terrain_texture_atlas_mips(&mip_rgba) {
                 tracing::warn!(?err, "failed to update animated terrain texture atlas");
             }
         }

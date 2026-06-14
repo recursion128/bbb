@@ -33,7 +33,7 @@ pub fn generate_sprite_mip_levels(
     image: &SpriteImage,
     mip_level: u32,
 ) -> Result<Vec<SpriteMipLevel>> {
-    generate_mip_levels(
+    generate_sprite_rgba_mip_levels(
         &image.id,
         image.width,
         image.height,
@@ -44,7 +44,7 @@ pub fn generate_sprite_mip_levels(
     )
 }
 
-fn generate_mip_levels(
+pub(crate) fn generate_sprite_rgba_mip_levels(
     id: &str,
     width: u32,
     height: u32,
@@ -262,9 +262,9 @@ fn fill_empty_areas_with_dark_color(rgba: &mut [u8], width: u32, height: u32) ->
     }
 
     let darkened_color = [
-        3 * darkest_color[0] / 4,
-        3 * darkest_color[1] / 4,
-        3 * darkest_color[2] / 4,
+        (3 * u16::from(darkest_color[0]) / 4) as u8,
+        (3 * u16::from(darkest_color[1]) / 4) as u8,
+        (3 * u16::from(darkest_color[2]) / 4) as u8,
         0,
     ];
     for x in 0..width {

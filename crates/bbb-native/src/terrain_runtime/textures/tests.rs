@@ -292,18 +292,18 @@ fn animation_atlas_frame_uses_sprite_tick_frame() {
         None,
         None,
     );
-    textures.animation = TerrainTextureAnimation::new(packer, vec![image]);
+    textures.animation = TerrainTextureAnimation::new(packer, vec![image], 0);
 
     let tick_two = textures.animation_atlas_frame(2).unwrap().unwrap();
     let tick_three = textures.animation_atlas_frame(3).unwrap().unwrap();
 
     assert!(textures.has_texture_animation());
     assert_eq!(
-        atlas_pixel(&tick_two.rgba, tick_two.layout.width, 1, 1),
+        atlas_pixel(tick_two.base_rgba(), tick_two.layout.width, 1, 1),
         [20, 0, 0, 255]
     );
     assert_eq!(
-        atlas_pixel(&tick_three.rgba, tick_three.layout.width, 1, 1),
+        atlas_pixel(tick_three.base_rgba(), tick_three.layout.width, 1, 1),
         [10, 0, 0, 255]
     );
     assert!(TerrainTextureState::default()

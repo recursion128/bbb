@@ -2,8 +2,9 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    rgba_len, rgba_offset, SpriteAnimation, SpriteGuiMetadata, SpriteImage, SpriteSource,
-    SpriteTextureMetadata, SpriteTransparency,
+    mipmap::generate_sprite_rgba_mip_levels, rgba_len, rgba_offset, SpriteAnimation,
+    SpriteGuiMetadata, SpriteImage, SpriteMipLevel, SpriteSource, SpriteTextureMetadata,
+    SpriteTransparency,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,6 +43,39 @@ pub struct AtlasLayout {
 pub struct AtlasImage {
     pub layout: AtlasLayout,
     pub rgba: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AtlasMipLevel {
+    pub level: u32,
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AtlasMipImage {
+    pub layout: AtlasLayout,
+    pub levels: Vec<AtlasMipLevel>,
+}
+
+impl AtlasMipImage {
+    pub fn base_rgba(&self) -> &[u8] {
+        self.levels
+            .first()
+            .map_or(&[], |level| level.rgba.as_slice())
+    }
+
+    pub fn rgba_slices(&self) -> Vec<&[u8]> {
+        self.levels
+            .iter()
+            .map(|level| level.rgba.as_slice())
+            .collect()
+    }
+
+    pub fn mip_level(&self) -> u32 {
+        self.levels.len().saturating_sub(1) as u32
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -155,6 +189,40 @@ impl AtlasPacker {
         self.stitch_with_animation_tick(images, Some(tick))
     }
 
+    pub fn stitch_mips(&self, images: &[SpriteImage], mip_level: u32) -> Result<AtlasMipImage> {
+        self.stitch_with_animation_tick_mips(images, None, mip_level)
+    }
+
+    pub fn stitch_mips_with_max_level(
+        &self,
+        images: &[SpriteImage],
+        max_mipmap_levels: u32,
+    ) -> Result<AtlasMipImage> {
+        let sources = images.iter().map(SpriteImage::source).collect::<Vec<_>>();
+        let mip_level = vanilla_mip_level(&sources, max_mipmap_levels);
+        self.stitch_with_animation_tick_mips(images, None, mip_level)
+    }
+
+    pub fn stitch_animation_frame_mips(
+        &self,
+        images: &[SpriteImage],
+        tick: u64,
+        mip_level: u32,
+    ) -> Result<AtlasMipImage> {
+        self.stitch_with_animation_tick_mips(images, Some(tick), mip_level)
+    }
+
+    pub fn stitch_animation_frame_mips_with_max_level(
+        &self,
+        images: &[SpriteImage],
+        tick: u64,
+        max_mipmap_levels: u32,
+    ) -> Result<AtlasMipImage> {
+        let sources = images.iter().map(SpriteImage::source).collect::<Vec<_>>();
+        let mip_level = vanilla_mip_level(&sources, max_mipmap_levels);
+        self.stitch_with_animation_tick_mips(images, Some(tick), mip_level)
+    }
+
     fn stitch_with_animation_tick(
         &self,
         images: &[SpriteImage],
@@ -175,6 +243,66 @@ impl AtlasPacker {
         }
 
         Ok(AtlasImage { layout, rgba })
+    }
+
+    fn stitch_with_animation_tick_mips(
+        &self,
+        images: &[SpriteImage],
+        tick: Option<u64>,
+        mip_level: u32,
+    ) -> Result<AtlasMipImage> {
+        let sources = images.iter().map(SpriteImage::source).collect::<Vec<_>>();
+        let mut layout = self.pack(&sources)?;
+        for (sprite, image) in layout.sprites.iter_mut().zip(images) {
+            sprite.transparency = image.transparency;
+            sprite.animation = image.animation.clone();
+            sprite.texture_metadata = image.texture_metadata;
+            sprite.gui_metadata = image.gui_metadata;
+        }
+
+        let mut sprite_mips = Vec::with_capacity(images.len());
+        for image in images {
+            let source_rgba = match tick {
+                Some(tick) => image.frame_rgba_at_tick(tick)?,
+                None => std::borrow::Cow::Borrowed(image.rgba.as_slice()),
+            };
+            sprite_mips.push(generate_sprite_rgba_mip_levels(
+                &image.id,
+                image.width,
+                image.height,
+                source_rgba.as_ref(),
+                image.texture_metadata,
+                image.transparency,
+                mip_level,
+            )?);
+        }
+
+        let mut levels = Vec::with_capacity(mip_level as usize + 1);
+        for level in 0..=mip_level {
+            let width = layout.width.checked_shr(level).unwrap_or(0);
+            let height = layout.height.checked_shr(level).unwrap_or(0);
+            if width == 0 || height == 0 {
+                bail!(
+                    "atlas mip level {} has zero-sized dimensions from {}x{}",
+                    level,
+                    layout.width,
+                    layout.height
+                );
+            }
+            let mut rgba = vec![0; rgba_len(width, height)?];
+            for (sprite, mips) in layout.sprites.iter().zip(&sprite_mips) {
+                let mip = &mips[level as usize];
+                copy_sprite_mip_with_gutter(&mut rgba, width, sprite, level, mip)?;
+            }
+            levels.push(AtlasMipLevel {
+                level,
+                width,
+                height,
+                rgba,
+            });
+        }
+
+        Ok(AtlasMipImage { layout, levels })
     }
 }
 
@@ -207,34 +335,162 @@ fn copy_sprite_rgba_with_gutter(
     source_height: u32,
     source_rgba: &[u8],
 ) -> Result<()> {
+    copy_sprite_rect_rgba_with_gutter(
+        atlas,
+        atlas_width,
+        &sprite.id,
+        sprite.content,
+        sprite.padded,
+        source_width,
+        source_height,
+        source_rgba,
+    )
+}
+
+fn copy_sprite_mip_with_gutter(
+    atlas: &mut [u8],
+    atlas_width: u32,
+    sprite: &AtlasSprite,
+    level: u32,
+    mip: &SpriteMipLevel,
+) -> Result<()> {
+    let content = AtlasRect {
+        x: sprite.content.x.checked_shr(level).unwrap_or(0),
+        y: sprite.content.y.checked_shr(level).unwrap_or(0),
+        width: mip.width,
+        height: mip.height,
+    };
+    let mut padded = mip_rect(sprite.padded, level)?;
+    let content_right = content
+        .x
+        .checked_add(content.width)
+        .ok_or_else(|| anyhow::anyhow!("atlas mip content width overflow"))?;
+    let content_bottom = content
+        .y
+        .checked_add(content.height)
+        .ok_or_else(|| anyhow::anyhow!("atlas mip content height overflow"))?;
+    if content.x < padded.x || content.y < padded.y {
+        bail!(
+            "sprite {} mip level {} content is outside padding",
+            sprite.id,
+            level
+        );
+    }
+    let padded_right = padded
+        .x
+        .checked_add(padded.width)
+        .ok_or_else(|| anyhow::anyhow!("atlas mip padded width overflow"))?;
+    let padded_bottom = padded
+        .y
+        .checked_add(padded.height)
+        .ok_or_else(|| anyhow::anyhow!("atlas mip padded height overflow"))?;
+    if content_right > padded_right {
+        padded.width = content_right - padded.x;
+    }
+    if content_bottom > padded_bottom {
+        padded.height = content_bottom - padded.y;
+    }
+    copy_sprite_rect_rgba_with_gutter(
+        atlas,
+        atlas_width,
+        &sprite.id,
+        content,
+        padded,
+        mip.width,
+        mip.height,
+        &mip.rgba,
+    )
+}
+
+fn copy_sprite_rect_rgba_with_gutter(
+    atlas: &mut [u8],
+    atlas_width: u32,
+    sprite_id: &str,
+    content: AtlasRect,
+    padded: AtlasRect,
+    source_width: u32,
+    source_height: u32,
+    source_rgba: &[u8],
+) -> Result<()> {
     let expected_len = rgba_len(source_width, source_height)?;
     if source_rgba.len() != expected_len {
         bail!(
             "sprite {} frame has {} RGBA bytes, expected {}",
-            sprite.id,
+            sprite_id,
             source_rgba.len(),
             expected_len
         );
     }
-    for local_y in 0..sprite.padded.height {
+    let content_offset_x = content
+        .x
+        .checked_sub(padded.x)
+        .ok_or_else(|| anyhow::anyhow!("sprite {sprite_id} content starts before padding"))?;
+    let content_offset_y = content
+        .y
+        .checked_sub(padded.y)
+        .ok_or_else(|| anyhow::anyhow!("sprite {sprite_id} content starts before padding"))?;
+    for local_y in 0..padded.height {
         let source_y = local_y
-            .saturating_sub(sprite.content.y - sprite.padded.y)
+            .saturating_sub(content_offset_y)
             .min(source_height - 1);
-        for local_x in 0..sprite.padded.width {
+        for local_x in 0..padded.width {
             let source_x = local_x
-                .saturating_sub(sprite.content.x - sprite.padded.x)
+                .saturating_sub(content_offset_x)
                 .min(source_width - 1);
             let source_offset = rgba_offset(source_width, source_x, source_y)?;
-            let atlas_offset = rgba_offset(
-                atlas_width,
-                sprite.padded.x + local_x,
-                sprite.padded.y + local_y,
-            )?;
+            let atlas_offset = rgba_offset(atlas_width, padded.x + local_x, padded.y + local_y)?;
             atlas[atlas_offset..atlas_offset + 4]
                 .copy_from_slice(&source_rgba[source_offset..source_offset + 4]);
         }
     }
     Ok(())
+}
+
+fn mip_rect(rect: AtlasRect, level: u32) -> Result<AtlasRect> {
+    let x = rect.x.checked_shr(level).unwrap_or(0);
+    let y = rect.y.checked_shr(level).unwrap_or(0);
+    let right = rect
+        .x
+        .checked_add(rect.width)
+        .ok_or_else(|| anyhow::anyhow!("atlas rect width overflow"))?
+        .checked_shr(level)
+        .unwrap_or(0);
+    let bottom = rect
+        .y
+        .checked_add(rect.height)
+        .ok_or_else(|| anyhow::anyhow!("atlas rect height overflow"))?
+        .checked_shr(level)
+        .unwrap_or(0);
+    Ok(AtlasRect {
+        x,
+        y,
+        width: right.saturating_sub(x),
+        height: bottom.saturating_sub(y),
+    })
+}
+
+fn vanilla_mip_level(sources: &[SpriteSource], max_mipmap_levels: u32) -> u32 {
+    let Some(first) = sources.first() else {
+        return 0;
+    };
+    let mut min_texel_size = first.width.min(first.height);
+    let mut lowest_bit = 1u32.checked_shl(max_mipmap_levels).unwrap_or(u32::MAX);
+    for source in sources {
+        min_texel_size = min_texel_size.min(source.width.min(source.height));
+        let lowest_texture_bit = lowest_one_bit(source.width).min(lowest_one_bit(source.height));
+        lowest_bit = lowest_bit.min(lowest_texture_bit);
+    }
+
+    let min_size = min_texel_size.min(lowest_bit).max(1);
+    floor_log2(min_size).min(max_mipmap_levels)
+}
+
+fn lowest_one_bit(value: u32) -> u32 {
+    value & value.wrapping_neg()
+}
+
+fn floor_log2(value: u32) -> u32 {
+    u32::BITS - 1 - value.leading_zeros()
 }
 
 #[cfg(test)]
@@ -559,6 +815,78 @@ mod tests {
         assert_eq!(
             pixel(&tick_two.rgba, tick_two.layout.width, 1, 1),
             [50, 20, 50, 191]
+        );
+    }
+
+    #[test]
+    fn atlas_mips_are_generated_per_sprite_without_cross_sprite_blending() {
+        let red = SpriteImage::new(
+            "minecraft:block/red",
+            2,
+            2,
+            vec![
+                200, 0, 0, 255, 200, 0, 0, 255, 200, 0, 0, 255, 200, 0, 0, 255,
+            ],
+        )
+        .unwrap();
+        let blue = SpriteImage::new(
+            "minecraft:block/blue",
+            2,
+            2,
+            vec![
+                0, 0, 200, 255, 0, 0, 200, 255, 0, 0, 200, 255, 0, 0, 200, 255,
+            ],
+        )
+        .unwrap();
+
+        let atlas = AtlasPacker::new(16, 1)
+            .unwrap()
+            .stitch_mips(&[red, blue], 1)
+            .unwrap();
+
+        assert_eq!(atlas.levels.len(), 2);
+        assert_eq!((atlas.levels[1].width, atlas.levels[1].height), (4, 2));
+        assert_eq!(
+            pixel(&atlas.levels[1].rgba, atlas.levels[1].width, 0, 0),
+            [200, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&atlas.levels[1].rgba, atlas.levels[1].width, 1, 0),
+            [200, 0, 0, 255]
+        );
+        assert_eq!(
+            pixel(&atlas.levels[1].rgba, atlas.levels[1].width, 2, 0),
+            [0, 0, 200, 255]
+        );
+        assert_eq!(
+            pixel(&atlas.levels[1].rgba, atlas.levels[1].width, 3, 0),
+            [0, 0, 200, 255]
+        );
+    }
+
+    #[test]
+    fn atlas_mips_with_max_level_follow_vanilla_lowest_one_bit_limit() {
+        let image = SpriteImage::new(
+            "minecraft:block/non_power_of_two",
+            12,
+            12,
+            vec![80; 12 * 12 * 4],
+        )
+        .unwrap();
+
+        let atlas = AtlasPacker::new(32, 1)
+            .unwrap()
+            .stitch_mips_with_max_level(&[image], 4)
+            .unwrap();
+
+        assert_eq!(atlas.mip_level(), 2);
+        assert_eq!(
+            atlas
+                .levels
+                .iter()
+                .map(|level| (level.width, level.height))
+                .collect::<Vec<_>>(),
+            vec![(14, 14), (7, 7), (3, 3)]
         );
     }
 

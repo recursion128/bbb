@@ -669,6 +669,32 @@ mod tests {
 
     #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
+    fn stitches_local_vanilla_block_texture_mip_atlas() {
+        let roots = PackRoots::discover().unwrap();
+        let images = roots.load_block_texture_images().unwrap();
+        assert_eq!(images.len(), 1_121);
+
+        let packer = AtlasPacker::new(4096, 1).unwrap();
+        let atlas = packer.stitch_mips_with_max_level(&images, 4).unwrap();
+        assert_eq!(atlas.levels.len(), atlas.mip_level() as usize + 1);
+        assert!(atlas.mip_level() > 0);
+        assert!(atlas.mip_level() <= 4);
+        for (level, mip) in atlas.levels.iter().enumerate() {
+            assert_eq!(mip.level, level as u32);
+            assert_eq!(mip.width, atlas.layout.width >> level);
+            assert_eq!(mip.height, atlas.layout.height >> level);
+            assert_eq!(mip.rgba.len(), (mip.width * mip.height * 4) as usize);
+        }
+
+        let animation_atlas = packer
+            .stitch_animation_frame_mips_with_max_level(&images, 2, 4)
+            .unwrap();
+        assert_eq!(animation_atlas.mip_level(), atlas.mip_level());
+        assert_eq!(animation_atlas.levels.len(), atlas.levels.len());
+    }
+
+    #[test]
+    #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_local_vanilla_item_and_armor_trim_atlases() {
         let roots = PackRoots::discover().unwrap();
         let item_sources = roots.load_atlas_texture_sources("items").unwrap();

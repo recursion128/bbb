@@ -1,4 +1,6 @@
-pub use crate::atlas::{AtlasImage, AtlasLayout, AtlasPacker, AtlasRect, AtlasSprite};
+pub use crate::atlas::{
+    AtlasImage, AtlasLayout, AtlasMipImage, AtlasMipLevel, AtlasPacker, AtlasRect, AtlasSprite,
+};
 pub use crate::block_models::{
     BlockFaceTextures, BlockModelBox, BlockModelCatalog, BlockModelCross, BlockModelFace,
     BlockModelQuad, BlockModelShape, BlockRenderModel,
