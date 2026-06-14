@@ -1,5 +1,6 @@
 use bbb_protocol::packets::{
-    AttributeSnapshot, EntityDataValue, EntityDataValueKind, ItemStackSummary,
+    AttributeSnapshot, EntityDataEnumSerializer, EntityDataValue, EntityDataValueKind,
+    ItemStackSummary,
 };
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +11,7 @@ const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
 const VANILLA_ENTITY_TYPE_COW_ID: i32 = 30;
 const VANILLA_ENTITY_TYPE_DROWNED_ID: i32 = 38;
 const VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID: i32 = 60;
+const VANILLA_ENTITY_TYPE_GOAT_ID: i32 = 62;
 const VANILLA_ENTITY_TYPE_HUSK_ID: i32 = 67;
 const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
 const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
@@ -22,6 +24,7 @@ const VANILLA_ENTITY_TYPE_PIG_ID: i32 = 100;
 const VANILLA_ENTITY_TYPE_PIGLIN_ID: i32 = 101;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_SLIME_ID: i32 = 117;
+const VANILLA_ENTITY_TYPE_SNIFFER_ID: i32 = 119;
 const VANILLA_ENTITY_TYPE_VILLAGER_ID: i32 = 139;
 const VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID: i32 = 141;
 const VANILLA_ENTITY_TYPE_WARDEN_ID: i32 = 142;
@@ -54,6 +57,9 @@ const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
 const ARMOR_STAND_WIDTH: f32 = 0.5;
 const ARMOR_STAND_HEIGHT: f32 = 1.975;
 const ARMOR_STAND_SMALL_SCALE: f32 = 0.5;
+const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
+const GOAT_BABY_SCALE: f32 = 0.55;
+const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
 const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
 const VANILLA_SCALE_MAX: f64 = 16.0;
@@ -62,9 +68,13 @@ const VANILLA_POSE_SLEEPING_ID: i32 = 2;
 const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 const VANILLA_POSE_SPIN_ATTACK_ID: i32 = 4;
 const VANILLA_POSE_CROUCHING_ID: i32 = 5;
+const VANILLA_POSE_LONG_JUMPING_ID: i32 = 6;
 const VANILLA_POSE_DYING_ID: i32 = 7;
 const VANILLA_POSE_EMERGING_ID: i32 = 13;
 const VANILLA_POSE_DIGGING_ID: i32 = 14;
+const SNIFFER_STATE_DATA_ID: u8 = 18;
+const SNIFFER_STATE_DIGGING_ID: i32 = 5;
+const SNIFFER_DIGGING_HEIGHT_OFFSET: f32 = 0.4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -136,6 +146,10 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
         living_sleeping_pick_bounds()
     } else if is_warden_fixed_pose(entity_type_id, data_values) {
         EntityPickBoundsState::from_base_size(0.9, 1.0, 0.0)
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID {
+        goat_pick_bounds(data_values)
+    } else if entity_type_id == VANILLA_ENTITY_TYPE_SNIFFER_ID {
+        sniffer_pick_bounds(data_values)
     } else if let Some(bounds) = baby_pick_bounds(entity_type_id, data_values) {
         bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
@@ -219,6 +233,42 @@ fn living_sleeping_pick_bounds() -> EntityPickBoundsState {
     EntityPickBoundsState::from_base_size(0.2, 0.2, 0.0)
 }
 
+fn goat_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
+    let bounds = if entity_data_pose(data_values) == VANILLA_POSE_LONG_JUMPING_ID {
+        EntityPickBoundsState::from_base_size(0.9, 1.3, 0.0)
+            .scale_dimensions(GOAT_LONG_JUMPING_SCALE)
+    } else {
+        EntityPickBoundsState::from_base_size(0.9, 1.3, 0.0)
+    };
+
+    if entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false) {
+        bounds.scale_dimensions(GOAT_BABY_SCALE)
+    } else {
+        bounds
+    }
+}
+
+fn sniffer_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
+    let height = if entity_data_enum_id(
+        data_values,
+        SNIFFER_STATE_DATA_ID,
+        EntityDataEnumSerializer::SnifferState,
+        0,
+    ) == SNIFFER_STATE_DIGGING_ID
+    {
+        1.75 - SNIFFER_DIGGING_HEIGHT_OFFSET
+    } else {
+        1.75
+    };
+    let bounds = EntityPickBoundsState::from_base_size(1.9, height, 0.0);
+
+    if entity_data_bool(data_values, AGEABLE_MOB_BABY_DATA_ID, false) {
+        bounds.scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE)
+    } else {
+        bounds
+    }
+}
+
 fn baby_pick_bounds(
     entity_type_id: i32,
     data_values: &[EntityDataValue],
@@ -257,7 +307,8 @@ fn baby_pick_bounds(
         | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
             EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0)
         }
-        _ => vanilla_pick_bounds_for_type(entity_type_id)?.scale_dimensions(0.5),
+        _ => vanilla_pick_bounds_for_type(entity_type_id)?
+            .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE),
     })
 }
 
@@ -582,6 +633,25 @@ fn entity_data_float(data_values: &[EntityDataValue], data_id: u8, fallback: f32
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Float(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
+}
+
+fn entity_data_enum_id(
+    data_values: &[EntityDataValue],
+    data_id: u8,
+    serializer: EntityDataEnumSerializer,
+    fallback: i32,
+) -> i32 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::EnumId {
+                serializer: value_serializer,
+                id,
+            } if *value_serializer == serializer => Some(*id),
             _ => None,
         })
         .unwrap_or(fallback)

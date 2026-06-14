@@ -4,7 +4,7 @@ use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, CommonPlayerSpawnInfo as ProtocolSpawnInfo,
     DataComponentPatchSummary, EntityAnimation as ProtocolEntityAnimation,
-    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+    EntityDataEnumSerializer, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
     GameProfile as ProtocolGameProfile, GameType as ProtocolGameType,
@@ -1048,6 +1048,156 @@ fn warden_pick_bounds_follow_vanilla_pose_metadata() {
 }
 
 #[test]
+fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+    const ENTITY_DATA_POSE_ID: u8 = 6;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    const POSE_STANDING: i32 = 0;
+    const POSE_LONG_JUMPING: i32 = 6;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(41, 62));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(41),
+        Some(EntityPickBoundsState::from_base_size(0.9, 1.3, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 41,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_LONG_JUMPING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(41),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * 0.7,
+            1.3 * 0.7,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 41,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(41),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * 0.7 * 0.55,
+            1.3 * 0.7 * 0.55,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 41,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(41),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * 0.7 * 0.55 * 2.0,
+            1.3 * 0.7 * 0.55 * 2.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 41,
+        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(41),
+        Some(EntityPickBoundsState::from_base_size(
+            0.9 * 0.55 * 2.0,
+            1.3 * 0.55 * 2.0,
+            0.0,
+        ))
+    );
+}
+
+#[test]
+fn sniffer_pick_bounds_follow_vanilla_state_and_age_scale() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+    const SNIFFER_STATE_DATA_ID: u8 = 18;
+    const SNIFFER_STATE_SEARCHING: i32 = 4;
+    const SNIFFER_STATE_DIGGING: i32 = 5;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(42, 119));
+
+    assert_eq!(
+        store.probe_entity_pick_bounds(42),
+        Some(EntityPickBoundsState::from_base_size(1.9, 1.75, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 42,
+        values: vec![protocol_enum_data(
+            SNIFFER_STATE_DATA_ID,
+            EntityDataEnumSerializer::SnifferState,
+            SNIFFER_STATE_DIGGING,
+        )],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(42),
+        Some(EntityPickBoundsState::from_base_size(1.9, 1.75 - 0.4, 0.0))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 42,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(42),
+        Some(EntityPickBoundsState::from_base_size(
+            1.9 * 0.5,
+            (1.75 - 0.4) * 0.5,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 42,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(42),
+        Some(EntityPickBoundsState::from_base_size(
+            1.9 * 0.5 * 2.0,
+            (1.75 - 0.4) * 0.5 * 2.0,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 42,
+        values: vec![protocol_enum_data(
+            SNIFFER_STATE_DATA_ID,
+            EntityDataEnumSerializer::SnifferState,
+            SNIFFER_STATE_SEARCHING,
+        )],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(42),
+        Some(EntityPickBoundsState::from_base_size(
+            1.9 * 0.5 * 2.0,
+            1.75 * 0.5 * 2.0,
+            0.0,
+        ))
+    );
+}
+
+#[test]
 fn baby_pick_bounds_follow_vanilla_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
@@ -1810,6 +1960,25 @@ fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: 8,
         value: EntityDataValueKind::Boolean(value),
+    }
+}
+
+fn protocol_enum_data(
+    data_id: u8,
+    serializer: EntityDataEnumSerializer,
+    id: i32,
+) -> ProtocolEntityDataValue {
+    let serializer_id = match serializer {
+        EntityDataEnumSerializer::SnifferState => 35,
+        EntityDataEnumSerializer::ArmadilloState => 36,
+        EntityDataEnumSerializer::CopperGolemState => 37,
+        EntityDataEnumSerializer::WeatheringCopperState => 38,
+    };
+
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id,
+        value: EntityDataValueKind::EnumId { serializer, id },
     }
 }
 
