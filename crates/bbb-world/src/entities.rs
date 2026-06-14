@@ -13,6 +13,7 @@ use uuid::Uuid;
 use crate::WorldStore;
 
 mod components;
+mod dimensions;
 mod metadata;
 mod movement;
 mod passengers;
@@ -27,6 +28,8 @@ pub(crate) use components::{
     EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityMount,
     EntityTransform, EntityTransientEvents,
 };
+use dimensions::vanilla_pick_bounds_for_type;
+pub use dimensions::EntityPickBoundsState;
 use movement::entity_vec3;
 use projectiles::initial_hurting_projectile_state;
 use status::{EntityDamageEventState, MobEffectState};
@@ -261,6 +264,11 @@ impl WorldStore {
 
     pub fn probe_entity_transform(&self, id: i32) -> Option<EntityTransformState> {
         self.entities.transform_state(id)
+    }
+
+    pub fn probe_entity_pick_bounds(&self, id: i32) -> Option<EntityPickBoundsState> {
+        let entity_type_id = self.entities.entity_type_id(id)?;
+        vanilla_pick_bounds_for_type(entity_type_id)
     }
 
     pub fn entity_transforms(&self) -> Vec<EntityTransformState> {

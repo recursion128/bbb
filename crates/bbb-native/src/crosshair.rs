@@ -1,10 +1,10 @@
 use bbb_control::PlayerPose;
 use bbb_protocol::packets::{
     BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
-    Direction as ProtocolDirection,
+    Direction as ProtocolDirection, Vec3d as ProtocolVec3d,
 };
 use bbb_renderer::{CameraPose, SelectionOutline};
-use bbb_world::{BlockPos, WorldStore};
+use bbb_world::{BlockPos, EntityPickBoundsState, EntityTransformState, WorldStore};
 
 use crate::block_outline::{
     selection_outline_for_block, selection_outline_for_probe, BlockOutlineTarget,
@@ -18,6 +18,19 @@ pub(crate) struct CrosshairBlockHit {
     pub(crate) face: ProtocolDirection,
     pub(crate) cursor: [f32; 3],
     pub(crate) inside: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct CrosshairEntityHit {
+    pub(crate) entity_id: i32,
+    pub(crate) location: ProtocolVec3d,
+    pub(crate) relative_location: ProtocolVec3d,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum CrosshairTarget {
+    Block(CrosshairBlockHit),
+    Entity(CrosshairEntityHit),
 }
 
 pub(crate) fn selection_outline_from_crosshair(
@@ -40,6 +53,57 @@ pub(crate) fn crosshair_block_hit_from_world(
             .probe_block(pos)
             .map(|probe| BlockOutlineTarget::from_probe(&probe))
     })
+}
+
+pub(crate) fn crosshair_target_from_world(
+    world: &WorldStore,
+    pose: Option<PlayerPose>,
+) -> Option<CrosshairTarget> {
+    let pose = pose?;
+    let eye = eye_position_from_player_pose(pose);
+    let block_hit = crosshair_block_hit_from_world(world, Some(pose));
+    let block_distance_sq = block_hit
+        .map(|hit| distance_sq(eye, block_hit_location(hit)))
+        .unwrap_or(f64::INFINITY);
+    let entity_max_distance = block_distance_sq.sqrt().min(SELECTION_MAX_DISTANCE);
+    let entity_hit = crosshair_entity_hit_from_world(world, Some(pose), entity_max_distance);
+
+    choose_crosshair_target(eye, block_hit, entity_hit)
+}
+
+fn choose_crosshair_target(
+    eye: [f64; 3],
+    block_hit: Option<CrosshairBlockHit>,
+    entity_hit: Option<RaycastEntityHit>,
+) -> Option<CrosshairTarget> {
+    let block_distance_sq = block_hit
+        .map(|hit| distance_sq(eye, block_hit_location(hit)))
+        .unwrap_or(f64::INFINITY);
+    match (block_hit, entity_hit) {
+        (Some(_block), Some(entity)) if entity.distance_sq < block_distance_sq => {
+            Some(CrosshairTarget::Entity(entity.hit))
+        }
+        (Some(block), _) => Some(CrosshairTarget::Block(block)),
+        (None, Some(entity)) => Some(CrosshairTarget::Entity(entity.hit)),
+        (None, None) => None,
+    }
+}
+
+fn crosshair_entity_hit_from_world(
+    world: &WorldStore,
+    pose: Option<PlayerPose>,
+    max_distance: f64,
+) -> Option<RaycastEntityHit> {
+    let local_player_id = world.local_player_id();
+    let targets = world.entity_transforms().into_iter().filter_map(|entity| {
+        if local_player_id.is_some_and(|id| id == entity.id) {
+            return None;
+        }
+        world
+            .probe_entity_pick_bounds(entity.id)
+            .map(|bounds| EntityRaycastTarget { entity, bounds })
+    });
+    raycast_crosshair_entity_hit(pose?, max_distance, targets)
 }
 
 fn raycast_crosshair_block<F>(
@@ -68,11 +132,7 @@ where
         return None;
     }
 
-    let eye = [
-        pose.position.x,
-        pose.position.y + f64::from(CameraPose::STANDING_EYE_HEIGHT),
-        pose.position.z,
-    ];
+    let eye = eye_position_from_player_pose(pose);
     let direction = look_direction_from_player_pose(pose);
     if direction == [0.0, 0.0, 0.0] {
         return None;
@@ -106,6 +166,132 @@ where
     }
 
     None
+}
+
+#[derive(Debug, Clone, Copy)]
+struct EntityRaycastTarget {
+    entity: EntityTransformState,
+    bounds: EntityPickBoundsState,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RaycastEntityHit {
+    hit: CrosshairEntityHit,
+    distance_sq: f64,
+}
+
+fn raycast_crosshair_entity_hit<I>(
+    pose: PlayerPose,
+    max_distance: f64,
+    targets: I,
+) -> Option<RaycastEntityHit>
+where
+    I: IntoIterator<Item = EntityRaycastTarget>,
+{
+    if max_distance <= 0.0 {
+        return None;
+    }
+
+    let eye = eye_position_from_player_pose(pose);
+    let direction = look_direction_from_player_pose(pose);
+    if direction == [0.0, 0.0, 0.0] {
+        return None;
+    }
+
+    let mut nearest: Option<RaycastEntityHit> = None;
+    for target in targets {
+        let Some(distance) = raycast_entity_target_distance(eye, direction, max_distance, target)
+        else {
+            continue;
+        };
+        let distance_sq = distance * distance;
+        if nearest.is_some_and(|hit| hit.distance_sq <= distance_sq) {
+            continue;
+        }
+        let location = ProtocolVec3d {
+            x: eye[0] + direction[0] * distance,
+            y: eye[1] + direction[1] * distance,
+            z: eye[2] + direction[2] * distance,
+        };
+        nearest = Some(RaycastEntityHit {
+            hit: CrosshairEntityHit {
+                entity_id: target.entity.id,
+                location,
+                relative_location: ProtocolVec3d {
+                    x: location.x - target.entity.position.x,
+                    y: location.y - target.entity.position.y,
+                    z: location.z - target.entity.position.z,
+                },
+            },
+            distance_sq,
+        });
+    }
+    nearest
+}
+
+fn raycast_entity_target_distance(
+    eye: [f64; 3],
+    direction: [f64; 3],
+    max_distance: f64,
+    target: EntityRaycastTarget,
+) -> Option<f64> {
+    let inflate = f64::from(target.bounds.pick_radius);
+    let half_width = f64::from(target.bounds.width) / 2.0 + inflate;
+    let min = [
+        target.entity.position.x - half_width,
+        target.entity.position.y - inflate,
+        target.entity.position.z - half_width,
+    ];
+    let max = [
+        target.entity.position.x + half_width,
+        target.entity.position.y + f64::from(target.bounds.height) + inflate,
+        target.entity.position.z + half_width,
+    ];
+    ray_box_distance(eye, direction, max_distance, min, max)
+}
+
+fn ray_box_distance(
+    eye: [f64; 3],
+    direction: [f64; 3],
+    max_distance: f64,
+    min: [f64; 3],
+    max: [f64; 3],
+) -> Option<f64> {
+    if contains_point(min, max, eye) {
+        return Some(0.0);
+    }
+
+    let mut enter = 0.0;
+    let mut exit = max_distance;
+    for axis in 0..3 {
+        let component = direction[axis];
+        if component.abs() <= f64::EPSILON {
+            if eye[axis] < min[axis] || eye[axis] > max[axis] {
+                return None;
+            }
+            continue;
+        }
+
+        let t0 = (min[axis] - eye[axis]) / component;
+        let t1 = (max[axis] - eye[axis]) / component;
+        let near = t0.min(t1);
+        let far = t0.max(t1);
+        if near > enter {
+            enter = near;
+        }
+        if far < exit {
+            exit = far;
+        }
+        if enter > exit {
+            return None;
+        }
+    }
+
+    if enter <= max_distance && exit >= 0.0 {
+        Some(enter.max(0.0))
+    } else {
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -238,6 +424,30 @@ fn block_hit_cursor(eye: [f64; 3], direction: [f64; 3], distance: f64, pos: Bloc
     ]
 }
 
+fn block_hit_location(hit: CrosshairBlockHit) -> [f64; 3] {
+    [
+        f64::from(hit.pos.x) + f64::from(hit.cursor[0]),
+        f64::from(hit.pos.y) + f64::from(hit.cursor[1]),
+        f64::from(hit.pos.z) + f64::from(hit.cursor[2]),
+    ]
+}
+
+fn distance_sq(a: [f64; 3], b: [f64; 3]) -> f64 {
+    let dx = a[0] - b[0];
+    let dy = a[1] - b[1];
+    let dz = a[2] - b[2];
+    dx * dx + dy * dy + dz * dz
+}
+
+fn contains_point(min: [f64; 3], max: [f64; 3], point: [f64; 3]) -> bool {
+    point[0] >= min[0]
+        && point[0] <= max[0]
+        && point[1] >= min[1]
+        && point[1] <= max[1]
+        && point[2] >= min[2]
+        && point[2] <= max[2]
+}
+
 pub(crate) fn protocol_block_pos_from_world(pos: BlockPos) -> ProtocolBlockPos {
     ProtocolBlockPos {
         x: pos.x,
@@ -260,6 +470,14 @@ pub(crate) fn protocol_block_hit_result_from_crosshair_hit(
     }
 }
 
+fn eye_position_from_player_pose(pose: PlayerPose) -> [f64; 3] {
+    [
+        pose.position.x,
+        pose.position.y + f64::from(CameraPose::STANDING_EYE_HEIGHT),
+        pose.position.z,
+    ]
+}
+
 fn look_direction_from_player_pose(pose: PlayerPose) -> [f64; 3] {
     let yaw = f64::from(pose.y_rot).to_radians();
     let pitch = f64::from(pose.x_rot).to_radians();
@@ -279,6 +497,11 @@ fn look_direction_from_player_pose(pose: PlayerPose) -> [f64; 3] {
 mod tests {
     use super::*;
     use bbb_control::NetVec3;
+    use bbb_protocol::packets::{AddEntity, Vec3d as ProtocolVec3d};
+    use uuid::Uuid;
+
+    const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
+    const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 
     #[test]
     fn crosshair_raycast_hits_first_selectable_block() {
@@ -422,6 +645,108 @@ mod tests {
     }
 
     #[test]
+    fn crosshair_target_hits_pickable_entity_from_world_state() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            10,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 3.0],
+        ));
+        let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected entity hit");
+        };
+        assert_eq!(hit.entity_id, 10);
+        assert_vec3_close(hit.location, [0.0, 1.6200000047683716, 2.509999990463257]);
+        assert_vec3_close(
+            hit.relative_location,
+            [0.0, 0.6200000047683716, -0.49000000953674316],
+        );
+    }
+
+    #[test]
+    fn crosshair_target_skips_unknown_and_non_pickable_entity_types() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            10,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            [0.0, 1.0, 3.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(11, 7, [0.0, 1.0, 2.0]));
+
+        assert_eq!(
+            crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0))),
+            None
+        );
+    }
+
+    #[test]
+    fn crosshair_target_keeps_block_when_block_is_nearer_than_entity() {
+        let eye = [0.0, 1.6200000047683716, 0.0];
+        let block = CrosshairBlockHit {
+            pos: BlockPos { x: 0, y: 1, z: 2 },
+            face: ProtocolDirection::North,
+            cursor: [0.0, 0.62, 0.0],
+            inside: false,
+        };
+        let entity = RaycastEntityHit {
+            hit: CrosshairEntityHit {
+                entity_id: 10,
+                location: ProtocolVec3d {
+                    x: 0.0,
+                    y: eye[1],
+                    z: 3.0,
+                },
+                relative_location: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.62,
+                    z: -0.5,
+                },
+            },
+            distance_sq: 9.0,
+        };
+
+        assert_eq!(
+            choose_crosshair_target(eye, Some(block), Some(entity)),
+            Some(CrosshairTarget::Block(block))
+        );
+    }
+
+    #[test]
+    fn crosshair_target_prefers_entity_when_entity_is_nearer_than_block() {
+        let eye = [0.0, 1.6200000047683716, 0.0];
+        let block = CrosshairBlockHit {
+            pos: BlockPos { x: 0, y: 1, z: 3 },
+            face: ProtocolDirection::North,
+            cursor: [0.0, 0.62, 0.0],
+            inside: false,
+        };
+        let entity_hit = CrosshairEntityHit {
+            entity_id: 10,
+            location: ProtocolVec3d {
+                x: 0.0,
+                y: eye[1],
+                z: 2.0,
+            },
+            relative_location: ProtocolVec3d {
+                x: 0.0,
+                y: 0.62,
+                z: -0.5,
+            },
+        };
+        let entity = RaycastEntityHit {
+            hit: entity_hit,
+            distance_sq: 4.0,
+        };
+
+        assert_eq!(
+            choose_crosshair_target(eye, Some(block), Some(entity)),
+            Some(CrosshairTarget::Entity(entity_hit))
+        );
+    }
+
+    #[test]
     fn selection_outline_uses_block_bounds() {
         assert_eq!(
             selection_outline_for_block(BlockPos { x: -2, y: 63, z: 4 }),
@@ -436,5 +761,44 @@ mod tests {
             x_rot,
             ..PlayerPose::default()
         }
+    }
+
+    fn protocol_add_entity(id: i32, entity_type_id: i32, position: [f64; 3]) -> AddEntity {
+        AddEntity {
+            id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678 + id as u128),
+            entity_type_id,
+            position: ProtocolVec3d {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        }
+    }
+
+    fn assert_vec3_close(actual: ProtocolVec3d, expected: [f64; 3]) {
+        assert!(
+            (actual.x - expected[0]).abs() < 1.0e-6,
+            "x: expected {}, got {}",
+            expected[0],
+            actual.x
+        );
+        assert!(
+            (actual.y - expected[1]).abs() < 1.0e-6,
+            "y: expected {}, got {}",
+            expected[1],
+            actual.y
+        );
+        assert!(
+            (actual.z - expected[2]).abs() < 1.0e-6,
+            "z: expected {}, got {}",
+            expected[2],
+            actual.z
+        );
     }
 }
