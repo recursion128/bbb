@@ -1477,6 +1477,55 @@ fn entity_events_update_world_and_snapshot_counters() {
 }
 
 #[test]
+fn transient_entity_event_ignored_counters_are_projected() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::EntityAnimation(EntityAnimation {
+        id: 999,
+        action: 4,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 21,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::HurtAnimation(HurtAnimation {
+        id: 999,
+        yaw: 90.0,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.entity_animation_updates_received, 1);
+    assert_eq!(world_counters.entity_animation_updates_applied, 0);
+    assert_eq!(world_counters.entity_animation_updates_ignored, 1);
+    assert_eq!(world_counters.entity_events_received, 1);
+    assert_eq!(world_counters.entity_events_applied, 0);
+    assert_eq!(world_counters.entity_events_ignored, 1);
+    assert_eq!(world_counters.entity_hurt_animations_received, 1);
+    assert_eq!(world_counters.entity_hurt_animations_applied, 0);
+    assert_eq!(world_counters.entity_hurt_animations_ignored, 1);
+
+    assert_eq!(counters.entity_animation_updates_received, 1);
+    assert_eq!(counters.entity_animation_updates_applied, 0);
+    assert_eq!(counters.entity_animation_updates_ignored, 1);
+    assert_eq!(counters.entity_events_received, 1);
+    assert_eq!(counters.entity_events_applied, 0);
+    assert_eq!(counters.entity_events_ignored, 1);
+    assert_eq!(counters.entity_hurt_animations_received, 1);
+    assert_eq!(counters.entity_hurt_animations_applied, 0);
+    assert_eq!(counters.entity_hurt_animations_ignored, 1);
+}
+
+#[test]
 fn entity_metadata_ignored_counters_are_projected() {
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 

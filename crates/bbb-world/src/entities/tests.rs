@@ -3150,10 +3150,13 @@ fn tracks_entity_transient_events() {
 
     assert_eq!(store.counters().entity_animation_updates_received, 2);
     assert_eq!(store.counters().entity_animation_updates_applied, 1);
+    assert_eq!(store.counters().entity_animation_updates_ignored, 1);
     assert_eq!(store.counters().entity_events_received, 2);
     assert_eq!(store.counters().entity_events_applied, 1);
+    assert_eq!(store.counters().entity_events_ignored, 1);
     assert_eq!(store.counters().entity_hurt_animations_received, 2);
     assert_eq!(store.counters().entity_hurt_animations_applied, 1);
+    assert_eq!(store.counters().entity_hurt_animations_ignored, 1);
 }
 
 #[test]

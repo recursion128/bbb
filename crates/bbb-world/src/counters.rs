@@ -434,10 +434,16 @@ pub struct WorldCounters {
     pub entity_teleports_applied: usize,
     pub entity_animation_updates_received: usize,
     pub entity_animation_updates_applied: usize,
+    #[serde(default)]
+    pub entity_animation_updates_ignored: usize,
     pub entity_events_received: usize,
     pub entity_events_applied: usize,
+    #[serde(default)]
+    pub entity_events_ignored: usize,
     pub entity_hurt_animations_received: usize,
     pub entity_hurt_animations_applied: usize,
+    #[serde(default)]
+    pub entity_hurt_animations_ignored: usize,
     pub entity_data_updates_received: usize,
     pub entity_data_values_received: usize,
     pub entity_data_updates_applied: usize,

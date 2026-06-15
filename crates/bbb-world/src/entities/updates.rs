@@ -17,6 +17,7 @@ impl WorldStore {
                 events.last_animation_action = Some(packet.action)
             })
         else {
+            self.counters.entity_animation_updates_ignored += 1;
             return false;
         };
         self.counters.entity_animation_updates_applied += 1;
@@ -31,6 +32,7 @@ impl WorldStore {
                 events.last_event_id = Some(packet.event_id)
             })
         else {
+            self.counters.entity_events_ignored += 1;
             return false;
         };
         self.counters.entity_events_applied += 1;
@@ -43,6 +45,7 @@ impl WorldStore {
             .entities
             .with_transient_events_mut(packet.id, |events| events.last_hurt_yaw = Some(packet.yaw))
         else {
+            self.counters.entity_hurt_animations_ignored += 1;
             return false;
         };
         self.counters.entity_hurt_animations_applied += 1;
