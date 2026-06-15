@@ -380,20 +380,13 @@ fn transfer_event_updates_world_and_snapshot_counters() {
         1
     );
     assert_eq!(
-        counters.last_transfer,
-        Some(bbb_control::TransferTarget {
-            host: "next.example.com".to_string(),
-            port: 25566,
-        })
-    );
-    assert_eq!(counters.transfer_packets, 1);
-    assert_eq!(
         world.last_transfer(),
         Some(&bbb_world::TransferTargetState {
             host: "next.example.com".to_string(),
             port: 25566,
         })
     );
+    assert_eq!(counters.transfer_packets, 1);
     assert_eq!(world.counters().transfer_packets, 1);
 }
 

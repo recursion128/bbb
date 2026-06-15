@@ -356,6 +356,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.last_map_color_patch" => {
             serde_json::to_value(snapshot_guard.world_store.last_map_color_patch())
         }
+        "world.server_presentation" => {
+            serde_json::to_value(snapshot_guard.world_store.presentation())
+        }
         "world.probe_chunk" => {
             let x = i32_param(&request.params, "x");
             let z = i32_param(&request.params, "z");
@@ -497,8 +500,8 @@ mod tests {
         OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType,
         SetActionBarText, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
         SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
-        TrackedWaypoint, TrackedWaypointPacket, Vec3d as ProtocolVec3d, WaypointData, WaypointIcon,
-        WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d, WaypointData,
+        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1302,6 +1305,32 @@ mod tests {
         assert_eq!(patch["start_y"], 4);
         assert_eq!(patch["width"], 2);
         assert_eq!(patch["height"], 2);
+    }
+
+    #[test]
+    fn server_presentation_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_transfer(Transfer {
+                host: "next.example.com".to_string(),
+                port: 25566,
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.server_presentation".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let presentation = response.result.unwrap();
+        assert_eq!(presentation["last_transfer"]["host"], "next.example.com");
+        assert_eq!(presentation["last_transfer"]["port"], 25566);
     }
 
     #[test]

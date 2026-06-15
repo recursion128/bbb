@@ -113,7 +113,6 @@ pub struct NetCounters {
     pub server_links: Vec<ServerLinkState>,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
-    pub last_transfer: Option<TransferTarget>,
     pub last_custom_chat_completion: Option<CustomChatCompletionState>,
     pub last_custom_payload: Option<CustomPayloadState>,
     pub selected_advancements_tab: Option<String>,
@@ -684,12 +683,6 @@ impl Default for CameraState {
             entity_known: true,
         }
     }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TransferTarget {
-    pub host: String,
-    pub port: i32,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

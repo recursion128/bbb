@@ -623,14 +623,6 @@ fn sync_client_combat_counters(counters: &mut NetCounters, world: &WorldStore) {
 
 fn sync_transfer_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.transfer_packets = world.counters().transfer_packets;
-    counters.last_transfer = world.last_transfer().map(control_transfer_target);
-}
-
-fn control_transfer_target(state: &bbb_world::TransferTargetState) -> bbb_control::TransferTarget {
-    bbb_control::TransferTarget {
-        host: state.host.clone(),
-        port: state.port,
-    }
 }
 
 fn sync_server_link_counters(counters: &mut NetCounters, world: &WorldStore) {
