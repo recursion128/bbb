@@ -29,6 +29,53 @@ fn decodes_brand_custom_payload() {
 }
 
 #[test]
+fn decodes_brand_custom_payload_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_string("brand");
+    payload.write_string("vanilla");
+    let payload = payload.into_inner();
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_CUSTOM_PAYLOAD, &payload).unwrap(),
+        PlayClientbound::CustomPayload(CustomPayload {
+            id: "minecraft:brand".to_string(),
+            payload: CustomPayloadBody::Brand {
+                brand: "vanilla".to_string(),
+            },
+        })
+    );
+}
+
+#[test]
+fn normalizes_unknown_custom_payload_id() {
+    let mut payload = Encoder::new();
+    payload.write_string("debug/path");
+    payload.write_bytes(&[0xaa, 0xbb, 0xcc]);
+    let payload = payload.into_inner();
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_CUSTOM_PAYLOAD, &payload).unwrap(),
+        PlayClientbound::CustomPayload(CustomPayload {
+            id: "minecraft:debug/path".to_string(),
+            payload: CustomPayloadBody::Unknown {
+                raw_payload: vec![0xaa, 0xbb, 0xcc],
+            },
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_custom_payload_id() {
+    let mut payload = Encoder::new();
+    payload.write_string("minecraft:Brand");
+    payload.write_string("vanilla");
+    let payload = payload.into_inner();
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_CUSTOM_PAYLOAD, &payload).unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
 fn decodes_unknown_custom_payload_raw_body() {
     let mut payload = Encoder::new();
     payload.write_string("bbb:test");

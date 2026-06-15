@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
-use super::read_resource_key;
+use super::read_resource_location;
 
 const MAX_CUSTOM_PAYLOAD: usize = 1024 * 1024;
 const MAX_DIALOG_PAYLOAD: usize = 2 * 1024 * 1024;
@@ -31,7 +31,7 @@ pub enum DialogHolder {
 }
 
 pub(crate) fn decode_custom_payload(decoder: &mut Decoder<'_>) -> Result<CustomPayload> {
-    let id = read_resource_key(decoder)?;
+    let id = read_resource_location(decoder)?;
     let payload = if id == "minecraft:brand" {
         let brand = decoder.read_string(32767)?;
         if !decoder.is_empty() {
