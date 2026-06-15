@@ -143,7 +143,13 @@ impl<'a> AudioCommandResolver<'a> {
     ) -> Result<ResolvedSound, AudioResolveError> {
         let mut random = LegacyRandom::new(seed);
         let mut path = Vec::new();
-        self.resolve_event(event_id, event_id, &mut random, &mut path)
+        self.resolve_event(
+            event_id,
+            event_id,
+            &mut random,
+            &mut path,
+            SoundModifiers::default(),
+        )
     }
 
     fn resolve_event(
@@ -152,6 +158,7 @@ impl<'a> AudioCommandResolver<'a> {
         event_id: &str,
         random: &mut LegacyRandom,
         path: &mut Vec<String>,
+        modifiers: SoundModifiers,
     ) -> Result<ResolvedSound, AudioResolveError> {
         if path.iter().any(|seen| seen == event_id) {
             return Err(AudioResolveError::SoundEventReferenceCycle {
@@ -171,42 +178,125 @@ impl<'a> AudioCommandResolver<'a> {
                 .ok_or_else(|| AudioResolveError::MissingSoundEvent {
                     event_id: event_id.to_string(),
                 })?;
-        let entry = select_weighted_entry(event, random)?;
+        let entry = self.select_weighted_entry(event, random, path)?;
         match entry.kind {
-            SoundEntryKind::File => Ok(resolved_file_sound(root_event_id, event_id, entry)?),
-            SoundEntryKind::Event => self.resolve_event(root_event_id, &entry.name, random, path),
+            SoundEntryKind::File => Ok(resolved_file_sound(
+                root_event_id,
+                event_id,
+                entry,
+                modifiers,
+            )?),
+            SoundEntryKind::Event => self.resolve_event(
+                root_event_id,
+                &entry.name,
+                random,
+                path,
+                modifiers.with_event_entry(entry),
+            ),
+        }
+    }
+
+    fn select_weighted_entry<'b>(
+        &self,
+        event: &'b SoundEventDefinition,
+        random: &mut LegacyRandom,
+        path: &mut Vec<String>,
+    ) -> Result<&'b SoundEntry, AudioResolveError> {
+        let mut total_weight = 0;
+        for entry in &event.sounds {
+            total_weight += self.entry_weight(entry, path)?;
+        }
+        if event.sounds.is_empty() || total_weight <= 0 {
+            return Err(AudioResolveError::EmptySoundEvent {
+                event_id: event.id.clone(),
+            });
+        }
+
+        let mut selection = random.next_i32(total_weight);
+        for entry in &event.sounds {
+            selection -= self.entry_weight(entry, path)?;
+            if selection < 0 {
+                return Ok(entry);
+            }
+        }
+
+        Err(AudioResolveError::EmptySoundEvent {
+            event_id: event.id.clone(),
+        })
+    }
+
+    fn entry_weight(
+        &self,
+        entry: &SoundEntry,
+        path: &mut Vec<String>,
+    ) -> Result<i32, AudioResolveError> {
+        match entry.kind {
+            SoundEntryKind::File => Ok(entry.weight),
+            SoundEntryKind::Event => self.event_total_weight(&entry.name, path),
+        }
+    }
+
+    fn event_total_weight(
+        &self,
+        event_id: &str,
+        path: &mut Vec<String>,
+    ) -> Result<i32, AudioResolveError> {
+        if path.iter().any(|seen| seen == event_id) {
+            return Err(AudioResolveError::SoundEventReferenceCycle {
+                event_id: event_id.to_string(),
+            });
+        }
+        if path.len() >= MAX_SOUND_EVENT_DEPTH {
+            return Err(AudioResolveError::SoundEventReferenceDepthExceeded {
+                event_id: event_id.to_string(),
+            });
+        }
+        let Some(event) = self.catalog.event(event_id) else {
+            return Ok(0);
+        };
+
+        path.push(event_id.to_string());
+        let mut total = 0;
+        for entry in &event.sounds {
+            total += self.entry_weight(entry, path)?;
+        }
+        path.pop();
+        Ok(total)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SoundModifiers {
+    volume: f32,
+    pitch: f32,
+    stream: bool,
+}
+
+impl Default for SoundModifiers {
+    fn default() -> Self {
+        Self {
+            volume: 1.0,
+            pitch: 1.0,
+            stream: false,
         }
     }
 }
 
-fn select_weighted_entry<'a>(
-    event: &'a SoundEventDefinition,
-    random: &mut LegacyRandom,
-) -> Result<&'a SoundEntry, AudioResolveError> {
-    let total_weight: i32 = event.sounds.iter().map(|sound| sound.weight).sum();
-    if event.sounds.is_empty() || total_weight <= 0 {
-        return Err(AudioResolveError::EmptySoundEvent {
-            event_id: event.id.clone(),
-        });
-    }
-
-    let mut selection = random.next_i32(total_weight);
-    for entry in &event.sounds {
-        selection -= entry.weight;
-        if selection < 0 {
-            return Ok(entry);
+impl SoundModifiers {
+    fn with_event_entry(self, entry: &SoundEntry) -> Self {
+        Self {
+            volume: self.volume * entry.volume,
+            pitch: self.pitch * entry.pitch,
+            stream: self.stream || entry.stream,
         }
     }
-
-    Err(AudioResolveError::EmptySoundEvent {
-        event_id: event.id.clone(),
-    })
 }
 
 fn resolved_file_sound(
     root_event_id: &str,
     event_id: &str,
     entry: &SoundEntry,
+    modifiers: SoundModifiers,
 ) -> Result<ResolvedSound, AudioResolveError> {
     let ogg_path =
         entry
@@ -220,11 +310,11 @@ fn resolved_file_sound(
         event_id: root_event_id.to_string(),
         sound_name: entry.name.clone(),
         ogg_path,
-        stream: entry.stream,
+        stream: entry.stream || modifiers.stream,
         preload: entry.preload,
         attenuation_distance: entry.attenuation_distance,
-        entry_volume: entry.volume,
-        entry_pitch: entry.pitch,
+        entry_volume: entry.volume * modifiers.volume,
+        entry_pitch: entry.pitch * modifiers.pitch,
     })
 }
 
@@ -305,6 +395,132 @@ mod tests {
         assert_near(play.gain, 0.3);
         assert_near(play.playback_rate, 2.4);
         assert_eq!(play.fixed_range, Some(24.0));
+    }
+
+    #[test]
+    fn event_reference_modifiers_wrap_resolved_file_sound() {
+        let assets_dir = unique_assets_dir("event-reference-modifiers");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "wrapper": {
+                "sounds": [
+                  {
+                    "name": "entity.cat.ambient",
+                    "type": "event",
+                    "volume": 0.5,
+                    "pitch": 0.8,
+                    "stream": true
+                  }
+                ]
+              },
+              "entity.cat.ambient": {
+                "sounds": [
+                  {
+                    "name": "mob/cat/meow1",
+                    "volume": 0.6,
+                    "pitch": 1.2,
+                    "stream": false,
+                    "preload": true,
+                    "attenuation_distance": 32
+                  }
+                ]
+              }
+            }"#,
+        );
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+
+        let command = resolver
+            .play_positioned_sound(&SoundEventState {
+                sound: SoundHolderState {
+                    kind: "direct".to_string(),
+                    registry_id: None,
+                    location: Some("minecraft:wrapper".to_string()),
+                    fixed_range: None,
+                },
+                source: "ambient".to_string(),
+                position: Vec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                volume: 2.0,
+                pitch: 3.0,
+                seed: 0,
+            })
+            .unwrap();
+
+        let AudioCommand::PlayPositionedSound(play) = command else {
+            panic!("expected positioned sound command");
+        };
+        assert_eq!(play.sound.event_id, "minecraft:wrapper");
+        assert_eq!(play.sound.sound_name, "minecraft:mob/cat/meow1");
+        assert!(play.sound.stream);
+        assert!(play.sound.preload);
+        assert_eq!(play.sound.attenuation_distance, 32);
+        assert_near(play.sound.entry_volume, 0.3);
+        assert_near(play.sound.entry_pitch, 0.96);
+        assert_near(play.gain, 0.6);
+        assert_near(play.playback_rate, 2.88);
+    }
+
+    #[test]
+    fn event_reference_selection_uses_referenced_event_weight() {
+        let assets_dir = unique_assets_dir("event-reference-weight");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "wrapper": {
+                "sounds": [
+                  {
+                    "name": "entity.cat.ambient",
+                    "type": "event",
+                    "weight": 100
+                  },
+                  {
+                    "name": "random/click",
+                    "weight": 1
+                  }
+                ]
+              },
+              "entity.cat.ambient": {
+                "sounds": [
+                  {
+                    "name": "mob/cat/meow1",
+                    "weight": 1
+                  }
+                ]
+              }
+            }"#,
+        );
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+
+        let command = resolver
+            .play_positioned_sound(&SoundEventState {
+                sound: SoundHolderState {
+                    kind: "direct".to_string(),
+                    registry_id: None,
+                    location: Some("minecraft:wrapper".to_string()),
+                    fixed_range: None,
+                },
+                source: "block".to_string(),
+                position: Vec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                volume: 1.0,
+                pitch: 1.0,
+                seed: 0,
+            })
+            .unwrap();
+
+        let AudioCommand::PlayPositionedSound(play) = command else {
+            panic!("expected positioned sound command");
+        };
+        assert_eq!(play.sound.sound_name, "minecraft:random/click");
     }
 
     #[test]
