@@ -504,6 +504,8 @@ pub struct WorldCounters {
     pub entity_head_rotations_ignored: usize,
     pub take_item_entities_received: usize,
     pub take_item_entities_applied: usize,
+    #[serde(default)]
+    pub take_item_entities_ignored: usize,
     pub item_entity_stack_shrinks: usize,
     pub take_item_entities_removed: usize,
     pub entity_removes_received: usize,

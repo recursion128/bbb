@@ -206,6 +206,7 @@ impl WorldStore {
     pub fn apply_take_item_entity(&mut self, packet: ProtocolTakeItemEntity) -> bool {
         self.counters.take_item_entities_received += 1;
         let Some(entity_type_id) = self.entities.entity_type_id(packet.item_id) else {
+            self.counters.take_item_entities_ignored += 1;
             return false;
         };
 

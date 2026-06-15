@@ -3164,6 +3164,7 @@ fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
     assert_eq!(store.entity_count(), 1);
     assert_eq!(store.counters().take_item_entities_received, 5);
     assert_eq!(store.counters().take_item_entities_applied, 4);
+    assert_eq!(store.counters().take_item_entities_ignored, 1);
     assert_eq!(store.counters().item_entity_stack_shrinks, 2);
     assert_eq!(store.counters().take_item_entities_removed, 2);
     assert_eq!(store.counters().entities_removed, 2);

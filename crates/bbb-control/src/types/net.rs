@@ -445,6 +445,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub take_item_entities_applied: usize,
     #[serde(default)]
+    pub take_item_entities_ignored: usize,
+    #[serde(default)]
     pub item_entity_stack_shrinks: usize,
     #[serde(default)]
     pub take_item_entities_removed: usize,

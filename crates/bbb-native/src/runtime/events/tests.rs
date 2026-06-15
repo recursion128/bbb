@@ -865,6 +865,7 @@ fn take_item_entity_event_updates_snapshot_counter() {
     let mut counters = NetCounters {
         take_item_entity_packets: 99,
         take_item_entities_applied: 99,
+        take_item_entities_ignored: 99,
         item_entity_stack_shrinks: 99,
         take_item_entities_removed: 99,
         ..NetCounters::default()
@@ -876,10 +877,12 @@ fn take_item_entity_event_updates_snapshot_counter() {
     );
     assert_eq!(counters.take_item_entity_packets, 1);
     assert_eq!(counters.take_item_entities_applied, 0);
+    assert_eq!(counters.take_item_entities_ignored, 1);
     assert_eq!(counters.item_entity_stack_shrinks, 0);
     assert_eq!(counters.take_item_entities_removed, 0);
     assert_eq!(world.counters().take_item_entities_received, 1);
     assert_eq!(world.counters().take_item_entities_applied, 0);
+    assert_eq!(world.counters().take_item_entities_ignored, 1);
 }
 
 #[test]
