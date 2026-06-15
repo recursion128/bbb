@@ -44,7 +44,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 #[test]
-fn block_changed_ack_updates_snapshot_counters() {
+fn block_changed_ack_updates_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::BlockChangedAck(
         bbb_protocol::packets::BlockChangedAck { sequence: 17 },
@@ -64,7 +64,6 @@ fn block_changed_ack_updates_snapshot_counters() {
         Some(&bbb_world::BlockChangedAckState { sequence: 17 })
     );
     assert_eq!(world.counters().block_changed_ack_packets, 1);
-    assert_eq!(counters.block_changed_ack_packets, 1);
 }
 
 #[test]
@@ -327,9 +326,6 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
     });
     let mut counters = NetCounters {
         entities_tracked: 99,
-        block_destructions_tracked: 99,
-        block_events_tracked: 99,
-        level_events_tracked: 99,
         ..NetCounters::default()
     };
 
@@ -347,9 +343,6 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
     assert_eq!(world.counters().block_events_tracked, 0);
     assert_eq!(world.counters().level_events_tracked, 0);
     assert_eq!(counters.entities_tracked, 0);
-    assert_eq!(counters.block_destructions_tracked, 0);
-    assert_eq!(counters.block_events_tracked, 0);
-    assert_eq!(counters.level_events_tracked, 0);
 }
 
 #[test]
@@ -2752,22 +2745,12 @@ fn block_destruction_event_updates_world_and_counter() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        block_destruction_packets: 99,
-        block_destructions_tracked: 99,
-        block_destructions_removed: 99,
-        block_destructions_ignored: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         3
     );
-    assert_eq!(counters.block_destruction_packets, 3);
-    assert_eq!(counters.block_destructions_tracked, 0);
-    assert_eq!(counters.block_destructions_removed, 1);
-    assert_eq!(counters.block_destructions_ignored, 1);
     assert_eq!(world.counters().block_destructions_received, 3);
     assert_eq!(world.counters().block_destructions_tracked, 0);
     assert_eq!(world.counters().block_destructions_removed, 1);
@@ -2776,7 +2759,7 @@ fn block_destruction_event_updates_world_and_counter() {
 }
 
 #[test]
-fn block_and_level_events_update_world_and_counters() {
+fn block_and_level_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::BlockEvent(bbb_protocol::packets::BlockEvent {
         pos: ProtocolBlockPos {
@@ -2798,23 +2781,12 @@ fn block_and_level_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        block_event_packets: 99,
-        block_events_tracked: 99,
-        level_event_packets: 99,
-        level_events_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         2
     );
-    assert_eq!(counters.block_event_packets, 1);
-    assert_eq!(counters.block_events_tracked, 1);
-    assert_eq!(counters.level_event_packets, 1);
-    assert_eq!(counters.level_events_tracked, 1);
-
     let world_counters = world.counters();
     assert_eq!(world_counters.block_events_received, 1);
     assert_eq!(world_counters.block_events_tracked, 1);

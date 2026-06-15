@@ -49,20 +49,6 @@ pub struct NetCounters {
     pub default_spawn_position_packets: usize,
     pub simulation_distance_packets: usize,
     pub system_chat_packets: usize,
-    pub block_changed_ack_packets: usize,
-    pub block_destruction_packets: usize,
-    #[serde(default)]
-    pub block_destructions_tracked: usize,
-    #[serde(default)]
-    pub block_destructions_removed: usize,
-    #[serde(default)]
-    pub block_destructions_ignored: usize,
-    pub block_event_packets: usize,
-    #[serde(default)]
-    pub block_events_tracked: usize,
-    pub level_event_packets: usize,
-    #[serde(default)]
-    pub level_events_tracked: usize,
     pub player_look_at_packets: usize,
     pub player_rotation_packets: usize,
     pub move_vehicle_packets: usize,

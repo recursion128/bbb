@@ -9,8 +9,8 @@ use crate::particle_runtime::ParticleEventSink;
 
 use super::client_state::*;
 use super::control_state::{
-    apply_control_projection_event, sync_block_event_counters, sync_entity_counters,
-    sync_entity_interaction_counters, sync_inventory_counters,
+    apply_control_projection_event, sync_entity_counters, sync_entity_interaction_counters,
+    sync_inventory_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -164,7 +164,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::BlockDestruction(update) => {
                 world.apply_block_destruction(update);
-                sync_block_event_counters(counters, world);
             }
             NetEvent::BossEvent(update) => {
                 world.apply_boss_event(update);
@@ -174,11 +173,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::BlockEvent(event) => {
                 world.apply_block_event(event);
-                sync_block_event_counters(counters, world);
             }
             NetEvent::LevelEvent(event) => {
                 world.apply_level_event(event);
-                sync_block_event_counters(counters, world);
             }
             NetEvent::InitializeBorder(border) => {
                 world.apply_initialize_border(border);
@@ -308,13 +305,11 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 world.apply_login(&login);
                 sync_local_player_counters(counters, world);
                 sync_entity_counters(counters, world);
-                sync_block_event_counters(counters, world);
             }
             NetEvent::Respawn(respawn) => {
                 world.apply_respawn(&respawn);
                 sync_local_player_counters(counters, world);
                 sync_entity_counters(counters, world);
-                sync_block_event_counters(counters, world);
             }
             NetEvent::PlayerPosition(update) => {
                 apply_player_position_update(counters, world, update);
@@ -378,7 +373,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::BlockChangedAck(ack) => {
                 world.apply_block_changed_ack(ack);
-                sync_block_event_counters(counters, world);
             }
             NetEvent::BlockEntityData(update) => match world.apply_block_entity_data(update) {
                 Ok(_) => {}
