@@ -1535,7 +1535,7 @@ fn merchant_offers_event_updates_world_inventory_state() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::OpenScreen(OpenScreen {
         container_id: 7,
-        menu_type_id: 18,
+        menu_type_id: 19,
         title: "Merchant".to_string(),
     }))
     .unwrap();

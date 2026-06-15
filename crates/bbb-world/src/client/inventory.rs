@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InventorySlot {
     pub slot: i32,
@@ -161,12 +163,10 @@ impl WorldStore {
 
     pub fn apply_merchant_offers(&mut self, packet: ProtocolMerchantOffers) -> bool {
         self.counters.merchant_offer_packets_received += 1;
-        let Some(container) = self
-            .inventory
-            .open_container
-            .as_mut()
-            .filter(|container| container.container_id == packet.container_id)
-        else {
+        let Some(container) = self.inventory.open_container.as_mut().filter(|container| {
+            container.container_id == packet.container_id
+                && container.menu_type_id == Some(VANILLA_MENU_TYPE_MERCHANT_ID)
+        }) else {
             self.counters.merchant_offer_packets_ignored += 1;
             return false;
         };
@@ -460,6 +460,19 @@ mod tests {
             menu_type_id: 18,
             title: "Merchant".to_string(),
         });
+        assert!(!store.apply_merchant_offers(merchant_offers(7, 1)));
+        assert!(store
+            .inventory()
+            .open_container
+            .as_ref()
+            .unwrap()
+            .merchant_offers
+            .is_none());
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+            title: "Merchant".to_string(),
+        });
         assert!(!store.apply_merchant_offers(merchant_offers(99, 1)));
         assert!(store.apply_merchant_offers(merchant_offers(7, 2)));
 
@@ -474,9 +487,9 @@ mod tests {
         assert_eq!(offers.offers[0].buy_a, item_cost(42, 3));
         assert_eq!(offers.offers[0].sell, item_stack(99, 1));
 
-        assert_eq!(store.counters().merchant_offer_packets_received, 3);
+        assert_eq!(store.counters().merchant_offer_packets_received, 4);
         assert_eq!(store.counters().merchant_offer_packets_applied, 1);
-        assert_eq!(store.counters().merchant_offer_packets_ignored, 2);
+        assert_eq!(store.counters().merchant_offer_packets_ignored, 3);
         assert_eq!(store.counters().merchant_offers_tracked, 2);
 
         store.apply_container_set_content(ProtocolContainerSetContent {
