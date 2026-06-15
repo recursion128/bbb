@@ -301,20 +301,6 @@ pub(super) fn sync_scoreboard_counters(counters: &mut NetCounters, world: &World
     counters.set_score_updates_ignored = world_counters.set_score_updates_ignored;
 }
 
-pub(super) fn sync_recipe_book_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.recipe_book_add_packets = world_counters.recipe_book_add_packets;
-    counters.recipe_book_remove_packets = world_counters.recipe_book_remove_packets;
-    counters.recipe_book_settings_packets = world_counters.recipe_book_settings_packets;
-    counters.recipe_book_replace_packets = world_counters.recipe_book_replace_packets;
-    counters.recipe_book_entries_received = world_counters.recipe_book_entries_received;
-    counters.recipe_book_removed_entries_received =
-        world_counters.recipe_book_removed_entries_received;
-    counters.recipe_book_entries_tracked = world_counters.recipe_book_entries_tracked;
-    counters.recipe_book_highlights_tracked = world_counters.recipe_book_highlights_tracked;
-    counters.recipe_book_notifications_received = world_counters.recipe_book_notifications_received;
-}
-
 pub(super) fn sync_advancement_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.select_advancements_tab_packets = world_counters.select_advancements_tab_packets;

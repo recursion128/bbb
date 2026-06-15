@@ -104,24 +104,6 @@ pub struct NetCounters {
     pub set_score_updates_applied: usize,
     #[serde(default)]
     pub set_score_updates_ignored: usize,
-    #[serde(default)]
-    pub recipe_book_add_packets: usize,
-    #[serde(default)]
-    pub recipe_book_remove_packets: usize,
-    #[serde(default)]
-    pub recipe_book_settings_packets: usize,
-    #[serde(default)]
-    pub recipe_book_replace_packets: usize,
-    #[serde(default)]
-    pub recipe_book_entries_received: usize,
-    #[serde(default)]
-    pub recipe_book_removed_entries_received: usize,
-    #[serde(default)]
-    pub recipe_book_entries_tracked: usize,
-    #[serde(default)]
-    pub recipe_book_highlights_tracked: usize,
-    #[serde(default)]
-    pub recipe_book_notifications_received: usize,
     pub player_look_at_packets: usize,
     pub player_rotation_packets: usize,
     pub move_vehicle_packets: usize,

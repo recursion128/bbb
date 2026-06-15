@@ -1841,7 +1841,7 @@ fn merchant_offers_event_updates_world_inventory_state() {
 }
 
 #[test]
-fn recipe_book_events_update_world_state() {
+fn recipe_book_events_update_world_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::RecipeBookAdd(RecipeBookAdd {
         replace: true,
@@ -1893,21 +1893,12 @@ fn recipe_book_events_update_world_state() {
     assert_eq!(world_counters.recipe_book_add_packets, 1);
     assert_eq!(world_counters.recipe_book_remove_packets, 1);
     assert_eq!(world_counters.recipe_book_settings_packets, 1);
+    assert_eq!(world_counters.recipe_book_replace_packets, 1);
     assert_eq!(world_counters.recipe_book_entries_received, 2);
     assert_eq!(world_counters.recipe_book_removed_entries_received, 1);
     assert_eq!(world_counters.recipe_book_entries_tracked, 1);
     assert_eq!(world_counters.recipe_book_highlights_tracked, 1);
     assert_eq!(world_counters.recipe_book_notifications_received, 1);
-
-    assert_eq!(counters.recipe_book_add_packets, 1);
-    assert_eq!(counters.recipe_book_remove_packets, 1);
-    assert_eq!(counters.recipe_book_settings_packets, 1);
-    assert_eq!(counters.recipe_book_replace_packets, 1);
-    assert_eq!(counters.recipe_book_entries_received, 2);
-    assert_eq!(counters.recipe_book_removed_entries_received, 1);
-    assert_eq!(counters.recipe_book_entries_tracked, 1);
-    assert_eq!(counters.recipe_book_highlights_tracked, 1);
-    assert_eq!(counters.recipe_book_notifications_received, 1);
 }
 
 #[test]
