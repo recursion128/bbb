@@ -2944,7 +2944,7 @@ fn border_events_update_world_and_world_counters() {
 }
 
 #[test]
-fn scoreboard_events_update_world_and_counters() {
+fn scoreboard_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(11);
     tx.try_send(NetEvent::SetObjective(
         bbb_protocol::packets::SetObjective {
@@ -3046,44 +3046,28 @@ fn scoreboard_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        set_objective_packets: 99,
-        set_objective_updates_applied: 99,
-        set_objective_updates_ignored: 99,
-        set_display_objective_packets: 99,
-        set_display_objective_updates_applied: 99,
-        set_display_objective_updates_ignored: 99,
-        set_score_packets: 99,
-        set_score_updates_applied: 99,
-        set_score_updates_ignored: 99,
-        set_player_team_packets: 99,
-        set_player_team_updates_applied: 99,
-        set_player_team_updates_ignored: 99,
-        reset_score_packets: 99,
-        reset_score_updates_applied: 99,
-        reset_score_updates_ignored: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         11
     );
-    assert_eq!(counters.set_objective_packets, 2);
-    assert_eq!(counters.set_objective_updates_applied, 1);
-    assert_eq!(counters.set_objective_updates_ignored, 1);
-    assert_eq!(counters.set_display_objective_packets, 2);
-    assert_eq!(counters.set_display_objective_updates_applied, 1);
-    assert_eq!(counters.set_display_objective_updates_ignored, 1);
-    assert_eq!(counters.set_score_packets, 3);
-    assert_eq!(counters.set_score_updates_applied, 2);
-    assert_eq!(counters.set_score_updates_ignored, 1);
-    assert_eq!(counters.set_player_team_packets, 2);
-    assert_eq!(counters.set_player_team_updates_applied, 1);
-    assert_eq!(counters.set_player_team_updates_ignored, 1);
-    assert_eq!(counters.reset_score_packets, 2);
-    assert_eq!(counters.reset_score_updates_applied, 1);
-    assert_eq!(counters.reset_score_updates_ignored, 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.set_objective_packets, 2);
+    assert_eq!(world_counters.set_objective_updates_applied, 1);
+    assert_eq!(world_counters.set_objective_updates_ignored, 1);
+    assert_eq!(world_counters.set_display_objective_packets, 2);
+    assert_eq!(world_counters.set_display_objective_updates_applied, 1);
+    assert_eq!(world_counters.set_display_objective_updates_ignored, 1);
+    assert_eq!(world_counters.set_score_packets, 3);
+    assert_eq!(world_counters.set_score_updates_applied, 2);
+    assert_eq!(world_counters.set_score_updates_ignored, 1);
+    assert_eq!(world_counters.set_player_team_packets, 2);
+    assert_eq!(world_counters.set_player_team_updates_applied, 1);
+    assert_eq!(world_counters.set_player_team_updates_ignored, 1);
+    assert_eq!(world_counters.reset_score_packets, 2);
+    assert_eq!(world_counters.reset_score_updates_applied, 1);
+    assert_eq!(world_counters.reset_score_updates_ignored, 1);
 
     let scoreboard = world.scoreboard();
     let objective = scoreboard.objectives.get("kills").unwrap();

@@ -11,7 +11,7 @@ use super::client_state::*;
 use super::control_state::{
     apply_control_projection_event, sync_advancement_counters, sync_block_event_counters,
     sync_entity_counters, sync_entity_interaction_counters, sync_entity_status_counters,
-    sync_inventory_counters, sync_scoreboard_counters,
+    sync_inventory_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -206,23 +206,18 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::ResetScore(update) => {
                 world.apply_reset_score(update);
-                sync_scoreboard_counters(counters, world);
             }
             NetEvent::SetDisplayObjective(update) => {
                 world.apply_set_display_objective(update);
-                sync_scoreboard_counters(counters, world);
             }
             NetEvent::SetObjective(update) => {
                 world.apply_set_objective(update);
-                sync_scoreboard_counters(counters, world);
             }
             NetEvent::SetPlayerTeam(update) => {
                 world.apply_set_player_team(update);
-                sync_scoreboard_counters(counters, world);
             }
             NetEvent::SetScore(update) => {
                 world.apply_set_score(update);
-                sync_scoreboard_counters(counters, world);
             }
             NetEvent::Commands(update) => {
                 world.apply_commands(update);

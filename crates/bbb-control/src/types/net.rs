@@ -79,31 +79,6 @@ pub struct NetCounters {
     pub level_event_packets: usize,
     #[serde(default)]
     pub level_events_tracked: usize,
-    pub reset_score_packets: usize,
-    #[serde(default)]
-    pub reset_score_updates_applied: usize,
-    #[serde(default)]
-    pub reset_score_updates_ignored: usize,
-    pub set_display_objective_packets: usize,
-    #[serde(default)]
-    pub set_display_objective_updates_applied: usize,
-    #[serde(default)]
-    pub set_display_objective_updates_ignored: usize,
-    pub set_objective_packets: usize,
-    #[serde(default)]
-    pub set_objective_updates_applied: usize,
-    #[serde(default)]
-    pub set_objective_updates_ignored: usize,
-    pub set_player_team_packets: usize,
-    #[serde(default)]
-    pub set_player_team_updates_applied: usize,
-    #[serde(default)]
-    pub set_player_team_updates_ignored: usize,
-    pub set_score_packets: usize,
-    #[serde(default)]
-    pub set_score_updates_applied: usize,
-    #[serde(default)]
-    pub set_score_updates_ignored: usize,
     pub player_look_at_packets: usize,
     pub player_rotation_packets: usize,
     pub move_vehicle_packets: usize,
