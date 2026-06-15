@@ -1,10 +1,10 @@
 use bbb_control::{NetCounters, PlayerPose};
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    AttackEntity, ChatCommand, CommandSuggestionRequest, Direction as ProtocolDirection,
-    InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction,
-    PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem, UseItemOn,
-    Vec3d as ProtocolVec3d,
+    AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerCloseRequest,
+    Direction as ProtocolDirection, InteractEntity, InteractionHand, PickItemFromBlock,
+    PickItemFromEntity, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
+    PlayerInput, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -144,6 +144,32 @@ fn queue_chat_command(
             counters.chat_command_commands_queued += 1;
         }
     }
+}
+
+pub(super) fn queue_container_close_command(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) -> bool {
+    let Some(container_id) = world
+        .inventory()
+        .open_container
+        .as_ref()
+        .map(|container| container.container_id)
+    else {
+        return false;
+    };
+    if !world.close_local_container(container_id) {
+        return false;
+    }
+
+    if let Some(tx) = net_commands {
+        let packet = ContainerCloseRequest { container_id };
+        if tx.try_send(NetCommand::ContainerClose(packet)).is_ok() {
+            counters.container_close_commands_queued += 1;
+        }
+    }
+    true
 }
 
 pub(super) fn queue_attack_entity_command(

@@ -230,6 +230,21 @@ impl WorldStore {
         }
     }
 
+    pub fn close_local_container(&mut self, container_id: i32) -> bool {
+        if self
+            .inventory
+            .open_container
+            .as_ref()
+            .is_some_and(|container| container.container_id == container_id)
+        {
+            self.inventory.open_container = None;
+            self.counters.merchant_offers_tracked = 0;
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn inventory(&self) -> &InventoryState {
         &self.inventory
     }
@@ -415,6 +430,24 @@ mod tests {
         assert_eq!(store.counters().container_slot_updates_received, 1);
         assert_eq!(store.counters().container_data_updates_received, 2);
         assert_eq!(store.counters().container_close_updates_received, 2);
+    }
+
+    #[test]
+    fn local_container_close_does_not_count_clientbound_close_packet() {
+        let mut store = WorldStore::new();
+
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 2,
+            title: "Chest".to_string(),
+        });
+
+        assert!(store.close_local_container(7));
+        assert!(store.inventory().open_container.is_none());
+        assert_eq!(store.counters().container_close_updates_received, 0);
+
+        assert!(!store.close_local_container(7));
+        assert_eq!(store.counters().container_close_updates_received, 0);
     }
 
     #[test]

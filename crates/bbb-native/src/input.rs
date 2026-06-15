@@ -126,6 +126,11 @@ pub(crate) fn handle_key_input(
     };
 
     if pressed {
+        if matches!(code, KeyCode::Escape | KeyCode::KeyE)
+            && queue_container_close_command(counters, world, net_commands)
+        {
+            return;
+        }
         if let Some(slot) = hotbar_slot_for_key(code) {
             select_hotbar_slot(counters, world, net_commands, slot);
             return;

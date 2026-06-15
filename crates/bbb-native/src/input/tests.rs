@@ -1,5 +1,8 @@
 use super::*;
-use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, PlayerAction, PlayerCommand};
+use bbb_protocol::packets::{
+    BlockPos as ProtocolBlockPos, ContainerCloseRequest, OpenScreen as ProtocolOpenScreen,
+    PlayerAction, PlayerCommand,
+};
 use bbb_world::{BlockPos, WorldStore};
 
 fn handle_key_input_without_world(
@@ -164,6 +167,92 @@ fn inventory_key_queues_open_inventory_command() {
             data: 0,
         })
     );
+}
+
+#[test]
+fn escape_key_closes_open_container_and_queues_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(ProtocolOpenScreen {
+        container_id: 7,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(world.inventory().open_container.is_none());
+    assert_eq!(world.counters().container_close_updates_received, 0);
+    assert_eq!(counters.container_close_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClose(ContainerCloseRequest { container_id: 7 })
+    );
+}
+
+#[test]
+fn inventory_key_closes_open_container_before_open_inventory_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters {
+        player_entity_id: Some(77),
+        ..NetCounters::default()
+    };
+    let mut world = WorldStore::new();
+    world.apply_open_screen(ProtocolOpenScreen {
+        container_id: 8,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyE),
+        ElementState::Pressed,
+    );
+
+    assert!(world.inventory().open_container.is_none());
+    assert_eq!(counters.container_close_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClose(ContainerCloseRequest { container_id: 8 })
+    );
+}
+
+#[test]
+fn escape_key_without_open_container_does_not_queue_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.container_close_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]
