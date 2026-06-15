@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
-use super::{read_resource_key, ChunkPos};
+use super::{read_resource_location, ChunkPos};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TrackedWaypointPacket {
@@ -144,7 +144,7 @@ fn decode_tracked_waypoint(decoder: &mut Decoder<'_>) -> Result<TrackedWaypoint>
 }
 
 fn decode_waypoint_icon(decoder: &mut Decoder<'_>) -> Result<WaypointIcon> {
-    let style = read_resource_key(decoder)?;
+    let style = read_resource_location(decoder)?;
     let color_rgb = if decoder.read_bool()? {
         let red = u32::from(decoder.read_u8()?);
         let green = u32::from(decoder.read_u8()?);

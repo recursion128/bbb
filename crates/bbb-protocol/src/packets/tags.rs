@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
-use super::read_resource_key;
+use super::read_resource_location;
 
 const MAX_TAG_REGISTRIES: usize = 1024;
 const MAX_TAGS_PER_REGISTRY: usize = 65_536;
@@ -48,7 +48,7 @@ pub(crate) fn decode_update_tags(decoder: &mut Decoder<'_>) -> Result<UpdateTags
 }
 
 fn decode_registry_tags(decoder: &mut Decoder<'_>) -> Result<RegistryTags> {
-    let registry = read_resource_key(decoder)?;
+    let registry = read_resource_location(decoder)?;
     let tag_count = decoder.read_len()?;
     if tag_count > MAX_TAGS_PER_REGISTRY {
         return Err(ProtocolError::PacketTooLarge(
@@ -65,7 +65,7 @@ fn decode_registry_tags(decoder: &mut Decoder<'_>) -> Result<RegistryTags> {
 }
 
 fn decode_tag_payload(decoder: &mut Decoder<'_>) -> Result<TagNetworkPayload> {
-    let tag = decoder.read_string(32767)?;
+    let tag = read_resource_location(decoder)?;
     let entry_count = decoder.read_len()?;
     if entry_count > MAX_TAG_ENTRIES {
         return Err(ProtocolError::PacketTooLarge(entry_count, MAX_TAG_ENTRIES));

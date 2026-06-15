@@ -88,6 +88,47 @@ fn decodes_chunk_waypoint_with_named_identifier() {
 }
 
 #[test]
+fn decodes_waypoint_icon_style_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_bool(false);
+    payload.write_string("DisplayName");
+    payload.write_string("default");
+    payload.write_bool(false);
+    payload.write_var_i32(0);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload.into_inner()).unwrap(),
+        PlayClientbound::Waypoint(TrackedWaypointPacket {
+            operation: WaypointOperation::Track,
+            waypoint: TrackedWaypoint {
+                identifier: WaypointIdentifier::Name("DisplayName".to_string()),
+                icon: WaypointIcon {
+                    style: "minecraft:default".to_string(),
+                    color_rgb: None,
+                },
+                data: WaypointData::Empty,
+            },
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_waypoint_icon_style_resource_location() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_bool(false);
+    payload.write_string("bad-style");
+    payload.write_string("minecraft:Default");
+    payload.write_bool(false);
+    payload.write_var_i32(0);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_WAYPOINT, &payload.into_inner())
+        .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
 fn decodes_empty_and_azimuth_waypoints() {
     let waypoint_id = Uuid::from_u128(0xabcdef001234567889abcdef00123456);
     let mut empty = Encoder::new();

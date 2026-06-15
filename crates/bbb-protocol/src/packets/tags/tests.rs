@@ -32,6 +32,48 @@ fn decodes_update_tags_in_configuration_state() {
 }
 
 #[test]
+fn decodes_update_tags_with_default_namespaces() {
+    let payload = single_update_tag_payload("item", "logs", &[5, 6]);
+    let expected = UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:logs".to_string(),
+                entries: vec![5, 6],
+            }],
+        }],
+    };
+
+    let play_packet =
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_TAGS, &payload).unwrap();
+    assert_eq!(play_packet, PlayClientbound::UpdateTags(expected.clone()));
+
+    let configuration_packet =
+        decode_configuration_clientbound(ids::configuration::CLIENTBOUND_UPDATE_TAGS, &payload)
+            .unwrap();
+    assert_eq!(
+        configuration_packet,
+        ConfigurationClientbound::UpdateTags(expected)
+    );
+}
+
+#[test]
+fn rejects_update_tags_with_invalid_registry_id() {
+    let payload = single_update_tag_payload("minecraft:Item", "logs", &[5, 6]);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_TAGS, &payload).unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
+fn rejects_update_tags_with_invalid_tag_id() {
+    let payload = single_update_tag_payload("minecraft:item", "minecraft:Logs", &[5, 6]);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_TAGS, &payload).unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
 fn rejects_update_tags_with_trailing_bytes() {
     let mut payload = update_tags_payload();
     payload.push(0);
@@ -40,6 +82,15 @@ fn rejects_update_tags_with_trailing_bytes() {
     assert!(err
         .to_string()
         .contains("trailing bytes after update tags packet"));
+}
+
+fn single_update_tag_payload(registry: &str, tag: &str, entries: &[i32]) -> Vec<u8> {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(1);
+    payload.write_string(registry);
+    payload.write_var_i32(1);
+    write_tag(&mut payload, tag, entries);
+    payload.into_inner()
 }
 
 fn update_tags_payload() -> Vec<u8> {
