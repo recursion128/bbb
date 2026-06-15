@@ -10,6 +10,7 @@ use crate::{
     item_models::ItemModelCatalog,
     language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE},
     metadata::PackMetadataCatalog,
+    particle_definitions::ParticleDefinitionCatalog,
     resources::{PackResourceStack, ResourceLocation},
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
@@ -171,6 +172,10 @@ impl PackRoots {
 
     pub fn load_waypoint_style_catalog(&self) -> Result<WaypointStyleCatalog> {
         WaypointStyleCatalog::load(self)
+    }
+
+    pub fn load_particle_definition_catalog(&self) -> Result<ParticleDefinitionCatalog> {
+        ParticleDefinitionCatalog::load(self)
     }
 
     pub fn load_terrain_colormaps(&self) -> Result<TerrainColorMaps> {

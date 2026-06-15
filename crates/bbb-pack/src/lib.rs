@@ -8,6 +8,7 @@ mod item_models;
 mod language;
 mod metadata;
 mod mipmap;
+mod particle_definitions;
 mod resources;
 mod roots;
 mod sounds;

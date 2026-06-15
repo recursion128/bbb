@@ -235,8 +235,8 @@ Deliverables:
 - `bbb-pack` loads vanilla 26.1 baseline assets.
 - Resource-pack layering and precedence are represented.
 - Blockstates, model parents, item model definitions, texture references,
-  waypoint styles, atlases, colormaps, language files, sounds, subtitles, tags,
-  and registry-adjacent data have lookup APIs.
+  particle definitions, waypoint styles, atlases, colormaps, language files,
+  sounds, subtitles, tags, and registry-adjacent data have lookup APIs.
 - Renderer and audio runtime ask `bbb-pack` for resolved resources instead of
   duplicating path logic.
 
