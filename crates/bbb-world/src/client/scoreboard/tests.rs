@@ -67,8 +67,14 @@ fn scoreboard_objective_lifecycle_clears_display_and_scores() {
 
     let counters = store.counters();
     assert_eq!(counters.set_objective_packets, 3);
+    assert_eq!(counters.set_objective_updates_applied, 3);
+    assert_eq!(counters.set_objective_updates_ignored, 0);
     assert_eq!(counters.set_display_objective_packets, 1);
+    assert_eq!(counters.set_display_objective_updates_applied, 1);
+    assert_eq!(counters.set_display_objective_updates_ignored, 0);
     assert_eq!(counters.set_score_packets, 1);
+    assert_eq!(counters.set_score_updates_applied, 1);
+    assert_eq!(counters.set_score_updates_ignored, 0);
 }
 
 #[test]
@@ -127,8 +133,14 @@ fn scoreboard_sets_and_resets_scores() {
 
     let counters = store.counters();
     assert_eq!(counters.set_objective_packets, 2);
+    assert_eq!(counters.set_objective_updates_applied, 2);
+    assert_eq!(counters.set_objective_updates_ignored, 0);
     assert_eq!(counters.set_score_packets, 3);
+    assert_eq!(counters.set_score_updates_applied, 2);
+    assert_eq!(counters.set_score_updates_ignored, 1);
     assert_eq!(counters.reset_score_packets, 3);
+    assert_eq!(counters.reset_score_updates_applied, 2);
+    assert_eq!(counters.reset_score_updates_ignored, 1);
 }
 
 #[test]
@@ -162,7 +174,14 @@ fn scoreboard_display_objective_can_be_cleared_by_empty_name() {
         objective_name: Some(String::new()),
     }));
     assert!(store.scoreboard().display_slots.is_empty());
-    assert_eq!(store.counters().set_display_objective_packets, 2);
+
+    assert!(!store.apply_set_display_objective(SetDisplayObjective {
+        slot: ScoreboardDisplaySlot::Sidebar,
+        objective_name: Some(String::new()),
+    }));
+    assert_eq!(store.counters().set_display_objective_packets, 3);
+    assert_eq!(store.counters().set_display_objective_updates_applied, 2);
+    assert_eq!(store.counters().set_display_objective_updates_ignored, 1);
 }
 
 #[test]
@@ -264,6 +283,66 @@ fn scoreboard_teams_add_change_join_leave_and_remove() {
     assert!(!store.scoreboard().teams.contains_key("red"));
     assert!(store.scoreboard().teams.contains_key("blue"));
     assert_eq!(store.counters().set_player_team_packets, 7);
+    assert_eq!(store.counters().set_player_team_updates_applied, 6);
+    assert_eq!(store.counters().set_player_team_updates_ignored, 1);
+}
+
+#[test]
+fn scoreboard_ignored_updates_are_counted() {
+    let mut store = WorldStore::new();
+
+    assert!(!store.apply_set_objective(protocol_set_objective(
+        "bad",
+        SetObjectiveMethod::Add,
+        None,
+    )));
+    assert!(!store.apply_set_objective(protocol_set_objective(
+        "missing",
+        SetObjectiveMethod::Change,
+        Some(protocol_objective_parameters(
+            "Missing",
+            ObjectiveRenderType::Integer,
+            None,
+        )),
+    )));
+    assert!(!store.apply_set_score(SetScore {
+        owner: "Alex".to_string(),
+        objective_name: "missing".to_string(),
+        score: 99,
+        display: None,
+        number_format: None,
+    }));
+    assert!(!store.apply_reset_score(ResetScore {
+        owner: "Alex".to_string(),
+        objective_name: Some("missing".to_string()),
+    }));
+    assert!(!store.apply_set_display_objective(SetDisplayObjective {
+        slot: ScoreboardDisplaySlot::Sidebar,
+        objective_name: Some("missing".to_string()),
+    }));
+    assert!(!store.apply_set_player_team(protocol_set_player_team(
+        "missing",
+        PlayerTeamMethod::Join,
+        None,
+        &["Alex"],
+    )));
+
+    let counters = store.counters();
+    assert_eq!(counters.set_objective_packets, 2);
+    assert_eq!(counters.set_objective_updates_applied, 0);
+    assert_eq!(counters.set_objective_updates_ignored, 2);
+    assert_eq!(counters.set_score_packets, 1);
+    assert_eq!(counters.set_score_updates_applied, 0);
+    assert_eq!(counters.set_score_updates_ignored, 1);
+    assert_eq!(counters.reset_score_packets, 1);
+    assert_eq!(counters.reset_score_updates_applied, 0);
+    assert_eq!(counters.reset_score_updates_ignored, 1);
+    assert_eq!(counters.set_display_objective_packets, 1);
+    assert_eq!(counters.set_display_objective_updates_applied, 0);
+    assert_eq!(counters.set_display_objective_updates_ignored, 1);
+    assert_eq!(counters.set_player_team_packets, 1);
+    assert_eq!(counters.set_player_team_updates_applied, 0);
+    assert_eq!(counters.set_player_team_updates_ignored, 1);
 }
 
 fn team_players(team: &ScoreboardTeam) -> Vec<&str> {

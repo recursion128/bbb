@@ -390,10 +390,22 @@ pub(super) fn sync_world_border_counters(counters: &mut NetCounters, world: &Wor
 pub(super) fn sync_scoreboard_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.reset_score_packets = world_counters.reset_score_packets;
+    counters.reset_score_updates_applied = world_counters.reset_score_updates_applied;
+    counters.reset_score_updates_ignored = world_counters.reset_score_updates_ignored;
     counters.set_display_objective_packets = world_counters.set_display_objective_packets;
+    counters.set_display_objective_updates_applied =
+        world_counters.set_display_objective_updates_applied;
+    counters.set_display_objective_updates_ignored =
+        world_counters.set_display_objective_updates_ignored;
     counters.set_objective_packets = world_counters.set_objective_packets;
+    counters.set_objective_updates_applied = world_counters.set_objective_updates_applied;
+    counters.set_objective_updates_ignored = world_counters.set_objective_updates_ignored;
     counters.set_player_team_packets = world_counters.set_player_team_packets;
+    counters.set_player_team_updates_applied = world_counters.set_player_team_updates_applied;
+    counters.set_player_team_updates_ignored = world_counters.set_player_team_updates_ignored;
     counters.set_score_packets = world_counters.set_score_packets;
+    counters.set_score_updates_applied = world_counters.set_score_updates_applied;
+    counters.set_score_updates_ignored = world_counters.set_score_updates_ignored;
 }
 
 pub(super) fn sync_command_counters(counters: &mut NetCounters, world: &WorldStore) {

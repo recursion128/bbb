@@ -3281,7 +3281,7 @@ fn border_events_update_world_and_counters() {
 
 #[test]
 fn scoreboard_events_update_world_and_counters() {
-    let (tx, mut rx) = mpsc::channel(6);
+    let (tx, mut rx) = mpsc::channel(11);
     tx.try_send(NetEvent::SetObjective(
         bbb_protocol::packets::SetObjective {
             objective_name: "kills".to_string(),
@@ -3339,26 +3339,87 @@ fn scoreboard_events_update_world_and_counters() {
         objective_name: Some("kills".to_string()),
     }))
     .unwrap();
+    tx.try_send(NetEvent::SetObjective(
+        bbb_protocol::packets::SetObjective {
+            objective_name: "missing".to_string(),
+            method: bbb_protocol::packets::SetObjectiveMethod::Change,
+            parameters: Some(bbb_protocol::packets::SetObjectiveParameters {
+                display_name: "Missing".to_string(),
+                render_type: bbb_protocol::packets::ObjectiveRenderType::Integer,
+                number_format: None,
+            }),
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::SetDisplayObjective(
+        bbb_protocol::packets::SetDisplayObjective {
+            slot: bbb_protocol::packets::ScoreboardDisplaySlot::List,
+            objective_name: Some("missing".to_string()),
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::SetScore(bbb_protocol::packets::SetScore {
+        owner: "Nobody".to_string(),
+        objective_name: "missing".to_string(),
+        score: 9,
+        display: None,
+        number_format: None,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetPlayerTeam(
+        bbb_protocol::packets::SetPlayerTeam {
+            name: "missing".to_string(),
+            method: bbb_protocol::packets::PlayerTeamMethod::Join,
+            parameters: None,
+            players: vec!["Nobody".to_string()],
+        },
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::ResetScore(bbb_protocol::packets::ResetScore {
+        owner: "Nobody".to_string(),
+        objective_name: Some("missing".to_string()),
+    }))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters {
         set_objective_packets: 99,
+        set_objective_updates_applied: 99,
+        set_objective_updates_ignored: 99,
         set_display_objective_packets: 99,
+        set_display_objective_updates_applied: 99,
+        set_display_objective_updates_ignored: 99,
         set_score_packets: 99,
+        set_score_updates_applied: 99,
+        set_score_updates_ignored: 99,
         set_player_team_packets: 99,
+        set_player_team_updates_applied: 99,
+        set_player_team_updates_ignored: 99,
         reset_score_packets: 99,
+        reset_score_updates_applied: 99,
+        reset_score_updates_ignored: 99,
         ..NetCounters::default()
     };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        6
+        11
     );
-    assert_eq!(counters.set_objective_packets, 1);
-    assert_eq!(counters.set_display_objective_packets, 1);
-    assert_eq!(counters.set_score_packets, 2);
-    assert_eq!(counters.set_player_team_packets, 1);
-    assert_eq!(counters.reset_score_packets, 1);
+    assert_eq!(counters.set_objective_packets, 2);
+    assert_eq!(counters.set_objective_updates_applied, 1);
+    assert_eq!(counters.set_objective_updates_ignored, 1);
+    assert_eq!(counters.set_display_objective_packets, 2);
+    assert_eq!(counters.set_display_objective_updates_applied, 1);
+    assert_eq!(counters.set_display_objective_updates_ignored, 1);
+    assert_eq!(counters.set_score_packets, 3);
+    assert_eq!(counters.set_score_updates_applied, 2);
+    assert_eq!(counters.set_score_updates_ignored, 1);
+    assert_eq!(counters.set_player_team_packets, 2);
+    assert_eq!(counters.set_player_team_updates_applied, 1);
+    assert_eq!(counters.set_player_team_updates_ignored, 1);
+    assert_eq!(counters.reset_score_packets, 2);
+    assert_eq!(counters.reset_score_updates_applied, 1);
+    assert_eq!(counters.reset_score_updates_ignored, 1);
 
     let scoreboard = world.scoreboard();
     let objective = scoreboard.objectives.get("kills").unwrap();

@@ -59,10 +59,10 @@ impl WorldStore {
     pub fn apply_set_objective(&mut self, packet: ProtocolSetObjective) -> bool {
         self.counters.set_objective_packets += 1;
 
-        match packet.method {
+        let applied = match packet.method {
             ProtocolSetObjectiveMethod::Add => {
                 let Some(parameters) = packet.parameters else {
-                    return false;
+                    return self.finish_set_objective_update(false);
                 };
                 let objective = ScoreboardObjective {
                     name: packet.objective_name.clone(),
@@ -80,18 +80,19 @@ impl WorldStore {
             }
             ProtocolSetObjectiveMethod::Change => {
                 let Some(parameters) = packet.parameters else {
-                    return false;
+                    return self.finish_set_objective_update(false);
                 };
                 let Some(objective) = self.scoreboard.objectives.get_mut(&packet.objective_name)
                 else {
-                    return false;
+                    return self.finish_set_objective_update(false);
                 };
                 objective.display_name = parameters.display_name;
                 objective.render_type = objective_render_type_name(parameters.render_type);
                 objective.number_format = parameters.number_format;
                 true
             }
-        }
+        };
+        self.finish_set_objective_update(applied)
     }
 
     pub fn apply_set_score(&mut self, packet: ProtocolSetScore) -> bool {
@@ -101,7 +102,7 @@ impl WorldStore {
             .objectives
             .contains_key(&packet.objective_name)
         {
-            return false;
+            return self.finish_set_score_update(false);
         }
 
         self.scoreboard
@@ -116,46 +117,49 @@ impl WorldStore {
                     number_format: packet.number_format,
                 },
             );
-        true
+        self.finish_set_score_update(true)
     }
 
     pub fn apply_reset_score(&mut self, packet: ProtocolResetScore) -> bool {
         self.counters.reset_score_packets += 1;
         let Some(objective_name) = packet.objective_name else {
-            return self.scoreboard.scores.remove(&packet.owner).is_some();
+            let applied = self.scoreboard.scores.remove(&packet.owner).is_some();
+            return self.finish_reset_score_update(applied);
         };
         if !self.scoreboard.objectives.contains_key(&objective_name) {
-            return false;
+            return self.finish_reset_score_update(false);
         }
 
         let Some(scores) = self.scoreboard.scores.get_mut(&packet.owner) else {
-            return false;
+            return self.finish_reset_score_update(false);
         };
         let removed = scores.remove(&objective_name).is_some();
         if scores.is_empty() {
             self.scoreboard.scores.remove(&packet.owner);
         }
-        removed
+        self.finish_reset_score_update(removed)
     }
 
     pub fn apply_set_display_objective(&mut self, packet: ProtocolSetDisplayObjective) -> bool {
         self.counters.set_display_objective_packets += 1;
         let slot = scoreboard_display_slot_name(packet.slot);
         let Some(objective_name) = packet.objective_name.filter(|name| !name.is_empty()) else {
-            return self.scoreboard.display_slots.remove(&slot).is_some();
+            let applied = self.scoreboard.display_slots.remove(&slot).is_some();
+            return self.finish_set_display_objective_update(applied);
         };
         if !self.scoreboard.objectives.contains_key(&objective_name) {
-            return self.scoreboard.display_slots.remove(&slot).is_some();
+            let applied = self.scoreboard.display_slots.remove(&slot).is_some();
+            return self.finish_set_display_objective_update(applied);
         }
 
         self.scoreboard.display_slots.insert(slot, objective_name);
-        true
+        self.finish_set_display_objective_update(true)
     }
 
     pub fn apply_set_player_team(&mut self, packet: ProtocolSetPlayerTeam) -> bool {
         self.counters.set_player_team_packets += 1;
 
-        match packet.method {
+        let applied = match packet.method {
             ProtocolPlayerTeamMethod::Add => {
                 self.scoreboard
                     .teams
@@ -178,31 +182,32 @@ impl WorldStore {
             }
             ProtocolPlayerTeamMethod::Change => {
                 let Some(team) = self.scoreboard.teams.get_mut(&packet.name) else {
-                    return false;
+                    return self.finish_set_player_team_update(false);
                 };
                 let Some(parameters) = packet.parameters else {
-                    return false;
+                    return self.finish_set_player_team_update(false);
                 };
                 team.parameters = Some(scoreboard_team_parameters(parameters));
                 true
             }
             ProtocolPlayerTeamMethod::Join => {
                 if !self.scoreboard.teams.contains_key(&packet.name) {
-                    return false;
+                    return self.finish_set_player_team_update(false);
                 }
                 self.add_players_to_scoreboard_team(&packet.name, packet.players);
                 true
             }
             ProtocolPlayerTeamMethod::Leave => {
                 let Some(team) = self.scoreboard.teams.get_mut(&packet.name) else {
-                    return false;
+                    return self.finish_set_player_team_update(false);
                 };
                 for player in packet.players {
                     team.players.remove(&player);
                 }
                 true
             }
-        }
+        };
+        self.finish_set_player_team_update(applied)
     }
 
     pub fn scoreboard(&self) -> &ScoreboardState {
@@ -239,6 +244,51 @@ impl WorldStore {
                 team.players.remove(player);
             }
         }
+    }
+
+    fn finish_set_objective_update(&mut self, applied: bool) -> bool {
+        if applied {
+            self.counters.set_objective_updates_applied += 1;
+        } else {
+            self.counters.set_objective_updates_ignored += 1;
+        }
+        applied
+    }
+
+    fn finish_set_score_update(&mut self, applied: bool) -> bool {
+        if applied {
+            self.counters.set_score_updates_applied += 1;
+        } else {
+            self.counters.set_score_updates_ignored += 1;
+        }
+        applied
+    }
+
+    fn finish_reset_score_update(&mut self, applied: bool) -> bool {
+        if applied {
+            self.counters.reset_score_updates_applied += 1;
+        } else {
+            self.counters.reset_score_updates_ignored += 1;
+        }
+        applied
+    }
+
+    fn finish_set_display_objective_update(&mut self, applied: bool) -> bool {
+        if applied {
+            self.counters.set_display_objective_updates_applied += 1;
+        } else {
+            self.counters.set_display_objective_updates_ignored += 1;
+        }
+        applied
+    }
+
+    fn finish_set_player_team_update(&mut self, applied: bool) -> bool {
+        if applied {
+            self.counters.set_player_team_updates_applied += 1;
+        } else {
+            self.counters.set_player_team_updates_ignored += 1;
+        }
+        applied
     }
 }
 
