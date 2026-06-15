@@ -3101,6 +3101,7 @@ fn minecart_along_track_updates_entity_from_latest_step() {
     );
     assert_eq!(store.counters().minecart_moves_received, 4);
     assert_eq!(store.counters().minecart_moves_applied, 2);
+    assert_eq!(store.counters().minecart_moves_ignored, 2);
     assert_eq!(store.counters().minecart_lerp_steps_received, 5);
     assert_eq!(store.counters().minecart_lerp_steps_tracked, 1);
 }

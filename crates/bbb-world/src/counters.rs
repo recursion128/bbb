@@ -485,6 +485,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub minecart_moves_applied: usize,
     #[serde(default)]
+    pub minecart_moves_ignored: usize,
+    #[serde(default)]
     pub minecart_lerp_steps_received: usize,
     #[serde(default)]
     pub minecart_lerp_steps_tracked: usize,

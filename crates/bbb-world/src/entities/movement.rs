@@ -69,9 +69,11 @@ impl WorldStore {
         self.counters.minecart_moves_received += 1;
         self.counters.minecart_lerp_steps_received += packet.lerp_steps.len();
         let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
+            self.counters.minecart_moves_ignored += 1;
             return false;
         };
         if !is_vanilla_minecart_type(entity_type_id) {
+            self.counters.minecart_moves_ignored += 1;
             return false;
         }
 
@@ -86,6 +88,7 @@ impl WorldStore {
                     transform.x_rot = last_step.x_rot;
                 })
             else {
+                self.counters.minecart_moves_ignored += 1;
                 return false;
             };
         }
@@ -95,6 +98,7 @@ impl WorldStore {
                 lerp.steps = packet.lerp_steps;
             })
         else {
+            self.counters.minecart_moves_ignored += 1;
             return false;
         };
         self.counters.minecart_moves_applied += 1;

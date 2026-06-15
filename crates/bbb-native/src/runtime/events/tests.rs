@@ -3748,6 +3748,59 @@ fn minecart_along_track_event_updates_world_state() {
 }
 
 #[test]
+fn minecart_along_track_ignored_counters_are_projected() {
+    let (event_tx, mut event_rx) = mpsc::channel(2);
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(20));
+
+    let step = MinecartStep {
+        position: ProtocolVec3d {
+            x: 2.0,
+            y: 64.25,
+            z: -3.0,
+        },
+        movement: ProtocolVec3d {
+            x: 0.3,
+            y: 0.0,
+            z: -0.3,
+        },
+        y_rot: 90.0,
+        x_rot: 5.0,
+        weight: 1.0,
+    };
+
+    event_tx
+        .try_send(NetEvent::MoveMinecartAlongTrack(MoveMinecartAlongTrack {
+            entity_id: 999,
+            lerp_steps: vec![step],
+        }))
+        .unwrap();
+    event_tx
+        .try_send(NetEvent::MoveMinecartAlongTrack(MoveMinecartAlongTrack {
+            entity_id: 20,
+            lerp_steps: vec![step],
+        }))
+        .unwrap();
+
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut event_rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    assert_eq!(world.counters().minecart_moves_received, 2);
+    assert_eq!(world.counters().minecart_moves_applied, 0);
+    assert_eq!(world.counters().minecart_moves_ignored, 2);
+    assert_eq!(world.counters().minecart_lerp_steps_received, 2);
+    assert_eq!(world.counters().minecart_lerp_steps_tracked, 0);
+    assert_eq!(counters.minecart_moves_received, 2);
+    assert_eq!(counters.minecart_moves_applied, 0);
+    assert_eq!(counters.minecart_moves_ignored, 2);
+    assert_eq!(counters.minecart_lerp_steps_received, 2);
+    assert_eq!(counters.minecart_lerp_steps_tracked, 0);
+}
+
+#[test]
 fn login_projects_local_player_id_from_world() {
     let (tx, mut rx) = mpsc::channel(2);
     let respawn_info = protocol_play_login(9).common_spawn_info;
