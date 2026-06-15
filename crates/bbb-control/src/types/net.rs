@@ -110,7 +110,6 @@ pub struct NetCounters {
     pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub last_custom_chat_completion: Option<CustomChatCompletionState>,
-    pub last_custom_payload: Option<CustomPayloadState>,
     pub selected_advancements_tab: Option<String>,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
@@ -692,14 +691,6 @@ pub struct ServerLinkState {
 pub struct CustomChatCompletionState {
     pub action: String,
     pub entries: usize,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CustomPayloadState {
-    pub id: String,
-    pub kind: String,
-    pub brand: Option<String>,
-    pub raw_payload_len: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

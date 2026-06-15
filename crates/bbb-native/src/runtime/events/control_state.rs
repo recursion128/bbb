@@ -496,9 +496,6 @@ fn sync_custom_payload_counters(counters: &mut NetCounters, world: &WorldStore) 
     counters.custom_payload_packets = world_counters.custom_payload_packets;
     counters.custom_payload_brand_packets = world_counters.custom_payload_brand_packets;
     counters.custom_payload_unknown_packets = world_counters.custom_payload_unknown_packets;
-    counters.last_custom_payload = world
-        .last_custom_payload()
-        .map(control_custom_payload_state);
 }
 
 fn sync_custom_report_detail_counters(counters: &mut NetCounters, world: &WorldStore) {
@@ -533,17 +530,6 @@ fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &Worl
 fn sync_tag_query_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.tag_query_packets = world_counters.tag_query_packets;
-}
-
-fn control_custom_payload_state(
-    state: &bbb_world::CustomPayloadState,
-) -> bbb_control::CustomPayloadState {
-    bbb_control::CustomPayloadState {
-        id: state.id.clone(),
-        kind: state.kind.clone(),
-        brand: state.brand.clone(),
-        raw_payload_len: state.raw_payload_len,
-    }
 }
 
 pub(super) fn sync_client_audio_counters(counters: &mut NetCounters, world: &WorldStore) {

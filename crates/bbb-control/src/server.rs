@@ -494,15 +494,15 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AwardStats, BlockPos as ProtocolBlockPos, ChatTypeBound,
-        ChatTypeHolder, CustomReportDetails, DebugBlockValue, DialogHolder,
-        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
-        GameRuleValue, GameRuleValues, InteractionHand, MapColorPatch, MapDecoration, MapItemData,
-        MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill,
-        PongResponse, RecipeDisplayType, SetActionBarText, SetSubtitleText, SetTitleText,
-        SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
-        StopSound, SystemChat, TagQuery, TrackedWaypoint, TrackedWaypointPacket, Transfer,
-        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        ChatTypeHolder, CustomPayload, CustomPayloadBody, CustomReportDetails, DebugBlockValue,
+        DialogHolder, DisguisedChat as ProtocolDisguisedChat,
+        EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue, GameRuleValues,
+        InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
+        OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType,
+        SetActionBarText, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
+        TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d, WaypointData,
+        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1324,6 +1324,12 @@ mod tests {
                 ]),
             });
             store.apply_store_cookie("bbb:session", 3, 1);
+            store.apply_custom_payload(CustomPayload {
+                id: "minecraft:brand".to_string(),
+                payload: CustomPayloadBody::Brand {
+                    brand: "vanilla".to_string(),
+                },
+            });
             snapshot.write().unwrap().world_store = store;
         }
 
@@ -1346,6 +1352,10 @@ mod tests {
         );
         assert_eq!(presentation["server_cookies"]["last_key"], "bbb:session");
         assert_eq!(presentation["server_cookies"]["stored_count"], 1);
+        assert_eq!(presentation["server_brand"], "vanilla");
+        assert_eq!(presentation["last_custom_payload"]["id"], "minecraft:brand");
+        assert_eq!(presentation["last_custom_payload"]["kind"], "brand");
+        assert_eq!(presentation["last_custom_payload"]["brand"], "vanilla");
     }
 
     #[test]
