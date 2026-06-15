@@ -847,6 +847,27 @@ mod tests {
                 x_rot: 0.0,
             })
         );
+
+        assert_eq!(
+            world.apply_remove_entities(bbb_protocol::packets::RemoveEntities {
+                entity_ids: vec![123],
+            }),
+            1
+        );
+        let command = audio_scene_command_from_world(&world);
+        assert!(command.entities.is_empty());
+        assert_eq!(
+            command.listener,
+            Some(AudioListenerState {
+                position: [
+                    10.0,
+                    64.0 + f64::from(CameraPose::STANDING_EYE_HEIGHT),
+                    -5.0
+                ],
+                y_rot: 90.0,
+                x_rot: -10.0,
+            })
+        );
     }
 
     #[test]

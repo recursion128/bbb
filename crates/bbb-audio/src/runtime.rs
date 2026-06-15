@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::{anyhow, Result};
 use kira::{
     listener::ListenerHandle,
@@ -138,6 +140,12 @@ impl KiraAudioRuntime {
             self.listener
                 .set_orientation(listener_orientation(listener), Tween::default());
         }
+        let active_entity_ids = active_entity_sound_ids(&command.entities);
+        for sound in &mut self.playing {
+            if entity_bound_sound_is_missing(sound.entity_id, &active_entity_ids) {
+                sound.handle.stop();
+            }
+        }
         for entity in &command.entities {
             self.update_entity_sound_position(*entity);
         }
@@ -183,6 +191,14 @@ impl KiraPlayingSound {
 
 fn sound_matches_stop(sound: &KiraPlayingSound, command: &StopSoundCommand) -> bool {
     stop_filter_matches(&sound.event_id, &sound.category, command)
+}
+
+fn active_entity_sound_ids(entities: &[EntitySoundPosition]) -> HashSet<i32> {
+    entities.iter().map(|entity| entity.entity_id).collect()
+}
+
+fn entity_bound_sound_is_missing(entity_id: Option<i32>, active_entity_ids: &HashSet<i32>) -> bool {
+    entity_id.is_some_and(|entity_id| !active_entity_ids.contains(&entity_id))
 }
 
 fn stop_filter_matches(
@@ -307,6 +323,24 @@ mod tests {
         assert_eq!(spatial_max_distance(&sound, 1.0), 16.0);
         assert_eq!(spatial_max_distance(&sound, 2.0), 32.0);
         assert_eq!(spatial_max_distance(&sound, f32::NAN), 16.0);
+    }
+
+    #[test]
+    fn entity_bound_sound_is_missing_when_entity_position_is_absent() {
+        let active = active_entity_sound_ids(&[
+            EntitySoundPosition {
+                entity_id: 123,
+                position: [1.0, 2.0, 3.0],
+            },
+            EntitySoundPosition {
+                entity_id: 456,
+                position: [4.0, 5.0, 6.0],
+            },
+        ]);
+
+        assert!(!entity_bound_sound_is_missing(None, &active));
+        assert!(!entity_bound_sound_is_missing(Some(123), &active));
+        assert!(entity_bound_sound_is_missing(Some(404), &active));
     }
 
     #[test]
