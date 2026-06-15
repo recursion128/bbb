@@ -509,7 +509,6 @@ fn sync_custom_report_detail_counters(counters: &mut NetCounters, world: &WorldS
 
 fn sync_cookie_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
-    counters.last_cookie_key = world.last_cookie_key().map(str::to_string);
     counters.cookie_request_packets = world_counters.cookie_request_packets;
     counters.cookie_response_hits = world_counters.cookie_response_hits;
     counters.cookie_response_misses = world_counters.cookie_response_misses;

@@ -412,7 +412,6 @@ fn cookie_events_update_snapshot_counters() {
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters {
-        last_cookie_key: Some("stale:key".to_string()),
         cookie_request_packets: 99,
         cookie_response_hits: 99,
         cookie_response_misses: 99,
@@ -434,7 +433,6 @@ fn cookie_events_update_snapshot_counters() {
     assert_eq!(world_counters.cookie_request_packets, 2);
     assert_eq!(world_counters.cookie_response_hits, 1);
     assert_eq!(world_counters.cookie_response_misses, 1);
-    assert_eq!(counters.last_cookie_key.as_deref(), Some("bbb:missing"));
     assert_eq!(counters.store_cookie_packets, 1);
     assert_eq!(counters.stored_cookie_count, 1);
     assert_eq!(counters.stored_cookie_bytes, 3);

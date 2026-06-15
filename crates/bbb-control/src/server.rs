@@ -1323,6 +1323,7 @@ mod tests {
                     ("Server".to_string(), "bbb test shard".to_string()),
                 ]),
             });
+            store.apply_store_cookie("bbb:session", 3, 1);
             snapshot.write().unwrap().world_store = store;
         }
 
@@ -1343,6 +1344,8 @@ mod tests {
             presentation["custom_report_details"]["Server"],
             "bbb test shard"
         );
+        assert_eq!(presentation["server_cookies"]["last_key"], "bbb:session");
+        assert_eq!(presentation["server_cookies"]["stored_count"], 1);
     }
 
     #[test]

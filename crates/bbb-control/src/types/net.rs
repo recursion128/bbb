@@ -106,7 +106,6 @@ pub struct NetCounters {
     pub simulation_distance: Option<i32>,
     pub world_time: Option<WorldTime>,
     pub weather: WeatherState,
-    pub last_cookie_key: Option<String>,
     pub server_links: Vec<ServerLinkState>,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
