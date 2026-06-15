@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 use crate::{
     audio_runtime::AudioEventSink,
     code_of_conduct::CodeOfConductAcceptance,
-    crosshair::selection_outline_from_crosshair,
+    crosshair::selection_outline_from_camera,
     input::{
         advance_player_input, queue_chat_command, queue_command_suggestion_request,
         queue_container_button_click_command, queue_container_click_command,
@@ -277,7 +277,6 @@ pub(crate) fn pump_network_and_terrain(
     renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     let local_player = world.local_player();
-    let player_pose = local_player.pose.map(player_pose_from_local_player_pose);
     renderer.set_hud_health(local_player.health.map(|health| health.health));
     renderer.set_hud_food(local_player.health.map(|health| health.food));
     renderer.set_hud_experience_progress(
@@ -286,8 +285,9 @@ pub(crate) fn pump_network_and_terrain(
             .map(|experience| experience.progress),
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
-    renderer.set_camera_pose(camera_pose_from_world(world));
-    renderer.set_selection_outline(selection_outline_from_crosshair(world, player_pose));
+    let camera_pose = camera_pose_from_world(world);
+    renderer.set_camera_pose(camera_pose);
+    renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     if let Some(audio_events) = audio_events.as_mut() {

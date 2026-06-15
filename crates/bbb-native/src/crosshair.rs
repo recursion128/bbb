@@ -34,26 +34,45 @@ pub(crate) enum CrosshairTarget {
     Entity(CrosshairEntityHit),
 }
 
-pub(crate) fn selection_outline_from_crosshair(
+pub(crate) fn selection_outline_from_camera(
     world: &WorldStore,
-    pose: Option<PlayerPose>,
+    pose: Option<CameraPose>,
 ) -> Option<SelectionOutline> {
-    let hit = crosshair_block_hit_from_world(world, pose)?;
+    let hit = crosshair_block_hit_from_camera(world, pose)?;
     match world.probe_block(hit.pos) {
         Some(probe) => selection_outline_for_probe(&probe),
         None => Some(selection_outline_for_block(hit.pos)),
     }
 }
 
+fn crosshair_block_hit_from_camera(
+    world: &WorldStore,
+    pose: Option<CameraPose>,
+) -> Option<CrosshairBlockHit> {
+    raycast_crosshair_block_hit_from_ray(
+        crosshair_ray_from_camera_pose(pose?),
+        DEFAULT_BLOCK_INTERACTION_RANGE,
+        |pos| {
+            world
+                .probe_block(pos)
+                .map(|probe| BlockOutlineTarget::from_probe(&probe))
+        },
+    )
+}
+
 pub(crate) fn crosshair_block_hit_from_world(
     world: &WorldStore,
     pose: Option<PlayerPose>,
 ) -> Option<CrosshairBlockHit> {
-    raycast_crosshair_block_hit(pose?, DEFAULT_BLOCK_INTERACTION_RANGE, |pos| {
-        world
-            .probe_block(pos)
-            .map(|probe| BlockOutlineTarget::from_probe(&probe))
-    })
+    raycast_crosshair_block_hit_from_ray(
+        crosshair_ray_from_player_pose(pose?),
+        DEFAULT_BLOCK_INTERACTION_RANGE,
+        |pos| {
+            world
+                .probe_block(pos)
+                .map(|probe| BlockOutlineTarget::from_probe(&probe))
+        },
+    )
 }
 
 pub(crate) fn crosshair_target_from_world(
@@ -126,14 +145,32 @@ fn raycast_crosshair_block<F>(
 where
     F: FnMut(BlockPos) -> Option<bbb_world::TerrainMaterialClass>,
 {
-    raycast_crosshair_block_hit(pose, max_distance, |pos| {
-        material_at(pos).map(BlockOutlineTarget::full_block)
-    })
+    raycast_crosshair_block_hit_from_ray(
+        crosshair_ray_from_player_pose(pose),
+        max_distance,
+        |pos| material_at(pos).map(BlockOutlineTarget::full_block),
+    )
     .map(|hit| hit.pos)
 }
 
+#[cfg(test)]
 fn raycast_crosshair_block_hit<F>(
     pose: PlayerPose,
+    max_distance: f64,
+    target_at: F,
+) -> Option<CrosshairBlockHit>
+where
+    F: FnMut(BlockPos) -> Option<BlockOutlineTarget>,
+{
+    raycast_crosshair_block_hit_from_ray(
+        crosshair_ray_from_player_pose(pose),
+        max_distance,
+        target_at,
+    )
+}
+
+fn raycast_crosshair_block_hit_from_ray<F>(
+    ray: CrosshairRay,
     max_distance: f64,
     mut target_at: F,
 ) -> Option<CrosshairBlockHit>
@@ -144,8 +181,8 @@ where
         return None;
     }
 
-    let eye = eye_position_from_player_pose(pose);
-    let direction = look_direction_from_player_pose(pose);
+    let eye = ray.eye;
+    let direction = look_direction_from_crosshair_ray(ray);
     if direction == [0.0, 0.0, 0.0] {
         return None;
     }
@@ -203,8 +240,9 @@ where
         return None;
     }
 
-    let eye = eye_position_from_player_pose(pose);
-    let direction = look_direction_from_player_pose(pose);
+    let ray = crosshair_ray_from_player_pose(pose);
+    let eye = ray.eye;
+    let direction = look_direction_from_crosshair_ray(ray);
     if direction == [0.0, 0.0, 0.0] {
         return None;
     }
@@ -488,9 +526,36 @@ fn eye_position_from_player_pose(pose: PlayerPose) -> [f64; 3] {
     ]
 }
 
-fn look_direction_from_player_pose(pose: PlayerPose) -> [f64; 3] {
-    let yaw = f64::from(pose.y_rot).to_radians();
-    let pitch = f64::from(pose.x_rot).to_radians();
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CrosshairRay {
+    eye: [f64; 3],
+    y_rot: f32,
+    x_rot: f32,
+}
+
+fn crosshair_ray_from_player_pose(pose: PlayerPose) -> CrosshairRay {
+    CrosshairRay {
+        eye: eye_position_from_player_pose(pose),
+        y_rot: pose.y_rot,
+        x_rot: pose.x_rot,
+    }
+}
+
+fn crosshair_ray_from_camera_pose(pose: CameraPose) -> CrosshairRay {
+    CrosshairRay {
+        eye: [
+            f64::from(pose.position[0]),
+            f64::from(pose.position[1]) + f64::from(pose.eye_height),
+            f64::from(pose.position[2]),
+        ],
+        y_rot: pose.y_rot,
+        x_rot: pose.x_rot,
+    }
+}
+
+fn look_direction_from_crosshair_ray(ray: CrosshairRay) -> [f64; 3] {
+    let yaw = f64::from(ray.y_rot).to_radians();
+    let pitch = f64::from(ray.x_rot).to_radians();
     let cos_pitch = pitch.cos();
     let x = -yaw.sin() * cos_pitch;
     let y = -pitch.sin();
@@ -923,6 +988,29 @@ mod tests {
             ),
             None
         );
+    }
+
+    #[test]
+    fn camera_crosshair_raycast_uses_camera_eye_height() {
+        let ray = crosshair_ray_from_camera_pose(CameraPose {
+            position: [0.0, 0.0, 0.0],
+            y_rot: 0.0,
+            x_rot: 0.0,
+            eye_height: 0.2751,
+        });
+        let hit = raycast_crosshair_block_hit_from_ray(ray, 5.0, |pos| {
+            if pos == (BlockPos { x: 0, y: 0, z: 3 }) {
+                Some(BlockOutlineTarget::full_block(
+                    bbb_world::TerrainMaterialClass::Opaque,
+                ))
+            } else {
+                None
+            }
+        });
+
+        let hit = hit.expect("camera ray should hit the low block");
+        assert_eq!(hit.pos, BlockPos { x: 0, y: 0, z: 3 });
+        assert!((hit.cursor[1] - 0.2751).abs() < 0.0001);
     }
 
     #[test]
