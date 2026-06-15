@@ -11,8 +11,7 @@ use super::client_state::*;
 use super::control_state::{
     apply_control_projection_event, sync_advancement_counters, sync_block_event_counters,
     sync_entity_counters, sync_entity_interaction_counters, sync_entity_status_counters,
-    sync_inventory_counters, sync_recipe_access_counters, sync_recipe_book_counters,
-    sync_scoreboard_counters,
+    sync_inventory_counters, sync_recipe_book_counters, sync_scoreboard_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -108,7 +107,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::UpdateRecipes(update) => {
                 world.apply_update_recipes(update);
-                sync_recipe_access_counters(counters, world);
             }
             NetEvent::PlayerInfoUpdate(update) => {
                 world.apply_player_info_update(update);

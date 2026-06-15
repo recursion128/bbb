@@ -122,14 +122,6 @@ pub struct NetCounters {
     pub recipe_book_highlights_tracked: usize,
     #[serde(default)]
     pub recipe_book_notifications_received: usize,
-    #[serde(default)]
-    pub update_recipes_packets: usize,
-    #[serde(default)]
-    pub recipe_property_sets_tracked: usize,
-    #[serde(default)]
-    pub recipe_property_set_items_tracked: usize,
-    #[serde(default)]
-    pub stonecutter_recipes_tracked: usize,
     pub player_look_at_packets: usize,
     pub player_rotation_packets: usize,
     pub move_vehicle_packets: usize,

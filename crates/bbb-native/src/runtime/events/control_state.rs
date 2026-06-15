@@ -315,14 +315,6 @@ pub(super) fn sync_recipe_book_counters(counters: &mut NetCounters, world: &Worl
     counters.recipe_book_notifications_received = world_counters.recipe_book_notifications_received;
 }
 
-pub(super) fn sync_recipe_access_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.update_recipes_packets = world_counters.update_recipes_packets;
-    counters.recipe_property_sets_tracked = world_counters.recipe_property_sets_tracked;
-    counters.recipe_property_set_items_tracked = world_counters.recipe_property_set_items_tracked;
-    counters.stonecutter_recipes_tracked = world_counters.stonecutter_recipes_tracked;
-}
-
 pub(super) fn sync_advancement_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.select_advancements_tab_packets = world_counters.select_advancements_tab_packets;

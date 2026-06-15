@@ -1977,7 +1977,7 @@ fn update_advancements_event_updates_world_state() {
 }
 
 #[test]
-fn update_recipes_event_replaces_world_recipe_access_state() {
+fn update_recipes_event_replaces_world_recipe_access_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::UpdateRecipes(UpdateRecipes {
         property_sets: vec![RecipePropertySetSummary {
@@ -2015,11 +2015,6 @@ fn update_recipes_event_replaces_world_recipe_access_state() {
     assert_eq!(world_counters.recipe_property_sets_tracked, 1);
     assert_eq!(world_counters.recipe_property_set_items_tracked, 2);
     assert_eq!(world_counters.stonecutter_recipes_tracked, 1);
-
-    assert_eq!(counters.update_recipes_packets, 1);
-    assert_eq!(counters.recipe_property_sets_tracked, 1);
-    assert_eq!(counters.recipe_property_set_items_tracked, 2);
-    assert_eq!(counters.stonecutter_recipes_tracked, 1);
 }
 
 #[test]
