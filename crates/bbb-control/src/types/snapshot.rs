@@ -11,6 +11,12 @@ pub struct AppStatus {
     pub running: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CodeOfConductControlRequest {
+    Accept { remember: bool },
+    ClearAcceptance,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ControlSnapshot {
     pub app: AppStatus,
@@ -20,7 +26,7 @@ pub struct ControlSnapshot {
     #[serde(skip)]
     pub screenshot_request: Option<String>,
     #[serde(skip)]
-    pub code_of_conduct_accept_requests: u64,
+    pub code_of_conduct_requests: Vec<CodeOfConductControlRequest>,
     #[serde(skip)]
     pub world_store: WorldStore,
 }

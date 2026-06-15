@@ -10,7 +10,10 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-use crate::types::{AppStatus, ControlRequest, ControlResponse, ControlSnapshot, SharedSnapshot};
+use crate::types::{
+    AppStatus, CodeOfConductControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
+    SharedSnapshot,
+};
 
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
     Arc::new(RwLock::new(ControlSnapshot {
@@ -89,15 +92,32 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
     }
 
     if request.method == "net.accept_code_of_conduct" {
+        let remember = bool_param(&request.params, "remember").unwrap_or(false);
         let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard.code_of_conduct_accept_requests = snapshot_guard
-            .code_of_conduct_accept_requests
-            .saturating_add(1);
+        snapshot_guard
+            .code_of_conduct_requests
+            .push(CodeOfConductControlRequest::Accept { remember });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
                 "queued": true,
-                "pending": snapshot_guard.code_of_conduct_accept_requests
+                "remember": remember,
+                "pending": snapshot_guard.code_of_conduct_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.clear_code_of_conduct_acceptance" {
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .code_of_conduct_requests
+            .push(CodeOfConductControlRequest::ClearAcceptance);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.code_of_conduct_requests.len()
             })),
             error: None,
         };
@@ -212,6 +232,10 @@ fn string_param<'a>(params: &'a serde_json::Value, key: &str) -> Option<&'a str>
     params.get(key)?.as_str()
 }
 
+fn bool_param(params: &serde_json::Value, key: &str) -> Option<bool> {
+    params.get(key)?.as_bool()
+}
+
 fn chunk_probe_summary(chunk: &ChunkColumn) -> serde_json::Value {
     serde_json::json!({
         "pos": chunk.pos,
@@ -293,7 +317,49 @@ mod tests {
 
         assert!(response.ok);
         assert_eq!(response.result.unwrap()["queued"], true);
-        assert_eq!(snapshot.read().unwrap().code_of_conduct_accept_requests, 1);
+        assert_eq!(
+            snapshot.read().unwrap().code_of_conduct_requests,
+            vec![CodeOfConductControlRequest::Accept { remember: false }]
+        );
+    }
+
+    #[test]
+    fn net_accept_code_of_conduct_can_queue_persistent_accept() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.accept_code_of_conduct".to_string(),
+                params: json!({"remember": true}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let result = response.result.unwrap();
+        assert_eq!(result["queued"], true);
+        assert_eq!(result["remember"], true);
+        assert_eq!(
+            snapshot.read().unwrap().code_of_conduct_requests,
+            vec![CodeOfConductControlRequest::Accept { remember: true }]
+        );
+    }
+
+    #[test]
+    fn net_clear_code_of_conduct_acceptance_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.clear_code_of_conduct_acceptance".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(
+            snapshot.read().unwrap().code_of_conduct_requests,
+            vec![CodeOfConductControlRequest::ClearAcceptance]
+        );
     }
 
     #[test]

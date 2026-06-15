@@ -62,6 +62,16 @@ impl CodeOfConductAcceptance {
         self.store.save(&self.path)?;
         Ok(true)
     }
+
+    pub(crate) fn clear_connected_server_acceptance(&mut self) -> Result<bool> {
+        let Some(server) = self.connected_server.as_deref() else {
+            return Ok(false);
+        };
+
+        let removed = self.store.clear(server);
+        self.store.save(&self.path)?;
+        Ok(removed)
+    }
 }
 
 impl CodeOfConductAcceptStore {
@@ -101,6 +111,10 @@ impl CodeOfConductAcceptStore {
 
     fn accept(&mut self, server: &str, hash: i32) {
         self.accepted_hashes.insert(server.to_string(), hash);
+    }
+
+    fn clear(&mut self, server: &str) -> bool {
+        self.accepted_hashes.remove(server).is_some()
     }
 }
 
@@ -199,6 +213,24 @@ mod tests {
             loaded.accepted_hash_for_options(&options),
             Some(code_of_conduct_text_hash(text))
         );
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn acceptance_clears_connected_server_hash() {
+        let path = unique_store_path("clear");
+        let mut acceptance = CodeOfConductAcceptance::load(&path).unwrap();
+        let options = ConnectionOptions::offline("example.org:25565", "bbb").unwrap();
+        let text = "Keep the server friendly.";
+        let mut world = WorldStore::new();
+        world.apply_code_of_conduct(text.to_string());
+
+        acceptance.set_connected_server(&options);
+        assert!(acceptance.persist_current_world_acceptance(&world).unwrap());
+        assert!(acceptance.clear_connected_server_acceptance().unwrap());
+
+        let loaded = CodeOfConductAcceptance::load(&path).unwrap();
+        assert_eq!(loaded.accepted_hash_for_options(&options), None);
         let _ = fs::remove_file(path);
     }
 

@@ -4,7 +4,9 @@ use std::{
 };
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
-use bbb_control::{NetCounters, PlayerPose, RendererCounters, SharedSnapshot};
+use bbb_control::{
+    CodeOfConductControlRequest, NetCounters, PlayerPose, RendererCounters, SharedSnapshot,
+};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{CameraPose, ClearColor};
 use bbb_world::WorldStore;
@@ -70,30 +72,42 @@ pub(crate) fn pump_control_net_requests(
     world: &WorldStore,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
 ) {
-    let request_count = snapshot
+    let requests = snapshot
         .write()
-        .map(|mut guard| {
-            let request_count = guard.code_of_conduct_accept_requests;
-            guard.code_of_conduct_accept_requests = 0;
-            request_count
-        })
-        .unwrap_or(0);
+        .map(|mut guard| std::mem::take(&mut guard.code_of_conduct_requests))
+        .unwrap_or_default();
 
-    let Some(tx) = net_commands else {
-        return;
-    };
-    let mut queued_accept = false;
-    for _ in 0..request_count {
-        if tx.try_send(NetCommand::AcceptCodeOfConduct).is_err() {
-            break;
-        }
-        queued_accept = true;
-    }
-
-    if queued_accept {
-        if let Some(code_of_conduct) = code_of_conduct {
-            if let Err(err) = code_of_conduct.persist_current_world_acceptance(world) {
-                tracing::warn!(?err, "failed to persist code-of-conduct acceptance");
+    let mut code_of_conduct = code_of_conduct;
+    for request in requests {
+        match request {
+            CodeOfConductControlRequest::Accept { remember } => {
+                let Some(tx) = net_commands else {
+                    continue;
+                };
+                if tx.try_send(NetCommand::AcceptCodeOfConduct).is_err() {
+                    break;
+                }
+                if let Some(code_of_conduct) = code_of_conduct.as_deref_mut() {
+                    let result = if remember {
+                        code_of_conduct.persist_current_world_acceptance(world)
+                    } else {
+                        code_of_conduct.clear_connected_server_acceptance()
+                    };
+                    if let Err(err) = result {
+                        tracing::warn!(
+                            ?err,
+                            remember,
+                            "failed to update code-of-conduct acceptance store"
+                        );
+                    }
+                }
+            }
+            CodeOfConductControlRequest::ClearAcceptance => {
+                if let Some(code_of_conduct) = code_of_conduct.as_deref_mut() {
+                    if let Err(err) = code_of_conduct.clear_connected_server_acceptance() {
+                        tracing::warn!(?err, "failed to clear code-of-conduct acceptance");
+                    }
+                }
             }
         }
     }
@@ -282,20 +296,28 @@ mod tests {
     #[test]
     fn pump_control_net_requests_queues_code_of_conduct_accept_command() {
         let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().code_of_conduct_accept_requests = 1;
+        snapshot
+            .write()
+            .unwrap()
+            .code_of_conduct_requests
+            .push(CodeOfConductControlRequest::Accept { remember: false });
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
         let world = WorldStore::new();
 
         pump_control_net_requests(&snapshot, &Some(tx), &world, None);
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
-        assert_eq!(snapshot.read().unwrap().code_of_conduct_accept_requests, 0);
+        assert!(snapshot.read().unwrap().code_of_conduct_requests.is_empty());
     }
 
     #[test]
     fn pump_control_net_requests_persists_current_code_of_conduct_hash() {
         let snapshot = bbb_control::shared_snapshot("test");
-        snapshot.write().unwrap().code_of_conduct_accept_requests = 1;
+        snapshot
+            .write()
+            .unwrap()
+            .code_of_conduct_requests
+            .push(CodeOfConductControlRequest::Accept { remember: true });
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
         let path = unique_code_of_conduct_store_path();
         let mut acceptance = CodeOfConductAcceptance::load(&path).unwrap();
@@ -305,7 +327,7 @@ mod tests {
         world.apply_code_of_conduct(text.to_string());
         acceptance.set_connected_server(&options);
 
-        pump_control_net_requests(&snapshot, &Some(tx), &world, Some(&mut acceptance));
+        pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
         let loaded = CodeOfConductAcceptance::load(&path).unwrap();
@@ -313,6 +335,59 @@ mod tests {
             loaded.accepted_hash_for_options(&options),
             Some(bbb_world::code_of_conduct_text_hash(text))
         );
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn pump_control_net_requests_non_persistent_accept_clears_existing_hash() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .code_of_conduct_requests
+            .push(CodeOfConductControlRequest::Accept { remember: false });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let path = unique_code_of_conduct_store_path();
+        let mut acceptance = CodeOfConductAcceptance::load(&path).unwrap();
+        let options = bbb_net::ConnectionOptions::offline("example.org:25565", "bbb").unwrap();
+        let mut world = WorldStore::new();
+        world.apply_code_of_conduct("Keep the server friendly.".to_string());
+        acceptance.set_connected_server(&options);
+        acceptance.persist_current_world_acceptance(&world).unwrap();
+
+        pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
+
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
+        let loaded = CodeOfConductAcceptance::load(&path).unwrap();
+        assert_eq!(loaded.accepted_hash_for_options(&options), None);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn pump_control_net_requests_clear_acceptance_does_not_send_accept_command() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .code_of_conduct_requests
+            .push(CodeOfConductControlRequest::ClearAcceptance);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let path = unique_code_of_conduct_store_path();
+        let mut acceptance = CodeOfConductAcceptance::load(&path).unwrap();
+        let options = bbb_net::ConnectionOptions::offline("example.org:25565", "bbb").unwrap();
+        let mut world = WorldStore::new();
+        world.apply_code_of_conduct("Keep the server friendly.".to_string());
+        acceptance.set_connected_server(&options);
+        acceptance.persist_current_world_acceptance(&world).unwrap();
+
+        pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
+
+        assert!(matches!(
+            rx.try_recv(),
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty)
+        ));
+        let loaded = CodeOfConductAcceptance::load(&path).unwrap();
+        assert_eq!(loaded.accepted_hash_for_options(&options), None);
         let _ = std::fs::remove_file(path);
     }
 
@@ -490,12 +565,14 @@ mod tests {
     }
 
     fn unique_code_of_conduct_store_path() -> std::path::PathBuf {
+        static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let id = NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
         std::env::temp_dir().join(format!(
-            "bbb-runtime-code-of-conduct-{}-{nanos}.json",
+            "bbb-runtime-code-of-conduct-{}-{id}-{nanos}.json",
             std::process::id()
         ))
     }

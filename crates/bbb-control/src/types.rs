@@ -16,4 +16,4 @@ pub use net::{
     TitleState, TransferTarget, WaypointState, WeatherState, WorldTime,
 };
 pub use renderer::RendererCounters;
-pub use snapshot::{AppStatus, ControlSnapshot, SharedSnapshot};
+pub use snapshot::{AppStatus, CodeOfConductControlRequest, ControlSnapshot, SharedSnapshot};
