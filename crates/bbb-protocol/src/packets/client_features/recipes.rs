@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
+use super::super::read_resource_location;
+
 const MAX_RECIPE_PROPERTY_SET_ITEMS: usize = 65_536;
 const MAX_RECIPE_PROPERTY_SETS: usize = 4096;
 const MAX_RECIPE_DISPLAY_BODY: usize = 2 * 1024 * 1024;
@@ -218,7 +220,7 @@ pub(crate) fn decode_update_recipes(decoder: &mut Decoder<'_>) -> Result<UpdateR
         read_bounded_len(decoder, MAX_RECIPE_PROPERTY_SETS, "recipe property set map")?;
     let mut property_sets = Vec::with_capacity(property_set_count);
     for _ in 0..property_set_count {
-        let key = decoder.read_string(32767)?;
+        let key = read_resource_location(decoder)?;
         let item_count = read_bounded_len(
             decoder,
             MAX_RECIPE_PROPERTY_SET_ITEMS,
@@ -357,7 +359,7 @@ fn decode_ingredient_summary(decoder: &mut Decoder<'_>) -> Result<IngredientSumm
     let encoded = decoder.read_var_i32()?;
     if encoded == 0 {
         return Ok(IngredientSummary {
-            tag: Some(decoder.read_string(32767)?),
+            tag: Some(read_resource_location(decoder)?),
             item_ids: Vec::new(),
         });
     }
@@ -431,7 +433,7 @@ fn skip_slot_display_body(decoder: &mut Decoder<'_>, display_type_id: i32) -> Re
             Ok(())
         }
         6 => {
-            decoder.read_string(32767)?;
+            read_resource_location(decoder)?;
             Ok(())
         }
         7 => {
@@ -464,7 +466,7 @@ fn skip_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
 fn skip_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<()> {
     let holder_id = decoder.read_var_i32()?;
     if holder_id == 0 {
-        decoder.read_string(32767)?;
+        read_resource_location(decoder)?;
         super::super::decode_component_summary_from_decoder(decoder)?;
         decoder.read_bool()?;
     } else if holder_id < 0 {

@@ -203,7 +203,7 @@ fn decodes_recipe_book_settings_packet_wire_order() {
 fn decodes_update_recipes_packet_wire_order() {
     let mut payload = Encoder::new();
     payload.write_var_i32(2);
-    payload.write_string("minecraft:furnace_input");
+    payload.write_string("furnace_input");
     payload.write_var_i32(2);
     payload.write_var_i32(42);
     payload.write_var_i32(43);
@@ -212,9 +212,8 @@ fn decodes_update_recipes_packet_wire_order() {
     payload.write_var_i32(99);
 
     payload.write_var_i32(1);
-    payload.write_var_i32(3);
-    payload.write_var_i32(11);
-    payload.write_var_i32(12);
+    payload.write_var_i32(0);
+    payload.write_string("planks");
     payload.write_var_i32(4);
     payload.write_var_i32(77);
 
@@ -234,8 +233,8 @@ fn decodes_update_recipes_packet_wire_order() {
             ],
             stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
                 input: IngredientSummary {
-                    tag: None,
-                    item_ids: vec![11, 12],
+                    tag: Some("minecraft:planks".to_string()),
+                    item_ids: Vec::new(),
                 },
                 option_display: SlotDisplaySummary {
                     display_type_id: 4,
@@ -253,7 +252,7 @@ fn decodes_update_recipes_with_direct_trim_pattern_slot_display() {
     option_display.write_var_i32(0);
     option_display.write_var_i32(0);
     option_display.write_var_i32(0);
-    option_display.write_string("minecraft:test_trim");
+    option_display.write_string("test_trim");
     option_display.write_bytes(&nbt_string_root("Test Trim"));
     option_display.write_bool(true);
     let option_display = option_display.into_inner();
@@ -282,6 +281,95 @@ fn decodes_update_recipes_with_direct_trim_pattern_slot_display() {
             }],
         })
     );
+}
+
+#[test]
+fn decodes_update_recipes_with_tag_slot_display() {
+    let mut option_display = Encoder::new();
+    option_display.write_var_i32(6);
+    option_display.write_string("planks");
+    let option_display = option_display.into_inner();
+
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_var_i32(1);
+    payload.write_var_i32(2);
+    payload.write_var_i32(11);
+    payload.write_bytes(&option_display);
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_RECIPES, &payload.into_inner())
+            .unwrap(),
+        PlayClientbound::UpdateRecipes(UpdateRecipes {
+            property_sets: Vec::new(),
+            stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
+                input: IngredientSummary {
+                    tag: None,
+                    item_ids: vec![11],
+                },
+                option_display: SlotDisplaySummary {
+                    display_type_id: 6,
+                    raw_payload: option_display,
+                },
+            }],
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_update_recipes_identifiers() {
+    let mut invalid_property_key = Encoder::new();
+    invalid_property_key.write_var_i32(1);
+    invalid_property_key.write_string("minecraft:FurnaceInput");
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &invalid_property_key.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+
+    let mut invalid_ingredient_tag = Encoder::new();
+    invalid_ingredient_tag.write_var_i32(0);
+    invalid_ingredient_tag.write_var_i32(1);
+    invalid_ingredient_tag.write_var_i32(0);
+    invalid_ingredient_tag.write_string("minecraft:Planks");
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &invalid_ingredient_tag.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+
+    let mut invalid_slot_tag = Encoder::new();
+    invalid_slot_tag.write_var_i32(0);
+    invalid_slot_tag.write_var_i32(1);
+    invalid_slot_tag.write_var_i32(2);
+    invalid_slot_tag.write_var_i32(11);
+    invalid_slot_tag.write_var_i32(6);
+    invalid_slot_tag.write_string("minecraft:Planks");
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &invalid_slot_tag.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+
+    let mut invalid_trim = Encoder::new();
+    invalid_trim.write_var_i32(0);
+    invalid_trim.write_var_i32(1);
+    invalid_trim.write_var_i32(2);
+    invalid_trim.write_var_i32(11);
+    invalid_trim.write_var_i32(8);
+    invalid_trim.write_var_i32(0);
+    invalid_trim.write_var_i32(0);
+    invalid_trim.write_var_i32(0);
+    invalid_trim.write_string("minecraft:TestTrim");
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &invalid_trim.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
 }
 
 #[test]
