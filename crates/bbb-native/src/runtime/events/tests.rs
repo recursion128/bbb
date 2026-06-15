@@ -68,7 +68,7 @@ fn block_changed_ack_updates_snapshot_counters() {
 }
 
 #[test]
-fn chunk_cache_events_update_world_and_counter_projection() {
+fn chunk_cache_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::SetChunkCacheCenter(SetChunkCacheCenter {
         chunk_x: -4,
@@ -92,12 +92,10 @@ fn chunk_cache_events_update_world_and_counter_projection() {
     let world_counters = world.counters();
     assert_eq!(world_counters.chunk_cache_center_updates_received, 1);
     assert_eq!(world_counters.chunk_cache_radius_updates_received, 1);
-    assert_eq!(counters.chunk_cache_center_updates_received, 1);
-    assert_eq!(counters.chunk_cache_radius_updates_received, 1);
 }
 
 #[test]
-fn terrain_chunk_events_update_world_and_snapshot_counters() {
+fn terrain_chunk_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(7);
     tx.try_send(NetEvent::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
@@ -168,7 +166,6 @@ fn terrain_chunk_events_update_world_and_snapshot_counters() {
     macro_rules! assert_chunk_counter {
         ($field:ident, $value:expr) => {
             assert_eq!(world_counters.$field, $value);
-            assert_eq!(counters.$field, $value);
         };
     }
 
@@ -195,7 +192,7 @@ fn terrain_chunk_events_update_world_and_snapshot_counters() {
 }
 
 #[test]
-fn terrain_chunk_ignored_counters_are_projected() {
+fn terrain_chunk_ignored_counters_stay_in_world_store() {
     let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
         pos: ProtocolBlockPos {
@@ -261,7 +258,6 @@ fn terrain_chunk_ignored_counters_are_projected() {
     macro_rules! assert_chunk_counter {
         ($field:ident, $value:expr) => {
             assert_eq!(world_counters.$field, $value);
-            assert_eq!(counters.$field, $value);
         };
     }
 
@@ -344,8 +340,8 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
     );
     assert_eq!(world.first_chunk(), None);
     assert_eq!(counters.respawns_received, 1);
-    assert_eq!(counters.chunks_received, 1);
-    assert_eq!(counters.chunks_decoded, 1);
+    assert_eq!(world.counters().chunks_received, 1);
+    assert_eq!(world.counters().chunks_decoded, 1);
     assert_eq!(world.counters().entities_tracked, 0);
     assert_eq!(world.counters().active_mob_effects_tracked, 0);
     assert_eq!(world.counters().block_destructions_tracked, 0);

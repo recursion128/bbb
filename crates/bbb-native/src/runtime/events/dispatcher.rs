@@ -348,7 +348,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::Login(login) => {
                 world.apply_login(&login);
                 sync_local_player_counters(counters, world);
-                sync_chunk_counters(counters, world);
                 sync_entity_counters(counters, world);
                 sync_entity_status_counters(counters, world);
                 sync_block_event_counters(counters, world);
@@ -356,7 +355,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::Respawn(respawn) => {
                 world.apply_respawn(&respawn);
                 sync_local_player_counters(counters, world);
-                sync_chunk_counters(counters, world);
                 sync_entity_counters(counters, world);
                 sync_entity_status_counters(counters, world);
                 sync_block_event_counters(counters, world);
@@ -426,11 +424,8 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 sync_block_event_counters(counters, world);
             }
             NetEvent::BlockEntityData(update) => match world.apply_block_entity_data(update) {
-                Ok(_) => {
-                    sync_chunk_counters(counters, world);
-                }
+                Ok(_) => {}
                 Err(err) => {
-                    sync_chunk_counters(counters, world);
                     counters.last_error = Some(err.to_string());
                 }
             },
@@ -444,29 +439,21 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::LevelChunkWithLight(chunk) => {
                 match world.insert_level_chunk_with_light(chunk) {
-                    Ok(_) => {
-                        sync_chunk_counters(counters, world);
-                    }
+                    Ok(_) => {}
                     Err(err) => {
                         counters.last_error = Some(err.to_string());
                     }
                 }
             }
             NetEvent::LightUpdate(update) => match world.apply_light_update(update) {
-                Ok(_) => {
-                    sync_chunk_counters(counters, world);
-                }
+                Ok(_) => {}
                 Err(err) => {
-                    sync_chunk_counters(counters, world);
                     counters.last_error = Some(err.to_string());
                 }
             },
             NetEvent::ChunksBiomes(update) => match world.apply_biome_update(update) {
-                Ok(_) => {
-                    sync_chunk_counters(counters, world);
-                }
+                Ok(_) => {}
                 Err(err) => {
-                    sync_chunk_counters(counters, world);
                     counters.last_error = Some(err.to_string());
                 }
             },
@@ -475,56 +462,23 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                     x: update.pos.x,
                     z: update.pos.z,
                 });
-                sync_chunk_counters(counters, world);
             }
             NetEvent::BlockUpdate(update) => {
                 world.apply_block_update(update);
-                sync_chunk_counters(counters, world);
             }
             NetEvent::SectionBlocksUpdate(update) => {
                 world.apply_section_blocks_update(update);
-                sync_chunk_counters(counters, world);
             }
             NetEvent::SetChunkCacheCenter(update) => {
                 world.apply_set_chunk_cache_center(update);
-                sync_chunk_counters(counters, world);
             }
             NetEvent::SetChunkCacheRadius(update) => {
                 world.apply_set_chunk_cache_radius(update);
-                sync_chunk_counters(counters, world);
             }
             _ => unreachable!("control projection event reached world dispatcher"),
         }
     }
     drained
-}
-
-fn sync_chunk_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.chunks_received = world_counters.chunks_received;
-    counters.chunks_decoded = world_counters.chunks_decoded;
-    counters.sections_decoded = world_counters.sections_decoded;
-    counters.block_entities_seen = world_counters.block_entities_seen;
-    counters.light_arrays_seen = world_counters.light_arrays_seen;
-    counters.block_entity_updates_received = world_counters.block_entity_updates_received;
-    counters.block_entity_updates_applied = world_counters.block_entity_updates_applied;
-    counters.block_entity_updates_ignored = world_counters.block_entity_updates_ignored;
-    counters.light_updates_received = world_counters.light_updates_received;
-    counters.light_updates_applied = world_counters.light_updates_applied;
-    counters.light_updates_ignored = world_counters.light_updates_ignored;
-    counters.biome_updates_received = world_counters.biome_updates_received;
-    counters.biome_updates_applied = world_counters.biome_updates_applied;
-    counters.biome_updates_ignored = world_counters.biome_updates_ignored;
-    counters.block_updates_received = world_counters.block_updates_received;
-    counters.block_updates_applied = world_counters.block_updates_applied;
-    counters.block_updates_ignored = world_counters.block_updates_ignored;
-    counters.chunk_cache_center_updates_received =
-        world_counters.chunk_cache_center_updates_received;
-    counters.chunk_cache_radius_updates_received =
-        world_counters.chunk_cache_radius_updates_received;
-    counters.chunk_forgets_received = world_counters.chunk_forgets_received;
-    counters.chunks_forgotten = world_counters.chunks_forgotten;
-    counters.chunk_forgets_ignored = world_counters.chunk_forgets_ignored;
 }
 
 fn emit_positioned_sound(

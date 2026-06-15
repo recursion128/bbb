@@ -34,50 +34,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub tag_entries_tracked: usize,
     #[serde(default)]
-    pub chunks_received: usize,
-    #[serde(default)]
-    pub chunks_decoded: usize,
-    #[serde(default)]
-    pub sections_decoded: usize,
-    #[serde(default)]
-    pub block_entities_seen: usize,
-    #[serde(default)]
-    pub light_arrays_seen: usize,
-    #[serde(default)]
-    pub block_entity_updates_received: usize,
-    #[serde(default)]
-    pub block_entity_updates_applied: usize,
-    #[serde(default)]
-    pub block_entity_updates_ignored: usize,
-    #[serde(default)]
-    pub light_updates_received: usize,
-    #[serde(default)]
-    pub light_updates_applied: usize,
-    #[serde(default)]
-    pub light_updates_ignored: usize,
-    #[serde(default)]
-    pub biome_updates_received: usize,
-    #[serde(default)]
-    pub biome_updates_applied: usize,
-    #[serde(default)]
-    pub biome_updates_ignored: usize,
-    #[serde(default)]
-    pub block_updates_received: usize,
-    #[serde(default)]
-    pub block_updates_applied: usize,
-    #[serde(default)]
-    pub block_updates_ignored: usize,
-    #[serde(default)]
-    pub chunk_cache_center_updates_received: usize,
-    #[serde(default)]
-    pub chunk_cache_radius_updates_received: usize,
-    #[serde(default)]
-    pub chunk_forgets_received: usize,
-    #[serde(default)]
-    pub chunks_forgotten: usize,
-    #[serde(default)]
-    pub chunk_forgets_ignored: usize,
-    #[serde(default)]
     pub play_logins_received: usize,
     #[serde(default)]
     pub respawns_received: usize,
