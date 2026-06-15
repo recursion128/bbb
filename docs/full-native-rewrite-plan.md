@@ -81,18 +81,22 @@ The active architectural cleanup is:
 
 Known priority areas:
 
-- Finish `ProjectilePower` as entity projectile state, not visual effects.
-  Vanilla applies it only to existing `AbstractHurtingProjectile` entities; an
-  unknown entity or non-hurting-projectile entity is a no-op and should be
-  counted as ignored.
-- Move debug, game-rule, game-test, and test-instance summaries into canonical
-  world-side state.
+- `ProjectilePower` is world-owned entity projectile state, not visual effects.
+  It is applied only to existing vanilla `AbstractHurtingProjectile` entities;
+  unknown entities and non-hurting-projectile entities are counted as ignored.
+  Owner: `bbb-world` + `bbb-native`; status: covered; next action: keep future
+  projectile renderer/runtime work derived from entity projectile state.
+- Debug, game-rule, game-test, and test-instance summaries live in canonical
+  world-side state and are applied by probe/native event paths. Owner:
+  `bbb-world` + `bbb-native`; status: covered; next action: replace payload
+  length summaries with richer decoded semantics only when a downstream user
+  needs them.
 - Continue removing native-only `last_*` snapshots where a world owner exists or
   should exist.
-- Continue applying ignored play/configuration packets in offline probes when a
-  world apply API exists.
-- Keep audio split into world-observed audio events and a future Kira-backed
-  playback runtime.
+- Keep offline probes aligned with online event handling; play/configuration
+  packets with world apply APIs should stay covered by probe regression tests.
+- Keep audio split into world-observed audio events and the Kira-backed
+  `bbb-audio` playback runtime.
 - Native crosshair entity interaction is partially wired: `bbb-world` exposes
   verified 26.1 base pick bounds for vanilla `LivingEntity` types, boats,
   minecarts, TNT, falling blocks, end crystals, shulker bullets,

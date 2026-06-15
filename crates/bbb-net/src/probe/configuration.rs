@@ -91,3 +91,166 @@ impl ProbeContext {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::connection::RawConnection;
+    use bbb_protocol::packets::{
+        CustomPayload, CustomPayloadBody, DialogHolder, RegistryTags, ResourcePackPop,
+        ResourcePackPush, ShowDialog, TagNetworkPayload, Transfer, UpdateEnabledFeatures,
+        UpdateTags,
+    };
+    use bbb_world::{ChunkPos, DialogState, ResourcePackState, TransferTargetState};
+    use bytes::BytesMut;
+    use tokio::net::TcpListener;
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn probe_applies_configuration_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let pack_id = Uuid::from_u128(0x12345678123456781234567812345678);
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::CustomPayload(CustomPayload {
+                id: "minecraft:brand".to_string(),
+                payload: CustomPayloadBody::Brand {
+                    brand: "vanilla-26.1".to_string(),
+                },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::UpdateTags(UpdateTags {
+                registries: vec![RegistryTags {
+                    registry: "minecraft:block".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: "minecraft:mineable/pickaxe".to_string(),
+                        entries: vec![1, 2, 3],
+                    }],
+                }],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::ResourcePackPush(
+                ResourcePackPush {
+                    id: pack_id,
+                    url: "https://example.invalid/pack.zip".to_string(),
+                    hash: "abc123".to_string(),
+                    required: false,
+                    prompt: Some("Optional pack".to_string()),
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::UpdateEnabledFeatures(
+                UpdateEnabledFeatures {
+                    features: vec![
+                        "minecraft:vanilla".to_string(),
+                        "minecraft:unknown".to_string(),
+                    ],
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::Transfer(Transfer {
+                host: "next.example.invalid".to_string(),
+                port: 25566,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::ShowDialog(ShowDialog {
+                dialog: DialogHolder::Reference { registry_id: 7 },
+            }))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            probe.world.server_brand(),
+            Some("vanilla-26.1"),
+            "configuration custom payload should update world presentation state",
+        );
+        assert_eq!(
+            probe.world.registry_tags("minecraft:block").unwrap().tags
+                ["minecraft:mineable/pickaxe"],
+            vec![1, 2, 3],
+        );
+        assert_eq!(
+            probe.world.resource_pack(pack_id),
+            Some(&ResourcePackState {
+                id: pack_id,
+                url: "https://example.invalid/pack.zip".to_string(),
+                hash: "abc123".to_string(),
+                required: false,
+                prompt: Some("Optional pack".to_string()),
+            })
+        );
+        assert_eq!(
+            probe.world.enabled_feature_list(),
+            vec!["minecraft:vanilla".to_string()]
+        );
+        assert_eq!(
+            probe.world.last_transfer(),
+            Some(&TransferTargetState {
+                host: "next.example.invalid".to_string(),
+                port: 25566,
+            })
+        );
+        assert_eq!(
+            probe.world.current_dialog(),
+            Some(&DialogState {
+                holder_kind: "reference".to_string(),
+                registry_id: Some(7),
+                raw_dialog_payload_len: 0,
+            })
+        );
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::ResourcePackPop(
+                ResourcePackPop { id: Some(pack_id) },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::ClearDialog)
+            .await
+            .unwrap();
+
+        let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
+        assert!(report.world.resource_packs().is_empty());
+        assert!(report.world.current_dialog().is_none());
+        assert_eq!(report.world_counters.custom_payload_packets, 1);
+        assert_eq!(report.world_counters.update_tags_packets, 1);
+        assert_eq!(report.world_counters.resource_pack_push_packets, 1);
+        assert_eq!(report.world_counters.resource_pack_pop_packets, 1);
+        assert_eq!(report.world_counters.update_enabled_features_packets, 1);
+        assert_eq!(report.world_counters.enabled_features_tracked, 1);
+        assert_eq!(report.world_counters.enabled_features_ignored, 1);
+        assert_eq!(report.world_counters.transfer_packets, 1);
+        assert_eq!(report.world_counters.show_dialog_packets, 1);
+        assert_eq!(report.world_counters.clear_dialog_packets, 1);
+    }
+
+    async fn raw_connection_pair() -> (RawConnection, RawConnection) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let client = tokio::spawn(async move {
+            RawConnection::connect(&addr.to_string(), None)
+                .await
+                .unwrap()
+        });
+        let (server_stream, _) = listener.accept().await.unwrap();
+        let client = client.await.unwrap();
+        let server = RawConnection {
+            stream: server_stream,
+            read_buf: BytesMut::with_capacity(8192),
+            compression_threshold: None,
+        };
+        (client, server)
+    }
+}
