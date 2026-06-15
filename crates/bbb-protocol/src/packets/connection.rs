@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use super::{
     client_common::{self, CustomPayload, ShowDialog},
+    read_resource_location,
     server_presentation::{self, ResourcePackPop, ResourcePackPush},
     tags::UpdateTags,
 };
@@ -652,12 +653,12 @@ fn read_registry_nbt_bytes<'a>(
 
 pub(super) fn decode_cookie_request(decoder: &mut Decoder<'_>) -> Result<CookieRequest> {
     Ok(CookieRequest {
-        key: decoder.read_string(32767)?,
+        key: read_resource_location(decoder)?,
     })
 }
 
 pub(super) fn decode_store_cookie(decoder: &mut Decoder<'_>) -> Result<StoreCookie> {
-    let key = decoder.read_string(32767)?;
+    let key = read_resource_location(decoder)?;
     let len = decoder.read_len()?;
     if len > MAX_COOKIE_PAYLOAD_SIZE {
         return Err(ProtocolError::PacketTooLarge(len, MAX_COOKIE_PAYLOAD_SIZE));

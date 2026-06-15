@@ -1412,13 +1412,13 @@ fn decodes_transfer_packets_in_configuration_and_play() {
 #[test]
 fn decodes_and_encodes_cookie_packets() {
     let mut request_payload = Encoder::new();
-    request_payload.write_string("bbb:session");
+    request_payload.write_string("session");
     let request_payload = request_payload.into_inner();
 
     assert_eq!(
         decode_login_clientbound(ids::login::CLIENTBOUND_COOKIE_REQUEST, &request_payload).unwrap(),
         LoginClientbound::CookieRequest(CookieRequest {
-            key: "bbb:session".to_string(),
+            key: "minecraft:session".to_string(),
         })
     );
     assert_eq!(
@@ -1428,24 +1428,24 @@ fn decodes_and_encodes_cookie_packets() {
         )
         .unwrap(),
         ConfigurationClientbound::CookieRequest(CookieRequest {
-            key: "bbb:session".to_string(),
+            key: "minecraft:session".to_string(),
         })
     );
     assert_eq!(
         decode_play_clientbound(ids::play::CLIENTBOUND_COOKIE_REQUEST, &request_payload).unwrap(),
         PlayClientbound::CookieRequest(CookieRequest {
-            key: "bbb:session".to_string(),
+            key: "minecraft:session".to_string(),
         })
     );
 
     let mut store_payload = Encoder::new();
-    store_payload.write_string("bbb:session");
+    store_payload.write_string("session");
     store_payload.write_var_i32(3);
     store_payload.write_bytes(&[1, 2, 3]);
     let store_payload = store_payload.into_inner();
 
     let store = StoreCookie {
-        key: "bbb:session".to_string(),
+        key: "minecraft:session".to_string(),
         payload: vec![1, 2, 3],
     };
     assert_eq!(
@@ -1472,6 +1472,30 @@ fn decodes_and_encodes_cookie_packets() {
     let (id, payload) = encode_play_cookie_response("bbb:session", Some(&[4, 5]));
     assert_eq!(id, ids::play::SERVERBOUND_COOKIE_RESPONSE);
     assert_cookie_response_payload(&payload, "bbb:session", Some(&[4, 5]));
+}
+
+#[test]
+fn rejects_invalid_cookie_keys() {
+    let mut request_payload = Encoder::new();
+    request_payload.write_string("bbb:Session");
+    let request_payload = request_payload.into_inner();
+
+    let err = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_COOKIE_REQUEST,
+        &request_payload,
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+
+    let mut store_payload = Encoder::new();
+    store_payload.write_string("bbb:Session");
+    store_payload.write_var_i32(1);
+    store_payload.write_u8(0);
+    let store_payload = store_payload.into_inner();
+
+    let err =
+        decode_play_clientbound(ids::play::CLIENTBOUND_STORE_COOKIE, &store_payload).unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
 }
 
 #[test]
