@@ -494,14 +494,15 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AwardStats, BlockPos as ProtocolBlockPos, ChatTypeBound,
-        ChatTypeHolder, DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
-        EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue, GameRuleValues,
-        InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
-        OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType,
-        SetActionBarText, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
-        TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d, WaypointData,
-        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        ChatTypeHolder, CustomReportDetails, DebugBlockValue, DialogHolder,
+        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
+        GameRuleValue, GameRuleValues, InteractionHand, MapColorPatch, MapDecoration, MapItemData,
+        MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill,
+        PongResponse, RecipeDisplayType, SetActionBarText, SetSubtitleText, SetTitleText,
+        SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        StopSound, SystemChat, TagQuery, TrackedWaypoint, TrackedWaypointPacket, Transfer,
+        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1316,6 +1317,12 @@ mod tests {
                 host: "next.example.com".to_string(),
                 port: 25566,
             });
+            store.apply_custom_report_details(CustomReportDetails {
+                details: BTreeMap::from([
+                    ("Region".to_string(), "local".to_string()),
+                    ("Server".to_string(), "bbb test shard".to_string()),
+                ]),
+            });
             snapshot.write().unwrap().world_store = store;
         }
 
@@ -1331,6 +1338,11 @@ mod tests {
         let presentation = response.result.unwrap();
         assert_eq!(presentation["last_transfer"]["host"], "next.example.com");
         assert_eq!(presentation["last_transfer"]["port"], 25566);
+        assert_eq!(presentation["custom_report_details"]["Region"], "local");
+        assert_eq!(
+            presentation["custom_report_details"]["Server"],
+            "bbb test shard"
+        );
     }
 
     #[test]

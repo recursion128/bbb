@@ -464,7 +464,6 @@ fn custom_report_details_event_updates_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
-    assert_eq!(counters.custom_report_details, details);
     assert_eq!(counters.custom_report_detail_packets, 1);
     assert_eq!(counters.custom_report_details_tracked, 2);
     assert_eq!(world.custom_report_details(), &details);

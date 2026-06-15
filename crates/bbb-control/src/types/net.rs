@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use bbb_world::{BlockPos, ChunkPos};
 use serde::{Deserialize, Serialize};
 
@@ -109,7 +107,6 @@ pub struct NetCounters {
     pub world_time: Option<WorldTime>,
     pub weather: WeatherState,
     pub last_cookie_key: Option<String>,
-    pub custom_report_details: BTreeMap<String, String>,
     pub server_links: Vec<ServerLinkState>,
     pub ticking: ClientTickingState,
     pub camera: CameraState,

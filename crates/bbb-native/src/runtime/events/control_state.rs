@@ -505,7 +505,6 @@ fn sync_custom_report_detail_counters(counters: &mut NetCounters, world: &WorldS
     let world_counters = world.counters();
     counters.custom_report_detail_packets = world_counters.custom_report_detail_packets;
     counters.custom_report_details_tracked = world_counters.custom_report_details_tracked;
-    counters.custom_report_details = world.custom_report_details().clone();
 }
 
 fn sync_cookie_counters(counters: &mut NetCounters, world: &WorldStore) {
