@@ -132,10 +132,11 @@ impl ProbeContext {
             }
             PlayClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
-                self.world
-                    .apply_cookie_request(request.key.as_str(), payload.is_some());
+                let payload_present = payload.is_some();
                 let (id, response) = packets::encode_play_cookie_response(&request.key, payload);
                 self.conn.send_packet(id, &response).await?;
+                self.world
+                    .apply_cookie_request(request.key, payload_present);
             }
             PlayClientbound::OpenScreen(update) => {
                 self.world.apply_open_screen(update);
