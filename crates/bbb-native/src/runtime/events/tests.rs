@@ -3949,7 +3949,6 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
         }
     );
 
-    assert_eq!(counters.selected_hotbar_slot, 5);
     assert_eq!(counters.player_abilities_packets, 1);
     assert_eq!(counters.player_health_packets, 1);
     assert_eq!(counters.player_experience_packets, 1);

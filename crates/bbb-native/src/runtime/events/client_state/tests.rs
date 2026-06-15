@@ -170,7 +170,7 @@ fn held_slot_updates_snapshot_counters() {
     assert!(world.apply_held_slot(bbb_protocol::packets::SetHeldSlot { slot: 5 }));
     sync_local_player_counters(&mut counters, &world);
 
-    assert_eq!(counters.selected_hotbar_slot, 5);
+    assert_eq!(world.local_player().selected_hotbar_slot, 5);
     assert_eq!(counters.held_slot_packets, 1);
     assert_eq!(counters.held_slot_updates_applied, 1);
     assert_eq!(counters.held_slot_updates_ignored, 0);
@@ -178,7 +178,7 @@ fn held_slot_updates_snapshot_counters() {
     assert!(!world.apply_held_slot(bbb_protocol::packets::SetHeldSlot { slot: 99 }));
     sync_local_player_counters(&mut counters, &world);
 
-    assert_eq!(counters.selected_hotbar_slot, 5);
+    assert_eq!(world.local_player().selected_hotbar_slot, 5);
     assert_eq!(counters.held_slot_packets, 2);
     assert_eq!(counters.held_slot_updates_applied, 1);
     assert_eq!(counters.held_slot_updates_ignored, 1);
@@ -192,7 +192,7 @@ fn local_hotbar_selection_syncs_snapshot_counters_without_held_packet() {
     assert!(world.set_local_selected_hotbar_slot(7));
     sync_local_player_counters(&mut counters, &world);
 
-    assert_eq!(counters.selected_hotbar_slot, 7);
+    assert_eq!(world.local_player().selected_hotbar_slot, 7);
     assert_eq!(counters.held_slot_packets, 0);
     assert_eq!(counters.held_slot_updates_applied, 0);
     assert_eq!(counters.held_slot_updates_ignored, 0);

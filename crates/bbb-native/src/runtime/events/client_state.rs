@@ -73,9 +73,6 @@ pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldSto
 }
 
 pub(crate) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let local = world.local_player();
-    counters.selected_hotbar_slot = local.selected_hotbar_slot;
-
     let world_counters = world.counters();
     counters.play_logins_received = world_counters.play_logins_received;
     counters.respawns_received = world_counters.respawns_received;

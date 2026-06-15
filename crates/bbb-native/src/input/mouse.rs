@@ -544,7 +544,6 @@ mod tests {
 
         assert_eq!(world.local_player().selected_hotbar_slot, 3);
         assert_eq!(world.counters().held_slot_packets, 0);
-        assert_eq!(counters.selected_hotbar_slot, 3);
         assert_eq!(counters.held_slot_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(3));
     }
@@ -575,7 +574,6 @@ mod tests {
             MouseScrollDelta::LineDelta(0.0, -1.0),
         );
         assert_eq!(world.local_player().selected_hotbar_slot, 0);
-        assert_eq!(counters.selected_hotbar_slot, 0);
         assert_eq!(counters.held_slot_commands_queued, 2);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(0));
     }
@@ -598,7 +596,6 @@ mod tests {
         );
 
         assert_eq!(world.local_player().selected_hotbar_slot, 4);
-        assert_eq!(counters.selected_hotbar_slot, 0);
         assert_eq!(counters.held_slot_commands_queued, 0);
         assert!(rx.try_recv().is_err());
     }
@@ -631,7 +628,6 @@ mod tests {
         );
 
         assert_eq!(world.local_player().selected_hotbar_slot, 3);
-        assert_eq!(counters.selected_hotbar_slot, 3);
         assert_eq!(counters.held_slot_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(3));
     }

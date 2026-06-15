@@ -81,7 +81,6 @@ fn digit_key_selects_hotbar_slot_updates_world_and_queues_command() {
     );
 
     assert_eq!(world.local_player().selected_hotbar_slot, 4);
-    assert_eq!(counters.selected_hotbar_slot, 4);
     assert_eq!(world.counters().held_slot_packets, 0);
     assert_eq!(counters.held_slot_commands_queued, 1);
     assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(4));

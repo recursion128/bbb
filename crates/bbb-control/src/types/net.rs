@@ -91,7 +91,6 @@ pub struct NetCounters {
     pub play_logins_received: usize,
     #[serde(default)]
     pub respawns_received: usize,
-    pub selected_hotbar_slot: u8,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
     pub player_info_remove_packets: usize,
