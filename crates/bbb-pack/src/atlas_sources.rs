@@ -28,10 +28,14 @@ pub(crate) fn load_atlas_texture_entries(
     let mut entries = Vec::new();
 
     for resource in atlas_resources {
-        let bytes = std::fs::read(&resource.path)
-            .with_context(|| format!("read atlas {}", resource.path.display()))?;
-        let atlas: RawAtlas = serde_json::from_slice(&bytes)
-            .with_context(|| format!("parse atlas {}", resource.path.display()))?;
+        let bytes = match std::fs::read(&resource.path) {
+            Ok(bytes) => bytes,
+            Err(_) => continue,
+        };
+        let atlas: RawAtlas = match serde_json::from_slice(&bytes) {
+            Ok(atlas) => atlas,
+            Err(_) => continue,
+        };
 
         for source in atlas.sources {
             match source.source_type.as_str() {
@@ -797,6 +801,69 @@ mod tests {
             ids,
             vec!["minecraft:block/stone", "minecraft:block/deepslate"]
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn atlas_definition_stack_skips_invalid_definition_and_keeps_valid_sources() {
+        let root = unique_temp_dir("atlas-stack-skip-invalid");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        let base_assets = base.join("assets").join("minecraft");
+        let overlay_atlases = overlay.join("assets").join("minecraft").join("atlases");
+        std::fs::create_dir_all(base_assets.join("textures").join("block")).unwrap();
+        std::fs::create_dir_all(base_assets.join("textures").join("particle")).unwrap();
+        write_rgba_png(
+            &base_assets.join("textures").join("block").join("stone.png"),
+            1,
+            1,
+            &[10, 20, 30, 255],
+        );
+        write_rgba_png(
+            &base_assets
+                .join("textures")
+                .join("particle")
+                .join("spark.png"),
+            1,
+            1,
+            &[40, 50, 60, 255],
+        );
+        write_json(
+            &base_assets.join("atlases").join("blocks.json"),
+            r#"{"sources":[{"type":"minecraft:single","resource":"minecraft:block/stone"}]}"#,
+        );
+        write_json(
+            &base_assets.join("atlases").join("particles.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "source": "particle",
+                  "prefix": "particle/"
+                }
+              ]
+            }"#,
+        );
+        write_json(&overlay_atlases.join("blocks.json"), r#"{"sources":["#);
+        write_json(
+            &overlay_atlases.join("particles.json"),
+            r#"{"sources":{"type":"minecraft:single"}}"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+
+        let block_entries = load_atlas_texture_entries(&roots, "blocks").unwrap();
+        assert_eq!(
+            block_entries.iter().map(entry_id).collect::<Vec<_>>(),
+            vec!["minecraft:block/stone"]
+        );
+
+        let particle_sources = roots.load_atlas_texture_sources("particles").unwrap();
+        assert_eq!(particle_sources.len(), 1);
+        assert_eq!(particle_sources[0].id, "minecraft:particle/spark");
 
         std::fs::remove_dir_all(root).unwrap();
     }

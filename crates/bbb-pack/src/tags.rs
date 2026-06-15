@@ -20,7 +20,6 @@ impl TagCatalog {
 
         for (location, resources) in resource_stacks {
             let tag_id = tag_id_from_resource_location(&location, &directory)?;
-            let entries = builders.entry(tag_id.id()).or_default();
             for resource in resources {
                 let Ok(bytes) = std::fs::read(&resource.path) else {
                     continue;
@@ -30,6 +29,7 @@ impl TagCatalog {
                 }) else {
                     continue;
                 };
+                let entries = builders.entry(tag_id.id()).or_default();
                 if tag_file.replace {
                     entries.clear();
                 }
@@ -347,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn tag_catalog_keeps_empty_tag_for_invalid_file_and_keeps_other_tags() {
+    fn tag_catalog_skips_invalid_tag_file_without_creating_empty_tag() {
         let root = unique_temp_dir("tag-invalid");
         let data_dir = root
             .join("sources")
@@ -367,10 +367,7 @@ mod tests {
             .load_tag_catalog("block")
             .unwrap();
 
-        assert_eq!(
-            catalog.values("minecraft:invalid").unwrap(),
-            &[] as &[String]
-        );
+        assert!(catalog.values("minecraft:invalid").is_none());
         assert_eq!(
             catalog.values("minecraft:valid").unwrap(),
             &["minecraft:stone".to_string()]
