@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
-use super::Vec3d;
+use super::{read_resource_location, Vec3d};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SoundEvent {
@@ -125,7 +125,7 @@ pub(crate) fn decode_stop_sound(decoder: &mut Decoder<'_>) -> Result<StopSound> 
         None
     };
     let name = if flags & 2 != 0 {
-        Some(decoder.read_string(32767)?)
+        Some(read_resource_location(decoder)?)
     } else {
         None
     };

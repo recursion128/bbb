@@ -75,6 +75,49 @@ pub(crate) fn read_resource_key(decoder: &mut Decoder<'_>) -> Result<String> {
     decoder.read_string(32767)
 }
 
+pub(crate) fn read_resource_location(decoder: &mut Decoder<'_>) -> Result<String> {
+    normalize_resource_location(decoder.read_string(32767)?)
+}
+
+fn normalize_resource_location(raw: String) -> Result<String> {
+    let (namespace, path) = match raw.find(':') {
+        Some(0) => ("minecraft", &raw[1..]),
+        Some(separator) => (&raw[..separator], &raw[separator + 1..]),
+        None => ("minecraft", raw.as_str()),
+    };
+
+    if !is_valid_resource_namespace(namespace) {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid resource location `{raw}`: invalid namespace"
+        )));
+    }
+    if !is_valid_resource_path(path) {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid resource location `{raw}`: invalid path"
+        )));
+    }
+
+    Ok(format!("{namespace}:{path}"))
+}
+
+fn is_valid_resource_namespace(namespace: &str) -> bool {
+    namespace != ".."
+        && namespace.chars().all(|ch| {
+            ch == '_' || ch == '-' || ch == '.' || ch.is_ascii_lowercase() || ch.is_ascii_digit()
+        })
+}
+
+fn is_valid_resource_path(path: &str) -> bool {
+    path.chars().all(|ch| {
+        ch == '_'
+            || ch == '-'
+            || ch == '/'
+            || ch == '.'
+            || ch.is_ascii_lowercase()
+            || ch.is_ascii_digit()
+    })
+}
+
 pub(crate) fn decode_vec3d(decoder: &mut Decoder<'_>) -> Result<Vec3d> {
     Ok(Vec3d {
         x: decoder.read_f64()?,

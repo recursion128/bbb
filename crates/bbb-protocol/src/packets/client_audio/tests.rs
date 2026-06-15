@@ -118,6 +118,28 @@ fn decodes_stop_sound_flags() {
 }
 
 #[test]
+fn decodes_stop_sound_name_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_u8(2);
+    payload.write_string("music.menu");
+    let payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::StopSound(StopSound {
+            source: None,
+            name: Some("minecraft:music.menu".to_string()),
+        })
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_u8().unwrap(), 2);
+    assert_eq!(decoder.read_string(32767).unwrap(), "music.menu");
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn decodes_stop_all_sounds_packet() {
     let mut payload = Encoder::new();
     payload.write_u8(0);
@@ -146,6 +168,19 @@ fn rejects_invalid_sound_source_ordinal() {
     let err =
         decode_play_clientbound(ids::play::CLIENTBOUND_SOUND, &payload.into_inner()).unwrap_err();
     assert!(err.to_string().contains("invalid sound source ordinal 11"));
+}
+
+#[test]
+fn rejects_invalid_stop_sound_name() {
+    let mut payload = Encoder::new();
+    payload.write_u8(2);
+    payload.write_string("minecraft:Music.Menu");
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_STOP_SOUND, &payload.into_inner())
+        .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("invalid resource location `minecraft:Music.Menu`: invalid path"));
 }
 
 #[test]
