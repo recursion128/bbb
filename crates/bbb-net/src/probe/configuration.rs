@@ -270,17 +270,26 @@ mod tests {
             .await
             .unwrap();
         probe
+            .handle_configuration_packet(ConfigurationClientbound::ResourcePackPop(
+                ResourcePackPop { id: Some(pack_id) },
+            ))
+            .await
+            .unwrap();
+        probe
             .handle_configuration_packet(ConfigurationClientbound::ClearDialog)
             .await
             .unwrap();
 
-        let report = probe.finish(9, ChunkPos { x: 0, z: 0 });
+        let report = probe.finish(13, ChunkPos { x: 0, z: 0 });
         assert!(report.world.resource_packs().is_empty());
         assert!(report.world.current_dialog().is_none());
+        assert_eq!(report.packets_seen, 13);
         assert_eq!(report.world_counters.custom_payload_packets, 1);
         assert_eq!(report.world_counters.update_tags_packets, 1);
         assert_eq!(report.world_counters.resource_pack_push_packets, 1);
-        assert_eq!(report.world_counters.resource_pack_pop_packets, 1);
+        assert_eq!(report.world_counters.resource_pack_pop_packets, 2);
+        assert_eq!(report.world_counters.resource_pack_pop_updates_applied, 1);
+        assert_eq!(report.world_counters.resource_pack_pop_updates_ignored, 1);
         assert_eq!(report.world_counters.update_enabled_features_packets, 1);
         assert_eq!(report.world_counters.enabled_features_tracked, 1);
         assert_eq!(report.world_counters.enabled_features_ignored, 1);
