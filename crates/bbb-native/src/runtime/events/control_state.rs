@@ -101,15 +101,12 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::PlayerCombatEnd(update) => {
             world.apply_player_combat_end(update);
-            sync_client_combat_counters(counters, world);
         }
         NetEvent::PlayerCombatEnter => {
             world.apply_player_combat_enter();
-            sync_client_combat_counters(counters, world);
         }
         NetEvent::PlayerCombatKill(update) => {
             world.apply_player_combat_kill(update);
-            sync_client_combat_counters(counters, world);
         }
         NetEvent::PlayerLookAt(update) => {
             apply_player_look_at_update(counters, world, update);
@@ -120,35 +117,27 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::Explosion(update) => {
             world.apply_explosion(update);
-            sync_client_effect_counters(counters, world);
         }
         NetEvent::LevelParticles(update) => {
             world.apply_level_particles(update);
-            sync_client_effect_counters(counters, world);
         }
         NetEvent::ProjectilePower(update) => {
             world.apply_projectile_power(update);
-            sync_entity_projectile_counters(counters, world);
         }
         NetEvent::DebugBlockValue(update) => {
             world.apply_debug_block_value(update);
-            sync_debug_game_counters(counters, world);
         }
         NetEvent::DebugChunkValue(update) => {
             world.apply_debug_chunk_value(update);
-            sync_debug_game_counters(counters, world);
         }
         NetEvent::DebugEntityValue(update) => {
             world.apply_debug_entity_value(update);
-            sync_debug_game_counters(counters, world);
         }
         NetEvent::DebugEvent(update) => {
             world.apply_debug_event(update);
-            sync_debug_game_counters(counters, world);
         }
         NetEvent::DebugSample(update) => {
             world.apply_debug_sample(update);
-            sync_debug_game_counters(counters, world);
         }
         NetEvent::DeleteChat(update) => {
             world.apply_delete_chat(update);
@@ -161,15 +150,12 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::GameRuleValues(update) => {
             world.apply_game_rule_values(update);
-            sync_debug_game_counters(counters, world);
         }
         NetEvent::GameTestHighlightPos(update) => {
             world.apply_game_test_highlight_pos(update);
-            sync_debug_game_counters(counters, world);
         }
         NetEvent::TestInstanceBlockStatus(update) => {
             world.apply_test_instance_block_status(update);
-            sync_debug_game_counters(counters, world);
         }
         NetEvent::Transfer(transfer) => {
             world.apply_transfer(transfer);
@@ -411,31 +397,6 @@ pub(super) fn sync_client_audio_counters(counters: &mut NetCounters, world: &Wor
     counters.stop_sound_packets = world_counters.stop_sound_packets;
 }
 
-fn sync_client_effect_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.explosion_packets = world_counters.explosion_packets;
-    counters.level_particles_packets = world_counters.level_particles_packets;
-}
-
-fn sync_entity_projectile_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.projectile_power_packets = world_counters.projectile_power_packets;
-    counters.projectile_power_updates_applied = world_counters.projectile_power_updates_applied;
-    counters.projectile_power_updates_ignored = world_counters.projectile_power_updates_ignored;
-}
-
-fn sync_debug_game_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.debug_block_value_packets = world_counters.debug_block_value_packets;
-    counters.debug_chunk_value_packets = world_counters.debug_chunk_value_packets;
-    counters.debug_entity_value_packets = world_counters.debug_entity_value_packets;
-    counters.debug_event_packets = world_counters.debug_event_packets;
-    counters.debug_sample_packets = world_counters.debug_sample_packets;
-    counters.game_rule_value_packets = world_counters.game_rule_value_packets;
-    counters.game_test_highlight_pos_packets = world_counters.game_test_highlight_pos_packets;
-    counters.test_instance_block_status_packets = world_counters.test_instance_block_status_packets;
-}
-
 fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.low_disk_space_warnings = world_counters.low_disk_space_warnings;
@@ -465,13 +426,6 @@ fn sync_map_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.map_decorations_tracked = world_counters.map_decorations_tracked;
     counters.map_color_patches_applied = world_counters.map_color_patches_applied;
     counters.map_color_patches_ignored = world_counters.map_color_patches_ignored;
-}
-
-fn sync_client_combat_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.player_combat_end_packets = world_counters.player_combat_end_packets;
-    counters.player_combat_enter_packets = world_counters.player_combat_enter_packets;
-    counters.player_combat_kill_packets = world_counters.player_combat_kill_packets;
 }
 
 fn sync_client_stats_counters(counters: &mut NetCounters, world: &WorldStore) {

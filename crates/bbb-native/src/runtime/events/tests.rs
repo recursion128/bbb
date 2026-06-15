@@ -2199,9 +2199,6 @@ fn player_action_events_update_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         4
     );
-    assert_eq!(counters.player_combat_enter_packets, 1);
-    assert_eq!(counters.player_combat_end_packets, 1);
-    assert_eq!(counters.player_combat_kill_packets, 1);
     assert_eq!(world.counters().player_combat_enter_packets, 1);
     assert_eq!(world.counters().player_combat_end_packets, 1);
     assert_eq!(world.counters().player_combat_kill_packets, 1);
@@ -2481,7 +2478,7 @@ fn silent_entity_sound_events_do_not_emit_runtime_commands() {
 }
 
 #[test]
-fn world_effect_events_update_snapshot_counters() {
+fn world_effect_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Explosion(Explosion {
         center: ProtocolVec3d {
@@ -2546,7 +2543,6 @@ fn world_effect_events_update_snapshot_counters() {
             raw_effect_payload_len: 4,
         })
     );
-    assert_eq!(counters.explosion_packets, 1);
     assert_eq!(world.counters().level_particles_packets, 1);
     assert_eq!(
         world.last_level_particles(),
@@ -2569,11 +2565,10 @@ fn world_effect_events_update_snapshot_counters() {
             raw_options_len: 2,
         })
     );
-    assert_eq!(counters.level_particles_packets, 1);
 }
 
 #[test]
-fn level_particles_emit_particle_runtime_batch_and_snapshot_counters() {
+fn level_particles_emit_particle_runtime_batch_and_world_counters() {
     let packet = LevelParticles {
         override_limiter: false,
         always_show: true,
@@ -2618,11 +2613,10 @@ fn level_particles_emit_particle_runtime_batch_and_snapshot_counters() {
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().level_particles_packets, 1);
     assert_eq!(world.last_level_particles().unwrap().count, 0);
-    assert_eq!(counters.level_particles_packets, 1);
 }
 
 #[test]
-fn projectile_power_updates_world_entity_state_and_snapshot_counters() {
+fn projectile_power_updates_world_entity_state_and_world_counters() {
     const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 
     let (tx, mut rx) = mpsc::channel(3);
@@ -2672,13 +2666,10 @@ fn projectile_power_updates_world_entity_state_and_snapshot_counters() {
             applied: false,
         })
     );
-    assert_eq!(counters.projectile_power_packets, 3);
-    assert_eq!(counters.projectile_power_updates_applied, 1);
-    assert_eq!(counters.projectile_power_updates_ignored, 2);
 }
 
 #[test]
-fn debug_game_events_update_snapshot_counters() {
+fn debug_game_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(8);
     tx.try_send(NetEvent::DebugBlockValue(DebugBlockValue {
         pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
@@ -2816,15 +2807,6 @@ fn debug_game_events_update_snapshot_counters() {
             size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
         })
     );
-
-    assert_eq!(counters.debug_block_value_packets, 1);
-    assert_eq!(counters.debug_chunk_value_packets, 1);
-    assert_eq!(counters.debug_entity_value_packets, 1);
-    assert_eq!(counters.debug_event_packets, 1);
-    assert_eq!(counters.debug_sample_packets, 1);
-    assert_eq!(counters.game_rule_value_packets, 1);
-    assert_eq!(counters.game_test_highlight_pos_packets, 1);
-    assert_eq!(counters.test_instance_block_status_packets, 1);
 }
 
 #[test]

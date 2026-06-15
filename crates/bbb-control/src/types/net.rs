@@ -166,9 +166,6 @@ pub struct NetCounters {
     pub recipe_property_set_items_tracked: usize,
     #[serde(default)]
     pub stonecutter_recipes_tracked: usize,
-    pub player_combat_end_packets: usize,
-    pub player_combat_enter_packets: usize,
-    pub player_combat_kill_packets: usize,
     pub player_look_at_packets: usize,
     pub player_rotation_packets: usize,
     pub move_vehicle_packets: usize,
@@ -341,21 +338,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub sound_entity_events_ignored: usize,
     pub stop_sound_packets: usize,
-    pub explosion_packets: usize,
-    pub level_particles_packets: usize,
-    pub projectile_power_packets: usize,
-    #[serde(default)]
-    pub projectile_power_updates_applied: usize,
-    #[serde(default)]
-    pub projectile_power_updates_ignored: usize,
-    pub debug_block_value_packets: usize,
-    pub debug_chunk_value_packets: usize,
-    pub debug_entity_value_packets: usize,
-    pub debug_event_packets: usize,
-    pub debug_sample_packets: usize,
-    pub game_rule_value_packets: usize,
-    pub game_test_highlight_pos_packets: usize,
-    pub test_instance_block_status_packets: usize,
     pub select_advancements_tab_packets: usize,
     #[serde(default)]
     pub update_advancements_packets: usize,
