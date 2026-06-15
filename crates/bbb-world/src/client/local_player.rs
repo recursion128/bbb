@@ -282,6 +282,10 @@ impl WorldStore {
         &self.local_player
     }
 
+    pub fn client_local_player(&self) -> &LocalPlayerState {
+        self.local_player()
+    }
+
     fn resolve_look_at_target_position(&self, packet: ProtocolPlayerLookAt) -> ProtocolVec3d {
         packet
             .target

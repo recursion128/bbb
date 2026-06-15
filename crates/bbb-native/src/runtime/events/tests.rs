@@ -3955,11 +3955,7 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
     );
 
     assert_eq!(counters.player_entity_id, Some(9));
-    assert_eq!(counters.player_health.unwrap().food, 16);
-    assert_eq!(counters.player_experience.unwrap().total, 123);
     assert_eq!(counters.selected_hotbar_slot, 5);
-    assert_eq!(counters.default_spawn.as_ref().unwrap().yaw, 90.0);
-    assert_eq!(counters.simulation_distance, Some(12));
     assert_eq!(
         counters.camera,
         bbb_control::CameraState {

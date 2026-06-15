@@ -1,7 +1,4 @@
-use bbb_control::{
-    CameraState, DefaultSpawn, NetCounters, NetVec3, PlayerAbilities, PlayerExperience,
-    PlayerHealth, PlayerLookAtState, PlayerPose,
-};
+use bbb_control::{CameraState, NetCounters, NetVec3, PlayerLookAtState, PlayerPose};
 use bbb_protocol::packets::PlayerPositionState;
 use bbb_world::{LocalPlayerLookAtState, LocalPlayerPoseState, WorldStore};
 
@@ -82,32 +79,7 @@ pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldSto
 pub(crate) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {
     let local = world.local_player();
     counters.player_entity_id = world.local_player_id();
-    counters.player_abilities = local.abilities.map(|abilities| PlayerAbilities {
-        invulnerable: abilities.invulnerable,
-        flying: abilities.flying,
-        can_fly: abilities.can_fly,
-        instabuild: abilities.instabuild,
-        flying_speed: abilities.flying_speed,
-        walking_speed: abilities.walking_speed,
-    });
-    counters.player_health = local.health.map(|health| PlayerHealth {
-        health: health.health,
-        food: health.food,
-        saturation: health.saturation,
-    });
-    counters.player_experience = local.experience.map(|experience| PlayerExperience {
-        progress: experience.progress,
-        level: experience.level,
-        total: experience.total,
-    });
     counters.selected_hotbar_slot = local.selected_hotbar_slot;
-    counters.default_spawn = local.default_spawn.as_ref().map(|spawn| DefaultSpawn {
-        dimension: spawn.dimension.clone(),
-        pos: spawn.pos,
-        yaw: spawn.yaw,
-        pitch: spawn.pitch,
-    });
-    counters.simulation_distance = local.simulation_distance;
     counters.camera = CameraState {
         entity_id: local.camera.entity_id,
         follows_player: local.camera.follows_player,

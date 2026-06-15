@@ -1,4 +1,4 @@
-use bbb_world::{BlockPos, ChunkPos};
+use bbb_world::ChunkPos;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -98,12 +98,7 @@ pub struct NetCounters {
     pub respawns_received: usize,
     pub player_pose: Option<PlayerPose>,
     pub last_player_look_at: Option<PlayerLookAtState>,
-    pub player_abilities: Option<PlayerAbilities>,
-    pub player_health: Option<PlayerHealth>,
-    pub player_experience: Option<PlayerExperience>,
     pub selected_hotbar_slot: u8,
-    pub default_spawn: Option<DefaultSpawn>,
-    pub simulation_distance: Option<i32>,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub player_position_packets: usize,
@@ -600,38 +595,6 @@ pub struct PlayerLookAtState {
     pub position: NetVec3,
     pub target_entity_id: Option<i32>,
     pub to_anchor: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
-pub struct PlayerAbilities {
-    pub invulnerable: bool,
-    pub flying: bool,
-    pub can_fly: bool,
-    pub instabuild: bool,
-    pub flying_speed: f32,
-    pub walking_speed: f32,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
-pub struct PlayerHealth {
-    pub health: f32,
-    pub food: i32,
-    pub saturation: f32,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
-pub struct PlayerExperience {
-    pub progress: f32,
-    pub level: i32,
-    pub total: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DefaultSpawn {
-    pub dimension: String,
-    pub pos: BlockPos,
-    pub yaw: f32,
-    pub pitch: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

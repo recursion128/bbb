@@ -136,15 +136,8 @@ fn player_health_updates_snapshot_counters() {
     });
     sync_local_player_counters(&mut counters, &world);
 
-    assert_eq!(
-        counters.player_health,
-        Some(PlayerHealth {
-            health: 7.5,
-            food: 16,
-            saturation: 2.0,
-        })
-    );
     assert_eq!(world.local_player().health.unwrap().health, 7.5);
+    assert_eq!(world.local_player().health.unwrap().food, 16);
     assert_eq!(counters.player_health_packets, 1);
 }
 
@@ -160,15 +153,8 @@ fn player_experience_updates_snapshot_counters() {
     });
     sync_local_player_counters(&mut counters, &world);
 
-    assert_eq!(
-        counters.player_experience,
-        Some(PlayerExperience {
-            progress: 0.75,
-            level: 8,
-            total: 123,
-        })
-    );
     assert_eq!(world.local_player().experience.unwrap().level, 8);
+    assert_eq!(world.local_player().experience.unwrap().total, 123);
     assert_eq!(counters.player_experience_packets, 1);
 }
 
@@ -242,31 +228,21 @@ fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
         },
     );
 
+    let local = world.local_player();
+    assert_eq!(local.abilities.unwrap().can_fly, true);
     assert_eq!(
-        counters.player_abilities,
-        Some(PlayerAbilities {
-            invulnerable: true,
-            flying: false,
-            can_fly: true,
-            instabuild: true,
-            flying_speed: 0.05,
-            walking_speed: 0.1,
+        local.default_spawn.as_ref().map(|spawn| spawn.pos),
+        Some(BlockPos {
+            x: -5,
+            y: 70,
+            z: 12,
         })
     );
     assert_eq!(
-        counters.default_spawn,
-        Some(DefaultSpawn {
-            dimension: "minecraft:overworld".to_string(),
-            pos: BlockPos {
-                x: -5,
-                y: 70,
-                z: 12,
-            },
-            yaw: 90.0,
-            pitch: -10.0,
-        })
+        local.default_spawn.as_ref().map(|spawn| spawn.yaw),
+        Some(90.0)
     );
-    assert_eq!(counters.simulation_distance, Some(12));
+    assert_eq!(local.simulation_distance, Some(12));
     let system_chat = world.system_chat().unwrap();
     assert_eq!(system_chat.content, "Server restarting");
     assert!(system_chat.overlay);

@@ -354,6 +354,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
         }
         "world.client_hud" => serde_json::to_value(snapshot_guard.world_store.client_hud()),
+        "world.client_local_player" => {
+            serde_json::to_value(snapshot_guard.world_store.client_local_player())
+        }
         "world.client_stats" => serde_json::to_value(snapshot_guard.world_store.client_stats()),
         "world.client_waypoints" => {
             serde_json::to_value(snapshot_guard.world_store.client_waypoints())
@@ -509,9 +512,10 @@ mod tests {
         DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
         EntityPositionSync as ProtocolEntityPositionSync, GameEvent, GameRuleValue, GameRuleValues,
         InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
-        OpenSignEditor, PlaceGhostRecipe, PlayTime, PlayerCombatKill, PongResponse,
-        RecipeDisplayType, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
-        ServerLinkType, ServerLinks, SetActionBarText, SetSubtitleText, SetTitleText,
+        OpenSignEditor, PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill,
+        PlayerExperience, PlayerHealth, PongResponse, RecipeDisplayType, SelectAdvancementsTab,
+        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText,
+        SetDefaultSpawnPosition, SetSimulationDistance, SetSubtitleText, SetTitleText,
         SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
         StopSound, SystemChat, TagQuery, TrackedWaypoint, TrackedWaypointPacket, Transfer,
         UpdateAdvancements, Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier,
@@ -1349,6 +1353,61 @@ mod tests {
             .as_object()
             .unwrap()
             .contains_key("minecraft:story/root"));
+    }
+
+    #[test]
+    fn client_local_player_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_player_abilities(PlayerAbilities {
+                invulnerable: true,
+                flying: false,
+                can_fly: true,
+                instabuild: true,
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            });
+            store.apply_player_health(PlayerHealth {
+                health: 7.5,
+                food: 16,
+                saturation: 2.0,
+            });
+            store.apply_player_experience(PlayerExperience {
+                progress: 0.75,
+                level: 8,
+                total: 123,
+            });
+            store.apply_default_spawn_position(SetDefaultSpawnPosition {
+                dimension: "minecraft:overworld".to_string(),
+                pos: ProtocolBlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+                yaw: 90.0,
+                pitch: -10.0,
+            });
+            store.apply_simulation_distance(SetSimulationDistance { distance: 12 });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_local_player".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let local = response.result.unwrap();
+        assert_eq!(local["abilities"]["can_fly"], true);
+        assert_eq!(local["health"]["food"], 16);
+        assert_eq!(local["experience"]["total"], 123);
+        assert_eq!(local["default_spawn"]["pos"]["x"], -5);
+        assert_eq!(local["default_spawn"]["yaw"], 90.0);
+        assert_eq!(local["simulation_distance"], 12);
     }
 
     #[test]
