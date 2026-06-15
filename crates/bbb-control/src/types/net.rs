@@ -79,12 +79,6 @@ pub struct NetCounters {
     pub level_event_packets: usize,
     #[serde(default)]
     pub level_events_tracked: usize,
-    pub initialize_border_packets: usize,
-    pub set_border_center_packets: usize,
-    pub set_border_lerp_size_packets: usize,
-    pub set_border_size_packets: usize,
-    pub set_border_warning_delay_packets: usize,
-    pub set_border_warning_distance_packets: usize,
     pub reset_score_packets: usize,
     #[serde(default)]
     pub reset_score_updates_applied: usize,

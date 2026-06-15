@@ -12,7 +12,7 @@ use super::control_state::{
     apply_control_projection_event, sync_advancement_counters, sync_block_event_counters,
     sync_command_counters, sync_entity_counters, sync_entity_interaction_counters,
     sync_entity_status_counters, sync_inventory_counters, sync_recipe_access_counters,
-    sync_recipe_book_counters, sync_scoreboard_counters, sync_world_border_counters,
+    sync_recipe_book_counters, sync_scoreboard_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -193,27 +193,21 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::InitializeBorder(border) => {
                 world.apply_initialize_border(border);
-                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderCenter(update) => {
                 world.apply_set_border_center(update);
-                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderLerpSize(update) => {
                 world.apply_set_border_lerp_size(update);
-                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderSize(update) => {
                 world.apply_set_border_size(update);
-                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderWarningDelay(update) => {
                 world.apply_set_border_warning_delay(update);
-                sync_world_border_counters(counters, world);
             }
             NetEvent::SetBorderWarningDistance(update) => {
                 world.apply_set_border_warning_distance(update);
-                sync_world_border_counters(counters, world);
             }
             NetEvent::ResetScore(update) => {
                 world.apply_reset_score(update);

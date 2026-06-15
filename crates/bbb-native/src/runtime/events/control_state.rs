@@ -280,18 +280,6 @@ pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &Worl
     counters.level_events_tracked = world_counters.level_events_tracked;
 }
 
-pub(super) fn sync_world_border_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.initialize_border_packets = world_counters.world_border_initializes_received;
-    counters.set_border_center_packets = world_counters.world_border_center_updates_received;
-    counters.set_border_lerp_size_packets = world_counters.world_border_lerp_size_updates_received;
-    counters.set_border_size_packets = world_counters.world_border_size_updates_received;
-    counters.set_border_warning_delay_packets =
-        world_counters.world_border_warning_delay_updates_received;
-    counters.set_border_warning_distance_packets =
-        world_counters.world_border_warning_distance_updates_received;
-}
-
 pub(super) fn sync_scoreboard_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.reset_score_packets = world_counters.reset_score_packets;
