@@ -550,7 +550,6 @@ fn configuration_state_events_update_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         3
     );
-    assert_eq!(counters.update_enabled_features_packets, 1);
     assert_eq!(
         world.enabled_feature_list(),
         vec![
@@ -561,9 +560,7 @@ fn configuration_state_events_update_snapshot_counters() {
     assert!(world.is_feature_enabled("minecraft:vanilla"));
     assert_eq!(world.counters().update_enabled_features_packets, 1);
     assert_eq!(world.counters().enabled_features_tracked, 2);
-    assert_eq!(counters.enabled_features_tracked, 2);
-    assert_eq!(counters.enabled_features_ignored, 0);
-    assert_eq!(counters.reset_chat_packets, 1);
+    assert_eq!(world.counters().enabled_features_ignored, 0);
     assert!(world.client_chat().messages.is_empty());
     assert!(world.client_chat().deleted_messages.is_empty());
     assert_eq!(world.client_chat().expected_player_chat_global_index, 0);
@@ -1049,7 +1046,7 @@ fn commands_event_updates_world_and_counters() {
 }
 
 #[test]
-fn client_chat_events_update_world_and_snapshot_counters() {
+fn client_chat_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     let sender = Uuid::from_u128(0x1234);
     let signature = MessageSignature {
@@ -1134,14 +1131,15 @@ fn client_chat_events_update_world_and_snapshot_counters() {
     );
     assert_eq!(deleted_chat.cache_id, Some(0));
     assert!(deleted_chat.resolved);
-    assert_eq!(counters.player_chat_packets, 1);
-    assert_eq!(counters.disguised_chat_packets, 1);
-    assert_eq!(counters.delete_chat_packets, 1);
-    assert_eq!(counters.chat_messages_tracked, 2);
-    assert_eq!(counters.deleted_chat_messages_tracked, 1);
-    assert_eq!(counters.chat_signature_cache_entries, 1);
-    assert_eq!(counters.player_chat_unsigned_content_packets, 1);
-    assert_eq!(counters.player_chat_filtered_packets, 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.player_chat_packets, 1);
+    assert_eq!(world_counters.disguised_chat_packets, 1);
+    assert_eq!(world_counters.delete_chat_packets, 1);
+    assert_eq!(world_counters.chat_messages_tracked, 2);
+    assert_eq!(world_counters.deleted_chat_messages_tracked, 1);
+    assert_eq!(world_counters.chat_signature_cache_entries, 1);
+    assert_eq!(world_counters.player_chat_unsigned_content_packets, 1);
+    assert_eq!(world_counters.player_chat_filtered_packets, 1);
 }
 
 #[test]
@@ -1190,7 +1188,6 @@ fn client_feature_events_update_world_and_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         5
     );
-    assert_eq!(counters.custom_chat_completion_packets, 1);
     assert_eq!(
         world.last_custom_chat_completion_update(),
         Some(&bbb_world::CustomChatCompletionUpdateState {
@@ -1202,7 +1199,6 @@ fn client_feature_events_update_world_and_snapshot_counters() {
     assert!(world.custom_chat_completions().contains("/spawn"));
     assert_eq!(world.counters().custom_chat_completion_packets, 1);
     assert_eq!(world.counters().custom_chat_completions_tracked, 2);
-    assert_eq!(counters.custom_chat_completions_tracked, 2);
     assert_eq!(counters.ghost_recipe_packets, 1);
     assert_eq!(
         world.last_ghost_recipe(),
@@ -1220,7 +1216,6 @@ fn client_feature_events_update_world_and_snapshot_counters() {
         Some("minecraft:story/root")
     );
     assert_eq!(world.counters().select_advancements_tab_packets, 1);
-    assert_eq!(counters.tag_query_packets, 1);
     assert_eq!(
         world.last_tag_query(),
         Some(&bbb_world::TagQueryResponseState {

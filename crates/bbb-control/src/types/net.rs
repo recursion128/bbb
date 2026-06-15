@@ -54,15 +54,6 @@ pub struct NetCounters {
     pub merchant_offer_packets_ignored: usize,
     #[serde(default)]
     pub merchant_offers_tracked: usize,
-    #[serde(default)]
-    pub reset_chat_packets: usize,
-    #[serde(default)]
-    pub update_enabled_features_packets: usize,
-    #[serde(default)]
-    pub enabled_features_tracked: usize,
-    #[serde(default)]
-    pub enabled_features_ignored: usize,
-    #[serde(default)]
     pub code_of_conduct_packets: usize,
     pub award_stats_packets: usize,
     #[serde(default)]
@@ -80,17 +71,6 @@ pub struct NetCounters {
     pub default_spawn_position_packets: usize,
     pub simulation_distance_packets: usize,
     pub system_chat_packets: usize,
-    pub player_chat_packets: usize,
-    pub disguised_chat_packets: usize,
-    pub delete_chat_packets: usize,
-    pub chat_messages_tracked: usize,
-    pub deleted_chat_messages_tracked: usize,
-    pub chat_signature_cache_entries: usize,
-    pub player_chat_index_mismatches: usize,
-    pub chat_unknown_packed_signatures: usize,
-    pub player_chat_unsigned_content_packets: usize,
-    pub player_chat_filtered_packets: usize,
-    pub player_chat_fully_filtered_packets: usize,
     pub block_changed_ack_packets: usize,
     pub block_destruction_packets: usize,
     #[serde(default)]
@@ -327,9 +307,6 @@ pub struct NetCounters {
     pub item_entity_stack_shrinks: usize,
     #[serde(default)]
     pub take_item_entities_removed: usize,
-    pub custom_chat_completion_packets: usize,
-    #[serde(default)]
-    pub custom_chat_completions_tracked: usize,
     pub clear_dialog_packets: usize,
     pub show_dialog_packets: usize,
     pub waypoint_packets: usize,
@@ -404,7 +381,6 @@ pub struct NetCounters {
     pub advancement_progress_tracked: usize,
     #[serde(default)]
     pub advancement_progress_criteria_tracked: usize,
-    pub tag_query_packets: usize,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,
     pub player_command_commands_queued: usize,

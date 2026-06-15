@@ -42,11 +42,9 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::ResetChat => {
             world.apply_reset_chat();
-            sync_chat_counters(counters, world);
         }
         NetEvent::UpdateEnabledFeatures(update) => {
             world.apply_update_enabled_features(update);
-            sync_enabled_feature_counters(counters, world);
         }
         NetEvent::CodeOfConduct { text } => {
             world.apply_code_of_conduct(text);
@@ -54,7 +52,6 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::CustomChatCompletions(update) => {
             world.apply_custom_chat_completions(update);
-            sync_custom_chat_completion_counters(counters, world);
         }
         NetEvent::CustomPayload(update) => {
             world.apply_custom_payload(update);
@@ -155,15 +152,12 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::DeleteChat(update) => {
             world.apply_delete_chat(update);
-            sync_chat_counters(counters, world);
         }
         NetEvent::DisguisedChat(update) => {
             world.apply_disguised_chat(update);
-            sync_chat_counters(counters, world);
         }
         NetEvent::PlayerChat(update) => {
             world.apply_player_chat(update);
-            sync_chat_counters(counters, world);
         }
         NetEvent::GameRuleValues(update) => {
             world.apply_game_rule_values(update);
@@ -189,7 +183,6 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::TagQuery(update) => {
             world.apply_tag_query(update);
-            sync_tag_query_counters(counters, world);
         }
         other => return Some(other),
     }
@@ -407,41 +400,6 @@ pub(super) fn sync_advancement_counters(counters: &mut NetCounters, world: &Worl
     counters.advancement_progress_tracked = world_counters.advancement_progress_tracked;
     counters.advancement_progress_criteria_tracked =
         world_counters.advancement_progress_criteria_tracked;
-}
-
-fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.update_enabled_features_packets = world_counters.update_enabled_features_packets;
-    counters.enabled_features_tracked = world_counters.enabled_features_tracked;
-    counters.enabled_features_ignored = world_counters.enabled_features_ignored;
-}
-
-fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.player_chat_packets = world_counters.player_chat_packets;
-    counters.reset_chat_packets = world_counters.reset_chat_packets;
-    counters.disguised_chat_packets = world_counters.disguised_chat_packets;
-    counters.delete_chat_packets = world_counters.delete_chat_packets;
-    counters.chat_messages_tracked = world_counters.chat_messages_tracked;
-    counters.deleted_chat_messages_tracked = world_counters.deleted_chat_messages_tracked;
-    counters.chat_signature_cache_entries = world_counters.chat_signature_cache_entries;
-    counters.player_chat_index_mismatches = world_counters.player_chat_index_mismatches;
-    counters.chat_unknown_packed_signatures = world_counters.chat_unknown_packed_signatures;
-    counters.player_chat_unsigned_content_packets =
-        world_counters.player_chat_unsigned_content_packets;
-    counters.player_chat_filtered_packets = world_counters.player_chat_filtered_packets;
-    counters.player_chat_fully_filtered_packets = world_counters.player_chat_fully_filtered_packets;
-}
-
-fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.custom_chat_completion_packets = world_counters.custom_chat_completion_packets;
-    counters.custom_chat_completions_tracked = world_counters.custom_chat_completions_tracked;
-}
-
-fn sync_tag_query_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.tag_query_packets = world_counters.tag_query_packets;
 }
 
 pub(super) fn sync_client_audio_counters(counters: &mut NetCounters, world: &WorldStore) {
