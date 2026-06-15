@@ -10,7 +10,7 @@ use super::{
     chunks::decode_block_pos,
     decode_vec3d,
     inventory::{self, ItemStackSummary},
-    read_resource_key,
+    read_resource_key, read_resource_location,
     world_effects::{decode_particle_payload, ParticlePayload},
     BlockPos, Vec3d,
 };
@@ -697,7 +697,7 @@ fn decode_entity_data_value(
         20 => EntityDataValueKind::Pose(decoder.read_var_i32()?),
         33 => EntityDataValueKind::OptionalGlobalPos(if decoder.read_bool()? {
             Some(GlobalPosData {
-                dimension: read_resource_key(decoder)?,
+                dimension: read_resource_location(decoder)?,
                 pos: decode_block_pos(decoder.read_i64()?),
             })
         } else {

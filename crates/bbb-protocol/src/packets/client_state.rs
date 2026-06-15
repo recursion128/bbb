@@ -6,9 +6,7 @@ use crate::{
     component::decode_component_summary_from_decoder,
 };
 
-use super::{
-    chunks, decode_optional_vec3d, read_resource_key, read_resource_location, BlockPos, Vec3d,
-};
+use super::{chunks, decode_optional_vec3d, read_resource_location, BlockPos, Vec3d};
 
 const MAX_CLOCK_UPDATES: usize = 4096;
 const BOSS_EVENT_FLAG_DARKEN_SCREEN: u8 = 1;
@@ -497,7 +495,7 @@ pub(super) fn decode_default_spawn_position(
     decoder: &mut Decoder<'_>,
 ) -> Result<SetDefaultSpawnPosition> {
     Ok(SetDefaultSpawnPosition {
-        dimension: read_resource_key(decoder)?,
+        dimension: read_resource_location(decoder)?,
         pos: chunks::decode_block_pos(decoder.read_i64()?),
         yaw: decoder.read_f32()?,
         pitch: decoder.read_f32()?,

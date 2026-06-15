@@ -1,6 +1,6 @@
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    packets::{chunks, decode_vec3d, read_resource_key, PlayerPositionUpdate},
+    packets::{chunks, decode_vec3d, read_resource_location, PlayerPositionUpdate},
 };
 
 use super::types::*;
@@ -30,7 +30,7 @@ pub(super) fn decode_play_login(decoder: &mut Decoder<'_>) -> Result<PlayLogin> 
     let level_count = decoder.read_len()?;
     let mut levels = Vec::with_capacity(level_count);
     for _ in 0..level_count {
-        levels.push(read_resource_key(decoder)?);
+        levels.push(read_resource_location(decoder)?);
     }
     Ok(PlayLogin {
         player_id,
@@ -74,7 +74,7 @@ pub(super) fn decode_player_position(decoder: &mut Decoder<'_>) -> Result<Player
 fn decode_common_spawn_info(decoder: &mut Decoder<'_>) -> Result<CommonPlayerSpawnInfo> {
     Ok(CommonPlayerSpawnInfo {
         dimension_type_id: decoder.read_var_i32()?,
-        dimension: read_resource_key(decoder)?,
+        dimension: read_resource_location(decoder)?,
         seed: decoder.read_i64()?,
         game_type: decoder.read_i8()?,
         previous_game_type: decoder.read_i8()?,
@@ -91,7 +91,7 @@ fn decode_optional_global_pos(decoder: &mut Decoder<'_>) -> Result<Option<Global
         return Ok(None);
     }
     Ok(Some(GlobalPos {
-        dimension: read_resource_key(decoder)?,
+        dimension: read_resource_location(decoder)?,
         pos: chunks::decode_block_pos(decoder.read_i64()?),
     }))
 }

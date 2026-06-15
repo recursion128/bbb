@@ -566,7 +566,7 @@ fn decodes_player_abilities_spawn_distance_and_system_chat() {
     );
 
     let mut payload = Encoder::new();
-    payload.write_string("minecraft:overworld");
+    payload.write_string("overworld");
     payload.write_i64(encode_block_pos(-5, 70, 12));
     payload.write_f32(90.0);
     payload.write_f32(-10.0);
@@ -588,6 +588,15 @@ fn decodes_player_abilities_spawn_distance_and_system_chat() {
             pitch: -10.0,
         })
     );
+
+    let mut invalid = Encoder::new();
+    invalid.write_string("minecraft:Overworld");
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_DEFAULT_SPAWN_POSITION,
+        &invalid.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
 
     let mut payload = Encoder::new();
     payload.write_var_i32(12);

@@ -382,7 +382,7 @@ fn decodes_additional_entity_data_serializers() {
     payload.write_u8(11);
     payload.write_var_i32(33);
     payload.write_bool(true);
-    payload.write_string("minecraft:overworld");
+    payload.write_string("overworld");
     payload.write_i64(pack_block_pos(34, 65, -12));
 
     payload.write_u8(12);
@@ -578,6 +578,23 @@ fn decodes_additional_entity_data_serializers() {
             ],
         })
     );
+}
+
+#[test]
+fn rejects_invalid_entity_data_global_pos_dimension() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(123);
+    payload.write_u8(11);
+    payload.write_var_i32(33);
+    payload.write_bool(true);
+    payload.write_string("minecraft:Overworld");
+
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_ENTITY_DATA,
+        &payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
 }
 
 #[test]

@@ -820,9 +820,9 @@ fn decodes_play_login_spawn_info() {
     payload.write_i32(42);
     payload.write_bool(true);
     payload.write_var_i32(3);
-    payload.write_string("minecraft:overworld");
-    payload.write_string("minecraft:the_nether");
-    payload.write_string("minecraft:the_end");
+    payload.write_string("overworld");
+    payload.write_string("the_nether");
+    payload.write_string("the_end");
     payload.write_var_i32(20);
     payload.write_var_i32(8);
     payload.write_var_i32(6);
@@ -830,14 +830,14 @@ fn decodes_play_login_spawn_info() {
     payload.write_bool(true);
     payload.write_bool(false);
     payload.write_var_i32(1);
-    payload.write_string("minecraft:the_nether");
+    payload.write_string("the_nether");
     payload.write_i64(12345);
     payload.write_i8(1);
     payload.write_i8(-1);
     payload.write_bool(false);
     payload.write_bool(false);
     payload.write_bool(true);
-    payload.write_string("minecraft:overworld");
+    payload.write_string("overworld");
     payload.write_i64(encode_block_pos(1, 64, -2));
     payload.write_var_i32(7);
     payload.write_var_i32(32);
@@ -882,10 +882,23 @@ fn decodes_play_login_spawn_info() {
 }
 
 #[test]
+fn rejects_invalid_play_login_dimension_key() {
+    let mut payload = Encoder::new();
+    payload.write_i32(42);
+    payload.write_bool(false);
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:Overworld");
+
+    let err =
+        decode_play_clientbound(ids::play::CLIENTBOUND_LOGIN, &payload.into_inner()).unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
 fn decodes_respawn_spawn_info() {
     let mut payload = Encoder::new();
     payload.write_var_i32(2);
-    payload.write_string("minecraft:the_end");
+    payload.write_string("the_end");
     payload.write_i64(98765);
     payload.write_i8(0);
     payload.write_i8(1);
