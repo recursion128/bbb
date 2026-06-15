@@ -388,6 +388,28 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
 }
 
 #[test]
+fn set_equipment_ignores_non_living_entities() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        124,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+
+    assert!(!store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 124,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::OffHand,
+            item: ItemStackSummary::empty(),
+        }],
+    }));
+
+    assert!(store.probe_entity(124).unwrap().equipment.is_empty());
+    assert_eq!(store.counters().entity_equipment_updates_received, 1);
+    assert_eq!(store.counters().entity_equipment_slots_received, 1);
+    assert_eq!(store.counters().entity_equipment_updates_applied, 0);
+}
+
+#[test]
 fn entity_store_round_trips_serde_and_replaces_by_protocol_id() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(10, 7));

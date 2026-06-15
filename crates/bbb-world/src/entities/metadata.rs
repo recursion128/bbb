@@ -5,6 +5,8 @@ use bbb_protocol::packets::{
 
 use crate::WorldStore;
 
+use super::dimensions::vanilla_living_entity_type;
+
 impl WorldStore {
     pub fn apply_set_entity_data(&mut self, packet: ProtocolSetEntityData) -> bool {
         self.counters.entity_data_updates_received += 1;
@@ -37,6 +39,12 @@ impl WorldStore {
     pub fn apply_set_equipment(&mut self, packet: ProtocolSetEquipment) -> bool {
         self.counters.entity_equipment_updates_received += 1;
         self.counters.entity_equipment_slots_received += packet.slots.len();
+        let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
+            return false;
+        };
+        if !vanilla_living_entity_type(entity_type_id) {
+            return false;
+        }
         let Some(()) = self
             .entities
             .with_equipment_mut(packet.entity_id, |equipment| {
