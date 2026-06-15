@@ -9,6 +9,7 @@ use winit::{
 mod audio_runtime;
 mod biome_tint;
 mod block_outline;
+mod code_of_conduct;
 mod crosshair;
 mod hud_assets;
 mod input;
@@ -17,6 +18,7 @@ mod startup;
 mod terrain_runtime;
 
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
+use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use hud_assets::load_hud_textures;
 use input::{
     handle_focus_change, handle_key_input, handle_mouse_input, handle_mouse_motion,
@@ -50,10 +52,26 @@ fn main() -> Result<()> {
     ));
     let mut world = WorldStore::new();
     let mut net_counters = NetCounters::default();
+    let code_of_conduct_store_path = args
+        .code_of_conduct_store
+        .clone()
+        .unwrap_or_else(default_code_of_conduct_store_path);
+    let mut code_of_conduct_acceptance =
+        match CodeOfConductAcceptance::load(code_of_conduct_store_path.clone()) {
+            Ok(store) => store,
+            Err(err) => {
+                tracing::warn!(
+                    ?err,
+                    path = %code_of_conduct_store_path.display(),
+                    "continuing with empty code-of-conduct acceptance store"
+                );
+                CodeOfConductAcceptance::empty(code_of_conduct_store_path)
+            }
+        };
     let NetworkHandles {
         events: mut net_events,
         commands: net_commands,
-    } = start_network_if_requested(&runtime, &args)?;
+    } = start_network_if_requested(&runtime, &args, &mut code_of_conduct_acceptance)?;
     start_control_api(&runtime, args.control, &snapshot);
     let mut audio_runtime = pack_roots.as_ref().and_then(|roots| {
         NativeAudioRuntime::load(roots)
@@ -122,6 +140,7 @@ fn main() -> Result<()> {
                         &mut terrain_upload,
                         &terrain_textures,
                         &snapshot,
+                        Some(&mut code_of_conduct_acceptance),
                     ) {
                         target.exit();
                         return;
@@ -194,6 +213,7 @@ fn main() -> Result<()> {
                     &mut terrain_upload,
                     &terrain_textures,
                     &snapshot,
+                    Some(&mut code_of_conduct_acceptance),
                 ) {
                     target.exit();
                     return;

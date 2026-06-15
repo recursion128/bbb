@@ -97,10 +97,12 @@ Known priority areas:
   packets with world apply APIs should stay covered by probe regression tests.
 - Configuration Code of Conduct text is recorded in world UI state and native
   control counters derive from it. Owner: `bbb-world` + `bbb-native`; status:
-  partial; next action: model persisted accepted-text hash and interactive UI
-  that sends explicit accept commands. The online event stream now waits for
-  `NetCommand::AcceptCodeOfConduct`, and the control API can queue it with
-  `net.accept_code_of_conduct`; offline probes still auto-accept to keep
+  partial; next action: add native graphical UI for accept/decline and a clear
+  accepted-hash path for declined or non-persistent accepts. The online event
+  stream auto-accepts only when the persisted Java `String.hashCode()` of the
+  server text matches, otherwise it waits for `NetCommand::AcceptCodeOfConduct`;
+  the control API can queue and persist acceptance with
+  `net.accept_code_of_conduct`. Offline probes still auto-accept to keep
   configuration probing moving.
 - Keep audio split into world-observed audio events and the Kira-backed
   `bbb-audio` playback runtime.

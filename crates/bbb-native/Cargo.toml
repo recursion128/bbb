@@ -22,6 +22,7 @@ bbb-renderer = { path = "../bbb-renderer" }
 bbb-world = { path = "../bbb-world" }
 clap = { workspace = true }
 pollster = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

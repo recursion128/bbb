@@ -12,6 +12,8 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+use crate::code_of_conduct::CodeOfConductAcceptance;
+
 #[derive(Debug, Parser)]
 #[command(name = "bbb-native")]
 pub(crate) struct Args {
@@ -29,6 +31,8 @@ pub(crate) struct Args {
     pub(crate) screenshot: Option<PathBuf>,
     #[arg(long)]
     pub(crate) exit_after_screenshot: bool,
+    #[arg(long, value_name = "PATH")]
+    pub(crate) code_of_conduct_store: Option<PathBuf>,
 }
 
 pub(crate) struct NetworkHandles {
@@ -67,7 +71,11 @@ pub(crate) fn load_pack_roots() -> Option<PackRoots> {
     }
 }
 
-pub(crate) fn start_network_if_requested(runtime: &Runtime, args: &Args) -> Result<NetworkHandles> {
+pub(crate) fn start_network_if_requested(
+    runtime: &Runtime,
+    args: &Args,
+    code_of_conduct: &mut CodeOfConductAcceptance,
+) -> Result<NetworkHandles> {
     if !args.connect_server {
         return Ok(NetworkHandles {
             events: None,
@@ -75,7 +83,9 @@ pub(crate) fn start_network_if_requested(runtime: &Runtime, args: &Args) -> Resu
         });
     }
 
-    let options = ConnectionOptions::offline(&args.server, &args.username)?;
+    let mut options = ConnectionOptions::offline(&args.server, &args.username)?;
+    options.accepted_code_of_conduct_hash = code_of_conduct.accepted_hash_for_options(&options);
+    code_of_conduct.set_connected_server(&options);
     let (tx, rx) = mpsc::channel(8192);
     let (command_tx, command_rx) = mpsc::channel(256);
     let disconnect_tx = tx.clone();

@@ -253,6 +253,7 @@ dependencies = [
  "bbb-world",
  "clap",
  "pollster",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",

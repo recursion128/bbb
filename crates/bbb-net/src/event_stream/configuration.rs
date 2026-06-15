@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, ConfigurationClientbound, ResourcePackResponseAction};
+use bbb_world::code_of_conduct_text_hash;
 
 use crate::{
     connection::play_tick_interval,
@@ -112,6 +113,10 @@ impl EventStreamContext {
                     bail!("server sent duplicate Code of Conduct");
                 }
                 self.seen_code_of_conduct = true;
+                if self.accepted_code_of_conduct_hash == Some(code_of_conduct_text_hash(&text)) {
+                    let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
+                    self.conn.send_packet(id, &payload).await?;
+                }
                 emit(&self.events, NetEvent::CodeOfConduct { text }).await?;
             }
             ConfigurationClientbound::Unknown { .. } => {}

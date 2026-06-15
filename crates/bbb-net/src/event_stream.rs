@@ -31,6 +31,7 @@ struct EventStreamContext {
     play_tick: Option<Interval>,
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
+    accepted_code_of_conduct_hash: Option<i32>,
 }
 
 pub async fn run_offline_event_stream(
@@ -55,6 +56,7 @@ pub async fn run_offline_event_stream(
         play_tick: None,
         server_cookies: BTreeMap::new(),
         seen_code_of_conduct: false,
+        accepted_code_of_conduct_hash: options.accepted_code_of_conduct_hash,
     };
 
     emit(&stream.events, NetEvent::Connected).await?;
@@ -144,6 +146,8 @@ fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::ids;
+    use bbb_world::code_of_conduct_text_hash;
     use bytes::BytesMut;
     use std::time::Duration;
     use tokio::{net::TcpListener, time::timeout};
@@ -164,6 +168,7 @@ mod tests {
             play_tick: None,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
         };
 
         stream
@@ -190,6 +195,52 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn configuration_code_of_conduct_auto_accepts_matching_hash() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let text = "Follow the server rules.";
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: Some(code_of_conduct_text_hash(text)),
+        };
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::CodeOfConduct {
+                text: text.to_string(),
+            })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("accept packet should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT
+        );
+        assert!(payload.is_empty());
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("code-of-conduct event should be emitted")
+            .unwrap();
+        assert!(
+            matches!(event, NetEvent::CodeOfConduct { text } if text == "Follow the server rules.")
+        );
+    }
+
+    #[tokio::test]
     async fn configuration_code_of_conduct_rejects_duplicate_packet() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
@@ -205,6 +256,7 @@ mod tests {
             play_tick: None,
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
         };
 
         stream

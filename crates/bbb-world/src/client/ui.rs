@@ -38,6 +38,7 @@ pub struct DialogState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CodeOfConductState {
     pub text: String,
+    pub text_hash: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,7 +91,8 @@ impl WorldStore {
     pub fn apply_code_of_conduct(&mut self, text: String) {
         self.counters.code_of_conduct_packets += 1;
         self.counters.last_code_of_conduct_len = text.len();
-        self.client_ui.last_code_of_conduct = Some(CodeOfConductState { text });
+        let text_hash = code_of_conduct_text_hash(&text);
+        self.client_ui.last_code_of_conduct = Some(CodeOfConductState { text, text_hash });
     }
 
     pub fn apply_mount_screen_open(&mut self, packet: ProtocolMountScreenOpen) {
@@ -193,6 +195,12 @@ fn interaction_hand_name(hand: InteractionHand) -> &'static str {
     }
 }
 
+pub fn code_of_conduct_text_hash(text: &str) -> i32 {
+    text.encode_utf16().fold(0i32, |hash, unit| {
+        hash.wrapping_mul(31).wrapping_add(i32::from(unit))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,20 +252,28 @@ mod tests {
     #[test]
     fn tracks_code_of_conduct_text() {
         let mut store = WorldStore::new();
+        let text = "Keep the server friendly.";
 
-        store.apply_code_of_conduct("Keep the server friendly.".to_string());
+        store.apply_code_of_conduct(text.to_string());
 
         assert_eq!(
             store.last_code_of_conduct(),
             Some(&CodeOfConductState {
-                text: "Keep the server friendly.".to_string(),
+                text: text.to_string(),
+                text_hash: code_of_conduct_text_hash(text),
             })
         );
         assert_eq!(store.counters().code_of_conduct_packets, 1);
-        assert_eq!(
-            store.counters().last_code_of_conduct_len,
-            "Keep the server friendly.".len()
-        );
+        assert_eq!(store.counters().last_code_of_conduct_len, text.len());
+    }
+
+    #[test]
+    fn code_of_conduct_hash_matches_java_string_hash_code() {
+        assert_eq!(code_of_conduct_text_hash(""), 0);
+        assert_eq!(code_of_conduct_text_hash("abc"), 96354);
+        assert_eq!(code_of_conduct_text_hash("Aa"), 2112);
+        assert_eq!(code_of_conduct_text_hash("BB"), 2112);
+        assert_eq!(code_of_conduct_text_hash("😀"), 1_772_899);
     }
 
     #[test]

@@ -13,6 +13,8 @@ pub struct ConnectionOptions {
     pub username: String,
     pub profile_id: Uuid,
     pub timeout: Duration,
+    #[serde(default)]
+    pub accepted_code_of_conduct_hash: Option<i32>,
 }
 
 impl ConnectionOptions {
@@ -28,6 +30,7 @@ impl ConnectionOptions {
             username,
             profile_id,
             timeout: Duration::from_secs(20),
+            accepted_code_of_conduct_hash: None,
         })
     }
 }
