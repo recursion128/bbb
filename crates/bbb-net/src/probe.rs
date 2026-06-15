@@ -27,6 +27,7 @@ struct ProbeContext {
     chunk_batch_size: ChunkBatchSizeCalculator,
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
+    world_apply_errors: Vec<String>,
 }
 
 impl ProbeContext {
@@ -42,7 +43,12 @@ impl ProbeContext {
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
+            world_apply_errors: Vec::new(),
         }
+    }
+
+    fn record_world_apply_error(&mut self, err: impl std::fmt::Display) {
+        self.world_apply_errors.push(err.to_string());
     }
 
     fn finish(self, packets_seen: usize, first_chunk: ChunkPos) -> ProbeReport {
@@ -78,6 +84,7 @@ impl ProbeContext {
             first_chunk_summary,
             first_chunk_center_block,
             world_counters,
+            world_apply_errors: self.world_apply_errors,
             world: self.world,
         }
     }

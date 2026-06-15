@@ -35,6 +35,8 @@ pub struct ProbeReport {
     pub first_chunk_summary: Option<ChunkProbeSummary>,
     pub first_chunk_center_block: Option<BlockProbe>,
     pub world_counters: WorldCounters,
+    #[serde(default)]
+    pub world_apply_errors: Vec<String>,
     #[serde(skip)]
     pub world: WorldStore,
 }

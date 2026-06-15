@@ -366,7 +366,9 @@ impl ProbeContext {
                 self.world.apply_block_changed_ack(update);
             }
             PlayClientbound::BlockEntityData(update) => {
-                self.world.apply_block_entity_data(update)?;
+                if let Err(err) = self.world.apply_block_entity_data(update) {
+                    self.record_world_apply_error(err);
+                }
             }
             PlayClientbound::BlockEvent(event) => {
                 self.world.apply_block_event(event);
@@ -438,10 +440,14 @@ impl ProbeContext {
                 self.world.apply_level_particles(update);
             }
             PlayClientbound::LightUpdate(update) => {
-                self.world.apply_light_update(update)?;
+                if let Err(err) = self.world.apply_light_update(update) {
+                    self.record_world_apply_error(err);
+                }
             }
             PlayClientbound::ChunksBiomes(update) => {
-                self.world.apply_biome_update(update)?;
+                if let Err(err) = self.world.apply_biome_update(update) {
+                    self.record_world_apply_error(err);
+                }
             }
             PlayClientbound::ForgetLevelChunk(update) => {
                 self.world.forget_chunk(ChunkPos {
@@ -493,7 +499,7 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
-        AddEntity, AwardStats, BlockChangedAck, BlockPos as ProtocolBlockPos,
+        AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockPos as ProtocolBlockPos,
         ChunkPos as ProtocolChunkPos, ClockUpdate, CommonPlayerSpawnInfo, CookieRequest,
         DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
         EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
@@ -671,6 +677,35 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_CHUNK_BATCH_RECEIVED);
         let desired = Decoder::new(&payload).read_f32().unwrap();
         assert_eq!(desired, 3.5);
+    }
+
+    #[tokio::test]
+    async fn probe_records_nonfatal_chunk_update_errors() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::BlockEntityData(BlockEntityData {
+                pos: ProtocolBlockPos { x: 0, y: 64, z: 0 },
+                block_entity_type_id: 9,
+                raw_nbt: vec![1],
+            }))
+            .await
+            .unwrap();
+
+        let counters = probe.world.counters();
+        assert_eq!(counters.block_entity_updates_received, 1);
+        assert_eq!(counters.block_entity_updates_applied, 0);
+        assert_eq!(probe.world_apply_errors.len(), 1);
+        assert!(
+            probe.world_apply_errors[0].contains("nbt byte"),
+            "{:?}",
+            probe.world_apply_errors
+        );
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+        assert_eq!(report.world_apply_errors.len(), 1);
+        assert!(report.world_apply_errors[0].contains("nbt byte"));
     }
 
     #[tokio::test]
