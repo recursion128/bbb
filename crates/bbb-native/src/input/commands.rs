@@ -1,10 +1,11 @@
 use bbb_control::{NetCounters, PlayerPose};
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerCloseRequest,
-    Direction as ProtocolDirection, InteractEntity, InteractionHand, PickItemFromBlock,
-    PickItemFromEntity, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
-    PlayerInput, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
+    ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection,
+    InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction,
+    PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem, UseItemOn,
+    Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -170,6 +171,48 @@ pub(super) fn queue_container_close_command(
         }
     }
     true
+}
+
+pub(crate) fn queue_container_button_click_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    container_id: i32,
+    button_id: i32,
+) {
+    if let Some(tx) = net_commands {
+        let packet = ContainerButtonClick {
+            container_id,
+            button_id,
+        };
+        if tx
+            .try_send(NetCommand::ContainerButtonClick(packet))
+            .is_ok()
+        {
+            counters.container_button_click_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_container_slot_state_changed_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    slot_id: i32,
+    container_id: i32,
+    new_state: bool,
+) {
+    if let Some(tx) = net_commands {
+        let packet = ContainerSlotStateChanged {
+            slot_id,
+            container_id,
+            new_state,
+        };
+        if tx
+            .try_send(NetCommand::ContainerSlotStateChanged(packet))
+            .is_ok()
+        {
+            counters.container_slot_state_changed_commands_queued += 1;
+        }
+    }
 }
 
 pub(super) fn queue_attack_entity_command(
@@ -354,9 +397,9 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
-        ChatCommand, CommandSuggestionRequest, Direction as ProtocolDirection, InteractEntity,
-        InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind,
-        UseItemOn,
+        ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerSlotStateChanged,
+        Direction as ProtocolDirection, InteractEntity, InteractionHand, PickItemFromBlock,
+        PickItemFromEntity, PlayerAction, PlayerActionKind, UseItemOn,
     };
     use bbb_world::BlockPos;
 
@@ -402,6 +445,43 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::ChatCommand(ChatCommand {
                 command: "give @p minecraft:stone".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn queues_container_button_click_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_container_button_click_command(&mut counters, &commands, 7, 2);
+
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn queues_container_slot_state_changed_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_container_slot_state_changed_command(&mut counters, &commands, 12, 7, true);
+
+        assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerSlotStateChanged(ContainerSlotStateChanged {
+                slot_id: 12,
+                container_id: 7,
+                new_state: true,
             })
         );
     }

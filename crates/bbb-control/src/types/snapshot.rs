@@ -20,8 +20,22 @@ pub enum CodeOfConductControlRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetControlRequest {
-    ChatCommand { command: String },
-    CommandSuggestionRequest { id: i32, command: String },
+    ChatCommand {
+        command: String,
+    },
+    CommandSuggestionRequest {
+        id: i32,
+        command: String,
+    },
+    ContainerButtonClick {
+        container_id: i32,
+        button_id: i32,
+    },
+    ContainerSlotStateChanged {
+        slot_id: i32,
+        container_id: i32,
+        new_state: bool,
+    },
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

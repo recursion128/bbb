@@ -201,6 +201,89 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.container_button_click" {
+        let Some(container_id) = i32_param(&request.params, "container_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.container_button_click requires integer param container_id".to_string(),
+                ),
+            };
+        };
+        let Some(button_id) = i32_param(&request.params, "button_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.container_button_click requires integer param button_id".to_string(),
+                ),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::ContainerButtonClick {
+                container_id,
+                button_id,
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.container_slot_state_changed" {
+        let Some(slot_id) = i32_param(&request.params, "slot_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.container_slot_state_changed requires integer param slot_id".to_string(),
+                ),
+            };
+        };
+        let Some(container_id) = i32_param(&request.params, "container_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.container_slot_state_changed requires integer param container_id"
+                        .to_string(),
+                ),
+            };
+        };
+        let Some(new_state) = bool_param(&request.params, "new_state") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.container_slot_state_changed requires boolean param new_state".to_string(),
+                ),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::ContainerSlotStateChanged {
+                slot_id,
+                container_id,
+                new_state,
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     let snapshot_guard = snapshot.read().expect("control snapshot poisoned");
     let json = match request.method.as_str() {
         "app.status" => serde_json::to_value(&*snapshot_guard),
@@ -528,6 +611,69 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_id.ok);
+    }
+
+    #[test]
+    fn net_container_button_click_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.container_button_click".to_string(),
+                params: json!({"container_id": 7, "button_id": 2}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::ContainerButtonClick {
+                container_id: 7,
+                button_id: 2,
+            }]
+        );
+
+        let missing_button = dispatch(
+            ControlRequest {
+                method: "net.container_button_click".to_string(),
+                params: json!({"container_id": 7}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_button.ok);
+    }
+
+    #[test]
+    fn net_container_slot_state_changed_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.container_slot_state_changed".to_string(),
+                params: json!({"slot_id": 12, "container_id": 7, "new_state": true}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::ContainerSlotStateChanged {
+                slot_id: 12,
+                container_id: 7,
+                new_state: true,
+            }]
+        );
+
+        let missing_state = dispatch(
+            ControlRequest {
+                method: "net.container_slot_state_changed".to_string(),
+                params: json!({"slot_id": 12, "container_id": 7}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_state.ok);
     }
 
     #[test]

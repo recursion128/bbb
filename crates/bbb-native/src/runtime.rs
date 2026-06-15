@@ -19,6 +19,7 @@ use crate::{
     crosshair::selection_outline_from_crosshair,
     input::{
         advance_player_input, queue_chat_command, queue_command_suggestion_request,
+        queue_container_button_click_command, queue_container_slot_state_changed_command,
         ClientInputState,
     },
     particle_runtime::ParticleEventSink,
@@ -95,6 +96,30 @@ pub(crate) fn pump_control_net_requests(
             }
             NetControlRequest::CommandSuggestionRequest { id, command } => {
                 queue_command_suggestion_request(counters, net_commands, id, command);
+            }
+            NetControlRequest::ContainerButtonClick {
+                container_id,
+                button_id,
+            } => {
+                queue_container_button_click_command(
+                    counters,
+                    net_commands,
+                    container_id,
+                    button_id,
+                );
+            }
+            NetControlRequest::ContainerSlotStateChanged {
+                slot_id,
+                container_id,
+                new_state,
+            } => {
+                queue_container_slot_state_changed_command(
+                    counters,
+                    net_commands,
+                    slot_id,
+                    container_id,
+                    new_state,
+                );
             }
         }
     }
@@ -377,6 +402,62 @@ mod tests {
                 id: 18,
                 command: "/give @p minecraft:stone".to_string(),
             })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_container_button_click() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.push(
+            bbb_control::NetControlRequest::ContainerButtonClick {
+                container_id: 7,
+                button_id: 2,
+            },
+        );
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(bbb_protocol::packets::ContainerButtonClick {
+                container_id: 7,
+                button_id: 2,
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_container_slot_state_changed() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.push(
+            bbb_control::NetControlRequest::ContainerSlotStateChanged {
+                slot_id: 12,
+                container_id: 7,
+                new_state: true,
+            },
+        );
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+
+        assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerSlotStateChanged(
+                bbb_protocol::packets::ContainerSlotStateChanged {
+                    slot_id: 12,
+                    container_id: 7,
+                    new_state: true,
+                }
+            )
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
