@@ -697,21 +697,6 @@ fn sync_client_stats_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.award_stats_entries_received = world_counters.award_stats_entries_received;
     counters.last_award_stats_entry_count = world_counters.last_award_stats_entry_count;
     counters.stats_tracked = world_counters.stats_tracked;
-    counters.last_award_stats = world.last_stats_update().map(control_award_stats_state);
-}
-
-fn control_award_stats_state(state: &bbb_world::StatsUpdateState) -> bbb_control::AwardStatsState {
-    bbb_control::AwardStatsState {
-        entries: state
-            .entries
-            .iter()
-            .map(|entry| bbb_control::StatValueState {
-                stat_type_id: entry.stat_type_id,
-                value_id: entry.value_id,
-                amount: entry.amount,
-            })
-            .collect(),
-    }
 }
 
 fn control_chat_line(message: &bbb_world::ChatMessageState) -> bbb_control::ClientChatLine {

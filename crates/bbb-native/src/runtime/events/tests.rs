@@ -512,21 +512,16 @@ fn award_stats_event_updates_world_state_and_snapshot_counters() {
     assert_eq!(world.counters().award_stats_entries_received, 2);
     assert_eq!(world.counters().last_award_stats_entry_count, 2);
     assert_eq!(world.counters().stats_tracked, 2);
-
-    assert_eq!(counters.award_stats_packets, 1);
-    assert_eq!(counters.award_stats_entries_received, 2);
-    assert_eq!(counters.last_award_stats_entry_count, 2);
-    assert_eq!(counters.stats_tracked, 2);
     assert_eq!(
-        counters.last_award_stats,
-        Some(bbb_control::AwardStatsState {
+        world.last_stats_update(),
+        Some(&bbb_world::StatsUpdateState {
             entries: vec![
-                bbb_control::StatValueState {
+                bbb_world::StatValueState {
                     stat_type_id: 8,
                     value_id: 10,
                     amount: 3,
                 },
-                bbb_control::StatValueState {
+                bbb_world::StatValueState {
                     stat_type_id: 0,
                     value_id: 4,
                     amount: 11,
@@ -534,6 +529,11 @@ fn award_stats_event_updates_world_state_and_snapshot_counters() {
             ],
         })
     );
+
+    assert_eq!(counters.award_stats_packets, 1);
+    assert_eq!(counters.award_stats_entries_received, 2);
+    assert_eq!(counters.last_award_stats_entry_count, 2);
+    assert_eq!(counters.stats_tracked, 2);
 }
 
 #[test]

@@ -344,6 +344,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
         }
         "world.client_hud" => serde_json::to_value(snapshot_guard.world_store.client_hud()),
+        "world.client_stats" => serde_json::to_value(snapshot_guard.world_store.client_stats()),
         "world.client_waypoints" => {
             serde_json::to_value(snapshot_guard.world_store.client_waypoints())
         }
@@ -482,12 +483,12 @@ mod tests {
 
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DebugBlockValue,
+        AddEntity as ProtocolAddEntity, AwardStats, BlockPos as ProtocolBlockPos, DebugBlockValue,
         DialogHolder, EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue,
         GameRuleValues, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
         PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType, SetActionBarText,
         SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent,
-        SoundEventHolder, SoundSource, StopSound, SystemChat, TrackedWaypoint,
+        SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TrackedWaypoint,
         TrackedWaypointPacket, Vec3d as ProtocolVec3d, WaypointData, WaypointIcon,
         WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
@@ -915,6 +916,57 @@ mod tests {
         assert_eq!(combat["last_combat"]["duration"], serde_json::Value::Null);
         assert_eq!(combat["last_combat"]["player_id"], 123);
         assert_eq!(combat["last_combat"]["message"], "You died");
+    }
+
+    #[test]
+    fn client_stats_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_award_stats(AwardStats {
+                stats: vec![
+                    StatUpdate {
+                        stat_type_id: 8,
+                        value_id: 10,
+                        amount: 3,
+                    },
+                    StatUpdate {
+                        stat_type_id: 0,
+                        value_id: 4,
+                        amount: 11,
+                    },
+                    StatUpdate {
+                        stat_type_id: 8,
+                        value_id: 10,
+                        amount: 5,
+                    },
+                ],
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_stats".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let stats = response.result.unwrap();
+        assert_eq!(stats["values"][0]["stat_type_id"], 0);
+        assert_eq!(stats["values"][0]["value_id"], 4);
+        assert_eq!(stats["values"][0]["amount"], 11);
+        assert_eq!(stats["values"][1]["stat_type_id"], 8);
+        assert_eq!(stats["values"][1]["value_id"], 10);
+        assert_eq!(stats["values"][1]["amount"], 5);
+        assert_eq!(stats["last_update"]["entries"][0]["stat_type_id"], 8);
+        assert_eq!(stats["last_update"]["entries"][0]["value_id"], 10);
+        assert_eq!(stats["last_update"]["entries"][0]["amount"], 3);
+        assert_eq!(stats["last_update"]["entries"][2]["stat_type_id"], 8);
+        assert_eq!(stats["last_update"]["entries"][2]["value_id"], 10);
+        assert_eq!(stats["last_update"]["entries"][2]["amount"], 5);
     }
 
     #[test]

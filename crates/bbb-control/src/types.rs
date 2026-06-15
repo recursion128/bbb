@@ -5,10 +5,10 @@ mod snapshot;
 
 pub use api::{ControlRequest, ControlResponse};
 pub use net::{
-    AwardStatsState, CameraState, ClientChatLine, ClientTickingState, CustomChatCompletionState,
-    CustomPayloadState, DefaultSpawn, DeletedChatLine, MapColorPatchState, NetCounters, NetVec3,
-    PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose,
-    ServerLinkState, StatValueState, TagQueryState, TransferTarget, WeatherState, WorldTime,
+    CameraState, ClientChatLine, ClientTickingState, CustomChatCompletionState, CustomPayloadState,
+    DefaultSpawn, DeletedChatLine, MapColorPatchState, NetCounters, NetVec3, PlayerAbilities,
+    PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose, ServerLinkState, TagQueryState,
+    TransferTarget, WeatherState, WorldTime,
 };
 pub use renderer::RendererCounters;
 pub use snapshot::{

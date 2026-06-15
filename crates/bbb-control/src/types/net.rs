@@ -216,8 +216,6 @@ pub struct NetCounters {
     pub last_award_stats_entry_count: usize,
     #[serde(default)]
     pub stats_tracked: usize,
-    #[serde(default)]
-    pub last_award_stats: Option<AwardStatsState>,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,
@@ -758,18 +756,6 @@ pub struct TagQueryState {
     pub transaction_id: i32,
     pub tag_present: bool,
     pub raw_nbt_len: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AwardStatsState {
-    pub entries: Vec<StatValueState>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StatValueState {
-    pub stat_type_id: i32,
-    pub value_id: i32,
-    pub amount: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
