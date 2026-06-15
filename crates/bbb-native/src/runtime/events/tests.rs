@@ -3285,7 +3285,7 @@ fn scoreboard_events_update_world_and_counters() {
 #[test]
 fn hud_session_events_update_world_and_counters() {
     let boss_id = Uuid::from_u128(1);
-    let (tx, mut rx) = mpsc::channel(4);
+    let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::BossEvent(bbb_protocol::packets::BossEvent {
         id: boss_id,
         operation: bbb_protocol::packets::BossEventOperation::Add {
@@ -3306,6 +3306,11 @@ fn hud_session_events_update_world_and_counters() {
         operation: bbb_protocol::packets::BossEventOperation::UpdateProgress { progress: 0.25 },
     }))
     .unwrap();
+    tx.try_send(NetEvent::BossEvent(bbb_protocol::packets::BossEvent {
+        id: Uuid::from_u128(99),
+        operation: bbb_protocol::packets::BossEventOperation::UpdateProgress { progress: 1.0 },
+    }))
+    .unwrap();
     tx.try_send(NetEvent::TabList(bbb_protocol::packets::TabList {
         header: Some("Welcome".to_string()),
         footer: None,
@@ -3323,6 +3328,7 @@ fn hud_session_events_update_world_and_counters() {
     let mut counters = NetCounters {
         boss_event_packets: 99,
         boss_bars_tracked: 99,
+        boss_events_ignored: 99,
         tab_list_packets: 99,
         change_difficulty_packets: 99,
         ..NetCounters::default()
@@ -3330,10 +3336,11 @@ fn hud_session_events_update_world_and_counters() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        4
+        5
     );
-    assert_eq!(counters.boss_event_packets, 2);
+    assert_eq!(counters.boss_event_packets, 3);
     assert_eq!(counters.boss_bars_tracked, 1);
+    assert_eq!(counters.boss_events_ignored, 1);
     assert_eq!(counters.tab_list_packets, 1);
     assert_eq!(counters.change_difficulty_packets, 1);
 
@@ -3350,8 +3357,9 @@ fn hud_session_events_update_world_and_counters() {
     assert!(world.difficulty().difficulty_locked);
 
     let world_counters = world.counters();
-    assert_eq!(world_counters.boss_event_packets, 2);
+    assert_eq!(world_counters.boss_event_packets, 3);
     assert_eq!(world_counters.boss_bars_tracked, 1);
+    assert_eq!(world_counters.boss_events_ignored, 1);
     assert_eq!(world_counters.tab_list_packets, 1);
     assert_eq!(world_counters.change_difficulty_packets, 1);
 }

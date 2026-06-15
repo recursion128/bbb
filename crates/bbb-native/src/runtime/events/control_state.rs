@@ -368,6 +368,7 @@ pub(super) fn sync_hud_session_counters(counters: &mut NetCounters, world: &Worl
     let world_counters = world.counters();
     counters.boss_event_packets = world_counters.boss_event_packets;
     counters.boss_bars_tracked = world_counters.boss_bars_tracked;
+    counters.boss_events_ignored = world_counters.boss_events_ignored;
     counters.tab_list_packets = world_counters.tab_list_packets;
     counters.change_difficulty_packets = world_counters.change_difficulty_packets;
 }

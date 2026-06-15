@@ -136,10 +136,15 @@ impl WorldStore {
                 true
             }
             ProtocolBossEventOperation::Remove => {
-                self.client_hud.boss_bars.remove(&packet.id).is_some()
+                let removed = self.client_hud.boss_bars.remove(&packet.id).is_some();
+                if !removed {
+                    self.counters.boss_events_ignored += 1;
+                }
+                removed
             }
             ProtocolBossEventOperation::UpdateProgress { progress } => {
                 let Some(bar) = self.client_hud.boss_bars.get_mut(&packet.id) else {
+                    self.counters.boss_events_ignored += 1;
                     self.update_boss_bar_count();
                     return false;
                 };
@@ -148,6 +153,7 @@ impl WorldStore {
             }
             ProtocolBossEventOperation::UpdateName { name } => {
                 let Some(bar) = self.client_hud.boss_bars.get_mut(&packet.id) else {
+                    self.counters.boss_events_ignored += 1;
                     self.update_boss_bar_count();
                     return false;
                 };
@@ -156,6 +162,7 @@ impl WorldStore {
             }
             ProtocolBossEventOperation::UpdateStyle { color, overlay } => {
                 let Some(bar) = self.client_hud.boss_bars.get_mut(&packet.id) else {
+                    self.counters.boss_events_ignored += 1;
                     self.update_boss_bar_count();
                     return false;
                 };
@@ -165,6 +172,7 @@ impl WorldStore {
             }
             ProtocolBossEventOperation::UpdateProperties { flags } => {
                 let Some(bar) = self.client_hud.boss_bars.get_mut(&packet.id) else {
+                    self.counters.boss_events_ignored += 1;
                     self.update_boss_bar_count();
                     return false;
                 };
@@ -427,6 +435,7 @@ mod tests {
         assert!(store.boss_bars().is_empty());
         assert_eq!(store.counters().boss_event_packets, 7);
         assert_eq!(store.counters().boss_bars_tracked, 0);
+        assert_eq!(store.counters().boss_events_ignored, 1);
     }
 
     #[test]

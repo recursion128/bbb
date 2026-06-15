@@ -141,6 +141,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub boss_bars_tracked: usize,
     #[serde(default)]
+    pub boss_events_ignored: usize,
+    #[serde(default)]
     pub tab_list_packets: usize,
     #[serde(default)]
     pub change_difficulty_packets: usize,

@@ -260,6 +260,8 @@ pub struct NetCounters {
     pub boss_event_packets: usize,
     #[serde(default)]
     pub boss_bars_tracked: usize,
+    #[serde(default)]
+    pub boss_events_ignored: usize,
     pub change_difficulty_packets: usize,
     pub tab_list_packets: usize,
     pub initialize_border_packets: usize,
