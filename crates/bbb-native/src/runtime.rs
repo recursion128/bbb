@@ -162,7 +162,8 @@ pub(crate) fn pump_network_and_terrain(
     }
     pump_control_net_requests(snapshot, net_commands, world, code_of_conduct);
     let now = Instant::now();
-    advance_entity_client_animations(world, client_animation_ticks, now);
+    let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
+    renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     let local_player = world.local_player();
     let player_pose = local_player.pose.map(player_pose_from_local_player_pose);

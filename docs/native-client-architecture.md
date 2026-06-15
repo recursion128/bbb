@@ -391,6 +391,10 @@ Target ownership:
   fallback behavior.
 - `bbb-renderer` keeps a bounded pending spawn queue so future GPU particle
   drawing consumes renderer-owned commands instead of native/world snapshots.
+- `bbb-renderer` drains pending spawn commands into active CPU-side particle
+  instances through the native runtime pump, advances instance age only on the
+  native 20Hz client tick path, and reports active/intake/drop counters. The
+  active instance state is renderer runtime state, not canonical world state.
 - `bbb-renderer` owns actual particle creation, culling, settings, distance
   limits, GPU buffers, and lifetime ticking.
 - Local-player knockback from explosion is a gameplay/client movement semantic

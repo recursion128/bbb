@@ -228,8 +228,11 @@ mod tests {
     use super::*;
     use std::{
         path::{Path, PathBuf},
+        sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
 
     #[test]
     fn legacy_random_gaussian_matches_java_samples() {
@@ -459,7 +462,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        std::env::temp_dir().join(format!("bbb-native-{label}-{nanos}"))
+        let id = NEXT_TEMP_DIR_ID.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!("bbb-native-{label}-{nanos}-{id}"))
     }
 
     fn assert_close(actual: f64, expected: f64) {

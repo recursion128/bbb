@@ -47,4 +47,18 @@ pub struct RendererCounters {
     pub pending_particle_spawns: usize,
     #[serde(default)]
     pub dropped_particle_spawns: u64,
+    #[serde(default)]
+    pub active_particle_instances: usize,
+    #[serde(default)]
+    pub last_particle_intake_count: usize,
+    #[serde(default)]
+    pub last_particle_tick_count: usize,
+    #[serde(default)]
+    pub last_particle_active_drop_count: usize,
+    #[serde(default)]
+    pub particle_runtime_ticks: u64,
+    #[serde(default)]
+    pub particle_instances_created: u64,
+    #[serde(default)]
+    pub dropped_active_particle_instances: u64,
 }

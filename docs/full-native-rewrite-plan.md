@@ -262,6 +262,11 @@ Deliverables:
   `bbb-pack` particle definitions/atlas sprites into renderer-owned spawn
   batches before GPU particle drawing is added. Missing sprites are diagnostics
   and should not drop otherwise valid particle spawns.
+- `bbb-renderer` drains pending particle spawn batches into renderer-owned
+  active CPU-side particle instances through the native runtime pump and advances
+  their age only on client ticks; vanilla particle providers, per-type
+  lifetimes/physics, particle limits, and GPU drawing remain separate follow-up
+  work.
 - HUD, title/action bar, scoreboard, chat, debug overlays, selection outline,
   camera pose, screenshots, and interaction feedback.
 - Renderer caches and GPU resources remain outside `bbb-world`.
