@@ -660,18 +660,6 @@ fn sync_entity_projectile_counters(counters: &mut NetCounters, world: &WorldStor
     counters.projectile_power_packets = world_counters.projectile_power_packets;
     counters.projectile_power_updates_applied = world_counters.projectile_power_updates_applied;
     counters.projectile_power_updates_ignored = world_counters.projectile_power_updates_ignored;
-    counters.last_projectile_power = world
-        .last_projectile_power_update()
-        .map(control_projectile_power_update);
-}
-
-fn control_projectile_power_update(
-    state: &bbb_world::ProjectilePowerUpdateState,
-) -> bbb_control::ProjectilePowerState {
-    bbb_control::ProjectilePowerState {
-        entity_id: state.entity_id,
-        acceleration_power: state.acceleration_power,
-    }
 }
 
 fn sync_debug_game_counters(counters: &mut NetCounters, world: &WorldStore) {

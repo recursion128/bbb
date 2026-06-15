@@ -8,8 +8,8 @@ pub use crate::types::{
     DeletedChatLine, ExplosionState, GameRuleValuesState, GameTestHighlightPosState,
     HashedComponentPatchControl, HashedStackControl, LevelParticlesState, MapColorPatchState,
     NetControlRequest, NetCounters, NetVec3, NetVec3i, PlayerAbilities, PlayerCombatState,
-    PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose, ProjectilePowerState,
-    RendererCounters, ServerLinkState, SharedSnapshot, SoundHolderState, StatValueState,
-    StopSoundState, SystemChatLine, TagQueryState, TestInstanceBlockStatusState, TitleState,
-    TransferTarget, WaypointState, WeatherState, WorldTime,
+    PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose, RendererCounters,
+    ServerLinkState, SharedSnapshot, SoundHolderState, StatValueState, StopSoundState,
+    SystemChatLine, TagQueryState, TestInstanceBlockStatusState, TitleState, TransferTarget,
+    WaypointState, WeatherState, WorldTime,
 };

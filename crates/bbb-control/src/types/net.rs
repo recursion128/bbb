@@ -129,7 +129,6 @@ pub struct NetCounters {
     pub last_stop_sound: Option<StopSoundState>,
     pub last_explosion: Option<ExplosionState>,
     pub last_level_particles: Option<LevelParticlesState>,
-    pub last_projectile_power: Option<ProjectilePowerState>,
     pub last_debug_block_value: Option<DebugBlockValueState>,
     pub last_debug_chunk_value: Option<DebugChunkValueState>,
     pub last_debug_entity_value: Option<DebugEntityValueState>,
@@ -888,12 +887,6 @@ pub struct LevelParticlesState {
     pub count: i32,
     pub particle_type_id: i32,
     pub raw_options_len: usize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct ProjectilePowerState {
-    pub entity_id: i32,
-    pub acceleration_power: f64,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]

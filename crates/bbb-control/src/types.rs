@@ -11,9 +11,9 @@ pub use net::{
     DebugSampleState, DefaultSpawn, DeletedChatLine, ExplosionState, GameRuleValuesState,
     GameTestHighlightPosState, LevelParticlesState, MapColorPatchState, NetCounters, NetVec3,
     NetVec3i, PlayerAbilities, PlayerCombatState, PlayerExperience, PlayerHealth,
-    PlayerLookAtState, PlayerPose, ProjectilePowerState, ServerLinkState, SoundHolderState,
-    StatValueState, StopSoundState, SystemChatLine, TagQueryState, TestInstanceBlockStatusState,
-    TitleState, TransferTarget, WaypointState, WeatherState, WorldTime,
+    PlayerLookAtState, PlayerPose, ServerLinkState, SoundHolderState, StatValueState,
+    StopSoundState, SystemChatLine, TagQueryState, TestInstanceBlockStatusState, TitleState,
+    TransferTarget, WaypointState, WeatherState, WorldTime,
 };
 pub use renderer::RendererCounters;
 pub use snapshot::{

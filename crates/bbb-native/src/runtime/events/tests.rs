@@ -2876,13 +2876,6 @@ fn projectile_power_updates_world_entity_state_and_snapshot_counters() {
     assert_eq!(counters.projectile_power_packets, 3);
     assert_eq!(counters.projectile_power_updates_applied, 1);
     assert_eq!(counters.projectile_power_updates_ignored, 2);
-    assert_eq!(
-        counters.last_projectile_power,
-        Some(bbb_control::ProjectilePowerState {
-            entity_id: 404,
-            acceleration_power: 0.5,
-        })
-    );
 }
 
 #[test]
