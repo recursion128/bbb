@@ -103,7 +103,8 @@ Known priority areas:
   the control API can queue non-persistent accepts by default, opt into
   persistence with `remember: true`, decline with
   `net.decline_code_of_conduct` by clearing remembered acceptance and
-  disconnecting, and clear remembered hashes with
+  disconnecting, expose the canonical UI state through `world.client_ui`, and
+  clear remembered hashes with
   `net.clear_code_of_conduct_acceptance`. Offline probes still auto-accept to
   keep configuration probing moving.
 - Keep audio split into world-observed audio events and the Kira-backed

@@ -13,7 +13,7 @@ use super::control_state::{
     sync_entity_interaction_counters, sync_entity_status_counters, sync_hud_session_counters,
     sync_inventory_counters, sync_player_info_counters, sync_recipe_access_counters,
     sync_recipe_book_counters, sync_registry_counters, sync_scoreboard_counters,
-    sync_server_presentation_counters, sync_world_border_counters,
+    sync_server_presentation_counters, sync_update_tags_counters, sync_world_border_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -322,17 +322,7 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
             }
             NetEvent::UpdateTags(update) => {
                 world.apply_update_tags(update);
-                let world_counters = world.counters();
-                counters.update_tags_packets = world_counters.update_tags_packets;
-                counters.last_update_tags_registry_count =
-                    world_counters.last_update_tags_registry_count;
-                counters.last_update_tags_total_tag_count =
-                    world_counters.last_update_tags_total_tag_count;
-                counters.last_update_tags_total_value_count =
-                    world_counters.last_update_tags_total_value_count;
-                counters.tag_registries_tracked = world_counters.tag_registries_tracked;
-                counters.tags_tracked = world_counters.tags_tracked;
-                counters.tag_entries_tracked = world_counters.tag_entries_tracked;
+                sync_update_tags_counters(counters, world);
             }
             NetEvent::Login(login) => {
                 world.apply_login(&login);

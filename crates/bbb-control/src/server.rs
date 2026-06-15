@@ -144,6 +144,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "net.counters" => serde_json::to_value(&snapshot_guard.net),
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
+        "world.client_ui" => serde_json::to_value(snapshot_guard.world_store.client_ui()),
         "world.probe_chunk" => {
             let x = i32_param(&request.params, "x");
             let z = i32_param(&request.params, "z");
@@ -393,6 +394,34 @@ mod tests {
         assert_eq!(
             snapshot.read().unwrap().code_of_conduct_requests,
             vec![CodeOfConductControlRequest::ClearAcceptance]
+        );
+    }
+
+    #[test]
+    fn client_ui_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_low_disk_space_warning();
+            store.apply_code_of_conduct("Respect the realm.".to_string());
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_ui".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let ui = response.result.unwrap();
+        assert_eq!(ui["low_disk_space_warning_count"], 1);
+        assert_eq!(ui["last_code_of_conduct"]["text"], "Respect the realm.");
+        assert_eq!(
+            ui["last_code_of_conduct"]["text_hash"],
+            bbb_world::code_of_conduct_text_hash("Respect the realm.")
         );
     }
 
