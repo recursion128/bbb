@@ -355,7 +355,7 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
 }
 
 #[test]
-fn transfer_event_updates_world_and_snapshot_counters() {
+fn transfer_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Transfer(bbb_protocol::packets::Transfer {
         host: "next.example.com".to_string(),
@@ -377,12 +377,11 @@ fn transfer_event_updates_world_and_snapshot_counters() {
             port: 25566,
         })
     );
-    assert_eq!(counters.transfer_packets, 1);
     assert_eq!(world.counters().transfer_packets, 1);
 }
 
 #[test]
-fn cookie_events_update_snapshot_counters() {
+fn cookie_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::StoreCookie {
         key: "bbb:session".to_string(),
@@ -402,14 +401,7 @@ fn cookie_events_update_snapshot_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        cookie_request_packets: 99,
-        cookie_response_hits: 99,
-        cookie_response_misses: 99,
-        store_cookie_packets: 99,
-        stored_cookie_bytes: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -423,15 +415,10 @@ fn cookie_events_update_snapshot_counters() {
     assert_eq!(world_counters.cookie_request_packets, 2);
     assert_eq!(world_counters.cookie_response_hits, 1);
     assert_eq!(world_counters.cookie_response_misses, 1);
-    assert_eq!(counters.store_cookie_packets, 1);
-    assert_eq!(counters.stored_cookie_bytes, 3);
-    assert_eq!(counters.cookie_request_packets, 2);
-    assert_eq!(counters.cookie_response_hits, 1);
-    assert_eq!(counters.cookie_response_misses, 1);
 }
 
 #[test]
-fn custom_report_details_event_updates_snapshot_counters() {
+fn custom_report_details_event_updates_world_counters() {
     let details = BTreeMap::from([
         ("Region".to_string(), "local".to_string()),
         ("Server".to_string(), "bbb test shard".to_string()),
@@ -451,8 +438,6 @@ fn custom_report_details_event_updates_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
-    assert_eq!(counters.custom_report_detail_packets, 1);
-    assert_eq!(counters.custom_report_details_tracked, 2);
     assert_eq!(world.custom_report_details(), &details);
     assert_eq!(world.counters().custom_report_detail_packets, 1);
     assert_eq!(world.counters().custom_report_details_tracked, 2);
@@ -689,7 +674,7 @@ fn update_tags_event_updates_world_state_and_counters() {
 }
 
 #[test]
-fn server_links_event_updates_world_and_snapshot_counters() {
+fn server_links_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::ServerLinks(ServerLinks {
         links: vec![
@@ -718,8 +703,6 @@ fn server_links_event_updates_world_and_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
-    assert_eq!(counters.server_link_packets, 1);
-    assert_eq!(counters.server_link_invalid_entries, 1);
     assert_eq!(
         world.server_links(),
         &[
@@ -739,7 +722,6 @@ fn server_links_event_updates_world_and_snapshot_counters() {
     assert_eq!(world_counters.server_link_packets, 1);
     assert_eq!(world_counters.server_link_invalid_entries, 1);
     assert_eq!(world_counters.server_links_tracked, 2);
-    assert_eq!(counters.server_links_tracked, 2);
 }
 
 #[test]
@@ -2122,9 +2104,6 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         4
     );
-    assert_eq!(counters.custom_payload_packets, 1);
-    assert_eq!(counters.custom_payload_brand_packets, 1);
-    assert_eq!(counters.custom_payload_unknown_packets, 0);
     assert_eq!(world.server_brand(), Some("vanilla"));
     assert_eq!(
         world.last_custom_payload(),

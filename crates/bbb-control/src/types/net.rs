@@ -54,14 +54,6 @@ pub struct NetCounters {
     pub merchant_offer_packets_ignored: usize,
     #[serde(default)]
     pub merchant_offers_tracked: usize,
-    pub cookie_request_packets: usize,
-    pub cookie_response_hits: usize,
-    pub cookie_response_misses: usize,
-    pub store_cookie_packets: usize,
-    pub stored_cookie_bytes: usize,
-    pub custom_report_detail_packets: usize,
-    #[serde(default)]
-    pub custom_report_details_tracked: usize,
     #[serde(default)]
     pub reset_chat_packets: usize,
     #[serde(default)]
@@ -72,12 +64,6 @@ pub struct NetCounters {
     pub enabled_features_ignored: usize,
     #[serde(default)]
     pub code_of_conduct_packets: usize,
-    #[serde(default)]
-    pub server_link_packets: usize,
-    pub server_link_invalid_entries: usize,
-    #[serde(default)]
-    pub server_links_tracked: usize,
-    #[serde(default)]
     pub award_stats_packets: usize,
     #[serde(default)]
     pub award_stats_entries_received: usize,
@@ -332,7 +318,6 @@ pub struct NetCounters {
     pub minecart_lerp_steps_received: usize,
     #[serde(default)]
     pub minecart_lerp_steps_tracked: usize,
-    pub transfer_packets: usize,
     pub take_item_entity_packets: usize,
     #[serde(default)]
     pub take_item_entities_applied: usize,
@@ -345,11 +330,6 @@ pub struct NetCounters {
     pub custom_chat_completion_packets: usize,
     #[serde(default)]
     pub custom_chat_completions_tracked: usize,
-    pub custom_payload_packets: usize,
-    #[serde(default)]
-    pub custom_payload_brand_packets: usize,
-    #[serde(default)]
-    pub custom_payload_unknown_packets: usize,
     pub clear_dialog_packets: usize,
     pub show_dialog_packets: usize,
     pub waypoint_packets: usize,

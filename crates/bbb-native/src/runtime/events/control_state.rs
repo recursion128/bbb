@@ -29,7 +29,6 @@ pub(super) fn apply_control_projection_event(
             response_payload_present,
         } => {
             world.apply_cookie_request(key, response_payload_present);
-            sync_cookie_counters(counters, world);
         }
         NetEvent::StoreCookie {
             key,
@@ -37,11 +36,9 @@ pub(super) fn apply_control_projection_event(
             stored_cookie_count,
         } => {
             world.apply_store_cookie(key, payload_len, stored_cookie_count);
-            sync_cookie_counters(counters, world);
         }
         NetEvent::CustomReportDetails(details) => {
             world.apply_custom_report_details(details);
-            sync_custom_report_detail_counters(counters, world);
         }
         NetEvent::ResetChat => {
             world.apply_reset_chat();
@@ -61,11 +58,9 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::CustomPayload(update) => {
             world.apply_custom_payload(update);
-            sync_custom_payload_counters(counters, world);
         }
         NetEvent::ServerLinks(links) => {
             world.apply_server_links(links);
-            sync_server_link_counters(counters, world);
         }
         NetEvent::AwardStats(update) => {
             world.apply_award_stats(update);
@@ -184,7 +179,6 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::Transfer(transfer) => {
             world.apply_transfer(transfer);
-            sync_transfer_counters(counters, world);
         }
         NetEvent::PacketSeen { .. } => {
             counters.packets_seen += 1;
@@ -439,28 +433,6 @@ fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.player_chat_fully_filtered_packets = world_counters.player_chat_fully_filtered_packets;
 }
 
-fn sync_custom_payload_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.custom_payload_packets = world_counters.custom_payload_packets;
-    counters.custom_payload_brand_packets = world_counters.custom_payload_brand_packets;
-    counters.custom_payload_unknown_packets = world_counters.custom_payload_unknown_packets;
-}
-
-fn sync_custom_report_detail_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.custom_report_detail_packets = world_counters.custom_report_detail_packets;
-    counters.custom_report_details_tracked = world_counters.custom_report_details_tracked;
-}
-
-fn sync_cookie_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.cookie_request_packets = world_counters.cookie_request_packets;
-    counters.cookie_response_hits = world_counters.cookie_response_hits;
-    counters.cookie_response_misses = world_counters.cookie_response_misses;
-    counters.store_cookie_packets = world_counters.store_cookie_packets;
-    counters.stored_cookie_bytes = world_counters.stored_cookie_bytes;
-}
-
 fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.custom_chat_completion_packets = world_counters.custom_chat_completion_packets;
@@ -542,17 +514,6 @@ fn sync_client_combat_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.player_combat_end_packets = world_counters.player_combat_end_packets;
     counters.player_combat_enter_packets = world_counters.player_combat_enter_packets;
     counters.player_combat_kill_packets = world_counters.player_combat_kill_packets;
-}
-
-fn sync_transfer_counters(counters: &mut NetCounters, world: &WorldStore) {
-    counters.transfer_packets = world.counters().transfer_packets;
-}
-
-fn sync_server_link_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.server_link_packets = world_counters.server_link_packets;
-    counters.server_link_invalid_entries = world_counters.server_link_invalid_entries;
-    counters.server_links_tracked = world_counters.server_links_tracked;
 }
 
 fn sync_client_stats_counters(counters: &mut NetCounters, world: &WorldStore) {
