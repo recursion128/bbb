@@ -1181,7 +1181,7 @@ fn client_feature_events_update_world_and_world_counters() {
 }
 
 #[test]
-fn inventory_events_update_world_and_snapshot_counters() {
+fn inventory_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(8);
     tx.try_send(NetEvent::OpenScreen(OpenScreen {
         container_id: 7,
@@ -1250,17 +1250,6 @@ fn inventory_events_update_world_and_snapshot_counters() {
     assert_eq!(world_counters.inventory_slot_updates_received, 1);
     assert_eq!(world_counters.inventory_slots_tracked, 1);
     assert_eq!(world_counters.cursor_item_updates_received, 1);
-
-    assert_eq!(counters.container_open_updates_received, 1);
-    assert_eq!(counters.container_content_updates_received, 1);
-    assert_eq!(counters.container_slot_updates_received, 1);
-    assert_eq!(counters.container_data_updates_received, 1);
-    assert_eq!(counters.container_close_updates_received, 2);
-    assert_eq!(counters.container_close_updates_applied, 1);
-    assert_eq!(counters.container_close_updates_ignored, 1);
-    assert_eq!(counters.inventory_slot_updates_received, 1);
-    assert_eq!(counters.inventory_slots_tracked, 1);
-    assert_eq!(counters.cursor_item_updates_received, 1);
 }
 
 #[test]
@@ -1755,7 +1744,7 @@ fn mob_effect_ignored_counters_update_world_counters() {
 }
 
 #[test]
-fn merchant_offers_event_updates_world_inventory_state() {
+fn merchant_offers_event_updates_world_inventory_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::OpenScreen(OpenScreen {
         container_id: 7,
@@ -1807,13 +1796,8 @@ fn merchant_offers_event_updates_world_inventory_state() {
     assert_eq!(world_counters.container_open_updates_received, 1);
     assert_eq!(world_counters.merchant_offer_packets_received, 1);
     assert_eq!(world_counters.merchant_offer_packets_applied, 1);
+    assert_eq!(world_counters.merchant_offer_packets_ignored, 0);
     assert_eq!(world_counters.merchant_offers_tracked, 1);
-
-    assert_eq!(counters.container_open_updates_received, 1);
-    assert_eq!(counters.merchant_offer_packets_received, 1);
-    assert_eq!(counters.merchant_offer_packets_applied, 1);
-    assert_eq!(counters.merchant_offer_packets_ignored, 0);
-    assert_eq!(counters.merchant_offers_tracked, 1);
 }
 
 #[test]

@@ -10,34 +10,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub respawns_received: usize,
     pub player_position_packets: usize,
-    #[serde(default)]
-    pub inventory_slot_updates_received: usize,
-    #[serde(default)]
-    pub inventory_slots_tracked: usize,
-    #[serde(default)]
-    pub cursor_item_updates_received: usize,
-    #[serde(default)]
-    pub container_open_updates_received: usize,
-    #[serde(default)]
-    pub container_content_updates_received: usize,
-    #[serde(default)]
-    pub container_slot_updates_received: usize,
-    #[serde(default)]
-    pub container_data_updates_received: usize,
-    #[serde(default)]
-    pub container_close_updates_received: usize,
-    #[serde(default)]
-    pub container_close_updates_applied: usize,
-    #[serde(default)]
-    pub container_close_updates_ignored: usize,
-    #[serde(default)]
-    pub merchant_offer_packets_received: usize,
-    #[serde(default)]
-    pub merchant_offer_packets_applied: usize,
-    #[serde(default)]
-    pub merchant_offer_packets_ignored: usize,
-    #[serde(default)]
-    pub merchant_offers_tracked: usize,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,

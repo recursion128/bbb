@@ -10,7 +10,6 @@ use crate::particle_runtime::ParticleEventSink;
 use super::client_state::*;
 use super::control_state::{
     apply_control_projection_event, sync_entity_counters, sync_entity_interaction_counters,
-    sync_inventory_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -132,35 +131,27 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::ContainerClose(update) => {
                 world.apply_container_close(update);
-                sync_inventory_counters(counters, world);
             }
             NetEvent::ContainerSetContent(update) => {
                 world.apply_container_set_content(update);
-                sync_inventory_counters(counters, world);
             }
             NetEvent::ContainerSetData(update) => {
                 world.apply_container_set_data(update);
-                sync_inventory_counters(counters, world);
             }
             NetEvent::ContainerSetSlot(update) => {
                 world.apply_container_set_slot(update);
-                sync_inventory_counters(counters, world);
             }
             NetEvent::MerchantOffers(update) => {
                 world.apply_merchant_offers(update);
-                sync_inventory_counters(counters, world);
             }
             NetEvent::OpenScreen(update) => {
                 world.apply_open_screen(update);
-                sync_inventory_counters(counters, world);
             }
             NetEvent::SetCursorItem(update) => {
                 world.apply_set_cursor_item(update);
-                sync_inventory_counters(counters, world);
             }
             NetEvent::SetPlayerInventory(update) => {
                 world.apply_set_player_inventory(update);
-                sync_inventory_counters(counters, world);
             }
             NetEvent::BlockDestruction(update) => {
                 world.apply_block_destruction(update);
