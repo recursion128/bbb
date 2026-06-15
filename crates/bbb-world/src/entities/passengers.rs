@@ -79,12 +79,17 @@ impl WorldStore {
 
     pub fn apply_move_vehicle(&mut self, packet: ProtocolMoveVehicle) -> Option<VehicleMoveReport> {
         self.counters.vehicle_moves_received += 1;
-        let root_vehicle_id = self.local_player_root_vehicle_id()?;
+        let Some(root_vehicle_id) = self.local_player_root_vehicle_id() else {
+            self.counters.vehicle_moves_ignored += 1;
+            return None;
+        };
         let packet_position = entity_vec3(packet.position);
-        let snapped = entity_distance_squared(
-            self.entities.transform(root_vehicle_id)?.position,
-            packet_position,
-        ) > MOVE_VEHICLE_SNAP_EPSILON_SQUARED;
+        let Some(current_transform) = self.entities.transform(root_vehicle_id) else {
+            self.counters.vehicle_moves_ignored += 1;
+            return None;
+        };
+        let snapped = entity_distance_squared(current_transform.position, packet_position)
+            > MOVE_VEHICLE_SNAP_EPSILON_SQUARED;
 
         if snapped {
             self.entities
@@ -97,9 +102,12 @@ impl WorldStore {
             self.counters.vehicle_moves_snapped += 1;
         }
 
+        let Some(transform) = self.entities.transform(root_vehicle_id) else {
+            self.counters.vehicle_moves_ignored += 1;
+            return None;
+        };
         self.counters.vehicle_moves_applied += 1;
         self.counters.vehicle_moves_acked += 1;
-        let transform = self.entities.transform(root_vehicle_id)?;
         Some(VehicleMoveReport {
             vehicle_id: root_vehicle_id,
             position: transform.position,

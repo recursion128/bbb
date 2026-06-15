@@ -3658,6 +3658,7 @@ fn move_vehicle_event_updates_world_and_queues_ack() {
         vehicle_moves_applied: 99,
         vehicle_moves_acked: 99,
         vehicle_moves_snapped: 99,
+        vehicle_moves_ignored: 99,
         ..NetCounters::default()
     };
     assert_eq!(
@@ -3669,11 +3670,13 @@ fn move_vehicle_event_updates_world_and_queues_ack() {
     assert_eq!(counters.vehicle_moves_applied, 1);
     assert_eq!(counters.vehicle_moves_acked, 1);
     assert_eq!(counters.vehicle_moves_snapped, 1);
+    assert_eq!(counters.vehicle_moves_ignored, 0);
     assert_eq!(counters.move_vehicle_commands_queued, 1);
     assert_eq!(world.counters().vehicle_moves_received, 1);
     assert_eq!(world.counters().vehicle_moves_applied, 1);
     assert_eq!(world.counters().vehicle_moves_acked, 1);
     assert_eq!(world.counters().vehicle_moves_snapped, 1);
+    assert_eq!(world.counters().vehicle_moves_ignored, 0);
     let vehicle = world.probe_entity(10).unwrap();
     assert_eq!(
         vehicle.position,
@@ -3694,6 +3697,48 @@ fn move_vehicle_event_updates_world_and_queues_ack() {
         }
         other => panic!("expected move vehicle command, got {other:?}"),
     }
+}
+
+#[test]
+fn move_vehicle_ignored_counters_are_projected() {
+    let (event_tx, mut event_rx) = mpsc::channel(1);
+
+    event_tx
+        .try_send(NetEvent::MoveVehicle(bbb_protocol::packets::MoveVehicle {
+            position: ProtocolVec3d {
+                x: 5.0,
+                y: 66.0,
+                z: -7.0,
+            },
+            y_rot: 45.0,
+            x_rot: -5.0,
+        }))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters {
+        move_vehicle_packets: 99,
+        vehicle_moves_applied: 99,
+        vehicle_moves_acked: 99,
+        vehicle_moves_snapped: 99,
+        vehicle_moves_ignored: 99,
+        ..NetCounters::default()
+    };
+    assert_eq!(
+        drain_net_events(&mut event_rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(counters.move_vehicle_packets, 1);
+    assert_eq!(counters.vehicle_moves_applied, 0);
+    assert_eq!(counters.vehicle_moves_acked, 0);
+    assert_eq!(counters.vehicle_moves_snapped, 0);
+    assert_eq!(counters.vehicle_moves_ignored, 1);
+    assert_eq!(world.counters().vehicle_moves_received, 1);
+    assert_eq!(world.counters().vehicle_moves_applied, 0);
+    assert_eq!(world.counters().vehicle_moves_acked, 0);
+    assert_eq!(world.counters().vehicle_moves_snapped, 0);
+    assert_eq!(world.counters().vehicle_moves_ignored, 1);
 }
 
 #[test]

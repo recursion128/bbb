@@ -2952,6 +2952,7 @@ fn move_vehicle_snaps_root_vehicle_and_returns_ack() {
     assert_eq!(store.counters().vehicle_moves_applied, 1);
     assert_eq!(store.counters().vehicle_moves_acked, 1);
     assert_eq!(store.counters().vehicle_moves_snapped, 1);
+    assert_eq!(store.counters().vehicle_moves_ignored, 0);
 }
 
 #[test]
@@ -2986,6 +2987,7 @@ fn move_vehicle_without_mount_is_noop() {
     assert_eq!(store.counters().vehicle_moves_applied, 0);
     assert_eq!(store.counters().vehicle_moves_acked, 0);
     assert_eq!(store.counters().vehicle_moves_snapped, 0);
+    assert_eq!(store.counters().vehicle_moves_ignored, 1);
 }
 
 #[test]
@@ -3033,6 +3035,7 @@ fn move_vehicle_small_delta_acks_without_snap() {
     assert_eq!(store.counters().vehicle_moves_applied, 1);
     assert_eq!(store.counters().vehicle_moves_acked, 1);
     assert_eq!(store.counters().vehicle_moves_snapped, 0);
+    assert_eq!(store.counters().vehicle_moves_ignored, 0);
 }
 
 #[test]

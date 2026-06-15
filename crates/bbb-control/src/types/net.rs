@@ -328,6 +328,8 @@ pub struct NetCounters {
     pub vehicle_moves_acked: usize,
     #[serde(default)]
     pub vehicle_moves_snapped: usize,
+    #[serde(default)]
+    pub vehicle_moves_ignored: usize,
     pub action_bar_packets: usize,
     pub title_text_packets: usize,
     pub subtitle_text_packets: usize,

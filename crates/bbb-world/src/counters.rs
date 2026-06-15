@@ -481,6 +481,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub vehicle_moves_snapped: usize,
     #[serde(default)]
+    pub vehicle_moves_ignored: usize,
+    #[serde(default)]
     pub minecart_moves_received: usize,
     #[serde(default)]
     pub minecart_moves_applied: usize,

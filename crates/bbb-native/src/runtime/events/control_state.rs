@@ -284,6 +284,7 @@ pub(super) fn sync_entity_interaction_counters(counters: &mut NetCounters, world
     counters.vehicle_moves_applied = world_counters.vehicle_moves_applied;
     counters.vehicle_moves_acked = world_counters.vehicle_moves_acked;
     counters.vehicle_moves_snapped = world_counters.vehicle_moves_snapped;
+    counters.vehicle_moves_ignored = world_counters.vehicle_moves_ignored;
     counters.take_item_entity_packets = world_counters.take_item_entities_received;
     counters.take_item_entities_applied = world_counters.take_item_entities_applied;
     counters.take_item_entities_ignored = world_counters.take_item_entities_ignored;
