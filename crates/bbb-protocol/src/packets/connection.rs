@@ -475,7 +475,7 @@ fn decode_update_enabled_features(decoder: &mut Decoder<'_>) -> Result<UpdateEna
     let count = decoder.read_len()?;
     let mut features = Vec::with_capacity(count);
     for _ in 0..count {
-        features.push(decoder.read_string(32767)?);
+        features.push(read_resource_location(decoder)?);
     }
     features.sort();
     Ok(UpdateEnabledFeatures { features })

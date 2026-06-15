@@ -1571,7 +1571,7 @@ fn decodes_configuration_common_packets() {
     let mut features_payload = Encoder::new();
     features_payload.write_var_i32(2);
     features_payload.write_string("minecraft:update_1_21");
-    features_payload.write_string("minecraft:vanilla");
+    features_payload.write_string("vanilla");
     assert_eq!(
         decode_configuration_clientbound(
             ids::configuration::CLIENTBOUND_UPDATE_ENABLED_FEATURES,
@@ -1585,6 +1585,16 @@ fn decodes_configuration_common_packets() {
             ],
         })
     );
+
+    let mut invalid_features_payload = Encoder::new();
+    invalid_features_payload.write_var_i32(1);
+    invalid_features_payload.write_string("minecraft:Vanilla");
+    let err = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_UPDATE_ENABLED_FEATURES,
+        &invalid_features_payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
 
     let mut known_packs_payload = Encoder::new();
     known_packs_payload.write_var_i32(1);
