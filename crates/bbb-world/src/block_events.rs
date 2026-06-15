@@ -68,6 +68,9 @@ impl WorldStore {
             .retain(|progress| progress.id != update.id);
         let removed = before - self.block_destructions.len();
         self.counters.block_destructions_removed += removed;
+        if removed == 0 {
+            self.counters.block_destructions_ignored += 1;
+        }
         self.counters.block_destructions_tracked = self.block_destructions.len();
         removed > 0
     }
@@ -219,6 +222,7 @@ mod tests {
         }));
         assert_eq!(store.counters().block_destructions_received, 4);
         assert_eq!(store.counters().block_destructions_removed, 1);
+        assert_eq!(store.counters().block_destructions_ignored, 1);
     }
 
     #[test]

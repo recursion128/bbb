@@ -2977,7 +2977,7 @@ fn debug_game_events_update_snapshot_counters() {
 
 #[test]
 fn block_destruction_event_updates_world_and_counter() {
-    let (tx, mut rx) = mpsc::channel(2);
+    let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::BlockDestruction(
         bbb_protocol::packets::BlockDestruction {
             id: 4,
@@ -3002,25 +3002,36 @@ fn block_destruction_event_updates_world_and_counter() {
         },
     ))
     .unwrap();
+    tx.try_send(NetEvent::BlockDestruction(
+        bbb_protocol::packets::BlockDestruction {
+            id: 99,
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            progress: 255,
+        },
+    ))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters {
         block_destruction_packets: 99,
         block_destructions_tracked: 99,
         block_destructions_removed: 99,
+        block_destructions_ignored: 99,
         ..NetCounters::default()
     };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        2
+        3
     );
-    assert_eq!(counters.block_destruction_packets, 2);
+    assert_eq!(counters.block_destruction_packets, 3);
     assert_eq!(counters.block_destructions_tracked, 0);
     assert_eq!(counters.block_destructions_removed, 1);
-    assert_eq!(world.counters().block_destructions_received, 2);
+    assert_eq!(counters.block_destructions_ignored, 1);
+    assert_eq!(world.counters().block_destructions_received, 3);
     assert_eq!(world.counters().block_destructions_tracked, 0);
     assert_eq!(world.counters().block_destructions_removed, 1);
+    assert_eq!(world.counters().block_destructions_ignored, 1);
     assert!(world.block_destruction(4).is_none());
 }
 

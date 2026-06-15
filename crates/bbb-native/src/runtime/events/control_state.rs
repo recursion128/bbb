@@ -357,6 +357,7 @@ pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &Worl
     counters.block_destruction_packets = world_counters.block_destructions_received;
     counters.block_destructions_tracked = world_counters.block_destructions_tracked;
     counters.block_destructions_removed = world_counters.block_destructions_removed;
+    counters.block_destructions_ignored = world_counters.block_destructions_ignored;
     counters.block_event_packets = world_counters.block_events_received;
     counters.block_events_tracked = world_counters.block_events_tracked;
     counters.level_event_packets = world_counters.level_events_received;

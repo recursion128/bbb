@@ -249,6 +249,8 @@ pub struct NetCounters {
     pub block_destructions_tracked: usize,
     #[serde(default)]
     pub block_destructions_removed: usize,
+    #[serde(default)]
+    pub block_destructions_ignored: usize,
     pub block_event_packets: usize,
     #[serde(default)]
     pub block_events_tracked: usize,
