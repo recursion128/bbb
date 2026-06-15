@@ -6,20 +6,7 @@ pub struct NetCounters {
     pub state: Option<String>,
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
-    pub play_logins_received: usize,
-    #[serde(default)]
-    pub respawns_received: usize,
     pub player_position_packets: usize,
-    pub player_abilities_packets: usize,
-    pub player_health_packets: usize,
-    pub player_experience_packets: usize,
-    pub held_slot_packets: usize,
-    #[serde(default)]
-    pub held_slot_updates_applied: usize,
-    #[serde(default)]
-    pub held_slot_updates_ignored: usize,
-    pub default_spawn_position_packets: usize,
-    pub simulation_distance_packets: usize,
     pub player_look_at_packets: usize,
     pub player_rotation_packets: usize,
     pub set_camera_packets: usize,

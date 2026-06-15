@@ -332,7 +332,7 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
         2
     );
     assert_eq!(world.first_chunk(), None);
-    assert_eq!(counters.respawns_received, 1);
+    assert_eq!(world.counters().respawns_received, 1);
     assert_eq!(world.counters().chunks_received, 1);
     assert_eq!(world.counters().chunks_decoded, 1);
     assert_eq!(world.counters().entities_tracked, 0);
@@ -3490,8 +3490,6 @@ fn login_tracks_local_player_id_in_world() {
     assert_eq!(world.local_player_id(), Some(9));
     assert_eq!(world.counters().play_logins_received, 1);
     assert_eq!(world.counters().respawns_received, 1);
-    assert_eq!(counters.play_logins_received, 1);
-    assert_eq!(counters.respawns_received, 1);
 }
 
 #[test]
@@ -3585,14 +3583,15 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
         }
     );
 
-    assert_eq!(counters.player_abilities_packets, 1);
-    assert_eq!(counters.player_health_packets, 1);
-    assert_eq!(counters.player_experience_packets, 1);
-    assert_eq!(counters.held_slot_packets, 1);
-    assert_eq!(counters.held_slot_updates_applied, 1);
-    assert_eq!(counters.held_slot_updates_ignored, 0);
-    assert_eq!(counters.default_spawn_position_packets, 1);
-    assert_eq!(counters.simulation_distance_packets, 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.player_abilities_packets, 1);
+    assert_eq!(world_counters.player_health_packets, 1);
+    assert_eq!(world_counters.player_experience_packets, 1);
+    assert_eq!(world_counters.held_slot_packets, 1);
+    assert_eq!(world_counters.held_slot_updates_applied, 1);
+    assert_eq!(world_counters.held_slot_updates_ignored, 0);
+    assert_eq!(world_counters.default_spawn_position_packets, 1);
+    assert_eq!(world_counters.simulation_distance_packets, 1);
     assert_eq!(counters.set_camera_packets, 2);
     assert_eq!(counters.set_camera_updates_applied, 1);
     assert_eq!(counters.set_camera_updates_ignored, 1);

@@ -46,16 +46,6 @@ pub(super) fn apply_titles_animation_update(
 
 pub(crate) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
-    counters.play_logins_received = world_counters.play_logins_received;
-    counters.respawns_received = world_counters.respawns_received;
-    counters.player_abilities_packets = world_counters.player_abilities_packets;
-    counters.player_health_packets = world_counters.player_health_packets;
-    counters.player_experience_packets = world_counters.player_experience_packets;
-    counters.held_slot_packets = world_counters.held_slot_packets;
-    counters.held_slot_updates_applied = world_counters.held_slot_updates_applied;
-    counters.held_slot_updates_ignored = world_counters.held_slot_updates_ignored;
-    counters.default_spawn_position_packets = world_counters.default_spawn_position_packets;
-    counters.simulation_distance_packets = world_counters.simulation_distance_packets;
     counters.set_camera_packets = world_counters.set_camera_packets;
     counters.set_camera_updates_applied = world_counters.set_camera_updates_applied;
     counters.set_camera_updates_ignored = world_counters.set_camera_updates_ignored;

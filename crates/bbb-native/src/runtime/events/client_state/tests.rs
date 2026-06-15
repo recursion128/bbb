@@ -129,8 +129,7 @@ fn player_look_at_updates_world_pose_orientation() {
 }
 
 #[test]
-fn player_health_updates_snapshot_counters() {
-    let mut counters = NetCounters::default();
+fn player_health_updates_world_counters() {
     let mut world = WorldStore::new();
 
     world.apply_player_health(bbb_protocol::packets::PlayerHealth {
@@ -138,16 +137,14 @@ fn player_health_updates_snapshot_counters() {
         food: 16,
         saturation: 2.0,
     });
-    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(world.local_player().health.unwrap().health, 7.5);
     assert_eq!(world.local_player().health.unwrap().food, 16);
-    assert_eq!(counters.player_health_packets, 1);
+    assert_eq!(world.counters().player_health_packets, 1);
 }
 
 #[test]
-fn player_experience_updates_snapshot_counters() {
-    let mut counters = NetCounters::default();
+fn player_experience_updates_world_counters() {
     let mut world = WorldStore::new();
 
     world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
@@ -155,52 +152,45 @@ fn player_experience_updates_snapshot_counters() {
         level: 8,
         total: 123,
     });
-    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(world.local_player().experience.unwrap().level, 8);
     assert_eq!(world.local_player().experience.unwrap().total, 123);
-    assert_eq!(counters.player_experience_packets, 1);
+    assert_eq!(world.counters().player_experience_packets, 1);
 }
 
 #[test]
-fn held_slot_updates_snapshot_counters() {
-    let mut counters = NetCounters::default();
+fn held_slot_updates_world_counters() {
     let mut world = WorldStore::new();
 
     assert!(world.apply_held_slot(bbb_protocol::packets::SetHeldSlot { slot: 5 }));
-    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(world.local_player().selected_hotbar_slot, 5);
-    assert_eq!(counters.held_slot_packets, 1);
-    assert_eq!(counters.held_slot_updates_applied, 1);
-    assert_eq!(counters.held_slot_updates_ignored, 0);
+    assert_eq!(world.counters().held_slot_packets, 1);
+    assert_eq!(world.counters().held_slot_updates_applied, 1);
+    assert_eq!(world.counters().held_slot_updates_ignored, 0);
 
     assert!(!world.apply_held_slot(bbb_protocol::packets::SetHeldSlot { slot: 99 }));
-    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(world.local_player().selected_hotbar_slot, 5);
-    assert_eq!(counters.held_slot_packets, 2);
-    assert_eq!(counters.held_slot_updates_applied, 1);
-    assert_eq!(counters.held_slot_updates_ignored, 1);
+    assert_eq!(world.counters().held_slot_packets, 2);
+    assert_eq!(world.counters().held_slot_updates_applied, 1);
+    assert_eq!(world.counters().held_slot_updates_ignored, 1);
 }
 
 #[test]
-fn local_hotbar_selection_syncs_snapshot_counters_without_held_packet() {
-    let mut counters = NetCounters::default();
+fn local_hotbar_selection_keeps_world_packet_counters_zero() {
     let mut world = WorldStore::new();
 
     assert!(world.set_local_selected_hotbar_slot(7));
-    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(world.local_player().selected_hotbar_slot, 7);
-    assert_eq!(counters.held_slot_packets, 0);
-    assert_eq!(counters.held_slot_updates_applied, 0);
-    assert_eq!(counters.held_slot_updates_ignored, 0);
+    assert_eq!(world.counters().held_slot_packets, 0);
+    assert_eq!(world.counters().held_slot_updates_applied, 0);
+    assert_eq!(world.counters().held_slot_updates_ignored, 0);
 }
 
 #[test]
-fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
-    let mut counters = NetCounters::default();
+fn player_abilities_spawn_distance_and_chat_update_world_counters() {
     let mut world = WorldStore::new();
 
     world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
@@ -222,7 +212,6 @@ fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
         pitch: -10.0,
     });
     world.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 12 });
-    sync_local_player_counters(&mut counters, &world);
     apply_system_chat_update(
         &mut world,
         bbb_protocol::packets::SystemChat {
@@ -249,10 +238,11 @@ fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
     let system_chat = world.system_chat().unwrap();
     assert_eq!(system_chat.content, "Server restarting");
     assert!(system_chat.overlay);
-    assert_eq!(counters.player_abilities_packets, 1);
-    assert_eq!(counters.default_spawn_position_packets, 1);
-    assert_eq!(counters.simulation_distance_packets, 1);
-    assert_eq!(world.counters().system_chat_packets, 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.player_abilities_packets, 1);
+    assert_eq!(world_counters.default_spawn_position_packets, 1);
+    assert_eq!(world_counters.simulation_distance_packets, 1);
+    assert_eq!(world_counters.system_chat_packets, 1);
 }
 
 #[test]
