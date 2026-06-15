@@ -353,6 +353,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             serde_json::to_value(snapshot_guard.world_store.client_waypoints())
         }
         "world.client_ui" => serde_json::to_value(snapshot_guard.world_store.client_ui()),
+        "world.last_map_color_patch" => {
+            serde_json::to_value(snapshot_guard.world_store.last_map_color_patch())
+        }
         "world.probe_chunk" => {
             let x = i32_param(&request.params, "x");
             let z = i32_param(&request.params, "z");
@@ -490,12 +493,12 @@ mod tests {
         AddEntity as ProtocolAddEntity, AwardStats, BlockPos as ProtocolBlockPos, ChatTypeBound,
         ChatTypeHolder, DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
         EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue, GameRuleValues,
-        InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe,
-        PlayerCombatKill, PongResponse, RecipeDisplayType, SetActionBarText, SetSubtitleText,
-        SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource,
-        StatUpdate, StopSound, SystemChat, TagQuery, TrackedWaypoint, TrackedWaypointPacket,
-        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
+        OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType,
+        SetActionBarText, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
+        TrackedWaypoint, TrackedWaypointPacket, Vec3d as ProtocolVec3d, WaypointData, WaypointIcon,
+        WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1255,6 +1258,50 @@ mod tests {
         assert_eq!(debug_query["last_tag_query"]["transaction_id"], 12);
         assert_eq!(debug_query["last_tag_query"]["tag_present"], true);
         assert_eq!(debug_query["last_tag_query"]["raw_nbt"], json!([10, 0]));
+    }
+
+    #[test]
+    fn last_map_color_patch_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_map_item_data(MapItemData {
+                map_id: 42,
+                scale: 2,
+                locked: true,
+                decorations: Some(vec![MapDecoration {
+                    type_id: 4,
+                    x: -20,
+                    y: 30,
+                    rot: 7,
+                    name: Some("Village".to_string()),
+                }]),
+                color_patch: Some(MapColorPatch {
+                    start_x: 3,
+                    start_y: 4,
+                    width: 2,
+                    height: 2,
+                    colors: vec![1, 2, 3, 4],
+                }),
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.last_map_color_patch".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let patch = response.result.unwrap();
+        assert_eq!(patch["map_id"], 42);
+        assert_eq!(patch["start_x"], 3);
+        assert_eq!(patch["start_y"], 4);
+        assert_eq!(patch["width"], 2);
+        assert_eq!(patch["height"], 2);
     }
 
     #[test]
