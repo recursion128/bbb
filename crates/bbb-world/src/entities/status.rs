@@ -133,6 +133,7 @@ impl WorldStore {
         let Some(()) = self.entities.with_damage_mut(entity_id, |damage| {
             damage.last_damage = Some(damage_event);
         }) else {
+            self.counters.damage_events_ignored += 1;
             return false;
         };
         self.counters.damage_events_applied += 1;
@@ -329,6 +330,7 @@ mod tests {
         }));
         assert_eq!(store.counters().damage_event_packets, 2);
         assert_eq!(store.counters().damage_events_applied, 1);
+        assert_eq!(store.counters().damage_events_ignored, 1);
     }
 
     fn protocol_add_entity(id: i32) -> ProtocolAddEntity {

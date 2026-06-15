@@ -213,6 +213,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub damage_events_applied: usize,
     #[serde(default)]
+    pub damage_events_ignored: usize,
+    #[serde(default)]
     pub command_tree_packets: usize,
     #[serde(default)]
     pub command_nodes_tracked: usize,

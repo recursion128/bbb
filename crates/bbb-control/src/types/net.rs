@@ -154,6 +154,8 @@ pub struct NetCounters {
     pub damage_event_packets: usize,
     #[serde(default)]
     pub damage_events_applied: usize,
+    #[serde(default)]
+    pub damage_events_ignored: usize,
     pub update_mob_effect_packets: usize,
     #[serde(default)]
     pub update_mob_effects_ignored: usize,

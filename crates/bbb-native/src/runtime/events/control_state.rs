@@ -254,6 +254,7 @@ pub(super) fn sync_entity_status_counters(counters: &mut NetCounters, world: &Wo
     counters.cooldowns_tracked = world_counters.cooldowns_tracked;
     counters.damage_event_packets = world_counters.damage_event_packets;
     counters.damage_events_applied = world_counters.damage_events_applied;
+    counters.damage_events_ignored = world_counters.damage_events_ignored;
     counters.update_mob_effect_packets = world_counters.update_mob_effect_packets;
     counters.update_mob_effects_ignored = world_counters.update_mob_effects_ignored;
     counters.remove_mob_effect_packets = world_counters.remove_mob_effect_packets;

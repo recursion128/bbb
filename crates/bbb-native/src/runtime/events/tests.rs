@@ -3379,7 +3379,7 @@ fn server_presentation_events_update_world_and_counters() {
 #[test]
 fn entity_status_events_update_world_and_counters() {
     let entity_id = 55;
-    let (tx, mut rx) = mpsc::channel(4);
+    let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::Cooldown(bbb_protocol::packets::Cooldown {
         cooldown_group: "minecraft:ender_pearl".to_string(),
         duration: 20,
@@ -3395,6 +3395,14 @@ fn entity_status_events_update_world_and_counters() {
             y: 2.0,
             z: 3.0,
         }),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::DamageEvent(bbb_protocol::packets::DamageEvent {
+        entity_id: 99,
+        source_type_id: 5,
+        source_cause_id: -1,
+        source_direct_id: -1,
+        source_position: None,
     }))
     .unwrap();
     tx.try_send(NetEvent::UpdateMobEffect(
@@ -3428,6 +3436,7 @@ fn entity_status_events_update_world_and_counters() {
         cooldowns_tracked: 99,
         damage_event_packets: 99,
         damage_events_applied: 99,
+        damage_events_ignored: 99,
         update_mob_effect_packets: 99,
         update_mob_effects_ignored: 99,
         remove_mob_effect_packets: 99,
@@ -3438,12 +3447,13 @@ fn entity_status_events_update_world_and_counters() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        4
+        5
     );
     assert_eq!(counters.cooldown_packets, 1);
     assert_eq!(counters.cooldowns_tracked, 1);
-    assert_eq!(counters.damage_event_packets, 1);
+    assert_eq!(counters.damage_event_packets, 2);
     assert_eq!(counters.damage_events_applied, 1);
+    assert_eq!(counters.damage_events_ignored, 1);
     assert_eq!(counters.update_mob_effect_packets, 1);
     assert_eq!(counters.update_mob_effects_ignored, 0);
     assert_eq!(counters.remove_mob_effect_packets, 1);
@@ -3478,8 +3488,9 @@ fn entity_status_events_update_world_and_counters() {
     let world_counters = world.counters();
     assert_eq!(world_counters.cooldown_packets, 1);
     assert_eq!(world_counters.cooldowns_tracked, 1);
-    assert_eq!(world_counters.damage_event_packets, 1);
+    assert_eq!(world_counters.damage_event_packets, 2);
     assert_eq!(world_counters.damage_events_applied, 1);
+    assert_eq!(world_counters.damage_events_ignored, 1);
     assert_eq!(world_counters.update_mob_effect_packets, 1);
     assert_eq!(world_counters.update_mob_effects_ignored, 0);
     assert_eq!(world_counters.remove_mob_effect_packets, 1);
