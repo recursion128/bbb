@@ -224,7 +224,6 @@ fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
     world.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 12 });
     sync_local_player_counters(&mut counters, &world);
     apply_system_chat_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SystemChat {
             content: "Server restarting".to_string(),
@@ -253,16 +252,14 @@ fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
     assert_eq!(counters.player_abilities_packets, 1);
     assert_eq!(counters.default_spawn_position_packets, 1);
     assert_eq!(counters.simulation_distance_packets, 1);
-    assert_eq!(counters.system_chat_packets, 1);
+    assert_eq!(world.counters().system_chat_packets, 1);
 }
 
 #[test]
-fn hud_text_and_ticking_updates_snapshot_counters() {
-    let mut counters = NetCounters::default();
+fn hud_text_and_ticking_update_world_counters() {
     let mut world = WorldStore::new();
 
     apply_titles_animation_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetTitlesAnimation {
             fade_in: 5,
@@ -276,28 +273,24 @@ fn hud_text_and_ticking_updates_snapshot_counters() {
     assert_eq!(world.title().title_time, 0);
 
     apply_title_text_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetTitleText {
             content: "Quest complete".to_string(),
         },
     );
     apply_subtitle_text_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetSubtitleText {
             content: "Return to camp".to_string(),
         },
     );
     apply_action_bar_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetActionBarText {
             content: "+12 XP".to_string(),
         },
     );
     apply_titles_animation_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetTitlesAnimation {
             fade_in: -1,
@@ -310,7 +303,6 @@ fn hud_text_and_ticking_updates_snapshot_counters() {
         frozen: true,
     });
     world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 7 });
-    sync_ticking_counters(&mut counters, &world);
 
     assert_eq!(world.title().title.as_deref(), Some("Quest complete"));
     assert_eq!(world.title().subtitle.as_deref(), Some("Return to camp"));
@@ -329,21 +321,20 @@ fn hud_text_and_ticking_updates_snapshot_counters() {
             frozen_ticks_to_run: 7,
         }
     );
-    assert_eq!(counters.titles_animation_packets, 2);
-    assert_eq!(counters.title_text_packets, 1);
-    assert_eq!(counters.subtitle_text_packets, 1);
-    assert_eq!(counters.action_bar_packets, 1);
-    assert_eq!(counters.ticking_state_packets, 1);
-    assert_eq!(counters.ticking_step_packets, 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.titles_animation_packets, 2);
+    assert_eq!(world_counters.title_text_packets, 1);
+    assert_eq!(world_counters.subtitle_text_packets, 1);
+    assert_eq!(world_counters.action_bar_packets, 1);
+    assert_eq!(world_counters.ticking_state_packets, 1);
+    assert_eq!(world_counters.ticking_step_packets, 1);
 }
 
 #[test]
 fn clear_titles_resets_visible_title_and_optionally_times() {
-    let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
 
     apply_titles_animation_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetTitlesAnimation {
             fade_in: 5,
@@ -352,14 +343,12 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
         },
     );
     apply_title_text_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetTitleText {
             content: "Quest complete".to_string(),
         },
     );
     apply_subtitle_text_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetSubtitleText {
             content: "Return to camp".to_string(),
@@ -367,7 +356,6 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
     );
 
     apply_clear_titles_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::ClearTitles { reset_times: false },
     );
@@ -379,7 +367,6 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
     assert_eq!(world.title().fade_out, 15);
 
     apply_titles_animation_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetTitlesAnimation {
             fade_in: 6,
@@ -388,14 +375,12 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
         },
     );
     apply_title_text_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetTitleText {
             content: "Again".to_string(),
         },
     );
     apply_subtitle_text_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::SetSubtitleText {
             content: "Reset timers".to_string(),
@@ -403,7 +388,6 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
     );
 
     apply_clear_titles_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::ClearTitles { reset_times: true },
     );
@@ -413,10 +397,11 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
     assert_eq!(world.title().stay, 70);
     assert_eq!(world.title().fade_out, 20);
     assert_eq!(world.title().title_time, 0);
-    assert_eq!(counters.clear_titles_packets, 2);
-    assert_eq!(counters.title_text_packets, 2);
-    assert_eq!(counters.subtitle_text_packets, 2);
-    assert_eq!(counters.titles_animation_packets, 2);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.clear_titles_packets, 2);
+    assert_eq!(world_counters.title_text_packets, 2);
+    assert_eq!(world_counters.subtitle_text_packets, 2);
+    assert_eq!(world_counters.titles_animation_packets, 2);
 }
 
 #[test]

@@ -861,7 +861,7 @@ fn take_item_entity_event_updates_world_counter() {
 }
 
 #[test]
-fn clear_titles_event_updates_snapshot_counters() {
+fn clear_titles_event_updates_world_counters() {
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::SetTitlesAnimation(
         bbb_protocol::packets::SetTitlesAnimation {
@@ -905,10 +905,11 @@ fn clear_titles_event_updates_snapshot_counters() {
     assert_eq!(world.title().stay, 70);
     assert_eq!(world.title().fade_out, 20);
     assert_eq!(world.title().title_time, 0);
-    assert_eq!(counters.clear_titles_packets, 2);
-    assert_eq!(counters.title_text_packets, 1);
-    assert_eq!(counters.subtitle_text_packets, 1);
-    assert_eq!(counters.titles_animation_packets, 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.clear_titles_packets, 2);
+    assert_eq!(world_counters.title_text_packets, 1);
+    assert_eq!(world_counters.subtitle_text_packets, 1);
+    assert_eq!(world_counters.titles_animation_packets, 1);
 }
 
 #[test]
@@ -3661,8 +3662,8 @@ fn world_time_and_weather_update_world_counters_and_clear_color() {
 
     assert_eq!(world.counters().world_time_packets, 1);
     assert_eq!(world.counters().game_event_packets, 1);
-    assert_eq!(counters.ticking_state_packets, 1);
-    assert_eq!(counters.ticking_step_packets, 1);
+    assert_eq!(world.counters().ticking_state_packets, 1);
+    assert_eq!(world.counters().ticking_step_packets, 1);
 
     let world_color = clear_color_for_world(&world);
     let expected_world_color = clear_color_for_day_time(6000, 0.5, 0.0);

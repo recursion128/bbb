@@ -3,73 +3,45 @@ use bbb_protocol::packets::PlayerPositionState;
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 
 pub(super) fn apply_system_chat_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     chat: bbb_protocol::packets::SystemChat,
 ) {
     world.apply_system_chat(chat);
-    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_action_bar_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     text: bbb_protocol::packets::SetActionBarText,
 ) {
     world.apply_action_bar_text(text);
-    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_title_text_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     text: bbb_protocol::packets::SetTitleText,
 ) {
     world.apply_title_text(text);
-    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_subtitle_text_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     text: bbb_protocol::packets::SetSubtitleText,
 ) {
     world.apply_subtitle_text(text);
-    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_clear_titles_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     clear: bbb_protocol::packets::ClearTitles,
 ) {
     world.apply_clear_titles(clear);
-    sync_hud_text_counters(counters, world);
 }
 
 pub(super) fn apply_titles_animation_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     animation: bbb_protocol::packets::SetTitlesAnimation,
 ) {
     world.apply_titles_animation(animation);
-    sync_hud_text_counters(counters, world);
-}
-
-pub(super) fn sync_hud_text_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.system_chat_packets = world_counters.system_chat_packets;
-    counters.action_bar_packets = world_counters.action_bar_packets;
-    counters.title_text_packets = world_counters.title_text_packets;
-    counters.subtitle_text_packets = world_counters.subtitle_text_packets;
-    counters.clear_titles_packets = world_counters.clear_titles_packets;
-    counters.titles_animation_packets = world_counters.titles_animation_packets;
-}
-
-pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.ticking_state_packets = world_counters.ticking_state_packets;
-    counters.ticking_step_packets = world_counters.ticking_step_packets;
 }
 
 pub(crate) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {

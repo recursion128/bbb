@@ -309,30 +309,28 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 sync_local_player_counters(counters, world);
             }
             NetEvent::SystemChat(chat) => {
-                apply_system_chat_update(counters, world, chat);
+                apply_system_chat_update(world, chat);
             }
             NetEvent::SetActionBarText(text) => {
-                apply_action_bar_update(counters, world, text);
+                apply_action_bar_update(world, text);
             }
             NetEvent::SetTitleText(text) => {
-                apply_title_text_update(counters, world, text);
+                apply_title_text_update(world, text);
             }
             NetEvent::SetSubtitleText(text) => {
-                apply_subtitle_text_update(counters, world, text);
+                apply_subtitle_text_update(world, text);
             }
             NetEvent::ClearTitles(clear) => {
-                apply_clear_titles_update(counters, world, clear);
+                apply_clear_titles_update(world, clear);
             }
             NetEvent::SetTitlesAnimation(animation) => {
-                apply_titles_animation_update(counters, world, animation);
+                apply_titles_animation_update(world, animation);
             }
             NetEvent::TickingState(ticking) => {
                 world.apply_ticking_state(ticking);
-                sync_ticking_counters(counters, world);
             }
             NetEvent::TickingStep(step) => {
                 world.apply_ticking_step(step);
-                sync_ticking_counters(counters, world);
             }
             NetEvent::SetCamera(camera) => {
                 world.apply_set_camera(camera);
