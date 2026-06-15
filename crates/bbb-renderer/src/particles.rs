@@ -6,6 +6,7 @@ use crate::Renderer;
 
 const DEFAULT_MAX_PENDING_PARTICLE_SPAWNS: usize = 16_384;
 const DEFAULT_MAX_ACTIVE_PARTICLE_INSTANCES: usize = 16_384;
+const DEFAULT_PARTICLE_RANDOM_SEED: i64 = 0x5EED_2601;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParticleSpawnCommand {
@@ -40,7 +41,9 @@ pub(crate) struct ParticleRuntimeState {
     max_active_instances: usize,
     dropped_spawns: u64,
     instances_created: u64,
+    instances_expired: u64,
     dropped_active_instances: u64,
+    random: ParticleRandom,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -51,6 +54,12 @@ pub(crate) struct ParticleInstance {
     pub(crate) position: [f64; 3],
     pub(crate) velocity: [f64; 3],
     pub(crate) age_ticks: u32,
+    pub(crate) lifetime_ticks: u32,
+    pub(crate) provider: String,
+    pub(crate) friction: f32,
+    pub(crate) gravity: f32,
+    pub(crate) has_physics: bool,
+    pub(crate) speed_up_when_y_motion_is_blocked: bool,
     pub(crate) override_limiter: bool,
     pub(crate) always_show: bool,
     pub(crate) raw_options_len: usize,
@@ -72,11 +81,40 @@ pub(crate) struct ParticleSubmitSummary {
 pub(crate) struct ParticleAdvanceSummary {
     pub(crate) ticks: u32,
     pub(crate) intaken_instances: usize,
+    pub(crate) expired_instances: usize,
     pub(crate) dropped_active_instances: usize,
     pub(crate) pending_spawns: usize,
     pub(crate) active_instances: usize,
     pub(crate) total_instances_created: u64,
+    pub(crate) total_instances_expired: u64,
     pub(crate) total_dropped_active_instances: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ParticleDescriptor {
+    provider: &'static str,
+    lifetime: ParticleLifetimeDescriptor,
+    friction: f32,
+    gravity: f32,
+    has_physics: bool,
+    speed_up_when_y_motion_is_blocked: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ParticleLifetimeDescriptor {
+    BaseParticle,
+    Rising,
+    PlayerCloud,
+    BaseAshSmoke {
+        max_lifetime: u32,
+        scale_tenths: u32,
+    },
+    Explode,
+}
+
+#[derive(Debug, Clone)]
+struct ParticleRandom {
+    seed: u64,
 }
 
 impl ParticleSpawnBatch {
@@ -104,6 +142,31 @@ impl ParticleRuntimeState {
     }
 
     pub(crate) fn with_capacities(max_pending_spawns: usize, max_active_instances: usize) -> Self {
+        Self::with_random(
+            max_pending_spawns,
+            max_active_instances,
+            ParticleRandom::new(DEFAULT_PARTICLE_RANDOM_SEED),
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_capacities_and_seed(
+        max_pending_spawns: usize,
+        max_active_instances: usize,
+        seed: i64,
+    ) -> Self {
+        Self::with_random(
+            max_pending_spawns,
+            max_active_instances,
+            ParticleRandom::new(seed),
+        )
+    }
+
+    fn with_random(
+        max_pending_spawns: usize,
+        max_active_instances: usize,
+        random: ParticleRandom,
+    ) -> Self {
         Self {
             pending_spawns: VecDeque::new(),
             active_instances: VecDeque::new(),
@@ -111,7 +174,9 @@ impl ParticleRuntimeState {
             max_active_instances,
             dropped_spawns: 0,
             instances_created: 0,
+            instances_expired: 0,
             dropped_active_instances: 0,
+            random,
         }
     }
 
@@ -157,13 +222,14 @@ impl ParticleRuntimeState {
 
     pub(crate) fn advance(&mut self, ticks: u32) -> ParticleAdvanceSummary {
         let mut intaken_instances = 0;
+        let mut expired_instances = 0;
         let mut dropped_active_instances = 0;
 
         if ticks == 0 {
             self.drain_pending_spawns(&mut intaken_instances, &mut dropped_active_instances);
         } else {
             for _ in 0..ticks {
-                self.tick_active_instances();
+                expired_instances += self.tick_active_instances();
                 self.drain_pending_spawns(&mut intaken_instances, &mut dropped_active_instances);
             }
         }
@@ -171,6 +237,9 @@ impl ParticleRuntimeState {
         self.instances_created = self
             .instances_created
             .saturating_add(intaken_instances as u64);
+        self.instances_expired = self
+            .instances_expired
+            .saturating_add(expired_instances as u64);
         self.dropped_active_instances = self
             .dropped_active_instances
             .saturating_add(dropped_active_instances as u64);
@@ -178,18 +247,29 @@ impl ParticleRuntimeState {
         ParticleAdvanceSummary {
             ticks,
             intaken_instances,
+            expired_instances,
             dropped_active_instances,
             pending_spawns: self.pending_spawns.len(),
             active_instances: self.active_instances.len(),
             total_instances_created: self.instances_created,
+            total_instances_expired: self.instances_expired,
             total_dropped_active_instances: self.dropped_active_instances,
         }
     }
 
-    fn tick_active_instances(&mut self) {
-        for instance in &mut self.active_instances {
+    fn tick_active_instances(&mut self) -> usize {
+        let mut expired_instances = 0;
+        let mut active_instances = VecDeque::with_capacity(self.active_instances.len());
+        while let Some(mut instance) = self.active_instances.pop_front() {
+            if instance.age_ticks >= instance.lifetime_ticks {
+                expired_instances += 1;
+                continue;
+            }
             instance.age_ticks = instance.age_ticks.saturating_add(1);
+            active_instances.push_back(instance);
         }
+        self.active_instances = active_instances;
+        expired_instances
     }
 
     fn drain_pending_spawns(
@@ -207,7 +287,10 @@ impl ParticleRuntimeState {
                 *dropped_active_instances += 1;
             }
             self.active_instances
-                .push_back(ParticleInstance::from_spawn_command(command));
+                .push_back(ParticleInstance::from_spawn_command(
+                    command,
+                    &mut self.random,
+                ));
             *intaken_instances += 1;
         }
     }
@@ -224,7 +307,8 @@ impl ParticleRuntimeState {
 }
 
 impl ParticleInstance {
-    fn from_spawn_command(command: ParticleSpawnCommand) -> Self {
+    fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
+        let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -232,10 +316,125 @@ impl ParticleInstance {
             position: command.position,
             velocity: command.velocity,
             age_ticks: 0,
+            lifetime_ticks: descriptor.lifetime.sample(random),
+            provider: descriptor.provider.to_string(),
+            friction: descriptor.friction,
+            gravity: descriptor.gravity,
+            has_physics: descriptor.has_physics,
+            speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
             override_limiter: command.override_limiter,
             always_show: command.always_show,
             raw_options_len: command.raw_options_len,
         }
+    }
+}
+
+impl ParticleDescriptor {
+    fn for_particle(particle_id: &str) -> Self {
+        match particle_id {
+            "minecraft:cloud" => Self {
+                provider: "PlayerCloudParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::PlayerCloud,
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            "minecraft:flame" | "minecraft:soul_fire_flame" | "minecraft:copper_fire_flame" => {
+                Self {
+                    provider: "FlameParticle.Provider",
+                    lifetime: ParticleLifetimeDescriptor::Rising,
+                    friction: 0.96,
+                    gravity: 0.0,
+                    has_physics: false,
+                    speed_up_when_y_motion_is_blocked: false,
+                }
+            }
+            "minecraft:large_smoke" => Self {
+                provider: "LargeSmokeParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 8,
+                    scale_tenths: 25,
+                },
+                friction: 0.96,
+                gravity: -0.1,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:smoke" => Self {
+                provider: "SmokeParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 8,
+                    scale_tenths: 10,
+                },
+                friction: 0.96,
+                gravity: -0.1,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:poof" => Self {
+                provider: "ExplodeParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::Explode,
+                friction: 0.9,
+                gravity: -0.1,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+            _ => Self {
+                provider: "Particle",
+                lifetime: ParticleLifetimeDescriptor::BaseParticle,
+                friction: 0.98,
+                gravity: 0.0,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: false,
+            },
+        }
+    }
+}
+
+impl ParticleLifetimeDescriptor {
+    fn sample(self, random: &mut ParticleRandom) -> u32 {
+        match self {
+            Self::BaseParticle => (4.0 / (random.next_f64() * 0.9 + 0.1)) as u32,
+            Self::Rising => (8.0 / (random.next_f64() * 0.8 + 0.2)) as u32 + 4,
+            Self::PlayerCloud => {
+                let base_lifetime = (8.0 / (random.next_f64() * 0.8 + 0.3)) as u32;
+                ((base_lifetime as f32 * 2.5).max(1.0)) as u32
+            }
+            Self::BaseAshSmoke {
+                max_lifetime,
+                scale_tenths,
+            } => {
+                let scale = f64::from(scale_tenths) / 10.0;
+                ((f64::from(max_lifetime) / (random.next_f64() * 0.8 + 0.2) * scale) as u32).max(1)
+            }
+            Self::Explode => (16.0 / (random.next_f64() * 0.8 + 0.2)) as u32 + 2,
+        }
+    }
+}
+
+const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
+const RANDOM_INCREMENT: u64 = 11;
+const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
+
+impl ParticleRandom {
+    fn new(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
+        }
+    }
+
+    fn next_f64(&mut self) -> f64 {
+        f64::from(self.next_bits(24)) / f64::from(1_u32 << 24)
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(RANDOM_MULTIPLIER)
+            .wrapping_add(RANDOM_INCREMENT)
+            & RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
     }
 }
 
@@ -276,12 +475,14 @@ impl Renderer {
         self.counters.active_particle_instances = summary.active_instances;
         self.counters.last_particle_intake_count = summary.intaken_instances;
         self.counters.last_particle_tick_count = summary.ticks as usize;
+        self.counters.last_particle_expired_count = summary.expired_instances;
         self.counters.last_particle_active_drop_count = summary.dropped_active_instances;
         self.counters.particle_runtime_ticks = self
             .counters
             .particle_runtime_ticks
             .saturating_add(summary.ticks as u64);
         self.counters.particle_instances_created = summary.total_instances_created;
+        self.counters.particle_instances_expired = summary.total_instances_expired;
         self.counters.dropped_active_particle_instances = summary.total_dropped_active_instances;
     }
 }
@@ -303,6 +504,80 @@ mod tests {
             ..ParticleSpawnBatch::default()
         }
         .is_empty());
+    }
+
+    #[test]
+    fn particle_descriptor_maps_core_vanilla_providers_and_physics_flags() {
+        assert_descriptor(
+            "minecraft:cloud",
+            "PlayerCloudParticle.Provider",
+            ParticleLifetimeDescriptor::PlayerCloud,
+            0.96,
+            0.0,
+            false,
+            false,
+        );
+        assert_descriptor(
+            "minecraft:flame",
+            "FlameParticle.Provider",
+            ParticleLifetimeDescriptor::Rising,
+            0.96,
+            0.0,
+            false,
+            false,
+        );
+        assert_descriptor(
+            "minecraft:smoke",
+            "SmokeParticle.Provider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 8,
+                scale_tenths: 10,
+            },
+            0.96,
+            -0.1,
+            true,
+            true,
+        );
+        assert_descriptor(
+            "minecraft:large_smoke",
+            "LargeSmokeParticle.Provider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 8,
+                scale_tenths: 25,
+            },
+            0.96,
+            -0.1,
+            true,
+            true,
+        );
+        assert_descriptor(
+            "minecraft:poof",
+            "ExplodeParticle.Provider",
+            ParticleLifetimeDescriptor::Explode,
+            0.9,
+            -0.1,
+            true,
+            false,
+        );
+    }
+
+    #[test]
+    fn particle_descriptor_falls_back_without_blocking_unknown_particles() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![spawn_command("minecraft:unknown_test_particle", 1.0)],
+            ..ParticleSpawnBatch::default()
+        });
+
+        let summary = particles.advance(0);
+
+        assert_eq!(summary.intaken_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.provider, "Particle");
+        assert!(instance.lifetime_ticks > 0);
+        assert_close_f32(instance.friction, 0.98);
+        assert_close_f32(instance.gravity, 0.0);
+        assert!(instance.has_physics);
     }
 
     #[test]
@@ -396,6 +671,27 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_expires_after_vanilla_post_increment_lifetime_boundary() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        particles
+            .active_instances
+            .push_back(test_instance_with_lifetime("minecraft:poof", 2));
+
+        let summary = particles.advance(2);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        assert_eq!(particles.active_instances()[0].age_ticks, 2);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.total_instances_expired, 1);
+        assert_eq!(summary.active_instances, 0);
+        assert!(particles.active_instances().is_empty());
+    }
+
+    #[test]
     fn particle_runtime_ticks_existing_active_before_intaking_pending_spawns() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         particles.submit_batch(ParticleSpawnBatch {
@@ -426,6 +722,29 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_expires_existing_active_before_intaking_pending_spawns() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        particles
+            .active_instances
+            .push_back(test_instance_with_lifetime("minecraft:poof", 0));
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![spawn_command("minecraft:flame", 2.0)],
+            ..ParticleSpawnBatch::default()
+        });
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 1);
+        assert_eq!(summary.intaken_instances, 1);
+        assert_eq!(summary.active_instances, 1);
+        assert_eq!(
+            particles.active_instances()[0].particle_id,
+            "minecraft:flame"
+        );
+        assert_eq!(particles.active_instances()[0].age_ticks, 0);
+    }
+
+    #[test]
     fn particle_runtime_limits_active_instances_and_keeps_newest() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 2);
         particles.submit_batch(ParticleSpawnBatch {
@@ -452,6 +771,48 @@ mod tests {
         assert_eq!(ids, vec!["minecraft:flame", "minecraft:smoke"]);
     }
 
+    fn assert_descriptor(
+        particle_id: &str,
+        provider: &'static str,
+        lifetime: ParticleLifetimeDescriptor,
+        friction: f32,
+        gravity: f32,
+        has_physics: bool,
+        speed_up_when_y_motion_is_blocked: bool,
+    ) {
+        let descriptor = ParticleDescriptor::for_particle(particle_id);
+        assert_eq!(descriptor.provider, provider);
+        assert_eq!(descriptor.lifetime, lifetime);
+        assert_close_f32(descriptor.friction, friction);
+        assert_close_f32(descriptor.gravity, gravity);
+        assert_eq!(descriptor.has_physics, has_physics);
+        assert_eq!(
+            descriptor.speed_up_when_y_motion_is_blocked,
+            speed_up_when_y_motion_is_blocked
+        );
+    }
+
+    fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> ParticleInstance {
+        let descriptor = ParticleDescriptor::for_particle(particle_id);
+        ParticleInstance {
+            particle_type_id: 0,
+            particle_id: particle_id.to_string(),
+            sprite_ids: Vec::new(),
+            position: [0.0, 0.0, 0.0],
+            velocity: [0.0, 0.0, 0.0],
+            age_ticks: 0,
+            lifetime_ticks,
+            provider: descriptor.provider.to_string(),
+            friction: descriptor.friction,
+            gravity: descriptor.gravity,
+            has_physics: descriptor.has_physics,
+            speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
+            override_limiter: false,
+            always_show: false,
+            raw_options_len: 0,
+        }
+    }
+
     fn spawn_command(particle_id: &str, x: f64) -> ParticleSpawnCommand {
         ParticleSpawnCommand {
             particle_type_id: 4,
@@ -463,5 +824,12 @@ mod tests {
             always_show: false,
             raw_options_len: 0,
         }
+    }
+
+    fn assert_close_f32(actual: f32, expected: f32) {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
     }
 }
