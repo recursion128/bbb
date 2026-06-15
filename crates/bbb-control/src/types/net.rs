@@ -401,6 +401,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub entity_passenger_updates_applied: usize,
     #[serde(default)]
+    pub entity_passenger_updates_ignored: usize,
+    #[serde(default)]
     pub entity_link_updates_received: usize,
     #[serde(default)]
     pub entity_link_updates_applied: usize,

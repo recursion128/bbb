@@ -324,6 +324,7 @@ pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStor
     counters.entity_passenger_updates_received = world_counters.entity_passenger_updates_received;
     counters.entity_passenger_ids_received = world_counters.entity_passenger_ids_received;
     counters.entity_passenger_updates_applied = world_counters.entity_passenger_updates_applied;
+    counters.entity_passenger_updates_ignored = world_counters.entity_passenger_updates_ignored;
     counters.entity_link_updates_received = world_counters.entity_link_updates_received;
     counters.entity_link_updates_applied = world_counters.entity_link_updates_applied;
     counters.entity_link_updates_ignored = world_counters.entity_link_updates_ignored;

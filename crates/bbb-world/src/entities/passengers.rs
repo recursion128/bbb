@@ -19,6 +19,7 @@ impl WorldStore {
         let local_player_was_on_packet_vehicle =
             self.local_player_vehicle_id == Some(packet.vehicle_id);
         if !self.entities.contains(packet.vehicle_id) {
+            self.counters.entity_passenger_updates_ignored += 1;
             return false;
         }
 

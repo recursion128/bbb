@@ -1648,6 +1648,35 @@ fn entity_metadata_ignored_counters_are_projected() {
 }
 
 #[test]
+fn passenger_ignored_counters_are_projected() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::SetPassengers(SetPassengers {
+        vehicle_id: 999,
+        passenger_ids: vec![123, 124],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.entity_passenger_updates_received, 1);
+    assert_eq!(world_counters.entity_passenger_ids_received, 2);
+    assert_eq!(world_counters.entity_passenger_updates_applied, 0);
+    assert_eq!(world_counters.entity_passenger_updates_ignored, 1);
+
+    assert_eq!(counters.entity_passenger_updates_received, 1);
+    assert_eq!(counters.entity_passenger_ids_received, 2);
+    assert_eq!(counters.entity_passenger_updates_applied, 0);
+    assert_eq!(counters.entity_passenger_updates_ignored, 1);
+}
+
+#[test]
 fn remove_entities_syncs_active_effect_counters() {
     let entity_id = 55;
     let (tx, mut rx) = mpsc::channel(1);

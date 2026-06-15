@@ -465,6 +465,8 @@ pub struct WorldCounters {
     pub entity_passenger_ids_received: usize,
     pub entity_passenger_updates_applied: usize,
     #[serde(default)]
+    pub entity_passenger_updates_ignored: usize,
+    #[serde(default)]
     pub vehicle_moves_received: usize,
     #[serde(default)]
     pub vehicle_moves_applied: usize,

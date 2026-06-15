@@ -2814,6 +2814,7 @@ fn tracks_entity_passenger_updates() {
     assert_eq!(store.counters().entity_passenger_updates_received, 4);
     assert_eq!(store.counters().entity_passenger_ids_received, 6);
     assert_eq!(store.counters().entity_passenger_updates_applied, 3);
+    assert_eq!(store.counters().entity_passenger_updates_ignored, 1);
 }
 
 #[test]
