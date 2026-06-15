@@ -61,7 +61,6 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::AwardStats(update) => {
             world.apply_award_stats(update);
-            sync_client_stats_counters(counters, world);
         }
         NetEvent::LowDiskSpaceWarning => {
             world.apply_low_disk_space_warning();
@@ -426,11 +425,4 @@ fn sync_map_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.map_decorations_tracked = world_counters.map_decorations_tracked;
     counters.map_color_patches_applied = world_counters.map_color_patches_applied;
     counters.map_color_patches_ignored = world_counters.map_color_patches_ignored;
-}
-
-fn sync_client_stats_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.award_stats_packets = world_counters.award_stats_packets;
-    counters.award_stats_entries_received = world_counters.award_stats_entries_received;
-    counters.stats_tracked = world_counters.stats_tracked;
 }

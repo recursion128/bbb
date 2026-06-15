@@ -444,7 +444,7 @@ fn custom_report_details_event_updates_world_counters() {
 }
 
 #[test]
-fn award_stats_event_updates_world_state_and_snapshot_counters() {
+fn award_stats_event_updates_world_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::AwardStats(AwardStats {
         stats: vec![
@@ -493,10 +493,6 @@ fn award_stats_event_updates_world_state_and_snapshot_counters() {
             ],
         })
     );
-
-    assert_eq!(counters.award_stats_packets, 1);
-    assert_eq!(counters.award_stats_entries_received, 2);
-    assert_eq!(counters.stats_tracked, 2);
 }
 
 #[test]

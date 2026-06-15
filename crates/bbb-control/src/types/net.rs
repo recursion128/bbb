@@ -55,11 +55,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub merchant_offers_tracked: usize,
     pub code_of_conduct_packets: usize,
-    pub award_stats_packets: usize,
-    #[serde(default)]
-    pub award_stats_entries_received: usize,
-    #[serde(default)]
-    pub stats_tracked: usize,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,
