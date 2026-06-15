@@ -217,31 +217,6 @@ pub struct NetCounters {
     pub item_entity_stack_shrinks: usize,
     #[serde(default)]
     pub take_item_entities_removed: usize,
-    pub select_advancements_tab_packets: usize,
-    #[serde(default)]
-    pub update_advancements_packets: usize,
-    #[serde(default)]
-    pub update_advancements_reset_packets: usize,
-    #[serde(default)]
-    pub update_advancements_show_packets: usize,
-    #[serde(default)]
-    pub advancements_added_received: usize,
-    #[serde(default)]
-    pub advancements_removed_received: usize,
-    #[serde(default)]
-    pub advancements_adds_ignored: usize,
-    #[serde(default)]
-    pub advancement_progress_received: usize,
-    #[serde(default)]
-    pub advancement_progress_updates_ignored: usize,
-    #[serde(default)]
-    pub advancements_tracked: usize,
-    #[serde(default)]
-    pub advancement_roots_tracked: usize,
-    #[serde(default)]
-    pub advancement_progress_tracked: usize,
-    #[serde(default)]
-    pub advancement_progress_criteria_tracked: usize,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,
     pub player_command_commands_queued: usize,

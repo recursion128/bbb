@@ -1107,7 +1107,7 @@ fn client_chat_events_update_world_and_world_counters() {
 }
 
 #[test]
-fn client_feature_events_update_world_and_snapshot_counters() {
+fn client_feature_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::CustomChatCompletions(CustomChatCompletions {
         action: CustomChatCompletionsAction::Set,
@@ -1173,7 +1173,6 @@ fn client_feature_events_update_world_and_snapshot_counters() {
         })
     );
     assert_eq!(world.counters().ghost_recipe_packets, 1);
-    assert_eq!(counters.select_advancements_tab_packets, 1);
     assert_eq!(
         world.selected_advancements_tab(),
         Some("minecraft:story/root")
@@ -1902,7 +1901,7 @@ fn recipe_book_events_update_world_state_and_world_counters() {
 }
 
 #[test]
-fn update_advancements_event_updates_world_state() {
+fn update_advancements_event_updates_world_state_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::UpdateAdvancements(UpdateAdvancements {
         reset: true,
@@ -1948,23 +1947,15 @@ fn update_advancements_event_updates_world_state() {
     assert_eq!(world_counters.update_advancements_packets, 1);
     assert_eq!(world_counters.update_advancements_reset_packets, 1);
     assert_eq!(world_counters.update_advancements_show_packets, 1);
+    assert_eq!(world_counters.advancements_added_received, 1);
+    assert_eq!(world_counters.advancements_removed_received, 0);
+    assert_eq!(world_counters.advancements_adds_ignored, 0);
+    assert_eq!(world_counters.advancement_progress_received, 1);
+    assert_eq!(world_counters.advancement_progress_updates_ignored, 0);
     assert_eq!(world_counters.advancements_tracked, 1);
     assert_eq!(world_counters.advancement_roots_tracked, 1);
     assert_eq!(world_counters.advancement_progress_tracked, 1);
     assert_eq!(world_counters.advancement_progress_criteria_tracked, 2);
-
-    assert_eq!(counters.update_advancements_packets, 1);
-    assert_eq!(counters.update_advancements_reset_packets, 1);
-    assert_eq!(counters.update_advancements_show_packets, 1);
-    assert_eq!(counters.advancements_added_received, 1);
-    assert_eq!(counters.advancements_removed_received, 0);
-    assert_eq!(counters.advancements_adds_ignored, 0);
-    assert_eq!(counters.advancement_progress_received, 1);
-    assert_eq!(counters.advancement_progress_updates_ignored, 0);
-    assert_eq!(counters.advancements_tracked, 1);
-    assert_eq!(counters.advancement_roots_tracked, 1);
-    assert_eq!(counters.advancement_progress_tracked, 1);
-    assert_eq!(counters.advancement_progress_criteria_tracked, 2);
 }
 
 #[test]

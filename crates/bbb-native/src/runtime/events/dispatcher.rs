@@ -9,9 +9,8 @@ use crate::particle_runtime::ParticleEventSink;
 
 use super::client_state::*;
 use super::control_state::{
-    apply_control_projection_event, sync_advancement_counters, sync_block_event_counters,
-    sync_entity_counters, sync_entity_interaction_counters, sync_entity_status_counters,
-    sync_inventory_counters,
+    apply_control_projection_event, sync_block_event_counters, sync_entity_counters,
+    sync_entity_interaction_counters, sync_entity_status_counters, sync_inventory_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -100,7 +99,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::UpdateAdvancements(update) => {
                 world.apply_update_advancements(update);
-                sync_advancement_counters(counters, world);
             }
             NetEvent::UpdateRecipes(update) => {
                 world.apply_update_recipes(update);

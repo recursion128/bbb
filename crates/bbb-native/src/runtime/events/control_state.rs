@@ -153,7 +153,6 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::SelectAdvancementsTab(update) => {
             world.apply_select_advancements_tab(update);
-            sync_advancement_counters(counters, world);
         }
         NetEvent::TagQuery(update) => {
             world.apply_tag_query(update);
@@ -278,23 +277,4 @@ pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &Worl
     counters.block_events_tracked = world_counters.block_events_tracked;
     counters.level_event_packets = world_counters.level_events_received;
     counters.level_events_tracked = world_counters.level_events_tracked;
-}
-
-pub(super) fn sync_advancement_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.select_advancements_tab_packets = world_counters.select_advancements_tab_packets;
-    counters.update_advancements_packets = world_counters.update_advancements_packets;
-    counters.update_advancements_reset_packets = world_counters.update_advancements_reset_packets;
-    counters.update_advancements_show_packets = world_counters.update_advancements_show_packets;
-    counters.advancements_added_received = world_counters.advancements_added_received;
-    counters.advancements_removed_received = world_counters.advancements_removed_received;
-    counters.advancements_adds_ignored = world_counters.advancements_adds_ignored;
-    counters.advancement_progress_received = world_counters.advancement_progress_received;
-    counters.advancement_progress_updates_ignored =
-        world_counters.advancement_progress_updates_ignored;
-    counters.advancements_tracked = world_counters.advancements_tracked;
-    counters.advancement_roots_tracked = world_counters.advancement_roots_tracked;
-    counters.advancement_progress_tracked = world_counters.advancement_progress_tracked;
-    counters.advancement_progress_criteria_tracked =
-        world_counters.advancement_progress_criteria_tracked;
 }
