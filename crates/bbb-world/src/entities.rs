@@ -55,6 +55,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID: i32 = 118;
 pub(crate) const VANILLA_ENTITY_TYPE_TNT_MINECART_ID: i32 = 133;
 pub(crate) const VANILLA_ENTITY_TYPE_WIND_CHARGE_ID: i32 = 143;
 pub(crate) const VANILLA_ENTITY_TYPE_WITHER_SKULL_ID: i32 = 147;
+pub(crate) const VANILLA_ENTITY_SILENT_DATA_ID: u8 = 4;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]

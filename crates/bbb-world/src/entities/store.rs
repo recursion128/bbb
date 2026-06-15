@@ -3,11 +3,13 @@ use std::{collections::BTreeMap, fmt};
 use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use bbb_protocol::packets::EntityDataValueKind;
+
 use super::{
     EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
     EntityMobEffects, EntityMount, EntityState, EntityTransform, EntityTransformState,
-    EntityTransientEvents,
+    EntityTransientEvents, VANILLA_ENTITY_SILENT_DATA_ID,
 };
 use crate::entities::dimensions::{
     vanilla_client_position_for_entity_data, vanilla_pick_bounds_for_entity_data,
@@ -88,6 +90,22 @@ impl EntityStore {
             .get::<&EntityIdentity>(entity)
             .ok()
             .map(|identity| (*identity).clone())
+    }
+
+    pub(crate) fn is_silent(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(
+            metadata
+                .data_values
+                .iter()
+                .find(|value| value.data_id == VANILLA_ENTITY_SILENT_DATA_ID)
+                .and_then(|value| match &value.value {
+                    EntityDataValueKind::Boolean(value) => Some(*value),
+                    _ => None,
+                })
+                .unwrap_or(false),
+        )
     }
 
     pub(crate) fn pick_bounds(&self, id: i32) -> Option<super::EntityPickBoundsState> {

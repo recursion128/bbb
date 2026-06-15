@@ -66,7 +66,11 @@ impl WorldStore {
 
     pub fn apply_sound_entity_event(&mut self, packet: ProtocolSoundEntityEvent) -> bool {
         self.counters.sound_entity_packets += 1;
-        if !self.entities.contains(packet.entity_id) {
+        let Some(is_silent) = self.entities.is_silent(packet.entity_id) else {
+            self.counters.sound_entity_events_ignored += 1;
+            return false;
+        };
+        if is_silent {
             self.counters.sound_entity_events_ignored += 1;
             return false;
         }
@@ -212,6 +216,29 @@ mod tests {
             Some(123)
         );
 
+        assert!(
+            store.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+                id: 123,
+                values: vec![bbb_protocol::packets::EntityDataValue {
+                    data_id: 4,
+                    serializer_id: 8,
+                    value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
+                }],
+            })
+        );
+        assert!(!store.apply_sound_entity_event(ProtocolSoundEntityEvent {
+            sound: ProtocolSoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: None,
+            },
+            source: SoundSource::Neutral,
+            entity_id: 123,
+            volume: 0.8,
+            pitch: 1.1,
+            seed: 8,
+        }));
+        assert_eq!(store.last_sound_entity().map(|state| state.seed), Some(-9));
+
         store.apply_stop_sound(StopSound {
             source: Some(SoundSource::Music),
             name: Some("minecraft:music.menu".to_string()),
@@ -226,9 +253,9 @@ mod tests {
 
         let counters = store.counters();
         assert_eq!(counters.sound_packets, 1);
-        assert_eq!(counters.sound_entity_packets, 2);
+        assert_eq!(counters.sound_entity_packets, 3);
         assert_eq!(counters.sound_entity_events_applied, 1);
-        assert_eq!(counters.sound_entity_events_ignored, 1);
+        assert_eq!(counters.sound_entity_events_ignored, 2);
         assert_eq!(counters.stop_sound_packets, 1);
     }
 

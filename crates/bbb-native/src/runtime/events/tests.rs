@@ -2628,6 +2628,49 @@ fn client_audio_events_emit_runtime_commands_for_applied_events() {
 }
 
 #[test]
+fn silent_entity_sound_events_do_not_emit_runtime_commands() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::SetEntityData(SetEntityData {
+        id: 123,
+        values: vec![EntityDataValue {
+            data_id: 4,
+            serializer_id: 8,
+            value: EntityDataValueKind::Boolean(true),
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SoundEntity(SoundEntityEvent {
+        sound: SoundEventHolder::Direct {
+            location: "minecraft:entity.cat.ambient".to_string(),
+            fixed_range: Some(32.0),
+        },
+        source: SoundSource::Neutral,
+        entity_id: 123,
+        volume: 1.0,
+        pitch: 0.5,
+        seed: -9,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(123));
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert!(audio.commands.is_empty(), "{:?}", audio.commands);
+    assert_eq!(world.last_sound_entity(), None);
+    assert_eq!(counters.sound_entity_packets, 1);
+    assert_eq!(counters.sound_entity_events_applied, 0);
+    assert_eq!(counters.sound_entity_events_ignored, 1);
+}
+
+#[test]
 fn world_effect_events_update_snapshot_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Explosion(Explosion {
