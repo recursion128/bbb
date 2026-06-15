@@ -433,6 +433,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub entities_removed: usize,
     #[serde(default)]
+    pub entity_removes_ignored: usize,
+    #[serde(default)]
     pub minecart_moves_received: usize,
     #[serde(default)]
     pub minecart_moves_applied: usize,

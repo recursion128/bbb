@@ -512,6 +512,8 @@ pub struct WorldCounters {
     pub take_item_entities_removed: usize,
     pub entity_removes_received: usize,
     pub entities_removed: usize,
+    #[serde(default)]
+    pub entity_removes_ignored: usize,
 }
 
 impl WorldStore {

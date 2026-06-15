@@ -341,6 +341,7 @@ pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStor
     counters.entity_head_rotations_ignored = world_counters.entity_head_rotations_ignored;
     counters.entity_removes_received = world_counters.entity_removes_received;
     counters.entities_removed = world_counters.entities_removed;
+    counters.entity_removes_ignored = world_counters.entity_removes_ignored;
     counters.minecart_moves_received = world_counters.minecart_moves_received;
     counters.minecart_moves_applied = world_counters.minecart_moves_applied;
     counters.minecart_moves_ignored = world_counters.minecart_moves_ignored;

@@ -419,6 +419,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(store.entity_count(), 0);
     assert_eq!(store.counters().entity_removes_received, 2);
     assert_eq!(store.counters().entities_removed, 1);
+    assert_eq!(store.counters().entity_removes_ignored, 1);
     assert_eq!(store.counters().entities_tracked, 0);
 }
 

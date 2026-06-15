@@ -1452,7 +1452,7 @@ fn entity_events_update_world_and_snapshot_counters() {
     }))
     .unwrap();
     tx.try_send(NetEvent::RemoveEntities(RemoveEntities {
-        entity_ids: vec![456],
+        entity_ids: vec![456, 999],
     }))
     .unwrap();
 
@@ -1507,8 +1507,9 @@ fn entity_events_update_world_and_snapshot_counters() {
     assert_entity_counter!(entity_passenger_updates_received, 1);
     assert_entity_counter!(entity_passenger_ids_received, 1);
     assert_entity_counter!(entity_passenger_updates_applied, 1);
-    assert_entity_counter!(entity_removes_received, 1);
+    assert_entity_counter!(entity_removes_received, 2);
     assert_entity_counter!(entities_removed, 1);
+    assert_entity_counter!(entity_removes_ignored, 1);
 }
 
 #[test]

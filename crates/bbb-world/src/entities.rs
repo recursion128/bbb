@@ -244,8 +244,11 @@ impl WorldStore {
     }
 
     pub fn apply_remove_entities(&mut self, packet: ProtocolRemoveEntities) -> usize {
-        self.counters.entity_removes_received += packet.entity_ids.len();
-        self.remove_entities_by_ids(&packet.entity_ids)
+        let received = packet.entity_ids.len();
+        self.counters.entity_removes_received += received;
+        let removed = self.remove_entities_by_ids(&packet.entity_ids);
+        self.counters.entity_removes_ignored += received.saturating_sub(removed);
+        removed
     }
 
     fn remove_entities_by_ids(&mut self, removed_ids: &[i32]) -> usize {
