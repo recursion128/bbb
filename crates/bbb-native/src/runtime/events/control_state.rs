@@ -301,19 +301,6 @@ pub(super) fn sync_scoreboard_counters(counters: &mut NetCounters, world: &World
     counters.set_score_updates_ignored = world_counters.set_score_updates_ignored;
 }
 
-pub(super) fn sync_command_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.command_tree_packets = world_counters.command_tree_packets;
-    counters.command_nodes_tracked = world_counters.command_nodes_tracked;
-    counters.command_literal_nodes_tracked = world_counters.command_literal_nodes_tracked;
-    counters.command_argument_nodes_tracked = world_counters.command_argument_nodes_tracked;
-    counters.command_redirect_nodes_tracked = world_counters.command_redirect_nodes_tracked;
-    counters.command_executable_nodes_tracked = world_counters.command_executable_nodes_tracked;
-    counters.command_restricted_nodes_tracked = world_counters.command_restricted_nodes_tracked;
-    counters.command_suggestion_packets = world_counters.command_suggestion_packets;
-    counters.command_suggestion_entries_tracked = world_counters.command_suggestion_entries_tracked;
-}
-
 pub(super) fn sync_recipe_book_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.recipe_book_add_packets = world_counters.recipe_book_add_packets;

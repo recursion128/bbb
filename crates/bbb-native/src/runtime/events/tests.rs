@@ -934,7 +934,7 @@ fn clear_titles_event_updates_snapshot_counters() {
 }
 
 #[test]
-fn command_suggestions_event_updates_world_and_counters() {
+fn command_suggestions_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::CommandSuggestions(
         bbb_protocol::packets::CommandSuggestions {
@@ -956,18 +956,12 @@ fn command_suggestions_event_updates_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        command_suggestion_packets: 99,
-        command_suggestion_entries_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
-    assert_eq!(counters.command_suggestion_packets, 1);
-    assert_eq!(counters.command_suggestion_entries_tracked, 2);
     assert_eq!(world.counters().command_suggestion_packets, 1);
     assert_eq!(world.counters().command_suggestion_entries_tracked, 2);
 
@@ -981,38 +975,23 @@ fn command_suggestions_event_updates_world_and_counters() {
 }
 
 #[test]
-fn commands_event_updates_world_and_counters() {
+fn commands_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Commands(command_tree_packet("say")))
         .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        command_tree_packets: 99,
-        command_nodes_tracked: 99,
-        command_literal_nodes_tracked: 99,
-        command_argument_nodes_tracked: 99,
-        command_redirect_nodes_tracked: 99,
-        command_executable_nodes_tracked: 99,
-        command_restricted_nodes_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
-    assert_eq!(counters.command_tree_packets, 1);
-    assert_eq!(counters.command_nodes_tracked, 3);
-    assert_eq!(counters.command_literal_nodes_tracked, 1);
-    assert_eq!(counters.command_argument_nodes_tracked, 1);
-    assert_eq!(counters.command_redirect_nodes_tracked, 0);
-    assert_eq!(counters.command_executable_nodes_tracked, 1);
-    assert_eq!(counters.command_restricted_nodes_tracked, 1);
     assert_eq!(world.counters().command_tree_packets, 1);
     assert_eq!(world.counters().command_nodes_tracked, 3);
     assert_eq!(world.counters().command_literal_nodes_tracked, 1);
     assert_eq!(world.counters().command_argument_nodes_tracked, 1);
+    assert_eq!(world.counters().command_redirect_nodes_tracked, 0);
     assert_eq!(world.counters().command_executable_nodes_tracked, 1);
     assert_eq!(world.counters().command_restricted_nodes_tracked, 1);
 
