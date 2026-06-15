@@ -41,4 +41,8 @@ pub struct RendererCounters {
     pub particle_unknown_types: u64,
     #[serde(default)]
     pub last_particle_spawn_count: usize,
+    #[serde(default)]
+    pub pending_particle_spawns: usize,
+    #[serde(default)]
+    pub dropped_particle_spawns: u64,
 }

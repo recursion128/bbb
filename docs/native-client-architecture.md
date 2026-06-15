@@ -387,6 +387,8 @@ Target ownership:
 - `bbb-native` resolves `LevelParticles` packets through vanilla 26.1 particle
   type order and `bbb-pack` particle definitions, then submits renderer-owned
   spawn batches.
+- `bbb-renderer` keeps a bounded pending spawn queue so future GPU particle
+  drawing consumes renderer-owned commands instead of native/world snapshots.
 - `bbb-renderer` owns actual particle creation, culling, settings, distance
   limits, GPU buffers, and lifetime ticking.
 - Local-player knockback from explosion is a gameplay/client movement semantic

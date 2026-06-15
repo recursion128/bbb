@@ -12,6 +12,7 @@ use crate::{
         write_terrain_atlas_mips_gpu, DepthTarget, TerrainAtlasGpu,
     },
     hud::{create_hud_bind_group_layout, create_hud_pipeline, HudSpriteGpu},
+    particles::ParticleRuntimeState,
     selection::{
         create_selection_outline_gpu, create_selection_pipeline, SelectionOutline,
         SelectionOutlineGpu,
@@ -59,6 +60,7 @@ pub struct Renderer {
     pub(super) hud_food: Option<i32>,
     pub(super) hud_experience_progress_value: Option<f32>,
     pub(super) hud_selected_slot: u8,
+    pub(super) particles: ParticleRuntimeState,
 }
 
 pub(super) struct ResidentTerrainMesh {
@@ -193,6 +195,7 @@ impl Renderer {
             hud_food: None,
             hud_experience_progress_value: None,
             hud_selected_slot: 0,
+            particles: ParticleRuntimeState::default(),
         })
     }
 
