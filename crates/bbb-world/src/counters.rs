@@ -175,6 +175,16 @@ pub struct WorldCounters {
     #[serde(default)]
     pub custom_report_details_tracked: usize,
     #[serde(default)]
+    pub cookie_request_packets: usize,
+    #[serde(default)]
+    pub cookie_response_hits: usize,
+    #[serde(default)]
+    pub cookie_response_misses: usize,
+    #[serde(default)]
+    pub store_cookie_packets: usize,
+    #[serde(default)]
+    pub stored_cookie_bytes: usize,
+    #[serde(default)]
     pub transfer_packets: usize,
     #[serde(default)]
     pub award_stats_packets: usize,

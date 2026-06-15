@@ -60,12 +60,18 @@ impl ProbeContext {
             }
             ConfigurationClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
+                self.world
+                    .apply_cookie_request(request.key.as_str(), payload.is_some());
                 let (id, response) =
                     packets::encode_configuration_cookie_response(&request.key, payload);
                 self.conn.send_packet(id, &response).await?;
             }
             ConfigurationClientbound::StoreCookie(cookie) => {
-                self.server_cookies.insert(cookie.key, cookie.payload);
+                let key = cookie.key;
+                let payload_len = cookie.payload.len();
+                self.server_cookies.insert(key.clone(), cookie.payload);
+                self.world
+                    .apply_store_cookie(key, payload_len, self.server_cookies.len());
             }
             ConfigurationClientbound::CustomReportDetails(details) => {
                 self.world.apply_custom_report_details(details);
@@ -102,9 +108,9 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
-        CustomPayload, CustomPayloadBody, DialogHolder, RegistryTags, ResourcePackPop,
-        ResourcePackPush, ShowDialog, TagNetworkPayload, Transfer, UpdateEnabledFeatures,
-        UpdateTags,
+        CookieRequest, CustomPayload, CustomPayloadBody, DialogHolder, RegistryTags,
+        ResourcePackPop, ResourcePackPush, ShowDialog, StoreCookie, TagNetworkPayload, Transfer,
+        UpdateEnabledFeatures, UpdateTags,
     };
     use bbb_world::{ChunkPos, DialogState, ResourcePackState, TransferTargetState};
     use bytes::BytesMut;
@@ -180,6 +186,25 @@ mod tests {
             })
             .await
             .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::StoreCookie(StoreCookie {
+                key: "bbb:session".to_string(),
+                payload: vec![1, 2, 3],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::CookieRequest(CookieRequest {
+                key: "bbb:session".to_string(),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::CookieRequest(CookieRequest {
+                key: "bbb:missing".to_string(),
+            }))
+            .await
+            .unwrap();
 
         assert_eq!(
             probe.world.server_brand(),
@@ -224,6 +249,8 @@ mod tests {
             probe.world.last_code_of_conduct().unwrap().text,
             "Keep the server friendly."
         );
+        assert_eq!(probe.world.last_cookie_key(), Some("bbb:missing"));
+        assert_eq!(probe.world.stored_cookie_count(), 1);
 
         probe
             .handle_configuration_packet(ConfigurationClientbound::ResourcePackPop(
@@ -254,6 +281,11 @@ mod tests {
             report.world_counters.last_code_of_conduct_len,
             "Keep the server friendly.".len()
         );
+        assert_eq!(report.world_counters.store_cookie_packets, 1);
+        assert_eq!(report.world_counters.stored_cookie_bytes, 3);
+        assert_eq!(report.world_counters.cookie_request_packets, 2);
+        assert_eq!(report.world_counters.cookie_response_hits, 1);
+        assert_eq!(report.world_counters.cookie_response_misses, 1);
     }
 
     #[tokio::test]

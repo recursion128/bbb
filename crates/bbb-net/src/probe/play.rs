@@ -122,6 +122,8 @@ impl ProbeContext {
             }
             PlayClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
+                self.world
+                    .apply_cookie_request(request.key.as_str(), payload.is_some());
                 let (id, response) = packets::encode_play_cookie_response(&request.key, payload);
                 self.conn.send_packet(id, &response).await?;
             }
@@ -155,7 +157,11 @@ impl ProbeContext {
                 self.seen_code_of_conduct = false;
             }
             PlayClientbound::StoreCookie(cookie) => {
-                self.server_cookies.insert(cookie.key, cookie.payload);
+                let key = cookie.key;
+                let payload_len = cookie.payload.len();
+                self.server_cookies.insert(key.clone(), cookie.payload);
+                self.world
+                    .apply_store_cookie(key, payload_len, self.server_cookies.len());
             }
             PlayClientbound::Login(login) => {
                 self.world.apply_login(&login);
@@ -478,12 +484,13 @@ mod tests {
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
         AwardStats, BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos,
-        ClockUpdate, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample,
-        DialogHolder, EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
-        InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayTime,
-        PlayerHealth, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse,
-        RecipeDisplayType, RemoteDebugSampleType, ShowDialog, StatUpdate, TestInstanceBlockStatus,
-        TickingState, TickingStep, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        ClockUpdate, CookieRequest, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent,
+        DebugSample, DialogHolder, EntityAnchor, GameEvent, GameRuleValue, GameRuleValues,
+        GameTestHighlightPos, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
+        PlaceGhostRecipe, PlayTime, PlayerHealth, PlayerLookAt, PlayerPositionUpdate,
+        PlayerRotationUpdate, PongResponse, RecipeDisplayType, RemoteDebugSampleType, ShowDialog,
+        StatUpdate, StoreCookie, TestInstanceBlockStatus, TickingState, TickingStep,
+        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
     };
     use bbb_protocol::{codec::Decoder, ids};
     use bbb_world::{BlockPos, ChunkPos};
@@ -652,6 +659,50 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_CHUNK_BATCH_RECEIVED);
         let desired = Decoder::new(&payload).read_f32().unwrap();
         assert_eq!(desired, 3.5);
+    }
+
+    #[tokio::test]
+    async fn probe_play_cookie_events_update_world_and_respond() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::StoreCookie(StoreCookie {
+                key: "bbb:session".to_string(),
+                payload: vec![4, 5, 6],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::CookieRequest(CookieRequest {
+                key: "bbb:session".to_string(),
+            }))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("cookie response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_COOKIE_RESPONSE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "bbb:session");
+        assert!(decoder.read_bool().unwrap());
+        let len = decoder.read_len().unwrap();
+        assert_eq!(
+            decoder.read_exact(len, "cookie response").unwrap(),
+            &[4, 5, 6]
+        );
+        assert!(decoder.is_empty());
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+        assert_eq!(report.world.last_cookie_key(), Some("bbb:session"));
+        assert_eq!(report.world.stored_cookie_count(), 1);
+        assert_eq!(report.world_counters.store_cookie_packets, 1);
+        assert_eq!(report.world_counters.stored_cookie_bytes, 3);
+        assert_eq!(report.world_counters.cookie_request_packets, 1);
+        assert_eq!(report.world_counters.cookie_response_hits, 1);
+        assert_eq!(report.world_counters.cookie_response_misses, 0);
     }
 
     #[tokio::test]

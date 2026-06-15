@@ -279,12 +279,29 @@ fn cookie_events_update_snapshot_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    let mut counters = NetCounters {
+        last_cookie_key: Some("stale:key".to_string()),
+        cookie_request_packets: 99,
+        cookie_response_hits: 99,
+        cookie_response_misses: 99,
+        store_cookie_packets: 99,
+        stored_cookie_count: 99,
+        stored_cookie_bytes: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         3
     );
+    assert_eq!(world.last_cookie_key(), Some("bbb:missing"));
+    assert_eq!(world.stored_cookie_count(), 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.store_cookie_packets, 1);
+    assert_eq!(world_counters.stored_cookie_bytes, 3);
+    assert_eq!(world_counters.cookie_request_packets, 2);
+    assert_eq!(world_counters.cookie_response_hits, 1);
+    assert_eq!(world_counters.cookie_response_misses, 1);
     assert_eq!(counters.last_cookie_key.as_deref(), Some("bbb:missing"));
     assert_eq!(counters.store_cookie_packets, 1);
     assert_eq!(counters.stored_cookie_count, 1);

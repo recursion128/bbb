@@ -31,6 +31,8 @@ impl ProbeContext {
             }
             LoginClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
+                self.world
+                    .apply_cookie_request(request.key.as_str(), payload.is_some());
                 let (id, response) = packets::encode_login_cookie_response(&request.key, payload);
                 self.conn.send_packet(id, &response).await?;
             }

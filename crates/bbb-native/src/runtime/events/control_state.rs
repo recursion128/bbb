@@ -28,23 +28,16 @@ pub(super) fn apply_control_projection_event(
             key,
             response_payload_present,
         } => {
-            counters.last_cookie_key = Some(key);
-            counters.cookie_request_packets += 1;
-            if response_payload_present {
-                counters.cookie_response_hits += 1;
-            } else {
-                counters.cookie_response_misses += 1;
-            }
+            world.apply_cookie_request(key, response_payload_present);
+            sync_cookie_counters(counters, world);
         }
         NetEvent::StoreCookie {
             key,
             payload_len,
             stored_cookie_count,
         } => {
-            counters.last_cookie_key = Some(key);
-            counters.store_cookie_packets += 1;
-            counters.stored_cookie_count = stored_cookie_count;
-            counters.stored_cookie_bytes = counters.stored_cookie_bytes.saturating_add(payload_len);
+            world.apply_store_cookie(key, payload_len, stored_cookie_count);
+            sync_cookie_counters(counters, world);
         }
         NetEvent::CustomReportDetails(details) => {
             world.apply_custom_report_details(details);
@@ -522,6 +515,17 @@ fn sync_custom_report_detail_counters(counters: &mut NetCounters, world: &WorldS
     counters.custom_report_detail_packets = world_counters.custom_report_detail_packets;
     counters.custom_report_details_tracked = world_counters.custom_report_details_tracked;
     counters.custom_report_details = world.custom_report_details().clone();
+}
+
+fn sync_cookie_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.last_cookie_key = world.last_cookie_key().map(str::to_string);
+    counters.cookie_request_packets = world_counters.cookie_request_packets;
+    counters.cookie_response_hits = world_counters.cookie_response_hits;
+    counters.cookie_response_misses = world_counters.cookie_response_misses;
+    counters.store_cookie_packets = world_counters.store_cookie_packets;
+    counters.stored_cookie_count = world.stored_cookie_count();
+    counters.stored_cookie_bytes = world_counters.stored_cookie_bytes;
 }
 
 fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &WorldStore) {

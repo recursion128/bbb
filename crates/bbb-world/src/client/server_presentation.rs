@@ -19,6 +19,8 @@ pub struct ServerPresentationState {
     #[serde(default)]
     pub server_brand: Option<String>,
     #[serde(default)]
+    pub server_cookies: ServerCookieState,
+    #[serde(default)]
     pub last_custom_payload: Option<CustomPayloadState>,
     #[serde(default)]
     pub last_transfer: Option<TransferTargetState>,
@@ -48,6 +50,12 @@ pub struct CustomPayloadState {
     pub kind: String,
     pub brand: Option<String>,
     pub raw_payload_len: usize,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerCookieState {
+    pub last_key: Option<String>,
+    pub stored_count: usize,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -178,6 +186,31 @@ impl WorldStore {
         self.update_custom_report_detail_count();
     }
 
+    pub fn apply_cookie_request(&mut self, key: impl Into<String>, response_payload_present: bool) {
+        self.counters.cookie_request_packets += 1;
+        if response_payload_present {
+            self.counters.cookie_response_hits += 1;
+        } else {
+            self.counters.cookie_response_misses += 1;
+        }
+        self.presentation.server_cookies.last_key = Some(key.into());
+    }
+
+    pub fn apply_store_cookie(
+        &mut self,
+        key: impl Into<String>,
+        payload_len: usize,
+        stored_cookie_count: usize,
+    ) {
+        self.counters.store_cookie_packets += 1;
+        self.counters.stored_cookie_bytes = self
+            .counters
+            .stored_cookie_bytes
+            .saturating_add(payload_len);
+        self.presentation.server_cookies.last_key = Some(key.into());
+        self.presentation.server_cookies.stored_count = stored_cookie_count;
+    }
+
     pub fn presentation(&self) -> &ServerPresentationState {
         &self.presentation
     }
@@ -188,6 +221,18 @@ impl WorldStore {
 
     pub fn server_brand(&self) -> Option<&str> {
         self.presentation.server_brand.as_deref()
+    }
+
+    pub fn server_cookies(&self) -> &ServerCookieState {
+        &self.presentation.server_cookies
+    }
+
+    pub fn last_cookie_key(&self) -> Option<&str> {
+        self.presentation.server_cookies.last_key.as_deref()
+    }
+
+    pub fn stored_cookie_count(&self) -> usize {
+        self.presentation.server_cookies.stored_count
     }
 
     pub fn last_custom_payload(&self) -> Option<&CustomPayloadState> {
@@ -345,6 +390,25 @@ mod tests {
         assert_eq!(counters.custom_payload_packets, 2);
         assert_eq!(counters.custom_payload_brand_packets, 1);
         assert_eq!(counters.custom_payload_unknown_packets, 1);
+    }
+
+    #[test]
+    fn cookie_metadata_tracks_requests_and_stores() {
+        let mut store = WorldStore::new();
+
+        store.apply_store_cookie("bbb:session", 3, 1);
+        store.apply_cookie_request("bbb:session", true);
+        store.apply_cookie_request("bbb:missing", false);
+
+        assert_eq!(store.last_cookie_key(), Some("bbb:missing"));
+        assert_eq!(store.server_cookies().stored_count, 1);
+        assert_eq!(store.stored_cookie_count(), 1);
+        let counters = store.counters();
+        assert_eq!(counters.store_cookie_packets, 1);
+        assert_eq!(counters.stored_cookie_bytes, 3);
+        assert_eq!(counters.cookie_request_packets, 2);
+        assert_eq!(counters.cookie_response_hits, 1);
+        assert_eq!(counters.cookie_response_misses, 1);
     }
 
     #[test]

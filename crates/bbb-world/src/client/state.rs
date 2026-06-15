@@ -38,7 +38,7 @@ pub use crate::client::scoreboard::{
     ScoreboardObjective, ScoreboardScore, ScoreboardState, ScoreboardTeam, ScoreboardTeamParameters,
 };
 pub use crate::client::server_presentation::{
-    CustomPayloadState, ResourcePackState, ServerDataState, ServerLinkState,
+    CustomPayloadState, ResourcePackState, ServerCookieState, ServerDataState, ServerLinkState,
     ServerPresentationState, TransferTargetState,
 };
 pub use crate::client::stats::{ClientStatsState, StatValueState, StatsUpdateState};
