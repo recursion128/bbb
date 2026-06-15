@@ -102,6 +102,18 @@ pub(crate) fn pump_control_net_requests(
                     }
                 }
             }
+            CodeOfConductControlRequest::Decline => {
+                if let Some(code_of_conduct) = code_of_conduct.as_deref_mut() {
+                    if let Err(err) = code_of_conduct.clear_connected_server_acceptance() {
+                        tracing::warn!(?err, "failed to clear code-of-conduct acceptance");
+                    }
+                }
+                if let Some(tx) = net_commands {
+                    if tx.try_send(NetCommand::Disconnect).is_err() {
+                        break;
+                    }
+                }
+            }
             CodeOfConductControlRequest::ClearAcceptance => {
                 if let Some(code_of_conduct) = code_of_conduct.as_deref_mut() {
                     if let Err(err) = code_of_conduct.clear_connected_server_acceptance() {
@@ -358,6 +370,31 @@ mod tests {
         pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
+        let loaded = CodeOfConductAcceptance::load(&path).unwrap();
+        assert_eq!(loaded.accepted_hash_for_options(&options), None);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn pump_control_net_requests_decline_clears_hash_and_disconnects() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .code_of_conduct_requests
+            .push(CodeOfConductControlRequest::Decline);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let path = unique_code_of_conduct_store_path();
+        let mut acceptance = CodeOfConductAcceptance::load(&path).unwrap();
+        let options = bbb_net::ConnectionOptions::offline("example.org:25565", "bbb").unwrap();
+        let mut world = WorldStore::new();
+        world.apply_code_of_conduct("Keep the server friendly.".to_string());
+        acceptance.set_connected_server(&options);
+        acceptance.persist_current_world_acceptance(&world).unwrap();
+
+        pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
+
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::Disconnect);
         let loaded = CodeOfConductAcceptance::load(&path).unwrap();
         assert_eq!(loaded.accepted_hash_for_options(&options), None);
         let _ = std::fs::remove_file(path);

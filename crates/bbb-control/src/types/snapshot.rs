@@ -14,6 +14,7 @@ pub struct AppStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CodeOfConductControlRequest {
     Accept { remember: bool },
+    Decline,
     ClearAcceptance,
 }
 

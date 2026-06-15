@@ -108,6 +108,21 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.decline_code_of_conduct" {
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .code_of_conduct_requests
+            .push(CodeOfConductControlRequest::Decline);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.code_of_conduct_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.clear_code_of_conduct_acceptance" {
         let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
         snapshot_guard
@@ -341,6 +356,25 @@ mod tests {
         assert_eq!(
             snapshot.read().unwrap().code_of_conduct_requests,
             vec![CodeOfConductControlRequest::Accept { remember: true }]
+        );
+    }
+
+    #[test]
+    fn net_decline_code_of_conduct_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.decline_code_of_conduct".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["queued"], true);
+        assert_eq!(
+            snapshot.read().unwrap().code_of_conduct_requests,
+            vec![CodeOfConductControlRequest::Decline]
         );
     }
 

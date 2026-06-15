@@ -101,7 +101,9 @@ Known priority areas:
   event stream auto-accepts only when the persisted Java `String.hashCode()` of
   the server text matches, otherwise it waits for `NetCommand::AcceptCodeOfConduct`;
   the control API can queue non-persistent accepts by default, opt into
-  persistence with `remember: true`, and clear remembered hashes with
+  persistence with `remember: true`, decline with
+  `net.decline_code_of_conduct` by clearing remembered acceptance and
+  disconnecting, and clear remembered hashes with
   `net.clear_code_of_conduct_acceptance`. Offline probes still auto-accept to
   keep configuration probing moving.
 - Keep audio split into world-observed audio events and the Kira-backed
