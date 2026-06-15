@@ -105,8 +105,10 @@ Known priority areas:
   `net.decline_code_of_conduct` by clearing remembered acceptance and
   disconnecting, expose the canonical UI state through `world.client_ui`, and
   clear remembered hashes with
-  `net.clear_code_of_conduct_acceptance`. Offline probes still auto-accept to
-  keep configuration probing moving.
+  `net.clear_code_of_conduct_acceptance`. Offline probes mirror the online hash
+  gate: they record the canonical UI state for every Code of Conduct packet and
+  send accept only when `ConnectionOptions.accepted_code_of_conduct_hash`
+  matches the server text.
 - Keep audio split into world-observed audio events and the Kira-backed
   `bbb-audio` playback runtime.
 - Native crosshair entity interaction is partially wired: `bbb-world` exposes

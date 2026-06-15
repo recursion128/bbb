@@ -27,6 +27,7 @@ struct ProbeContext {
     chunk_batch_size: ChunkBatchSizeCalculator,
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
+    accepted_code_of_conduct_hash: Option<i32>,
     world_apply_errors: Vec<String>,
 }
 
@@ -43,6 +44,7 @@ impl ProbeContext {
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
             world_apply_errors: Vec::new(),
         }
     }
@@ -98,6 +100,7 @@ pub async fn run_offline_probe(options: ConnectionOptions) -> Result<ProbeReport
 
 async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeReport> {
     let mut probe = ProbeContext::new(RawConnection::connect(&options.address, None).await?);
+    probe.accepted_code_of_conduct_hash = options.accepted_code_of_conduct_hash;
     let mut packets_seen = 0usize;
 
     let (id, payload) = packets::encode_handshake(&options.host, options.port, ClientIntent::Login);

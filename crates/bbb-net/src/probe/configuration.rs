@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, ConfigurationClientbound, ResourcePackResponseAction};
+use bbb_world::code_of_conduct_text_hash;
 
 use crate::{connection::play_tick_interval, probe::ProbeContext, types::ConnectionState};
 
@@ -93,8 +94,10 @@ impl ProbeContext {
                     bail!("server sent duplicate Code of Conduct");
                 }
                 self.seen_code_of_conduct = true;
-                let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
-                self.conn.send_packet(id, &payload).await?;
+                if self.accepted_code_of_conduct_hash == Some(code_of_conduct_text_hash(&text)) {
+                    let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
+                    self.conn.send_packet(id, &payload).await?;
+                }
                 self.world.apply_code_of_conduct(text);
             }
             ConfigurationClientbound::Unknown { .. } => {}
@@ -115,7 +118,9 @@ mod tests {
             Transfer, UpdateEnabledFeatures, UpdateTags,
         },
     };
-    use bbb_world::{ChunkPos, DialogState, ResourcePackState, TransferTargetState};
+    use bbb_world::{
+        code_of_conduct_text_hash, ChunkPos, DialogState, ResourcePackState, TransferTargetState,
+    };
     use bytes::BytesMut;
     use std::time::Duration;
     use tokio::net::TcpListener;
@@ -294,7 +299,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn probe_code_of_conduct_auto_accepts_and_updates_world() {
+    async fn probe_code_of_conduct_updates_world_without_unmatched_auto_accept() {
         let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
 
@@ -305,19 +310,40 @@ mod tests {
             .await
             .unwrap();
 
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+        assert_eq!(
+            probe.world.last_code_of_conduct().unwrap().text,
+            "Follow the server rules."
+        );
+        assert_eq!(probe.world.counters().code_of_conduct_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_code_of_conduct_auto_accepts_matching_hash() {
+        let (client, mut server) = raw_connection_pair().await;
+        let text = "Follow the server rules.";
+        let mut probe = ProbeContext::new(client);
+        probe.accepted_code_of_conduct_hash = Some(code_of_conduct_text_hash(text));
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::CodeOfConduct {
+                text: text.to_string(),
+            })
+            .await
+            .unwrap();
+
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
-            .expect("probe should auto-accept code of conduct")
+            .expect("probe should auto-accept matching code-of-conduct hash")
             .unwrap();
         assert_eq!(
             packet_id,
             ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT
         );
         assert!(payload.is_empty());
-        assert_eq!(
-            probe.world.last_code_of_conduct().unwrap().text,
-            "Follow the server rules."
-        );
+        assert_eq!(probe.world.last_code_of_conduct().unwrap().text, text);
         assert_eq!(probe.world.counters().code_of_conduct_packets, 1);
     }
 
