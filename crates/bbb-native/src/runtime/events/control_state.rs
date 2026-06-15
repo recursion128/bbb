@@ -819,40 +819,6 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.open_sign_editor_packets = world_counters.open_sign_editor_packets;
     counters.ghost_recipe_packets = world_counters.ghost_recipe_packets;
     counters.pong_response_packets = world_counters.pong_response_packets;
-
-    counters.last_mount_screen =
-        world
-            .last_mount_screen()
-            .map(|state| bbb_control::MountScreenState {
-                container_id: state.container_id,
-                inventory_columns: state.inventory_columns,
-                entity_id: state.entity_id,
-            });
-    counters.last_open_book_hand = world.last_open_book().map(|state| state.hand.clone());
-    counters.last_open_sign_editor =
-        world
-            .last_open_sign_editor()
-            .map(|state| bbb_control::OpenSignEditorState {
-                pos: state.pos,
-                is_front_text: state.is_front_text,
-            });
-    counters.last_show_dialog = world
-        .current_dialog()
-        .map(|state| bbb_control::ShowDialogState {
-            holder_kind: state.holder_kind.clone(),
-            registry_id: state.registry_id,
-            raw_dialog_payload_len: state.raw_dialog_payload_len,
-        });
-    counters.last_ghost_recipe =
-        world
-            .last_ghost_recipe()
-            .map(|state| bbb_control::GhostRecipeState {
-                container_id: state.container_id,
-                recipe_display_type_id: state.recipe_display_type_id,
-                recipe_display_type: state.recipe_display_type.clone(),
-                recipe_display_body_len: state.recipe_display_body_len,
-            });
-    counters.last_pong_response_time = world.last_pong_response().map(|state| state.time);
 }
 
 fn sync_waypoint_counters(counters: &mut NetCounters, world: &WorldStore) {

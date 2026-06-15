@@ -123,13 +123,7 @@ pub struct NetCounters {
     pub last_transfer: Option<TransferTarget>,
     pub last_custom_chat_completion: Option<CustomChatCompletionState>,
     pub last_custom_payload: Option<CustomPayloadState>,
-    pub last_mount_screen: Option<MountScreenState>,
-    pub last_open_book_hand: Option<String>,
-    pub last_open_sign_editor: Option<OpenSignEditorState>,
-    pub last_ghost_recipe: Option<GhostRecipeState>,
-    pub last_show_dialog: Option<ShowDialogState>,
     pub last_waypoint: Option<WaypointState>,
-    pub last_pong_response_time: Option<i64>,
     pub last_sound: Option<ClientSoundState>,
     pub last_sound_entity: Option<ClientSoundEntityState>,
     pub last_stop_sound: Option<StopSoundState>,
@@ -810,34 +804,6 @@ pub struct CustomPayloadState {
     pub kind: String,
     pub brand: Option<String>,
     pub raw_payload_len: usize,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MountScreenState {
-    pub container_id: i32,
-    pub inventory_columns: i32,
-    pub entity_id: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct OpenSignEditorState {
-    pub pos: BlockPos,
-    pub is_front_text: bool,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GhostRecipeState {
-    pub container_id: i32,
-    pub recipe_display_type_id: i32,
-    pub recipe_display_type: String,
-    pub recipe_display_body_len: usize,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ShowDialogState {
-    pub holder_kind: String,
-    pub registry_id: Option<i32>,
-    pub raw_dialog_payload_len: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

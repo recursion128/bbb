@@ -473,7 +473,9 @@ mod tests {
 
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, EntityPositionSync as ProtocolEntityPositionSync,
+        AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DialogHolder,
+        EntityPositionSync as ProtocolEntityPositionSync, InteractionHand, MountScreenOpen,
+        OpenBook, OpenSignEditor, PlaceGhostRecipe, PongResponse, RecipeDisplayType, ShowDialog,
         Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
@@ -833,6 +835,31 @@ mod tests {
             let mut store = WorldStore::new();
             store.apply_low_disk_space_warning();
             store.apply_code_of_conduct("Respect the realm.".to_string());
+            store.apply_mount_screen_open(MountScreenOpen {
+                container_id: 11,
+                inventory_columns: 5,
+                entity_id: 42,
+            });
+            store.apply_open_book(OpenBook {
+                hand: InteractionHand::OffHand,
+            });
+            store.apply_open_sign_editor(OpenSignEditor {
+                pos: ProtocolBlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+                is_front_text: false,
+            });
+            store.apply_place_ghost_recipe(PlaceGhostRecipe {
+                container_id: 9,
+                recipe_display_type: RecipeDisplayType::Stonecutter,
+                recipe_display_body: vec![1, 2, 3],
+            });
+            store.apply_show_dialog(ShowDialog {
+                dialog: DialogHolder::Reference { registry_id: 7 },
+            });
+            store.apply_pong_response(PongResponse { time: 123456789 });
             snapshot.write().unwrap().world_store = store;
         }
 
@@ -852,6 +879,24 @@ mod tests {
             ui["last_code_of_conduct"]["text_hash"],
             bbb_world::code_of_conduct_text_hash("Respect the realm.")
         );
+        assert_eq!(ui["last_mount_screen"]["container_id"], 11);
+        assert_eq!(ui["last_mount_screen"]["inventory_columns"], 5);
+        assert_eq!(ui["last_mount_screen"]["entity_id"], 42);
+        assert_eq!(ui["last_open_book"]["hand"], "off_hand");
+        assert_eq!(ui["last_open_sign_editor"]["pos"]["x"], -5);
+        assert_eq!(ui["last_open_sign_editor"]["pos"]["y"], 70);
+        assert_eq!(ui["last_open_sign_editor"]["pos"]["z"], 12);
+        assert_eq!(ui["last_open_sign_editor"]["is_front_text"], false);
+        assert_eq!(ui["last_ghost_recipe"]["container_id"], 9);
+        assert_eq!(ui["last_ghost_recipe"]["recipe_display_type_id"], 3);
+        assert_eq!(
+            ui["last_ghost_recipe"]["recipe_display_type"],
+            "stonecutter"
+        );
+        assert_eq!(ui["last_ghost_recipe"]["recipe_display_body_len"], 3);
+        assert_eq!(ui["current_dialog"]["holder_kind"], "reference");
+        assert_eq!(ui["current_dialog"]["registry_id"], 7);
+        assert_eq!(ui["last_pong_response"]["time"], 123456789);
     }
 
     #[test]

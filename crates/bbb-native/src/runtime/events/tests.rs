@@ -836,21 +836,12 @@ fn client_ui_events_update_world_and_snapshot_counters() {
     );
     assert_eq!(counters.mount_screen_open_packets, 1);
     assert_eq!(
-        counters.last_mount_screen,
-        Some(bbb_control::MountScreenState {
-            container_id: 11,
-            inventory_columns: 5,
-            entity_id: 42,
-        })
-    );
-    assert_eq!(
         world.last_open_book(),
         Some(&bbb_world::OpenBookState {
             hand: "off_hand".to_string(),
         })
     );
     assert_eq!(counters.open_book_packets, 1);
-    assert_eq!(counters.last_open_book_hand.as_deref(), Some("off_hand"));
     assert_eq!(
         world.last_open_sign_editor(),
         Some(&bbb_world::OpenSignEditorState {
@@ -863,19 +854,7 @@ fn client_ui_events_update_world_and_snapshot_counters() {
         })
     );
     assert_eq!(counters.open_sign_editor_packets, 1);
-    assert_eq!(
-        counters.last_open_sign_editor,
-        Some(bbb_control::OpenSignEditorState {
-            pos: BlockPos {
-                x: -5,
-                y: 70,
-                z: 12,
-            },
-            is_front_text: false,
-        })
-    );
     assert_eq!(counters.pong_response_packets, 1);
-    assert_eq!(counters.last_pong_response_time, Some(123456789));
     assert_eq!(
         world.last_pong_response(),
         Some(&bbb_world::PongResponseState { time: 123456789 })
@@ -1287,15 +1266,6 @@ fn client_feature_events_update_world_and_snapshot_counters() {
     assert_eq!(
         world.last_ghost_recipe(),
         Some(&bbb_world::GhostRecipeState {
-            container_id: 9,
-            recipe_display_type_id: 3,
-            recipe_display_type: "stonecutter".to_string(),
-            recipe_display_body_len: 3,
-        })
-    );
-    assert_eq!(
-        counters.last_ghost_recipe,
-        Some(bbb_control::GhostRecipeState {
             container_id: 9,
             recipe_display_type_id: 3,
             recipe_display_type: "stonecutter".to_string(),
@@ -2232,14 +2202,6 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
     assert_eq!(
         world.current_dialog(),
         Some(&bbb_world::DialogState {
-            holder_kind: "reference".to_string(),
-            registry_id: Some(11),
-            raw_dialog_payload_len: 0,
-        })
-    );
-    assert_eq!(
-        counters.last_show_dialog,
-        Some(bbb_control::ShowDialogState {
             holder_kind: "reference".to_string(),
             registry_id: Some(11),
             raw_dialog_payload_len: 0,
