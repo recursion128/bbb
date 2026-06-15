@@ -17,4 +17,6 @@ pub use net::{
     WaypointState, WeatherState, WorldTime,
 };
 pub use renderer::RendererCounters;
-pub use snapshot::{AppStatus, CodeOfConductControlRequest, ControlSnapshot, SharedSnapshot};
+pub use snapshot::{
+    AppStatus, CodeOfConductControlRequest, ControlSnapshot, NetControlRequest, SharedSnapshot,
+};

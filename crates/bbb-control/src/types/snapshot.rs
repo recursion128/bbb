@@ -18,6 +18,12 @@ pub enum CodeOfConductControlRequest {
     ClearAcceptance,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NetControlRequest {
+    ChatCommand { command: String },
+    CommandSuggestionRequest { id: i32, command: String },
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ControlSnapshot {
     pub app: AppStatus,
@@ -28,6 +34,8 @@ pub struct ControlSnapshot {
     pub screenshot_request: Option<String>,
     #[serde(skip)]
     pub code_of_conduct_requests: Vec<CodeOfConductControlRequest>,
+    #[serde(skip)]
+    pub net_requests: Vec<NetControlRequest>,
     #[serde(skip)]
     pub world_store: WorldStore,
 }

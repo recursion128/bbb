@@ -5,7 +5,8 @@ use std::{
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{
-    CodeOfConductControlRequest, NetCounters, PlayerPose, RendererCounters, SharedSnapshot,
+    CodeOfConductControlRequest, NetControlRequest, NetCounters, PlayerPose, RendererCounters,
+    SharedSnapshot,
 };
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{CameraPose, ClearColor};
@@ -16,7 +17,10 @@ use crate::{
     audio_runtime::AudioEventSink,
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::selection_outline_from_crosshair,
-    input::{advance_player_input, ClientInputState},
+    input::{
+        advance_player_input, queue_chat_command, queue_command_suggestion_request,
+        ClientInputState,
+    },
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
@@ -70,13 +74,30 @@ pub(crate) fn take_control_screenshot(snapshot: &SharedSnapshot) -> Option<PathB
 pub(crate) fn pump_control_net_requests(
     snapshot: &SharedSnapshot,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    counters: &mut NetCounters,
     world: &WorldStore,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
 ) {
-    let requests = snapshot
+    let (requests, net_requests) = snapshot
         .write()
-        .map(|mut guard| std::mem::take(&mut guard.code_of_conduct_requests))
+        .map(|mut guard| {
+            (
+                std::mem::take(&mut guard.code_of_conduct_requests),
+                std::mem::take(&mut guard.net_requests),
+            )
+        })
         .unwrap_or_default();
+
+    for request in net_requests {
+        match request {
+            NetControlRequest::ChatCommand { command } => {
+                queue_chat_command(counters, net_commands, command);
+            }
+            NetControlRequest::CommandSuggestionRequest { id, command } => {
+                queue_command_suggestion_request(counters, net_commands, id, command);
+            }
+        }
+    }
 
     let mut code_of_conduct = code_of_conduct;
     for request in requests {
@@ -160,7 +181,7 @@ pub(crate) fn pump_network_and_terrain(
             Some(renderer),
         );
     }
-    pump_control_net_requests(snapshot, net_commands, world, code_of_conduct);
+    pump_control_net_requests(snapshot, net_commands, net_counters, world, code_of_conduct);
     let now = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     renderer.advance_particles(advanced_ticks);
@@ -309,6 +330,58 @@ mod tests {
     }
 
     #[test]
+    fn pump_control_net_requests_queues_chat_command() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::ChatCommand {
+                command: "give @p minecraft:stone".to_string(),
+            });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatCommand(bbb_protocol::packets::ChatCommand {
+                command: "give @p minecraft:stone".to_string()
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_command_suggestion_request() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.push(
+            bbb_control::NetControlRequest::CommandSuggestionRequest {
+                id: 18,
+                command: "/give @p minecraft:stone".to_string(),
+            },
+        );
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+
+        assert_eq!(counters.command_suggestion_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::CommandSuggestionRequest(bbb_protocol::packets::CommandSuggestionRequest {
+                id: 18,
+                command: "/give @p minecraft:stone".to_string(),
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
     fn pump_control_net_requests_queues_code_of_conduct_accept_command() {
         let snapshot = bbb_control::shared_snapshot("test");
         snapshot
@@ -318,8 +391,9 @@ mod tests {
             .push(CodeOfConductControlRequest::Accept { remember: false });
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
         let world = WorldStore::new();
+        let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &world, None);
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
         assert!(snapshot.read().unwrap().code_of_conduct_requests.is_empty());
@@ -341,8 +415,15 @@ mod tests {
         let mut world = WorldStore::new();
         world.apply_code_of_conduct(text.to_string());
         acceptance.set_connected_server(&options);
+        let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
+        pump_control_net_requests(
+            &snapshot,
+            &Some(tx.clone()),
+            &mut counters,
+            &world,
+            Some(&mut acceptance),
+        );
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
         let loaded = CodeOfConductAcceptance::load(&path).unwrap();
@@ -369,8 +450,15 @@ mod tests {
         world.apply_code_of_conduct("Keep the server friendly.".to_string());
         acceptance.set_connected_server(&options);
         acceptance.persist_current_world_acceptance(&world).unwrap();
+        let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
+        pump_control_net_requests(
+            &snapshot,
+            &Some(tx.clone()),
+            &mut counters,
+            &world,
+            Some(&mut acceptance),
+        );
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
         let loaded = CodeOfConductAcceptance::load(&path).unwrap();
@@ -394,8 +482,15 @@ mod tests {
         world.apply_code_of_conduct("Keep the server friendly.".to_string());
         acceptance.set_connected_server(&options);
         acceptance.persist_current_world_acceptance(&world).unwrap();
+        let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
+        pump_control_net_requests(
+            &snapshot,
+            &Some(tx.clone()),
+            &mut counters,
+            &world,
+            Some(&mut acceptance),
+        );
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::Disconnect);
         let loaded = CodeOfConductAcceptance::load(&path).unwrap();
@@ -419,8 +514,15 @@ mod tests {
         world.apply_code_of_conduct("Keep the server friendly.".to_string());
         acceptance.set_connected_server(&options);
         acceptance.persist_current_world_acceptance(&world).unwrap();
+        let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx.clone()), &world, Some(&mut acceptance));
+        pump_control_net_requests(
+            &snapshot,
+            &Some(tx.clone()),
+            &mut counters,
+            &world,
+            Some(&mut acceptance),
+        );
 
         assert!(matches!(
             rx.try_recv(),

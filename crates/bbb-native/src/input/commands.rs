@@ -131,7 +131,7 @@ pub(super) fn queue_player_action_command(
     }
 }
 
-fn queue_chat_command(
+pub(crate) fn queue_chat_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     command: impl Into<String>,
@@ -307,7 +307,7 @@ pub(super) fn queue_pick_item_from_entity_command(
     }
 }
 
-fn queue_command_suggestion_request(
+pub(crate) fn queue_command_suggestion_request(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     id: i32,

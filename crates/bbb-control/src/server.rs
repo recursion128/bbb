@@ -12,7 +12,7 @@ use tokio::{
 
 use crate::types::{
     AppStatus, CodeOfConductControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
-    SharedSnapshot,
+    NetControlRequest, SharedSnapshot,
 };
 
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
@@ -138,6 +138,69 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.send_chat_command" {
+        let Some(command) = non_empty_string_param(&request.params, "command") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.send_chat_command requires non-empty string param command".to_string(),
+                ),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::ChatCommand {
+                command: command.to_string(),
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.request_command_suggestions" {
+        let Some(id) = i32_param(&request.params, "id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.request_command_suggestions requires integer param id".to_string(),
+                ),
+            };
+        };
+        let Some(command) = non_empty_string_param(&request.params, "command") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.request_command_suggestions requires non-empty string param command"
+                        .to_string(),
+                ),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::CommandSuggestionRequest {
+                id,
+                command: command.to_string(),
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     let snapshot_guard = snapshot.read().expect("control snapshot poisoned");
     let json = match request.method.as_str() {
         "app.status" => serde_json::to_value(&*snapshot_guard),
@@ -246,6 +309,15 @@ fn i32_param(params: &serde_json::Value, key: &str) -> Option<i32> {
 
 fn string_param<'a>(params: &'a serde_json::Value, key: &str) -> Option<&'a str> {
     params.get(key)?.as_str()
+}
+
+fn non_empty_string_param<'a>(params: &'a serde_json::Value, key: &str) -> Option<&'a str> {
+    let value = string_param(params, key)?;
+    if value.is_empty() {
+        None
+    } else {
+        Some(value)
+    }
 }
 
 fn bool_param(params: &serde_json::Value, key: &str) -> Option<bool> {
@@ -395,6 +467,67 @@ mod tests {
             snapshot.read().unwrap().code_of_conduct_requests,
             vec![CodeOfConductControlRequest::ClearAcceptance]
         );
+    }
+
+    #[test]
+    fn net_send_chat_command_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.send_chat_command".to_string(),
+                params: json!({"command": "give @p minecraft:stone"}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::ChatCommand {
+                command: "give @p minecraft:stone".to_string()
+            }]
+        );
+
+        let missing_command = dispatch(
+            ControlRequest {
+                method: "net.send_chat_command".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_command.ok);
+    }
+
+    #[test]
+    fn net_request_command_suggestions_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.request_command_suggestions".to_string(),
+                params: json!({"id": 18, "command": "/give @p minecraft:stone"}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::CommandSuggestionRequest {
+                id: 18,
+                command: "/give @p minecraft:stone".to_string()
+            }]
+        );
+
+        let missing_id = dispatch(
+            ControlRequest {
+                method: "net.request_command_suggestions".to_string(),
+                params: json!({"command": "/help"}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_id.ok);
     }
 
     #[test]

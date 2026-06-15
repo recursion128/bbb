@@ -18,8 +18,10 @@ mod commands;
 mod mouse;
 mod movement;
 
-pub(crate) use commands::queue_vehicle_move_command;
 use commands::*;
+pub(crate) use commands::{
+    queue_chat_command, queue_command_suggestion_request, queue_vehicle_move_command,
+};
 pub(crate) use mouse::{handle_mouse_input, handle_mouse_motion, handle_mouse_wheel};
 pub(crate) use movement::advance_player_input;
 
