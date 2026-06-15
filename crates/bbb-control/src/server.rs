@@ -338,6 +338,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "net.counters" => serde_json::to_value(&snapshot_guard.net),
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
+        "world.client_advancements" => {
+            serde_json::to_value(snapshot_guard.world_store.client_advancements())
+        }
         "world.client_audio" => serde_json::to_value(snapshot_guard.world_store.client_audio()),
         "world.client_chat" => serde_json::to_value(snapshot_guard.world_store.client_chat()),
         "world.client_combat" => serde_json::to_value(snapshot_guard.world_store.client_combat()),
@@ -496,17 +499,19 @@ mod tests {
 
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, AwardStats, BlockPos as ProtocolBlockPos, ChatTypeBound,
-        ChatTypeHolder, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
-        CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
-        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
-        GameRuleValue, GameRuleValues, InteractionHand, MapColorPatch, MapDecoration, MapItemData,
-        MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill,
-        PongResponse, RecipeDisplayType, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
-        ServerLinks, SetActionBarText, SetSubtitleText, SetTitleText, SetTitlesAnimation,
-        ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat,
-        TagQuery, TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d,
-        WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats,
+        BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, CustomChatCompletions,
+        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
+        DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
+        EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue, GameRuleValues,
+        InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
+        OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType,
+        SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+        SetActionBarText, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
+        TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements,
+        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1299,6 +1304,47 @@ mod tests {
             "set"
         );
         assert_eq!(suggestions["last_custom_completion_update"]["entries"], 2);
+    }
+
+    #[test]
+    fn client_advancements_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_update_advancements(UpdateAdvancements {
+                reset: true,
+                added: vec![AdvancementSummary {
+                    id: "minecraft:story/root".to_string(),
+                    parent: None,
+                    display: None,
+                    requirements: Vec::new(),
+                    sends_telemetry_event: false,
+                }],
+                removed: Vec::new(),
+                progress: Vec::new(),
+                show_advancements: false,
+            });
+            store.apply_select_advancements_tab(SelectAdvancementsTab {
+                tab: Some("minecraft:story/root".to_string()),
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_advancements".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let advancements = response.result.unwrap();
+        assert_eq!(advancements["selected_tab"], "minecraft:story/root");
+        assert!(advancements["advancements"]
+            .as_object()
+            .unwrap()
+            .contains_key("minecraft:story/root"));
     }
 
     #[test]

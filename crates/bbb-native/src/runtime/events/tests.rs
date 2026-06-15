@@ -1253,10 +1253,6 @@ fn client_feature_events_update_world_and_snapshot_counters() {
     assert_eq!(world.counters().ghost_recipe_packets, 1);
     assert_eq!(counters.select_advancements_tab_packets, 1);
     assert_eq!(
-        counters.selected_advancements_tab.as_deref(),
-        Some("minecraft:story/root")
-    );
-    assert_eq!(
         world.selected_advancements_tab(),
         Some("minecraft:story/root")
     );

@@ -72,6 +72,10 @@ impl WorldStore {
         &self.advancements
     }
 
+    pub fn client_advancements(&self) -> &ClientAdvancementsState {
+        self.advancements()
+    }
+
     pub fn selected_advancements_tab(&self) -> Option<&str> {
         self.advancements.selected_tab.as_deref()
     }
@@ -198,7 +202,7 @@ mod tests {
         });
 
         assert_eq!(
-            store.advancements().selected_tab.as_deref(),
+            store.client_advancements().selected_tab.as_deref(),
             Some("minecraft:story/root")
         );
         assert_eq!(

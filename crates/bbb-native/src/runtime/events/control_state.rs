@@ -448,7 +448,6 @@ pub(super) fn sync_recipe_access_counters(counters: &mut NetCounters, world: &Wo
 
 pub(super) fn sync_advancement_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
-    counters.selected_advancements_tab = world.selected_advancements_tab().map(str::to_string);
     counters.select_advancements_tab_packets = world_counters.select_advancements_tab_packets;
     counters.update_advancements_packets = world_counters.update_advancements_packets;
     counters.update_advancements_reset_packets = world_counters.update_advancements_reset_packets;

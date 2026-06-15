@@ -108,7 +108,6 @@ pub struct NetCounters {
     pub weather: WeatherState,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
-    pub selected_advancements_tab: Option<String>,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
     pub player_info_remove_packets: usize,
