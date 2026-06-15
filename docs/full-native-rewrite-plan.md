@@ -266,8 +266,9 @@ Deliverables:
   active CPU-side particle instances through the native runtime pump and advances
   their age only on client ticks. It has data-only provider/lifetime descriptors
   for common 26.1 particles such as cloud, flame, smoke, large smoke, and poof;
-  full vanilla provider behavior, motion physics, particle limits, and GPU
-  drawing remain separate follow-up work.
+  active instances apply a vanilla-shaped no-collision motion tick using stored
+  gravity and friction. Full vanilla provider behavior, collision/player-coupled
+  physics, particle limits, and GPU drawing remain separate follow-up work.
 - HUD, title/action bar, scoreboard, chat, debug overlays, selection outline,
   camera pose, screenshots, and interaction feedback.
 - Renderer caches and GPU resources remain outside `bbb-world`.

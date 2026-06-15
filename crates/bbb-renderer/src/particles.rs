@@ -51,6 +51,7 @@ pub(crate) struct ParticleInstance {
     pub(crate) particle_type_id: i32,
     pub(crate) particle_id: String,
     pub(crate) sprite_ids: Vec<String>,
+    pub(crate) previous_position: [f64; 3],
     pub(crate) position: [f64; 3],
     pub(crate) velocity: [f64; 3],
     pub(crate) age_ticks: u32,
@@ -265,6 +266,7 @@ impl ParticleRuntimeState {
                 expired_instances += 1;
                 continue;
             }
+            instance.tick_motion_without_collision();
             instance.age_ticks = instance.age_ticks.saturating_add(1);
             active_instances.push_back(instance);
         }
@@ -313,6 +315,7 @@ impl ParticleInstance {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
             sprite_ids: command.sprite_ids,
+            previous_position: command.position,
             position: command.position,
             velocity: command.velocity,
             age_ticks: 0,
@@ -326,6 +329,18 @@ impl ParticleInstance {
             always_show: command.always_show,
             raw_options_len: command.raw_options_len,
         }
+    }
+
+    fn tick_motion_without_collision(&mut self) {
+        self.previous_position = self.position;
+        self.velocity[1] -= 0.04 * f64::from(self.gravity);
+        self.position[0] += self.velocity[0];
+        self.position[1] += self.velocity[1];
+        self.position[2] += self.velocity[2];
+        let friction = f64::from(self.friction);
+        self.velocity[0] *= friction;
+        self.velocity[1] *= friction;
+        self.velocity[2] *= friction;
     }
 }
 
@@ -671,6 +686,57 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_advances_motion_with_gravity_before_friction() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:smoke", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.previous_position = instance.position;
+        instance.velocity = [0.5, 0.25, -0.5];
+        instance.gravity = 0.5;
+        instance.friction = 0.8;
+        particles.active_instances.push_back(instance);
+
+        let summary = particles.advance(1);
+
+        assert_eq!(summary.expired_instances, 0);
+        assert_eq!(summary.active_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 1);
+        assert_close3(instance.previous_position, [1.0, 2.0, 3.0]);
+        assert_close3(instance.position, [1.5, 2.23, 2.5]);
+        assert_close3(instance.velocity, [0.4, 0.184, -0.4]);
+    }
+
+    #[test]
+    fn particle_runtime_negative_gravity_increases_y_velocity_before_friction() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:poof", 20);
+        instance.velocity = [0.0, 0.0, 0.0];
+        particles.active_instances.push_back(instance);
+
+        particles.advance(1);
+
+        let instance = &particles.active_instances()[0];
+        assert_close3(instance.position, [0.0, 0.004, 0.0]);
+        assert_close3(instance.velocity, [0.0, 0.0036, 0.0]);
+    }
+
+    #[test]
+    fn particle_runtime_moves_particles_even_when_physics_is_disabled() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:flame", 20);
+        assert!(!instance.has_physics);
+        instance.velocity = [0.25, 0.5, 0.75];
+        particles.active_instances.push_back(instance);
+
+        particles.advance(1);
+
+        let instance = &particles.active_instances()[0];
+        assert_close3(instance.position, [0.25, 0.5, 0.75]);
+        assert_close3(instance.velocity, [0.24, 0.48, 0.72]);
+    }
+
+    #[test]
     fn particle_runtime_expires_after_vanilla_post_increment_lifetime_boundary() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         particles
@@ -719,6 +785,7 @@ mod tests {
             "minecraft:flame"
         );
         assert_eq!(particles.active_instances()[1].age_ticks, 0);
+        assert_eq!(particles.active_instances()[1].position, [2.0, 0.0, 0.0]);
     }
 
     #[test]
@@ -798,6 +865,7 @@ mod tests {
             particle_type_id: 0,
             particle_id: particle_id.to_string(),
             sprite_ids: Vec::new(),
+            previous_position: [0.0, 0.0, 0.0],
             position: [0.0, 0.0, 0.0],
             velocity: [0.0, 0.0, 0.0],
             age_ticks: 0,
@@ -831,5 +899,14 @@ mod tests {
             (actual - expected).abs() < 1.0e-6,
             "expected {expected}, got {actual}"
         );
+    }
+
+    fn assert_close3(actual: [f64; 3], expected: [f64; 3]) {
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert!(
+                (actual - expected).abs() < 1.0e-6,
+                "expected {expected}, got {actual}"
+            );
+        }
     }
 }
