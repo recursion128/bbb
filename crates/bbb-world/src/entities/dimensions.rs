@@ -788,7 +788,7 @@ fn sanitize_vanilla_scale(value: f64) -> f64 {
     }
 }
 
-fn vanilla_living_entity_type(entity_type_id: i32) -> bool {
+pub(crate) fn vanilla_living_entity_type(entity_type_id: i32) -> bool {
     VANILLA_LIVING_ENTITY_TYPE_IDS
         .binary_search(&entity_type_id)
         .is_ok()

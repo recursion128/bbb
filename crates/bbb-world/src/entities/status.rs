@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+use super::dimensions::vanilla_living_entity_type;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemCooldownState {
     pub cooldown_group: String,
@@ -79,6 +81,12 @@ impl WorldStore {
     pub fn apply_update_mob_effect(&mut self, packet: ProtocolUpdateMobEffect) -> bool {
         self.counters.update_mob_effect_packets += 1;
         let entity_id = packet.entity_id;
+        let Some(entity_type_id) = self.entities.entity_type_id(entity_id) else {
+            return false;
+        };
+        if !vanilla_living_entity_type(entity_type_id) {
+            return false;
+        }
         let effect = MobEffectState::from(packet);
         let Some(()) = self.entities.with_mob_effects_mut(entity_id, |effects| {
             effects.effects.insert(effect.effect_id, effect);
@@ -91,6 +99,12 @@ impl WorldStore {
 
     pub fn apply_remove_mob_effect(&mut self, packet: ProtocolRemoveMobEffect) -> bool {
         self.counters.remove_mob_effect_packets += 1;
+        let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
+            return false;
+        };
+        if !vanilla_living_entity_type(entity_type_id) {
+            return false;
+        }
         let Some(removed) = self
             .entities
             .with_mob_effects_mut(packet.entity_id, |effects| {
@@ -189,6 +203,10 @@ mod tests {
     fn mob_effects_upsert_remove_and_ignore_unknown_entities() {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(7));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            8,
+            super::super::VANILLA_ENTITY_TYPE_ITEM_ID,
+        ));
 
         let updated = store.apply_update_mob_effect(UpdateMobEffect {
             entity_id: 7,
@@ -229,6 +247,17 @@ mod tests {
         assert_eq!(store.counters().update_mob_effect_packets, 2);
         assert_eq!(store.counters().active_mob_effects_tracked, 1);
 
+        assert!(!store.apply_update_mob_effect(UpdateMobEffect {
+            entity_id: 8,
+            effect_id: 4,
+            amplifier: 0,
+            duration_ticks: 100,
+            flags: MobEffectFlags::default(),
+        }));
+        assert!(store.entity_effects(8).unwrap().is_empty());
+        assert_eq!(store.counters().update_mob_effect_packets, 3);
+        assert_eq!(store.counters().active_mob_effects_tracked, 1);
+
         assert!(store.apply_remove_mob_effect(RemoveMobEffect {
             entity_id: 7,
             effect_id: 3,
@@ -236,6 +265,13 @@ mod tests {
         assert!(store.entity_effect(7, 3).is_none());
         assert!(store.entities.mob_effects(7).unwrap().effects.is_empty());
         assert_eq!(store.counters().remove_mob_effect_packets, 1);
+        assert_eq!(store.counters().active_mob_effects_tracked, 0);
+
+        assert!(!store.apply_remove_mob_effect(RemoveMobEffect {
+            entity_id: 8,
+            effect_id: 4,
+        }));
+        assert_eq!(store.counters().remove_mob_effect_packets, 2);
         assert_eq!(store.counters().active_mob_effects_tracked, 0);
     }
 
@@ -284,10 +320,14 @@ mod tests {
     }
 
     fn protocol_add_entity(id: i32) -> ProtocolAddEntity {
+        protocol_add_entity_with_type(id, 7)
+    }
+
+    fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEntity {
         ProtocolAddEntity {
             id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678),
-            entity_type_id: 7,
+            entity_type_id,
             position: ProtocolVec3d {
                 x: 1.0,
                 y: 64.0,
