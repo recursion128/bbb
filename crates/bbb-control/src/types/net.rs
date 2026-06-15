@@ -10,22 +10,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub respawns_received: usize,
     pub player_position_packets: usize,
-    pub cooldown_packets: usize,
-    #[serde(default)]
-    pub cooldowns_tracked: usize,
-    pub damage_event_packets: usize,
-    #[serde(default)]
-    pub damage_events_applied: usize,
-    #[serde(default)]
-    pub damage_events_ignored: usize,
-    pub update_mob_effect_packets: usize,
-    #[serde(default)]
-    pub update_mob_effects_ignored: usize,
-    pub remove_mob_effect_packets: usize,
-    #[serde(default)]
-    pub remove_mob_effects_ignored: usize,
-    #[serde(default)]
-    pub active_mob_effects_tracked: usize,
     #[serde(default)]
     pub inventory_slot_updates_received: usize,
     #[serde(default)]

@@ -10,7 +10,7 @@ use crate::particle_runtime::ParticleEventSink;
 use super::client_state::*;
 use super::control_state::{
     apply_control_projection_event, sync_block_event_counters, sync_entity_counters,
-    sync_entity_interaction_counters, sync_entity_status_counters, sync_inventory_counters,
+    sync_entity_interaction_counters, sync_inventory_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -120,19 +120,15 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::Cooldown(update) => {
                 world.apply_cooldown(update);
-                sync_entity_status_counters(counters, world);
             }
             NetEvent::DamageEvent(update) => {
                 world.apply_damage_event(update);
-                sync_entity_status_counters(counters, world);
             }
             NetEvent::UpdateMobEffect(update) => {
                 world.apply_update_mob_effect(update);
-                sync_entity_status_counters(counters, world);
             }
             NetEvent::RemoveMobEffect(update) => {
                 world.apply_remove_mob_effect(update);
-                sync_entity_status_counters(counters, world);
             }
             NetEvent::ContainerClose(update) => {
                 world.apply_container_close(update);
@@ -229,7 +225,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
                 sync_entity_counters(counters, world);
-                sync_entity_status_counters(counters, world);
             }
             NetEvent::EntityAnimation(update) => {
                 world.apply_entity_animation(update);
@@ -265,7 +260,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::RemoveEntities(update) => {
                 world.apply_remove_entities(update);
                 sync_entity_counters(counters, world);
-                sync_entity_status_counters(counters, world);
             }
             NetEvent::RotateHead(update) => {
                 world.apply_rotate_head(update);
@@ -314,14 +308,12 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 world.apply_login(&login);
                 sync_local_player_counters(counters, world);
                 sync_entity_counters(counters, world);
-                sync_entity_status_counters(counters, world);
                 sync_block_event_counters(counters, world);
             }
             NetEvent::Respawn(respawn) => {
                 world.apply_respawn(&respawn);
                 sync_local_player_counters(counters, world);
                 sync_entity_counters(counters, world);
-                sync_entity_status_counters(counters, world);
                 sync_block_event_counters(counters, world);
             }
             NetEvent::PlayerPosition(update) => {

@@ -327,7 +327,6 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
     });
     let mut counters = NetCounters {
         entities_tracked: 99,
-        active_mob_effects_tracked: 99,
         block_destructions_tracked: 99,
         block_events_tracked: 99,
         level_events_tracked: 99,
@@ -348,7 +347,6 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
     assert_eq!(world.counters().block_events_tracked, 0);
     assert_eq!(world.counters().level_events_tracked, 0);
     assert_eq!(counters.entities_tracked, 0);
-    assert_eq!(counters.active_mob_effects_tracked, 0);
     assert_eq!(counters.block_destructions_tracked, 0);
     assert_eq!(counters.block_events_tracked, 0);
     assert_eq!(counters.level_events_tracked, 0);
@@ -1680,7 +1678,7 @@ fn passenger_ignored_counters_are_projected() {
 }
 
 #[test]
-fn remove_entities_syncs_active_effect_counters() {
+fn remove_entities_updates_world_active_effect_counters() {
     let entity_id = 55;
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::RemoveEntities(RemoveEntities {
@@ -1691,10 +1689,7 @@ fn remove_entities_syncs_active_effect_counters() {
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(entity_id));
     world.apply_update_mob_effect(protocol_update_mob_effect(entity_id, 3));
-    let mut counters = NetCounters {
-        active_mob_effects_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -1704,11 +1699,10 @@ fn remove_entities_syncs_active_effect_counters() {
     assert_eq!(world.counters().entities_tracked, 0);
     assert_eq!(world.counters().active_mob_effects_tracked, 0);
     assert_eq!(counters.entities_tracked, 0);
-    assert_eq!(counters.active_mob_effects_tracked, 0);
 }
 
 #[test]
-fn add_entity_replacement_syncs_active_effect_counters() {
+fn add_entity_replacement_updates_world_active_effect_counters() {
     let entity_id = 55;
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::AddEntity(protocol_add_entity(entity_id)))
@@ -1717,10 +1711,7 @@ fn add_entity_replacement_syncs_active_effect_counters() {
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(entity_id));
     world.apply_update_mob_effect(protocol_update_mob_effect(entity_id, 3));
-    let mut counters = NetCounters {
-        active_mob_effects_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -1730,11 +1721,10 @@ fn add_entity_replacement_syncs_active_effect_counters() {
     assert_eq!(world.counters().entities_tracked, 1);
     assert_eq!(world.counters().active_mob_effects_tracked, 0);
     assert_eq!(counters.entities_tracked, 1);
-    assert_eq!(counters.active_mob_effects_tracked, 0);
 }
 
 #[test]
-fn mob_effect_ignored_counters_are_projected() {
+fn mob_effect_ignored_counters_update_world_counters() {
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 
     let (tx, mut rx) = mpsc::channel(3);
@@ -1769,12 +1759,6 @@ fn mob_effect_ignored_counters_are_projected() {
     assert_eq!(world_counters.remove_mob_effect_packets, 1);
     assert_eq!(world_counters.remove_mob_effects_ignored, 1);
     assert_eq!(world_counters.active_mob_effects_tracked, 0);
-
-    assert_eq!(counters.update_mob_effect_packets, 1);
-    assert_eq!(counters.update_mob_effects_ignored, 1);
-    assert_eq!(counters.remove_mob_effect_packets, 1);
-    assert_eq!(counters.remove_mob_effects_ignored, 1);
-    assert_eq!(counters.active_mob_effects_tracked, 0);
 }
 
 #[test]
@@ -3302,7 +3286,7 @@ fn server_presentation_events_update_world_and_world_counters() {
 }
 
 #[test]
-fn entity_status_events_update_world_and_counters() {
+fn entity_status_events_update_world_and_world_counters() {
     let entity_id = 55;
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::Cooldown(bbb_protocol::packets::Cooldown {
@@ -3356,35 +3340,12 @@ fn entity_status_events_update_world_and_counters() {
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(entity_id));
-    let mut counters = NetCounters {
-        cooldown_packets: 99,
-        cooldowns_tracked: 99,
-        damage_event_packets: 99,
-        damage_events_applied: 99,
-        damage_events_ignored: 99,
-        update_mob_effect_packets: 99,
-        update_mob_effects_ignored: 99,
-        remove_mob_effect_packets: 99,
-        remove_mob_effects_ignored: 99,
-        active_mob_effects_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         5
     );
-    assert_eq!(counters.cooldown_packets, 1);
-    assert_eq!(counters.cooldowns_tracked, 1);
-    assert_eq!(counters.damage_event_packets, 2);
-    assert_eq!(counters.damage_events_applied, 1);
-    assert_eq!(counters.damage_events_ignored, 1);
-    assert_eq!(counters.update_mob_effect_packets, 1);
-    assert_eq!(counters.update_mob_effects_ignored, 0);
-    assert_eq!(counters.remove_mob_effect_packets, 1);
-    assert_eq!(counters.remove_mob_effects_ignored, 1);
-    assert_eq!(counters.active_mob_effects_tracked, 1);
-
     let cooldown = world.cooldown("minecraft:ender_pearl").unwrap();
     assert_eq!(cooldown.duration, 20);
 

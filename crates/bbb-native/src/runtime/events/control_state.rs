@@ -163,20 +163,6 @@ pub(super) fn apply_control_projection_event(
     None
 }
 
-pub(super) fn sync_entity_status_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.cooldown_packets = world_counters.cooldown_packets;
-    counters.cooldowns_tracked = world_counters.cooldowns_tracked;
-    counters.damage_event_packets = world_counters.damage_event_packets;
-    counters.damage_events_applied = world_counters.damage_events_applied;
-    counters.damage_events_ignored = world_counters.damage_events_ignored;
-    counters.update_mob_effect_packets = world_counters.update_mob_effect_packets;
-    counters.update_mob_effects_ignored = world_counters.update_mob_effects_ignored;
-    counters.remove_mob_effect_packets = world_counters.remove_mob_effect_packets;
-    counters.remove_mob_effects_ignored = world_counters.remove_mob_effects_ignored;
-    counters.active_mob_effects_tracked = world_counters.active_mob_effects_tracked;
-}
-
 pub(super) fn sync_inventory_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.inventory_slot_updates_received = world_counters.inventory_slot_updates_received;
