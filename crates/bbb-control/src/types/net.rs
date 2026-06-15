@@ -35,61 +35,6 @@ pub struct NetCounters {
     pub set_camera_updates_applied: usize,
     #[serde(default)]
     pub set_camera_updates_ignored: usize,
-    pub entity_animation_updates_received: usize,
-    #[serde(default)]
-    pub entity_animation_updates_applied: usize,
-    #[serde(default)]
-    pub entity_animation_updates_ignored: usize,
-    #[serde(default)]
-    pub entity_events_received: usize,
-    #[serde(default)]
-    pub entity_events_applied: usize,
-    #[serde(default)]
-    pub entity_events_ignored: usize,
-    #[serde(default)]
-    pub entity_hurt_animations_received: usize,
-    #[serde(default)]
-    pub entity_hurt_animations_applied: usize,
-    #[serde(default)]
-    pub entity_hurt_animations_ignored: usize,
-    #[serde(default)]
-    pub entity_data_updates_received: usize,
-    #[serde(default)]
-    pub entity_data_values_received: usize,
-    #[serde(default)]
-    pub entity_data_updates_applied: usize,
-    #[serde(default)]
-    pub entity_data_updates_ignored: usize,
-    #[serde(default)]
-    pub entity_equipment_updates_received: usize,
-    #[serde(default)]
-    pub entity_equipment_slots_received: usize,
-    #[serde(default)]
-    pub entity_equipment_updates_applied: usize,
-    #[serde(default)]
-    pub entity_equipment_updates_ignored: usize,
-    #[serde(default)]
-    pub entity_attribute_updates_received: usize,
-    #[serde(default)]
-    pub entity_attributes_received: usize,
-    #[serde(default)]
-    pub entity_attribute_updates_applied: usize,
-    #[serde(default)]
-    pub entity_attribute_updates_ignored: usize,
-    #[serde(default)]
-    pub entity_passenger_updates_received: usize,
-    #[serde(default)]
-    pub entity_passenger_ids_received: usize,
-    #[serde(default)]
-    pub entity_passenger_updates_applied: usize,
-    #[serde(default)]
-    pub entity_passenger_updates_ignored: usize,
-    #[serde(default)]
-    pub entity_link_updates_received: usize,
-    #[serde(default)]
-    pub entity_link_updates_applied: usize,
-    #[serde(default)]
-    pub entity_link_updates_ignored: usize,
     pub minecart_moves_received: usize,
     #[serde(default)]
     pub minecart_moves_applied: usize,

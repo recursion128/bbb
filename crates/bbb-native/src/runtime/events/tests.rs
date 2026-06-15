@@ -1398,13 +1398,6 @@ fn entity_events_update_world_and_snapshot_counters() {
     );
 
     let world_counters = world.counters();
-    macro_rules! assert_entity_counter {
-        ($field:ident, $value:expr) => {
-            assert_eq!(world_counters.$field, $value);
-            assert_eq!(counters.$field, $value);
-        };
-    }
-
     assert_eq!(world_counters.entities_received, 2);
     assert_eq!(world_counters.entities_tracked, 1);
     assert_eq!(world_counters.entity_position_syncs_received, 2);
@@ -1420,33 +1413,33 @@ fn entity_events_update_world_and_snapshot_counters() {
     assert_eq!(world_counters.entity_motion_updates_applied, 1);
     assert_eq!(world_counters.entity_head_rotations_received, 1);
     assert_eq!(world_counters.entity_head_rotations_applied, 1);
-    assert_entity_counter!(entity_animation_updates_received, 1);
-    assert_entity_counter!(entity_animation_updates_applied, 1);
-    assert_entity_counter!(entity_events_received, 1);
-    assert_entity_counter!(entity_events_applied, 1);
-    assert_entity_counter!(entity_hurt_animations_received, 1);
-    assert_entity_counter!(entity_hurt_animations_applied, 1);
-    assert_entity_counter!(entity_data_updates_received, 1);
-    assert_entity_counter!(entity_data_values_received, 1);
-    assert_entity_counter!(entity_data_updates_applied, 1);
-    assert_entity_counter!(entity_equipment_updates_received, 1);
-    assert_entity_counter!(entity_equipment_slots_received, 1);
-    assert_entity_counter!(entity_equipment_updates_applied, 1);
-    assert_entity_counter!(entity_attribute_updates_received, 1);
-    assert_entity_counter!(entity_attributes_received, 1);
-    assert_entity_counter!(entity_attribute_updates_applied, 1);
-    assert_entity_counter!(entity_link_updates_received, 1);
-    assert_entity_counter!(entity_link_updates_applied, 1);
-    assert_entity_counter!(entity_passenger_updates_received, 1);
-    assert_entity_counter!(entity_passenger_ids_received, 1);
-    assert_entity_counter!(entity_passenger_updates_applied, 1);
+    assert_eq!(world_counters.entity_animation_updates_received, 1);
+    assert_eq!(world_counters.entity_animation_updates_applied, 1);
+    assert_eq!(world_counters.entity_events_received, 1);
+    assert_eq!(world_counters.entity_events_applied, 1);
+    assert_eq!(world_counters.entity_hurt_animations_received, 1);
+    assert_eq!(world_counters.entity_hurt_animations_applied, 1);
+    assert_eq!(world_counters.entity_data_updates_received, 1);
+    assert_eq!(world_counters.entity_data_values_received, 1);
+    assert_eq!(world_counters.entity_data_updates_applied, 1);
+    assert_eq!(world_counters.entity_equipment_updates_received, 1);
+    assert_eq!(world_counters.entity_equipment_slots_received, 1);
+    assert_eq!(world_counters.entity_equipment_updates_applied, 1);
+    assert_eq!(world_counters.entity_attribute_updates_received, 1);
+    assert_eq!(world_counters.entity_attributes_received, 1);
+    assert_eq!(world_counters.entity_attribute_updates_applied, 1);
+    assert_eq!(world_counters.entity_link_updates_received, 1);
+    assert_eq!(world_counters.entity_link_updates_applied, 1);
+    assert_eq!(world_counters.entity_passenger_updates_received, 1);
+    assert_eq!(world_counters.entity_passenger_ids_received, 1);
+    assert_eq!(world_counters.entity_passenger_updates_applied, 1);
     assert_eq!(world_counters.entity_removes_received, 2);
     assert_eq!(world_counters.entities_removed, 1);
     assert_eq!(world_counters.entity_removes_ignored, 1);
 }
 
 #[test]
-fn transient_entity_event_ignored_counters_are_projected() {
+fn transient_entity_event_ignored_counters_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::EntityAnimation(EntityAnimation {
         id: 999,
@@ -1482,20 +1475,10 @@ fn transient_entity_event_ignored_counters_are_projected() {
     assert_eq!(world_counters.entity_hurt_animations_received, 1);
     assert_eq!(world_counters.entity_hurt_animations_applied, 0);
     assert_eq!(world_counters.entity_hurt_animations_ignored, 1);
-
-    assert_eq!(counters.entity_animation_updates_received, 1);
-    assert_eq!(counters.entity_animation_updates_applied, 0);
-    assert_eq!(counters.entity_animation_updates_ignored, 1);
-    assert_eq!(counters.entity_events_received, 1);
-    assert_eq!(counters.entity_events_applied, 0);
-    assert_eq!(counters.entity_events_ignored, 1);
-    assert_eq!(counters.entity_hurt_animations_received, 1);
-    assert_eq!(counters.entity_hurt_animations_applied, 0);
-    assert_eq!(counters.entity_hurt_animations_ignored, 1);
 }
 
 #[test]
-fn simple_entity_update_ignored_counters_are_projected() {
+fn simple_entity_update_ignored_counters_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::SetEntityMotion(SetEntityMotion {
         id: 999,
@@ -1531,14 +1514,10 @@ fn simple_entity_update_ignored_counters_are_projected() {
     assert_eq!(world_counters.entity_link_updates_received, 1);
     assert_eq!(world_counters.entity_link_updates_applied, 0);
     assert_eq!(world_counters.entity_link_updates_ignored, 1);
-
-    assert_eq!(counters.entity_link_updates_received, 1);
-    assert_eq!(counters.entity_link_updates_applied, 0);
-    assert_eq!(counters.entity_link_updates_ignored, 1);
 }
 
 #[test]
-fn entity_metadata_ignored_counters_are_projected() {
+fn entity_metadata_ignored_counters_update_world_counters() {
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 
     let (tx, mut rx) = mpsc::channel(4);
@@ -1595,23 +1574,10 @@ fn entity_metadata_ignored_counters_are_projected() {
     assert_eq!(world_counters.entity_attributes_received, 1);
     assert_eq!(world_counters.entity_attribute_updates_applied, 0);
     assert_eq!(world_counters.entity_attribute_updates_ignored, 1);
-
-    assert_eq!(counters.entity_data_updates_received, 1);
-    assert_eq!(counters.entity_data_values_received, 1);
-    assert_eq!(counters.entity_data_updates_applied, 0);
-    assert_eq!(counters.entity_data_updates_ignored, 1);
-    assert_eq!(counters.entity_equipment_updates_received, 1);
-    assert_eq!(counters.entity_equipment_slots_received, 1);
-    assert_eq!(counters.entity_equipment_updates_applied, 0);
-    assert_eq!(counters.entity_equipment_updates_ignored, 1);
-    assert_eq!(counters.entity_attribute_updates_received, 1);
-    assert_eq!(counters.entity_attributes_received, 1);
-    assert_eq!(counters.entity_attribute_updates_applied, 0);
-    assert_eq!(counters.entity_attribute_updates_ignored, 1);
 }
 
 #[test]
-fn passenger_ignored_counters_are_projected() {
+fn passenger_ignored_counters_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::SetPassengers(SetPassengers {
         vehicle_id: 999,
@@ -1632,11 +1598,6 @@ fn passenger_ignored_counters_are_projected() {
     assert_eq!(world_counters.entity_passenger_ids_received, 2);
     assert_eq!(world_counters.entity_passenger_updates_applied, 0);
     assert_eq!(world_counters.entity_passenger_updates_ignored, 1);
-
-    assert_eq!(counters.entity_passenger_updates_received, 1);
-    assert_eq!(counters.entity_passenger_ids_received, 2);
-    assert_eq!(counters.entity_passenger_updates_applied, 0);
-    assert_eq!(counters.entity_passenger_updates_ignored, 1);
 }
 
 #[test]
