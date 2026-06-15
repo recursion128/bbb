@@ -263,6 +263,28 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.container_close" {
+        let Some(container_id) = i32_param(&request.params, "container_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.container_close requires integer param container_id".to_string()),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::ContainerClose { container_id });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.container_slot_state_changed" {
         let Some(slot_id) = i32_param(&request.params, "slot_id") else {
             return ControlResponse {
@@ -742,6 +764,34 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_input.ok);
+    }
+
+    #[test]
+    fn net_container_close_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.container_close".to_string(),
+                params: json!({"container_id": 7}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::ContainerClose { container_id: 7 }]
+        );
+
+        let missing_container = dispatch(
+            ControlRequest {
+                method: "net.container_close".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_container.ok);
     }
 
     #[test]

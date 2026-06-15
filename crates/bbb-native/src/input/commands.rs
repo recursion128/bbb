@@ -164,13 +164,21 @@ pub(super) fn queue_container_close_command(
         return false;
     }
 
+    queue_container_close_request_command(counters, net_commands, container_id);
+    true
+}
+
+pub(crate) fn queue_container_close_request_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    container_id: i32,
+) {
     if let Some(tx) = net_commands {
         let packet = ContainerCloseRequest { container_id };
         if tx.try_send(NetCommand::ContainerClose(packet)).is_ok() {
             counters.container_close_commands_queued += 1;
         }
     }
-    true
 }
 
 pub(crate) fn queue_container_button_click_command(
@@ -481,6 +489,21 @@ mod tests {
                 container_id: 7,
                 button_id: 2,
             })
+        );
+    }
+
+    #[test]
+    fn queues_container_close_request_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_container_close_request_command(&mut counters, &commands, 7);
+
+        assert_eq!(counters.container_close_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClose(ContainerCloseRequest { container_id: 7 })
         );
     }
 

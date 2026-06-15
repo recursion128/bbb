@@ -24,7 +24,8 @@ use crate::{
     input::{
         advance_player_input, queue_chat_command, queue_command_suggestion_request,
         queue_container_button_click_command, queue_container_click_command,
-        queue_container_slot_state_changed_command, ClientInputState,
+        queue_container_close_request_command, queue_container_slot_state_changed_command,
+        ClientInputState,
     },
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
@@ -168,6 +169,9 @@ pub(crate) fn pump_control_net_requests(
                     net_commands,
                     protocol_container_click(click),
                 );
+            }
+            NetControlRequest::ContainerClose { container_id } => {
+                queue_container_close_request_command(counters, net_commands, container_id);
             }
             NetControlRequest::ContainerSlotStateChanged {
                 slot_id,
@@ -550,6 +554,30 @@ mod tests {
                     )
                 )]),
                 carried_item: bbb_protocol::packets::HashedStack::empty(),
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_container_close() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::ContainerClose { container_id: 7 });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+
+        assert_eq!(counters.container_close_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClose(bbb_protocol::packets::ContainerCloseRequest {
+                container_id: 7,
             })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());

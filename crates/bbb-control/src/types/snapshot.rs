@@ -35,6 +35,9 @@ pub enum NetControlRequest {
         button_id: i32,
     },
     ContainerClick(ContainerClickControlRequest),
+    ContainerClose {
+        container_id: i32,
+    },
     ContainerSlotStateChanged {
         slot_id: i32,
         container_id: i32,
