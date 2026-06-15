@@ -533,6 +533,8 @@ pub struct NetCounters {
     pub map_color_patches_applied: usize,
     #[serde(default)]
     pub map_color_patches_ignored: usize,
+    #[serde(default)]
+    pub last_map_color_patch: Option<MapColorPatchState>,
     pub low_disk_space_warnings: usize,
     pub mount_screen_open_packets: usize,
     pub open_book_packets: usize,
@@ -849,6 +851,15 @@ pub struct WaypointState {
     pub position: Option<NetVec3i>,
     pub chunk: Option<ChunkPos>,
     pub azimuth: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MapColorPatchState {
+    pub map_id: i32,
+    pub start_x: u8,
+    pub start_y: u8,
+    pub width: u8,
+    pub height: u8,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

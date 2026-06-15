@@ -504,11 +504,12 @@ mod tests {
         ChunkPos as ProtocolChunkPos, ClockUpdate, CommonPlayerSpawnInfo, CookieRequest,
         DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
         EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
-        InteractionHand, MountScreenOpen, MoveVehicle, OpenBook, OpenSignEditor, PlaceGhostRecipe,
-        PlayLogin, PlayTime, PlayerHealth, PlayerLookAt, PlayerPositionUpdate,
-        PlayerRotationUpdate, PongResponse, RecipeDisplayType, RemoteDebugSampleType,
-        SetPassengers, ShowDialog, StatUpdate, StoreCookie, TestInstanceBlockStatus, TickingState,
-        TickingStep, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
+        OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerHealth,
+        PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, RecipeDisplayType,
+        RemoteDebugSampleType, SetPassengers, ShowDialog, StatUpdate, StoreCookie,
+        TestInstanceBlockStatus, TickingState, TickingStep, Vec3d as ProtocolVec3d,
+        Vec3i as ProtocolVec3i,
     };
     use bbb_protocol::{codec::Decoder, ids};
     use bbb_world::{BlockPos, ChunkPos};
@@ -659,6 +660,56 @@ mod tests {
         assert_eq!(report.world_counters.award_stats_entries_received, 2);
         assert_eq!(report.world_counters.last_award_stats_entry_count, 2);
         assert_eq!(report.world_counters.stats_tracked, 2);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_map_item_data_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::MapItemData(MapItemData {
+                map_id: 12,
+                scale: 1,
+                locked: false,
+                decorations: Some(vec![MapDecoration {
+                    type_id: 4,
+                    x: -8,
+                    y: 9,
+                    rot: 3,
+                    name: Some("Camp".to_string()),
+                }]),
+                color_patch: Some(MapColorPatch {
+                    start_x: 5,
+                    start_y: 6,
+                    width: 2,
+                    height: 1,
+                    colors: vec![11, 12],
+                }),
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+        let map = report.world.map_item(12).expect("map state is tracked");
+        assert_eq!(map.decorations.len(), 1);
+        assert_eq!(map.decorations[0].name.as_deref(), Some("Camp"));
+        assert_eq!(map.colors[5 + 6 * 128], 11);
+        assert_eq!(map.colors[6 + 6 * 128], 12);
+        assert_eq!(
+            report.world.last_map_color_patch(),
+            Some(&bbb_world::LastMapColorPatchState {
+                map_id: 12,
+                start_x: 5,
+                start_y: 6,
+                width: 2,
+                height: 1,
+            })
+        );
+        assert_eq!(report.world_counters.map_item_data_packets, 1);
+        assert_eq!(report.world_counters.maps_tracked, 1);
+        assert_eq!(report.world_counters.map_decorations_tracked, 1);
+        assert_eq!(report.world_counters.map_color_patches_applied, 1);
     }
 
     #[tokio::test]

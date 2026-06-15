@@ -38,35 +38,53 @@ pub struct MapColorPatchState {
     pub height: u8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LastMapColorPatchState {
+    pub map_id: i32,
+    pub start_x: u8,
+    pub start_y: u8,
+    pub width: u8,
+    pub height: u8,
+}
+
 impl WorldStore {
     pub fn apply_map_item_data(&mut self, packet: ProtocolMapItemData) -> bool {
         self.counters.map_item_data_packets += 1;
+        let map_id = packet.map_id;
 
-        let map = self
-            .maps
-            .entry(packet.map_id)
-            .or_insert_with(|| MapItemState {
-                id: packet.map_id,
-                scale: packet.scale,
-                locked: packet.locked,
-                colors: vec![0; MAP_COLOR_COUNT],
-                ..MapItemState::default()
-            });
+        let map = self.maps.entry(map_id).or_insert_with(|| MapItemState {
+            id: map_id,
+            scale: packet.scale,
+            locked: packet.locked,
+            colors: vec![0; MAP_COLOR_COUNT],
+            ..MapItemState::default()
+        });
 
         if let Some(decorations) = packet.decorations {
             map.decorations = decorations.into_iter().map(map_decoration_state).collect();
         }
 
         let mut applied = true;
+        let mut last_color_patch = None;
         if let Some(patch) = packet.color_patch {
             applied = apply_color_patch(map, patch);
             if applied {
                 self.counters.map_color_patches_applied += 1;
+                last_color_patch = map.last_color_patch.map(|patch| LastMapColorPatchState {
+                    map_id,
+                    start_x: patch.start_x,
+                    start_y: patch.start_y,
+                    width: patch.width,
+                    height: patch.height,
+                });
             } else {
                 self.counters.map_color_patches_ignored += 1;
             }
         }
 
+        if let Some(patch) = last_color_patch {
+            self.last_map_color_patch = Some(patch);
+        }
         self.counters.maps_tracked = self.maps.len();
         self.counters.map_decorations_tracked =
             self.maps.values().map(|map| map.decorations.len()).sum();
@@ -79,6 +97,10 @@ impl WorldStore {
 
     pub fn map_items(&self) -> &BTreeMap<i32, MapItemState> {
         &self.maps
+    }
+
+    pub fn last_map_color_patch(&self) -> Option<&LastMapColorPatchState> {
+        self.last_map_color_patch.as_ref()
     }
 }
 
@@ -179,6 +201,16 @@ mod tests {
                 height: 2,
             })
         );
+        assert_eq!(
+            store.last_map_color_patch(),
+            Some(&LastMapColorPatchState {
+                map_id: 42,
+                start_x: 3,
+                start_y: 4,
+                width: 2,
+                height: 2,
+            })
+        );
         let counters = store.counters();
         assert_eq!(counters.map_item_data_packets, 1);
         assert_eq!(counters.maps_tracked, 1);
@@ -222,6 +254,62 @@ mod tests {
         assert!(!map.locked);
         assert_eq!(map.decorations.len(), 1);
         assert_eq!(map.colors[0], 9);
+        assert_eq!(
+            store.last_map_color_patch(),
+            Some(&LastMapColorPatchState {
+                map_id: 7,
+                start_x: 0,
+                start_y: 0,
+                width: 1,
+                height: 1,
+            })
+        );
         assert_eq!(store.counters().map_item_data_packets, 2);
+    }
+
+    #[test]
+    fn map_item_data_rejects_invalid_patch_without_replacing_last_patch() {
+        let mut store = WorldStore::new();
+        assert!(store.apply_map_item_data(ProtocolMapItemData {
+            map_id: 1,
+            scale: 0,
+            locked: false,
+            decorations: None,
+            color_patch: Some(ProtocolMapColorPatch {
+                start_x: 0,
+                start_y: 0,
+                width: 1,
+                height: 1,
+                colors: vec![7],
+            }),
+        }));
+
+        assert!(!store.apply_map_item_data(ProtocolMapItemData {
+            map_id: 2,
+            scale: 0,
+            locked: false,
+            decorations: None,
+            color_patch: Some(ProtocolMapColorPatch {
+                start_x: 127,
+                start_y: 127,
+                width: 2,
+                height: 2,
+                colors: vec![1, 2, 3, 4],
+            }),
+        }));
+
+        assert_eq!(
+            store.last_map_color_patch(),
+            Some(&LastMapColorPatchState {
+                map_id: 1,
+                start_x: 0,
+                start_y: 0,
+                width: 1,
+                height: 1,
+            })
+        );
+        let counters = store.counters();
+        assert_eq!(counters.map_color_patches_applied, 1);
+        assert_eq!(counters.map_color_patches_ignored, 1);
     }
 }

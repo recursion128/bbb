@@ -7,10 +7,10 @@ use crate::{
     ChunkViewState, ClientAdvancementsState, ClientAudioState, ClientChatState, ClientCombatState,
     ClientDebugGameState, ClientDebugQueryState, ClientEffectsState, ClientFeatureState,
     ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
-    CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState, LevelEventRecord,
-    LocalPlayerState, MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet,
-    ScoreboardState, ServerPresentationState, WorldBorderState, WorldCounters, WorldDimension,
-    WorldLevelInfo,
+    CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
+    LastMapColorPatchState, LevelEventRecord, LocalPlayerState, MapItemState, PlayerInfoState,
+    ProjectilePowerUpdateState, RegistrySet, ScoreboardState, ServerPresentationState,
+    WorldBorderState, WorldCounters, WorldDimension, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -82,6 +82,8 @@ pub struct WorldStore {
     pub(crate) advancements: ClientAdvancementsState,
     #[serde(default)]
     pub(crate) maps: BTreeMap<i32, MapItemState>,
+    #[serde(default)]
+    pub(crate) last_map_color_patch: Option<LastMapColorPatchState>,
     #[serde(default)]
     pub(crate) local_player: LocalPlayerState,
     #[serde(default)]

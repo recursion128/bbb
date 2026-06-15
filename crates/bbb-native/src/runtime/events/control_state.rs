@@ -872,6 +872,21 @@ fn sync_map_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.map_decorations_tracked = world_counters.map_decorations_tracked;
     counters.map_color_patches_applied = world_counters.map_color_patches_applied;
     counters.map_color_patches_ignored = world_counters.map_color_patches_ignored;
+    counters.last_map_color_patch = world
+        .last_map_color_patch()
+        .map(control_map_color_patch_state);
+}
+
+fn control_map_color_patch_state(
+    state: &bbb_world::LastMapColorPatchState,
+) -> bbb_control::MapColorPatchState {
+    bbb_control::MapColorPatchState {
+        map_id: state.map_id,
+        start_x: state.start_x,
+        start_y: state.start_y,
+        width: state.width,
+        height: state.height,
+    }
 }
 
 fn sync_client_combat_counters(counters: &mut NetCounters, world: &WorldStore) {

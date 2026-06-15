@@ -939,6 +939,16 @@ fn map_item_data_event_updates_world_state() {
     assert_eq!(counters.map_decorations_tracked, 1);
     assert_eq!(counters.map_color_patches_applied, 1);
     assert_eq!(counters.map_color_patches_ignored, 0);
+    assert_eq!(
+        counters.last_map_color_patch,
+        Some(bbb_control::MapColorPatchState {
+            map_id: 42,
+            start_x: 3,
+            start_y: 4,
+            width: 2,
+            height: 2,
+        })
+    );
 }
 
 #[test]
