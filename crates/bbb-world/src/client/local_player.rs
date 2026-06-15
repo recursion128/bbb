@@ -178,6 +178,14 @@ impl WorldStore {
         true
     }
 
+    pub fn set_local_selected_hotbar_slot(&mut self, slot: u8) -> bool {
+        if slot > 8 {
+            return false;
+        }
+        self.local_player.selected_hotbar_slot = slot;
+        true
+    }
+
     pub fn apply_default_spawn_position(&mut self, packet: ProtocolSetDefaultSpawnPosition) {
         self.counters.default_spawn_position_packets += 1;
         self.local_player.default_spawn = Some(DefaultSpawnState {
@@ -423,6 +431,19 @@ mod tests {
         assert_eq!(counters.held_slot_packets, 2);
         assert_eq!(counters.default_spawn_position_packets, 1);
         assert_eq!(counters.simulation_distance_packets, 1);
+    }
+
+    #[test]
+    fn local_hotbar_selection_updates_without_counting_server_packet() {
+        let mut store = WorldStore::new();
+
+        assert!(store.set_local_selected_hotbar_slot(7));
+        assert_eq!(store.local_player().selected_hotbar_slot, 7);
+        assert_eq!(store.counters().held_slot_packets, 0);
+
+        assert!(!store.set_local_selected_hotbar_slot(9));
+        assert_eq!(store.local_player().selected_hotbar_slot, 7);
+        assert_eq!(store.counters().held_slot_packets, 0);
     }
 
     #[test]

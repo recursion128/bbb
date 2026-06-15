@@ -1,6 +1,24 @@
 use super::*;
 use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, PlayerAction, PlayerCommand};
-use bbb_world::BlockPos;
+use bbb_world::{BlockPos, WorldStore};
+
+fn handle_key_input_without_world(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    physical_key: PhysicalKey,
+    state: ElementState,
+) {
+    let mut world = WorldStore::new();
+    handle_key_input(
+        input,
+        counters,
+        &mut world,
+        net_commands,
+        physical_key,
+        state,
+    );
+}
 
 #[test]
 fn prediction_sequence_starts_at_one_and_wraps_positive() {
@@ -14,21 +32,25 @@ fn prediction_sequence_starts_at_one_and_wraps_positive() {
 }
 
 #[test]
-fn digit_key_selects_hotbar_slot_and_queues_command() {
+fn digit_key_selects_hotbar_slot_updates_world_and_queues_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
     handle_key_input(
         &mut input,
         &mut counters,
+        &mut world,
         &commands,
         PhysicalKey::Code(KeyCode::Digit5),
         ElementState::Pressed,
     );
 
+    assert_eq!(world.local_player().selected_hotbar_slot, 4);
     assert_eq!(counters.selected_hotbar_slot, 4);
+    assert_eq!(world.counters().held_slot_packets, 0);
     assert_eq!(counters.held_slot_commands_queued, 1);
     assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(4));
 }
@@ -40,7 +62,7 @@ fn drop_key_queues_drop_item_action() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -68,7 +90,7 @@ fn control_drop_key_queues_drop_all_items_action() {
     input.sprint = true;
     let mut counters = NetCounters::default();
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -95,7 +117,7 @@ fn swap_offhand_key_queues_swap_action() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -125,7 +147,7 @@ fn inventory_key_queues_open_inventory_command() {
         ..NetCounters::default()
     };
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -151,7 +173,7 @@ fn movement_key_changes_queue_player_input_commands() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -168,7 +190,7 @@ fn movement_key_changes_queue_player_input_commands() {
         })
     );
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -178,7 +200,7 @@ fn movement_key_changes_queue_player_input_commands() {
     assert!(rx.try_recv().is_err());
     assert_eq!(counters.player_input_commands_queued, 1);
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -203,7 +225,7 @@ fn sprint_key_queues_player_input_and_sprint_commands() {
         ..NetCounters::default()
     };
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -229,7 +251,7 @@ fn sprint_key_queues_player_input_and_sprint_commands() {
         })
     );
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,
@@ -260,7 +282,7 @@ fn sprint_key_without_player_entity_id_only_queues_input() {
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
 
-    handle_key_input(
+    handle_key_input_without_world(
         &mut input,
         &mut counters,
         &commands,

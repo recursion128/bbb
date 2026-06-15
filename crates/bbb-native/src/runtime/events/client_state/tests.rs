@@ -191,6 +191,18 @@ fn held_slot_updates_snapshot_counters() {
 }
 
 #[test]
+fn local_hotbar_selection_syncs_snapshot_counters_without_held_packet() {
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    assert!(world.set_local_selected_hotbar_slot(7));
+    sync_local_player_counters(&mut counters, &world);
+
+    assert_eq!(counters.selected_hotbar_slot, 7);
+    assert_eq!(counters.held_slot_packets, 0);
+}
+
+#[test]
 fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();

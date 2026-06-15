@@ -24,7 +24,7 @@ use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptanc
 use hud_assets::load_hud_textures;
 use input::{
     handle_focus_change, handle_key_input, handle_mouse_input, handle_mouse_motion,
-    ClientInputState,
+    handle_mouse_wheel, ClientInputState,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
@@ -121,6 +121,7 @@ fn main() -> Result<()> {
                     handle_key_input(
                         &mut input,
                         &mut net_counters,
+                        &mut world,
                         &net_commands,
                         event.physical_key,
                         event.state,
@@ -134,6 +135,15 @@ fn main() -> Result<()> {
                         &net_commands,
                         button,
                         state,
+                    );
+                }
+                WindowEvent::MouseWheel { delta, .. } => {
+                    handle_mouse_wheel(
+                        &mut input,
+                        &mut world,
+                        &mut net_counters,
+                        &net_commands,
+                        delta,
                     );
                 }
                 WindowEvent::RedrawRequested => {

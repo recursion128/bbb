@@ -6,7 +6,7 @@ use bbb_protocol::packets::{
     PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem, UseItemOn,
     Vec3d as ProtocolVec3d,
 };
-use bbb_world::BlockPos;
+use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
 use winit::keyboard::KeyCode;
 
@@ -75,16 +75,38 @@ pub(super) fn hotbar_slot_for_key(code: KeyCode) -> Option<u8> {
 
 pub(super) fn select_hotbar_slot(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     slot: u8,
 ) {
     let slot = slot.min(8);
-    counters.selected_hotbar_slot = slot;
+    if !world.set_local_selected_hotbar_slot(slot) {
+        return;
+    }
+    counters.selected_hotbar_slot = world.local_player().selected_hotbar_slot;
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SetHeldSlot(slot)).is_ok() {
             counters.held_slot_commands_queued += 1;
         }
     }
+}
+
+pub(super) fn hotbar_slot_for_scroll(wheel: i32, current_slot: u8) -> Option<u8> {
+    let step = wheel.signum();
+    if step == 0 {
+        return None;
+    }
+
+    let limit = 9;
+    let mut slot = i32::from(current_slot.min(8)) - step;
+    slot = slot.max(-1);
+    while slot < 0 {
+        slot += limit;
+    }
+    while slot >= limit {
+        slot -= limit;
+    }
+    Some(slot as u8)
 }
 
 pub(super) fn queue_player_action_command(
@@ -313,6 +335,15 @@ mod tests {
     use bbb_world::BlockPos;
 
     use crate::crosshair::CrosshairBlockHit;
+
+    #[test]
+    fn hotbar_slot_for_scroll_matches_vanilla_direction_and_wrap() {
+        assert_eq!(hotbar_slot_for_scroll(1, 0), Some(8));
+        assert_eq!(hotbar_slot_for_scroll(-1, 8), Some(0));
+        assert_eq!(hotbar_slot_for_scroll(2, 4), Some(3));
+        assert_eq!(hotbar_slot_for_scroll(-2, 4), Some(5));
+        assert_eq!(hotbar_slot_for_scroll(0, 4), None);
+    }
 
     #[test]
     fn queues_command_suggestion_request() {

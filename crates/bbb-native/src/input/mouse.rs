@@ -3,17 +3,17 @@ use bbb_net::NetCommand;
 use bbb_protocol::packets::{Direction as ProtocolDirection, InteractionHand, PlayerActionKind};
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
-use winit::event::{ElementState, MouseButton};
+use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 
 use crate::crosshair::{crosshair_target_from_world, CrosshairTarget};
 use crate::runtime::player_pose_from_local_player_pose;
 
 use super::{
     commands::{
-        queue_attack_entity_command, queue_interact_entity_command,
+        hotbar_slot_for_scroll, queue_attack_entity_command, queue_interact_entity_command,
         queue_pick_item_from_block_command, queue_pick_item_from_entity_command,
         queue_player_action_command, queue_swing_command, queue_use_item_command,
-        queue_use_item_on_command, queue_zero_pos_player_action_command,
+        queue_use_item_on_command, queue_zero_pos_player_action_command, select_hotbar_slot,
     },
     ClientInputState,
 };
@@ -136,6 +136,65 @@ pub(crate) fn handle_mouse_input(
             }
         }
         _ => {}
+    }
+}
+
+pub(crate) fn handle_mouse_wheel(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    delta: MouseScrollDelta,
+) {
+    if !input.focused {
+        return;
+    }
+    let Some(wheel) = wheel_steps_from_scroll(input, delta) else {
+        return;
+    };
+    let current_slot = world.local_player().selected_hotbar_slot;
+    if let Some(slot) = hotbar_slot_for_scroll(wheel, current_slot) {
+        select_hotbar_slot(counters, world, net_commands, slot);
+    }
+}
+
+fn wheel_steps_from_scroll(input: &mut ClientInputState, delta: MouseScrollDelta) -> Option<i32> {
+    let (x, y) = match delta {
+        MouseScrollDelta::LineDelta(x, y) => (f64::from(x), f64::from(y)),
+        MouseScrollDelta::PixelDelta(pos) => (pos.x, pos.y),
+    };
+
+    if input.scroll_accumulated_x != 0.0
+        && scroll_signum(x) != scroll_signum(input.scroll_accumulated_x)
+    {
+        input.scroll_accumulated_x = 0.0;
+    }
+    if input.scroll_accumulated_y != 0.0
+        && scroll_signum(y) != scroll_signum(input.scroll_accumulated_y)
+    {
+        input.scroll_accumulated_y = 0.0;
+    }
+
+    input.scroll_accumulated_x += x;
+    input.scroll_accumulated_y += y;
+    let wheel_x = input.scroll_accumulated_x as i32;
+    let wheel_y = input.scroll_accumulated_y as i32;
+    if wheel_x == 0 && wheel_y == 0 {
+        return None;
+    }
+
+    input.scroll_accumulated_x -= f64::from(wheel_x);
+    input.scroll_accumulated_y -= f64::from(wheel_y);
+    Some(if wheel_y == 0 { -wheel_x } else { wheel_y })
+}
+
+fn scroll_signum(value: f64) -> f64 {
+    if value > 0.0 {
+        1.0
+    } else if value < 0.0 {
+        -1.0
+    } else {
+        0.0
     }
 }
 
@@ -396,6 +455,117 @@ mod tests {
                 include_data: true,
             })
         );
+    }
+
+    #[test]
+    fn mouse_wheel_selects_hotbar_slot_updates_world_and_queues_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        assert!(world.set_local_selected_hotbar_slot(4));
+        let mut counters = NetCounters::default();
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 1.0),
+        );
+
+        assert_eq!(world.local_player().selected_hotbar_slot, 3);
+        assert_eq!(world.counters().held_slot_packets, 0);
+        assert_eq!(counters.selected_hotbar_slot, 3);
+        assert_eq!(counters.held_slot_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(3));
+    }
+
+    #[test]
+    fn mouse_wheel_wraps_hotbar_selection_like_vanilla() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 1.0),
+        );
+        assert_eq!(world.local_player().selected_hotbar_slot, 8);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(8));
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, -1.0),
+        );
+        assert_eq!(world.local_player().selected_hotbar_slot, 0);
+        assert_eq!(counters.selected_hotbar_slot, 0);
+        assert_eq!(counters.held_slot_commands_queued, 2);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(0));
+    }
+
+    #[test]
+    fn unfocused_mouse_wheel_does_not_select_or_queue() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(false);
+        let mut world = WorldStore::new();
+        assert!(world.set_local_selected_hotbar_slot(4));
+        let mut counters = NetCounters::default();
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 1.0),
+        );
+
+        assert_eq!(world.local_player().selected_hotbar_slot, 4);
+        assert_eq!(counters.selected_hotbar_slot, 0);
+        assert_eq!(counters.held_slot_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn fractional_mouse_wheel_accumulates_before_selecting() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        assert!(world.set_local_selected_hotbar_slot(4));
+        let mut counters = NetCounters::default();
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 0.5),
+        );
+        assert_eq!(world.local_player().selected_hotbar_slot, 4);
+        assert!(rx.try_recv().is_err());
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 0.5),
+        );
+
+        assert_eq!(world.local_player().selected_hotbar_slot, 3);
+        assert_eq!(counters.selected_hotbar_slot, 3);
+        assert_eq!(counters.held_slot_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(3));
     }
 
     fn world_with_crosshair_entity(entity_id: i32) -> WorldStore {

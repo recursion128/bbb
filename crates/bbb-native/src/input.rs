@@ -5,6 +5,7 @@ use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     Direction as ProtocolDirection, PlayerActionKind, PlayerCommandAction, PlayerInput,
 };
+use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::{
     event::ElementState,
@@ -19,7 +20,7 @@ mod movement;
 
 pub(crate) use commands::queue_vehicle_move_command;
 use commands::*;
-pub(crate) use mouse::{handle_mouse_input, handle_mouse_motion};
+pub(crate) use mouse::{handle_mouse_input, handle_mouse_motion, handle_mouse_wheel};
 pub(crate) use movement::advance_player_input;
 
 #[derive(Debug, Clone, Default)]
@@ -34,6 +35,8 @@ pub(crate) struct ClientInputState {
     sprint: bool,
     mouse_delta_x: f64,
     mouse_delta_y: f64,
+    scroll_accumulated_x: f64,
+    scroll_accumulated_y: f64,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
     last_move_command_pose: Option<PlayerPose>,
@@ -60,6 +63,8 @@ impl ClientInputState {
         self.sprint = false;
         self.mouse_delta_x = 0.0;
         self.mouse_delta_y = 0.0;
+        self.scroll_accumulated_x = 0.0;
+        self.scroll_accumulated_y = 0.0;
     }
 
     fn next_prediction_sequence(&mut self) -> i32 {
@@ -110,6 +115,7 @@ pub(crate) fn handle_focus_change(
 pub(crate) fn handle_key_input(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     physical_key: PhysicalKey,
     state: ElementState,
@@ -121,7 +127,7 @@ pub(crate) fn handle_key_input(
 
     if pressed {
         if let Some(slot) = hotbar_slot_for_key(code) {
-            select_hotbar_slot(counters, net_commands, slot);
+            select_hotbar_slot(counters, world, net_commands, slot);
             return;
         }
         match code {
