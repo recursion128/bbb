@@ -9,6 +9,7 @@ use winit::{
 mod audio_runtime;
 mod biome_tint;
 mod block_outline;
+mod camera_pose;
 mod code_of_conduct;
 mod crosshair;
 mod hud_assets;

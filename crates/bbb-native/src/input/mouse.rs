@@ -5,7 +5,8 @@ use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 
-use crate::crosshair::{crosshair_target_from_world, CrosshairTarget};
+use crate::camera_pose::camera_pose_from_world;
+use crate::crosshair::{crosshair_target_from_camera, CrosshairTarget};
 use crate::runtime::player_pose_from_local_player_pose;
 
 use super::{
@@ -40,9 +41,15 @@ pub(crate) fn handle_mouse_input(
     let player_pose = world
         .local_player_pose()
         .map(player_pose_from_local_player_pose);
+    let camera_target = match (button, state) {
+        (MouseButton::Left | MouseButton::Right | MouseButton::Middle, ElementState::Pressed) => {
+            crosshair_target_from_camera(world, camera_pose_from_world(world))
+        }
+        _ => None,
+    };
     match (button, state) {
         (MouseButton::Left, ElementState::Pressed) => {
-            match crosshair_target_from_world(world, player_pose) {
+            match camera_target {
                 Some(CrosshairTarget::Entity(hit)) => {
                     queue_attack_entity_command(counters, net_commands, hit.entity_id);
                 }
@@ -74,36 +81,34 @@ pub(crate) fn handle_mouse_input(
                 );
             }
         }
-        (MouseButton::Right, ElementState::Pressed) => {
-            match crosshair_target_from_world(world, player_pose) {
-                Some(CrosshairTarget::Entity(hit)) => {
-                    queue_interact_entity_command(
+        (MouseButton::Right, ElementState::Pressed) => match camera_target {
+            Some(CrosshairTarget::Entity(hit)) => {
+                queue_interact_entity_command(
+                    counters,
+                    net_commands,
+                    hit.entity_id,
+                    InteractionHand::MainHand,
+                    hit.relative_location,
+                    input.sneak,
+                );
+            }
+            Some(CrosshairTarget::Block(hit)) => {
+                let sequence = input.next_prediction_sequence();
+                queue_use_item_on_command(counters, net_commands, hit, sequence);
+            }
+            None => {
+                if let Some(pose) = player_pose {
+                    let sequence = input.next_prediction_sequence();
+                    input.using_item = queue_use_item_command(
                         counters,
                         net_commands,
-                        hit.entity_id,
                         InteractionHand::MainHand,
-                        hit.relative_location,
-                        input.sneak,
+                        pose,
+                        sequence,
                     );
                 }
-                Some(CrosshairTarget::Block(hit)) => {
-                    let sequence = input.next_prediction_sequence();
-                    queue_use_item_on_command(counters, net_commands, hit, sequence);
-                }
-                None => {
-                    if let Some(pose) = player_pose {
-                        let sequence = input.next_prediction_sequence();
-                        input.using_item = queue_use_item_command(
-                            counters,
-                            net_commands,
-                            InteractionHand::MainHand,
-                            pose,
-                            sequence,
-                        );
-                    }
-                }
             }
-        }
+        },
         (MouseButton::Right, ElementState::Released) => {
             if input.using_item {
                 input.using_item = false;
@@ -114,27 +119,20 @@ pub(crate) fn handle_mouse_input(
                 );
             }
         }
-        (MouseButton::Middle, ElementState::Pressed) => {
-            match crosshair_target_from_world(world, player_pose) {
-                Some(CrosshairTarget::Entity(hit)) => {
-                    queue_pick_item_from_entity_command(
-                        counters,
-                        net_commands,
-                        hit.entity_id,
-                        input.sprint,
-                    );
-                }
-                Some(CrosshairTarget::Block(hit)) => {
-                    queue_pick_item_from_block_command(
-                        counters,
-                        net_commands,
-                        hit.pos,
-                        input.sprint,
-                    );
-                }
-                None => {}
+        (MouseButton::Middle, ElementState::Pressed) => match camera_target {
+            Some(CrosshairTarget::Entity(hit)) => {
+                queue_pick_item_from_entity_command(
+                    counters,
+                    net_commands,
+                    hit.entity_id,
+                    input.sprint,
+                );
             }
-        }
+            Some(CrosshairTarget::Block(hit)) => {
+                queue_pick_item_from_block_command(counters, net_commands, hit.pos, input.sprint);
+            }
+            None => {}
+        },
         _ => {}
     }
 }
@@ -212,6 +210,7 @@ mod tests {
     use crate::crosshair::CrosshairBlockHit;
     use crate::runtime::local_player_pose_from_player_pose;
 
+    const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 
     #[test]
@@ -370,6 +369,75 @@ mod tests {
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let world = world_with_crosshair_entity(123);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(input.destroying_block.is_none());
+        assert_eq!(counters.attack_entity_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::AttackEntity(AttackEntity { entity_id: 123 })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
+    fn left_mouse_press_uses_active_camera_entity_raycast() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+            position: bbb_control::NetVec3 {
+                x: 10.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            ..PlayerPose::default()
+        }));
+        world.apply_add_entity(AddEntity {
+            id: 200,
+            uuid: Uuid::from_u128(200),
+            entity_type_id: VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+            position: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        world.apply_add_entity(AddEntity {
+            id: 123,
+            uuid: Uuid::from_u128(123),
+            entity_type_id: VANILLA_ENTITY_TYPE_MINECART_ID,
+            position: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 2.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 200 }));
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
