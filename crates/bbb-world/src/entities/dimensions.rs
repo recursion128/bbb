@@ -127,6 +127,7 @@ const PHANTOM_SIZE_DATA_ID: u8 = 16;
 const WIND_CHARGE_BOUNDS_SIZE: f32 = 0.3125;
 const WIND_CHARGE_BOUNDS_Y_OFFSET: f32 = -0.15;
 const WIND_CHARGE_PICK_RADIUS: f32 = 1.0;
+const DEFAULT_ENTITY_EYE_HEIGHT_RATIO: f32 = 0.85;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickBoundsState {
@@ -257,6 +258,27 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     ))
 }
 
+pub(crate) fn vanilla_eye_height_for_entity_data(
+    entity_type_id: i32,
+    add_entity_data: i32,
+    data_values: &[EntityDataValue],
+    attributes: &[AttributeSnapshot],
+    client_animations: Option<EntityClientAnimationState>,
+) -> Option<f32> {
+    let bounds = vanilla_pick_bounds_for_entity_data(
+        entity_type_id,
+        add_entity_data,
+        data_values,
+        attributes,
+        client_animations,
+    )?;
+    let height = bounds_height(bounds);
+    let base_eye_height = vanilla_eye_height_override_for_type(entity_type_id)
+        .and_then(|eye_height| scaled_eye_height_for_bounds(entity_type_id, eye_height, height))
+        .unwrap_or(height * DEFAULT_ENTITY_EYE_HEIGHT_RATIO);
+    Some(base_eye_height)
+}
+
 pub(crate) fn vanilla_client_position_for_entity_data(
     entity_type_id: i32,
     packet_position: EntityVec3,
@@ -279,6 +301,26 @@ pub(crate) fn vanilla_client_position_for_entity_data(
         return Some(leash_knot_position(packet_position));
     }
     None
+}
+
+fn bounds_height(bounds: EntityPickBoundsState) -> f32 {
+    bounds.max[1] - bounds.min[1]
+}
+
+fn scaled_eye_height_for_bounds(
+    entity_type_id: i32,
+    base_eye_height: f32,
+    actual_height: f32,
+) -> Option<f32> {
+    let base_height = vanilla_pick_bounds_for_type(entity_type_id).map(bounds_height)?;
+    (base_height > 0.0).then_some(base_eye_height * actual_height / base_height)
+}
+
+fn vanilla_eye_height_override_for_type(entity_type_id: i32) -> Option<f32> {
+    VANILLA_ENTITY_EYE_HEIGHT_OVERRIDES
+        .binary_search_by_key(&entity_type_id, |(id, _)| *id)
+        .ok()
+        .map(|index| VANILLA_ENTITY_EYE_HEIGHT_OVERRIDES[index].1)
 }
 
 fn polar_bear_pick_bounds(
@@ -981,6 +1023,10 @@ fn horizontal_counter_clockwise(direction: VanillaDirection) -> Option<VanillaDi
 const fn pick(width: f32, height: f32, pick_radius: f32) -> EntityPickBoundsState {
     EntityPickBoundsState::from_base_size(width, height, pick_radius)
 }
+
+// IDs and explicit eye-height values follow the vanilla 26.1 EntityType.java registration.
+const VANILLA_ENTITY_EYE_HEIGHT_OVERRIDES: &[(i32, f32)] =
+    &[(VANILLA_ENTITY_TYPE_AXOLOTL_ID, 0.2751)];
 
 // IDs follow the PaintingVariants.java bootstrap registration order.
 const PAINTING_VARIANT_SIZES: &[(f32, f32)] = &[

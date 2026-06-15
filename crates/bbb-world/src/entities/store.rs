@@ -6,13 +6,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use bbb_protocol::packets::EntityDataValueKind;
 
 use super::{
-    EntityAttributes, EntityClientAnimations, EntityDamage, EntityEquipment,
+    EntityAttributes, EntityCameraPoseState, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
     EntityMobEffects, EntityMount, EntityState, EntityTransform, EntityTransformState,
     EntityTransientEvents, VANILLA_ENTITY_SILENT_DATA_ID,
 };
 use crate::entities::dimensions::{
-    vanilla_client_position_for_entity_data, vanilla_pick_bounds_for_entity_data,
+    vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
+    vanilla_pick_bounds_for_entity_data,
 };
 use crate::entities::dragon::{
     ender_dragon_part_pick_targets, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
@@ -187,6 +188,29 @@ impl EntityStore {
     pub(crate) fn transform_state(&self, id: i32) -> Option<EntityTransformState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         self.transform_state_for_entity(entity)
+    }
+
+    pub(crate) fn camera_pose_state(&self, id: i32) -> Option<EntityCameraPoseState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        let eye_height = vanilla_eye_height_for_entity_data(
+            identity.entity_type_id,
+            identity.data,
+            &metadata.data_values,
+            &attributes.attributes,
+            Some(client_animations.animations),
+        )?;
+        Some(EntityCameraPoseState {
+            id: identity.id,
+            position: transform.position,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            eye_height,
+        })
     }
 
     pub(crate) fn mount(&self, id: i32) -> Option<EntityMount> {

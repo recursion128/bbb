@@ -746,6 +746,29 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
 }
 
 #[test]
+fn entity_camera_pose_uses_vanilla_eye_height() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(123, 7));
+
+    let pose = store
+        .probe_entity_camera_pose(123)
+        .expect("known entity has camera pose");
+    assert_eq!(pose.id, 123);
+    assert_eq!(
+        pose.position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert_eq!(pose.y_rot, 20.0);
+    assert_eq!(pose.x_rot, -10.0);
+    assert!((pose.eye_height - 0.2751).abs() < 0.0001);
+    assert_eq!(store.probe_entity_camera_pose(404), None);
+}
+
+#[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
 

@@ -137,6 +137,15 @@ pub struct EntityTransformState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntityCameraPoseState {
+    pub id: i32,
+    pub position: EntityVec3,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub eye_height: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityPickTargetState {
     pub entity_id: i32,
     pub position: EntityVec3,
@@ -291,6 +300,10 @@ impl WorldStore {
 
     pub fn probe_entity_transform(&self, id: i32) -> Option<EntityTransformState> {
         self.entities.transform_state(id)
+    }
+
+    pub fn probe_entity_camera_pose(&self, id: i32) -> Option<EntityCameraPoseState> {
+        self.entities.camera_pose_state(id)
     }
 
     pub fn probe_entity_pick_bounds(&self, id: i32) -> Option<EntityPickBoundsState> {

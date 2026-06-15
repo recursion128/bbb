@@ -286,7 +286,7 @@ pub(crate) fn pump_network_and_terrain(
             .map(|experience| experience.progress),
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
-    renderer.set_camera_pose(player_pose.map(camera_pose_from_player));
+    renderer.set_camera_pose(camera_pose_from_world(world));
     renderer.set_selection_outline(selection_outline_from_crosshair(world, player_pose));
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
@@ -357,6 +357,31 @@ fn camera_pose_from_player(player: PlayerPose) -> CameraPose {
     }
 }
 
+fn camera_pose_from_world(world: &WorldStore) -> Option<CameraPose> {
+    let camera = world.local_player().camera;
+    if let Some(camera_id) = camera.entity_id {
+        if !camera.follows_player {
+            if let Some(camera_pose) = world.probe_entity_camera_pose(camera_id) {
+                return Some(CameraPose {
+                    position: [
+                        camera_pose.position.x as f32,
+                        camera_pose.position.y as f32,
+                        camera_pose.position.z as f32,
+                    ],
+                    y_rot: camera_pose.y_rot,
+                    x_rot: camera_pose.x_rot,
+                    eye_height: camera_pose.eye_height,
+                });
+            }
+        }
+    }
+
+    world
+        .local_player_pose()
+        .map(player_pose_from_local_player_pose)
+        .map(camera_pose_from_player)
+}
+
 fn audio_scene_command_from_world(world: &WorldStore) -> TickEntitySoundPositionsCommand {
     TickEntitySoundPositionsCommand {
         listener: audio_listener_state_from_world(world),
@@ -375,15 +400,15 @@ fn audio_listener_state_from_world(world: &WorldStore) -> Option<AudioListenerSt
     let camera = world.local_player().camera;
     if let Some(camera_id) = camera.entity_id {
         if !camera.follows_player {
-            if let Some(transform) = world.probe_entity_transform(camera_id) {
+            if let Some(camera_pose) = world.probe_entity_camera_pose(camera_id) {
                 return Some(AudioListenerState {
                     position: [
-                        transform.position.x,
-                        transform.position.y + f64::from(CameraPose::STANDING_EYE_HEIGHT),
-                        transform.position.z,
+                        camera_pose.position.x,
+                        camera_pose.position.y + f64::from(camera_pose.eye_height),
+                        camera_pose.position.z,
                     ],
-                    y_rot: transform.y_rot,
-                    x_rot: transform.x_rot,
+                    y_rot: camera_pose.y_rot,
+                    x_rot: camera_pose.x_rot,
                 });
             }
         }
@@ -440,6 +465,73 @@ mod tests {
         assert_eq!(pose.y_rot, 45.0);
         assert_eq!(pose.x_rot, -10.0);
         assert_eq!(pose.eye_height, CameraPose::STANDING_EYE_HEIGHT);
+    }
+
+    #[test]
+    fn renderer_camera_pose_follows_active_camera_entity() {
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+            position: bbb_control::NetVec3 {
+                x: 10.0,
+                y: 64.0,
+                z: -5.0,
+            },
+            y_rot: 90.0,
+            x_rot: -10.0,
+            ..PlayerPose::default()
+        }));
+        world.apply_add_entity(bbb_protocol::packets::AddEntity {
+            id: 123,
+            uuid: uuid::Uuid::from_u128(123),
+            entity_type_id: 7,
+            position: bbb_protocol::packets::Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            delta_movement: bbb_protocol::packets::Vec3d::default(),
+            x_rot: -15.0,
+            y_rot: 30.0,
+            y_head_rot: 30.0,
+            data: 0,
+        });
+
+        assert_eq!(
+            camera_pose_from_world(&world),
+            Some(CameraPose {
+                position: [10.0, 64.0, -5.0],
+                y_rot: 90.0,
+                x_rot: -10.0,
+                eye_height: CameraPose::STANDING_EYE_HEIGHT,
+            })
+        );
+
+        assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 123 }));
+        assert_eq!(
+            camera_pose_from_world(&world),
+            Some(CameraPose {
+                position: [1.0, 2.0, 3.0],
+                y_rot: 30.0,
+                x_rot: -15.0,
+                eye_height: 0.2751,
+            })
+        );
+
+        assert_eq!(
+            world.apply_remove_entities(bbb_protocol::packets::RemoveEntities {
+                entity_ids: vec![123],
+            }),
+            1
+        );
+        assert_eq!(
+            camera_pose_from_world(&world),
+            Some(CameraPose {
+                position: [10.0, 64.0, -5.0],
+                y_rot: 90.0,
+                x_rot: -10.0,
+                eye_height: CameraPose::STANDING_EYE_HEIGHT,
+            })
+        );
     }
 
     #[test]
@@ -842,7 +934,7 @@ mod tests {
         assert_eq!(
             command.listener,
             Some(AudioListenerState {
-                position: [1.0, 2.0 + f64::from(CameraPose::STANDING_EYE_HEIGHT), 3.0],
+                position: [1.0, 2.0 + f64::from(0.2751_f32), 3.0],
                 y_rot: 0.0,
                 x_rot: 0.0,
             })
