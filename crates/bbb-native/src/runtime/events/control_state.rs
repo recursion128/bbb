@@ -203,30 +203,6 @@ pub(super) fn apply_control_projection_event(
     None
 }
 
-pub(super) fn sync_registry_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.registries_seen = world_counters.registries_seen;
-    counters.registry_entries_seen = world_counters.registry_entries_seen;
-    counters.registry_entries_with_data = world_counters.registry_entries_with_data;
-    counters.registry_entry_stubs = world_counters.registry_entry_stubs;
-    counters.registry_entry_payload_bytes = world_counters.registry_entry_payload_bytes;
-    counters.registry_content_registries_tracked =
-        world_counters.registry_content_registries_tracked;
-    counters.registry_content_packets_tracked = world_counters.registry_content_packets_tracked;
-    counters.registry_content_entries_tracked = world_counters.registry_content_entries_tracked;
-    counters.registry_duplicate_entries = world_counters.registry_duplicate_entries;
-    counters.registry_duplicate_entry_ids_tracked =
-        world_counters.registry_duplicate_entry_ids_tracked;
-}
-
-pub(super) fn sync_update_tags_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.update_tags_packets = world_counters.update_tags_packets;
-    counters.tag_registries_tracked = world_counters.tag_registries_tracked;
-    counters.tags_tracked = world_counters.tags_tracked;
-    counters.tag_entries_tracked = world_counters.tag_entries_tracked;
-}
-
 pub(super) fn sync_player_info_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.player_info_update_packets = world_counters.player_info_update_packets;

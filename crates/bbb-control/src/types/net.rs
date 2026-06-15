@@ -6,34 +6,6 @@ pub struct NetCounters {
     pub state: Option<String>,
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
-    pub registries_seen: usize,
-    #[serde(default)]
-    pub registry_entries_seen: usize,
-    #[serde(default)]
-    pub registry_entries_with_data: usize,
-    #[serde(default)]
-    pub registry_entry_stubs: usize,
-    #[serde(default)]
-    pub registry_entry_payload_bytes: usize,
-    #[serde(default)]
-    pub registry_content_registries_tracked: usize,
-    #[serde(default)]
-    pub registry_content_packets_tracked: usize,
-    #[serde(default)]
-    pub registry_content_entries_tracked: usize,
-    #[serde(default)]
-    pub registry_duplicate_entries: usize,
-    #[serde(default)]
-    pub registry_duplicate_entry_ids_tracked: usize,
-    #[serde(default)]
-    pub update_tags_packets: usize,
-    #[serde(default)]
-    pub tag_registries_tracked: usize,
-    #[serde(default)]
-    pub tags_tracked: usize,
-    #[serde(default)]
-    pub tag_entries_tracked: usize,
-    #[serde(default)]
     pub play_logins_received: usize,
     #[serde(default)]
     pub respawns_received: usize,

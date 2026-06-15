@@ -13,8 +13,8 @@ use super::control_state::{
     sync_client_audio_counters, sync_command_counters, sync_entity_counters,
     sync_entity_interaction_counters, sync_entity_status_counters, sync_hud_session_counters,
     sync_inventory_counters, sync_player_info_counters, sync_recipe_access_counters,
-    sync_recipe_book_counters, sync_registry_counters, sync_scoreboard_counters,
-    sync_server_presentation_counters, sync_update_tags_counters, sync_world_border_counters,
+    sync_recipe_book_counters, sync_scoreboard_counters, sync_server_presentation_counters,
+    sync_world_border_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -339,11 +339,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::RegistryData(update) => {
                 world.record_registry_data(update);
-                sync_registry_counters(counters, world);
             }
             NetEvent::UpdateTags(update) => {
                 world.apply_update_tags(update);
-                sync_update_tags_counters(counters, world);
             }
             NetEvent::Login(login) => {
                 world.apply_login(&login);

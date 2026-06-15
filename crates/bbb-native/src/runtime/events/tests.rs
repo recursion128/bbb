@@ -602,7 +602,7 @@ fn configuration_state_events_update_snapshot_counters() {
 }
 
 #[test]
-fn registry_data_event_updates_world_state_and_snapshot_counters() {
+fn registry_data_event_updates_world_state_and_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::RegistryData(RegistryData {
         registry: "minecraft:chat_type".to_string(),
@@ -637,16 +637,16 @@ fn registry_data_event_updates_world_state_and_snapshot_counters() {
             RegistryPacketEntry::stub("minecraft:raw"),
         ]
     );
-    assert_eq!(counters.registries_seen, 1);
-    assert_eq!(counters.registry_entries_seen, 2);
-    assert_eq!(counters.registry_entries_with_data, 1);
-    assert_eq!(counters.registry_entry_stubs, 1);
-    assert_eq!(counters.registry_entry_payload_bytes, 24);
-    assert_eq!(counters.registry_content_registries_tracked, 1);
-    assert_eq!(counters.registry_content_packets_tracked, 1);
-    assert_eq!(counters.registry_content_entries_tracked, 2);
-    assert_eq!(counters.registry_duplicate_entries, 0);
-    assert_eq!(counters.registry_duplicate_entry_ids_tracked, 0);
+    assert_eq!(world.counters().registries_seen, 1);
+    assert_eq!(world.counters().registry_entries_seen, 2);
+    assert_eq!(world.counters().registry_entries_with_data, 1);
+    assert_eq!(world.counters().registry_entry_stubs, 1);
+    assert_eq!(world.counters().registry_entry_payload_bytes, 24);
+    assert_eq!(world.counters().registry_content_registries_tracked, 1);
+    assert_eq!(world.counters().registry_content_packets_tracked, 1);
+    assert_eq!(world.counters().registry_content_entries_tracked, 2);
+    assert_eq!(world.counters().registry_duplicate_entries, 0);
+    assert_eq!(world.counters().registry_duplicate_entry_ids_tracked, 0);
     assert_eq!(
         world.counters().last_registry_data_registry.as_deref(),
         Some("minecraft:chat_type")
@@ -655,7 +655,7 @@ fn registry_data_event_updates_world_state_and_snapshot_counters() {
 }
 
 #[test]
-fn update_tags_event_updates_world_state_and_snapshot_counters() {
+fn update_tags_event_updates_world_state_and_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::UpdateTags(UpdateTags {
         registries: vec![RegistryTags {
@@ -679,13 +679,13 @@ fn update_tags_event_updates_world_state_and_snapshot_counters() {
         world.registry_tags("minecraft:item").unwrap().tags["minecraft:logs"],
         vec![5, 6, 7]
     );
-    assert_eq!(counters.update_tags_packets, 1);
+    assert_eq!(world.counters().update_tags_packets, 1);
     assert_eq!(world.counters().last_update_tags_registry_count, 1);
     assert_eq!(world.counters().last_update_tags_total_tag_count, 1);
     assert_eq!(world.counters().last_update_tags_total_value_count, 3);
-    assert_eq!(counters.tag_registries_tracked, 1);
-    assert_eq!(counters.tags_tracked, 1);
-    assert_eq!(counters.tag_entries_tracked, 3);
+    assert_eq!(world.counters().tag_registries_tracked, 1);
+    assert_eq!(world.counters().tags_tracked, 1);
+    assert_eq!(world.counters().tag_entries_tracked, 3);
 }
 
 #[test]
