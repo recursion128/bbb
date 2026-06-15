@@ -518,13 +518,6 @@ fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &Worl
     let world_counters = world.counters();
     counters.custom_chat_completion_packets = world_counters.custom_chat_completion_packets;
     counters.custom_chat_completions_tracked = world_counters.custom_chat_completions_tracked;
-    counters.last_custom_chat_completion =
-        world.last_custom_chat_completion_update().map(|update| {
-            bbb_control::CustomChatCompletionState {
-                action: update.action.clone(),
-                entries: update.entries,
-            }
-        });
 }
 
 fn sync_tag_query_counters(counters: &mut NetCounters, world: &WorldStore) {

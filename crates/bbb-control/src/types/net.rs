@@ -108,7 +108,6 @@ pub struct NetCounters {
     pub weather: WeatherState,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
-    pub last_custom_chat_completion: Option<CustomChatCompletionState>,
     pub selected_advancements_tab: Option<String>,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
@@ -677,12 +676,6 @@ impl Default for CameraState {
             entity_known: true,
         }
     }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CustomChatCompletionState {
-    pub action: String,
-    pub entries: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

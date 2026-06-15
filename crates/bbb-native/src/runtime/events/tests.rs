@@ -1229,8 +1229,8 @@ fn client_feature_events_update_world_and_snapshot_counters() {
     );
     assert_eq!(counters.custom_chat_completion_packets, 1);
     assert_eq!(
-        counters.last_custom_chat_completion,
-        Some(bbb_control::CustomChatCompletionState {
+        world.last_custom_chat_completion_update(),
+        Some(&bbb_world::CustomChatCompletionUpdateState {
             action: "set".to_string(),
             entries: 2,
         })

@@ -106,6 +106,10 @@ impl WorldStore {
         &self.command_suggestions
     }
 
+    pub fn client_command_suggestions(&self) -> &CommandSuggestionsState {
+        self.command_suggestions()
+    }
+
     pub fn custom_chat_completions(&self) -> &BTreeSet<String> {
         &self.command_suggestions.custom_completions
     }
@@ -174,7 +178,10 @@ mod tests {
             vec!["/home", "/warp"]
         );
         assert_eq!(
-            store.last_custom_chat_completion_update(),
+            store
+                .client_command_suggestions()
+                .last_custom_completion_update
+                .as_ref(),
             Some(&CustomChatCompletionUpdateState {
                 action: "remove".to_string(),
                 entries: 2,
