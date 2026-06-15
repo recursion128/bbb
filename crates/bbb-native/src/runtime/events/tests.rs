@@ -411,7 +411,6 @@ fn cookie_events_update_snapshot_counters() {
         cookie_response_hits: 99,
         cookie_response_misses: 99,
         store_cookie_packets: 99,
-        stored_cookie_count: 99,
         stored_cookie_bytes: 99,
         ..NetCounters::default()
     };
@@ -429,7 +428,6 @@ fn cookie_events_update_snapshot_counters() {
     assert_eq!(world_counters.cookie_response_hits, 1);
     assert_eq!(world_counters.cookie_response_misses, 1);
     assert_eq!(counters.store_cookie_packets, 1);
-    assert_eq!(counters.stored_cookie_count, 1);
     assert_eq!(counters.stored_cookie_bytes, 3);
     assert_eq!(counters.cookie_request_packets, 2);
     assert_eq!(counters.cookie_response_hits, 1);
@@ -517,7 +515,6 @@ fn award_stats_event_updates_world_state_and_snapshot_counters() {
 
     assert_eq!(counters.award_stats_packets, 1);
     assert_eq!(counters.award_stats_entries_received, 2);
-    assert_eq!(counters.last_award_stats_entry_count, 2);
     assert_eq!(counters.stats_tracked, 2);
 }
 
@@ -595,10 +592,6 @@ fn configuration_state_events_update_snapshot_counters() {
     assert_eq!(world.counters().chat_signature_cache_entries, 0);
     assert_eq!(counters.code_of_conduct_packets, 1);
     assert_eq!(
-        counters.last_code_of_conduct_len,
-        "Keep the server friendly.".len()
-    );
-    assert_eq!(
         world.last_code_of_conduct(),
         Some(&bbb_world::CodeOfConductState {
             text: "Keep the server friendly.".to_string(),
@@ -608,7 +601,7 @@ fn configuration_state_events_update_snapshot_counters() {
     assert_eq!(world.counters().code_of_conduct_packets, 1);
     assert_eq!(
         world.counters().last_code_of_conduct_len,
-        counters.last_code_of_conduct_len
+        "Keep the server friendly.".len()
     );
 }
 

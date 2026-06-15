@@ -155,7 +155,6 @@ pub struct NetCounters {
     pub cookie_response_hits: usize,
     pub cookie_response_misses: usize,
     pub store_cookie_packets: usize,
-    pub stored_cookie_count: usize,
     pub stored_cookie_bytes: usize,
     pub custom_report_detail_packets: usize,
     #[serde(default)]
@@ -171,7 +170,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub code_of_conduct_packets: usize,
     #[serde(default)]
-    pub last_code_of_conduct_len: usize,
     pub server_link_packets: usize,
     pub server_link_invalid_entries: usize,
     #[serde(default)]
@@ -180,8 +178,6 @@ pub struct NetCounters {
     pub award_stats_packets: usize,
     #[serde(default)]
     pub award_stats_entries_received: usize,
-    #[serde(default)]
-    pub last_award_stats_entry_count: usize,
     #[serde(default)]
     pub stats_tracked: usize,
     pub player_abilities_packets: usize,

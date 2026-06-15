@@ -505,7 +505,6 @@ fn sync_cookie_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.cookie_response_hits = world_counters.cookie_response_hits;
     counters.cookie_response_misses = world_counters.cookie_response_misses;
     counters.store_cookie_packets = world_counters.store_cookie_packets;
-    counters.stored_cookie_count = world.stored_cookie_count();
     counters.stored_cookie_bytes = world_counters.stored_cookie_bytes;
 }
 
@@ -560,7 +559,6 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.clear_dialog_packets = world_counters.clear_dialog_packets;
     counters.show_dialog_packets = world_counters.show_dialog_packets;
     counters.code_of_conduct_packets = world_counters.code_of_conduct_packets;
-    counters.last_code_of_conduct_len = world_counters.last_code_of_conduct_len;
     counters.mount_screen_open_packets = world_counters.mount_screen_open_packets;
     counters.open_book_packets = world_counters.open_book_packets;
     counters.open_sign_editor_packets = world_counters.open_sign_editor_packets;
@@ -608,6 +606,5 @@ fn sync_client_stats_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.award_stats_packets = world_counters.award_stats_packets;
     counters.award_stats_entries_received = world_counters.award_stats_entries_received;
-    counters.last_award_stats_entry_count = world_counters.last_award_stats_entry_count;
     counters.stats_tracked = world_counters.stats_tracked;
 }
