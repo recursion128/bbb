@@ -183,14 +183,107 @@ fn terrain_chunk_events_update_world_and_snapshot_counters() {
     assert_chunk_counter!(light_arrays_seen, 0);
     assert_chunk_counter!(block_updates_received, 2);
     assert_chunk_counter!(block_updates_applied, 2);
+    assert_chunk_counter!(block_updates_ignored, 0);
     assert_chunk_counter!(block_entity_updates_received, 1);
     assert_chunk_counter!(block_entity_updates_applied, 1);
+    assert_chunk_counter!(block_entity_updates_ignored, 0);
     assert_chunk_counter!(light_updates_received, 1);
     assert_chunk_counter!(light_updates_applied, 1);
+    assert_chunk_counter!(light_updates_ignored, 0);
     assert_chunk_counter!(biome_updates_received, 1);
     assert_chunk_counter!(biome_updates_applied, 1);
+    assert_chunk_counter!(biome_updates_ignored, 0);
     assert_chunk_counter!(chunk_forgets_received, 1);
     assert_chunk_counter!(chunks_forgotten, 1);
+    assert_chunk_counter!(chunk_forgets_ignored, 0);
+}
+
+#[test]
+fn terrain_chunk_ignored_counters_are_projected() {
+    let (tx, mut rx) = mpsc::channel(6);
+    tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        block_state_id: 5,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SectionBlocksUpdate(SectionBlocksUpdate {
+        section_x: 1,
+        section_y: 0,
+        section_z: -2,
+        updates: vec![BlockUpdate {
+            pos: ProtocolBlockPos {
+                x: 17,
+                y: -64,
+                z: -31,
+            },
+            block_state_id: 6,
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        block_entity_type_id: 7,
+        raw_nbt: vec![0],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LightUpdate(LightUpdate {
+        chunk_x: 1,
+        chunk_z: -2,
+        light_data: empty_light_update_data(),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ChunksBiomes(ChunksBiomes {
+        chunks: vec![ChunkBiomeData {
+            pos: ProtocolChunkPos { x: 1, z: -2 },
+            raw_biomes: Vec::new(),
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::ForgetLevelChunk(ForgetLevelChunk {
+        pos: ProtocolChunkPos { x: 1, z: -2 },
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        6
+    );
+    assert!(world.probe_chunk(ChunkPos { x: 1, z: -2 }).is_none());
+
+    let world_counters = world.counters();
+    macro_rules! assert_chunk_counter {
+        ($field:ident, $value:expr) => {
+            assert_eq!(world_counters.$field, $value);
+            assert_eq!(counters.$field, $value);
+        };
+    }
+
+    assert_chunk_counter!(block_updates_received, 2);
+    assert_chunk_counter!(block_updates_applied, 0);
+    assert_chunk_counter!(block_updates_ignored, 2);
+    assert_chunk_counter!(block_entity_updates_received, 1);
+    assert_chunk_counter!(block_entity_updates_applied, 0);
+    assert_chunk_counter!(block_entity_updates_ignored, 1);
+    assert_chunk_counter!(light_updates_received, 1);
+    assert_chunk_counter!(light_updates_applied, 0);
+    assert_chunk_counter!(light_updates_ignored, 1);
+    assert_chunk_counter!(biome_updates_received, 1);
+    assert_chunk_counter!(biome_updates_applied, 0);
+    assert_chunk_counter!(biome_updates_ignored, 1);
+    assert_chunk_counter!(chunk_forgets_received, 1);
+    assert_chunk_counter!(chunks_forgotten, 0);
+    assert_chunk_counter!(chunk_forgets_ignored, 1);
 }
 
 #[test]

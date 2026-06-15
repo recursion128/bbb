@@ -85,13 +85,21 @@ pub struct WorldCounters {
     pub block_entities_seen: usize,
     pub block_entity_updates_received: usize,
     pub block_entity_updates_applied: usize,
+    #[serde(default)]
+    pub block_entity_updates_ignored: usize,
     pub light_arrays_seen: usize,
     pub light_updates_received: usize,
     pub light_updates_applied: usize,
+    #[serde(default)]
+    pub light_updates_ignored: usize,
     pub biome_updates_received: usize,
     pub biome_updates_applied: usize,
+    #[serde(default)]
+    pub biome_updates_ignored: usize,
     pub block_updates_received: usize,
     pub block_updates_applied: usize,
+    #[serde(default)]
+    pub block_updates_ignored: usize,
     #[serde(default)]
     pub chunk_cache_center_updates_received: usize,
     #[serde(default)]
@@ -414,6 +422,8 @@ pub struct WorldCounters {
     pub tag_entries_tracked: usize,
     pub chunk_forgets_received: usize,
     pub chunks_forgotten: usize,
+    #[serde(default)]
+    pub chunk_forgets_ignored: usize,
     pub inventory_slot_updates_received: usize,
     pub inventory_slots_tracked: usize,
     pub cursor_item_updates_received: usize,

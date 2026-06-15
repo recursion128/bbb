@@ -511,18 +511,23 @@ fn sync_chunk_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.light_arrays_seen = world_counters.light_arrays_seen;
     counters.block_entity_updates_received = world_counters.block_entity_updates_received;
     counters.block_entity_updates_applied = world_counters.block_entity_updates_applied;
+    counters.block_entity_updates_ignored = world_counters.block_entity_updates_ignored;
     counters.light_updates_received = world_counters.light_updates_received;
     counters.light_updates_applied = world_counters.light_updates_applied;
+    counters.light_updates_ignored = world_counters.light_updates_ignored;
     counters.biome_updates_received = world_counters.biome_updates_received;
     counters.biome_updates_applied = world_counters.biome_updates_applied;
+    counters.biome_updates_ignored = world_counters.biome_updates_ignored;
     counters.block_updates_received = world_counters.block_updates_received;
     counters.block_updates_applied = world_counters.block_updates_applied;
+    counters.block_updates_ignored = world_counters.block_updates_ignored;
     counters.chunk_cache_center_updates_received =
         world_counters.chunk_cache_center_updates_received;
     counters.chunk_cache_radius_updates_received =
         world_counters.chunk_cache_radius_updates_received;
     counters.chunk_forgets_received = world_counters.chunk_forgets_received;
     counters.chunks_forgotten = world_counters.chunks_forgotten;
+    counters.chunk_forgets_ignored = world_counters.chunk_forgets_ignored;
 }
 
 fn emit_positioned_sound(

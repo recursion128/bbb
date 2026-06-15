@@ -57,12 +57,15 @@ impl WorldStore {
             self.set_block_state_id(protocol_block_pos(update.pos), update.block_state_id);
         if applied {
             self.counters.block_updates_applied += 1;
+        } else {
+            self.counters.block_updates_ignored += 1;
         }
         applied
     }
 
     pub fn apply_section_blocks_update(&mut self, update: ProtocolSectionBlocksUpdate) -> usize {
-        self.counters.block_updates_received += update.updates.len();
+        let received = update.updates.len();
+        self.counters.block_updates_received += received;
         let mut applied = 0;
         for block_update in update.updates {
             if self.set_block_state_id(
@@ -73,6 +76,7 @@ impl WorldStore {
             }
         }
         self.counters.block_updates_applied += applied;
+        self.counters.block_updates_ignored += received.saturating_sub(applied);
         applied
     }
 
@@ -96,6 +100,7 @@ impl WorldStore {
             nbt,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
+            self.counters.block_entity_updates_ignored += 1;
             return Ok(false);
         };
         if let Some(existing) = chunk.block_entities.iter_mut().find(|entity| {
@@ -119,6 +124,7 @@ impl WorldStore {
             z: update.chunk_z,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == pos) else {
+            self.counters.light_updates_ignored += 1;
             return Ok(false);
         };
 
@@ -128,14 +134,17 @@ impl WorldStore {
     }
 
     pub fn apply_biome_update(&mut self, update: ProtocolChunksBiomes) -> Result<usize> {
-        self.counters.biome_updates_received += update.chunks.len();
+        let received = update.chunks.len();
+        self.counters.biome_updates_received += received;
         let mut replacements = Vec::new();
+        let mut ignored = 0;
         for chunk_update in update.chunks {
             let pos = ChunkPos {
                 x: chunk_update.pos.x,
                 z: chunk_update.pos.z,
             };
             let Some(chunk_index) = self.chunks.iter().position(|chunk| chunk.pos == pos) else {
+                ignored += 1;
                 continue;
             };
             let section_count = self.chunks[chunk_index].sections.len();
@@ -152,6 +161,7 @@ impl WorldStore {
             }
         }
         self.counters.biome_updates_applied += applied;
+        self.counters.biome_updates_ignored += ignored;
         Ok(applied)
     }
 
@@ -195,6 +205,7 @@ impl WorldStore {
     pub fn forget_chunk(&mut self, pos: ChunkPos) -> bool {
         self.counters.chunk_forgets_received += 1;
         let Some(index) = self.chunks.iter().position(|chunk| chunk.pos == pos) else {
+            self.counters.chunk_forgets_ignored += 1;
             return false;
         };
         self.chunks.remove(index);

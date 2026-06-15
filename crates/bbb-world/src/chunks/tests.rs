@@ -143,6 +143,7 @@ fn applies_light_update_to_existing_chunk_sections() {
     assert!(applied);
     assert_eq!(store.counters().light_updates_received, 1);
     assert_eq!(store.counters().light_updates_applied, 1);
+    assert_eq!(store.counters().light_updates_ignored, 0);
     let terrain = store
         .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
         .unwrap();
@@ -167,6 +168,24 @@ fn applies_light_update_to_existing_chunk_sections() {
         terrain.cells[terrain_cell_index(2, 1, 3, 16)].light,
         TerrainLight { sky: 4, block: 0 }
     );
+}
+
+#[test]
+fn light_update_for_missing_chunk_is_counted_but_not_applied() {
+    let mut store = WorldStore::new();
+
+    let applied = store
+        .apply_light_update(ProtocolLightUpdate {
+            chunk_x: 2,
+            chunk_z: -3,
+            light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
+        })
+        .unwrap();
+
+    assert!(!applied);
+    assert_eq!(store.counters().light_updates_received, 1);
+    assert_eq!(store.counters().light_updates_applied, 0);
+    assert_eq!(store.counters().light_updates_ignored, 1);
 }
 
 #[test]
@@ -227,6 +246,7 @@ fn biome_update_for_missing_chunk_is_counted_but_not_applied() {
     assert_eq!(applied, 0);
     assert_eq!(store.counters().biome_updates_received, 1);
     assert_eq!(store.counters().biome_updates_applied, 0);
+    assert_eq!(store.counters().biome_updates_ignored, 1);
 }
 
 #[test]
@@ -320,6 +340,7 @@ fn applies_single_block_update_and_reuploads_palette() {
     assert!(applied);
     assert_eq!(store.counters().block_updates_received, 1);
     assert_eq!(store.counters().block_updates_applied, 1);
+    assert_eq!(store.counters().block_updates_ignored, 0);
 
     let probe = store
         .probe_block(BlockPos {
@@ -381,6 +402,7 @@ fn applies_section_blocks_update() {
     assert_eq!(applied, 2);
     assert_eq!(store.counters().block_updates_received, 2);
     assert_eq!(store.counters().block_updates_applied, 2);
+    assert_eq!(store.counters().block_updates_ignored, 0);
 
     let summary = store
         .extract_terrain_chunk(ChunkPos { x: 2, z: -3 })
@@ -396,6 +418,49 @@ fn applies_section_blocks_update() {
             .non_empty_block_count,
         4094
     );
+}
+
+#[test]
+fn block_updates_for_missing_targets_are_counted_but_not_applied() {
+    let mut store = WorldStore::new();
+
+    assert!(!store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 34,
+            y: 1,
+            z: -45,
+        },
+        block_state_id: 0,
+    }));
+
+    let applied = store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+        section_x: 2,
+        section_y: 0,
+        section_z: -3,
+        updates: vec![
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 34,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 0,
+            },
+            ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 35,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 0,
+            },
+        ],
+    });
+
+    assert_eq!(applied, 0);
+    assert_eq!(store.counters().block_updates_received, 3);
+    assert_eq!(store.counters().block_updates_applied, 0);
+    assert_eq!(store.counters().block_updates_ignored, 3);
 }
 
 #[test]
@@ -424,6 +489,7 @@ fn applies_block_entity_data_update() {
     assert!(applied);
     assert_eq!(store.counters().block_entity_updates_received, 1);
     assert_eq!(store.counters().block_entity_updates_applied, 1);
+    assert_eq!(store.counters().block_entity_updates_ignored, 0);
 
     let chunk = store.probe_chunk(ChunkPos { x: 2, z: -3 }).unwrap();
     assert_eq!(chunk.block_entities.len(), 1);
@@ -471,6 +537,7 @@ fn applies_block_entity_data_update() {
     assert!(!missing_chunk_applied);
     assert_eq!(store.counters().block_entity_updates_received, 3);
     assert_eq!(store.counters().block_entity_updates_applied, 2);
+    assert_eq!(store.counters().block_entity_updates_ignored, 1);
 }
 
 #[test]
@@ -505,6 +572,7 @@ fn forget_missing_chunk_is_counted_but_not_applied() {
     assert!(!store.forget_chunk(ChunkPos { x: 2, z: -3 }));
     assert_eq!(store.counters().chunk_forgets_received, 1);
     assert_eq!(store.counters().chunks_forgotten, 0);
+    assert_eq!(store.counters().chunk_forgets_ignored, 1);
     assert_eq!(store.chunk_count(), 0);
 }
 

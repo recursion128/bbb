@@ -64,17 +64,25 @@ pub struct NetCounters {
     #[serde(default)]
     pub block_entity_updates_applied: usize,
     #[serde(default)]
+    pub block_entity_updates_ignored: usize,
+    #[serde(default)]
     pub light_updates_received: usize,
     #[serde(default)]
     pub light_updates_applied: usize,
+    #[serde(default)]
+    pub light_updates_ignored: usize,
     #[serde(default)]
     pub biome_updates_received: usize,
     #[serde(default)]
     pub biome_updates_applied: usize,
     #[serde(default)]
+    pub biome_updates_ignored: usize,
+    #[serde(default)]
     pub block_updates_received: usize,
     #[serde(default)]
     pub block_updates_applied: usize,
+    #[serde(default)]
+    pub block_updates_ignored: usize,
     #[serde(default)]
     pub chunk_cache_center_updates_received: usize,
     #[serde(default)]
@@ -83,6 +91,8 @@ pub struct NetCounters {
     pub chunk_forgets_received: usize,
     #[serde(default)]
     pub chunks_forgotten: usize,
+    #[serde(default)]
+    pub chunk_forgets_ignored: usize,
     pub player_entity_id: Option<i32>,
     #[serde(default)]
     pub play_logins_received: usize,
