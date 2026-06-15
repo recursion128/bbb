@@ -1656,9 +1656,9 @@ fn decodes_configuration_registry_data_entries() {
     let raw_plains = nbt_compound_with_string("name", "minecraft:plains");
     let raw_temperature = nbt_list_of_floats(&[0.8, 0.4]);
     let mut payload = Encoder::new();
-    payload.write_string("minecraft:worldgen/biome");
+    payload.write_string("worldgen/biome");
     payload.write_var_i32(3);
-    payload.write_string("minecraft:plains");
+    payload.write_string("plains");
     payload.write_bool(true);
     payload.write_bytes(&raw_plains);
     payload.write_string("minecraft:the_void");
@@ -1690,6 +1690,31 @@ fn decodes_configuration_registry_data_entries() {
             raw_payload_len: payload.len(),
         })
     );
+}
+
+#[test]
+fn rejects_invalid_configuration_registry_data_identifiers() {
+    let mut invalid_registry = Encoder::new();
+    invalid_registry.write_string("minecraft:Worldgen/Biome");
+    invalid_registry.write_var_i32(0);
+    let err = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_REGISTRY_DATA,
+        &invalid_registry.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+
+    let mut invalid_entry = Encoder::new();
+    invalid_entry.write_string("minecraft:worldgen/biome");
+    invalid_entry.write_var_i32(1);
+    invalid_entry.write_string("minecraft:Plains");
+    invalid_entry.write_bool(false);
+    let err = decode_configuration_clientbound(
+        ids::configuration::CLIENTBOUND_REGISTRY_DATA,
+        &invalid_entry.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
 }
 
 #[test]

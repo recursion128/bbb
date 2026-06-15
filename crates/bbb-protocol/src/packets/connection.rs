@@ -482,7 +482,7 @@ fn decode_update_enabled_features(decoder: &mut Decoder<'_>) -> Result<UpdateEna
 }
 
 fn decode_registry_data(decoder: &mut Decoder<'_>, raw_payload_len: usize) -> Result<RegistryData> {
-    let registry = decoder.read_string(32767)?;
+    let registry = read_resource_location(decoder)?;
     let count = decoder.read_len()?;
     if count > MAX_REGISTRY_DATA_ENTRIES {
         return Err(ProtocolError::PacketTooLarge(
@@ -493,7 +493,7 @@ fn decode_registry_data(decoder: &mut Decoder<'_>, raw_payload_len: usize) -> Re
 
     let mut entries = Vec::with_capacity(count);
     for _ in 0..count {
-        let id = decoder.read_string(32767)?;
+        let id = read_resource_location(decoder)?;
         let raw_data = if decoder.read_bool()? {
             Some(read_registry_data_nbt(decoder)?)
         } else {
