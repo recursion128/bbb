@@ -535,13 +535,6 @@ fn sync_custom_chat_completion_counters(counters: &mut NetCounters, world: &Worl
 fn sync_tag_query_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.tag_query_packets = world_counters.tag_query_packets;
-    counters.last_tag_query = world
-        .last_tag_query()
-        .map(|query| bbb_control::TagQueryState {
-            transaction_id: query.transaction_id,
-            tag_present: query.tag_present,
-            raw_nbt_len: query.raw_nbt_len(),
-        });
 }
 
 fn control_custom_payload_state(

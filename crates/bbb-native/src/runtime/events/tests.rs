@@ -1296,14 +1296,6 @@ fn client_feature_events_update_world_and_snapshot_counters() {
         })
     );
     assert_eq!(world.counters().tag_query_packets, 1);
-    assert_eq!(
-        counters.last_tag_query,
-        Some(bbb_control::TagQueryState {
-            transaction_id: 12,
-            tag_present: true,
-            raw_nbt_len: 2,
-        })
-    );
 }
 
 #[test]

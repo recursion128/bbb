@@ -117,7 +117,6 @@ pub struct NetCounters {
     pub last_custom_chat_completion: Option<CustomChatCompletionState>,
     pub last_custom_payload: Option<CustomPayloadState>,
     pub selected_advancements_tab: Option<String>,
-    pub last_tag_query: Option<TagQueryState>,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
     pub player_info_remove_packets: usize,
@@ -723,13 +722,6 @@ pub struct MapColorPatchState {
     pub start_y: u8,
     pub width: u8,
     pub height: u8,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TagQueryState {
-    pub transaction_id: i32,
-    pub tag_present: bool,
-    pub raw_nbt_len: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

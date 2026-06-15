@@ -341,6 +341,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_audio" => serde_json::to_value(snapshot_guard.world_store.client_audio()),
         "world.client_chat" => serde_json::to_value(snapshot_guard.world_store.client_chat()),
         "world.client_combat" => serde_json::to_value(snapshot_guard.world_store.client_combat()),
+        "world.client_debug_query" => {
+            serde_json::to_value(snapshot_guard.world_store.client_debug_query())
+        }
         "world.client_debug_game" => {
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
         }
@@ -490,7 +493,7 @@ mod tests {
         InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe,
         PlayerCombatKill, PongResponse, RecipeDisplayType, SetActionBarText, SetSubtitleText,
         SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource,
-        StatUpdate, StopSound, SystemChat, TrackedWaypoint, TrackedWaypointPacket,
+        StatUpdate, StopSound, SystemChat, TagQuery, TrackedWaypoint, TrackedWaypointPacket,
         Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
         WaypointVec3i,
     };
@@ -1224,6 +1227,34 @@ mod tests {
                 }
             ])
         );
+    }
+
+    #[test]
+    fn client_debug_query_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_tag_query(TagQuery {
+                transaction_id: 12,
+                tag_present: true,
+                raw_nbt: vec![10, 0],
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_debug_query".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let debug_query = response.result.unwrap();
+        assert_eq!(debug_query["last_tag_query"]["transaction_id"], 12);
+        assert_eq!(debug_query["last_tag_query"]["tag_present"], true);
+        assert_eq!(debug_query["last_tag_query"]["raw_nbt"], json!([10, 0]));
     }
 
     #[test]

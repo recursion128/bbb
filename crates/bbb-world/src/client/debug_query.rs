@@ -36,6 +36,10 @@ impl WorldStore {
         &self.debug_query
     }
 
+    pub fn client_debug_query(&self) -> &ClientDebugQueryState {
+        self.debug_query()
+    }
+
     pub fn last_tag_query(&self) -> Option<&TagQueryResponseState> {
         self.debug_query.last_tag_query.as_ref()
     }
@@ -74,7 +78,7 @@ mod tests {
         });
 
         assert_eq!(
-            store.debug_query().last_tag_query,
+            store.client_debug_query().last_tag_query,
             Some(TagQueryResponseState {
                 transaction_id: 8,
                 tag_present: false,
