@@ -96,7 +96,8 @@ impl KiraAudioRuntime {
                 .persist_until_sounds_finish(true)
                 .distances((MIN_SPATIAL_DISTANCE, spatial_max_distance(sound, gain))),
         )?;
-        let volume = decibels_from_gain(gain);
+        let volume = channel_decibels_from_gain(gain);
+        let playback_rate = channel_playback_rate(playback_rate);
         let handle = if sound.stream {
             let data = StreamingSoundData::from_file(&sound.ogg_path)?
                 .volume(volume)
@@ -200,11 +201,20 @@ fn stop_filter_matches(
     category_matches && name_matches
 }
 
-fn decibels_from_gain(gain: f32) -> Decibels {
+fn channel_decibels_from_gain(gain: f32) -> Decibels {
     if !gain.is_finite() || gain <= 0.0 {
         Decibels::SILENCE
     } else {
+        let gain = gain.min(1.0);
         Decibels((20.0 * gain.log10()).max(Decibels::SILENCE.0))
+    }
+}
+
+fn channel_playback_rate(playback_rate: f32) -> f32 {
+    if playback_rate.is_finite() {
+        playback_rate.clamp(0.5, 2.0)
+    } else {
+        1.0
     }
 }
 
@@ -253,10 +263,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn gain_to_decibels_preserves_identity_and_silence() {
-        assert_eq!(decibels_from_gain(1.0), Decibels::IDENTITY);
-        assert_eq!(decibels_from_gain(0.0), Decibels::SILENCE);
-        assert_eq!(decibels_from_gain(f32::NAN), Decibels::SILENCE);
+    fn channel_volume_clamps_above_identity_without_changing_attenuation() {
+        let sound = ResolvedSound {
+            event_id: "minecraft:entity.cat.ambient".to_string(),
+            sound_name: "minecraft:mob/cat/meow1".to_string(),
+            ogg_path: "sounds/mob/cat/meow1.ogg".into(),
+            stream: false,
+            preload: false,
+            attenuation_distance: 16,
+            entry_volume: 1.0,
+            entry_pitch: 1.0,
+        };
+
+        assert_eq!(channel_decibels_from_gain(1.0), Decibels::IDENTITY);
+        assert_eq!(channel_decibels_from_gain(2.0), Decibels::IDENTITY);
+        assert_eq!(channel_decibels_from_gain(0.0), Decibels::SILENCE);
+        assert_eq!(channel_decibels_from_gain(f32::NAN), Decibels::SILENCE);
+        assert_eq!(spatial_max_distance(&sound, 2.0), 32.0);
+    }
+
+    #[test]
+    fn playback_rate_clamps_to_vanilla_pitch_range() {
+        assert_eq!(channel_playback_rate(0.25), 0.5);
+        assert_eq!(channel_playback_rate(1.25), 1.25);
+        assert_eq!(channel_playback_rate(2.88), 2.0);
+        assert_eq!(channel_playback_rate(f32::NAN), 1.0);
     }
 
     #[test]
