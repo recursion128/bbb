@@ -88,6 +88,21 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.accept_code_of_conduct" {
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard.code_of_conduct_accept_requests = snapshot_guard
+            .code_of_conduct_accept_requests
+            .saturating_add(1);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.code_of_conduct_accept_requests
+            })),
+            error: None,
+        };
+    }
+
     let snapshot_guard = snapshot.read().expect("control snapshot poisoned");
     let json = match request.method.as_str() {
         "app.status" => serde_json::to_value(&*snapshot_guard),
@@ -263,6 +278,22 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_path.ok);
+    }
+
+    #[test]
+    fn net_accept_code_of_conduct_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.accept_code_of_conduct".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["queued"], true);
+        assert_eq!(snapshot.read().unwrap().code_of_conduct_accept_requests, 1);
     }
 
     #[test]

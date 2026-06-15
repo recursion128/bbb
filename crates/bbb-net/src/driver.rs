@@ -10,7 +10,7 @@ use crate::{
 mod commands;
 
 pub(crate) use commands::{
-    maybe_send_perform_respawn, send_attack_entity, send_chat_command,
+    maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_interact_entity,
     send_pick_item_from_block, send_pick_item_from_entity, send_player_action, send_player_command,
@@ -57,7 +57,7 @@ pub(crate) async fn read_packet_or_drive_connection(
     player_position_state: &mut PlayerPositionState,
 ) -> Result<ConnectionDrive> {
     if !matches!(state, ConnectionState::Play) || play_tick.is_none() {
-        return read_packet_or_disconnect_command(conn, commands).await;
+        return read_packet_or_disconnect_command(conn, state, commands).await;
     }
     let tick = play_tick.as_mut().expect("play tick checked above");
 
@@ -130,6 +130,7 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::CommandSuggestionRequest(request)) => {
                         send_command_suggestion_request(conn, request).await?;
                     }
+                    Some(NetCommand::AcceptCodeOfConduct) => {}
                     Some(NetCommand::Disconnect) | None => {
                         return Ok(ConnectionDrive::Disconnect);
                     }
@@ -141,6 +142,7 @@ pub(crate) async fn read_packet_or_drive_connection(
 
 async fn read_packet_or_disconnect_command(
     conn: &mut RawConnection,
+    state: ConnectionState,
     commands: &mut mpsc::Receiver<NetCommand>,
 ) -> Result<ConnectionDrive> {
     loop {
@@ -170,6 +172,11 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ContainerClose(_)) => {}
                     Some(NetCommand::ContainerSlotStateChanged(_)) => {}
                     Some(NetCommand::CommandSuggestionRequest(_)) => {}
+                    Some(NetCommand::AcceptCodeOfConduct) => {
+                        if matches!(state, ConnectionState::Configuration) {
+                            send_accept_code_of_conduct(conn).await?;
+                        }
+                    }
                     Some(NetCommand::Disconnect) | None => {
                         return Ok(ConnectionDrive::Disconnect);
                     }
@@ -182,6 +189,8 @@ async fn read_packet_or_disconnect_command(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::ids;
+    use bytes::BytesMut;
     use std::time::Duration;
     use tokio::{sync::mpsc, time::timeout};
 
@@ -237,12 +246,66 @@ mod tests {
         server.await.unwrap();
     }
 
+    #[tokio::test]
+    async fn drive_connection_sends_code_of_conduct_accept_in_configuration() {
+        let (mut conn, server) = raw_connection_pair_expect_accept_code_of_conduct().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::AcceptCodeOfConduct).await.unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut play_tick = None;
+        let mut player_position_state = PlayerPositionState::default();
+
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                &mut conn,
+                ConnectionState::Configuration,
+                &mut play_tick,
+                &mut commands,
+                &mut player_position_state,
+            ),
+        )
+        .await
+        .expect("drive should not hang")
+        .unwrap();
+
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+        server.await.unwrap();
+    }
+
     async fn raw_connection_pair() -> (RawConnection, tokio::task::JoinHandle<()>) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         let server = tokio::spawn(async move {
             let (_stream, _) = listener.accept().await.unwrap();
             tokio::time::sleep(Duration::from_millis(50)).await;
+        });
+        let conn = RawConnection::connect(&addr.to_string(), None)
+            .await
+            .unwrap();
+        (conn, server)
+    }
+
+    async fn raw_connection_pair_expect_accept_code_of_conduct(
+    ) -> (RawConnection, tokio::task::JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut conn = RawConnection {
+                stream,
+                read_buf: BytesMut::new(),
+                compression_threshold: None,
+            };
+            let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+                .await
+                .expect("code-of-conduct accept should be sent")
+                .unwrap();
+            assert_eq!(
+                packet_id,
+                ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT
+            );
+            assert!(payload.is_empty());
         });
         let conn = RawConnection::connect(&addr.to_string(), None)
             .await

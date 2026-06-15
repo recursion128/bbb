@@ -154,6 +154,11 @@ pub(crate) async fn send_command_suggestion_request(
     conn.send_packet(id, &payload).await
 }
 
+pub(crate) async fn send_accept_code_of_conduct(conn: &mut RawConnection) -> Result<()> {
+    let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
+    conn.send_packet(id, &payload).await
+}
+
 pub(crate) async fn maybe_send_perform_respawn(
     conn: &mut RawConnection,
     health: PlayerHealth,

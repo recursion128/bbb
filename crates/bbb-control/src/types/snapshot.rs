@@ -20,6 +20,8 @@ pub struct ControlSnapshot {
     #[serde(skip)]
     pub screenshot_request: Option<String>,
     #[serde(skip)]
+    pub code_of_conduct_accept_requests: u64,
+    #[serde(skip)]
     pub world_store: WorldStore,
 }
 

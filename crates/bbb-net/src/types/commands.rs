@@ -69,5 +69,6 @@ pub enum NetCommand {
     ContainerClose(ContainerCloseRequest),
     ContainerSlotStateChanged(ContainerSlotStateChanged),
     CommandSuggestionRequest(CommandSuggestionRequest),
+    AcceptCodeOfConduct,
     Disconnect,
 }

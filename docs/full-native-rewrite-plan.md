@@ -98,7 +98,10 @@ Known priority areas:
 - Configuration Code of Conduct text is recorded in world UI state and native
   control counters derive from it. Owner: `bbb-world` + `bbb-native`; status:
   partial; next action: model persisted accepted-text hash and interactive UI
-  instead of unconditional offline accept.
+  that sends explicit accept commands. The online event stream now waits for
+  `NetCommand::AcceptCodeOfConduct`, and the control API can queue it with
+  `net.accept_code_of_conduct`; offline probes still auto-accept to keep
+  configuration probing moving.
 - Keep audio split into world-observed audio events and the Kira-backed
   `bbb-audio` playback runtime.
 - Native crosshair entity interaction is partially wired: `bbb-world` exposes

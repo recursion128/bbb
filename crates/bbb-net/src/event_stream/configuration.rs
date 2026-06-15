@@ -112,8 +112,6 @@ impl EventStreamContext {
                     bail!("server sent duplicate Code of Conduct");
                 }
                 self.seen_code_of_conduct = true;
-                let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
-                self.conn.send_packet(id, &payload).await?;
                 emit(&self.events, NetEvent::CodeOfConduct { text }).await?;
             }
             ConfigurationClientbound::Unknown { .. } => {}

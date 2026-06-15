@@ -1,5 +1,5 @@
 use super::{
-    maybe_send_perform_respawn, send_attack_entity, send_chat_command,
+    maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_interact_entity,
     send_pick_item_from_block, send_pick_item_from_entity, send_player_action, send_player_command,
@@ -86,6 +86,36 @@ fn vehicle_move_command_encodes_move_vehicle_packet() {
     assert_eq!(decoder.read_f32().unwrap(), 12.5);
     assert_eq!(decoder.read_bool().unwrap(), true);
     assert!(decoder.is_empty());
+}
+
+#[tokio::test]
+async fn send_accept_code_of_conduct_encodes_configuration_accept_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("code-of-conduct accept should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT
+        );
+        assert!(payload.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_accept_code_of_conduct(&mut conn).await.unwrap();
+
+    server.await.unwrap();
 }
 
 #[tokio::test]

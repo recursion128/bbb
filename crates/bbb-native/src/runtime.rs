@@ -63,6 +63,29 @@ pub(crate) fn take_control_screenshot(snapshot: &SharedSnapshot) -> Option<PathB
         .map(PathBuf::from)
 }
 
+pub(crate) fn pump_control_net_requests(
+    snapshot: &SharedSnapshot,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    let request_count = snapshot
+        .write()
+        .map(|mut guard| {
+            let request_count = guard.code_of_conduct_accept_requests;
+            guard.code_of_conduct_accept_requests = 0;
+            request_count
+        })
+        .unwrap_or(0);
+
+    let Some(tx) = net_commands else {
+        return;
+    };
+    for _ in 0..request_count {
+        if tx.try_send(NetCommand::AcceptCodeOfConduct).is_err() {
+            break;
+        }
+    }
+}
+
 pub(crate) fn pump_network_and_terrain(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -89,6 +112,7 @@ pub(crate) fn pump_network_and_terrain(
             audio_events_for_drain,
         );
     }
+    pump_control_net_requests(snapshot, net_commands);
     let now = Instant::now();
     advance_entity_client_animations(world, client_animation_ticks, now);
     advance_player_input(input, world, net_counters, net_commands, now);
@@ -239,6 +263,18 @@ mod tests {
         assert_eq!(pose.y_rot, 45.0);
         assert_eq!(pose.x_rot, -10.0);
         assert_eq!(pose.eye_height, CameraPose::STANDING_EYE_HEIGHT);
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_code_of_conduct_accept_command() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().code_of_conduct_accept_requests = 1;
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+
+        pump_control_net_requests(&snapshot, &Some(tx));
+
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
+        assert_eq!(snapshot.read().unwrap().code_of_conduct_accept_requests, 0);
     }
 
     #[test]

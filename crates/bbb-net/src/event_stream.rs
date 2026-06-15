@@ -144,13 +144,12 @@ fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::ids;
     use bytes::BytesMut;
     use std::time::Duration;
     use tokio::{net::TcpListener, time::timeout};
 
     #[tokio::test]
-    async fn configuration_code_of_conduct_sends_accept_and_emits_event() {
+    async fn configuration_code_of_conduct_emits_event_without_immediate_accept() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
@@ -174,15 +173,9 @@ mod tests {
             .await
             .unwrap();
 
-        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
             .await
-            .expect("accept packet should be sent")
-            .unwrap();
-        assert_eq!(
-            packet_id,
-            ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT
-        );
-        assert!(payload.is_empty());
+            .is_err());
 
         let event = timeout(Duration::from_secs(1), events_rx.recv())
             .await
@@ -219,10 +212,6 @@ mod tests {
                 text: "First rules.".to_string(),
             })
             .await
-            .unwrap();
-        timeout(Duration::from_secs(1), server.read_packet())
-            .await
-            .expect("first accept packet should be sent")
             .unwrap();
         timeout(Duration::from_secs(1), events_rx.recv())
             .await
