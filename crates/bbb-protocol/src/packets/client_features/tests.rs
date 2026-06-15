@@ -309,6 +309,38 @@ fn decodes_select_advancements_tab_present_and_absent() {
 }
 
 #[test]
+fn normalizes_select_advancements_tab_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_bool(true);
+    payload.write_string("story/root");
+    let payload = payload.into_inner();
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_SELECT_ADVANCEMENTS_TAB, &payload).unwrap(),
+        PlayClientbound::SelectAdvancementsTab(SelectAdvancementsTab {
+            tab: Some("minecraft:story/root".to_string()),
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_select_advancements_tab_identifier() {
+    for tab in ["minecraft:Story/root", "minecraft:story root"] {
+        let mut payload = Encoder::new();
+        payload.write_bool(true);
+        payload.write_string(tab);
+        let payload = payload.into_inner();
+
+        let err = decode_play_clientbound(ids::play::CLIENTBOUND_SELECT_ADVANCEMENTS_TAB, &payload)
+            .unwrap_err();
+        assert!(
+            err.to_string().contains("invalid resource location"),
+            "unexpected error for {tab}: {err}"
+        );
+    }
+}
+
+#[test]
 fn decodes_update_advancements_packet_wire_order() {
     let mut payload = Encoder::new();
     payload.write_bool(true);

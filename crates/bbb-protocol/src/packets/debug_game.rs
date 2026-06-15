@@ -5,7 +5,7 @@ use crate::{
     component::decode_component_summary_from_decoder,
 };
 
-use super::{chunks, read_resource_key, BlockPos, ChunkPos};
+use super::{chunks, read_resource_location, BlockPos, ChunkPos};
 
 const MAX_DEBUG_PAYLOAD: usize = 2 * 1024 * 1024;
 const MAX_DEBUG_SAMPLE_LONGS: usize = 1_000_000;
@@ -152,7 +152,7 @@ pub(crate) fn decode_game_rule_values(decoder: &mut Decoder<'_>) -> Result<GameR
     let mut values = Vec::with_capacity(count);
     for _ in 0..count {
         values.push(GameRuleValue {
-            rule: read_resource_key(decoder)?,
+            rule: read_resource_location(decoder)?,
             value: decoder.read_string(32767)?,
         });
     }

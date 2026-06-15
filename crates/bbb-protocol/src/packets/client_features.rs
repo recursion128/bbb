@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
+use super::read_resource_location;
+
 mod advancements;
 mod recipes;
 
@@ -89,7 +91,7 @@ pub(crate) fn decode_select_advancements_tab(
     decoder: &mut Decoder<'_>,
 ) -> Result<SelectAdvancementsTab> {
     let tab = if decoder.read_bool()? {
-        Some(decoder.read_string(32767)?)
+        Some(read_resource_location(decoder)?)
     } else {
         None
     };

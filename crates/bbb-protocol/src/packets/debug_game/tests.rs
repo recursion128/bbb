@@ -134,6 +134,38 @@ fn decodes_game_rule_values_packet_wire_order() {
 }
 
 #[test]
+fn decodes_game_rule_values_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(1);
+    payload.write_string("do_daylight_cycle");
+    payload.write_string("false");
+    let payload = payload.into_inner();
+
+    assert_eq!(
+        decode_play_clientbound(ids::play::CLIENTBOUND_GAME_RULE_VALUES, &payload).unwrap(),
+        PlayClientbound::GameRuleValues(GameRuleValues {
+            values: vec![GameRuleValue {
+                rule: "minecraft:do_daylight_cycle".to_string(),
+                value: "false".to_string(),
+            }],
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_game_rule_id() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:DoDaylightCycle");
+    payload.write_string("false");
+    let payload = payload.into_inner();
+
+    let err =
+        decode_play_clientbound(ids::play::CLIENTBOUND_GAME_RULE_VALUES, &payload).unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
 fn decodes_game_test_highlight_positions() {
     let mut payload = Encoder::new();
     payload.write_i64(chunks::encode_block_pos(BlockPos {
