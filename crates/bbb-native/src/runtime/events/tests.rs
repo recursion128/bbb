@@ -2257,16 +2257,16 @@ fn player_action_events_update_snapshot_counters() {
     );
     assert_eq!(counters.player_look_at_packets, 1);
     assert_eq!(
-        counters.last_player_look_at,
-        Some(bbb_control::PlayerLookAtState {
-            from_anchor: "eyes".to_string(),
-            position: bbb_control::NetVec3 {
+        world.local_player().last_look_at,
+        Some(bbb_world::LocalPlayerLookAtState {
+            from_anchor: EntityAnchor::Eyes,
+            position: ProtocolVec3d {
                 x: 10.5,
                 y: 64.0,
                 z: -2.25,
             },
             target_entity_id: Some(456),
-            to_anchor: Some("feet".to_string()),
+            to_anchor: Some(EntityAnchor::Feet),
         })
     );
 }
@@ -3950,14 +3950,6 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
     );
 
     assert_eq!(counters.selected_hotbar_slot, 5);
-    assert_eq!(
-        counters.camera,
-        bbb_control::CameraState {
-            entity_id: Some(9),
-            follows_player: true,
-            entity_known: true,
-        }
-    );
     assert_eq!(counters.player_abilities_packets, 1);
     assert_eq!(counters.player_health_packets, 1);
     assert_eq!(counters.player_experience_packets, 1);

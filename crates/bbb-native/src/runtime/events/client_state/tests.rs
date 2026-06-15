@@ -14,7 +14,7 @@ fn player_position_updates_absolute_and_relative_pose() {
         &mut world,
         player_position_update(1, [10.0, 64.0, -5.0], [0.125, 0.0, 0.0], 90.0, 15.0, 0),
     );
-    let pose = counters.player_pose.unwrap();
+    let pose = player_pose_from_local_player_pose(world.local_player_pose().unwrap());
     assert_eq!(pose.position, vec3(10.0, 64.0, -5.0));
     assert_eq!(pose.delta_movement, vec3(0.125, 0.0, 0.0));
     assert_eq!(pose.y_rot, 90.0);
@@ -37,7 +37,7 @@ fn player_position_updates_absolute_and_relative_pose() {
                 | PLAYER_RELATIVE_DELTA_X,
         ),
     );
-    let pose = counters.player_pose.unwrap();
+    let pose = player_pose_from_local_player_pose(world.local_player_pose().unwrap());
     assert_eq!(pose.position, vec3(11.5, -2.0, 7.0));
     assert_eq!(pose.delta_movement, vec3(0.375, 0.5, 0.75));
     assert_eq!(pose.y_rot, 110.0);
@@ -70,7 +70,7 @@ fn player_rotation_updates_pose_orientation() {
         },
     );
 
-    let pose = counters.player_pose.unwrap();
+    let pose = player_pose_from_local_player_pose(world.local_player_pose().unwrap());
     assert_eq!(pose.position, vec3(10.0, 64.0, -5.0));
     assert_eq!(pose.delta_movement, vec3(0.125, 0.0, 0.0));
     assert_eq!(pose.y_rot, 110.0);
@@ -81,7 +81,7 @@ fn player_rotation_updates_pose_orientation() {
 }
 
 #[test]
-fn player_look_at_updates_snapshot_and_pose_orientation() {
+fn player_look_at_updates_world_pose_orientation() {
     let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
@@ -106,7 +106,7 @@ fn player_look_at_updates_snapshot_and_pose_orientation() {
         },
     );
 
-    let pose = counters.player_pose.unwrap();
+    let pose = player_pose_from_local_player_pose(world.local_player_pose().unwrap());
     assert_eq!(pose.position, vec3(0.0, 64.0, 0.0));
     assert_eq!(pose.delta_movement, vec3(0.0, 0.0, 0.0));
     assert!((pose.y_rot - 0.0).abs() < 0.001);
@@ -114,10 +114,14 @@ fn player_look_at_updates_snapshot_and_pose_orientation() {
     assert_eq!(pose.last_teleport_id, 7);
     assert_eq!(counters.player_look_at_packets, 1);
     assert_eq!(
-        counters.last_player_look_at,
-        Some(PlayerLookAtState {
-            from_anchor: "eyes".to_string(),
-            position: vec3(0.0, 65.62, 10.0),
+        world.local_player().last_look_at,
+        Some(bbb_world::LocalPlayerLookAtState {
+            from_anchor: bbb_protocol::packets::EntityAnchor::Eyes,
+            position: bbb_protocol::packets::Vec3d {
+                x: 0.0,
+                y: 65.62,
+                z: 10.0,
+            },
             target_entity_id: None,
             to_anchor: None,
         })
@@ -417,22 +421,15 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
 
 #[test]
 fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
-    let mut counters = NetCounters {
-        camera: CameraState {
-            entity_id: Some(42),
-            follows_player: false,
-            entity_known: true,
-        },
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     world.apply_login(&protocol_play_login(9));
 
     assert!(!world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 123 }));
     sync_local_player_counters(&mut counters, &world);
     assert_eq!(
-        counters.camera,
-        CameraState {
+        world.local_player().camera,
+        bbb_world::CameraState {
             entity_id: None,
             follows_player: true,
             entity_known: true,
@@ -446,8 +443,8 @@ fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
     sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(
-        counters.camera,
-        CameraState {
+        world.local_player().camera,
+        bbb_world::CameraState {
             entity_id: Some(9),
             follows_player: true,
             entity_known: true,

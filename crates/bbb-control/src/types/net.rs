@@ -91,10 +91,7 @@ pub struct NetCounters {
     pub play_logins_received: usize,
     #[serde(default)]
     pub respawns_received: usize,
-    pub player_pose: Option<PlayerPose>,
-    pub last_player_look_at: Option<PlayerLookAtState>,
     pub selected_hotbar_slot: u8,
-    pub camera: CameraState,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
     pub player_info_remove_packets: usize,

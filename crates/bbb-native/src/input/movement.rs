@@ -230,9 +230,7 @@ mod tests {
         };
         assert!(second.state.position.z > 0.0);
         let world_pose = world.local_player_pose().unwrap();
-        let counter_pose = counters.player_pose.unwrap();
-        assert_f64_near(counter_pose.position.z, world_pose.position.z, 0.000001);
-        assert_f64_near(counter_pose.position.z, second.state.position.z, 0.000001);
+        assert_f64_near(world_pose.position.z, second.state.position.z, 0.000001);
         assert_eq!(counters.player_move_commands_queued, 2);
     }
 

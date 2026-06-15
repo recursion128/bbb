@@ -1,6 +1,6 @@
-use bbb_control::{CameraState, NetCounters, NetVec3, PlayerLookAtState, PlayerPose};
+use bbb_control::{NetCounters, NetVec3, PlayerPose};
 use bbb_protocol::packets::PlayerPositionState;
-use bbb_world::{LocalPlayerLookAtState, LocalPlayerPoseState, WorldStore};
+use bbb_world::{LocalPlayerPoseState, WorldStore};
 
 pub(super) fn apply_system_chat_update(
     counters: &mut NetCounters,
@@ -75,13 +75,6 @@ pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldSto
 pub(crate) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {
     let local = world.local_player();
     counters.selected_hotbar_slot = local.selected_hotbar_slot;
-    counters.camera = CameraState {
-        entity_id: local.camera.entity_id,
-        follows_player: local.camera.follows_player,
-        entity_known: local.camera.entity_known,
-    };
-    counters.player_pose = local.pose.map(player_pose_from_local_player_pose);
-    counters.last_player_look_at = local.last_look_at.map(control_player_look_at);
 
     let world_counters = world.counters();
     counters.play_logins_received = world_counters.play_logins_received;
@@ -168,15 +161,6 @@ fn net_vec3_from_protocol(vec: bbb_protocol::packets::Vec3d) -> NetVec3 {
         x: vec.x,
         y: vec.y,
         z: vec.z,
-    }
-}
-
-fn control_player_look_at(look_at: LocalPlayerLookAtState) -> PlayerLookAtState {
-    PlayerLookAtState {
-        from_anchor: look_at.from_anchor.as_str().to_string(),
-        position: net_vec3_from_protocol(look_at.position),
-        target_entity_id: look_at.target_entity_id,
-        to_anchor: look_at.to_anchor.map(|anchor| anchor.as_str().to_string()),
     }
 }
 
