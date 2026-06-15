@@ -6,7 +6,9 @@ use crate::{
     component::decode_component_summary_from_decoder,
 };
 
-use super::{chunks, decode_optional_vec3d, read_resource_key, BlockPos, Vec3d};
+use super::{
+    chunks, decode_optional_vec3d, read_resource_key, read_resource_location, BlockPos, Vec3d,
+};
 
 const MAX_CLOCK_UPDATES: usize = 4096;
 const BOSS_EVENT_FLAG_DARKEN_SCREEN: u8 = 1;
@@ -418,7 +420,7 @@ pub(super) fn decode_change_difficulty(decoder: &mut Decoder<'_>) -> Result<Chan
 
 pub(super) fn decode_cooldown(decoder: &mut Decoder<'_>) -> Result<Cooldown> {
     Ok(Cooldown {
-        cooldown_group: read_resource_key(decoder)?,
+        cooldown_group: read_resource_location(decoder)?,
         duration: decoder.read_var_i32()?,
     })
 }

@@ -166,6 +166,34 @@ fn decodes_cooldown_packet_wire_order() {
 }
 
 #[test]
+fn decodes_cooldown_packet_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_string("ender_pearl");
+    payload.write_var_i32(40);
+    let payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_COOLDOWN, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::Cooldown(Cooldown {
+            cooldown_group: "minecraft:ender_pearl".to_string(),
+            duration: 40,
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_cooldown_group() {
+    let mut payload = Encoder::new();
+    payload.write_string("minecraft:EnderPearl");
+    payload.write_var_i32(40);
+    let payload = payload.into_inner();
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_COOLDOWN, &payload).unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
 fn decodes_damage_event_without_source_position_wire_order() {
     let mut payload = Encoder::new();
     payload.write_var_i32(123);
