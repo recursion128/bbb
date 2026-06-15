@@ -51,6 +51,10 @@ pub(crate) struct ParticleInstance {
     pub(crate) particle_type_id: i32,
     pub(crate) particle_id: String,
     pub(crate) sprite_ids: Vec<String>,
+    #[serde(default)]
+    pub(crate) current_sprite_id: Option<String>,
+    #[serde(default)]
+    pub(crate) current_sprite_index: Option<usize>,
     pub(crate) previous_position: [f64; 3],
     pub(crate) position: [f64; 3],
     pub(crate) velocity: [f64; 3],
@@ -61,6 +65,7 @@ pub(crate) struct ParticleInstance {
     pub(crate) gravity: f32,
     pub(crate) has_physics: bool,
     pub(crate) speed_up_when_y_motion_is_blocked: bool,
+    pub(crate) sprite_selection: ParticleSpriteSelection,
     pub(crate) override_limiter: bool,
     pub(crate) always_show: bool,
     pub(crate) raw_options_len: usize,
@@ -95,6 +100,7 @@ pub(crate) struct ParticleAdvanceSummary {
 struct ParticleDescriptor {
     provider: &'static str,
     lifetime: ParticleLifetimeDescriptor,
+    sprite_selection: ParticleSpriteSelection,
     friction: f32,
     gravity: f32,
     has_physics: bool,
@@ -111,6 +117,13 @@ enum ParticleLifetimeDescriptor {
         scale_tenths: u32,
     },
     Explode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleSpriteSelection {
+    First,
+    Random,
+    Age,
 }
 
 #[derive(Debug, Clone)]
@@ -268,6 +281,7 @@ impl ParticleRuntimeState {
             }
             instance.tick_motion_without_collision();
             instance.age_ticks = instance.age_ticks.saturating_add(1);
+            instance.update_sprite_from_age();
             active_instances.push_back(instance);
         }
         self.active_instances = active_instances;
@@ -311,10 +325,14 @@ impl ParticleRuntimeState {
 impl ParticleInstance {
     fn from_spawn_command(command: ParticleSpawnCommand, random: &mut ParticleRandom) -> Self {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
+        let (current_sprite_index, current_sprite_id) =
+            select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
             sprite_ids: command.sprite_ids,
+            current_sprite_id,
+            current_sprite_index,
             previous_position: command.position,
             position: command.position,
             velocity: command.velocity,
@@ -325,6 +343,7 @@ impl ParticleInstance {
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
+            sprite_selection: descriptor.sprite_selection,
             override_limiter: command.override_limiter,
             always_show: command.always_show,
             raw_options_len: command.raw_options_len,
@@ -342,6 +361,21 @@ impl ParticleInstance {
         self.velocity[1] *= friction;
         self.velocity[2] *= friction;
     }
+
+    fn update_sprite_from_age(&mut self) {
+        if self.sprite_selection != ParticleSpriteSelection::Age {
+            return;
+        }
+        let Some(index) =
+            sprite_index_for_age(self.sprite_ids.len(), self.age_ticks, self.lifetime_ticks)
+        else {
+            self.current_sprite_index = None;
+            self.current_sprite_id = None;
+            return;
+        };
+        self.current_sprite_index = Some(index);
+        self.current_sprite_id = self.sprite_ids.get(index).cloned();
+    }
 }
 
 impl ParticleDescriptor {
@@ -350,6 +384,7 @@ impl ParticleDescriptor {
             "minecraft:cloud" => Self {
                 provider: "PlayerCloudParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::PlayerCloud,
+                sprite_selection: ParticleSpriteSelection::Age,
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
@@ -359,18 +394,29 @@ impl ParticleDescriptor {
                 Self {
                     provider: "FlameParticle.Provider",
                     lifetime: ParticleLifetimeDescriptor::Rising,
+                    sprite_selection: ParticleSpriteSelection::Random,
                     friction: 0.96,
                     gravity: 0.0,
                     has_physics: false,
                     speed_up_when_y_motion_is_blocked: false,
                 }
             }
+            "minecraft:small_flame" => Self {
+                provider: "FlameParticle.SmallFlameProvider",
+                lifetime: ParticleLifetimeDescriptor::Rising,
+                sprite_selection: ParticleSpriteSelection::Random,
+                friction: 0.96,
+                gravity: 0.0,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: false,
+            },
             "minecraft:large_smoke" => Self {
                 provider: "LargeSmokeParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
                     max_lifetime: 8,
                     scale_tenths: 25,
                 },
+                sprite_selection: ParticleSpriteSelection::Age,
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -382,14 +428,52 @@ impl ParticleDescriptor {
                     max_lifetime: 8,
                     scale_tenths: 10,
                 },
+                sprite_selection: ParticleSpriteSelection::Age,
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: true,
             },
+            "minecraft:white_smoke" => Self {
+                provider: "WhiteSmokeParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 8,
+                    scale_tenths: 10,
+                },
+                sprite_selection: ParticleSpriteSelection::Age,
+                friction: 0.96,
+                gravity: -0.1,
+                has_physics: true,
+                speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:ash" => Self {
+                provider: "AshParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 20,
+                    scale_tenths: 10,
+                },
+                sprite_selection: ParticleSpriteSelection::Age,
+                friction: 0.96,
+                gravity: 0.1,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
+            "minecraft:white_ash" => Self {
+                provider: "WhiteAshParticle.Provider",
+                lifetime: ParticleLifetimeDescriptor::BaseAshSmoke {
+                    max_lifetime: 20,
+                    scale_tenths: 10,
+                },
+                sprite_selection: ParticleSpriteSelection::Age,
+                friction: 0.96,
+                gravity: 0.0125,
+                has_physics: false,
+                speed_up_when_y_motion_is_blocked: true,
+            },
             "minecraft:poof" => Self {
                 provider: "ExplodeParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Explode,
+                sprite_selection: ParticleSpriteSelection::Age,
                 friction: 0.9,
                 gravity: -0.1,
                 has_physics: true,
@@ -398,6 +482,7 @@ impl ParticleDescriptor {
             _ => Self {
                 provider: "Particle",
                 lifetime: ParticleLifetimeDescriptor::BaseParticle,
+                sprite_selection: ParticleSpriteSelection::First,
                 friction: 0.98,
                 gravity: 0.0,
                 has_physics: true,
@@ -428,6 +513,33 @@ impl ParticleLifetimeDescriptor {
     }
 }
 
+fn select_initial_sprite(
+    sprite_ids: &[String],
+    selection: ParticleSpriteSelection,
+    random: &mut ParticleRandom,
+) -> (Option<usize>, Option<String>) {
+    let index = match selection {
+        ParticleSpriteSelection::First | ParticleSpriteSelection::Age => {
+            (!sprite_ids.is_empty()).then_some(0)
+        }
+        ParticleSpriteSelection::Random => random.next_index(sprite_ids.len()),
+    };
+    let sprite_id = index.and_then(|index| sprite_ids.get(index).cloned());
+    (index, sprite_id)
+}
+
+fn sprite_index_for_age(sprite_count: usize, age_ticks: u32, lifetime_ticks: u32) -> Option<usize> {
+    if sprite_count == 0 {
+        return None;
+    }
+    if sprite_count == 1 || lifetime_ticks == 0 {
+        return Some(0);
+    }
+    let age = age_ticks as usize;
+    let lifetime = lifetime_ticks as usize;
+    Some(age.saturating_mul(sprite_count - 1) / lifetime).map(|index| index.min(sprite_count - 1))
+}
+
 const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
 const RANDOM_INCREMENT: u64 = 11;
 const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
@@ -441,6 +553,20 @@ impl ParticleRandom {
 
     fn next_f64(&mut self) -> f64 {
         f64::from(self.next_bits(24)) / f64::from(1_u32 << 24)
+    }
+
+    fn next_index(&mut self, len: usize) -> Option<usize> {
+        if len == 0 {
+            return None;
+        }
+        let bound = i32::try_from(len).ok()?;
+        let mut bits = self.next_bits(31) as i32;
+        let mut value = bits % bound;
+        while bits.wrapping_sub(value).wrapping_add(bound - 1) < 0 {
+            bits = self.next_bits(31) as i32;
+            value = bits % bound;
+        }
+        Some(value as usize)
     }
 
     fn next_bits(&mut self, bits: u32) -> u32 {
@@ -527,6 +653,7 @@ mod tests {
             "minecraft:cloud",
             "PlayerCloudParticle.Provider",
             ParticleLifetimeDescriptor::PlayerCloud,
+            ParticleSpriteSelection::Age,
             0.96,
             0.0,
             false,
@@ -536,6 +663,17 @@ mod tests {
             "minecraft:flame",
             "FlameParticle.Provider",
             ParticleLifetimeDescriptor::Rising,
+            ParticleSpriteSelection::Random,
+            0.96,
+            0.0,
+            false,
+            false,
+        );
+        assert_descriptor(
+            "minecraft:small_flame",
+            "FlameParticle.SmallFlameProvider",
+            ParticleLifetimeDescriptor::Rising,
+            ParticleSpriteSelection::Random,
             0.96,
             0.0,
             false,
@@ -548,6 +686,7 @@ mod tests {
                 max_lifetime: 8,
                 scale_tenths: 10,
             },
+            ParticleSpriteSelection::Age,
             0.96,
             -0.1,
             true,
@@ -560,15 +699,56 @@ mod tests {
                 max_lifetime: 8,
                 scale_tenths: 25,
             },
+            ParticleSpriteSelection::Age,
             0.96,
             -0.1,
             true,
             true,
         );
         assert_descriptor(
+            "minecraft:white_smoke",
+            "WhiteSmokeParticle.Provider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 8,
+                scale_tenths: 10,
+            },
+            ParticleSpriteSelection::Age,
+            0.96,
+            -0.1,
+            true,
+            true,
+        );
+        assert_descriptor(
+            "minecraft:ash",
+            "AshParticle.Provider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 20,
+                scale_tenths: 10,
+            },
+            ParticleSpriteSelection::Age,
+            0.96,
+            0.1,
+            false,
+            true,
+        );
+        assert_descriptor(
+            "minecraft:white_ash",
+            "WhiteAshParticle.Provider",
+            ParticleLifetimeDescriptor::BaseAshSmoke {
+                max_lifetime: 20,
+                scale_tenths: 10,
+            },
+            ParticleSpriteSelection::Age,
+            0.96,
+            0.0125,
+            false,
+            true,
+        );
+        assert_descriptor(
             "minecraft:poof",
             "ExplodeParticle.Provider",
             ParticleLifetimeDescriptor::Explode,
+            ParticleSpriteSelection::Age,
             0.9,
             -0.1,
             true,
@@ -590,9 +770,24 @@ mod tests {
         let instance = &particles.active_instances()[0];
         assert_eq!(instance.provider, "Particle");
         assert!(instance.lifetime_ticks > 0);
+        assert_eq!(instance.current_sprite_index, Some(0));
+        assert_eq!(
+            instance.current_sprite_id.as_deref(),
+            Some("minecraft:generic_0")
+        );
         assert_close_f32(instance.friction, 0.98);
         assert_close_f32(instance.gravity, 0.0);
         assert!(instance.has_physics);
+    }
+
+    #[test]
+    fn sprite_index_for_age_matches_vanilla_integer_frame_selection() {
+        assert_eq!(sprite_index_for_age(8, 0, 20), Some(0));
+        assert_eq!(sprite_index_for_age(8, 10, 20), Some(3));
+        assert_eq!(sprite_index_for_age(8, 19, 20), Some(6));
+        assert_eq!(sprite_index_for_age(8, 20, 20), Some(7));
+        assert_eq!(sprite_index_for_age(1, 20, 20), Some(0));
+        assert_eq!(sprite_index_for_age(0, 20, 20), None);
     }
 
     #[test]
@@ -789,6 +984,143 @@ mod tests {
     }
 
     #[test]
+    fn particle_runtime_updates_age_based_sprite_frames_after_tick() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:smoke", 4);
+        instance.sprite_ids = vec![
+            "minecraft:smoke_0".to_string(),
+            "minecraft:smoke_1".to_string(),
+            "minecraft:smoke_2".to_string(),
+        ];
+        instance.current_sprite_index = Some(0);
+        instance.current_sprite_id = Some("minecraft:smoke_0".to_string());
+        particles.active_instances.push_back(instance);
+
+        particles.advance(2);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 2);
+        assert_eq!(instance.current_sprite_index, Some(1));
+        assert_eq!(
+            instance.current_sprite_id.as_deref(),
+            Some("minecraft:smoke_1")
+        );
+    }
+
+    #[test]
+    fn particle_runtime_age_based_sprite_reaches_last_frame_at_lifetime_boundary() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut instance = test_instance_with_lifetime("minecraft:poof", 2);
+        instance.sprite_ids = vec![
+            "minecraft:poof_0".to_string(),
+            "minecraft:poof_1".to_string(),
+            "minecraft:poof_2".to_string(),
+        ];
+        instance.current_sprite_index = Some(0);
+        instance.current_sprite_id = Some("minecraft:poof_0".to_string());
+        particles.active_instances.push_back(instance);
+
+        particles.advance(2);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.age_ticks, 2);
+        assert_eq!(instance.current_sprite_index, Some(2));
+        assert_eq!(
+            instance.current_sprite_id.as_deref(),
+            Some("minecraft:poof_2")
+        );
+    }
+
+    #[test]
+    fn particle_runtime_keeps_random_sprite_selection_stable_after_tick() {
+        let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 4, 0);
+        let mut command = spawn_command("minecraft:flame", 1.0);
+        command.sprite_ids = vec![
+            "minecraft:flame_0".to_string(),
+            "minecraft:flame_1".to_string(),
+            "minecraft:flame_2".to_string(),
+        ];
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![command],
+            ..ParticleSpawnBatch::default()
+        });
+        particles.advance(0);
+        let initial_sprite = particles.active_instances()[0].current_sprite_id.clone();
+        assert!(initial_sprite.is_some());
+
+        particles.advance(3);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.sprite_selection, ParticleSpriteSelection::Random);
+        assert_eq!(instance.current_sprite_id, initial_sprite);
+    }
+
+    #[test]
+    fn particle_runtime_sets_initial_sprite_from_spawn_command_sprites() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![spawn_command("minecraft:smoke", 1.0)],
+            ..ParticleSpawnBatch::default()
+        });
+
+        particles.advance(0);
+
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.current_sprite_index, Some(0));
+        assert_eq!(
+            instance.current_sprite_id.as_deref(),
+            Some("minecraft:generic_0")
+        );
+    }
+
+    #[test]
+    fn particle_runtime_handles_empty_sprite_sets_without_blocking_spawn() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        let mut command = spawn_command("minecraft:smoke", 1.0);
+        command.sprite_ids.clear();
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![command],
+            ..ParticleSpawnBatch::default()
+        });
+
+        let summary = particles.advance(0);
+
+        assert_eq!(summary.intaken_instances, 1);
+        let instance = &particles.active_instances()[0];
+        assert_eq!(instance.current_sprite_index, None);
+        assert_eq!(instance.current_sprite_id, None);
+    }
+
+    #[test]
+    fn particle_runtime_uses_age_selection_for_ash_family_particles() {
+        let mut particles = ParticleRuntimeState::with_capacities(4, 4);
+        particles.submit_batch(ParticleSpawnBatch {
+            commands: vec![
+                spawn_command("minecraft:ash", 1.0),
+                spawn_command("minecraft:white_ash", 2.0),
+                spawn_command("minecraft:white_smoke", 3.0),
+            ],
+            ..ParticleSpawnBatch::default()
+        });
+
+        particles.advance(0);
+
+        let selections: Vec<_> = particles
+            .active_instances()
+            .iter()
+            .map(|instance| (instance.particle_id.as_str(), instance.sprite_selection))
+            .collect();
+        assert_eq!(
+            selections,
+            vec![
+                ("minecraft:ash", ParticleSpriteSelection::Age),
+                ("minecraft:white_ash", ParticleSpriteSelection::Age),
+                ("minecraft:white_smoke", ParticleSpriteSelection::Age),
+            ]
+        );
+    }
+
+    #[test]
     fn particle_runtime_expires_existing_active_before_intaking_pending_spawns() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         particles
@@ -842,6 +1174,7 @@ mod tests {
         particle_id: &str,
         provider: &'static str,
         lifetime: ParticleLifetimeDescriptor,
+        sprite_selection: ParticleSpriteSelection,
         friction: f32,
         gravity: f32,
         has_physics: bool,
@@ -850,6 +1183,7 @@ mod tests {
         let descriptor = ParticleDescriptor::for_particle(particle_id);
         assert_eq!(descriptor.provider, provider);
         assert_eq!(descriptor.lifetime, lifetime);
+        assert_eq!(descriptor.sprite_selection, sprite_selection);
         assert_close_f32(descriptor.friction, friction);
         assert_close_f32(descriptor.gravity, gravity);
         assert_eq!(descriptor.has_physics, has_physics);
@@ -865,6 +1199,8 @@ mod tests {
             particle_type_id: 0,
             particle_id: particle_id.to_string(),
             sprite_ids: Vec::new(),
+            current_sprite_id: None,
+            current_sprite_index: None,
             previous_position: [0.0, 0.0, 0.0],
             position: [0.0, 0.0, 0.0],
             velocity: [0.0, 0.0, 0.0],
@@ -875,6 +1211,7 @@ mod tests {
             gravity: descriptor.gravity,
             has_physics: descriptor.has_physics,
             speed_up_when_y_motion_is_blocked: descriptor.speed_up_when_y_motion_is_blocked,
+            sprite_selection: descriptor.sprite_selection,
             override_limiter: false,
             always_show: false,
             raw_options_len: 0,

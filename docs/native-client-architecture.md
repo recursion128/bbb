@@ -394,7 +394,8 @@ Target ownership:
 - `bbb-renderer` drains pending spawn commands into active CPU-side particle
   instances through the native runtime pump, advances instance age only on the
   native 20Hz client tick path, applies data-only provider/lifetime descriptors
-  for common 26.1 particles, applies no-collision gravity/friction motion, and
+  for common 26.1 particles, applies no-collision gravity/friction motion, tracks
+  current sprite ids with vanilla SpriteSet age/random selection rules, and
   reports active/intake/expired/drop counters. The active instance state is
   renderer runtime state, not canonical world state.
 - `bbb-renderer` owns actual particle creation, culling, settings, distance
