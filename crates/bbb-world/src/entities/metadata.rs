@@ -73,6 +73,12 @@ impl WorldStore {
     pub fn apply_update_attributes(&mut self, packet: ProtocolUpdateAttributes) -> bool {
         self.counters.entity_attribute_updates_received += 1;
         self.counters.entity_attributes_received += packet.attributes.len();
+        let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
+            return false;
+        };
+        if !vanilla_living_entity_type(entity_type_id) {
+            return false;
+        }
         let Some(()) = self
             .entities
             .with_attributes_mut(packet.entity_id, |attributes| {

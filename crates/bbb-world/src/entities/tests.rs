@@ -410,6 +410,29 @@ fn set_equipment_ignores_non_living_entities() {
 }
 
 #[test]
+fn update_attributes_ignores_non_living_entities() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        124,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+
+    assert!(!store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 124,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: 21,
+            base: 20.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+
+    assert!(store.probe_entity(124).unwrap().attributes.is_empty());
+    assert_eq!(store.counters().entity_attribute_updates_received, 1);
+    assert_eq!(store.counters().entity_attributes_received, 1);
+    assert_eq!(store.counters().entity_attribute_updates_applied, 0);
+}
+
+#[test]
 fn entity_store_round_trips_serde_and_replaces_by_protocol_id() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(10, 7));
@@ -1280,7 +1303,7 @@ fn living_pick_bounds_scale_with_vanilla_scale_attribute() {
         ))
     );
 
-    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+    assert!(!store.apply_update_attributes(ProtocolUpdateAttributes {
         entity_id: 31,
         attributes: vec![ProtocolAttributeSnapshot {
             attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
