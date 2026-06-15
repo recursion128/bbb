@@ -107,14 +107,19 @@ impl ProbeContext {
 mod tests {
     use super::*;
     use crate::connection::RawConnection;
-    use bbb_protocol::packets::{
-        CookieRequest, CustomPayload, CustomPayloadBody, DialogHolder, RegistryTags,
-        ResourcePackPop, ResourcePackPush, ShowDialog, StoreCookie, TagNetworkPayload, Transfer,
-        UpdateEnabledFeatures, UpdateTags,
+    use bbb_protocol::{
+        ids,
+        packets::{
+            CookieRequest, CustomPayload, CustomPayloadBody, DialogHolder, RegistryTags,
+            ResourcePackPop, ResourcePackPush, ShowDialog, StoreCookie, TagNetworkPayload,
+            Transfer, UpdateEnabledFeatures, UpdateTags,
+        },
     };
     use bbb_world::{ChunkPos, DialogState, ResourcePackState, TransferTargetState};
     use bytes::BytesMut;
+    use std::time::Duration;
     use tokio::net::TcpListener;
+    use tokio::time::timeout;
     use uuid::Uuid;
 
     #[tokio::test]
@@ -286,6 +291,34 @@ mod tests {
         assert_eq!(report.world_counters.cookie_request_packets, 2);
         assert_eq!(report.world_counters.cookie_response_hits, 1);
         assert_eq!(report.world_counters.cookie_response_misses, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_code_of_conduct_auto_accepts_and_updates_world() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::CodeOfConduct {
+                text: "Follow the server rules.".to_string(),
+            })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("probe should auto-accept code of conduct")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT
+        );
+        assert!(payload.is_empty());
+        assert_eq!(
+            probe.world.last_code_of_conduct().unwrap().text,
+            "Follow the server rules."
+        );
+        assert_eq!(probe.world.counters().code_of_conduct_packets, 1);
     }
 
     #[tokio::test]
