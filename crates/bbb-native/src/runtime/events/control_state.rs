@@ -162,12 +162,3 @@ pub(super) fn apply_control_projection_event(
 
     None
 }
-
-pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.minecart_moves_received = world_counters.minecart_moves_received;
-    counters.minecart_moves_applied = world_counters.minecart_moves_applied;
-    counters.minecart_moves_ignored = world_counters.minecart_moves_ignored;
-    counters.minecart_lerp_steps_received = world_counters.minecart_lerp_steps_received;
-    counters.minecart_lerp_steps_tracked = world_counters.minecart_lerp_steps_tracked;
-}

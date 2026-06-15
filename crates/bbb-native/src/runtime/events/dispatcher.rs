@@ -8,7 +8,7 @@ use crate::input::queue_vehicle_move_command;
 use crate::particle_runtime::ParticleEventSink;
 
 use super::client_state::*;
-use super::control_state::{apply_control_projection_event, sync_entity_counters};
+use super::control_state::apply_control_projection_event;
 use super::{sync_weather_counters, sync_world_time_counters};
 
 #[cfg(test)]
@@ -210,27 +210,21 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::AddEntity(entity) => {
                 world.apply_add_entity(entity);
-                sync_entity_counters(counters, world);
             }
             NetEvent::EntityAnimation(update) => {
                 world.apply_entity_animation(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::EntityEvent(update) => {
                 world.apply_entity_event(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::HurtAnimation(update) => {
                 world.apply_hurt_animation(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::MoveEntity(update) => {
                 world.apply_entity_move(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::MoveMinecartAlongTrack(update) => {
                 world.apply_move_minecart_along_track(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::MoveVehicle(update) => {
                 let report = world.apply_move_vehicle(update);
@@ -240,47 +234,36 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::EntityPositionSync(update) => {
                 world.apply_entity_position_sync(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::RemoveEntities(update) => {
                 world.apply_remove_entities(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::RotateHead(update) => {
                 world.apply_rotate_head(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::SetEntityMotion(update) => {
                 world.apply_set_entity_motion(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::SetEntityLink(update) => {
                 world.apply_set_entity_link(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::SetEquipment(update) => {
                 world.apply_set_equipment(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::TakeItemEntity(update) => {
                 world.apply_take_item_entity(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::SetPassengers(update) => {
                 world.apply_set_passengers(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::UpdateAttributes(update) => {
                 world.apply_update_attributes(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::SetEntityData(update) => {
                 world.apply_set_entity_data(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::TeleportEntity(update) => {
                 world.apply_teleport_entity(update);
-                sync_entity_counters(counters, world);
             }
             NetEvent::RegistryData(update) => {
                 world.record_registry_data(update);
@@ -291,12 +274,10 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::Login(login) => {
                 world.apply_login(&login);
                 sync_local_player_counters(counters, world);
-                sync_entity_counters(counters, world);
             }
             NetEvent::Respawn(respawn) => {
                 world.apply_respawn(&respawn);
                 sync_local_player_counters(counters, world);
-                sync_entity_counters(counters, world);
             }
             NetEvent::PlayerPosition(update) => {
                 apply_player_position_update(counters, world, update);

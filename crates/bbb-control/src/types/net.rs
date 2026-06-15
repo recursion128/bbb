@@ -35,15 +35,6 @@ pub struct NetCounters {
     pub set_camera_updates_applied: usize,
     #[serde(default)]
     pub set_camera_updates_ignored: usize,
-    pub minecart_moves_received: usize,
-    #[serde(default)]
-    pub minecart_moves_applied: usize,
-    #[serde(default)]
-    pub minecart_moves_ignored: usize,
-    #[serde(default)]
-    pub minecart_lerp_steps_received: usize,
-    #[serde(default)]
-    pub minecart_lerp_steps_tracked: usize,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,
     pub player_command_commands_queued: usize,

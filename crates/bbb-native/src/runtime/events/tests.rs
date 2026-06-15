@@ -1239,7 +1239,7 @@ fn inventory_events_update_world_and_world_counters() {
 }
 
 #[test]
-fn entity_events_update_world_and_snapshot_counters() {
+fn entity_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(19);
     tx.try_send(NetEvent::AddEntity(protocol_add_entity(123)))
         .unwrap();
@@ -3369,7 +3369,7 @@ fn move_vehicle_ignored_counters_update_world_counters() {
 }
 
 #[test]
-fn minecart_along_track_event_updates_world_state() {
+fn minecart_along_track_event_updates_world_state_and_world_counters() {
     let (event_tx, mut event_rx) = mpsc::channel(1);
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity_with_type(10, 85));
@@ -3416,14 +3416,10 @@ fn minecart_along_track_event_updates_world_state() {
     assert_eq!(world.counters().minecart_moves_applied, 1);
     assert_eq!(world.counters().minecart_lerp_steps_received, 1);
     assert_eq!(world.counters().minecart_lerp_steps_tracked, 1);
-    assert_eq!(counters.minecart_moves_received, 1);
-    assert_eq!(counters.minecart_moves_applied, 1);
-    assert_eq!(counters.minecart_lerp_steps_received, 1);
-    assert_eq!(counters.minecart_lerp_steps_tracked, 1);
 }
 
 #[test]
-fn minecart_along_track_ignored_counters_are_projected() {
+fn minecart_along_track_ignored_counters_update_world_counters() {
     let (event_tx, mut event_rx) = mpsc::channel(2);
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(20));
@@ -3468,11 +3464,6 @@ fn minecart_along_track_ignored_counters_are_projected() {
     assert_eq!(world.counters().minecart_moves_ignored, 2);
     assert_eq!(world.counters().minecart_lerp_steps_received, 2);
     assert_eq!(world.counters().minecart_lerp_steps_tracked, 0);
-    assert_eq!(counters.minecart_moves_received, 2);
-    assert_eq!(counters.minecart_moves_applied, 0);
-    assert_eq!(counters.minecart_moves_ignored, 2);
-    assert_eq!(counters.minecart_lerp_steps_received, 2);
-    assert_eq!(counters.minecart_lerp_steps_tracked, 0);
 }
 
 #[test]
