@@ -507,9 +507,9 @@ mod tests {
         InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
         OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerHealth,
         PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, RecipeDisplayType,
-        RemoteDebugSampleType, SetPassengers, ShowDialog, StatUpdate, StoreCookie,
-        TestInstanceBlockStatus, TickingState, TickingStep, Vec3d as ProtocolVec3d,
-        Vec3i as ProtocolVec3i,
+        RemoteDebugSampleType, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
+        ServerData, SetPassengers, ShowDialog, StatUpdate, StoreCookie, TestInstanceBlockStatus,
+        TickingState, TickingStep, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
     };
     use bbb_protocol::{codec::Decoder, ids};
     use bbb_world::{BlockPos, ChunkPos};
@@ -802,6 +802,82 @@ mod tests {
         assert_eq!(report.world_counters.cookie_request_packets, 1);
         assert_eq!(report.world_counters.cookie_response_hits, 1);
         assert_eq!(report.world_counters.cookie_response_misses, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_play_server_presentation_packets_update_world_and_decline_resource_pack() {
+        let pack_id = Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
+        let missing_pack_id = Uuid::from_u128(0xaaaaaaaa_bbbb_cccc_dddd_eeeeeeeeeeee);
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::ServerData(ServerData {
+                motd: "Native test server".to_string(),
+                icon_bytes: Some(vec![1, 2, 3, 4]),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ResourcePackPush(ResourcePackPush {
+                id: pack_id,
+                url: "https://example.invalid/pack.zip".to_string(),
+                hash: "0123456789abcdef0123456789abcdef01234567".to_string(),
+                required: true,
+                prompt: Some("Install pack?".to_string()),
+            }))
+            .await
+            .unwrap();
+
+        let pack = probe
+            .world
+            .resource_pack(pack_id)
+            .expect("resource pack should be tracked after push");
+        assert_eq!(pack.url, "https://example.invalid/pack.zip");
+        assert_eq!(pack.hash, "0123456789abcdef0123456789abcdef01234567");
+        assert!(pack.required);
+        assert_eq!(pack.prompt.as_deref(), Some("Install pack?"));
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("resource pack response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_RESOURCE_PACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_uuid().unwrap(), pack_id);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            ResourcePackResponseAction::Declined.ordinal()
+        );
+        assert!(decoder.is_empty());
+
+        probe
+            .handle_play_packet(PlayClientbound::ResourcePackPop(ResourcePackPop {
+                id: Some(pack_id),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ResourcePackPop(ResourcePackPop {
+                id: Some(missing_pack_id),
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(4, ChunkPos { x: 0, z: 0 });
+        let server_data = report
+            .world
+            .server_data()
+            .expect("server data should be tracked");
+        assert_eq!(server_data.motd, "Native test server");
+        assert_eq!(server_data.icon_byte_len(), Some(4));
+        assert!(report.world.resource_packs().is_empty());
+        assert_eq!(report.world_counters.server_data_packets, 1);
+        assert_eq!(report.world_counters.resource_pack_push_packets, 1);
+        assert_eq!(report.world_counters.resource_pack_pop_packets, 2);
+        assert_eq!(report.world_counters.resource_pack_pop_updates_applied, 1);
+        assert_eq!(report.world_counters.resource_pack_pop_updates_ignored, 1);
+        assert_eq!(report.world_counters.resource_packs_tracked, 0);
     }
 
     #[tokio::test]
