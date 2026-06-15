@@ -127,14 +127,6 @@ pub struct NetCounters {
     pub last_sound: Option<ClientSoundState>,
     pub last_sound_entity: Option<ClientSoundEntityState>,
     pub last_stop_sound: Option<StopSoundState>,
-    pub last_debug_block_value: Option<DebugBlockValueState>,
-    pub last_debug_chunk_value: Option<DebugChunkValueState>,
-    pub last_debug_entity_value: Option<DebugEntityValueState>,
-    pub last_debug_event: Option<DebugEventState>,
-    pub last_debug_sample: Option<DebugSampleState>,
-    pub last_game_rule_values: Option<GameRuleValuesState>,
-    pub last_game_test_highlight_pos: Option<GameTestHighlightPosState>,
-    pub last_test_instance_block_status: Option<TestInstanceBlockStatusState>,
     pub selected_advancements_tab: Option<String>,
     pub last_tag_query: Option<TagQueryState>,
     pub player_position_packets: usize,
@@ -871,52 +863,6 @@ pub struct NetVec3i {
     pub x: i32,
     pub y: i32,
     pub z: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DebugBlockValueState {
-    pub pos: BlockPos,
-    pub raw_update_payload_len: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DebugChunkValueState {
-    pub pos: ChunkPos,
-    pub raw_update_payload_len: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DebugEntityValueState {
-    pub entity_id: i32,
-    pub raw_update_payload_len: usize,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DebugEventState {
-    pub raw_event_payload_len: usize,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DebugSampleState {
-    pub sample_len: usize,
-    pub sample_type: String,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GameRuleValuesState {
-    pub values: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GameTestHighlightPosState {
-    pub absolute_pos: BlockPos,
-    pub relative_pos: BlockPos,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TestInstanceBlockStatusState {
-    pub status: String,
-    pub size: Option<NetVec3i>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

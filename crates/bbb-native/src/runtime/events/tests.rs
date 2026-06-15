@@ -2980,69 +2980,13 @@ fn debug_game_events_update_snapshot_counters() {
     );
 
     assert_eq!(counters.debug_block_value_packets, 1);
-    assert_eq!(
-        counters.last_debug_block_value,
-        Some(bbb_control::DebugBlockValueState {
-            pos: BlockPos { x: 1, y: 64, z: -2 },
-            raw_update_payload_len: 3,
-        })
-    );
     assert_eq!(counters.debug_chunk_value_packets, 1);
-    assert_eq!(
-        counters.last_debug_chunk_value,
-        Some(bbb_control::DebugChunkValueState {
-            pos: ChunkPos { x: 3, z: -4 },
-            raw_update_payload_len: 2,
-        })
-    );
     assert_eq!(counters.debug_entity_value_packets, 1);
-    assert_eq!(
-        counters.last_debug_entity_value,
-        Some(bbb_control::DebugEntityValueState {
-            entity_id: 123,
-            raw_update_payload_len: 3,
-        })
-    );
     assert_eq!(counters.debug_event_packets, 1);
-    assert_eq!(
-        counters.last_debug_event,
-        Some(bbb_control::DebugEventState {
-            raw_event_payload_len: 2,
-        })
-    );
     assert_eq!(counters.debug_sample_packets, 1);
-    assert_eq!(
-        counters.last_debug_sample,
-        Some(bbb_control::DebugSampleState {
-            sample_len: 2,
-            sample_type: "tick_time".to_string(),
-        })
-    );
     assert_eq!(counters.game_rule_value_packets, 1);
-    assert_eq!(
-        counters.last_game_rule_values,
-        Some(bbb_control::GameRuleValuesState { values: 2 })
-    );
     assert_eq!(counters.game_test_highlight_pos_packets, 1);
-    assert_eq!(
-        counters.last_game_test_highlight_pos,
-        Some(bbb_control::GameTestHighlightPosState {
-            absolute_pos: BlockPos {
-                x: -10,
-                y: 70,
-                z: 22,
-            },
-            relative_pos: BlockPos { x: 1, y: 2, z: 3 },
-        })
-    );
     assert_eq!(counters.test_instance_block_status_packets, 1);
-    assert_eq!(
-        counters.last_test_instance_block_status,
-        Some(bbb_control::TestInstanceBlockStatusState {
-            status: "Ready".to_string(),
-            size: Some(bbb_control::NetVec3i { x: 3, y: 4, z: 5 }),
-        })
-    );
 }
 
 #[test]

@@ -338,6 +338,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "net.counters" => serde_json::to_value(&snapshot_guard.net),
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
+        "world.client_debug_game" => {
+            serde_json::to_value(snapshot_guard.world_store.client_debug_game())
+        }
         "world.client_ui" => serde_json::to_value(snapshot_guard.world_store.client_ui()),
         "world.probe_chunk" => {
             let x = i32_param(&request.params, "x");
@@ -473,10 +476,10 @@ mod tests {
 
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DialogHolder,
-        EntityPositionSync as ProtocolEntityPositionSync, InteractionHand, MountScreenOpen,
-        OpenBook, OpenSignEditor, PlaceGhostRecipe, PongResponse, RecipeDisplayType, ShowDialog,
-        Vec3d as ProtocolVec3d,
+        AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DebugBlockValue,
+        DialogHolder, EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue,
+        GameRuleValues, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
+        PlaceGhostRecipe, PongResponse, RecipeDisplayType, ShowDialog, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -897,6 +900,62 @@ mod tests {
         assert_eq!(ui["current_dialog"]["holder_kind"], "reference");
         assert_eq!(ui["current_dialog"]["registry_id"], 7);
         assert_eq!(ui["last_pong_response"]["time"], 123456789);
+    }
+
+    #[test]
+    fn client_debug_game_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_debug_block_value(DebugBlockValue {
+                pos: ProtocolBlockPos { x: 4, y: 65, z: -9 },
+                raw_update_payload: vec![0xaa, 0xbb, 0xcc],
+            });
+            store.apply_game_rule_values(GameRuleValues {
+                values: vec![
+                    GameRuleValue {
+                        rule: "minecraft:do_daylight_cycle".to_string(),
+                        value: "false".to_string(),
+                    },
+                    GameRuleValue {
+                        rule: "minecraft:random_tick_speed".to_string(),
+                        value: "12".to_string(),
+                    },
+                ],
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_debug_game".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let debug_game = response.result.unwrap();
+        assert_eq!(debug_game["last_debug_block_value"]["pos"]["x"], 4);
+        assert_eq!(debug_game["last_debug_block_value"]["pos"]["y"], 65);
+        assert_eq!(debug_game["last_debug_block_value"]["pos"]["z"], -9);
+        assert_eq!(
+            debug_game["last_debug_block_value"]["raw_update_payload_len"],
+            3
+        );
+        assert_eq!(
+            debug_game["last_game_rule_values"]["values"],
+            json!([
+                {
+                    "rule": "minecraft:do_daylight_cycle",
+                    "value": "false"
+                },
+                {
+                    "rule": "minecraft:random_tick_speed",
+                    "value": "12"
+                }
+            ])
+        );
     }
 
     #[test]
