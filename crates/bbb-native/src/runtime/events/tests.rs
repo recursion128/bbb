@@ -211,7 +211,43 @@ fn respawn_clears_projected_first_chunk_when_world_changes() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters::default();
+    world.apply_add_entity(protocol_add_entity(55));
+    world.apply_update_mob_effect(protocol_update_mob_effect(55, 3));
+    assert!(
+        world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
+            id: 4,
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 64,
+                z: -5,
+            },
+            progress: 6,
+        })
+    );
+    world.apply_block_event(bbb_protocol::packets::BlockEvent {
+        pos: ProtocolBlockPos {
+            x: 12,
+            y: 65,
+            z: -5,
+        },
+        b0: 2,
+        b1: 9,
+        block_id: 54,
+    });
+    world.apply_level_event(bbb_protocol::packets::LevelEvent {
+        event_type: 1001,
+        pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+        data: 42,
+        global: true,
+    });
+    let mut counters = NetCounters {
+        entities_tracked: 99,
+        active_mob_effects_tracked: 99,
+        block_destructions_tracked: 99,
+        block_events_tracked: 99,
+        level_events_tracked: 99,
+        ..NetCounters::default()
+    };
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -222,6 +258,16 @@ fn respawn_clears_projected_first_chunk_when_world_changes() {
     assert_eq!(counters.respawns_received, 1);
     assert_eq!(counters.chunks_received, 1);
     assert_eq!(counters.chunks_decoded, 1);
+    assert_eq!(world.counters().entities_tracked, 0);
+    assert_eq!(world.counters().active_mob_effects_tracked, 0);
+    assert_eq!(world.counters().block_destructions_tracked, 0);
+    assert_eq!(world.counters().block_events_tracked, 0);
+    assert_eq!(world.counters().level_events_tracked, 0);
+    assert_eq!(counters.entities_tracked, 0);
+    assert_eq!(counters.active_mob_effects_tracked, 0);
+    assert_eq!(counters.block_destructions_tracked, 0);
+    assert_eq!(counters.block_events_tracked, 0);
+    assert_eq!(counters.level_events_tracked, 0);
 }
 
 #[test]
@@ -1428,6 +1474,60 @@ fn entity_events_update_world_and_snapshot_counters() {
     assert_entity_counter!(entity_passenger_updates_applied, 1);
     assert_entity_counter!(entity_removes_received, 1);
     assert_entity_counter!(entities_removed, 1);
+}
+
+#[test]
+fn remove_entities_syncs_active_effect_counters() {
+    let entity_id = 55;
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::RemoveEntities(RemoveEntities {
+        entity_ids: vec![entity_id],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(entity_id));
+    world.apply_update_mob_effect(protocol_update_mob_effect(entity_id, 3));
+    let mut counters = NetCounters {
+        active_mob_effects_tracked: 99,
+        ..NetCounters::default()
+    };
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(world.counters().entities_tracked, 0);
+    assert_eq!(world.counters().active_mob_effects_tracked, 0);
+    assert_eq!(counters.entities_tracked, 0);
+    assert_eq!(counters.active_mob_effects_tracked, 0);
+}
+
+#[test]
+fn add_entity_replacement_syncs_active_effect_counters() {
+    let entity_id = 55;
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::AddEntity(protocol_add_entity(entity_id)))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(entity_id));
+    world.apply_update_mob_effect(protocol_update_mob_effect(entity_id, 3));
+    let mut counters = NetCounters {
+        active_mob_effects_tracked: 99,
+        ..NetCounters::default()
+    };
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(world.counters().entities_tracked, 1);
+    assert_eq!(world.counters().active_mob_effects_tracked, 0);
+    assert_eq!(counters.entities_tracked, 1);
+    assert_eq!(counters.active_mob_effects_tracked, 0);
 }
 
 #[test]
@@ -3805,6 +3905,25 @@ fn test_sound_catalog() -> SoundCatalog {
 
 fn protocol_add_entity(id: i32) -> AddEntity {
     protocol_add_entity_with_type(id, 7)
+}
+
+fn protocol_update_mob_effect(
+    entity_id: i32,
+    effect_id: i32,
+) -> bbb_protocol::packets::UpdateMobEffect {
+    bbb_protocol::packets::UpdateMobEffect {
+        entity_id,
+        effect_id,
+        amplifier: 2,
+        duration_ticks: 400,
+        flags: bbb_protocol::packets::MobEffectFlags {
+            raw: 0b1011,
+            ambient: true,
+            visible: true,
+            show_icon: false,
+            blend: true,
+        },
+    }
 }
 
 fn synthetic_native_level_chunk_packet() -> LevelChunkWithLight {
