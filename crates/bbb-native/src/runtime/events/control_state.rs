@@ -670,18 +670,6 @@ fn sync_client_combat_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.player_combat_end_packets = world_counters.player_combat_end_packets;
     counters.player_combat_enter_packets = world_counters.player_combat_enter_packets;
     counters.player_combat_kill_packets = world_counters.player_combat_kill_packets;
-    counters.last_player_combat = world.last_player_combat().map(control_player_combat_state);
-}
-
-fn control_player_combat_state(
-    state: &bbb_world::PlayerCombatEventState,
-) -> bbb_control::PlayerCombatState {
-    bbb_control::PlayerCombatState {
-        kind: state.kind.clone(),
-        duration: state.duration,
-        player_id: state.player_id,
-        message: state.message.clone(),
-    }
 }
 
 fn control_waypoint_event(event: &bbb_world::WaypointEventState) -> bbb_control::WaypointState {

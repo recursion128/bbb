@@ -339,6 +339,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
         "world.client_audio" => serde_json::to_value(snapshot_guard.world_store.client_audio()),
+        "world.client_combat" => serde_json::to_value(snapshot_guard.world_store.client_combat()),
         "world.client_debug_game" => {
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
         }
@@ -481,9 +482,9 @@ mod tests {
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DebugBlockValue,
         DialogHolder, EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue,
         GameRuleValues, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
-        PlaceGhostRecipe, PongResponse, RecipeDisplayType, SetActionBarText, SetSubtitleText,
-        SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource,
-        StopSound, SystemChat, Vec3d as ProtocolVec3d,
+        PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType, SetActionBarText,
+        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent,
+        SoundEventHolder, SoundSource, StopSound, SystemChat, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -881,6 +882,34 @@ mod tests {
         assert_eq!(hud["title"]["stay"], 40);
         assert_eq!(hud["title"]["fade_out"], 15);
         assert_eq!(hud["title"]["title_time"], 60);
+    }
+
+    #[test]
+    fn client_combat_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_player_combat_kill(PlayerCombatKill {
+                player_id: 123,
+                message: "You died".to_string(),
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_combat".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let combat = response.result.unwrap();
+        assert_eq!(combat["last_combat"]["kind"], "kill");
+        assert_eq!(combat["last_combat"]["duration"], serde_json::Value::Null);
+        assert_eq!(combat["last_combat"]["player_id"], 123);
+        assert_eq!(combat["last_combat"]["message"], "You died");
     }
 
     #[test]

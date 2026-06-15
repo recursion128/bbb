@@ -99,7 +99,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub respawns_received: usize,
     pub player_pose: Option<PlayerPose>,
-    pub last_player_combat: Option<PlayerCombatState>,
     pub last_player_look_at: Option<PlayerLookAtState>,
     pub player_abilities: Option<PlayerAbilities>,
     pub player_health: Option<PlayerHealth>,
@@ -613,14 +612,6 @@ pub struct PlayerPose {
     pub y_rot: f32,
     pub x_rot: f32,
     pub last_teleport_id: i32,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PlayerCombatState {
-    pub kind: String,
-    pub duration: Option<i32>,
-    pub player_id: Option<i32>,
-    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
