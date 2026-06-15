@@ -5,10 +5,14 @@ use std::{
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{
-    CodeOfConductControlRequest, NetControlRequest, NetCounters, PlayerPose, RendererCounters,
-    SharedSnapshot,
+    CodeOfConductControlRequest, ContainerClickControlRequest, ContainerInputControl,
+    HashedComponentPatchControl, HashedStackControl, NetControlRequest, NetCounters, PlayerPose,
+    RendererCounters, SharedSnapshot,
 };
 use bbb_net::{NetCommand, NetEvent};
+use bbb_protocol::packets::{
+    ContainerClick, ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
+};
 use bbb_renderer::{CameraPose, ClearColor};
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -19,8 +23,8 @@ use crate::{
     crosshair::selection_outline_from_crosshair,
     input::{
         advance_player_input, queue_chat_command, queue_command_suggestion_request,
-        queue_container_button_click_command, queue_container_slot_state_changed_command,
-        ClientInputState,
+        queue_container_button_click_command, queue_container_click_command,
+        queue_container_slot_state_changed_command, ClientInputState,
     },
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
@@ -72,6 +76,56 @@ pub(crate) fn take_control_screenshot(snapshot: &SharedSnapshot) -> Option<PathB
         .map(PathBuf::from)
 }
 
+fn protocol_container_click(click: ContainerClickControlRequest) -> ContainerClick {
+    ContainerClick {
+        container_id: click.container_id,
+        state_id: click.state_id,
+        slot_num: click.slot_num,
+        button_num: click.button_num,
+        input: protocol_container_input(click.input),
+        changed_slots: click
+            .changed_slots
+            .into_iter()
+            .map(|changed| (changed.slot, protocol_hashed_stack(changed.stack)))
+            .collect(),
+        carried_item: protocol_hashed_stack(click.carried_item),
+    }
+}
+
+fn protocol_container_input(input: ContainerInputControl) -> ContainerInput {
+    match input {
+        ContainerInputControl::Pickup => ContainerInput::Pickup,
+        ContainerInputControl::QuickMove => ContainerInput::QuickMove,
+        ContainerInputControl::Swap => ContainerInput::Swap,
+        ContainerInputControl::Clone => ContainerInput::Clone,
+        ContainerInputControl::Throw => ContainerInput::Throw,
+        ContainerInputControl::QuickCraft => ContainerInput::QuickCraft,
+        ContainerInputControl::PickupAll => ContainerInput::PickupAll,
+    }
+}
+
+fn protocol_hashed_stack(stack: HashedStackControl) -> HashedStack {
+    match stack {
+        HashedStackControl::Empty => HashedStack::Empty,
+        HashedStackControl::Item {
+            item_id,
+            count,
+            components,
+        } => HashedStack::Item(HashedItemStack {
+            item_id,
+            count,
+            components: protocol_hashed_components(components),
+        }),
+    }
+}
+
+fn protocol_hashed_components(components: HashedComponentPatchControl) -> HashedComponentPatch {
+    HashedComponentPatch {
+        added_components: components.added_components,
+        removed_components: components.removed_components,
+    }
+}
+
 pub(crate) fn pump_control_net_requests(
     snapshot: &SharedSnapshot,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -106,6 +160,13 @@ pub(crate) fn pump_control_net_requests(
                     net_commands,
                     container_id,
                     button_id,
+                );
+            }
+            NetControlRequest::ContainerClick(click) => {
+                queue_container_click_command(
+                    counters,
+                    net_commands,
+                    protocol_container_click(click),
                 );
             }
             NetControlRequest::ContainerSlotStateChanged {
@@ -333,6 +394,8 @@ pub(crate) fn publish_snapshot(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
     use super::*;
 
     #[test]
@@ -427,6 +490,66 @@ mod tests {
             NetCommand::ContainerButtonClick(bbb_protocol::packets::ContainerButtonClick {
                 container_id: 7,
                 button_id: 2,
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_container_click() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.push(
+            bbb_control::NetControlRequest::ContainerClick(
+                bbb_control::ContainerClickControlRequest {
+                    container_id: 7,
+                    state_id: 33,
+                    slot_num: 5,
+                    button_num: 1,
+                    input: bbb_control::ContainerInputControl::Pickup,
+                    changed_slots: vec![bbb_control::ContainerChangedSlotControl {
+                        slot: 5,
+                        stack: bbb_control::HashedStackControl::Item {
+                            item_id: 42,
+                            count: 64,
+                            components: bbb_control::HashedComponentPatchControl {
+                                added_components: BTreeMap::from([(10, 0x0102_0304)]),
+                                removed_components: BTreeSet::from([20]),
+                            },
+                        },
+                    }],
+                    carried_item: bbb_control::HashedStackControl::Empty,
+                },
+            ),
+        );
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(bbb_protocol::packets::ContainerClick {
+                container_id: 7,
+                state_id: 33,
+                slot_num: 5,
+                button_num: 1,
+                input: bbb_protocol::packets::ContainerInput::Pickup,
+                changed_slots: BTreeMap::from([(
+                    5,
+                    bbb_protocol::packets::HashedStack::Item(
+                        bbb_protocol::packets::HashedItemStack {
+                            item_id: 42,
+                            count: 64,
+                            components: bbb_protocol::packets::HashedComponentPatch {
+                                added_components: BTreeMap::from([(10, 0x0102_0304)]),
+                                removed_components: BTreeSet::from([20]),
+                            },
+                        }
+                    )
+                )]),
+                carried_item: bbb_protocol::packets::HashedStack::empty(),
             })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());

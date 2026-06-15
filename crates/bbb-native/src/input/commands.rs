@@ -1,7 +1,7 @@
 use bbb_control::{NetCounters, PlayerPose};
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
+    AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
     ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection,
     InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction,
     PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem, UseItemOn,
@@ -189,6 +189,18 @@ pub(crate) fn queue_container_button_click_command(
             .is_ok()
         {
             counters.container_button_click_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_container_click_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    packet: ContainerClick,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::ContainerClick(packet)).is_ok() {
+            counters.container_click_commands_queued += 1;
         }
     }
 }
@@ -394,12 +406,17 @@ pub(crate) fn queue_vehicle_move_command(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
     use super::*;
     use bbb_protocol::packets::{
         AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
         ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerSlotStateChanged,
         Direction as ProtocolDirection, InteractEntity, InteractionHand, PickItemFromBlock,
         PickItemFromEntity, PlayerAction, PlayerActionKind, UseItemOn,
+    };
+    use bbb_protocol::packets::{
+        ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
     };
     use bbb_world::BlockPos;
 
@@ -465,6 +482,37 @@ mod tests {
                 button_id: 2,
             })
         );
+    }
+
+    #[test]
+    fn queues_container_click_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let packet = ContainerClick {
+            container_id: 7,
+            state_id: 33,
+            slot_num: 5,
+            button_num: 1,
+            input: ContainerInput::Pickup,
+            changed_slots: BTreeMap::from([(
+                5,
+                HashedStack::Item(HashedItemStack {
+                    item_id: 42,
+                    count: 64,
+                    components: HashedComponentPatch {
+                        added_components: BTreeMap::from([(10, 0x0102_0304)]),
+                        removed_components: BTreeSet::from([20]),
+                    },
+                }),
+            )]),
+            carried_item: HashedStack::empty(),
+        };
+
+        queue_container_click_command(&mut counters, &commands, packet.clone());
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::ContainerClick(packet));
     }
 
     #[test]

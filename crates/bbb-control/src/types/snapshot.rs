@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::{Arc, RwLock},
+};
 
 use bbb_world::{WorldCounters, WorldStore};
 use serde::{Deserialize, Serialize};
@@ -31,11 +34,79 @@ pub enum NetControlRequest {
         container_id: i32,
         button_id: i32,
     },
+    ContainerClick(ContainerClickControlRequest),
     ContainerSlotStateChanged {
         slot_id: i32,
         container_id: i32,
         new_state: bool,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerClickControlRequest {
+    pub container_id: i32,
+    pub state_id: i32,
+    pub slot_num: i16,
+    pub button_num: i8,
+    pub input: ContainerInputControl,
+    #[serde(default)]
+    pub changed_slots: Vec<ContainerChangedSlotControl>,
+    #[serde(default)]
+    pub carried_item: HashedStackControl,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerChangedSlotControl {
+    pub slot: i16,
+    pub stack: HashedStackControl,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ContainerInputControl {
+    Pickup,
+    QuickMove,
+    Swap,
+    Clone,
+    Throw,
+    QuickCraft,
+    PickupAll,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum HashedStackControl {
+    #[default]
+    Empty,
+    Item {
+        item_id: i32,
+        count: i32,
+        #[serde(default)]
+        components: HashedComponentPatchControl,
+    },
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HashedComponentPatchControl {
+    #[serde(default, deserialize_with = "deserialize_i32_key_map")]
+    pub added_components: BTreeMap<i32, i32>,
+    #[serde(default)]
+    pub removed_components: BTreeSet<i32>,
+}
+
+fn deserialize_i32_key_map<'de, D>(deserializer: D) -> Result<BTreeMap<i32, i32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = BTreeMap::<String, i32>::deserialize(deserializer)?;
+    raw.into_iter()
+        .map(|(key, value)| {
+            let key = key.parse::<i32>().map_err(|err| {
+                serde::de::Error::custom(format!("invalid i32 map key {key:?}: {err}"))
+            })?;
+            Ok((key, value))
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

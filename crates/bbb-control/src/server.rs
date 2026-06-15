@@ -11,8 +11,8 @@ use tokio::{
 };
 
 use crate::types::{
-    AppStatus, CodeOfConductControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
-    NetControlRequest, SharedSnapshot,
+    AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest, ControlRequest,
+    ControlResponse, ControlSnapshot, NetControlRequest, SharedSnapshot,
 };
 
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
@@ -237,6 +237,32 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.container_click" {
+        let click =
+            match serde_json::from_value::<ContainerClickControlRequest>(request.params.clone()) {
+                Ok(click) => click,
+                Err(err) => {
+                    return ControlResponse {
+                        ok: false,
+                        result: None,
+                        error: Some(format!("net.container_click invalid params: {err}")),
+                    };
+                }
+            };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::ContainerClick(click));
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.container_slot_state_changed" {
         let Some(slot_id) = i32_param(&request.params, "slot_id") else {
             return ControlResponse {
@@ -421,6 +447,8 @@ fn chunk_probe_summary(chunk: &ChunkColumn) -> serde_json::Value {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+
     use super::*;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityPositionSync as ProtocolEntityPositionSync,
@@ -642,6 +670,78 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_button.ok);
+    }
+
+    #[test]
+    fn net_container_click_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.container_click".to_string(),
+                params: json!({
+                    "container_id": 7,
+                    "state_id": 33,
+                    "slot_num": 5,
+                    "button_num": 1,
+                    "input": "pickup",
+                    "changed_slots": [{
+                        "slot": 5,
+                        "stack": {
+                            "kind": "item",
+                            "item_id": 42,
+                            "count": 64,
+                            "components": {
+                                "added_components": {"10": 16909060},
+                                "removed_components": [20]
+                            }
+                        }
+                    }],
+                    "carried_item": {"kind": "empty"}
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok, "{response:?}");
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::ContainerClick(
+                ContainerClickControlRequest {
+                    container_id: 7,
+                    state_id: 33,
+                    slot_num: 5,
+                    button_num: 1,
+                    input: crate::types::ContainerInputControl::Pickup,
+                    changed_slots: vec![crate::types::ContainerChangedSlotControl {
+                        slot: 5,
+                        stack: crate::types::HashedStackControl::Item {
+                            item_id: 42,
+                            count: 64,
+                            components: crate::types::HashedComponentPatchControl {
+                                added_components: BTreeMap::from([(10, 0x0102_0304)]),
+                                removed_components: BTreeSet::from([20]),
+                            },
+                        },
+                    }],
+                    carried_item: crate::types::HashedStackControl::Empty,
+                }
+            )]
+        );
+
+        let missing_input = dispatch(
+            ControlRequest {
+                method: "net.container_click".to_string(),
+                params: json!({
+                    "container_id": 7,
+                    "state_id": 33,
+                    "slot_num": 5,
+                    "button_num": 1
+                }),
+            },
+            &snapshot,
+        );
+        assert!(!missing_input.ok);
     }
 
     #[test]

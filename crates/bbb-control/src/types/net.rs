@@ -520,6 +520,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub container_button_click_commands_queued: usize,
     #[serde(default)]
+    pub container_click_commands_queued: usize,
+    #[serde(default)]
     pub container_slot_state_changed_commands_queued: usize,
     pub world_time_packets: usize,
     pub game_event_packets: usize,

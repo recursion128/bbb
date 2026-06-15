@@ -18,5 +18,7 @@ pub use net::{
 };
 pub use renderer::RendererCounters;
 pub use snapshot::{
-    AppStatus, CodeOfConductControlRequest, ControlSnapshot, NetControlRequest, SharedSnapshot,
+    AppStatus, CodeOfConductControlRequest, ContainerChangedSlotControl,
+    ContainerClickControlRequest, ContainerInputControl, ControlSnapshot,
+    HashedComponentPatchControl, HashedStackControl, NetControlRequest, SharedSnapshot,
 };
