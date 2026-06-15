@@ -224,8 +224,10 @@ impl WorldStore {
         {
             self.inventory.open_container = None;
             self.counters.merchant_offers_tracked = 0;
+            self.counters.container_close_updates_applied += 1;
             true
         } else {
+            self.counters.container_close_updates_ignored += 1;
             false
         }
     }
@@ -430,6 +432,8 @@ mod tests {
         assert_eq!(store.counters().container_slot_updates_received, 1);
         assert_eq!(store.counters().container_data_updates_received, 2);
         assert_eq!(store.counters().container_close_updates_received, 2);
+        assert_eq!(store.counters().container_close_updates_applied, 1);
+        assert_eq!(store.counters().container_close_updates_ignored, 1);
     }
 
     #[test]
@@ -445,9 +449,13 @@ mod tests {
         assert!(store.close_local_container(7));
         assert!(store.inventory().open_container.is_none());
         assert_eq!(store.counters().container_close_updates_received, 0);
+        assert_eq!(store.counters().container_close_updates_applied, 0);
+        assert_eq!(store.counters().container_close_updates_ignored, 0);
 
         assert!(!store.close_local_container(7));
         assert_eq!(store.counters().container_close_updates_received, 0);
+        assert_eq!(store.counters().container_close_updates_applied, 0);
+        assert_eq!(store.counters().container_close_updates_ignored, 0);
     }
 
     #[test]
@@ -501,6 +509,8 @@ mod tests {
         assert_eq!(store.counters().merchant_offers_tracked, 2);
 
         assert!(store.apply_container_close(ProtocolContainerClose { container_id: 7 }));
+        assert_eq!(store.counters().container_close_updates_applied, 1);
+        assert_eq!(store.counters().container_close_updates_ignored, 0);
         assert_eq!(store.counters().merchant_offers_tracked, 0);
     }
 

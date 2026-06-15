@@ -1325,7 +1325,7 @@ fn client_feature_events_update_world_and_snapshot_counters() {
 
 #[test]
 fn inventory_events_update_world_and_snapshot_counters() {
-    let (tx, mut rx) = mpsc::channel(7);
+    let (tx, mut rx) = mpsc::channel(8);
     tx.try_send(NetEvent::OpenScreen(OpenScreen {
         container_id: 7,
         menu_type_id: 18,
@@ -1363,13 +1363,17 @@ fn inventory_events_update_world_and_snapshot_counters() {
     .unwrap();
     tx.try_send(NetEvent::ContainerClose(ContainerClose { container_id: 7 }))
         .unwrap();
+    tx.try_send(NetEvent::ContainerClose(ContainerClose {
+        container_id: 99,
+    }))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        7
+        8
     );
 
     assert!(world.inventory().open_container.is_none());
@@ -1383,7 +1387,9 @@ fn inventory_events_update_world_and_snapshot_counters() {
     assert_eq!(world_counters.container_content_updates_received, 1);
     assert_eq!(world_counters.container_slot_updates_received, 1);
     assert_eq!(world_counters.container_data_updates_received, 1);
-    assert_eq!(world_counters.container_close_updates_received, 1);
+    assert_eq!(world_counters.container_close_updates_received, 2);
+    assert_eq!(world_counters.container_close_updates_applied, 1);
+    assert_eq!(world_counters.container_close_updates_ignored, 1);
     assert_eq!(world_counters.inventory_slot_updates_received, 1);
     assert_eq!(world_counters.inventory_slots_tracked, 1);
     assert_eq!(world_counters.cursor_item_updates_received, 1);
@@ -1392,7 +1398,9 @@ fn inventory_events_update_world_and_snapshot_counters() {
     assert_eq!(counters.container_content_updates_received, 1);
     assert_eq!(counters.container_slot_updates_received, 1);
     assert_eq!(counters.container_data_updates_received, 1);
-    assert_eq!(counters.container_close_updates_received, 1);
+    assert_eq!(counters.container_close_updates_received, 2);
+    assert_eq!(counters.container_close_updates_applied, 1);
+    assert_eq!(counters.container_close_updates_ignored, 1);
     assert_eq!(counters.inventory_slot_updates_received, 1);
     assert_eq!(counters.inventory_slots_tracked, 1);
     assert_eq!(counters.cursor_item_updates_received, 1);

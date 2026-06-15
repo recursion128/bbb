@@ -272,6 +272,8 @@ pub(super) fn sync_inventory_counters(counters: &mut NetCounters, world: &WorldS
     counters.container_slot_updates_received = world_counters.container_slot_updates_received;
     counters.container_data_updates_received = world_counters.container_data_updates_received;
     counters.container_close_updates_received = world_counters.container_close_updates_received;
+    counters.container_close_updates_applied = world_counters.container_close_updates_applied;
+    counters.container_close_updates_ignored = world_counters.container_close_updates_ignored;
     counters.merchant_offer_packets_received = world_counters.merchant_offer_packets_received;
     counters.merchant_offer_packets_applied = world_counters.merchant_offer_packets_applied;
     counters.merchant_offer_packets_ignored = world_counters.merchant_offer_packets_ignored;

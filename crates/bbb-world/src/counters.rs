@@ -441,6 +441,10 @@ pub struct WorldCounters {
     pub container_data_updates_received: usize,
     pub container_close_updates_received: usize,
     #[serde(default)]
+    pub container_close_updates_applied: usize,
+    #[serde(default)]
+    pub container_close_updates_ignored: usize,
+    #[serde(default)]
     pub merchant_offer_packets_received: usize,
     #[serde(default)]
     pub merchant_offer_packets_applied: usize,
