@@ -245,6 +245,8 @@ pub(super) fn sync_server_presentation_counters(counters: &mut NetCounters, worl
     counters.server_data_packets = world_counters.server_data_packets;
     counters.resource_pack_push_packets = world_counters.resource_pack_push_packets;
     counters.resource_pack_pop_packets = world_counters.resource_pack_pop_packets;
+    counters.resource_pack_pop_updates_applied = world_counters.resource_pack_pop_updates_applied;
+    counters.resource_pack_pop_updates_ignored = world_counters.resource_pack_pop_updates_ignored;
     counters.resource_packs_tracked = world_counters.resource_packs_tracked;
 }
 

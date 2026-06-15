@@ -152,6 +152,11 @@ impl WorldStore {
                 removed
             }
         };
+        if removed > 0 {
+            self.counters.resource_pack_pop_updates_applied += 1;
+        } else {
+            self.counters.resource_pack_pop_updates_ignored += 1;
+        }
         self.update_resource_pack_count();
         removed
     }
@@ -520,6 +525,18 @@ mod tests {
         assert!(store.resource_pack(second).is_some());
         let counters = store.counters();
         assert_eq!(counters.resource_pack_pop_packets, 1);
+        assert_eq!(counters.resource_pack_pop_updates_applied, 1);
+        assert_eq!(counters.resource_pack_pop_updates_ignored, 0);
+        assert_eq!(counters.resource_packs_tracked, 1);
+
+        assert_eq!(
+            store.apply_resource_pack_pop(ProtocolResourcePackPop { id: Some(first) }),
+            0
+        );
+        let counters = store.counters();
+        assert_eq!(counters.resource_pack_pop_packets, 2);
+        assert_eq!(counters.resource_pack_pop_updates_applied, 1);
+        assert_eq!(counters.resource_pack_pop_updates_ignored, 1);
         assert_eq!(counters.resource_packs_tracked, 1);
     }
 
@@ -551,6 +568,18 @@ mod tests {
         assert!(store.resource_packs().is_empty());
         let counters = store.counters();
         assert_eq!(counters.resource_pack_pop_packets, 1);
+        assert_eq!(counters.resource_pack_pop_updates_applied, 1);
+        assert_eq!(counters.resource_pack_pop_updates_ignored, 0);
+        assert_eq!(counters.resource_packs_tracked, 0);
+
+        assert_eq!(
+            store.apply_resource_pack_pop(ProtocolResourcePackPop { id: None }),
+            0
+        );
+        let counters = store.counters();
+        assert_eq!(counters.resource_pack_pop_packets, 2);
+        assert_eq!(counters.resource_pack_pop_updates_applied, 1);
+        assert_eq!(counters.resource_pack_pop_updates_ignored, 1);
         assert_eq!(counters.resource_packs_tracked, 0);
     }
 

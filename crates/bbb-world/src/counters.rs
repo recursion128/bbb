@@ -197,6 +197,10 @@ pub struct WorldCounters {
     #[serde(default)]
     pub resource_pack_pop_packets: usize,
     #[serde(default)]
+    pub resource_pack_pop_updates_applied: usize,
+    #[serde(default)]
+    pub resource_pack_pop_updates_ignored: usize,
+    #[serde(default)]
     pub resource_packs_tracked: usize,
     #[serde(default)]
     pub server_link_packets: usize,
