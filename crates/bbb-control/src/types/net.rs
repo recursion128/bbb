@@ -87,7 +87,6 @@ pub struct NetCounters {
     pub chunks_forgotten: usize,
     #[serde(default)]
     pub chunk_forgets_ignored: usize,
-    pub player_entity_id: Option<i32>,
     #[serde(default)]
     pub play_logins_received: usize,
     #[serde(default)]

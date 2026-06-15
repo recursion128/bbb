@@ -30,6 +30,7 @@ pub(super) fn queue_player_input_command(
 
 pub(super) fn queue_sprint_command(
     counters: &mut NetCounters,
+    world: &WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     sprinting: bool,
 ) {
@@ -38,16 +39,17 @@ pub(super) fn queue_sprint_command(
     } else {
         PlayerCommandAction::StopSprinting
     };
-    queue_player_command_action(counters, net_commands, action, 0);
+    queue_player_command_action(counters, world, net_commands, action, 0);
 }
 
 pub(super) fn queue_player_command_action(
     counters: &mut NetCounters,
+    world: &WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     action: PlayerCommandAction,
     data: i32,
 ) {
-    let (Some(tx), Some(entity_id)) = (net_commands, counters.player_entity_id) else {
+    let (Some(tx), Some(entity_id)) = (net_commands, world.local_player_id()) else {
         return;
     };
     let command = PlayerCommand {

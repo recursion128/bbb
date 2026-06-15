@@ -418,7 +418,6 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
 #[test]
 fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
     let mut counters = NetCounters {
-        player_entity_id: Some(9),
         camera: CameraState {
             entity_id: Some(42),
             follows_player: false,

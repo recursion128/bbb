@@ -74,7 +74,6 @@ pub(super) fn sync_ticking_counters(counters: &mut NetCounters, world: &WorldSto
 
 pub(crate) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {
     let local = world.local_player();
-    counters.player_entity_id = world.local_player_id();
     counters.selected_hotbar_slot = local.selected_hotbar_slot;
     counters.camera = CameraState {
         entity_id: local.camera.entity_id,

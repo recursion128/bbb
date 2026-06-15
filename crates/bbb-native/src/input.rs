@@ -160,6 +160,7 @@ pub(crate) fn handle_key_input(
             KeyCode::KeyE => {
                 queue_player_command_action(
                     counters,
+                    world,
                     net_commands,
                     PlayerCommandAction::OpenInventory,
                     0,
@@ -207,7 +208,7 @@ pub(crate) fn handle_key_input(
         if after != before {
             queue_player_input_command(counters, net_commands, after);
             if before.sprint != after.sprint {
-                queue_sprint_command(counters, net_commands, after.sprint);
+                queue_sprint_command(counters, world, net_commands, after.sprint);
             }
         }
     }

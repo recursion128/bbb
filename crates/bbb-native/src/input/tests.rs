@@ -1,7 +1,7 @@
 use super::*;
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, ContainerCloseRequest, OpenScreen as ProtocolOpenScreen,
-    PlayerAction, PlayerCommand,
+    BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, ContainerCloseRequest,
+    OpenScreen as ProtocolOpenScreen, PlayLogin, PlayerAction, PlayerCommand,
 };
 use bbb_world::{BlockPos, WorldStore};
 
@@ -21,6 +21,35 @@ fn handle_key_input_without_world(
         physical_key,
         state,
     );
+}
+
+fn world_with_local_player_id(player_id: i32) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_login(&PlayLogin {
+        player_id,
+        hardcore: false,
+        levels: vec!["minecraft:overworld".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "minecraft:overworld".to_string(),
+            seed: 0,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: false,
+    });
+    world
 }
 
 #[test]
@@ -145,14 +174,13 @@ fn inventory_key_queues_open_inventory_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
-    let mut counters = NetCounters {
-        player_entity_id: Some(77),
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
 
-    handle_key_input_without_world(
+    handle_key_input(
         &mut input,
         &mut counters,
+        &mut world,
         &commands,
         PhysicalKey::Code(KeyCode::KeyE),
         ElementState::Pressed,
@@ -205,10 +233,7 @@ fn inventory_key_closes_open_container_before_open_inventory_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
-    let mut counters = NetCounters {
-        player_entity_id: Some(77),
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 8,
@@ -309,14 +334,13 @@ fn sprint_key_queues_player_input_and_sprint_commands() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
-    let mut counters = NetCounters {
-        player_entity_id: Some(77),
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
 
-    handle_key_input_without_world(
+    handle_key_input(
         &mut input,
         &mut counters,
+        &mut world,
         &commands,
         PhysicalKey::Code(KeyCode::ControlLeft),
         ElementState::Pressed,
@@ -340,9 +364,10 @@ fn sprint_key_queues_player_input_and_sprint_commands() {
         })
     );
 
-    handle_key_input_without_world(
+    handle_key_input(
         &mut input,
         &mut counters,
+        &mut world,
         &commands,
         PhysicalKey::Code(KeyCode::ControlLeft),
         ElementState::Released,
@@ -365,7 +390,7 @@ fn sprint_key_queues_player_input_and_sprint_commands() {
 }
 
 #[test]
-fn sprint_key_without_player_entity_id_only_queues_input() {
+fn sprint_key_without_local_player_id_only_queues_input() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);

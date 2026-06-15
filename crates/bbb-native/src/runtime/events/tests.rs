@@ -3833,7 +3833,7 @@ fn minecart_along_track_ignored_counters_are_projected() {
 }
 
 #[test]
-fn login_projects_local_player_id_from_world() {
+fn login_tracks_local_player_id_in_world() {
     let (tx, mut rx) = mpsc::channel(2);
     let respawn_info = protocol_play_login(9).common_spawn_info;
     tx.try_send(NetEvent::Login(protocol_play_login(9)))
@@ -3854,7 +3854,6 @@ fn login_projects_local_player_id_from_world() {
     assert_eq!(world.local_player_id(), Some(9));
     assert_eq!(world.counters().play_logins_received, 1);
     assert_eq!(world.counters().respawns_received, 1);
-    assert_eq!(counters.player_entity_id, Some(9));
     assert_eq!(counters.play_logins_received, 1);
     assert_eq!(counters.respawns_received, 1);
 }
@@ -3950,7 +3949,6 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
         }
     );
 
-    assert_eq!(counters.player_entity_id, Some(9));
     assert_eq!(counters.selected_hotbar_slot, 5);
     assert_eq!(
         counters.camera,
