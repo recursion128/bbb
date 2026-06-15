@@ -272,41 +272,33 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::Login(login) => {
                 world.apply_login(&login);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::Respawn(respawn) => {
                 world.apply_respawn(&respawn);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::PlayerPosition(update) => {
-                apply_player_position_update(counters, world, update);
+                apply_player_position_update(world, update);
             }
             NetEvent::PlayerRotation(update) => {
-                apply_player_rotation_update(counters, world, update);
+                apply_player_rotation_update(world, update);
             }
             NetEvent::PlayerAbilities(abilities) => {
                 world.apply_player_abilities(abilities);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::PlayerHealth(health) => {
                 world.apply_player_health(health);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::PlayerExperience(experience) => {
                 world.apply_player_experience(experience);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::HeldSlot(slot) => {
                 world.apply_held_slot(slot);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::SetDefaultSpawnPosition(spawn) => {
                 world.apply_default_spawn_position(spawn);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::SetSimulationDistance(distance) => {
                 world.apply_simulation_distance(distance);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::SystemChat(chat) => {
                 apply_system_chat_update(world, chat);
@@ -334,7 +326,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::SetCamera(camera) => {
                 world.apply_set_camera(camera);
-                sync_local_player_counters(counters, world);
             }
             NetEvent::BlockChangedAck(ack) => {
                 world.apply_block_changed_ack(ack);

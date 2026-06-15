@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 
 use crate::runtime::{
     local_player_pose_from_player_pose, player_pose_from_local_player_pose,
-    player_position_state_from_local_player_pose, sync_local_player_counters,
+    player_position_state_from_local_player_pose,
 };
 
 use super::ClientInputState;
@@ -45,7 +45,6 @@ pub(crate) fn advance_player_input(
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
     world.set_local_player_pose(local_player_pose_from_player_pose(pose));
-    sync_local_player_counters(counters, world);
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
 }
 

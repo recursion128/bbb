@@ -7,10 +7,8 @@ use bbb_world::BlockPos;
 
 #[test]
 fn player_position_updates_absolute_and_relative_pose() {
-    let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     apply_player_position_update(
-        &mut counters,
         &mut world,
         player_position_update(1, [10.0, 64.0, -5.0], [0.125, 0.0, 0.0], 90.0, 15.0, 0),
     );
@@ -20,10 +18,9 @@ fn player_position_updates_absolute_and_relative_pose() {
     assert_eq!(pose.y_rot, 90.0);
     assert_eq!(pose.x_rot, 15.0);
     assert_eq!(pose.last_teleport_id, 1);
-    assert_eq!(counters.player_position_packets, 1);
+    assert_eq!(world.counters().player_position_packets, 1);
 
     apply_player_position_update(
-        &mut counters,
         &mut world,
         player_position_update(
             2,
@@ -43,13 +40,12 @@ fn player_position_updates_absolute_and_relative_pose() {
     assert_eq!(pose.y_rot, 110.0);
     assert_eq!(pose.x_rot, -90.0);
     assert_eq!(pose.last_teleport_id, 2);
-    assert_eq!(counters.player_position_packets, 2);
+    assert_eq!(world.counters().player_position_packets, 2);
     assert_eq!(world.local_player_pose().unwrap().last_teleport_id, 2);
 }
 
 #[test]
 fn player_rotation_updates_pose_orientation() {
-    let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
         position: vec3(10.0, 64.0, -5.0),
@@ -60,7 +56,6 @@ fn player_rotation_updates_pose_orientation() {
     }));
 
     apply_player_rotation_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::PlayerRotationUpdate {
             y_rot: 20.0,
@@ -76,13 +71,12 @@ fn player_rotation_updates_pose_orientation() {
     assert_eq!(pose.y_rot, 110.0);
     assert_eq!(pose.x_rot, -90.0);
     assert_eq!(pose.last_teleport_id, 7);
-    assert_eq!(counters.player_rotation_packets, 1);
+    assert_eq!(world.counters().player_rotation_packets, 1);
     assert_eq!(world.local_player_pose().unwrap().y_rot, 110.0);
 }
 
 #[test]
 fn player_look_at_updates_world_pose_orientation() {
-    let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
         position: vec3(0.0, 64.0, 0.0),
@@ -93,7 +87,6 @@ fn player_look_at_updates_world_pose_orientation() {
     }));
 
     apply_player_look_at_update(
-        &mut counters,
         &mut world,
         bbb_protocol::packets::PlayerLookAt {
             from_anchor: bbb_protocol::packets::EntityAnchor::Eyes,
@@ -112,7 +105,7 @@ fn player_look_at_updates_world_pose_orientation() {
     assert!((pose.y_rot - 0.0).abs() < 0.001);
     assert!((pose.x_rot - 0.0).abs() < 0.001);
     assert_eq!(pose.last_teleport_id, 7);
-    assert_eq!(counters.player_look_at_packets, 1);
+    assert_eq!(world.counters().player_look_at_packets, 1);
     assert_eq!(
         world.local_player().last_look_at,
         Some(bbb_world::LocalPlayerLookAtState {
@@ -396,12 +389,10 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
 
 #[test]
 fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
-    let mut counters = NetCounters::default();
     let mut world = WorldStore::new();
     world.apply_login(&protocol_play_login(9));
 
     assert!(!world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 123 }));
-    sync_local_player_counters(&mut counters, &world);
     assert_eq!(
         world.local_player().camera,
         bbb_world::CameraState {
@@ -410,12 +401,11 @@ fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
             entity_known: true,
         }
     );
-    assert_eq!(counters.set_camera_packets, 1);
-    assert_eq!(counters.set_camera_updates_applied, 0);
-    assert_eq!(counters.set_camera_updates_ignored, 1);
+    assert_eq!(world.counters().set_camera_packets, 1);
+    assert_eq!(world.counters().set_camera_updates_applied, 0);
+    assert_eq!(world.counters().set_camera_updates_ignored, 1);
 
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 9 }));
-    sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(
         world.local_player().camera,
@@ -425,9 +415,9 @@ fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
             entity_known: true,
         }
     );
-    assert_eq!(counters.set_camera_packets, 2);
-    assert_eq!(counters.set_camera_updates_applied, 1);
-    assert_eq!(counters.set_camera_updates_ignored, 1);
+    assert_eq!(world.counters().set_camera_packets, 2);
+    assert_eq!(world.counters().set_camera_updates_applied, 1);
+    assert_eq!(world.counters().set_camera_updates_ignored, 1);
 }
 
 fn protocol_play_login(player_id: i32) -> bbb_protocol::packets::PlayLogin {

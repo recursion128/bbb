@@ -98,7 +98,7 @@ pub(super) fn apply_control_projection_event(
             world.apply_player_combat_kill(update);
         }
         NetEvent::PlayerLookAt(update) => {
-            apply_player_look_at_update(counters, world, update);
+            apply_player_look_at_update(world, update);
         }
         NetEvent::PongResponse(update) => {
             world.apply_pong_response(update);

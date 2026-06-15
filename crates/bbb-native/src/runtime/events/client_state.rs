@@ -1,4 +1,4 @@
-use bbb_control::{NetCounters, NetVec3, PlayerPose};
+use bbb_control::{NetVec3, PlayerPose};
 use bbb_protocol::packets::PlayerPositionState;
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 
@@ -44,41 +44,25 @@ pub(super) fn apply_titles_animation_update(
     world.apply_titles_animation(animation);
 }
 
-pub(crate) fn sync_local_player_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.set_camera_packets = world_counters.set_camera_packets;
-    counters.set_camera_updates_applied = world_counters.set_camera_updates_applied;
-    counters.set_camera_updates_ignored = world_counters.set_camera_updates_ignored;
-    counters.player_position_packets = world_counters.player_position_packets;
-    counters.player_rotation_packets = world_counters.player_rotation_packets;
-    counters.player_look_at_packets = world_counters.player_look_at_packets;
-}
-
 pub(super) fn apply_player_position_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     update: bbb_protocol::packets::PlayerPositionUpdate,
 ) {
     world.apply_player_position(update);
-    sync_local_player_counters(counters, world);
 }
 
 pub(super) fn apply_player_rotation_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     update: bbb_protocol::packets::PlayerRotationUpdate,
 ) {
     world.apply_player_rotation(update);
-    sync_local_player_counters(counters, world);
 }
 
 pub(super) fn apply_player_look_at_update(
-    counters: &mut NetCounters,
     world: &mut WorldStore,
     update: bbb_protocol::packets::PlayerLookAt,
 ) {
     world.apply_player_look_at(update);
-    sync_local_player_counters(counters, world);
 }
 
 pub(crate) fn player_position_state_from_local_player_pose(

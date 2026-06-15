@@ -2046,7 +2046,7 @@ fn player_action_events_update_snapshot_counters() {
             message: Some("You died".to_string()),
         })
     );
-    assert_eq!(counters.player_look_at_packets, 1);
+    assert_eq!(world.counters().player_look_at_packets, 1);
     assert_eq!(
         world.local_player().last_look_at,
         Some(bbb_world::LocalPlayerLookAtState {
@@ -3592,9 +3592,9 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
     assert_eq!(world_counters.held_slot_updates_ignored, 0);
     assert_eq!(world_counters.default_spawn_position_packets, 1);
     assert_eq!(world_counters.simulation_distance_packets, 1);
-    assert_eq!(counters.set_camera_packets, 2);
-    assert_eq!(counters.set_camera_updates_applied, 1);
-    assert_eq!(counters.set_camera_updates_ignored, 1);
+    assert_eq!(world_counters.set_camera_packets, 2);
+    assert_eq!(world_counters.set_camera_updates_applied, 1);
+    assert_eq!(world_counters.set_camera_updates_ignored, 1);
 }
 
 #[test]
