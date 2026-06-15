@@ -13,6 +13,7 @@ mod roots;
 mod sounds;
 mod sprites;
 mod tags;
+mod waypoint_styles;
 
 pub use exports::*;
 pub(crate) use exports::{rgba_len, rgba_offset};

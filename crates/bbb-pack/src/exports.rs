@@ -24,5 +24,6 @@ pub use crate::sprites::{
     SpriteTextureMetadata, SpriteTransparency,
 };
 pub use crate::tags::{TagCatalog, TagDefinition};
+pub use crate::waypoint_styles::{WaypointStyle, WaypointStyleCatalog};
 
 pub(crate) use crate::image::{rgba_len, rgba_offset};

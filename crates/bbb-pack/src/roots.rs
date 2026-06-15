@@ -14,6 +14,7 @@ use crate::{
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
     tags::TagCatalog,
+    waypoint_styles::WaypointStyleCatalog,
 };
 
 pub const MC_VERSION: &str = "26.1";
@@ -166,6 +167,10 @@ impl PackRoots {
 
     pub fn load_item_model_catalog(&self) -> Result<ItemModelCatalog> {
         ItemModelCatalog::load(self)
+    }
+
+    pub fn load_waypoint_style_catalog(&self) -> Result<WaypointStyleCatalog> {
+        WaypointStyleCatalog::load(self)
     }
 
     pub fn load_terrain_colormaps(&self) -> Result<TerrainColorMaps> {
