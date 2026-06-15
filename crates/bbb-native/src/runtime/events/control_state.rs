@@ -163,20 +163,6 @@ pub(super) fn apply_control_projection_event(
     None
 }
 
-pub(super) fn sync_entity_interaction_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.move_vehicle_packets = world_counters.vehicle_moves_received;
-    counters.vehicle_moves_applied = world_counters.vehicle_moves_applied;
-    counters.vehicle_moves_acked = world_counters.vehicle_moves_acked;
-    counters.vehicle_moves_snapped = world_counters.vehicle_moves_snapped;
-    counters.vehicle_moves_ignored = world_counters.vehicle_moves_ignored;
-    counters.take_item_entity_packets = world_counters.take_item_entities_received;
-    counters.take_item_entities_applied = world_counters.take_item_entities_applied;
-    counters.take_item_entities_ignored = world_counters.take_item_entities_ignored;
-    counters.item_entity_stack_shrinks = world_counters.item_entity_stack_shrinks;
-    counters.take_item_entities_removed = world_counters.take_item_entities_removed;
-}
-
 pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.entities_tracked = world_counters.entities_tracked;

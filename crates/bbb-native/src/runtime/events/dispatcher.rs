@@ -8,9 +8,7 @@ use crate::input::queue_vehicle_move_command;
 use crate::particle_runtime::ParticleEventSink;
 
 use super::client_state::*;
-use super::control_state::{
-    apply_control_projection_event, sync_entity_counters, sync_entity_interaction_counters,
-};
+use super::control_state::{apply_control_projection_event, sync_entity_counters};
 use super::{sync_weather_counters, sync_world_time_counters};
 
 #[cfg(test)]
@@ -236,7 +234,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::MoveVehicle(update) => {
                 let report = world.apply_move_vehicle(update);
-                sync_entity_interaction_counters(counters, world);
                 if let Some(report) = report {
                     queue_vehicle_move_command(counters, net_commands, report);
                 }
@@ -267,7 +264,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::TakeItemEntity(update) => {
                 world.apply_take_item_entity(update);
-                sync_entity_interaction_counters(counters, world);
                 sync_entity_counters(counters, world);
             }
             NetEvent::SetPassengers(update) => {

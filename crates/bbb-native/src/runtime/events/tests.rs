@@ -837,7 +837,7 @@ fn map_item_data_event_updates_world_state() {
 }
 
 #[test]
-fn take_item_entity_event_updates_snapshot_counter() {
+fn take_item_entity_event_updates_world_counter() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::TakeItemEntity(
         bbb_protocol::packets::TakeItemEntity {
@@ -850,27 +850,17 @@ fn take_item_entity_event_updates_snapshot_counter() {
     drop(tx);
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        take_item_entity_packets: 99,
-        take_item_entities_applied: 99,
-        take_item_entities_ignored: 99,
-        item_entity_stack_shrinks: 99,
-        take_item_entities_removed: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         1
     );
-    assert_eq!(counters.take_item_entity_packets, 1);
-    assert_eq!(counters.take_item_entities_applied, 0);
-    assert_eq!(counters.take_item_entities_ignored, 1);
-    assert_eq!(counters.item_entity_stack_shrinks, 0);
-    assert_eq!(counters.take_item_entities_removed, 0);
     assert_eq!(world.counters().take_item_entities_received, 1);
     assert_eq!(world.counters().take_item_entities_applied, 0);
     assert_eq!(world.counters().take_item_entities_ignored, 1);
+    assert_eq!(world.counters().item_entity_stack_shrinks, 0);
+    assert_eq!(world.counters().take_item_entities_removed, 0);
 }
 
 #[test]
@@ -3365,24 +3355,12 @@ fn move_vehicle_event_updates_world_and_queues_ack() {
         }))
         .unwrap();
 
-    let mut counters = NetCounters {
-        move_vehicle_packets: 99,
-        vehicle_moves_applied: 99,
-        vehicle_moves_acked: 99,
-        vehicle_moves_snapped: 99,
-        vehicle_moves_ignored: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
     assert_eq!(
         drain_net_events(&mut event_rx, &mut world, &mut counters, &commands),
         1
     );
 
-    assert_eq!(counters.move_vehicle_packets, 1);
-    assert_eq!(counters.vehicle_moves_applied, 1);
-    assert_eq!(counters.vehicle_moves_acked, 1);
-    assert_eq!(counters.vehicle_moves_snapped, 1);
-    assert_eq!(counters.vehicle_moves_ignored, 0);
     assert_eq!(counters.move_vehicle_commands_queued, 1);
     assert_eq!(world.counters().vehicle_moves_received, 1);
     assert_eq!(world.counters().vehicle_moves_applied, 1);
@@ -3412,7 +3390,7 @@ fn move_vehicle_event_updates_world_and_queues_ack() {
 }
 
 #[test]
-fn move_vehicle_ignored_counters_are_projected() {
+fn move_vehicle_ignored_counters_update_world_counters() {
     let (event_tx, mut event_rx) = mpsc::channel(1);
 
     event_tx
@@ -3428,24 +3406,12 @@ fn move_vehicle_ignored_counters_are_projected() {
         .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        move_vehicle_packets: 99,
-        vehicle_moves_applied: 99,
-        vehicle_moves_acked: 99,
-        vehicle_moves_snapped: 99,
-        vehicle_moves_ignored: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
     assert_eq!(
         drain_net_events(&mut event_rx, &mut world, &mut counters, &None),
         1
     );
 
-    assert_eq!(counters.move_vehicle_packets, 1);
-    assert_eq!(counters.vehicle_moves_applied, 0);
-    assert_eq!(counters.vehicle_moves_acked, 0);
-    assert_eq!(counters.vehicle_moves_snapped, 0);
-    assert_eq!(counters.vehicle_moves_ignored, 1);
     assert_eq!(world.counters().vehicle_moves_received, 1);
     assert_eq!(world.counters().vehicle_moves_applied, 0);
     assert_eq!(world.counters().vehicle_moves_acked, 0);
