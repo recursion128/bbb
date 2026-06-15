@@ -36,15 +36,19 @@ impl SoundCatalog {
         for namespace in stack.namespaces()? {
             let sounds_location = ResourceLocation::new(namespace.clone(), "sounds.json")?;
             for resource in stack.get_resource_stack(&sounds_location) {
-                let bytes = std::fs::read(&resource.path)
-                    .with_context(|| format!("read sounds {}", resource.path.display()))?;
+                let Ok(bytes) = std::fs::read(&resource.path) else {
+                    continue;
+                };
                 let namespace_assets_dir = resource
                     .path
                     .parent()
                     .ok_or_else(|| anyhow::anyhow!("sounds path has no parent"))?;
-                catalog
+                if catalog
                     .merge_json_bytes(&namespace, namespace_assets_dir, &bytes, Some(stack))
-                    .with_context(|| format!("parse sounds {}", resource.path.display()))?;
+                    .is_err()
+                {
+                    continue;
+                }
             }
         }
         Ok(catalog)
@@ -577,6 +581,52 @@ mod tests {
         assert_eq!(event.sounds.len(), 1);
         assert_eq!(event.sounds[0].name, "minecraft:music/menu_overlay");
         assert_eq!(event.sounds[0].ogg_path, Some(overlay_ogg));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn sound_catalog_skips_invalid_resource_stack_definitions() {
+        let root = unique_temp_dir("sound-stack-invalid");
+        let base = root.join("sources").join(MC_VERSION);
+        let overlay = root.join("overlay");
+        let base_assets = base.join("assets").join("minecraft");
+        let overlay_assets = overlay.join("assets").join("minecraft");
+        write_file(&base_assets.join("sounds").join("random").join("click.ogg"));
+        write_json(
+            &base_assets.join("sounds.json"),
+            r#"{
+              "ui.button.click": {
+                "sounds": ["random/click"]
+              }
+            }"#,
+        );
+        write_json(
+            &overlay_assets.join("sounds.json"),
+            r#"{
+              "ui.button.click": {
+                "sounds": [
+                  {
+                    "name": "random/click",
+                    "volume": 0.0
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([overlay]);
+        let catalog = roots.load_sound_catalog().unwrap();
+        let event = catalog.event("minecraft:ui.button.click").unwrap();
+
+        assert_eq!(event.sounds.len(), 1);
+        assert_eq!(event.sounds[0].name, "minecraft:random/click");
+        assert_eq!(
+            event.sounds[0].ogg_path,
+            Some(base_assets.join("sounds").join("random").join("click.ogg"))
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
