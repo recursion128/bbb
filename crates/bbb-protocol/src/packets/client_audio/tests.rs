@@ -94,6 +94,47 @@ fn decodes_sound_entity_packet_with_direct_sound_holder() {
 }
 
 #[test]
+fn decodes_direct_sound_holder_with_default_namespace() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_string("entity.cat.ambient");
+    payload.write_bool(false);
+    payload.write_var_i32(6);
+    payload.write_var_i32(123);
+    payload.write_f32(1.0);
+    payload.write_f32(0.5);
+    payload.write_i64(-9);
+    let payload = payload.into_inner();
+
+    let packet = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND_ENTITY, &payload).unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::SoundEntity(SoundEntityEvent {
+            sound: SoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: None,
+            },
+            source: SoundSource::Neutral,
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
+        })
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(decoder.read_string(32767).unwrap(), "entity.cat.ambient");
+    assert!(!decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_var_i32().unwrap(), 6);
+    assert_eq!(decoder.read_var_i32().unwrap(), 123);
+    assert_eq!(decoder.read_f32().unwrap(), 1.0);
+    assert_eq!(decoder.read_f32().unwrap(), 0.5);
+    assert_eq!(decoder.read_i64().unwrap(), -9);
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn decodes_stop_sound_flags() {
     let mut payload = Encoder::new();
     payload.write_u8(3);
@@ -168,6 +209,25 @@ fn rejects_invalid_sound_source_ordinal() {
     let err =
         decode_play_clientbound(ids::play::CLIENTBOUND_SOUND, &payload.into_inner()).unwrap_err();
     assert!(err.to_string().contains("invalid sound source ordinal 11"));
+}
+
+#[test]
+fn rejects_invalid_direct_sound_holder_name() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(0);
+    payload.write_string("minecraft:Entity.Cat");
+    payload.write_bool(false);
+    payload.write_var_i32(6);
+    payload.write_var_i32(123);
+    payload.write_f32(1.0);
+    payload.write_f32(0.5);
+    payload.write_i64(-9);
+
+    let err = decode_play_clientbound(ids::play::CLIENTBOUND_SOUND_ENTITY, &payload.into_inner())
+        .unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("invalid resource location `minecraft:Entity.Cat`: invalid path"));
 }
 
 #[test]

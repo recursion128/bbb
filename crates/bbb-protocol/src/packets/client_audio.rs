@@ -136,7 +136,7 @@ pub(crate) fn decode_stop_sound(decoder: &mut Decoder<'_>) -> Result<StopSound> 
 fn decode_sound_event_holder(decoder: &mut Decoder<'_>) -> Result<SoundEventHolder> {
     let holder_id = decoder.read_var_i32()?;
     if holder_id == 0 {
-        let location = decoder.read_string(32767)?;
+        let location = read_resource_location(decoder)?;
         let fixed_range = if decoder.read_bool()? {
             Some(decoder.read_f32()?)
         } else {
