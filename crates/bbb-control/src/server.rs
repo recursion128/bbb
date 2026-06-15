@@ -339,6 +339,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
         "world.client_audio" => serde_json::to_value(snapshot_guard.world_store.client_audio()),
+        "world.client_chat" => serde_json::to_value(snapshot_guard.world_store.client_chat()),
         "world.client_combat" => serde_json::to_value(snapshot_guard.world_store.client_combat()),
         "world.client_debug_game" => {
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
@@ -483,14 +484,15 @@ mod tests {
 
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, AwardStats, BlockPos as ProtocolBlockPos, DebugBlockValue,
-        DialogHolder, EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue,
-        GameRuleValues, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
-        PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType, SetActionBarText,
-        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent,
-        SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TrackedWaypoint,
-        TrackedWaypointPacket, Vec3d as ProtocolVec3d, WaypointData, WaypointIcon,
-        WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        AddEntity as ProtocolAddEntity, AwardStats, BlockPos as ProtocolBlockPos, ChatTypeBound,
+        ChatTypeHolder, DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
+        EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue, GameRuleValues,
+        InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe,
+        PlayerCombatKill, PongResponse, RecipeDisplayType, SetActionBarText, SetSubtitleText,
+        SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource,
+        StatUpdate, StopSound, SystemChat, TrackedWaypoint, TrackedWaypointPacket,
+        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -888,6 +890,40 @@ mod tests {
         assert_eq!(hud["title"]["stay"], 40);
         assert_eq!(hud["title"]["fade_out"], 15);
         assert_eq!(hud["title"]["title_time"], 60);
+    }
+
+    #[test]
+    fn client_chat_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_disguised_chat(ProtocolDisguisedChat {
+                message: "server notice".to_string(),
+                chat_type: ChatTypeBound {
+                    chat_type: ChatTypeHolder::Registry { id: 0 },
+                    name: "Server".to_string(),
+                    target_name: None,
+                },
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_chat".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let chat = response.result.unwrap();
+        assert_eq!(chat["messages"][0]["kind"], "Disguised");
+        assert_eq!(chat["messages"][0]["content"], "server notice");
+        assert_eq!(chat["messages"][0]["sender_name"], "Server");
+        assert_eq!(chat["messages"][0]["chat_type"]["registry_id"], 0);
+        assert_eq!(chat["messages"][0]["validation_state"], "Unsigned");
+        assert_eq!(chat["deleted_messages"].as_array().unwrap().len(), 0);
     }
 
     #[test]

@@ -489,26 +489,6 @@ fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
         world_counters.player_chat_unsigned_content_packets;
     counters.player_chat_filtered_packets = world_counters.player_chat_filtered_packets;
     counters.player_chat_fully_filtered_packets = world_counters.player_chat_fully_filtered_packets;
-
-    counters.last_player_chat = world
-        .client_chat()
-        .messages
-        .iter()
-        .rev()
-        .find(|message| message.kind == bbb_world::ChatMessageKind::Player)
-        .map(control_chat_line);
-    counters.last_disguised_chat = world
-        .client_chat()
-        .messages
-        .iter()
-        .rev()
-        .find(|message| message.kind == bbb_world::ChatMessageKind::Disguised)
-        .map(control_chat_line);
-    counters.last_deleted_chat = world
-        .client_chat()
-        .deleted_messages
-        .last()
-        .map(control_deleted_chat_line);
 }
 
 fn sync_custom_payload_counters(counters: &mut NetCounters, world: &WorldStore) {
@@ -697,37 +677,4 @@ fn sync_client_stats_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.award_stats_entries_received = world_counters.award_stats_entries_received;
     counters.last_award_stats_entry_count = world_counters.last_award_stats_entry_count;
     counters.stats_tracked = world_counters.stats_tracked;
-}
-
-fn control_chat_line(message: &bbb_world::ChatMessageState) -> bbb_control::ClientChatLine {
-    bbb_control::ClientChatLine {
-        kind: message.kind.as_str().to_string(),
-        content: message.content.clone(),
-        sender: message.sender.map(|sender| sender.to_string()),
-        sender_name: message.sender_name.clone(),
-        target_name: message.target_name.clone(),
-        global_index: message.global_index,
-        message_index: message.message_index,
-        chat_type_id: message.chat_type.registry_id,
-        signature_checksum: message
-            .signature
-            .as_ref()
-            .map(|signature| signature.checksum),
-        unsigned_content_present: message.unsigned_content.is_some(),
-        filter_mask: message.filter_mask.clone(),
-        validation_state: message.validation_state.as_str().to_string(),
-    }
-}
-
-fn control_deleted_chat_line(
-    deleted: &bbb_world::DeletedChatState,
-) -> bbb_control::DeletedChatLine {
-    bbb_control::DeletedChatLine {
-        signature_checksum: deleted
-            .signature
-            .as_ref()
-            .map(|signature| signature.checksum),
-        cache_id: deleted.cache_id,
-        resolved: deleted.resolved,
-    }
 }

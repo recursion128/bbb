@@ -111,9 +111,6 @@ pub struct NetCounters {
     pub last_cookie_key: Option<String>,
     pub custom_report_details: BTreeMap<String, String>,
     pub server_links: Vec<ServerLinkState>,
-    pub last_player_chat: Option<ClientChatLine>,
-    pub last_disguised_chat: Option<ClientChatLine>,
-    pub last_deleted_chat: Option<DeletedChatLine>,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub last_transfer: Option<TransferTarget>,
@@ -656,29 +653,6 @@ pub struct WorldTime {
     pub game_time: i64,
     pub day_time: i64,
     pub clock_updates: usize,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ClientChatLine {
-    pub kind: String,
-    pub content: String,
-    pub sender: Option<String>,
-    pub sender_name: String,
-    pub target_name: Option<String>,
-    pub global_index: Option<i32>,
-    pub message_index: Option<i32>,
-    pub chat_type_id: Option<i32>,
-    pub signature_checksum: Option<i32>,
-    pub unsigned_content_present: bool,
-    pub filter_mask: String,
-    pub validation_state: String,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DeletedChatLine {
-    pub signature_checksum: Option<i32>,
-    pub cache_id: Option<i32>,
-    pub resolved: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

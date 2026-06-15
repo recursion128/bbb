@@ -581,13 +581,7 @@ fn configuration_state_events_update_snapshot_counters() {
     });
     assert_eq!(world.counters().chat_messages_tracked, 1);
     assert_eq!(world.counters().chat_signature_cache_entries, 1);
-    let mut counters = NetCounters {
-        last_player_chat: Some(bbb_control::ClientChatLine {
-            content: "previous".to_string(),
-            ..bbb_control::ClientChatLine::default()
-        }),
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -608,7 +602,6 @@ fn configuration_state_events_update_snapshot_counters() {
     assert_eq!(counters.enabled_features_tracked, 2);
     assert_eq!(counters.enabled_features_ignored, 0);
     assert_eq!(counters.reset_chat_packets, 1);
-    assert!(counters.last_player_chat.is_none());
     assert!(world.client_chat().messages.is_empty());
     assert!(world.client_chat().deleted_messages.is_empty());
     assert_eq!(world.client_chat().expected_player_chat_global_index, 0);
@@ -1166,6 +1159,43 @@ fn client_chat_events_update_world_and_snapshot_counters() {
     );
     assert_eq!(world.client_chat().messages.len(), 2);
     assert_eq!(world.client_chat().deleted_messages.len(), 1);
+    let player_chat = &world.client_chat().messages[0];
+    assert_eq!(player_chat.kind, bbb_world::ChatMessageKind::Player);
+    assert_eq!(player_chat.content, "hello");
+    assert_eq!(player_chat.sender, Some(sender));
+    assert_eq!(player_chat.sender_name, "Alice");
+    assert_eq!(player_chat.global_index, Some(0));
+    assert_eq!(player_chat.message_index, Some(2));
+    assert_eq!(player_chat.chat_type.registry_id, Some(0));
+    assert_eq!(
+        player_chat
+            .signature
+            .as_ref()
+            .map(|signature| signature.checksum),
+        Some(expected_signature_checksum)
+    );
+    assert_eq!(
+        player_chat.unsigned_content.as_deref(),
+        Some("unsigned hello")
+    );
+    assert_eq!(player_chat.filter_mask, "partially_filtered");
+    assert_eq!(
+        player_chat.validation_state,
+        bbb_world::ChatValidationState::Unchecked
+    );
+    let disguised_chat = &world.client_chat().messages[1];
+    assert_eq!(disguised_chat.kind, bbb_world::ChatMessageKind::Disguised);
+    assert_eq!(disguised_chat.content, "server notice");
+    let deleted_chat = &world.client_chat().deleted_messages[0];
+    assert_eq!(
+        deleted_chat
+            .signature
+            .as_ref()
+            .map(|signature| signature.checksum),
+        Some(expected_signature_checksum)
+    );
+    assert_eq!(deleted_chat.cache_id, Some(0));
+    assert!(deleted_chat.resolved);
     assert_eq!(counters.player_chat_packets, 1);
     assert_eq!(counters.disguised_chat_packets, 1);
     assert_eq!(counters.delete_chat_packets, 1);
@@ -1174,38 +1204,6 @@ fn client_chat_events_update_world_and_snapshot_counters() {
     assert_eq!(counters.chat_signature_cache_entries, 1);
     assert_eq!(counters.player_chat_unsigned_content_packets, 1);
     assert_eq!(counters.player_chat_filtered_packets, 1);
-    assert_eq!(
-        counters.last_player_chat,
-        Some(bbb_control::ClientChatLine {
-            kind: "player".to_string(),
-            content: "hello".to_string(),
-            sender: Some(sender.to_string()),
-            sender_name: "Alice".to_string(),
-            target_name: None,
-            global_index: Some(0),
-            message_index: Some(2),
-            chat_type_id: Some(0),
-            signature_checksum: Some(expected_signature_checksum),
-            unsigned_content_present: true,
-            filter_mask: "partially_filtered".to_string(),
-            validation_state: "unchecked".to_string(),
-        })
-    );
-    assert_eq!(
-        counters
-            .last_disguised_chat
-            .as_ref()
-            .map(|chat| &chat.content),
-        Some(&"server notice".to_string())
-    );
-    assert_eq!(
-        counters.last_deleted_chat,
-        Some(bbb_control::DeletedChatLine {
-            signature_checksum: Some(expected_signature_checksum),
-            cache_id: Some(0),
-            resolved: true,
-        })
-    );
 }
 
 #[test]
