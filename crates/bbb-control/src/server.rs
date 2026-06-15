@@ -370,6 +370,14 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             "weather": snapshot_guard.world_store.weather(),
             "ticking": snapshot_guard.world_store.ticking(),
         })),
+        "world.chunk_view" => {
+            let view = snapshot_guard.world_store.chunk_view();
+            Ok(serde_json::json!({
+                "first_chunk": snapshot_guard.world_store.first_chunk(),
+                "center": view.center,
+                "radius": view.radius,
+            }))
+        }
         "world.server_presentation" => {
             serde_json::to_value(snapshot_guard.world_store.presentation())
         }
@@ -516,11 +524,12 @@ mod tests {
         OpenSignEditor, PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill,
         PlayerExperience, PlayerHealth, PongResponse, RecipeDisplayType, SelectAdvancementsTab,
         ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText,
-        SetDefaultSpawnPosition, SetSimulationDistance, SetSubtitleText, SetTitleText,
-        SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
-        StopSound, SystemChat, TagQuery, TickingState, TickingStep, TrackedWaypoint,
-        TrackedWaypointPacket, Transfer, UpdateAdvancements, Vec3d as ProtocolVec3d, WaypointData,
-        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        SetChunkCacheCenter, SetChunkCacheRadius, SetDefaultSpawnPosition, SetSimulationDistance,
+        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent,
+        SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery, TickingState,
+        TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements,
+        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1632,6 +1641,37 @@ mod tests {
         );
         assert!(missing_response.ok);
         assert!(missing_response.result.unwrap().is_null());
+    }
+
+    #[test]
+    fn chunk_view_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.insert_decoded_chunk(single_section_chunk());
+            store.apply_set_chunk_cache_center(SetChunkCacheCenter {
+                chunk_x: -4,
+                chunk_z: 7,
+            });
+            store.apply_set_chunk_cache_radius(SetChunkCacheRadius { radius: 10 });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.chunk_view".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let view = response.result.unwrap();
+        assert_eq!(view["first_chunk"]["x"], 1);
+        assert_eq!(view["first_chunk"]["z"], -2);
+        assert_eq!(view["center"]["x"], -4);
+        assert_eq!(view["center"]["z"], 7);
+        assert_eq!(view["radius"], 10);
     }
 
     #[test]

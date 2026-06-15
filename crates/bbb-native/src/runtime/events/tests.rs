@@ -69,7 +69,7 @@ fn block_changed_ack_updates_snapshot_counters() {
 }
 
 #[test]
-fn chunk_cache_events_update_world_and_snapshot_counters() {
+fn chunk_cache_events_update_world_and_counter_projection() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::SetChunkCacheCenter(SetChunkCacheCenter {
         chunk_x: -4,
@@ -90,8 +90,6 @@ fn chunk_cache_events_update_world_and_snapshot_counters() {
     );
     assert_eq!(world.chunk_cache_center(), Some(ChunkPos { x: -4, z: 7 }));
     assert_eq!(world.chunk_cache_radius(), Some(10));
-    assert_eq!(counters.chunk_cache_center, Some(ChunkPos { x: -4, z: 7 }));
-    assert_eq!(counters.chunk_cache_radius, Some(10));
     let world_counters = world.counters();
     assert_eq!(world_counters.chunk_cache_center_updates_received, 1);
     assert_eq!(world_counters.chunk_cache_radius_updates_received, 1);
@@ -165,7 +163,6 @@ fn terrain_chunk_events_update_world_and_snapshot_counters() {
         7
     );
     assert_eq!(world.first_chunk(), Some(ChunkPos { x: 1, z: -2 }));
-    assert_eq!(counters.first_chunk, Some(ChunkPos { x: 1, z: -2 }));
     assert!(world.probe_chunk(ChunkPos { x: 1, z: -2 }).is_none());
 
     let world_counters = world.counters();
@@ -287,7 +284,7 @@ fn terrain_chunk_ignored_counters_are_projected() {
 }
 
 #[test]
-fn respawn_clears_projected_first_chunk_when_world_changes() {
+fn respawn_clears_world_first_chunk_when_world_changes() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::LevelChunkWithLight(
         synthetic_native_level_chunk_packet(),
@@ -347,7 +344,6 @@ fn respawn_clears_projected_first_chunk_when_world_changes() {
         2
     );
     assert_eq!(world.first_chunk(), None);
-    assert_eq!(counters.first_chunk, None);
     assert_eq!(counters.respawns_received, 1);
     assert_eq!(counters.chunks_received, 1);
     assert_eq!(counters.chunks_decoded, 1);

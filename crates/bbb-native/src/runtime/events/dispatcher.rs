@@ -501,9 +501,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
 
 fn sync_chunk_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
-    counters.first_chunk = world.first_chunk();
-    counters.chunk_cache_center = world.chunk_cache_center();
-    counters.chunk_cache_radius = world.chunk_cache_radius();
     counters.chunks_received = world_counters.chunks_received;
     counters.chunks_decoded = world_counters.chunks_decoded;
     counters.sections_decoded = world_counters.sections_decoded;

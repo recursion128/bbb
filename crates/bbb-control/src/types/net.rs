@@ -1,4 +1,3 @@
-use bbb_world::ChunkPos;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -44,9 +43,6 @@ pub struct NetCounters {
     pub tags_tracked: usize,
     #[serde(default)]
     pub tag_entries_tracked: usize,
-    pub first_chunk: Option<ChunkPos>,
-    pub chunk_cache_center: Option<ChunkPos>,
-    pub chunk_cache_radius: Option<i32>,
     #[serde(default)]
     pub chunks_received: usize,
     #[serde(default)]
