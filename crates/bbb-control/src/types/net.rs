@@ -79,13 +79,6 @@ pub struct NetCounters {
     pub level_event_packets: usize,
     #[serde(default)]
     pub level_events_tracked: usize,
-    pub boss_event_packets: usize,
-    #[serde(default)]
-    pub boss_bars_tracked: usize,
-    #[serde(default)]
-    pub boss_events_ignored: usize,
-    pub change_difficulty_packets: usize,
-    pub tab_list_packets: usize,
     pub initialize_border_packets: usize,
     pub set_border_center_packets: usize,
     pub set_border_lerp_size_packets: usize,

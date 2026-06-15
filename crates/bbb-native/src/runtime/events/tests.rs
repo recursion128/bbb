@@ -3144,7 +3144,7 @@ fn scoreboard_events_update_world_and_counters() {
 }
 
 #[test]
-fn hud_session_events_update_world_and_counters() {
+fn hud_session_events_update_world_and_world_counters() {
     let boss_id = Uuid::from_u128(1);
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::BossEvent(bbb_protocol::packets::BossEvent {
@@ -3186,24 +3186,12 @@ fn hud_session_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        boss_event_packets: 99,
-        boss_bars_tracked: 99,
-        boss_events_ignored: 99,
-        tab_list_packets: 99,
-        change_difficulty_packets: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         5
     );
-    assert_eq!(counters.boss_event_packets, 3);
-    assert_eq!(counters.boss_bars_tracked, 1);
-    assert_eq!(counters.boss_events_ignored, 1);
-    assert_eq!(counters.tab_list_packets, 1);
-    assert_eq!(counters.change_difficulty_packets, 1);
 
     let boss = world.boss_bars().get(&boss_id).unwrap();
     assert_eq!(boss.name, "Ender Dragon");
