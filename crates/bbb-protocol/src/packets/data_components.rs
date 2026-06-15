@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::read_resource_location;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
     component::{decode_component_summary_from_decoder, skip_nbt_tag_from_decoder},
@@ -7,7 +8,6 @@ use crate::{
 
 pub(crate) const MAX_DATA_COMPONENT_PATCH_ENTRIES: usize = 1024;
 pub(crate) const MAX_DATA_COMPONENT_PREDICATE_ENTRIES: usize = 1024;
-const MAX_IDENTIFIER_CHARS: usize = 32767;
 const MAX_DATA_COMPONENT_LIST_ITEMS: usize = 4096;
 const MAX_BLOCK_STATE_PROPERTIES: usize = 256;
 const MAX_BOOK_PAGES: usize = 100;
@@ -113,7 +113,7 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         }
         // item_model, tooltip_style, note_block_sound.
         10 | 35 | 71 => {
-            decoder.read_string(MAX_IDENTIFIER_CHARS)?;
+            decode_identifier(decoder)?;
         }
         // rarity, dye, map_post_processing, animal variant enums, collars,
         // tropical fish colors, sheep_color, shulker_color.
@@ -229,7 +229,7 @@ fn decode_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
         return Err(ProtocolError::NegativeLength(encoded_count));
     }
     if encoded_count == 0 {
-        decoder.read_string(MAX_IDENTIFIER_CHARS)?;
+        decode_identifier(decoder)?;
         return Ok(());
     }
 
@@ -247,7 +247,14 @@ fn decode_holder_set(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_identifier(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_string(MAX_IDENTIFIER_CHARS)?;
+    read_resource_location(decoder)?;
+    Ok(())
+}
+
+fn decode_optional_identifier(decoder: &mut Decoder<'_>) -> Result<()> {
+    if decoder.read_bool()? {
+        decode_identifier(decoder)?;
+    }
     Ok(())
 }
 
@@ -529,7 +536,7 @@ fn decode_tool(decoder: &mut Decoder<'_>) -> Result<()> {
 
 fn decode_use_cooldown(decoder: &mut Decoder<'_>) -> Result<()> {
     decoder.read_f32()?;
-    decode_optional_string(decoder, MAX_IDENTIFIER_CHARS)
+    decode_optional_identifier(decoder)
 }
 
 fn decode_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -617,8 +624,8 @@ fn decode_optional_kinetic_weapon_condition(decoder: &mut Decoder<'_>) -> Result
 fn decode_equippable(decoder: &mut Decoder<'_>) -> Result<()> {
     decoder.read_var_i32()?;
     decode_sound_event_holder(decoder)?;
-    decode_optional_string(decoder, MAX_IDENTIFIER_CHARS)?;
-    decode_optional_string(decoder, MAX_IDENTIFIER_CHARS)?;
+    decode_optional_identifier(decoder)?;
+    decode_optional_identifier(decoder)?;
     if decoder.read_bool()? {
         decode_holder_set(decoder)?;
     }
@@ -1503,6 +1510,55 @@ mod tests {
     }
 
     #[test]
+    fn rejects_invalid_identifier_data_component_values() {
+        assert_invalid_data_component_identifier(10, |payload| {
+            payload.write_string("minecraft:DiamondSword");
+        });
+        assert_invalid_data_component_identifier(35, |payload| {
+            payload.write_string("minecraft:Tooltip");
+        });
+        assert_invalid_data_component_identifier(71, |payload| {
+            payload.write_string("minecraft:NoteBlock");
+        });
+        assert_invalid_data_component_identifier(26, |payload| {
+            payload.write_f32(1.0);
+            payload.write_bool(true);
+            payload.write_string("minecraft:EnderPearl");
+        });
+        assert_invalid_data_component_identifier(65, |payload| {
+            write_holder_set_tag(payload, "minecraft:NoItemRequired");
+        });
+        assert_invalid_data_component_identifier(67, |payload| {
+            payload.write_bool(true);
+            payload.write_string("minecraft:Overworld");
+            payload.write_i64(0);
+        });
+        assert_invalid_data_component_identifier(32, |payload| {
+            payload.write_var_i32(5);
+            write_direct_sound_event(payload, "minecraft:item.armor.equip_generic", None);
+            payload.write_bool(true);
+            payload.write_string("minecraft:Diamond");
+        });
+        assert_invalid_data_component_identifier(32, |payload| {
+            payload.write_var_i32(5);
+            write_direct_sound_event(payload, "minecraft:item.armor.equip_generic", None);
+            payload.write_bool(false);
+            payload.write_bool(true);
+            payload.write_string("minecraft:Misc/Pumpkinblur");
+        });
+        assert_invalid_data_component_identifier(80, |payload| {
+            payload.write_var_i32(0);
+            payload.write_string("minecraft:Block.NoteBlock.Harp");
+        });
+        assert_invalid_data_component_identifier(102, |payload| {
+            payload.write_var_i32(0);
+            payload.write_var_i32(16);
+            payload.write_var_i32(16);
+            payload.write_string("minecraft:Kebab");
+        });
+    }
+
+    #[test]
     fn rejects_unknown_data_component_type_without_consuming_payload_guesswork() {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
@@ -1515,6 +1571,31 @@ mod tests {
         assert!(err
             .to_string()
             .contains("unsupported data component type id 110"));
+    }
+
+    fn assert_invalid_data_component_identifier(
+        type_id: i32,
+        write_value: impl FnOnce(&mut Encoder),
+    ) {
+        let payload = single_data_component_payload(type_id, write_value);
+        let mut decoder = Decoder::new(&payload);
+        let err = decode_data_component_patch_summary(&mut decoder).unwrap_err();
+        assert!(
+            err.to_string().contains("invalid resource location"),
+            "component {type_id} produced unexpected error: {err}"
+        );
+    }
+
+    fn single_data_component_payload(
+        type_id: i32,
+        write_value: impl FnOnce(&mut Encoder),
+    ) -> Vec<u8> {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+        payload.write_var_i32(type_id);
+        write_value(&mut payload);
+        payload.into_inner()
     }
 
     pub(super) fn nbt_string_root(value: &str) -> Vec<u8> {
