@@ -84,7 +84,17 @@ impl ProbeContext {
                 self.world.apply_move_minecart_along_track(update);
             }
             PlayClientbound::MoveVehicle(update) => {
-                self.world.apply_move_vehicle(update);
+                if let Some(report) = self.world.apply_move_vehicle(update) {
+                    let (id, payload) = packets::encode_play_move_vehicle(
+                        report.position.x,
+                        report.position.y,
+                        report.position.z,
+                        report.y_rot,
+                        report.x_rot,
+                        report.on_ground,
+                    );
+                    self.conn.send_packet(id, &payload).await?;
+                }
             }
             PlayClientbound::KeepAlive { id } => {
                 let (id, payload) = packets::encode_play_keep_alive(id);
@@ -483,14 +493,15 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
-        AwardStats, BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos,
-        ClockUpdate, CookieRequest, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent,
-        DebugSample, DialogHolder, EntityAnchor, GameEvent, GameRuleValue, GameRuleValues,
-        GameTestHighlightPos, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
-        PlaceGhostRecipe, PlayTime, PlayerHealth, PlayerLookAt, PlayerPositionUpdate,
-        PlayerRotationUpdate, PongResponse, RecipeDisplayType, RemoteDebugSampleType, ShowDialog,
-        StatUpdate, StoreCookie, TestInstanceBlockStatus, TickingState, TickingStep,
-        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        AddEntity, AwardStats, BlockChangedAck, BlockPos as ProtocolBlockPos,
+        ChunkPos as ProtocolChunkPos, ClockUpdate, CommonPlayerSpawnInfo, CookieRequest,
+        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
+        EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
+        InteractionHand, MountScreenOpen, MoveVehicle, OpenBook, OpenSignEditor, PlaceGhostRecipe,
+        PlayLogin, PlayTime, PlayerHealth, PlayerLookAt, PlayerPositionUpdate,
+        PlayerRotationUpdate, PongResponse, RecipeDisplayType, RemoteDebugSampleType,
+        SetPassengers, ShowDialog, StatUpdate, StoreCookie, TestInstanceBlockStatus, TickingState,
+        TickingStep, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
     };
     use bbb_protocol::{codec::Decoder, ids};
     use bbb_world::{BlockPos, ChunkPos};
@@ -498,6 +509,7 @@ mod tests {
     use std::time::Duration;
     use tokio::net::TcpListener;
     use tokio::time::timeout;
+    use uuid::Uuid;
 
     #[tokio::test]
     async fn probe_applies_debug_game_packets_to_world() {
@@ -703,6 +715,64 @@ mod tests {
         assert_eq!(report.world_counters.cookie_request_packets, 1);
         assert_eq!(report.world_counters.cookie_response_hits, 1);
         assert_eq!(report.world_counters.cookie_response_misses, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_move_vehicle_sends_vehicle_ack() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Login(protocol_play_login(99)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(10)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetPassengers(SetPassengers {
+                vehicle_id: 10,
+                passenger_ids: vec![99],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MoveVehicle(MoveVehicle {
+                position: ProtocolVec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                y_rot: 45.0,
+                x_rot: -5.0,
+            }))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("move vehicle ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_VEHICLE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 5.0);
+        assert_eq!(decoder.read_f64().unwrap(), 66.0);
+        assert_eq!(decoder.read_f64().unwrap(), -7.0);
+        assert_eq!(decoder.read_f32().unwrap(), 45.0);
+        assert_eq!(decoder.read_f32().unwrap(), -5.0);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let report = probe.finish(4, ChunkPos { x: 0, z: 0 });
+        let vehicle = report.world.probe_entity(10).unwrap();
+        assert_eq!(vehicle.position.x, 5.0);
+        assert_eq!(vehicle.position.y, 66.0);
+        assert_eq!(vehicle.position.z, -7.0);
+        assert_eq!(report.world_counters.vehicle_moves_received, 1);
+        assert_eq!(report.world_counters.vehicle_moves_applied, 1);
+        assert_eq!(report.world_counters.vehicle_moves_acked, 1);
+        assert_eq!(report.world_counters.vehicle_moves_snapped, 1);
     }
 
     #[tokio::test]
@@ -1051,5 +1121,54 @@ mod tests {
             compression_threshold: None,
         };
         (client, server)
+    }
+
+    fn protocol_play_login(player_id: i32) -> PlayLogin {
+        PlayLogin {
+            player_id,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        }
+    }
+
+    fn protocol_add_entity(id: i32) -> AddEntity {
+        AddEntity {
+            id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: 7,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: -10.0,
+            y_rot: 20.0,
+            y_head_rot: 30.0,
+            data: 99,
+        }
     }
 }
