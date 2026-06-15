@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 
 use crate::runtime::{
     local_player_pose_from_player_pose, player_pose_from_local_player_pose,
-    player_position_state_from_local_player_pose,
+    player_position_state_from_local_player_pose, sync_local_player_counters,
 };
 
 use super::ClientInputState;
@@ -45,7 +45,7 @@ pub(crate) fn advance_player_input(
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
     world.set_local_player_pose(local_player_pose_from_player_pose(pose));
-    counters.player_pose = Some(pose);
+    sync_local_player_counters(counters, world);
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
 }
 
@@ -229,6 +229,10 @@ mod tests {
             other => panic!("expected move command, got {other:?}"),
         };
         assert!(second.state.position.z > 0.0);
+        let world_pose = world.local_player_pose().unwrap();
+        let counter_pose = counters.player_pose.unwrap();
+        assert_f64_near(counter_pose.position.z, world_pose.position.z, 0.000001);
+        assert_f64_near(counter_pose.position.z, second.state.position.z, 0.000001);
         assert_eq!(counters.player_move_commands_queued, 2);
     }
 

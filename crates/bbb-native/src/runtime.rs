@@ -40,7 +40,7 @@ const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50
 
 pub(crate) use events::{
     local_player_pose_from_player_pose, player_pose_from_local_player_pose,
-    player_position_state_from_local_player_pose,
+    player_position_state_from_local_player_pose, sync_local_player_counters,
 };
 
 #[derive(Debug, Default)]

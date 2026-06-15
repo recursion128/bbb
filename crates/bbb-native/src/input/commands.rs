@@ -14,6 +14,7 @@ use winit::keyboard::KeyCode;
 use crate::crosshair::{
     protocol_block_hit_result_from_crosshair_hit, protocol_block_pos_from_world, CrosshairBlockHit,
 };
+use crate::runtime::sync_local_player_counters;
 
 pub(super) fn queue_player_input_command(
     counters: &mut NetCounters,
@@ -84,7 +85,7 @@ pub(super) fn select_hotbar_slot(
     if !world.set_local_selected_hotbar_slot(slot) {
         return;
     }
-    counters.selected_hotbar_slot = world.local_player().selected_hotbar_slot;
+    sync_local_player_counters(counters, world);
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SetHeldSlot(slot)).is_ok() {
             counters.held_slot_commands_queued += 1;
