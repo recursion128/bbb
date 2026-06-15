@@ -652,10 +652,10 @@ fn registry_data_event_updates_world_state_and_snapshot_counters() {
     assert_eq!(counters.registry_duplicate_entries, 0);
     assert_eq!(counters.registry_duplicate_entry_ids_tracked, 0);
     assert_eq!(
-        counters.last_registry_data_registry.as_deref(),
+        world.counters().last_registry_data_registry.as_deref(),
         Some("minecraft:chat_type")
     );
-    assert_eq!(counters.last_registry_data_entry_count, 2);
+    assert_eq!(world.counters().last_registry_data_entry_count, 2);
 }
 
 #[test]
@@ -684,9 +684,9 @@ fn update_tags_event_updates_world_state_and_snapshot_counters() {
         vec![5, 6, 7]
     );
     assert_eq!(counters.update_tags_packets, 1);
-    assert_eq!(counters.last_update_tags_registry_count, 1);
-    assert_eq!(counters.last_update_tags_total_tag_count, 1);
-    assert_eq!(counters.last_update_tags_total_value_count, 3);
+    assert_eq!(world.counters().last_update_tags_registry_count, 1);
+    assert_eq!(world.counters().last_update_tags_total_tag_count, 1);
+    assert_eq!(world.counters().last_update_tags_total_value_count, 3);
     assert_eq!(counters.tag_registries_tracked, 1);
     assert_eq!(counters.tags_tracked, 1);
     assert_eq!(counters.tag_entries_tracked, 3);

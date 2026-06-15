@@ -26,17 +26,7 @@ pub struct NetCounters {
     #[serde(default)]
     pub registry_duplicate_entry_ids_tracked: usize,
     #[serde(default)]
-    pub last_registry_data_registry: Option<String>,
-    #[serde(default)]
-    pub last_registry_data_entry_count: usize,
-    #[serde(default)]
     pub update_tags_packets: usize,
-    #[serde(default)]
-    pub last_update_tags_registry_count: usize,
-    #[serde(default)]
-    pub last_update_tags_total_tag_count: usize,
-    #[serde(default)]
-    pub last_update_tags_total_value_count: usize,
     #[serde(default)]
     pub tag_registries_tracked: usize,
     #[serde(default)]
