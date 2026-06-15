@@ -2709,24 +2709,6 @@ fn world_effect_events_update_snapshot_counters() {
         })
     );
     assert_eq!(counters.explosion_packets, 1);
-    assert_eq!(
-        counters.last_explosion,
-        Some(bbb_control::ExplosionState {
-            center: bbb_control::NetVec3 {
-                x: 1.0,
-                y: 2.0,
-                z: 3.0,
-            },
-            radius: 4.5,
-            block_count: 7,
-            player_knockback: Some(bbb_control::NetVec3 {
-                x: 0.25,
-                y: -0.5,
-                z: 1.5,
-            }),
-            raw_effect_payload_len: 4,
-        })
-    );
     assert_eq!(world.counters().level_particles_packets, 1);
     assert_eq!(
         world.last_level_particles(),
@@ -2750,27 +2732,6 @@ fn world_effect_events_update_snapshot_counters() {
         })
     );
     assert_eq!(counters.level_particles_packets, 1);
-    assert_eq!(
-        counters.last_level_particles,
-        Some(bbb_control::LevelParticlesState {
-            override_limiter: true,
-            always_show: false,
-            position: bbb_control::NetVec3 {
-                x: 10.0,
-                y: 64.5,
-                z: -3.25,
-            },
-            offset: bbb_control::NetVec3 {
-                x: f64::from(0.1_f32),
-                y: f64::from(0.2_f32),
-                z: f64::from(0.3_f32),
-            },
-            max_speed: 1.5,
-            count: 16,
-            particle_type_id: 45,
-            raw_options_len: 2,
-        })
-    );
 }
 
 #[test]
@@ -2818,8 +2779,8 @@ fn level_particles_emit_particle_runtime_batch_and_snapshot_counters() {
     assert_eq!(particles.packets, vec![packet]);
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().level_particles_packets, 1);
+    assert_eq!(world.last_level_particles().unwrap().count, 0);
     assert_eq!(counters.level_particles_packets, 1);
-    assert_eq!(counters.last_level_particles.as_ref().unwrap().count, 0);
 }
 
 #[test]

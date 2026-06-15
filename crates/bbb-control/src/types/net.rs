@@ -127,8 +127,6 @@ pub struct NetCounters {
     pub last_sound: Option<ClientSoundState>,
     pub last_sound_entity: Option<ClientSoundEntityState>,
     pub last_stop_sound: Option<StopSoundState>,
-    pub last_explosion: Option<ExplosionState>,
-    pub last_level_particles: Option<LevelParticlesState>,
     pub last_debug_block_value: Option<DebugBlockValueState>,
     pub last_debug_chunk_value: Option<DebugChunkValueState>,
     pub last_debug_entity_value: Option<DebugEntityValueState>,
@@ -866,27 +864,6 @@ pub struct ClientSoundEntityState {
 pub struct StopSoundState {
     pub source: Option<String>,
     pub name: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ExplosionState {
-    pub center: NetVec3,
-    pub radius: f32,
-    pub block_count: i32,
-    pub player_knockback: Option<NetVec3>,
-    pub raw_effect_payload_len: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct LevelParticlesState {
-    pub override_limiter: bool,
-    pub always_show: bool,
-    pub position: NetVec3,
-    pub offset: NetVec3,
-    pub max_speed: f32,
-    pub count: i32,
-    pub particle_type_id: i32,
-    pub raw_options_len: usize,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]

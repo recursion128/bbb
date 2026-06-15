@@ -649,10 +649,6 @@ fn sync_client_effect_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.explosion_packets = world_counters.explosion_packets;
     counters.level_particles_packets = world_counters.level_particles_packets;
-    counters.last_explosion = world.last_explosion().map(control_explosion_state);
-    counters.last_level_particles = world
-        .last_level_particles()
-        .map(control_level_particles_state);
 }
 
 fn sync_entity_projectile_counters(counters: &mut NetCounters, world: &WorldStore) {
@@ -767,31 +763,6 @@ fn control_debug_vec3i_state(pos: bbb_world::DebugVec3iState) -> bbb_control::Ne
         x: pos.x,
         y: pos.y,
         z: pos.z,
-    }
-}
-
-fn control_explosion_state(state: &bbb_world::ExplosionEventState) -> bbb_control::ExplosionState {
-    bbb_control::ExplosionState {
-        center: net_vec3(state.center),
-        radius: state.radius,
-        block_count: state.block_count,
-        player_knockback: state.player_knockback.map(net_vec3),
-        raw_effect_payload_len: state.raw_effect_payload_len,
-    }
-}
-
-fn control_level_particles_state(
-    state: &bbb_world::LevelParticlesEventState,
-) -> bbb_control::LevelParticlesState {
-    bbb_control::LevelParticlesState {
-        override_limiter: state.override_limiter,
-        always_show: state.always_show,
-        position: net_vec3(state.position),
-        offset: net_vec3(state.offset),
-        max_speed: state.max_speed,
-        count: state.count,
-        particle_type_id: state.particle_type_id,
-        raw_options_len: state.raw_options_len,
     }
 }
 
