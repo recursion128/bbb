@@ -91,6 +91,9 @@ impl KiraAudioRuntime {
         playback_rate: f32,
     ) -> Result<()> {
         self.retain_active_sounds();
+        if !sound_should_start(gain, &category) {
+            return Ok(());
+        }
         let mut track = self.manager.add_spatial_sub_track(
             &self.listener,
             audio_position(position),
@@ -234,6 +237,20 @@ fn channel_playback_rate(playback_rate: f32) -> f32 {
     }
 }
 
+fn sound_should_start(gain: f32, category: &AudioCategory) -> bool {
+    category == &AudioCategory::Music || java_clamped_volume(gain) != 0.0
+}
+
+fn java_clamped_volume(gain: f32) -> f32 {
+    if gain < 0.0 {
+        0.0
+    } else if gain > 1.0 {
+        1.0
+    } else {
+        gain
+    }
+}
+
 fn spatial_max_distance(sound: &ResolvedSound, gain: f32) -> f32 {
     let gain = if gain.is_finite() { gain } else { 0.0 };
     (sound.attenuation_distance as f32 * gain.max(1.0)).max(MIN_SPATIAL_DISTANCE + f32::EPSILON)
@@ -304,6 +321,15 @@ mod tests {
         assert_eq!(channel_playback_rate(1.25), 1.25);
         assert_eq!(channel_playback_rate(2.88), 2.0);
         assert_eq!(channel_playback_rate(f32::NAN), 1.0);
+    }
+
+    #[test]
+    fn non_music_zero_volume_sounds_do_not_start() {
+        assert!(!sound_should_start(0.0, &AudioCategory::Blocks));
+        assert!(!sound_should_start(-1.0, &AudioCategory::Blocks));
+        assert!(sound_should_start(0.01, &AudioCategory::Blocks));
+        assert!(sound_should_start(0.0, &AudioCategory::Music));
+        assert!(sound_should_start(f32::NAN, &AudioCategory::Blocks));
     }
 
     #[test]
