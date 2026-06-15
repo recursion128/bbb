@@ -368,9 +368,11 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(store.counters().entity_equipment_updates_received, 3);
     assert_eq!(store.counters().entity_equipment_slots_received, 4);
     assert_eq!(store.counters().entity_equipment_updates_applied, 2);
+    assert_eq!(store.counters().entity_equipment_updates_ignored, 1);
     assert_eq!(store.counters().entity_attribute_updates_received, 3);
     assert_eq!(store.counters().entity_attributes_received, 4);
     assert_eq!(store.counters().entity_attribute_updates_applied, 2);
+    assert_eq!(store.counters().entity_attribute_updates_ignored, 1);
     assert_eq!(store.counters().entity_motion_updates_applied, 1);
     assert_eq!(store.counters().entity_head_rotations_applied, 1);
 
@@ -407,6 +409,7 @@ fn set_equipment_ignores_non_living_entities() {
     assert_eq!(store.counters().entity_equipment_updates_received, 1);
     assert_eq!(store.counters().entity_equipment_slots_received, 1);
     assert_eq!(store.counters().entity_equipment_updates_applied, 0);
+    assert_eq!(store.counters().entity_equipment_updates_ignored, 1);
 }
 
 #[test]
@@ -430,6 +433,7 @@ fn update_attributes_ignores_non_living_entities() {
     assert_eq!(store.counters().entity_attribute_updates_received, 1);
     assert_eq!(store.counters().entity_attributes_received, 1);
     assert_eq!(store.counters().entity_attribute_updates_applied, 0);
+    assert_eq!(store.counters().entity_attribute_updates_ignored, 1);
 }
 
 #[test]

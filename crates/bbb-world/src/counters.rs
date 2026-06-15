@@ -440,9 +440,13 @@ pub struct WorldCounters {
     pub entity_equipment_updates_received: usize,
     pub entity_equipment_slots_received: usize,
     pub entity_equipment_updates_applied: usize,
+    #[serde(default)]
+    pub entity_equipment_updates_ignored: usize,
     pub entity_attribute_updates_received: usize,
     pub entity_attributes_received: usize,
     pub entity_attribute_updates_applied: usize,
+    #[serde(default)]
+    pub entity_attribute_updates_ignored: usize,
     pub entity_passenger_updates_received: usize,
     pub entity_passenger_ids_received: usize,
     pub entity_passenger_updates_applied: usize,

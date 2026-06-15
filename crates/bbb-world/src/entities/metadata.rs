@@ -40,9 +40,11 @@ impl WorldStore {
         self.counters.entity_equipment_updates_received += 1;
         self.counters.entity_equipment_slots_received += packet.slots.len();
         let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
+            self.counters.entity_equipment_updates_ignored += 1;
             return false;
         };
         if !vanilla_living_entity_type(entity_type_id) {
+            self.counters.entity_equipment_updates_ignored += 1;
             return false;
         }
         let Some(()) = self
@@ -64,6 +66,7 @@ impl WorldStore {
                     .sort_by_key(|update| update.slot.ordinal());
             })
         else {
+            self.counters.entity_equipment_updates_ignored += 1;
             return false;
         };
         self.counters.entity_equipment_updates_applied += 1;
@@ -74,9 +77,11 @@ impl WorldStore {
         self.counters.entity_attribute_updates_received += 1;
         self.counters.entity_attributes_received += packet.attributes.len();
         let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
+            self.counters.entity_attribute_updates_ignored += 1;
             return false;
         };
         if !vanilla_living_entity_type(entity_type_id) {
+            self.counters.entity_attribute_updates_ignored += 1;
             return false;
         }
         let Some(()) = self
@@ -98,6 +103,7 @@ impl WorldStore {
                     .sort_by_key(|attribute| attribute.attribute_id);
             })
         else {
+            self.counters.entity_attribute_updates_ignored += 1;
             return false;
         };
         self.counters.entity_attribute_updates_applied += 1;
