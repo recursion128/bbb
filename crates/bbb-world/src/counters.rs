@@ -56,11 +56,19 @@ pub struct WorldCounters {
     #[serde(default)]
     pub held_slot_packets: usize,
     #[serde(default)]
+    pub held_slot_updates_applied: usize,
+    #[serde(default)]
+    pub held_slot_updates_ignored: usize,
+    #[serde(default)]
     pub default_spawn_position_packets: usize,
     #[serde(default)]
     pub simulation_distance_packets: usize,
     #[serde(default)]
     pub set_camera_packets: usize,
+    #[serde(default)]
+    pub set_camera_updates_applied: usize,
+    #[serde(default)]
+    pub set_camera_updates_ignored: usize,
     #[serde(default)]
     pub player_position_packets: usize,
     #[serde(default)]

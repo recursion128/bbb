@@ -239,6 +239,10 @@ pub struct NetCounters {
     pub player_health_packets: usize,
     pub player_experience_packets: usize,
     pub held_slot_packets: usize,
+    #[serde(default)]
+    pub held_slot_updates_applied: usize,
+    #[serde(default)]
+    pub held_slot_updates_ignored: usize,
     pub default_spawn_position_packets: usize,
     pub simulation_distance_packets: usize,
     pub system_chat_packets: usize,
@@ -352,6 +356,10 @@ pub struct NetCounters {
     pub ticking_state_packets: usize,
     pub ticking_step_packets: usize,
     pub set_camera_packets: usize,
+    #[serde(default)]
+    pub set_camera_updates_applied: usize,
+    #[serde(default)]
+    pub set_camera_updates_ignored: usize,
     #[serde(default)]
     pub entities_tracked: usize,
     #[serde(default)]

@@ -4097,9 +4097,13 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
     assert_eq!(counters.player_health_packets, 1);
     assert_eq!(counters.player_experience_packets, 1);
     assert_eq!(counters.held_slot_packets, 1);
+    assert_eq!(counters.held_slot_updates_applied, 1);
+    assert_eq!(counters.held_slot_updates_ignored, 0);
     assert_eq!(counters.default_spawn_position_packets, 1);
     assert_eq!(counters.simulation_distance_packets, 1);
     assert_eq!(counters.set_camera_packets, 2);
+    assert_eq!(counters.set_camera_updates_applied, 1);
+    assert_eq!(counters.set_camera_updates_ignored, 1);
 }
 
 #[test]

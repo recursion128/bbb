@@ -141,9 +141,13 @@ pub(super) fn sync_local_player_counters(counters: &mut NetCounters, world: &Wor
     counters.player_health_packets = world_counters.player_health_packets;
     counters.player_experience_packets = world_counters.player_experience_packets;
     counters.held_slot_packets = world_counters.held_slot_packets;
+    counters.held_slot_updates_applied = world_counters.held_slot_updates_applied;
+    counters.held_slot_updates_ignored = world_counters.held_slot_updates_ignored;
     counters.default_spawn_position_packets = world_counters.default_spawn_position_packets;
     counters.simulation_distance_packets = world_counters.simulation_distance_packets;
     counters.set_camera_packets = world_counters.set_camera_packets;
+    counters.set_camera_updates_applied = world_counters.set_camera_updates_applied;
+    counters.set_camera_updates_ignored = world_counters.set_camera_updates_ignored;
     counters.player_position_packets = world_counters.player_position_packets;
     counters.player_rotation_packets = world_counters.player_rotation_packets;
     counters.player_look_at_packets = world_counters.player_look_at_packets;

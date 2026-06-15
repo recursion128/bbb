@@ -172,9 +172,11 @@ impl WorldStore {
     pub fn apply_held_slot(&mut self, packet: ProtocolSetHeldSlot) -> bool {
         self.counters.held_slot_packets += 1;
         if !(0..=8).contains(&packet.slot) {
+            self.counters.held_slot_updates_ignored += 1;
             return false;
         }
         self.local_player.selected_hotbar_slot = packet.slot as u8;
+        self.counters.held_slot_updates_applied += 1;
         true
     }
 
@@ -206,6 +208,7 @@ impl WorldStore {
         let follows_player = self.local_player_id == Some(packet.camera_id);
         let entity_known = follows_player || self.entities.contains(packet.camera_id);
         if !entity_known {
+            self.counters.set_camera_updates_ignored += 1;
             return false;
         }
         self.local_player.camera = CameraState {
@@ -213,6 +216,7 @@ impl WorldStore {
             follows_player,
             entity_known,
         };
+        self.counters.set_camera_updates_applied += 1;
         true
     }
 
@@ -429,6 +433,8 @@ mod tests {
         assert_eq!(counters.player_health_packets, 1);
         assert_eq!(counters.player_experience_packets, 1);
         assert_eq!(counters.held_slot_packets, 2);
+        assert_eq!(counters.held_slot_updates_applied, 1);
+        assert_eq!(counters.held_slot_updates_ignored, 1);
         assert_eq!(counters.default_spawn_position_packets, 1);
         assert_eq!(counters.simulation_distance_packets, 1);
     }
@@ -440,10 +446,14 @@ mod tests {
         assert!(store.set_local_selected_hotbar_slot(7));
         assert_eq!(store.local_player().selected_hotbar_slot, 7);
         assert_eq!(store.counters().held_slot_packets, 0);
+        assert_eq!(store.counters().held_slot_updates_applied, 0);
+        assert_eq!(store.counters().held_slot_updates_ignored, 0);
 
         assert!(!store.set_local_selected_hotbar_slot(9));
         assert_eq!(store.local_player().selected_hotbar_slot, 7);
         assert_eq!(store.counters().held_slot_packets, 0);
+        assert_eq!(store.counters().held_slot_updates_applied, 0);
+        assert_eq!(store.counters().held_slot_updates_ignored, 0);
     }
 
     #[test]
@@ -475,6 +485,8 @@ mod tests {
             }
         );
         assert_eq!(store.counters().set_camera_packets, 3);
+        assert_eq!(store.counters().set_camera_updates_applied, 2);
+        assert_eq!(store.counters().set_camera_updates_ignored, 1);
     }
 
     #[test]

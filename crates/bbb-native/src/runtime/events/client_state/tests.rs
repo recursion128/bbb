@@ -182,12 +182,16 @@ fn held_slot_updates_snapshot_counters() {
 
     assert_eq!(counters.selected_hotbar_slot, 5);
     assert_eq!(counters.held_slot_packets, 1);
+    assert_eq!(counters.held_slot_updates_applied, 1);
+    assert_eq!(counters.held_slot_updates_ignored, 0);
 
     assert!(!world.apply_held_slot(bbb_protocol::packets::SetHeldSlot { slot: 99 }));
     sync_local_player_counters(&mut counters, &world);
 
     assert_eq!(counters.selected_hotbar_slot, 5);
     assert_eq!(counters.held_slot_packets, 2);
+    assert_eq!(counters.held_slot_updates_applied, 1);
+    assert_eq!(counters.held_slot_updates_ignored, 1);
 }
 
 #[test]
@@ -200,6 +204,8 @@ fn local_hotbar_selection_syncs_snapshot_counters_without_held_packet() {
 
     assert_eq!(counters.selected_hotbar_slot, 7);
     assert_eq!(counters.held_slot_packets, 0);
+    assert_eq!(counters.held_slot_updates_applied, 0);
+    assert_eq!(counters.held_slot_updates_ignored, 0);
 }
 
 #[test]
@@ -455,6 +461,9 @@ fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
             entity_known: true,
         }
     );
+    assert_eq!(counters.set_camera_packets, 1);
+    assert_eq!(counters.set_camera_updates_applied, 0);
+    assert_eq!(counters.set_camera_updates_ignored, 1);
 
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 9 }));
     sync_local_player_counters(&mut counters, &world);
@@ -468,6 +477,8 @@ fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
         }
     );
     assert_eq!(counters.set_camera_packets, 2);
+    assert_eq!(counters.set_camera_updates_applied, 1);
+    assert_eq!(counters.set_camera_updates_ignored, 1);
 }
 
 fn protocol_play_login(player_id: i32) -> bbb_protocol::packets::PlayLogin {
