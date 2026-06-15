@@ -2,7 +2,10 @@ use std::collections::{BTreeMap, HashMap};
 
 use anyhow::{Context, Result};
 
-use crate::PackRoots;
+use crate::{
+    resources::{PackResourceStack, ResourceLocation},
+    PackRoots,
+};
 
 mod blockstates;
 mod raw_model;
@@ -29,48 +32,27 @@ pub struct BlockModelCatalog {
 
 impl BlockModelCatalog {
     pub fn load(roots: &PackRoots) -> Result<Self> {
+        Self::load_resource_stack(&roots.resource_stack())
+    }
+
+    fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
         let mut blockstates = HashMap::new();
-        let blockstates_dir = roots.blockstates_dir();
-        for entry in std::fs::read_dir(&blockstates_dir)
-            .with_context(|| format!("read blockstate directory {}", blockstates_dir.display()))?
-        {
-            let entry = entry.with_context(|| {
-                format!("read blockstate entry in {}", blockstates_dir.display())
-            })?;
-            let path = entry.path();
-            if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
-                continue;
-            }
-            let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-                continue;
-            };
-            let id = format!("minecraft:{stem}");
-            let bytes = std::fs::read(&path)
-                .with_context(|| format!("read blockstate {}", path.display()))?;
+        for resource in stack.list_resources("blockstates", ".json")? {
+            let id = blockstate_id_from_resource(&resource.location)?;
+            let bytes = std::fs::read(&resource.path)
+                .with_context(|| format!("read blockstate {}", resource.path.display()))?;
             let blockstate = serde_json::from_slice(&bytes)
-                .with_context(|| format!("parse blockstate {}", path.display()))?;
+                .with_context(|| format!("parse blockstate {}", resource.path.display()))?;
             blockstates.insert(id, blockstate);
         }
 
         let mut models = HashMap::new();
-        let models_dir = roots.block_models_dir();
-        for entry in std::fs::read_dir(&models_dir)
-            .with_context(|| format!("read block model directory {}", models_dir.display()))?
-        {
-            let entry = entry
-                .with_context(|| format!("read block model entry in {}", models_dir.display()))?;
-            let path = entry.path();
-            if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
-                continue;
-            }
-            let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-                continue;
-            };
-            let id = format!("minecraft:block/{stem}");
-            let bytes = std::fs::read(&path)
-                .with_context(|| format!("read block model {}", path.display()))?;
+        for resource in stack.list_resources("models/block", ".json")? {
+            let id = block_model_id_from_resource(&resource.location)?;
+            let bytes = std::fs::read(&resource.path)
+                .with_context(|| format!("read block model {}", resource.path.display()))?;
             let model = serde_json::from_slice(&bytes)
-                .with_context(|| format!("parse block model {}", path.display()))?;
+                .with_context(|| format!("parse block model {}", resource.path.display()))?;
             models.insert(id, model);
         }
 
@@ -147,6 +129,31 @@ fn normalize_block_id(id: &str) -> String {
     } else {
         format!("minecraft:{id}")
     }
+}
+
+fn blockstate_id_from_resource(location: &ResourceLocation) -> Result<String> {
+    let path = location
+        .path()
+        .strip_prefix("blockstates/")
+        .and_then(|path| path.strip_suffix(".json"))
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "blockstate resource {} is outside blockstates",
+                location.id()
+            )
+        })?;
+    ResourceLocation::new(location.namespace().to_string(), path.to_string()).map(|id| id.id())
+}
+
+fn block_model_id_from_resource(location: &ResourceLocation) -> Result<String> {
+    let path = location
+        .path()
+        .strip_prefix("models/")
+        .and_then(|path| path.strip_suffix(".json"))
+        .ok_or_else(|| {
+            anyhow::anyhow!("block model resource {} is outside models", location.id())
+        })?;
+    ResourceLocation::new(location.namespace().to_string(), path.to_string()).map(|id| id.id())
 }
 
 #[cfg(test)]

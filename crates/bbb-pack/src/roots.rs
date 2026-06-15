@@ -192,12 +192,11 @@ impl PackRoots {
     }
 
     pub fn load_terrain_colormaps(&self) -> Result<TerrainColorMaps> {
+        let stack = self.resource_stack();
         Ok(TerrainColorMaps {
-            grass: ColorMapImage::from_png_file(self.colormap_texture("grass"))?,
-            foliage: ColorMapImage::from_png_file(self.colormap_texture("foliage"))?,
-            dry_foliage: Some(ColorMapImage::from_png_file(
-                self.colormap_texture("dry_foliage"),
-            )?),
+            grass: load_terrain_colormap(&stack, "grass")?,
+            foliage: load_terrain_colormap(&stack, "foliage")?,
+            dry_foliage: Some(load_terrain_colormap(&stack, "dry_foliage")?),
         })
     }
 
@@ -252,6 +251,14 @@ impl PackRoots {
     pub fn load_tag_catalog(&self, registry_path: &str) -> Result<TagCatalog> {
         TagCatalog::load_resource_stack(&self.resource_stack(), registry_path)
     }
+}
+
+fn load_terrain_colormap(stack: &PackResourceStack, name: &str) -> Result<ColorMapImage> {
+    let location = ResourceLocation::parse(&format!("textures/colormap/{name}.png"))?;
+    let resource = stack
+        .get_resource(&location)
+        .ok_or_else(|| anyhow::anyhow!("missing terrain colormap {}", location.id()))?;
+    ColorMapImage::from_png_file(resource.path)
 }
 
 #[cfg(test)]
@@ -556,6 +563,60 @@ mod tests {
                 .as_ref()
                 .map(|colormap| (colormap.width, colormap.height)),
             Some((4, 4))
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn pack_roots_terrain_colormaps_use_resource_pack_precedence() {
+        let root = unique_temp_dir("terrain-colormap-pack-precedence");
+        let base_colormap_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("colormap");
+        let pack = root.join("pack");
+        let pack_colormap_dir = pack
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("colormap");
+        write_test_rgba_png(&base_colormap_dir.join("grass.png"), 1, 1, &[1, 2, 3, 255]);
+        write_test_rgba_png(
+            &base_colormap_dir.join("foliage.png"),
+            1,
+            1,
+            &[40, 50, 60, 255],
+        );
+        write_test_rgba_png(
+            &base_colormap_dir.join("dry_foliage.png"),
+            1,
+            1,
+            &[70, 80, 90, 255],
+        );
+        write_test_rgba_png(
+            &pack_colormap_dir.join("grass.png"),
+            1,
+            1,
+            &[10, 20, 30, 255],
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([pack]);
+        let colormaps = roots.load_terrain_colormaps().unwrap();
+
+        assert_eq!(colormaps.grass.rgb_at(0, 0), [10, 20, 30]);
+        assert_eq!(colormaps.foliage.rgb_at(0, 0), [40, 50, 60]);
+        assert_eq!(
+            colormaps
+                .dry_foliage
+                .as_ref()
+                .map(|colormap| colormap.rgb_at(0, 0)),
+            Some([70, 80, 90])
         );
 
         std::fs::remove_dir_all(root).unwrap();

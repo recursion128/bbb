@@ -157,6 +157,101 @@ fn block_model_catalog_resolves_parent_texture_aliases_and_variants() {
 }
 
 #[test]
+fn block_model_catalog_uses_resource_pack_precedence_for_blockstates_and_models() {
+    let root = unique_temp_dir("block-model-resource-pack");
+    let base_assets = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    let pack = root.join("resource_pack");
+    let pack_assets = pack.join("assets").join("minecraft");
+
+    write_json(
+        &base_assets
+            .join("blockstates")
+            .join("model_override_block.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/shared_model" }
+            }
+        }"##,
+    );
+    write_json(
+        &base_assets
+            .join("blockstates")
+            .join("blockstate_override_block.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/base_model" }
+            }
+        }"##,
+    );
+    write_single_texture_model(
+        &base_assets
+            .join("models")
+            .join("block")
+            .join("shared_model.json"),
+        "minecraft:block/base_model_texture",
+    );
+    write_single_texture_model(
+        &base_assets
+            .join("models")
+            .join("block")
+            .join("base_model.json"),
+        "minecraft:block/base_blockstate_texture",
+    );
+
+    write_json(
+        &pack_assets
+            .join("blockstates")
+            .join("blockstate_override_block.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/pack_only_model" }
+            }
+        }"##,
+    );
+    write_single_texture_model(
+        &pack_assets
+            .join("models")
+            .join("block")
+            .join("shared_model.json"),
+        "minecraft:block/overlay_model_texture",
+    );
+    write_single_texture_model(
+        &pack_assets
+            .join("models")
+            .join("block")
+            .join("pack_only_model.json"),
+        "minecraft:block/overlay_blockstate_texture",
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .with_resource_pack_dirs([pack])
+        .load_block_model_catalog()
+        .unwrap();
+    let model_override = catalog
+        .block_render_model("minecraft:model_override_block", &BTreeMap::new())
+        .unwrap();
+    let blockstate_override = catalog
+        .block_render_model("minecraft:blockstate_override_block", &BTreeMap::new())
+        .unwrap();
+
+    assert_eq!(
+        model_override.face_textures.get(BlockModelFace::North),
+        "minecraft:block/overlay_model_texture"
+    );
+    assert_eq!(
+        blockstate_override.face_textures.get(BlockModelFace::North),
+        "minecraft:block/overlay_blockstate_texture"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_resolves_unprefixed_face_texture_slots() {
     let root = unique_temp_dir("block-model-unprefixed-face-texture");
     let asset_root = root
@@ -1457,6 +1552,22 @@ struct BlockStateInfo {
 fn write_json(path: &Path, contents: &str) {
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(path, contents).unwrap();
+}
+
+fn write_single_texture_model(path: &Path, texture: &str) {
+    write_json(
+        path,
+        &format!(
+            r##"{{
+                "textures": {{ "all": "{texture}" }},
+                "elements": [{{
+                    "faces": {{
+                        "north": {{ "texture": "#all" }}
+                    }}
+                }}]
+            }}"##
+        ),
+    );
 }
 
 fn unique_temp_dir(name: &str) -> PathBuf {
