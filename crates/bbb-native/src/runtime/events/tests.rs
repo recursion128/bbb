@@ -1304,7 +1304,7 @@ fn inventory_events_update_world_and_snapshot_counters() {
 
 #[test]
 fn entity_events_update_world_and_snapshot_counters() {
-    let (tx, mut rx) = mpsc::channel(16);
+    let (tx, mut rx) = mpsc::channel(19);
     tx.try_send(NetEvent::AddEntity(protocol_add_entity(123)))
         .unwrap();
     tx.try_send(NetEvent::AddEntity(protocol_add_entity(456)))
@@ -1352,6 +1352,35 @@ fn entity_events_update_world_and_snapshot_counters() {
         x_rot: -120.0,
         relatives_mask: 0,
         on_ground: true,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::EntityPositionSync(EntityPositionSync {
+        id: 999,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        y_rot: 0.0,
+        x_rot: 0.0,
+        on_ground: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::MoveEntity(EntityMove {
+        id: 999,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: None,
+        x_rot: None,
+        on_ground: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::TeleportEntity(TeleportEntity {
+        id: 999,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        y_rot: 0.0,
+        x_rot: 0.0,
+        relatives_mask: 0,
+        on_ground: false,
     }))
     .unwrap();
     tx.try_send(NetEvent::SetEntityMotion(SetEntityMotion {
@@ -1429,7 +1458,7 @@ fn entity_events_update_world_and_snapshot_counters() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        16
+        19
     );
 
     let world_counters = world.counters();
@@ -1442,12 +1471,15 @@ fn entity_events_update_world_and_snapshot_counters() {
 
     assert_entity_counter!(entities_received, 2);
     assert_entity_counter!(entities_tracked, 1);
-    assert_entity_counter!(entity_position_syncs_received, 1);
+    assert_entity_counter!(entity_position_syncs_received, 2);
     assert_entity_counter!(entity_position_syncs_applied, 1);
-    assert_entity_counter!(entity_moves_received, 1);
+    assert_entity_counter!(entity_position_syncs_ignored, 1);
+    assert_entity_counter!(entity_moves_received, 2);
     assert_entity_counter!(entity_moves_applied, 1);
-    assert_entity_counter!(entity_teleports_received, 1);
+    assert_entity_counter!(entity_moves_ignored, 1);
+    assert_entity_counter!(entity_teleports_received, 2);
     assert_entity_counter!(entity_teleports_applied, 1);
+    assert_entity_counter!(entity_teleports_ignored, 1);
     assert_entity_counter!(entity_motion_updates_received, 1);
     assert_entity_counter!(entity_motion_updates_applied, 1);
     assert_entity_counter!(entity_head_rotations_received, 1);

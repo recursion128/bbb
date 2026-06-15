@@ -27,6 +27,7 @@ impl WorldStore {
             transform.x_rot = packet.x_rot;
             transform.on_ground = Some(packet.on_ground);
         }) else {
+            self.counters.entity_position_syncs_ignored += 1;
             return false;
         };
         self.counters.entity_position_syncs_applied += 1;
@@ -54,6 +55,7 @@ impl WorldStore {
             }
             transform.on_ground = Some(packet.on_ground);
         }) else {
+            self.counters.entity_moves_ignored += 1;
             return false;
         };
         self.counters.entity_moves_applied += 1;
@@ -120,6 +122,7 @@ impl WorldStore {
             transform.x_rot = absolute.x_rot;
             transform.on_ground = Some(packet.on_ground);
         }) else {
+            self.counters.entity_teleports_ignored += 1;
             return false;
         };
         self.counters.entity_teleports_applied += 1;

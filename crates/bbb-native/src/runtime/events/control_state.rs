@@ -296,10 +296,13 @@ pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStor
     counters.entities_received = world_counters.entities_received;
     counters.entity_position_syncs_received = world_counters.entity_position_syncs_received;
     counters.entity_position_syncs_applied = world_counters.entity_position_syncs_applied;
+    counters.entity_position_syncs_ignored = world_counters.entity_position_syncs_ignored;
     counters.entity_moves_received = world_counters.entity_moves_received;
     counters.entity_moves_applied = world_counters.entity_moves_applied;
+    counters.entity_moves_ignored = world_counters.entity_moves_ignored;
     counters.entity_teleports_received = world_counters.entity_teleports_received;
     counters.entity_teleports_applied = world_counters.entity_teleports_applied;
+    counters.entity_teleports_ignored = world_counters.entity_teleports_ignored;
     counters.entity_animation_updates_received = world_counters.entity_animation_updates_received;
     counters.entity_animation_updates_applied = world_counters.entity_animation_updates_applied;
     counters.entity_animation_updates_ignored = world_counters.entity_animation_updates_ignored;

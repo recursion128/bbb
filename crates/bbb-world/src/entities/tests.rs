@@ -356,6 +356,24 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
             on_ground: false,
         })
     );
+    assert!(!store.apply_entity_move(ProtocolEntityMove {
+        id: 999,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: None,
+        x_rot: None,
+        on_ground: false,
+    }));
+    assert!(!store.apply_teleport_entity(ProtocolTeleportEntity {
+        id: 999,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        y_rot: 0.0,
+        x_rot: 0.0,
+        relatives_mask: 0,
+        on_ground: false,
+    }));
     assert!(!store.apply_set_entity_motion(ProtocolSetEntityMotion {
         id: 999,
         delta_movement: ProtocolVec3d::default(),
@@ -366,10 +384,13 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     }));
     assert_eq!(store.counters().entity_position_syncs_received, 2);
     assert_eq!(store.counters().entity_position_syncs_applied, 1);
-    assert_eq!(store.counters().entity_moves_received, 2);
+    assert_eq!(store.counters().entity_position_syncs_ignored, 1);
+    assert_eq!(store.counters().entity_moves_received, 3);
     assert_eq!(store.counters().entity_moves_applied, 2);
-    assert_eq!(store.counters().entity_teleports_received, 1);
+    assert_eq!(store.counters().entity_moves_ignored, 1);
+    assert_eq!(store.counters().entity_teleports_received, 2);
     assert_eq!(store.counters().entity_teleports_applied, 1);
+    assert_eq!(store.counters().entity_teleports_ignored, 1);
     assert_eq!(store.counters().entity_data_updates_received, 2);
     assert_eq!(store.counters().entity_data_values_received, 3);
     assert_eq!(store.counters().entity_data_updates_applied, 2);
