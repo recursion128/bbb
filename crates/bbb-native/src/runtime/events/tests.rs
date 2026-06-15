@@ -1578,7 +1578,7 @@ fn simple_entity_update_ignored_counters_are_projected() {
 fn entity_metadata_ignored_counters_are_projected() {
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 
-    let (tx, mut rx) = mpsc::channel(3);
+    let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::AddEntity(protocol_add_entity_with_type(
         124,
         VANILLA_ENTITY_TYPE_ITEM_ID,
@@ -1601,16 +1601,29 @@ fn entity_metadata_ignored_counters_are_projected() {
         }],
     }))
     .unwrap();
+    tx.try_send(NetEvent::SetEntityData(SetEntityData {
+        id: 999,
+        values: vec![EntityDataValue {
+            data_id: 0,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(0x20),
+        }],
+    }))
+    .unwrap();
 
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        3
+        4
     );
 
     let world_counters = world.counters();
+    assert_eq!(world_counters.entity_data_updates_received, 1);
+    assert_eq!(world_counters.entity_data_values_received, 1);
+    assert_eq!(world_counters.entity_data_updates_applied, 0);
+    assert_eq!(world_counters.entity_data_updates_ignored, 1);
     assert_eq!(world_counters.entity_equipment_updates_received, 1);
     assert_eq!(world_counters.entity_equipment_slots_received, 1);
     assert_eq!(world_counters.entity_equipment_updates_applied, 0);
@@ -1620,6 +1633,10 @@ fn entity_metadata_ignored_counters_are_projected() {
     assert_eq!(world_counters.entity_attribute_updates_applied, 0);
     assert_eq!(world_counters.entity_attribute_updates_ignored, 1);
 
+    assert_eq!(counters.entity_data_updates_received, 1);
+    assert_eq!(counters.entity_data_values_received, 1);
+    assert_eq!(counters.entity_data_updates_applied, 0);
+    assert_eq!(counters.entity_data_updates_ignored, 1);
     assert_eq!(counters.entity_equipment_updates_received, 1);
     assert_eq!(counters.entity_equipment_slots_received, 1);
     assert_eq!(counters.entity_equipment_updates_applied, 0);

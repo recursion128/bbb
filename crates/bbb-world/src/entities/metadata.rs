@@ -26,6 +26,7 @@ impl WorldStore {
             }
             metadata.data_values.sort_by_key(|value| value.data_id);
         }) else {
+            self.counters.entity_data_updates_ignored += 1;
             return false;
         };
         let _ = self

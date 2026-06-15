@@ -377,6 +377,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub entity_data_updates_applied: usize,
     #[serde(default)]
+    pub entity_data_updates_ignored: usize,
+    #[serde(default)]
     pub entity_equipment_updates_received: usize,
     #[serde(default)]
     pub entity_equipment_slots_received: usize,

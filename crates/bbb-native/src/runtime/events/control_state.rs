@@ -312,6 +312,7 @@ pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStor
     counters.entity_data_updates_received = world_counters.entity_data_updates_received;
     counters.entity_data_values_received = world_counters.entity_data_values_received;
     counters.entity_data_updates_applied = world_counters.entity_data_updates_applied;
+    counters.entity_data_updates_ignored = world_counters.entity_data_updates_ignored;
     counters.entity_equipment_updates_received = world_counters.entity_equipment_updates_received;
     counters.entity_equipment_slots_received = world_counters.entity_equipment_slots_received;
     counters.entity_equipment_updates_applied = world_counters.entity_equipment_updates_applied;

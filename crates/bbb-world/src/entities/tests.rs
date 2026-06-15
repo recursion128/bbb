@@ -425,6 +425,25 @@ fn set_equipment_ignores_non_living_entities() {
 }
 
 #[test]
+fn set_entity_data_ignores_unknown_entities() {
+    let mut store = WorldStore::new();
+
+    assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 999,
+        values: vec![ProtocolEntityDataValue {
+            data_id: 0,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(0x20),
+        }],
+    }));
+
+    assert_eq!(store.counters().entity_data_updates_received, 1);
+    assert_eq!(store.counters().entity_data_values_received, 1);
+    assert_eq!(store.counters().entity_data_updates_applied, 0);
+    assert_eq!(store.counters().entity_data_updates_ignored, 1);
+}
+
+#[test]
 fn update_attributes_ignores_non_living_entities() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
