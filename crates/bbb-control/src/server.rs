@@ -338,6 +338,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "net.counters" => serde_json::to_value(&snapshot_guard.net),
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
+        "world.client_audio" => serde_json::to_value(snapshot_guard.world_store.client_audio()),
         "world.client_debug_game" => {
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
         }
@@ -479,7 +480,8 @@ mod tests {
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DebugBlockValue,
         DialogHolder, EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue,
         GameRuleValues, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
-        PlaceGhostRecipe, PongResponse, RecipeDisplayType, ShowDialog, Vec3d as ProtocolVec3d,
+        PlaceGhostRecipe, PongResponse, RecipeDisplayType, ShowDialog, SoundEvent,
+        SoundEventHolder, SoundSource, StopSound, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -900,6 +902,49 @@ mod tests {
         assert_eq!(ui["current_dialog"]["holder_kind"], "reference");
         assert_eq!(ui["current_dialog"]["registry_id"], 7);
         assert_eq!(ui["last_pong_response"]["time"], 123456789);
+    }
+
+    #[test]
+    fn client_audio_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_sound_event(SoundEvent {
+                sound: SoundEventHolder::Reference { registry_id: 41 },
+                source: SoundSource::Blocks,
+                position: ProtocolVec3d {
+                    x: 2.5,
+                    y: -1.0,
+                    z: 0.0,
+                },
+                volume: 0.75,
+                pitch: 1.25,
+                seed: 123456789,
+            });
+            store.apply_stop_sound(StopSound {
+                source: Some(SoundSource::Music),
+                name: Some("minecraft:music.menu".to_string()),
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_audio".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let audio = response.result.unwrap();
+        assert_eq!(audio["last_sound"]["sound"]["kind"], "reference");
+        assert_eq!(audio["last_sound"]["sound"]["registry_id"], 41);
+        assert_eq!(audio["last_sound"]["position"]["x"], 2.5);
+        assert_eq!(audio["last_sound"]["position"]["y"], -1.0);
+        assert_eq!(audio["last_sound"]["position"]["z"], 0.0);
+        assert_eq!(audio["last_stop_sound"]["source"], "music");
+        assert_eq!(audio["last_stop_sound"]["name"], "minecraft:music.menu");
     }
 
     #[test]

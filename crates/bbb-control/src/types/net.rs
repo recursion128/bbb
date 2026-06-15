@@ -124,9 +124,6 @@ pub struct NetCounters {
     pub last_custom_chat_completion: Option<CustomChatCompletionState>,
     pub last_custom_payload: Option<CustomPayloadState>,
     pub last_waypoint: Option<WaypointState>,
-    pub last_sound: Option<ClientSoundState>,
-    pub last_sound_entity: Option<ClientSoundEntityState>,
-    pub last_stop_sound: Option<StopSoundState>,
     pub selected_advancements_tab: Option<String>,
     pub last_tag_query: Option<TagQueryState>,
     pub player_position_packets: usize,
@@ -822,40 +819,6 @@ pub struct TagQueryState {
     pub transaction_id: i32,
     pub tag_present: bool,
     pub raw_nbt_len: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SoundHolderState {
-    pub kind: String,
-    pub registry_id: Option<i32>,
-    pub location: Option<String>,
-    pub fixed_range: Option<f32>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ClientSoundState {
-    pub sound: SoundHolderState,
-    pub source: String,
-    pub position: NetVec3,
-    pub volume: f32,
-    pub pitch: f32,
-    pub seed: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ClientSoundEntityState {
-    pub sound: SoundHolderState,
-    pub source: String,
-    pub entity_id: i32,
-    pub volume: f32,
-    pub pitch: f32,
-    pub seed: i64,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StopSoundState {
-    pub source: Option<String>,
-    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]

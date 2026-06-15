@@ -2387,10 +2387,6 @@ fn client_audio_events_update_snapshot_counters() {
         sound_entity_events_applied: 99,
         sound_entity_events_ignored: 99,
         stop_sound_packets: 99,
-        last_stop_sound: Some(bbb_control::StopSoundState {
-            source: Some("stale".to_string()),
-            name: Some("stale".to_string()),
-        }),
         ..NetCounters::default()
     };
 
@@ -2411,26 +2407,6 @@ fn client_audio_events_update_snapshot_counters() {
             },
             source: "block".to_string(),
             position: ProtocolVec3d {
-                x: 2.5,
-                y: -1.0,
-                z: 0.0,
-            },
-            volume: 0.75,
-            pitch: 1.25,
-            seed: 123456789,
-        })
-    );
-    assert_eq!(
-        counters.last_sound,
-        Some(bbb_control::ClientSoundState {
-            sound: bbb_control::SoundHolderState {
-                kind: "reference".to_string(),
-                registry_id: Some(41),
-                location: None,
-                fixed_range: None,
-            },
-            source: "block".to_string(),
-            position: bbb_control::NetVec3 {
                 x: 2.5,
                 y: -1.0,
                 z: 0.0,
@@ -2462,34 +2438,11 @@ fn client_audio_events_update_snapshot_counters() {
             seed: -9,
         })
     );
-    assert_eq!(
-        counters.last_sound_entity,
-        Some(bbb_control::ClientSoundEntityState {
-            sound: bbb_control::SoundHolderState {
-                kind: "direct".to_string(),
-                registry_id: None,
-                location: Some("minecraft:entity.cat.ambient".to_string()),
-                fixed_range: Some(32.0),
-            },
-            source: "neutral".to_string(),
-            entity_id: 123,
-            volume: 1.0,
-            pitch: 0.5,
-            seed: -9,
-        })
-    );
     assert_eq!(counters.stop_sound_packets, 1);
     assert_eq!(world.counters().stop_sound_packets, 1);
     assert_eq!(
         world.last_stop_sound(),
         Some(&bbb_world::StopSoundEventState {
-            source: Some("music".to_string()),
-            name: Some("minecraft:music.menu".to_string()),
-        })
-    );
-    assert_eq!(
-        counters.last_stop_sound,
-        Some(bbb_control::StopSoundState {
             source: Some("music".to_string()),
             name: Some("minecraft:music.menu".to_string()),
         })

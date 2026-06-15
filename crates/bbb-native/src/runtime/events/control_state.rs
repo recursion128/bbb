@@ -474,25 +474,6 @@ fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore)
     counters.enabled_features = world.enabled_feature_list();
 }
 
-fn control_sound_holder_state(
-    state: &bbb_world::SoundHolderState,
-) -> bbb_control::SoundHolderState {
-    bbb_control::SoundHolderState {
-        kind: state.kind.clone(),
-        registry_id: state.registry_id,
-        location: state.location.clone(),
-        fixed_range: state.fixed_range,
-    }
-}
-
-fn net_vec3(vec: bbb_protocol::packets::Vec3d) -> bbb_control::NetVec3 {
-    bbb_control::NetVec3 {
-        x: vec.x,
-        y: vec.y,
-        z: vec.z,
-    }
-}
-
 fn control_waypoint_vec3i(pos: bbb_world::WaypointVec3iState) -> bbb_control::NetVec3i {
     bbb_control::NetVec3i {
         x: pos.x,
@@ -609,40 +590,6 @@ pub(super) fn sync_client_audio_counters(counters: &mut NetCounters, world: &Wor
     counters.sound_entity_events_applied = world_counters.sound_entity_events_applied;
     counters.sound_entity_events_ignored = world_counters.sound_entity_events_ignored;
     counters.stop_sound_packets = world_counters.stop_sound_packets;
-    counters.last_sound = world.last_sound().map(control_sound_state);
-    counters.last_sound_entity = world.last_sound_entity().map(control_sound_entity_state);
-    counters.last_stop_sound = world.last_stop_sound().map(control_stop_sound_state);
-}
-
-fn control_sound_state(state: &bbb_world::SoundEventState) -> bbb_control::ClientSoundState {
-    bbb_control::ClientSoundState {
-        sound: control_sound_holder_state(&state.sound),
-        source: state.source.clone(),
-        position: net_vec3(state.position),
-        volume: state.volume,
-        pitch: state.pitch,
-        seed: state.seed,
-    }
-}
-
-fn control_sound_entity_state(
-    state: &bbb_world::SoundEntityEventState,
-) -> bbb_control::ClientSoundEntityState {
-    bbb_control::ClientSoundEntityState {
-        sound: control_sound_holder_state(&state.sound),
-        source: state.source.clone(),
-        entity_id: state.entity_id,
-        volume: state.volume,
-        pitch: state.pitch,
-        seed: state.seed,
-    }
-}
-
-fn control_stop_sound_state(state: &bbb_world::StopSoundEventState) -> bbb_control::StopSoundState {
-    bbb_control::StopSoundState {
-        source: state.source.clone(),
-        name: state.name.clone(),
-    }
 }
 
 fn sync_client_effect_counters(counters: &mut NetCounters, world: &WorldStore) {
