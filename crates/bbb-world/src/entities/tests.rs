@@ -749,6 +749,8 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
 fn entity_camera_pose_uses_vanilla_eye_height() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(123, 7));
+    store.apply_add_entity(protocol_add_entity_with_type(124, 0));
+    store.apply_add_entity(protocol_add_entity_with_type(125, 5));
 
     let pose = store
         .probe_entity_camera_pose(123)
@@ -765,6 +767,8 @@ fn entity_camera_pose_uses_vanilla_eye_height() {
     assert_eq!(pose.y_rot, 20.0);
     assert_eq!(pose.x_rot, -10.0);
     assert!((pose.eye_height - 0.2751).abs() < 0.0001);
+    assert!((store.probe_entity_camera_pose(124).unwrap().eye_height - 0.5625).abs() < 0.0001);
+    assert!((store.probe_entity_camera_pose(125).unwrap().eye_height - 1.7775).abs() < 0.0001);
     assert_eq!(store.probe_entity_camera_pose(404), None);
 }
 

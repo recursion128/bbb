@@ -1025,8 +1025,102 @@ const fn pick(width: f32, height: f32, pick_radius: f32) -> EntityPickBoundsStat
 }
 
 // IDs and explicit eye-height values follow the vanilla 26.1 EntityType.java registration.
-const VANILLA_ENTITY_EYE_HEIGHT_OVERRIDES: &[(i32, f32)] =
-    &[(VANILLA_ENTITY_TYPE_AXOLOTL_ID, 0.2751)];
+const VANILLA_ENTITY_EYE_HEIGHT_OVERRIDES: &[(i32, f32)] = &[
+    (0, 0.5625),       // minecraft:acacia_boat
+    (1, 0.5625),       // minecraft:acacia_chest_boat
+    (2, 0.36),         // minecraft:allay
+    (4, 0.26),         // minecraft:armadillo
+    (5, 1.7775),       // minecraft:armor_stand
+    (7, 0.2751),       // minecraft:axolotl
+    (8, 0.5625),       // minecraft:bamboo_chest_raft
+    (9, 0.5625),       // minecraft:bamboo_raft
+    (10, 0.45),        // minecraft:bat
+    (11, 0.3),         // minecraft:bee
+    (12, 0.5625),      // minecraft:birch_boat
+    (13, 0.5625),      // minecraft:birch_chest_boat
+    (16, 1.74),        // minecraft:bogged
+    (17, 1.3452),      // minecraft:breeze
+    (18, 0.0),         // minecraft:breeze_wind_charge
+    (19, 2.275),       // minecraft:camel
+    (20, 2.275),       // minecraft:camel_husk
+    (21, 0.35),        // minecraft:cat
+    (22, 0.45),        // minecraft:cave_spider
+    (23, 0.5625),      // minecraft:cherry_boat
+    (24, 0.5625),      // minecraft:cherry_chest_boat
+    (26, 0.644),       // minecraft:chicken
+    (27, 0.195),       // minecraft:cod
+    (28, 0.8125),      // minecraft:copper_golem
+    (30, 1.3),         // minecraft:cow
+    (31, 2.3),         // minecraft:creaking
+    (33, 0.5625),      // minecraft:dark_oak_boat
+    (34, 0.5625),      // minecraft:dark_oak_chest_boat
+    (35, 0.3),         // minecraft:dolphin
+    (36, 1.425),       // minecraft:donkey
+    (38, 1.74),        // minecraft:drowned
+    (40, 0.99875),     // minecraft:elder_guardian
+    (41, 2.55),        // minecraft:enderman
+    (42, 0.13),        // minecraft:endermite
+    (54, 0.4),         // minecraft:fox
+    (57, 2.6),         // minecraft:ghast
+    (58, 2.6),         // minecraft:happy_ghast
+    (59, 10.44),       // minecraft:giant
+    (61, 0.4),         // minecraft:glow_squid
+    (63, 0.425),       // minecraft:guardian
+    (66, 1.52),        // minecraft:horse
+    (67, 1.74),        // minecraft:husk
+    (74, 0.5625),      // minecraft:jungle_boat
+    (75, 0.5625),      // minecraft:jungle_chest_boat
+    (78, 1.7765),      // minecraft:llama
+    (80, 0.325),       // minecraft:magma_cube
+    (81, 0.5625),      // minecraft:mangrove_boat
+    (82, 0.5625),      // minecraft:mangrove_chest_boat
+    (83, 1.62),        // minecraft:mannequin
+    (86, 1.3),         // minecraft:mooshroom
+    (87, 1.52),        // minecraft:mule
+    (88, 0.2751),      // minecraft:nautilus
+    (89, 0.5625),      // minecraft:oak_boat
+    (90, 0.5625),      // minecraft:oak_chest_boat
+    (94, 0.5625),      // minecraft:pale_oak_boat
+    (95, 0.5625),      // minecraft:pale_oak_chest_boat
+    (97, 1.74),        // minecraft:parched
+    (98, 0.54),        // minecraft:parrot
+    (99, 0.175),       // minecraft:phantom
+    (101, 1.79),       // minecraft:piglin
+    (102, 1.79),       // minecraft:piglin_brute
+    (107, 0.455),      // minecraft:pufferfish
+    (108, 0.59),       // minecraft:rabbit
+    (110, 0.26),       // minecraft:salmon
+    (111, 1.235),      // minecraft:sheep
+    (112, 0.5),        // minecraft:shulker
+    (114, 0.13),       // minecraft:silverfish
+    (115, 1.74),       // minecraft:skeleton
+    (116, 1.52),       // minecraft:skeleton_horse
+    (117, 0.325),      // minecraft:slime
+    (119, 1.05),       // minecraft:sniffer
+    (121, 1.7),        // minecraft:snow_golem
+    (124, 0.65),       // minecraft:spider
+    (125, 0.5625),     // minecraft:spruce_boat
+    (126, 0.5625),     // minecraft:spruce_chest_boat
+    (127, 0.4),        // minecraft:squid
+    (128, 1.74),       // minecraft:stray
+    (130, 0.19500001), // minecraft:tadpole
+    (132, 0.15),       // minecraft:tnt
+    (134, 1.7765),     // minecraft:trader_llama
+    (136, 0.26),       // minecraft:tropical_fish
+    (138, 0.51875),    // minecraft:vex
+    (139, 1.62),       // minecraft:villager
+    (141, 1.62),       // minecraft:wandering_trader
+    (143, 0.0),        // minecraft:wind_charge
+    (144, 1.62),       // minecraft:witch
+    (146, 2.1),        // minecraft:wither_skeleton
+    (148, 0.68),       // minecraft:wolf
+    (150, 1.74),       // minecraft:zombie
+    (151, 1.52),       // minecraft:zombie_horse
+    (152, 0.2751),     // minecraft:zombie_nautilus
+    (153, 1.74),       // minecraft:zombie_villager
+    (154, 1.79),       // minecraft:zombified_piglin
+    (155, 1.62),       // minecraft:player
+];
 
 // IDs follow the PaintingVariants.java bootstrap registration order.
 const PAINTING_VARIANT_SIZES: &[(f32, f32)] = &[
