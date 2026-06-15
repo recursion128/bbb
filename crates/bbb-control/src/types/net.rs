@@ -10,21 +10,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub respawns_received: usize,
     pub player_position_packets: usize,
-    pub player_info_update_packets: usize,
-    pub player_info_remove_packets: usize,
-    #[serde(default)]
-    pub player_info_entries_tracked: usize,
-    #[serde(default)]
-    pub listed_players_tracked: usize,
-    pub server_data_packets: usize,
-    pub resource_pack_push_packets: usize,
-    pub resource_pack_pop_packets: usize,
-    #[serde(default)]
-    pub resource_pack_pop_updates_applied: usize,
-    #[serde(default)]
-    pub resource_pack_pop_updates_ignored: usize,
-    #[serde(default)]
-    pub resource_packs_tracked: usize,
     pub cooldown_packets: usize,
     #[serde(default)]
     pub cooldowns_tracked: usize,

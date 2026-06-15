@@ -3304,7 +3304,7 @@ fn hud_session_events_update_world_and_counters() {
 }
 
 #[test]
-fn player_info_events_update_world_and_counters() {
+fn player_info_events_update_world_and_world_counters() {
     let profile_id = Uuid::from_u128(1);
     let removed_profile_id = Uuid::from_u128(2);
     let (tx, mut rx) = mpsc::channel(2);
@@ -3372,22 +3372,12 @@ fn player_info_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        player_info_update_packets: 99,
-        player_info_remove_packets: 99,
-        player_info_entries_tracked: 99,
-        listed_players_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         2
     );
-    assert_eq!(counters.player_info_update_packets, 1);
-    assert_eq!(counters.player_info_remove_packets, 1);
-    assert_eq!(counters.player_info_entries_tracked, 1);
-    assert_eq!(counters.listed_players_tracked, 1);
 
     let entry = world.player_info_entry(profile_id).unwrap();
     assert_eq!(entry.profile.uuid, profile_id);
@@ -3412,7 +3402,7 @@ fn player_info_events_update_world_and_counters() {
 }
 
 #[test]
-fn server_presentation_events_update_world_and_counters() {
+fn server_presentation_events_update_world_and_world_counters() {
     let pack_id = Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::ServerData(bbb_protocol::packets::ServerData {
@@ -3440,26 +3430,12 @@ fn server_presentation_events_update_world_and_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    let mut counters = NetCounters {
-        server_data_packets: 99,
-        resource_pack_push_packets: 99,
-        resource_pack_pop_packets: 99,
-        resource_pack_pop_updates_applied: 99,
-        resource_pack_pop_updates_ignored: 99,
-        resource_packs_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         4
     );
-    assert_eq!(counters.server_data_packets, 1);
-    assert_eq!(counters.resource_pack_push_packets, 1);
-    assert_eq!(counters.resource_pack_pop_packets, 2);
-    assert_eq!(counters.resource_pack_pop_updates_applied, 1);
-    assert_eq!(counters.resource_pack_pop_updates_ignored, 1);
-    assert_eq!(counters.resource_packs_tracked, 0);
 
     let server_data = world.server_data().unwrap();
     assert_eq!(server_data.motd, "Native test server");
