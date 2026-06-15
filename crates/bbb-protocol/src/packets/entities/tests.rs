@@ -757,7 +757,7 @@ fn decodes_update_attributes_packet() {
     payload.write_var_i32(21);
     payload.write_f64(20.0);
     payload.write_var_i32(1);
-    payload.write_string("minecraft:health_bonus");
+    payload.write_string("health_bonus");
     payload.write_f64(4.0);
     payload.write_var_i32(0);
     payload.write_var_i32(26);
@@ -791,6 +791,24 @@ fn decodes_update_attributes_packet() {
             ],
         })
     );
+}
+
+#[test]
+fn rejects_invalid_attribute_modifier_id() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(123);
+    payload.write_var_i32(1);
+    payload.write_var_i32(21);
+    payload.write_f64(20.0);
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:HealthBonus");
+
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_ATTRIBUTES,
+        &payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
 }
 
 #[test]

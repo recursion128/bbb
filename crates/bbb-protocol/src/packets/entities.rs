@@ -10,7 +10,7 @@ use super::{
     chunks::decode_block_pos,
     decode_vec3d,
     inventory::{self, ItemStackSummary},
-    read_resource_key, read_resource_location,
+    read_resource_location,
     world_effects::{decode_particle_payload, ParticlePayload},
     BlockPos, Vec3d,
 };
@@ -863,7 +863,7 @@ pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<Upda
         let mut modifiers = Vec::with_capacity(modifier_count);
         for _ in 0..modifier_count {
             modifiers.push(AttributeModifier {
-                id: read_resource_key(decoder)?,
+                id: read_resource_location(decoder)?,
                 amount: decoder.read_f64()?,
                 operation_id: decoder.read_var_i32()?,
             });

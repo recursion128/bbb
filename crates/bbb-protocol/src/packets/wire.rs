@@ -71,10 +71,6 @@ pub(crate) fn decode_byte_array(
     Ok(decoder.read_exact(len, what)?.to_vec())
 }
 
-pub(crate) fn read_resource_key(decoder: &mut Decoder<'_>) -> Result<String> {
-    decoder.read_string(32767)
-}
-
 pub(crate) fn read_resource_location(decoder: &mut Decoder<'_>) -> Result<String> {
     normalize_resource_location(decoder.read_string(32767)?)
 }
