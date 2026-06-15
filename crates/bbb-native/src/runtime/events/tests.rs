@@ -324,10 +324,7 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
         data: 42,
         global: true,
     });
-    let mut counters = NetCounters {
-        entities_tracked: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
@@ -342,7 +339,6 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
     assert_eq!(world.counters().block_destructions_tracked, 0);
     assert_eq!(world.counters().block_events_tracked, 0);
     assert_eq!(world.counters().level_events_tracked, 0);
-    assert_eq!(counters.entities_tracked, 0);
 }
 
 #[test]
@@ -1409,8 +1405,8 @@ fn entity_events_update_world_and_snapshot_counters() {
         };
     }
 
-    assert_entity_counter!(entities_received, 2);
-    assert_entity_counter!(entities_tracked, 1);
+    assert_eq!(world_counters.entities_received, 2);
+    assert_eq!(world_counters.entities_tracked, 1);
     assert_entity_counter!(entity_position_syncs_received, 2);
     assert_entity_counter!(entity_position_syncs_applied, 1);
     assert_entity_counter!(entity_position_syncs_ignored, 1);
@@ -1444,9 +1440,9 @@ fn entity_events_update_world_and_snapshot_counters() {
     assert_entity_counter!(entity_passenger_updates_received, 1);
     assert_entity_counter!(entity_passenger_ids_received, 1);
     assert_entity_counter!(entity_passenger_updates_applied, 1);
-    assert_entity_counter!(entity_removes_received, 2);
-    assert_entity_counter!(entities_removed, 1);
-    assert_entity_counter!(entity_removes_ignored, 1);
+    assert_eq!(world_counters.entity_removes_received, 2);
+    assert_eq!(world_counters.entities_removed, 1);
+    assert_eq!(world_counters.entity_removes_ignored, 1);
 }
 
 #[test]
@@ -1670,7 +1666,6 @@ fn remove_entities_updates_world_active_effect_counters() {
 
     assert_eq!(world.counters().entities_tracked, 0);
     assert_eq!(world.counters().active_mob_effects_tracked, 0);
-    assert_eq!(counters.entities_tracked, 0);
 }
 
 #[test]
@@ -1692,7 +1687,6 @@ fn add_entity_replacement_updates_world_active_effect_counters() {
 
     assert_eq!(world.counters().entities_tracked, 1);
     assert_eq!(world.counters().active_mob_effects_tracked, 0);
-    assert_eq!(counters.entities_tracked, 1);
 }
 
 #[test]

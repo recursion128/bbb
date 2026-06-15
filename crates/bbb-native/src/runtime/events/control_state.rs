@@ -165,8 +165,6 @@ pub(super) fn apply_control_projection_event(
 
 pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
-    counters.entities_tracked = world_counters.entities_tracked;
-    counters.entities_received = world_counters.entities_received;
     counters.entity_position_syncs_received = world_counters.entity_position_syncs_received;
     counters.entity_position_syncs_applied = world_counters.entity_position_syncs_applied;
     counters.entity_position_syncs_ignored = world_counters.entity_position_syncs_ignored;
@@ -210,9 +208,6 @@ pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStor
     counters.entity_head_rotations_received = world_counters.entity_head_rotations_received;
     counters.entity_head_rotations_applied = world_counters.entity_head_rotations_applied;
     counters.entity_head_rotations_ignored = world_counters.entity_head_rotations_ignored;
-    counters.entity_removes_received = world_counters.entity_removes_received;
-    counters.entities_removed = world_counters.entities_removed;
-    counters.entity_removes_ignored = world_counters.entity_removes_ignored;
     counters.minecart_moves_received = world_counters.minecart_moves_received;
     counters.minecart_moves_applied = world_counters.minecart_moves_applied;
     counters.minecart_moves_ignored = world_counters.minecart_moves_ignored;

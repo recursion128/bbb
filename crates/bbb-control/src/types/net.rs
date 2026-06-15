@@ -36,10 +36,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub set_camera_updates_ignored: usize,
     #[serde(default)]
-    pub entities_tracked: usize,
-    #[serde(default)]
-    pub entities_received: usize,
-    #[serde(default)]
     pub entity_position_syncs_received: usize,
     #[serde(default)]
     pub entity_position_syncs_applied: usize,
@@ -125,12 +121,6 @@ pub struct NetCounters {
     pub entity_head_rotations_applied: usize,
     #[serde(default)]
     pub entity_head_rotations_ignored: usize,
-    #[serde(default)]
-    pub entity_removes_received: usize,
-    #[serde(default)]
-    pub entities_removed: usize,
-    #[serde(default)]
-    pub entity_removes_ignored: usize,
     #[serde(default)]
     pub minecart_moves_received: usize,
     #[serde(default)]
