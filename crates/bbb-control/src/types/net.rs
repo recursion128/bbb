@@ -35,25 +35,6 @@ pub struct NetCounters {
     pub set_camera_updates_applied: usize,
     #[serde(default)]
     pub set_camera_updates_ignored: usize,
-    #[serde(default)]
-    pub entity_position_syncs_received: usize,
-    #[serde(default)]
-    pub entity_position_syncs_applied: usize,
-    #[serde(default)]
-    pub entity_position_syncs_ignored: usize,
-    #[serde(default)]
-    pub entity_moves_received: usize,
-    #[serde(default)]
-    pub entity_moves_applied: usize,
-    #[serde(default)]
-    pub entity_moves_ignored: usize,
-    #[serde(default)]
-    pub entity_teleports_received: usize,
-    #[serde(default)]
-    pub entity_teleports_applied: usize,
-    #[serde(default)]
-    pub entity_teleports_ignored: usize,
-    #[serde(default)]
     pub entity_animation_updates_received: usize,
     #[serde(default)]
     pub entity_animation_updates_applied: usize,
@@ -109,19 +90,6 @@ pub struct NetCounters {
     pub entity_link_updates_applied: usize,
     #[serde(default)]
     pub entity_link_updates_ignored: usize,
-    #[serde(default)]
-    pub entity_motion_updates_received: usize,
-    #[serde(default)]
-    pub entity_motion_updates_applied: usize,
-    #[serde(default)]
-    pub entity_motion_updates_ignored: usize,
-    #[serde(default)]
-    pub entity_head_rotations_received: usize,
-    #[serde(default)]
-    pub entity_head_rotations_applied: usize,
-    #[serde(default)]
-    pub entity_head_rotations_ignored: usize,
-    #[serde(default)]
     pub minecart_moves_received: usize,
     #[serde(default)]
     pub minecart_moves_applied: usize,

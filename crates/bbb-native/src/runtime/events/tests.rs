@@ -1407,19 +1407,19 @@ fn entity_events_update_world_and_snapshot_counters() {
 
     assert_eq!(world_counters.entities_received, 2);
     assert_eq!(world_counters.entities_tracked, 1);
-    assert_entity_counter!(entity_position_syncs_received, 2);
-    assert_entity_counter!(entity_position_syncs_applied, 1);
-    assert_entity_counter!(entity_position_syncs_ignored, 1);
-    assert_entity_counter!(entity_moves_received, 2);
-    assert_entity_counter!(entity_moves_applied, 1);
-    assert_entity_counter!(entity_moves_ignored, 1);
-    assert_entity_counter!(entity_teleports_received, 2);
-    assert_entity_counter!(entity_teleports_applied, 1);
-    assert_entity_counter!(entity_teleports_ignored, 1);
-    assert_entity_counter!(entity_motion_updates_received, 1);
-    assert_entity_counter!(entity_motion_updates_applied, 1);
-    assert_entity_counter!(entity_head_rotations_received, 1);
-    assert_entity_counter!(entity_head_rotations_applied, 1);
+    assert_eq!(world_counters.entity_position_syncs_received, 2);
+    assert_eq!(world_counters.entity_position_syncs_applied, 1);
+    assert_eq!(world_counters.entity_position_syncs_ignored, 1);
+    assert_eq!(world_counters.entity_moves_received, 2);
+    assert_eq!(world_counters.entity_moves_applied, 1);
+    assert_eq!(world_counters.entity_moves_ignored, 1);
+    assert_eq!(world_counters.entity_teleports_received, 2);
+    assert_eq!(world_counters.entity_teleports_applied, 1);
+    assert_eq!(world_counters.entity_teleports_ignored, 1);
+    assert_eq!(world_counters.entity_motion_updates_received, 1);
+    assert_eq!(world_counters.entity_motion_updates_applied, 1);
+    assert_eq!(world_counters.entity_head_rotations_received, 1);
+    assert_eq!(world_counters.entity_head_rotations_applied, 1);
     assert_entity_counter!(entity_animation_updates_received, 1);
     assert_entity_counter!(entity_animation_updates_applied, 1);
     assert_entity_counter!(entity_events_received, 1);
@@ -1532,12 +1532,6 @@ fn simple_entity_update_ignored_counters_are_projected() {
     assert_eq!(world_counters.entity_link_updates_applied, 0);
     assert_eq!(world_counters.entity_link_updates_ignored, 1);
 
-    assert_eq!(counters.entity_motion_updates_received, 1);
-    assert_eq!(counters.entity_motion_updates_applied, 0);
-    assert_eq!(counters.entity_motion_updates_ignored, 1);
-    assert_eq!(counters.entity_head_rotations_received, 1);
-    assert_eq!(counters.entity_head_rotations_applied, 0);
-    assert_eq!(counters.entity_head_rotations_ignored, 1);
     assert_eq!(counters.entity_link_updates_received, 1);
     assert_eq!(counters.entity_link_updates_applied, 0);
     assert_eq!(counters.entity_link_updates_ignored, 1);
