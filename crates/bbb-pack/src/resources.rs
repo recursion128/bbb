@@ -623,6 +623,8 @@ fn applicable_overlays(root: &Path, current_format: PackFormat) -> Vec<String> {
 
 fn is_valid_overlay_directory(directory: &str) -> bool {
     !directory.is_empty()
+        && directory != "."
+        && directory != ".."
         && directory
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
@@ -647,6 +649,9 @@ pub(crate) fn validate_resource_path(path: &str) -> Result<()> {
                 || byte.is_ascii_digit()
                 || matches!(byte, b'_' | b'-' | b'.' | b'/')
         })
+        || !path
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
     {
         bail!("invalid resource path {path:?}");
     }
@@ -676,6 +681,9 @@ mod tests {
         assert!(ResourceLocation::parse("minecraft:Block/Stone").is_err());
         assert!(ResourceLocation::parse("bad namespace:block").is_err());
         assert!(ResourceLocation::parse("..:block").is_err());
+        assert!(ResourceLocation::parse("minecraft:../block").is_err());
+        assert!(ResourceLocation::parse("minecraft:textures/../block/stone.png").is_err());
+        assert!(ResourceLocation::parse("minecraft:textures//block/stone.png").is_err());
     }
 
     #[test]
@@ -1069,6 +1077,51 @@ mod tests {
 
         assert!(texture.path.ends_with(&primary_texture));
         assert!(tag.path.ends_with(&data_overlay_tag));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn resource_stack_ignores_path_traversal_overlay_directories() {
+        let root = unique_temp_dir("resource-overlay-traversal");
+        let pack = root.join("pack");
+        let primary_stone = pack
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        let escaped_stone = root
+            .join("assets")
+            .join("minecraft")
+            .join("textures")
+            .join("block")
+            .join("stone.png");
+        write_file(&primary_stone, b"primary-stone");
+        write_file(&escaped_stone, b"escaped-stone");
+        write_file(
+            &pack.join("pack.mcmeta"),
+            br#"{
+              "overlays": {
+                "entries": [
+                  {
+                    "directory": "..",
+                    "min_format": [84, 0],
+                    "max_format": [84, 0]
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let stack = PackResourceStack::from_roots([pack]);
+        let stone = ResourceLocation::parse("minecraft:textures/block/stone.png").unwrap();
+        let resolved = stack.get_resource(&stone).unwrap();
+        let listed = stack.list_resources("textures/block", ".png").unwrap();
+
+        assert!(resolved.path.ends_with(&primary_stone));
+        assert_eq!(listed.len(), 1);
+        assert!(listed[0].path.ends_with(&primary_stone));
 
         std::fs::remove_dir_all(root).unwrap();
     }
