@@ -431,6 +431,100 @@ fn decodes_update_advancements_packet_wire_order() {
 }
 
 #[test]
+fn normalizes_update_advancements_identifiers() {
+    let mut payload = Encoder::new();
+    payload.write_bool(false);
+
+    payload.write_var_i32(1);
+    payload.write_string("story/root");
+    payload.write_bool(true);
+    payload.write_string("story/parent");
+    payload.write_bool(true);
+    payload.write_bytes(&nbt_string_root("Root"));
+    payload.write_bytes(&nbt_string_root("Description"));
+    payload.write_var_i32(42);
+    payload.write_var_i32(1);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_i32(1);
+    payload.write_string("textures/gui/advancements/backgrounds/stone.png");
+    payload.write_f32(0.0);
+    payload.write_f32(0.0);
+    payload.write_var_i32(1);
+    payload.write_var_i32(1);
+    payload.write_string("mine_stone");
+    payload.write_bool(false);
+
+    payload.write_var_i32(1);
+    payload.write_string("old");
+
+    payload.write_var_i32(1);
+    payload.write_string("story/root");
+    payload.write_var_i32(1);
+    payload.write_string("mine_stone");
+    payload.write_bool(false);
+
+    payload.write_bool(false);
+
+    assert_eq!(
+        decode_play_clientbound(
+            ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS,
+            &payload.into_inner()
+        )
+        .unwrap(),
+        PlayClientbound::UpdateAdvancements(UpdateAdvancements {
+            reset: false,
+            added: vec![AdvancementSummary {
+                id: "minecraft:story/root".to_string(),
+                parent: Some("minecraft:story/parent".to_string()),
+                display: Some(AdvancementDisplaySummary {
+                    title: "Root".to_string(),
+                    description: "Description".to_string(),
+                    icon: AdvancementIconSummary {
+                        item_id: 42,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary::default(),
+                    },
+                    frame_type: AdvancementFrameType::Task,
+                    show_toast: false,
+                    hidden: false,
+                    background: Some(
+                        "minecraft:textures/gui/advancements/backgrounds/stone.png".to_string()
+                    ),
+                    x: 0.0,
+                    y: 0.0,
+                }),
+                requirements: vec![vec!["mine_stone".to_string()]],
+                sends_telemetry_event: false,
+            }],
+            removed: vec!["minecraft:old".to_string()],
+            progress: vec![AdvancementProgressSummary {
+                id: "minecraft:story/root".to_string(),
+                criteria: vec![AdvancementCriterionProgressSummary {
+                    name: "mine_stone".to_string(),
+                    obtained_epoch_millis: None,
+                }],
+            }],
+            show_advancements: false,
+        })
+    );
+}
+
+#[test]
+fn rejects_invalid_update_advancements_identifier() {
+    let mut payload = Encoder::new();
+    payload.write_bool(false);
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:Story/root");
+    let payload = payload.into_inner();
+
+    let err =
+        decode_play_clientbound(ids::play::CLIENTBOUND_UPDATE_ADVANCEMENTS, &payload).unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
 fn decodes_tag_query_packet_raw_nbt() {
     let mut payload = Encoder::new();
     payload.write_var_i32(12);

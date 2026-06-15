@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
-use super::super::inventory::{self, DataComponentPatchSummary};
+use super::super::{
+    inventory::{self, DataComponentPatchSummary},
+    read_resource_location,
+};
 
 const MAX_ADVANCEMENT_CRITERIA: usize = 4096;
 const MAX_ADVANCEMENT_LIST: usize = 65_536;
@@ -219,7 +222,7 @@ fn decode_advancement_progress_summary(
 }
 
 fn read_identifier(decoder: &mut Decoder<'_>) -> Result<String> {
-    decoder.read_string(MAX_ADVANCEMENT_STRING_CHARS)
+    read_resource_location(decoder)
 }
 
 fn read_bounded_len(
