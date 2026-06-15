@@ -474,14 +474,6 @@ fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore)
     counters.enabled_features = world.enabled_feature_list();
 }
 
-fn control_waypoint_vec3i(pos: bbb_world::WaypointVec3iState) -> bbb_control::NetVec3i {
-    bbb_control::NetVec3i {
-        x: pos.x,
-        y: pos.y,
-        z: pos.z,
-    }
-}
-
 fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.player_chat_packets = world_counters.player_chat_packets;
@@ -638,7 +630,6 @@ fn sync_waypoint_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.waypoint_updates_applied = world_counters.waypoint_updates_applied;
     counters.waypoint_updates_ignored = world_counters.waypoint_updates_ignored;
     counters.waypoint_untracks_ignored = world_counters.waypoint_untracks_ignored;
-    counters.last_waypoint = world.last_waypoint_event().map(control_waypoint_event);
 }
 
 fn sync_map_counters(counters: &mut NetCounters, world: &WorldStore) {
@@ -670,21 +661,6 @@ fn sync_client_combat_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.player_combat_end_packets = world_counters.player_combat_end_packets;
     counters.player_combat_enter_packets = world_counters.player_combat_enter_packets;
     counters.player_combat_kill_packets = world_counters.player_combat_kill_packets;
-}
-
-fn control_waypoint_event(event: &bbb_world::WaypointEventState) -> bbb_control::WaypointState {
-    let waypoint = &event.waypoint;
-    bbb_control::WaypointState {
-        operation: event.operation.clone(),
-        identifier_kind: waypoint.identifier_kind.clone(),
-        identifier: waypoint.identifier.clone(),
-        icon_style: waypoint.icon_style.clone(),
-        icon_color_rgb: waypoint.icon_color_rgb,
-        waypoint_kind: waypoint.data.kind.clone(),
-        position: waypoint.data.position.map(control_waypoint_vec3i),
-        chunk: waypoint.data.chunk,
-        azimuth: waypoint.data.azimuth,
-    }
 }
 
 fn sync_transfer_counters(counters: &mut NetCounters, world: &WorldStore) {

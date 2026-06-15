@@ -2228,24 +2228,6 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
     assert_eq!(counters.waypoint_updates_applied, 0);
     assert_eq!(counters.waypoint_updates_ignored, 0);
     assert_eq!(counters.waypoint_untracks_ignored, 0);
-    assert_eq!(
-        counters.last_waypoint,
-        Some(bbb_control::WaypointState {
-            operation: "track".to_string(),
-            identifier_kind: "uuid".to_string(),
-            identifier: waypoint_id.to_string(),
-            icon_style: "minecraft:default".to_string(),
-            icon_color_rgb: Some(0x112233),
-            waypoint_kind: "position".to_string(),
-            position: Some(bbb_control::NetVec3i {
-                x: 10,
-                y: 64,
-                z: -5,
-            }),
-            chunk: None,
-            azimuth: None,
-        })
-    );
     let waypoint_key = format!("uuid:{waypoint_id}");
     let tracked_waypoint = world
         .tracked_waypoints()

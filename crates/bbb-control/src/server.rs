@@ -344,6 +344,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
         }
         "world.client_hud" => serde_json::to_value(snapshot_guard.world_store.client_hud()),
+        "world.client_waypoints" => {
+            serde_json::to_value(snapshot_guard.world_store.client_waypoints())
+        }
         "world.client_ui" => serde_json::to_value(snapshot_guard.world_store.client_ui()),
         "world.probe_chunk" => {
             let x = i32_param(&request.params, "x");
@@ -484,7 +487,9 @@ mod tests {
         GameRuleValues, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
         PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType, SetActionBarText,
         SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent,
-        SoundEventHolder, SoundSource, StopSound, SystemChat, Vec3d as ProtocolVec3d,
+        SoundEventHolder, SoundSource, StopSound, SystemChat, TrackedWaypoint,
+        TrackedWaypointPacket, Vec3d as ProtocolVec3d, WaypointData, WaypointIcon,
+        WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -910,6 +915,57 @@ mod tests {
         assert_eq!(combat["last_combat"]["duration"], serde_json::Value::Null);
         assert_eq!(combat["last_combat"]["player_id"], 123);
         assert_eq!(combat["last_combat"]["message"], "You died");
+    }
+
+    #[test]
+    fn client_waypoints_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        let waypoint_id = uuid::Uuid::from_u128(0x00112233445566778899aabbccddeeff);
+        {
+            let mut store = WorldStore::new();
+            store.apply_waypoint(TrackedWaypointPacket {
+                operation: WaypointOperation::Track,
+                waypoint: TrackedWaypoint {
+                    identifier: WaypointIdentifier::Uuid(waypoint_id),
+                    icon: WaypointIcon {
+                        style: "minecraft:default".to_string(),
+                        color_rgb: Some(0x112233),
+                    },
+                    data: WaypointData::Position(WaypointVec3i {
+                        x: 10,
+                        y: 64,
+                        z: -5,
+                    }),
+                },
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_waypoints".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let waypoints = response.result.unwrap();
+        let key = format!("uuid:{waypoint_id}");
+        assert_eq!(
+            waypoints["tracked"][key.as_str()]["identifier_kind"],
+            "uuid"
+        );
+        assert_eq!(
+            waypoints["tracked"][key.as_str()]["data"]["position"]["x"],
+            10
+        );
+        assert_eq!(waypoints["last_event"]["operation"], "track");
+        assert_eq!(waypoints["last_event"]["applied"], true);
+        assert_eq!(
+            waypoints["last_event"]["waypoint"]["icon_color_rgb"],
+            0x112233
+        );
     }
 
     #[test]

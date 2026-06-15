@@ -5,7 +5,7 @@ pub use crate::types::{
     ContainerInputControl, ControlRequest, ControlResponse, ControlSnapshot,
     CustomChatCompletionState, CustomPayloadState, DefaultSpawn, DeletedChatLine,
     HashedComponentPatchControl, HashedStackControl, MapColorPatchState, NetControlRequest,
-    NetCounters, NetVec3, NetVec3i, PlayerAbilities, PlayerExperience, PlayerHealth,
-    PlayerLookAtState, PlayerPose, RendererCounters, ServerLinkState, SharedSnapshot,
-    StatValueState, TagQueryState, TransferTarget, WaypointState, WeatherState, WorldTime,
+    NetCounters, NetVec3, PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAtState,
+    PlayerPose, RendererCounters, ServerLinkState, SharedSnapshot, StatValueState, TagQueryState,
+    TransferTarget, WeatherState, WorldTime,
 };

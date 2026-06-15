@@ -7,9 +7,8 @@ pub use api::{ControlRequest, ControlResponse};
 pub use net::{
     AwardStatsState, CameraState, ClientChatLine, ClientTickingState, CustomChatCompletionState,
     CustomPayloadState, DefaultSpawn, DeletedChatLine, MapColorPatchState, NetCounters, NetVec3,
-    NetVec3i, PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose,
-    ServerLinkState, StatValueState, TagQueryState, TransferTarget, WaypointState, WeatherState,
-    WorldTime,
+    PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose,
+    ServerLinkState, StatValueState, TagQueryState, TransferTarget, WeatherState, WorldTime,
 };
 pub use renderer::RendererCounters;
 pub use snapshot::{

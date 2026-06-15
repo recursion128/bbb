@@ -119,7 +119,6 @@ pub struct NetCounters {
     pub last_transfer: Option<TransferTarget>,
     pub last_custom_chat_completion: Option<CustomChatCompletionState>,
     pub last_custom_payload: Option<CustomPayloadState>,
-    pub last_waypoint: Option<WaypointState>,
     pub selected_advancements_tab: Option<String>,
     pub last_tag_query: Option<TagQueryState>,
     pub player_position_packets: usize,
@@ -745,19 +744,6 @@ pub struct CustomPayloadState {
     pub raw_payload_len: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WaypointState {
-    pub operation: String,
-    pub identifier_kind: String,
-    pub identifier: String,
-    pub icon_style: String,
-    pub icon_color_rgb: Option<u32>,
-    pub waypoint_kind: String,
-    pub position: Option<NetVec3i>,
-    pub chunk: Option<ChunkPos>,
-    pub azimuth: Option<f32>,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MapColorPatchState {
     pub map_id: i32,
@@ -772,13 +758,6 @@ pub struct TagQueryState {
     pub transaction_id: i32,
     pub tag_present: bool,
     pub raw_nbt_len: usize,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NetVec3i {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
