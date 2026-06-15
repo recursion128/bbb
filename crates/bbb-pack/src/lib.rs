@@ -9,6 +9,7 @@ mod language;
 mod metadata;
 mod mipmap;
 mod particle_definitions;
+mod particle_sprites;
 mod resources;
 mod roots;
 mod sounds;

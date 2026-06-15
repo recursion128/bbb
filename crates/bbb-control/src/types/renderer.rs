@@ -38,6 +38,8 @@ pub struct RendererCounters {
     #[serde(default)]
     pub particle_missing_definitions: u64,
     #[serde(default)]
+    pub particle_missing_sprites: u64,
+    #[serde(default)]
     pub particle_unknown_types: u64,
     #[serde(default)]
     pub last_particle_spawn_count: usize,

@@ -26,6 +26,8 @@ pub struct ParticleSpawnBatch {
     #[serde(default)]
     pub missing_definition_count: usize,
     #[serde(default)]
+    pub missing_sprite_count: usize,
+    #[serde(default)]
     pub unknown_particle_type_count: usize,
 }
 
@@ -42,6 +44,7 @@ pub(crate) struct ParticleSubmitSummary {
     pub(crate) queued_spawns: usize,
     pub(crate) dropped_spawns: usize,
     pub(crate) missing_definition_count: usize,
+    pub(crate) missing_sprite_count: usize,
     pub(crate) unknown_particle_type_count: usize,
     pub(crate) pending_spawns: usize,
     pub(crate) total_dropped_spawns: u64,
@@ -55,6 +58,7 @@ impl ParticleSpawnBatch {
     pub fn is_empty(&self) -> bool {
         self.commands.is_empty()
             && self.missing_definition_count == 0
+            && self.missing_sprite_count == 0
             && self.unknown_particle_type_count == 0
     }
 }
@@ -107,6 +111,7 @@ impl ParticleRuntimeState {
             queued_spawns,
             dropped_spawns,
             missing_definition_count: batch.missing_definition_count,
+            missing_sprite_count: batch.missing_sprite_count,
             unknown_particle_type_count: batch.unknown_particle_type_count,
             pending_spawns: self.pending_spawns.len(),
             total_dropped_spawns: self.dropped_spawns,
@@ -137,6 +142,10 @@ impl Renderer {
             .counters
             .particle_missing_definitions
             .saturating_add(summary.missing_definition_count as u64);
+        self.counters.particle_missing_sprites = self
+            .counters
+            .particle_missing_sprites
+            .saturating_add(summary.missing_sprite_count as u64);
         self.counters.particle_unknown_types = self
             .counters
             .particle_unknown_types
@@ -156,6 +165,11 @@ mod tests {
         assert!(ParticleSpawnBatch::default().is_empty());
         assert!(!ParticleSpawnBatch {
             unknown_particle_type_count: 1,
+            ..ParticleSpawnBatch::default()
+        }
+        .is_empty());
+        assert!(!ParticleSpawnBatch {
+            missing_sprite_count: 1,
             ..ParticleSpawnBatch::default()
         }
         .is_empty());
@@ -194,6 +208,7 @@ mod tests {
         let summary = particles.submit_batch(ParticleSpawnBatch {
             commands: vec![spawn_command("minecraft:cloud", 1.0)],
             missing_definition_count: 2,
+            missing_sprite_count: 3,
             ..ParticleSpawnBatch::default()
         });
 
@@ -201,6 +216,7 @@ mod tests {
         assert_eq!(summary.queued_spawns, 0);
         assert_eq!(summary.dropped_spawns, 1);
         assert_eq!(summary.missing_definition_count, 2);
+        assert_eq!(summary.missing_sprite_count, 3);
         assert_eq!(summary.pending_spawns, 0);
         assert!(particles.pending_spawns().is_empty());
     }

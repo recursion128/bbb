@@ -11,6 +11,7 @@ use crate::{
     language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE},
     metadata::PackMetadataCatalog,
     particle_definitions::ParticleDefinitionCatalog,
+    particle_sprites::ParticleSpriteCatalog,
     resources::{PackResourceStack, ResourceLocation},
     sounds::SoundCatalog,
     sprites::{SpriteImage, SpriteSource},
@@ -162,6 +163,14 @@ impl PackRoots {
         self.load_atlas_texture_images("blocks")
     }
 
+    pub fn load_particle_texture_sources(&self) -> Result<Vec<SpriteSource>> {
+        self.load_atlas_texture_sources("particles")
+    }
+
+    pub fn load_particle_texture_images(&self) -> Result<Vec<SpriteImage>> {
+        self.load_atlas_texture_images("particles")
+    }
+
     pub fn load_block_model_catalog(&self) -> Result<BlockModelCatalog> {
         BlockModelCatalog::load(self)
     }
@@ -176,6 +185,10 @@ impl PackRoots {
 
     pub fn load_particle_definition_catalog(&self) -> Result<ParticleDefinitionCatalog> {
         ParticleDefinitionCatalog::load(self)
+    }
+
+    pub fn load_particle_sprite_catalog(&self) -> Result<ParticleSpriteCatalog> {
+        ParticleSpriteCatalog::load(self)
     }
 
     pub fn load_terrain_colormaps(&self) -> Result<TerrainColorMaps> {

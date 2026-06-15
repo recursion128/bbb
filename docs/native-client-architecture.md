@@ -385,8 +385,10 @@ Target ownership:
   `last_explosion`, `last_level_particles`, packet counters, and optional
   bounded history.
 - `bbb-native` resolves `LevelParticles` packets through vanilla 26.1 particle
-  type order and `bbb-pack` particle definitions, then submits renderer-owned
-  spawn batches.
+  type order and `bbb-pack` particle definitions plus particle atlas sprites,
+  then submits renderer-owned spawn batches. Missing particle sprites are
+  reported as diagnostics while the spawn command is preserved for renderer
+  fallback behavior.
 - `bbb-renderer` keeps a bounded pending spawn queue so future GPU particle
   drawing consumes renderer-owned commands instead of native/world snapshots.
 - `bbb-renderer` owns actual particle creation, culling, settings, distance
@@ -406,8 +408,8 @@ Target pipeline:
 1. Load vanilla 26.1 assets as the baseline pack.
 2. Layer server-provided or user-selected packs according to vanilla precedence.
 3. Build lookup tables for registries, blockstates, models, item model
-   definitions, particle definitions, waypoint styles, textures, atlases,
-   colormaps, sounds, language keys, and tags.
+   definitions, particle definitions, particle atlas sprites, waypoint styles,
+   textures, atlases, colormaps, sounds, language keys, and tags.
 4. Expose stable ids or handles for renderer/audio/world logic.
 5. Keep pack parsing and cache invalidation in `bbb-pack`.
 

@@ -1,7 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
-use bbb_pack::{PackRoots, ParticleDefinitionCatalog};
+use bbb_pack::{PackRoots, ParticleDefinitionCatalog, ParticleSpriteCatalog};
 use bbb_protocol::packets::{LevelParticles, Vec3d};
 use bbb_renderer::{ParticleSpawnBatch, ParticleSpawnCommand};
 
@@ -22,6 +22,9 @@ impl NativeParticleRuntime {
                 roots
                     .load_particle_definition_catalog()
                     .context("load particle definition catalog")?,
+                roots
+                    .load_particle_sprite_catalog()
+                    .context("load particle sprite catalog")?,
             ),
         })
     }
@@ -36,21 +39,28 @@ impl ParticleEventSink for NativeParticleRuntime {
 #[derive(Debug, Clone)]
 struct ParticleCommandResolver {
     definitions: ParticleDefinitionCatalog,
+    sprites: ParticleSpriteCatalog,
     random: LegacyRandom,
 }
 
 impl ParticleCommandResolver {
-    fn new(definitions: ParticleDefinitionCatalog) -> Self {
+    fn new(definitions: ParticleDefinitionCatalog, sprites: ParticleSpriteCatalog) -> Self {
         Self {
             definitions,
+            sprites,
             random: LegacyRandom::new(default_particle_seed()),
         }
     }
 
     #[cfg(test)]
-    fn with_seed(definitions: ParticleDefinitionCatalog, seed: i64) -> Self {
+    fn with_seed(
+        definitions: ParticleDefinitionCatalog,
+        sprites: ParticleSpriteCatalog,
+        seed: i64,
+    ) -> Self {
         Self {
             definitions,
+            sprites,
             random: LegacyRandom::new(seed),
         }
     }
@@ -74,6 +84,10 @@ impl ParticleCommandResolver {
         };
 
         let sprite_ids = definition.textures.clone();
+        let missing_sprite_count = sprite_ids
+            .iter()
+            .filter(|sprite_id| self.sprites.sprite(sprite_id).is_none())
+            .count();
         let override_limiter = particle_type.override_limiter || packet.override_limiter;
         let raw_options_len = packet.particle.raw_options.len();
         let command_count = if packet.count == 0 {
@@ -123,6 +137,7 @@ impl ParticleCommandResolver {
 
         ParticleSpawnBatch {
             commands,
+            missing_sprite_count,
             ..ParticleSpawnBatch::default()
         }
     }
@@ -294,16 +309,56 @@ mod tests {
         assert_eq!(batch.unknown_particle_type_count, 1);
     }
 
+    #[test]
+    fn missing_sprite_records_diagnostic_without_dropping_spawn_command() {
+        let mut resolver = test_resolver_with_cloud_textures(
+            0,
+            &["minecraft:generic_7", "minecraft:missing_particle"],
+            &["generic_7"],
+        );
+        let batch = resolver.resolve_level_particles(&level_particles_packet(4, 1));
+
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch.missing_definition_count, 0);
+        assert_eq!(batch.missing_sprite_count, 1);
+        assert_eq!(
+            batch.commands[0].sprite_ids,
+            vec![
+                "minecraft:generic_7".to_string(),
+                "minecraft:missing_particle".to_string(),
+            ]
+        );
+    }
+
     fn test_resolver(seed: i64) -> ParticleCommandResolver {
+        test_resolver_with_cloud_textures(
+            seed,
+            &["minecraft:generic_7", "minecraft:generic_6"],
+            &["generic_7", "generic_6", "flame"],
+        )
+    }
+
+    fn test_resolver_with_cloud_textures(
+        seed: i64,
+        cloud_textures: &[&str],
+        particle_textures: &[&str],
+    ) -> ParticleCommandResolver {
         let root = unique_temp_dir("particle-runtime");
+        let assets_dir = assets_dir(&root);
+        write_particle_atlas(&assets_dir);
+        for texture in particle_textures {
+            write_test_png(
+                &assets_dir
+                    .join("textures")
+                    .join("particle")
+                    .join(format!("{texture}.png")),
+                8,
+                8,
+            );
+        }
         write_json(
             &particle_dir(&root).join("cloud.json"),
-            r#"{
-              "textures": [
-                "minecraft:generic_7",
-                "minecraft:generic_6"
-              ]
-            }"#,
+            &particle_definition_json(cloud_textures),
         );
         write_json(
             &particle_dir(&root).join("flame.json"),
@@ -318,8 +373,12 @@ mod tests {
             .unwrap()
             .load_particle_definition_catalog()
             .unwrap();
+        let sprites = PackRoots::from_root(&root)
+            .unwrap()
+            .load_particle_sprite_catalog()
+            .unwrap();
         std::fs::remove_dir_all(root).unwrap();
-        ParticleCommandResolver::with_seed(catalog, seed)
+        ParticleCommandResolver::with_seed(catalog, sprites, seed)
     }
 
     fn level_particles_packet(particle_type_id: i32, count: i32) -> LevelParticles {
@@ -346,16 +405,53 @@ mod tests {
     }
 
     fn particle_dir(root: &Path) -> PathBuf {
+        assets_dir(root).join("particles")
+    }
+
+    fn assets_dir(root: &Path) -> PathBuf {
         root.join("sources")
             .join(bbb_pack::MC_VERSION)
             .join("assets")
             .join("minecraft")
-            .join("particles")
+    }
+
+    fn particle_definition_json(textures: &[&str]) -> String {
+        let textures = textures
+            .iter()
+            .map(|texture| format!("\"{texture}\""))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!(r#"{{ "textures": [{textures}] }}"#)
+    }
+
+    fn write_particle_atlas(assets_dir: &Path) {
+        write_json(
+            &assets_dir.join("atlases").join("particles.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "prefix": "",
+                  "source": "particle"
+                }
+              ]
+            }"#,
+        );
     }
 
     fn write_json(path: &Path, contents: &str) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, contents).unwrap();
+    }
+
+    fn write_test_png(path: &Path, width: u32, height: u32) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut image = image::RgbaImage::new(width, height);
+        for (index, pixel) in image.pixels_mut().enumerate() {
+            let shade = (index % 255) as u8;
+            *pixel = image::Rgba([shade, 255 - shade, 64, 255]);
+        }
+        image.save(path).unwrap();
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {

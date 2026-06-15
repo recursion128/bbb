@@ -252,6 +252,7 @@ dependencies = [
  "bbb-renderer",
  "bbb-world",
  "clap",
+ "image",
  "pollster",
  "serde",
  "serde_json",

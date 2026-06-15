@@ -235,8 +235,9 @@ Deliverables:
 - `bbb-pack` loads vanilla 26.1 baseline assets.
 - Resource-pack layering and precedence are represented.
 - Blockstates, model parents, item model definitions, texture references,
-  particle definitions, waypoint styles, atlases, colormaps, language files,
-  sounds, subtitles, tags, and registry-adjacent data have lookup APIs.
+  particle definitions, particle atlas sprites, waypoint styles, atlases,
+  colormaps, language files, sounds, subtitles, tags, and registry-adjacent data
+  have lookup APIs.
 - Renderer and audio runtime ask `bbb-pack` for resolved resources instead of
   duplicating path logic.
 
@@ -258,8 +259,9 @@ Deliverables:
 - Entity rendering extraction from `hecs` components.
 - Particle runtime for visual effects and particle packets.
 - Level-particle packets resolve through vanilla 26.1 particle type order and
-  `bbb-pack` particle definitions into renderer-owned spawn batches before GPU
-  particle drawing is added.
+  `bbb-pack` particle definitions/atlas sprites into renderer-owned spawn
+  batches before GPU particle drawing is added. Missing sprites are diagnostics
+  and should not drop otherwise valid particle spawns.
 - HUD, title/action bar, scoreboard, chat, debug overlays, selection outline,
   camera pose, screenshots, and interaction feedback.
 - Renderer caches and GPU resources remain outside `bbb-world`.
