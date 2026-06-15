@@ -24,6 +24,7 @@ struct ProbeContext {
     player_was_dead: bool,
     play_tick: Option<Interval>,
     server_cookies: BTreeMap<String, Vec<u8>>,
+    seen_code_of_conduct: bool,
 }
 
 impl ProbeContext {
@@ -37,6 +38,7 @@ impl ProbeContext {
             player_was_dead: false,
             play_tick: None,
             server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
         }
     }
 

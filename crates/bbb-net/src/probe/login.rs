@@ -38,6 +38,7 @@ impl ProbeContext {
                 let (id, payload) = packets::encode_login_acknowledged();
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Configuration;
+                self.seen_code_of_conduct = false;
 
                 let (id, payload) = packets::encode_client_information_default();
                 self.conn.send_packet(id, &payload).await?;

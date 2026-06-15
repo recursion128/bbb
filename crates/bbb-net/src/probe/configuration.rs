@@ -83,6 +83,10 @@ impl ProbeContext {
                 self.world.apply_show_dialog(update);
             }
             ConfigurationClientbound::CodeOfConduct { text } => {
+                if self.seen_code_of_conduct {
+                    bail!("server sent duplicate Code of Conduct");
+                }
+                self.seen_code_of_conduct = true;
                 let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
                 self.conn.send_packet(id, &payload).await?;
                 self.world.apply_code_of_conduct(text);
@@ -250,6 +254,35 @@ mod tests {
             report.world_counters.last_code_of_conduct_len,
             "Keep the server friendly.".len()
         );
+    }
+
+    #[tokio::test]
+    async fn probe_rejects_duplicate_code_of_conduct_packet() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::CodeOfConduct {
+                text: "First rules.".to_string(),
+            })
+            .await
+            .unwrap();
+        let err = probe
+            .handle_configuration_packet(ConfigurationClientbound::CodeOfConduct {
+                text: "Second rules.".to_string(),
+            })
+            .await
+            .unwrap_err();
+
+        assert!(
+            err.to_string().contains("duplicate Code of Conduct"),
+            "{err:?}"
+        );
+        assert_eq!(
+            probe.world.last_code_of_conduct().unwrap().text,
+            "First rules."
+        );
+        assert_eq!(probe.world.counters().code_of_conduct_packets, 1);
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {

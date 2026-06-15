@@ -146,6 +146,7 @@ impl ProbeContext {
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Configuration;
                 self.play_tick = None;
+                self.seen_code_of_conduct = false;
             }
             PlayClientbound::StoreCookie(cookie) => {
                 self.server_cookies.insert(cookie.key, cookie.payload);

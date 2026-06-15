@@ -30,6 +30,7 @@ struct EventStreamContext {
     player_was_dead: bool,
     play_tick: Option<Interval>,
     server_cookies: BTreeMap<String, Vec<u8>>,
+    seen_code_of_conduct: bool,
 }
 
 pub async fn run_offline_event_stream(
@@ -53,6 +54,7 @@ pub async fn run_offline_event_stream(
         player_was_dead: false,
         play_tick: None,
         server_cookies: BTreeMap::new(),
+        seen_code_of_conduct: false,
     };
 
     emit(&stream.events, NetEvent::Connected).await?;
@@ -162,6 +164,7 @@ mod tests {
             player_was_dead: false,
             play_tick: None,
             server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
         };
 
         stream
@@ -191,6 +194,59 @@ mod tests {
             }
             other => panic!("expected code-of-conduct event, got {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn configuration_code_of_conduct_rejects_duplicate_packet() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+        };
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::CodeOfConduct {
+                text: "First rules.".to_string(),
+            })
+            .await
+            .unwrap();
+        timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("first accept packet should be sent")
+            .unwrap();
+        timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("first code-of-conduct event should be emitted")
+            .unwrap();
+
+        let err = stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::CodeOfConduct {
+                text: "Second rules.".to_string(),
+            })
+            .await
+            .unwrap_err();
+
+        assert!(
+            err.to_string().contains("duplicate Code of Conduct"),
+            "{err:?}"
+        );
+        assert!(matches!(
+            events_rx.try_recv(),
+            Err(mpsc::error::TryRecvError::Empty)
+        ));
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {
