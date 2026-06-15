@@ -564,7 +564,6 @@ fn configuration_state_events_update_snapshot_counters() {
     assert_eq!(world.counters().chat_messages_tracked, 0);
     assert_eq!(world.counters().deleted_chat_messages_tracked, 0);
     assert_eq!(world.counters().chat_signature_cache_entries, 0);
-    assert_eq!(counters.code_of_conduct_packets, 1);
     assert_eq!(
         world.last_code_of_conduct(),
         Some(&bbb_world::CodeOfConductState {
@@ -718,7 +717,7 @@ fn server_links_event_updates_world_and_world_counters() {
 }
 
 #[test]
-fn client_ui_events_update_world_and_snapshot_counters() {
+fn client_ui_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::LowDiskSpaceWarning).unwrap();
     tx.try_send(NetEvent::MountScreenOpen(MountScreenOpen {
@@ -750,7 +749,6 @@ fn client_ui_events_update_world_and_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         5
     );
-    assert_eq!(counters.low_disk_space_warnings, 1);
     assert_eq!(world.low_disk_space_warning_count(), 1);
     assert_eq!(
         world.last_mount_screen(),
@@ -760,14 +758,12 @@ fn client_ui_events_update_world_and_snapshot_counters() {
             entity_id: 42,
         })
     );
-    assert_eq!(counters.mount_screen_open_packets, 1);
     assert_eq!(
         world.last_open_book(),
         Some(&bbb_world::OpenBookState {
             hand: "off_hand".to_string(),
         })
     );
-    assert_eq!(counters.open_book_packets, 1);
     assert_eq!(
         world.last_open_sign_editor(),
         Some(&bbb_world::OpenSignEditorState {
@@ -779,8 +775,6 @@ fn client_ui_events_update_world_and_snapshot_counters() {
             is_front_text: false,
         })
     );
-    assert_eq!(counters.open_sign_editor_packets, 1);
-    assert_eq!(counters.pong_response_packets, 1);
     assert_eq!(
         world.last_pong_response(),
         Some(&bbb_world::PongResponseState { time: 123456789 })
@@ -838,12 +832,7 @@ fn map_item_data_event_updates_world_state() {
     assert_eq!(world_counters.maps_tracked, 1);
     assert_eq!(world_counters.map_decorations_tracked, 1);
     assert_eq!(world_counters.map_color_patches_applied, 1);
-
-    assert_eq!(counters.map_item_data_packets, 1);
-    assert_eq!(counters.maps_tracked, 1);
-    assert_eq!(counters.map_decorations_tracked, 1);
-    assert_eq!(counters.map_color_patches_applied, 1);
-    assert_eq!(counters.map_color_patches_ignored, 0);
+    assert_eq!(world_counters.map_color_patches_ignored, 0);
     assert_eq!(
         world.last_map_color_patch(),
         Some(&bbb_world::LastMapColorPatchState {
@@ -1195,7 +1184,6 @@ fn client_feature_events_update_world_and_snapshot_counters() {
     assert!(world.custom_chat_completions().contains("/spawn"));
     assert_eq!(world.counters().custom_chat_completion_packets, 1);
     assert_eq!(world.counters().custom_chat_completions_tracked, 2);
-    assert_eq!(counters.ghost_recipe_packets, 1);
     assert_eq!(
         world.last_ghost_recipe(),
         Some(&bbb_world::GhostRecipeState {
@@ -2105,8 +2093,6 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
             raw_payload_len: 0,
         })
     );
-    assert_eq!(counters.clear_dialog_packets, 1);
-    assert_eq!(counters.show_dialog_packets, 1);
     assert_eq!(
         world.current_dialog(),
         Some(&bbb_world::DialogState {
@@ -2126,11 +2112,6 @@ fn client_common_waypoint_events_update_world_and_snapshot_counters() {
     assert_eq!(world_counters.waypoint_updates_applied, 0);
     assert_eq!(world_counters.waypoint_updates_ignored, 0);
     assert_eq!(world_counters.waypoint_untracks_ignored, 0);
-    assert_eq!(counters.waypoint_packets, 1);
-    assert_eq!(counters.waypoints_tracked, 1);
-    assert_eq!(counters.waypoint_updates_applied, 0);
-    assert_eq!(counters.waypoint_updates_ignored, 0);
-    assert_eq!(counters.waypoint_untracks_ignored, 0);
     let waypoint_key = format!("uuid:{waypoint_id}");
     let tracked_waypoint = world
         .tracked_waypoints()

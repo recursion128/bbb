@@ -48,7 +48,6 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::CodeOfConduct { text } => {
             world.apply_code_of_conduct(text);
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::CustomChatCompletions(update) => {
             world.apply_custom_chat_completions(update);
@@ -64,39 +63,30 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::LowDiskSpaceWarning => {
             world.apply_low_disk_space_warning();
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::MapItemData(update) => {
             world.apply_map_item_data(update);
-            sync_map_counters(counters, world);
         }
         NetEvent::MountScreenOpen(update) => {
             world.apply_mount_screen_open(update);
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::OpenBook(update) => {
             world.apply_open_book(update);
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::OpenSignEditor(update) => {
             world.apply_open_sign_editor(update);
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::PlaceGhostRecipe(update) => {
             world.apply_place_ghost_recipe(update);
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::ClearDialog => {
             world.apply_clear_dialog();
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::ShowDialog(update) => {
             world.apply_show_dialog(update);
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::Waypoint(update) => {
             world.apply_waypoint(update);
-            sync_waypoint_counters(counters, world);
         }
         NetEvent::PlayerCombatEnd(update) => {
             world.apply_player_combat_end(update);
@@ -112,7 +102,6 @@ pub(super) fn apply_control_projection_event(
         }
         NetEvent::PongResponse(update) => {
             world.apply_pong_response(update);
-            sync_client_ui_counters(counters, world);
         }
         NetEvent::Explosion(update) => {
             world.apply_explosion(update);
@@ -394,35 +383,4 @@ pub(super) fn sync_client_audio_counters(counters: &mut NetCounters, world: &Wor
     counters.sound_entity_events_applied = world_counters.sound_entity_events_applied;
     counters.sound_entity_events_ignored = world_counters.sound_entity_events_ignored;
     counters.stop_sound_packets = world_counters.stop_sound_packets;
-}
-
-fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.low_disk_space_warnings = world_counters.low_disk_space_warnings;
-    counters.clear_dialog_packets = world_counters.clear_dialog_packets;
-    counters.show_dialog_packets = world_counters.show_dialog_packets;
-    counters.code_of_conduct_packets = world_counters.code_of_conduct_packets;
-    counters.mount_screen_open_packets = world_counters.mount_screen_open_packets;
-    counters.open_book_packets = world_counters.open_book_packets;
-    counters.open_sign_editor_packets = world_counters.open_sign_editor_packets;
-    counters.ghost_recipe_packets = world_counters.ghost_recipe_packets;
-    counters.pong_response_packets = world_counters.pong_response_packets;
-}
-
-fn sync_waypoint_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.waypoint_packets = world_counters.waypoint_packets;
-    counters.waypoints_tracked = world_counters.waypoints_tracked;
-    counters.waypoint_updates_applied = world_counters.waypoint_updates_applied;
-    counters.waypoint_updates_ignored = world_counters.waypoint_updates_ignored;
-    counters.waypoint_untracks_ignored = world_counters.waypoint_untracks_ignored;
-}
-
-fn sync_map_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.map_item_data_packets = world_counters.map_item_data_packets;
-    counters.maps_tracked = world_counters.maps_tracked;
-    counters.map_decorations_tracked = world_counters.map_decorations_tracked;
-    counters.map_color_patches_applied = world_counters.map_color_patches_applied;
-    counters.map_color_patches_ignored = world_counters.map_color_patches_ignored;
 }

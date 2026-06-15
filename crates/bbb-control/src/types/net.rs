@@ -54,7 +54,6 @@ pub struct NetCounters {
     pub merchant_offer_packets_ignored: usize,
     #[serde(default)]
     pub merchant_offers_tracked: usize,
-    pub code_of_conduct_packets: usize,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,
@@ -299,33 +298,6 @@ pub struct NetCounters {
     pub item_entity_stack_shrinks: usize,
     #[serde(default)]
     pub take_item_entities_removed: usize,
-    pub clear_dialog_packets: usize,
-    pub show_dialog_packets: usize,
-    pub waypoint_packets: usize,
-    #[serde(default)]
-    pub waypoints_tracked: usize,
-    #[serde(default)]
-    pub waypoint_updates_applied: usize,
-    #[serde(default)]
-    pub waypoint_updates_ignored: usize,
-    #[serde(default)]
-    pub waypoint_untracks_ignored: usize,
-    #[serde(default)]
-    pub map_item_data_packets: usize,
-    #[serde(default)]
-    pub maps_tracked: usize,
-    #[serde(default)]
-    pub map_decorations_tracked: usize,
-    #[serde(default)]
-    pub map_color_patches_applied: usize,
-    #[serde(default)]
-    pub map_color_patches_ignored: usize,
-    pub low_disk_space_warnings: usize,
-    pub mount_screen_open_packets: usize,
-    pub open_book_packets: usize,
-    pub open_sign_editor_packets: usize,
-    pub ghost_recipe_packets: usize,
-    pub pong_response_packets: usize,
     pub sound_packets: usize,
     pub sound_entity_packets: usize,
     #[serde(default)]
