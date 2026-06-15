@@ -1526,6 +1526,55 @@ fn transient_entity_event_ignored_counters_are_projected() {
 }
 
 #[test]
+fn simple_entity_update_ignored_counters_are_projected() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::SetEntityMotion(SetEntityMotion {
+        id: 999,
+        delta_movement: ProtocolVec3d::default(),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::RotateHead(RotateHead {
+        id: 999,
+        y_head_rot: 90.0,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::SetEntityLink(SetEntityLink {
+        source_id: 999,
+        dest_id: 123,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        3
+    );
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.entity_motion_updates_received, 1);
+    assert_eq!(world_counters.entity_motion_updates_applied, 0);
+    assert_eq!(world_counters.entity_motion_updates_ignored, 1);
+    assert_eq!(world_counters.entity_head_rotations_received, 1);
+    assert_eq!(world_counters.entity_head_rotations_applied, 0);
+    assert_eq!(world_counters.entity_head_rotations_ignored, 1);
+    assert_eq!(world_counters.entity_link_updates_received, 1);
+    assert_eq!(world_counters.entity_link_updates_applied, 0);
+    assert_eq!(world_counters.entity_link_updates_ignored, 1);
+
+    assert_eq!(counters.entity_motion_updates_received, 1);
+    assert_eq!(counters.entity_motion_updates_applied, 0);
+    assert_eq!(counters.entity_motion_updates_ignored, 1);
+    assert_eq!(counters.entity_head_rotations_received, 1);
+    assert_eq!(counters.entity_head_rotations_applied, 0);
+    assert_eq!(counters.entity_head_rotations_ignored, 1);
+    assert_eq!(counters.entity_link_updates_received, 1);
+    assert_eq!(counters.entity_link_updates_applied, 0);
+    assert_eq!(counters.entity_link_updates_ignored, 1);
+}
+
+#[test]
 fn entity_metadata_ignored_counters_are_projected() {
     const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 

@@ -480,10 +480,16 @@ pub struct WorldCounters {
     pub minecart_lerp_steps_tracked: usize,
     pub entity_link_updates_received: usize,
     pub entity_link_updates_applied: usize,
+    #[serde(default)]
+    pub entity_link_updates_ignored: usize,
     pub entity_motion_updates_received: usize,
     pub entity_motion_updates_applied: usize,
+    #[serde(default)]
+    pub entity_motion_updates_ignored: usize,
     pub entity_head_rotations_received: usize,
     pub entity_head_rotations_applied: usize,
+    #[serde(default)]
+    pub entity_head_rotations_ignored: usize,
     pub take_item_entities_received: usize,
     pub take_item_entities_applied: usize,
     pub item_entity_stack_shrinks: usize,

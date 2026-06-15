@@ -61,6 +61,7 @@ impl WorldStore {
                 Some(packet.dest_id)
             };
         }) else {
+            self.counters.entity_link_updates_ignored += 1;
             return false;
         };
         self.counters.entity_link_updates_applied += 1;
@@ -72,6 +73,7 @@ impl WorldStore {
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
             transform.delta_movement = entity_vec3(packet.delta_movement);
         }) else {
+            self.counters.entity_motion_updates_ignored += 1;
             return false;
         };
         self.counters.entity_motion_updates_applied += 1;
@@ -83,6 +85,7 @@ impl WorldStore {
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
             transform.y_head_rot = packet.y_head_rot;
         }) else {
+            self.counters.entity_head_rotations_ignored += 1;
             return false;
         };
         self.counters.entity_head_rotations_applied += 1;

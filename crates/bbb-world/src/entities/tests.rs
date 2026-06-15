@@ -356,6 +356,14 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
             on_ground: false,
         })
     );
+    assert!(!store.apply_set_entity_motion(ProtocolSetEntityMotion {
+        id: 999,
+        delta_movement: ProtocolVec3d::default(),
+    }));
+    assert!(!store.apply_rotate_head(ProtocolRotateHead {
+        id: 999,
+        y_head_rot: 0.0,
+    }));
     assert_eq!(store.counters().entity_position_syncs_received, 2);
     assert_eq!(store.counters().entity_position_syncs_applied, 1);
     assert_eq!(store.counters().entity_moves_received, 2);
@@ -373,8 +381,12 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(store.counters().entity_attributes_received, 4);
     assert_eq!(store.counters().entity_attribute_updates_applied, 2);
     assert_eq!(store.counters().entity_attribute_updates_ignored, 1);
+    assert_eq!(store.counters().entity_motion_updates_received, 2);
     assert_eq!(store.counters().entity_motion_updates_applied, 1);
+    assert_eq!(store.counters().entity_motion_updates_ignored, 1);
+    assert_eq!(store.counters().entity_head_rotations_received, 2);
     assert_eq!(store.counters().entity_head_rotations_applied, 1);
+    assert_eq!(store.counters().entity_head_rotations_ignored, 1);
 
     assert_eq!(
         store.apply_remove_entities(ProtocolRemoveEntities {
@@ -3206,6 +3218,7 @@ fn tracks_entity_link_updates() {
 
     assert_eq!(store.counters().entity_link_updates_received, 5);
     assert_eq!(store.counters().entity_link_updates_applied, 4);
+    assert_eq!(store.counters().entity_link_updates_ignored, 1);
 }
 
 fn minecart_step(
