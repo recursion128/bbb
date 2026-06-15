@@ -614,15 +614,6 @@ fn sync_server_link_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.server_link_packets = world_counters.server_link_packets;
     counters.server_link_invalid_entries = world_counters.server_link_invalid_entries;
     counters.server_links_tracked = world_counters.server_links_tracked;
-    counters.server_links = world
-        .server_links()
-        .iter()
-        .map(|link| bbb_control::ServerLinkState {
-            label: link.label.clone(),
-            url: link.url.clone(),
-            known_type: link.known_type.clone(),
-        })
-        .collect();
 }
 
 fn sync_client_stats_counters(counters: &mut NetCounters, world: &WorldStore) {

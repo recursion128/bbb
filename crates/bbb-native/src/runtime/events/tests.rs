@@ -752,21 +752,6 @@ fn server_links_event_updates_world_and_snapshot_counters() {
             },
         ]
     );
-    assert_eq!(
-        counters.server_links,
-        vec![
-            bbb_control::ServerLinkState {
-                label: "known_server_link.support".to_string(),
-                url: "https://example.invalid/support".to_string(),
-                known_type: Some("support".to_string()),
-            },
-            bbb_control::ServerLinkState {
-                label: "Rules".to_string(),
-                url: "http://example.invalid/rules".to_string(),
-                known_type: None,
-            },
-        ]
-    );
     let world_counters = world.counters();
     assert_eq!(world_counters.server_link_packets, 1);
     assert_eq!(world_counters.server_link_invalid_entries, 1);

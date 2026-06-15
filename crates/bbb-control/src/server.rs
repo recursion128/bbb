@@ -499,8 +499,9 @@ mod tests {
         EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue, GameRuleValues,
         InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
         OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType,
-        SetActionBarText, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
+        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText,
+        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent,
+        SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
         TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d, WaypointData,
         WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
@@ -1330,6 +1331,12 @@ mod tests {
                     brand: "vanilla".to_string(),
                 },
             });
+            store.apply_server_links(ServerLinks {
+                links: vec![ServerLinkEntry {
+                    link_type: ServerLinkType::Known(ServerLinkKnownType::Support),
+                    url: "https://example.invalid/support".to_string(),
+                }],
+            });
             snapshot.write().unwrap().world_store = store;
         }
 
@@ -1356,6 +1363,15 @@ mod tests {
         assert_eq!(presentation["last_custom_payload"]["id"], "minecraft:brand");
         assert_eq!(presentation["last_custom_payload"]["kind"], "brand");
         assert_eq!(presentation["last_custom_payload"]["brand"], "vanilla");
+        assert_eq!(
+            presentation["server_links"][0]["label"],
+            "known_server_link.support"
+        );
+        assert_eq!(
+            presentation["server_links"][0]["url"],
+            "https://example.invalid/support"
+        );
+        assert_eq!(presentation["server_links"][0]["known_type"], "support");
     }
 
     #[test]

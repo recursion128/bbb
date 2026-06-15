@@ -106,7 +106,6 @@ pub struct NetCounters {
     pub simulation_distance: Option<i32>,
     pub world_time: Option<WorldTime>,
     pub weather: WeatherState,
-    pub server_links: Vec<ServerLinkState>,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub last_custom_chat_completion: Option<CustomChatCompletionState>,
@@ -678,13 +677,6 @@ impl Default for CameraState {
             entity_known: true,
         }
     }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ServerLinkState {
-    pub label: String,
-    pub url: String,
-    pub known_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
