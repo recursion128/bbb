@@ -95,6 +95,10 @@ Known priority areas:
   should exist.
 - Keep offline probes aligned with online event handling; play/configuration
   packets with world apply APIs should stay covered by probe regression tests.
+- Configuration Code of Conduct text is recorded in world UI state and native
+  control counters derive from it. Owner: `bbb-world` + `bbb-native`; status:
+  partial; next action: decide whether to model vanilla duplicate-packet errors
+  and persisted accepted-text hash before adding interactive UI.
 - Keep audio split into world-observed audio events and the Kira-backed
   `bbb-audio` playback runtime.
 - Native crosshair entity interaction is partially wired: `bbb-world` exposes

@@ -59,8 +59,8 @@ pub(super) fn apply_control_projection_event(
             sync_enabled_feature_counters(counters, world);
         }
         NetEvent::CodeOfConduct { text } => {
-            counters.last_code_of_conduct_len = text.len();
-            counters.code_of_conduct_packets += 1;
+            world.apply_code_of_conduct(text);
+            sync_client_ui_counters(counters, world);
         }
         NetEvent::CustomChatCompletions(update) => {
             world.apply_custom_chat_completions(update);
@@ -755,6 +755,8 @@ fn sync_client_ui_counters(counters: &mut NetCounters, world: &WorldStore) {
     counters.low_disk_space_warnings = world_counters.low_disk_space_warnings;
     counters.clear_dialog_packets = world_counters.clear_dialog_packets;
     counters.show_dialog_packets = world_counters.show_dialog_packets;
+    counters.code_of_conduct_packets = world_counters.code_of_conduct_packets;
+    counters.last_code_of_conduct_len = world_counters.last_code_of_conduct_len;
     counters.mount_screen_open_packets = world_counters.mount_screen_open_packets;
     counters.open_book_packets = world_counters.open_book_packets;
     counters.open_sign_editor_packets = world_counters.open_sign_editor_packets;

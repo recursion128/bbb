@@ -82,9 +82,10 @@ impl ProbeContext {
             ConfigurationClientbound::ShowDialog(update) => {
                 self.world.apply_show_dialog(update);
             }
-            ConfigurationClientbound::CodeOfConduct { .. } => {
+            ConfigurationClientbound::CodeOfConduct { text } => {
                 let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
                 self.conn.send_packet(id, &payload).await?;
+                self.world.apply_code_of_conduct(text);
             }
             ConfigurationClientbound::Unknown { .. } => {}
         }
@@ -169,6 +170,12 @@ mod tests {
             }))
             .await
             .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::CodeOfConduct {
+                text: "Keep the server friendly.".to_string(),
+            })
+            .await
+            .unwrap();
 
         assert_eq!(
             probe.world.server_brand(),
@@ -209,6 +216,10 @@ mod tests {
                 raw_dialog_payload_len: 0,
             })
         );
+        assert_eq!(
+            probe.world.last_code_of_conduct().unwrap().text,
+            "Keep the server friendly."
+        );
 
         probe
             .handle_configuration_packet(ConfigurationClientbound::ResourcePackPop(
@@ -221,7 +232,7 @@ mod tests {
             .await
             .unwrap();
 
-        let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
+        let report = probe.finish(9, ChunkPos { x: 0, z: 0 });
         assert!(report.world.resource_packs().is_empty());
         assert!(report.world.current_dialog().is_none());
         assert_eq!(report.world_counters.custom_payload_packets, 1);
@@ -234,6 +245,11 @@ mod tests {
         assert_eq!(report.world_counters.transfer_packets, 1);
         assert_eq!(report.world_counters.show_dialog_packets, 1);
         assert_eq!(report.world_counters.clear_dialog_packets, 1);
+        assert_eq!(report.world_counters.code_of_conduct_packets, 1);
+        assert_eq!(
+            report.world_counters.last_code_of_conduct_len,
+            "Keep the server friendly.".len()
+        );
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {

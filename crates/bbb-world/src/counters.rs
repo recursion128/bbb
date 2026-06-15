@@ -44,6 +44,10 @@ pub struct WorldCounters {
     #[serde(default)]
     pub ticking_step_packets: usize,
     #[serde(default)]
+    pub code_of_conduct_packets: usize,
+    #[serde(default)]
+    pub last_code_of_conduct_len: usize,
+    #[serde(default)]
     pub player_abilities_packets: usize,
     #[serde(default)]
     pub player_health_packets: usize,

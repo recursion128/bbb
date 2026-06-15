@@ -15,6 +15,8 @@ pub struct ClientUiState {
     #[serde(default)]
     pub current_dialog: Option<DialogState>,
     #[serde(default)]
+    pub last_code_of_conduct: Option<CodeOfConductState>,
+    #[serde(default)]
     pub last_mount_screen: Option<MountScreenState>,
     #[serde(default)]
     pub last_open_book: Option<OpenBookState>,
@@ -31,6 +33,11 @@ pub struct DialogState {
     pub holder_kind: String,
     pub registry_id: Option<i32>,
     pub raw_dialog_payload_len: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CodeOfConductState {
+    pub text: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +87,12 @@ impl WorldStore {
         self.client_ui.current_dialog = Some(DialogState::from_packet(packet));
     }
 
+    pub fn apply_code_of_conduct(&mut self, text: String) {
+        self.counters.code_of_conduct_packets += 1;
+        self.counters.last_code_of_conduct_len = text.len();
+        self.client_ui.last_code_of_conduct = Some(CodeOfConductState { text });
+    }
+
     pub fn apply_mount_screen_open(&mut self, packet: ProtocolMountScreenOpen) {
         self.counters.mount_screen_open_packets += 1;
         self.client_ui.last_mount_screen = Some(MountScreenState {
@@ -125,6 +138,10 @@ impl WorldStore {
 
     pub fn current_dialog(&self) -> Option<&DialogState> {
         self.client_ui.current_dialog.as_ref()
+    }
+
+    pub fn last_code_of_conduct(&self) -> Option<&CodeOfConductState> {
+        self.client_ui.last_code_of_conduct.as_ref()
     }
 
     pub fn low_disk_space_warning_count(&self) -> usize {
@@ -222,6 +239,25 @@ mod tests {
         assert_eq!(counters.low_disk_space_warnings, 1);
         assert_eq!(counters.show_dialog_packets, 2);
         assert_eq!(counters.clear_dialog_packets, 1);
+    }
+
+    #[test]
+    fn tracks_code_of_conduct_text() {
+        let mut store = WorldStore::new();
+
+        store.apply_code_of_conduct("Keep the server friendly.".to_string());
+
+        assert_eq!(
+            store.last_code_of_conduct(),
+            Some(&CodeOfConductState {
+                text: "Keep the server friendly.".to_string(),
+            })
+        );
+        assert_eq!(store.counters().code_of_conduct_packets, 1);
+        assert_eq!(
+            store.counters().last_code_of_conduct_len,
+            "Keep the server friendly.".len()
+        );
     }
 
     #[test]

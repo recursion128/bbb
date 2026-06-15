@@ -374,6 +374,17 @@ fn configuration_state_events_update_snapshot_counters() {
         counters.last_code_of_conduct_len,
         "Keep the server friendly.".len()
     );
+    assert_eq!(
+        world.last_code_of_conduct(),
+        Some(&bbb_world::CodeOfConductState {
+            text: "Keep the server friendly.".to_string(),
+        })
+    );
+    assert_eq!(world.counters().code_of_conduct_packets, 1);
+    assert_eq!(
+        world.counters().last_code_of_conduct_len,
+        counters.last_code_of_conduct_len
+    );
 }
 
 #[test]

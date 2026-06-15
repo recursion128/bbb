@@ -42,8 +42,8 @@ pub use crate::client::server_presentation::{
     ServerPresentationState, TransferTargetState,
 };
 pub use crate::client::ui::{
-    ClientUiState, DialogState, GhostRecipeState, MountScreenState, OpenBookState,
-    OpenSignEditorState, PongResponseState,
+    ClientUiState, CodeOfConductState, DialogState, GhostRecipeState, MountScreenState,
+    OpenBookState, OpenSignEditorState, PongResponseState,
 };
 pub use crate::client::waypoints::{
     ClientWaypointsState, WaypointDataState, WaypointEventState, WaypointState, WaypointVec3iState,
