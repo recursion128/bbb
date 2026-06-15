@@ -4043,16 +4043,6 @@ fn world_time_and_weather_update_snapshot_and_clear_color() {
         }
     );
 
-    assert_eq!(
-        counters.world_time,
-        Some(bbb_control::WorldTime {
-            game_time: 123,
-            day_time: 6000,
-            clock_updates: 1,
-        })
-    );
-    assert!(counters.weather.raining);
-    assert_eq!(counters.weather.rain_level, 0.5);
     assert_eq!(counters.ticking.tick_rate, 1.0);
     assert!(counters.ticking.frozen);
     assert_eq!(counters.ticking.frozen_ticks_to_run, 7);

@@ -6,7 +6,7 @@ mod snapshot;
 pub use api::{ControlRequest, ControlResponse};
 pub use net::{
     CameraState, ClientTickingState, DefaultSpawn, NetCounters, NetVec3, PlayerAbilities,
-    PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose, WeatherState, WorldTime,
+    PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose,
 };
 pub use renderer::RendererCounters;
 pub use snapshot::{

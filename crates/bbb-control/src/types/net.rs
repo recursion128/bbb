@@ -104,8 +104,6 @@ pub struct NetCounters {
     pub selected_hotbar_slot: u8,
     pub default_spawn: Option<DefaultSpawn>,
     pub simulation_distance: Option<i32>,
-    pub world_time: Option<WorldTime>,
-    pub weather: WeatherState,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub player_position_packets: usize,
@@ -636,13 +634,6 @@ pub struct DefaultSpawn {
     pub pitch: f32,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct WorldTime {
-    pub game_time: i64,
-    pub day_time: i64,
-    pub clock_updates: usize,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ClientTickingState {
     pub tick_rate: f32,
@@ -673,27 +664,6 @@ impl Default for CameraState {
             entity_id: None,
             follows_player: true,
             entity_known: true,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct WeatherState {
-    pub raining: bool,
-    pub rain_level: f32,
-    pub thunder_level: f32,
-    pub last_game_event_id: Option<u8>,
-    pub last_game_event_param: f32,
-}
-
-impl Default for WeatherState {
-    fn default() -> Self {
-        Self {
-            raining: false,
-            rain_level: 0.0,
-            thunder_level: 0.0,
-            last_game_event_id: None,
-            last_game_event_param: 0.0,
         }
     }
 }

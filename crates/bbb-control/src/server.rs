@@ -362,6 +362,10 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.last_map_color_patch" => {
             serde_json::to_value(snapshot_guard.world_store.last_map_color_patch())
         }
+        "world.level_clock" => Ok(serde_json::json!({
+            "world_time": snapshot_guard.world_store.world_time(),
+            "weather": snapshot_guard.world_store.weather(),
+        })),
         "world.server_presentation" => {
             serde_json::to_value(snapshot_guard.world_store.presentation())
         }
@@ -503,15 +507,15 @@ mod tests {
         BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, CustomChatCompletions,
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
         DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
-        EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue, GameRuleValues,
+        EntityPositionSync as ProtocolEntityPositionSync, GameEvent, GameRuleValue, GameRuleValues,
         InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
-        OpenSignEditor, PlaceGhostRecipe, PlayerCombatKill, PongResponse, RecipeDisplayType,
-        SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
-        SetActionBarText, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
-        TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements,
-        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        OpenSignEditor, PlaceGhostRecipe, PlayTime, PlayerCombatKill, PongResponse,
+        RecipeDisplayType, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
+        ServerLinkType, ServerLinks, SetActionBarText, SetSubtitleText, SetTitleText,
+        SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        StopSound, SystemChat, TagQuery, TrackedWaypoint, TrackedWaypointPacket, Transfer,
+        UpdateAdvancements, Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier,
+        WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1389,6 +1393,44 @@ mod tests {
         assert_eq!(patch["start_y"], 4);
         assert_eq!(patch["width"], 2);
         assert_eq!(patch["height"], 2);
+    }
+
+    #[test]
+    fn level_clock_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_world_time(PlayTime {
+                game_time: 123,
+                clock_updates: vec![bbb_protocol::packets::ClockUpdate {
+                    clock_id: 0,
+                    total_ticks: 6000,
+                    partial_tick: 0.0,
+                    rate: 1.0,
+                }],
+            });
+            store.apply_game_event(GameEvent {
+                event_id: 7,
+                param: 0.5,
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.level_clock".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let clock = response.result.unwrap();
+        assert_eq!(clock["world_time"]["game_time"], 123);
+        assert_eq!(clock["world_time"]["day_time"], 6000);
+        assert_eq!(clock["world_time"]["clock_updates"][0]["total_ticks"], 6000);
+        assert_eq!(clock["weather"]["raining"], true);
+        assert_eq!(clock["weather"]["rain_level"], 0.5);
     }
 
     #[test]
