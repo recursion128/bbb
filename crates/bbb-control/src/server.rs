@@ -436,7 +436,6 @@ mod tests {
             store.insert_decoded_chunk(single_section_chunk());
 
             let mut guard = snapshot.write().unwrap();
-            guard.net.first_chunk = Some(ChunkPos { x: 1, z: -2 });
             guard.world = store.counters();
             guard.world_store = store;
         }

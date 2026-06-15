@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkViewState,
-    ClientAdvancementsState, ClientAudioState, ClientChatState, ClientCombatState,
+    BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkPos,
+    ChunkViewState, ClientAdvancementsState, ClientAudioState, ClientChatState, ClientCombatState,
     ClientDebugGameState, ClientDebugQueryState, ClientEffectsState, ClientFeatureState,
     ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState, LevelEventRecord,
@@ -27,6 +27,8 @@ pub struct WorldStore {
     pub(crate) ticking: crate::WorldTickingState,
     pub(crate) registries: RegistrySet,
     pub(crate) chunks: Vec<ChunkColumn>,
+    #[serde(default)]
+    pub(crate) first_chunk: Option<ChunkPos>,
     #[serde(default)]
     pub(crate) chunk_view: ChunkViewState,
     #[serde(default)]

@@ -346,10 +346,12 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::Login(login) => {
                 world.apply_login(&login);
                 sync_local_player_counters(counters, world);
+                sync_chunk_counters(counters, world);
             }
             NetEvent::Respawn(respawn) => {
                 world.apply_respawn(&respawn);
                 sync_local_player_counters(counters, world);
+                sync_chunk_counters(counters, world);
             }
             NetEvent::PlayerPosition(update) => {
                 apply_player_position_update(counters, world, update);
@@ -434,8 +436,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::LevelChunkWithLight(chunk) => {
                 match world.insert_level_chunk_with_light(chunk) {
-                    Ok(pos) => {
-                        counters.first_chunk.get_or_insert(pos);
+                    Ok(_) => {
                         sync_chunk_counters(counters, world);
                     }
                     Err(err) => {
@@ -492,6 +493,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
 
 fn sync_chunk_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
+    counters.first_chunk = world.first_chunk();
     counters.chunk_cache_center = world.chunk_cache_center();
     counters.chunk_cache_radius = world.chunk_cache_radius();
     counters.chunks_received = world_counters.chunks_received;

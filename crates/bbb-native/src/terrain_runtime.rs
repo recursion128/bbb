@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-use bbb_control::NetCounters;
 use bbb_renderer::terrain::{
     build_terrain_mesh_layers_with_atlas, TerrainCell, TerrainChunkSnapshot, TerrainFluid,
     TerrainFluidKind, TerrainLight, TerrainMaterialClass, TerrainTint,
@@ -86,7 +85,6 @@ fn advance_texture_animation_tick(upload: &mut TerrainUploadState, now: Instant)
 pub(crate) fn maybe_upload_decoded_terrain(
     world: &WorldStore,
     renderer: &mut bbb_renderer::Renderer,
-    counters: &NetCounters,
     upload: &mut TerrainUploadState,
     textures: &TerrainTextureState,
 ) {
@@ -120,16 +118,7 @@ pub(crate) fn maybe_upload_decoded_terrain(
         return;
     }
 
-    let center = world
-        .chunk_cache_center()
-        .or(counters.first_chunk)
-        .unwrap_or_else(|| {
-            world
-                .chunk_positions()
-                .into_iter()
-                .next()
-                .unwrap_or(ChunkPos { x: 0, z: 0 })
-        });
+    let center = terrain_upload_center(world);
     let mut positions = world.chunk_positions();
     positions.sort_by_key(|pos| chunk_distance_key(*pos, center));
 
@@ -155,6 +144,19 @@ pub(crate) fn maybe_upload_decoded_terrain(
     upload.light_updates_applied = world_counters.light_updates_applied;
     upload.biome_updates_applied = world_counters.biome_updates_applied;
     upload.uploaded_chunks = chunk_count;
+}
+
+fn terrain_upload_center(world: &WorldStore) -> ChunkPos {
+    world
+        .chunk_cache_center()
+        .or(world.first_chunk())
+        .unwrap_or_else(|| {
+            world
+                .chunk_positions()
+                .into_iter()
+                .next()
+                .unwrap_or(ChunkPos { x: 0, z: 0 })
+        })
 }
 
 fn chunk_distance_key(pos: ChunkPos, center: ChunkPos) -> i64 {
@@ -242,6 +244,8 @@ fn renderer_fluid(fluid: bbb_world::TerrainFluidState) -> TerrainFluid {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::packets::SetChunkCacheCenter;
+    use bbb_world::{ChunkColumn, ChunkState, LightData};
 
     #[test]
     fn renderer_fluid_preserves_world_fluid_state() {
@@ -289,5 +293,34 @@ mod tests {
             advance_texture_animation_tick(&mut upload, start + Duration::from_millis(299)),
             None
         );
+    }
+
+    #[test]
+    fn terrain_upload_center_is_derived_from_world_chunk_state() {
+        let mut world = WorldStore::new();
+        assert_eq!(terrain_upload_center(&world), ChunkPos { x: 0, z: 0 });
+
+        world.insert_decoded_chunk(test_chunk(ChunkPos { x: 5, z: 6 }));
+        assert_eq!(terrain_upload_center(&world), ChunkPos { x: 5, z: 6 });
+
+        world.insert_decoded_chunk(test_chunk(ChunkPos { x: -1, z: 2 }));
+        assert_eq!(terrain_upload_center(&world), ChunkPos { x: 5, z: 6 });
+
+        world.apply_set_chunk_cache_center(SetChunkCacheCenter {
+            chunk_x: -4,
+            chunk_z: 7,
+        });
+        assert_eq!(terrain_upload_center(&world), ChunkPos { x: -4, z: 7 });
+    }
+
+    fn test_chunk(pos: ChunkPos) -> ChunkColumn {
+        ChunkColumn {
+            pos,
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: Vec::new(),
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        }
     }
 }

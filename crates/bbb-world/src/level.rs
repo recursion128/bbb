@@ -201,6 +201,7 @@ impl WorldStore {
             .is_some_and(|level| level.dimension != spawn_info.dimension);
         if self.dimension != profile.dimension || dimension_key_changed {
             self.chunks.clear();
+            self.first_chunk = None;
             self.block_destructions.clear();
             self.block_events.clear();
             self.level_events.clear();
@@ -353,6 +354,7 @@ mod tests {
             height: 256,
         });
         store.chunks.push(stale_chunk());
+        store.first_chunk = Some(ChunkPos { x: 1, z: -2 });
         store.apply_add_entity(protocol_add_entity(123));
 
         store.apply_respawn(&ProtocolRespawn {
@@ -371,6 +373,7 @@ mod tests {
             data_to_keep: 3,
         });
         assert_eq!(store.chunk_count(), 1);
+        assert_eq!(store.first_chunk(), Some(ChunkPos { x: 1, z: -2 }));
         assert_eq!(store.entity_count(), 1);
 
         store.apply_respawn(&ProtocolRespawn {
@@ -397,6 +400,7 @@ mod tests {
             }
         );
         assert_eq!(store.chunk_count(), 0);
+        assert_eq!(store.first_chunk(), None);
         assert_eq!(store.entity_count(), 0);
         assert_eq!(store.counters().entities_tracked, 0);
         assert_eq!(store.counters().respawns_received, 2);

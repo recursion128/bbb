@@ -178,13 +178,7 @@ pub(crate) fn pump_network_and_terrain(
     renderer.set_camera_pose(player_pose.map(camera_pose_from_player));
     renderer.set_selection_outline(selection_outline_from_crosshair(world, player_pose));
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
-    maybe_upload_decoded_terrain(
-        world,
-        renderer,
-        net_counters,
-        terrain_upload,
-        terrain_textures,
-    );
+    maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     if let Some(audio_events) = audio_events.as_mut() {
         audio_events.tick_entity_sound_positions(audio_scene_command_from_world(world));
     }

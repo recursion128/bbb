@@ -164,6 +164,7 @@ fn terrain_chunk_events_update_world_and_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         7
     );
+    assert_eq!(world.first_chunk(), Some(ChunkPos { x: 1, z: -2 }));
     assert_eq!(counters.first_chunk, Some(ChunkPos { x: 1, z: -2 }));
     assert!(world.probe_chunk(ChunkPos { x: 1, z: -2 }).is_none());
 
@@ -190,6 +191,37 @@ fn terrain_chunk_events_update_world_and_snapshot_counters() {
     assert_chunk_counter!(biome_updates_applied, 1);
     assert_chunk_counter!(chunk_forgets_received, 1);
     assert_chunk_counter!(chunks_forgotten, 1);
+}
+
+#[test]
+fn respawn_clears_projected_first_chunk_when_world_changes() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+
+    let mut spawn_info = protocol_play_login(9).common_spawn_info;
+    spawn_info.dimension_type_id = 1;
+    spawn_info.dimension = "minecraft:the_nether".to_string();
+    tx.try_send(NetEvent::Respawn(Respawn {
+        common_spawn_info: spawn_info,
+        data_to_keep: 0,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+    assert_eq!(world.first_chunk(), None);
+    assert_eq!(counters.first_chunk, None);
+    assert_eq!(counters.respawns_received, 1);
+    assert_eq!(counters.chunks_received, 1);
+    assert_eq!(counters.chunks_decoded, 1);
 }
 
 #[test]

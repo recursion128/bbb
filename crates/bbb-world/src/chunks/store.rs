@@ -37,6 +37,7 @@ impl WorldStore {
 
     pub fn insert_decoded_chunk(&mut self, column: ChunkColumn) {
         let pos = column.pos;
+        self.first_chunk.get_or_insert(pos);
         self.counters.chunks_received += 1;
         self.counters.chunks_decoded += 1;
         self.counters.sections_decoded += column.sections.len();
@@ -181,6 +182,10 @@ impl WorldStore {
 
     pub fn chunk_cache_center(&self) -> Option<ChunkPos> {
         self.chunk_view.center
+    }
+
+    pub fn first_chunk(&self) -> Option<ChunkPos> {
+        self.first_chunk
     }
 
     pub fn chunk_cache_radius(&self) -> Option<i32> {

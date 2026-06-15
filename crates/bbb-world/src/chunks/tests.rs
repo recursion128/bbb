@@ -30,6 +30,7 @@ fn decodes_level_chunk_with_light_structure() {
     let chunk = store.probe_chunk(pos).unwrap();
 
     assert_eq!(pos, ChunkPos { x: 1, z: -2 });
+    assert_eq!(store.first_chunk(), Some(ChunkPos { x: 1, z: -2 }));
     assert_eq!(chunk.state, ChunkState::Decoded);
     assert_eq!(chunk.heightmaps.len(), 1);
     assert_eq!(chunk.heightmaps[0].kind_id, 1);
@@ -47,6 +48,26 @@ fn decodes_level_chunk_with_light_structure() {
     assert_eq!(chunk.light.sky_updates, vec![vec![1; LIGHT_ARRAY_BYTES]]);
     assert_eq!(store.counters().chunks_decoded, 1);
     assert_eq!(store.counters().sections_decoded, 1);
+}
+
+#[test]
+fn first_chunk_tracks_first_decoded_chunk_and_survives_forget() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    store
+        .insert_level_chunk_with_light(synthetic_level_chunk_packet())
+        .unwrap();
+
+    assert_eq!(store.first_chunk(), Some(ChunkPos { x: 2, z: -3 }));
+
+    assert!(store.forget_chunk(ChunkPos { x: 2, z: -3 }));
+    assert_eq!(store.first_chunk(), Some(ChunkPos { x: 2, z: -3 }));
 }
 
 #[test]
