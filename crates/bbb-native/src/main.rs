@@ -13,6 +13,8 @@ mod code_of_conduct;
 mod crosshair;
 mod hud_assets;
 mod input;
+mod particle_registry;
+mod particle_runtime;
 mod runtime;
 mod startup;
 mod terrain_runtime;
@@ -24,6 +26,7 @@ use input::{
     handle_focus_change, handle_key_input, handle_mouse_input, handle_mouse_motion,
     ClientInputState,
 };
+use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     clear_color_for_world, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
     snapshot_is_running, take_control_screenshot, ClientAnimationTickState,
@@ -81,6 +84,14 @@ fn main() -> Result<()> {
             })
             .ok()
     });
+    let mut particle_runtime = pack_roots.as_ref().and_then(|roots| {
+        NativeParticleRuntime::load(roots)
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native particle runtime");
+                err
+            })
+            .ok()
+    });
 
     let event_loop = create_event_loop()?;
     let window = build_window(&event_loop)?;
@@ -132,6 +143,9 @@ fn main() -> Result<()> {
                         audio_runtime
                             .as_mut()
                             .map(|runtime| runtime as &mut dyn AudioEventSink),
+                        particle_runtime
+                            .as_mut()
+                            .map(|runtime| runtime as &mut dyn ParticleEventSink),
                         &mut input,
                         &mut world,
                         &mut renderer,
@@ -205,6 +219,9 @@ fn main() -> Result<()> {
                     audio_runtime
                         .as_mut()
                         .map(|runtime| runtime as &mut dyn AudioEventSink),
+                    particle_runtime
+                        .as_mut()
+                        .map(|runtime| runtime as &mut dyn ParticleEventSink),
                     &mut input,
                     &mut world,
                     &mut renderer,

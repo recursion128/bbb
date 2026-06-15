@@ -31,4 +31,14 @@ pub struct RendererCounters {
     pub cutout_faces: usize,
     pub translucent_faces: usize,
     pub culled_faces: usize,
+    #[serde(default)]
+    pub particle_spawn_batches: u64,
+    #[serde(default)]
+    pub particle_spawn_commands: u64,
+    #[serde(default)]
+    pub particle_missing_definitions: u64,
+    #[serde(default)]
+    pub particle_unknown_types: u64,
+    #[serde(default)]
+    pub last_particle_spawn_count: usize,
 }

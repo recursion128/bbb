@@ -1,4 +1,5 @@
 use super::*;
+use crate::particle_runtime::ParticleEventSink;
 use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
 use bbb_audio::{
     AudioCategory, AudioCommand, AudioCommandResolver, AudioResolveError, SoundEventRegistry,
@@ -2170,6 +2171,55 @@ fn world_effect_events_update_snapshot_counters() {
 }
 
 #[test]
+fn level_particles_emit_particle_runtime_batch_and_snapshot_counters() {
+    let packet = LevelParticles {
+        override_limiter: false,
+        always_show: true,
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 64.5,
+            z: -3.25,
+        },
+        offset: ProtocolVec3d {
+            x: f64::from(0.1_f32),
+            y: f64::from(0.2_f32),
+            z: f64::from(0.3_f32),
+        },
+        max_speed: 1.5,
+        count: 0,
+        particle: ParticlePayload {
+            particle_type_id: 4,
+            raw_options: vec![0xcc],
+        },
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelParticles(packet.clone()))
+        .unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+        ),
+        1
+    );
+
+    assert_eq!(particles.packets, vec![packet]);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().level_particles_packets, 1);
+    assert_eq!(counters.level_particles_packets, 1);
+    assert_eq!(counters.last_level_particles.as_ref().unwrap().count, 0);
+}
+
+#[test]
 fn projectile_power_updates_world_entity_state_and_snapshot_counters() {
     const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 
@@ -3605,6 +3655,27 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
     fn tick_entity_sound_positions(&mut self, command: bbb_audio::TickEntitySoundPositionsCommand) {
         self.commands
             .push(AudioCommand::TickEntitySoundPositions(command));
+    }
+}
+
+#[derive(Default)]
+struct RecordingParticleSink {
+    packets: Vec<LevelParticles>,
+    batches: Vec<bbb_renderer::ParticleSpawnBatch>,
+}
+
+impl ParticleEventSink for RecordingParticleSink {
+    fn spawn_level_particles(
+        &mut self,
+        packet: &LevelParticles,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.packets.push(packet.clone());
+        let batch = bbb_renderer::ParticleSpawnBatch {
+            missing_definition_count: 1,
+            ..bbb_renderer::ParticleSpawnBatch::default()
+        };
+        self.batches.push(batch.clone());
+        batch
     }
 }
 

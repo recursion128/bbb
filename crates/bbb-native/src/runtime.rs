@@ -17,6 +17,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::selection_outline_from_crosshair,
     input::{advance_player_input, ClientInputState},
+    particle_runtime::ParticleEventSink,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
         TerrainUploadState,
@@ -129,6 +130,7 @@ pub(crate) fn pump_network_and_terrain(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     audio_events: Option<&mut dyn AudioEventSink>,
+    particle_events: Option<&mut dyn ParticleEventSink>,
     input: &mut ClientInputState,
     world: &mut WorldStore,
     renderer: &mut bbb_renderer::Renderer,
@@ -140,16 +142,22 @@ pub(crate) fn pump_network_and_terrain(
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
 ) -> bool {
     let mut audio_events = audio_events;
+    let mut particle_events = particle_events;
     if let Some(rx) = net_events.as_mut() {
         let audio_events_for_drain = audio_events
             .as_mut()
             .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
-        events::drain_net_events_with_audio(
+        let particle_events_for_drain = particle_events
+            .as_mut()
+            .map(|particle_events| &mut **particle_events as &mut dyn ParticleEventSink);
+        events::drain_net_events_with_sinks(
             rx,
             world,
             net_counters,
             net_commands,
             audio_events_for_drain,
+            particle_events_for_drain,
+            Some(renderer),
         );
     }
     pump_control_net_requests(snapshot, net_commands, world, code_of_conduct);

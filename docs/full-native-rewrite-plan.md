@@ -257,6 +257,9 @@ Deliverables:
   light, and atlas metadata.
 - Entity rendering extraction from `hecs` components.
 - Particle runtime for visual effects and particle packets.
+- Level-particle packets resolve through vanilla 26.1 particle type order and
+  `bbb-pack` particle definitions into renderer-owned spawn batches before GPU
+  particle drawing is added.
 - HUD, title/action bar, scoreboard, chat, debug overlays, selection outline,
   camera pose, screenshots, and interaction feedback.
 - Renderer caches and GPU resources remain outside `bbb-world`.

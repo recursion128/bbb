@@ -384,6 +384,9 @@ Target ownership:
 - `bbb-world` may record lightweight observed-event state such as
   `last_explosion`, `last_level_particles`, packet counters, and optional
   bounded history.
+- `bbb-native` resolves `LevelParticles` packets through vanilla 26.1 particle
+  type order and `bbb-pack` particle definitions, then submits renderer-owned
+  spawn batches.
 - `bbb-renderer` owns actual particle creation, culling, settings, distance
   limits, GPU buffers, and lifetime ticking.
 - Local-player knockback from explosion is a gameplay/client movement semantic

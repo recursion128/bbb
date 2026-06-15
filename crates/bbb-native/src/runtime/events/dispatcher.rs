@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 
 use crate::audio_runtime::AudioEventSink;
 use crate::input::queue_vehicle_move_command;
+use crate::particle_runtime::ParticleEventSink;
 
 use super::client_state::*;
 use super::control_state::{
@@ -17,21 +18,35 @@ use super::control_state::{
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
+#[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
     rx: &mut mpsc::Receiver<NetEvent>,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) -> usize {
-    drain_net_events_with_audio(rx, world, counters, net_commands, None)
+    drain_net_events_with_sinks(rx, world, counters, net_commands, None, None, None)
 }
 
+#[cfg(test)]
 pub(in crate::runtime) fn drain_net_events_with_audio(
     rx: &mut mpsc::Receiver<NetEvent>,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: Option<&mut dyn AudioEventSink>,
+) -> usize {
+    drain_net_events_with_sinks(rx, world, counters, net_commands, audio_events, None, None)
+}
+
+pub(in crate::runtime) fn drain_net_events_with_sinks(
+    rx: &mut mpsc::Receiver<NetEvent>,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
     mut audio_events: Option<&mut dyn AudioEventSink>,
+    mut particle_events: Option<&mut dyn ParticleEventSink>,
+    mut particle_renderer: Option<&mut bbb_renderer::Renderer>,
 ) -> usize {
     let mut drained = 0;
     while drained < 4096 {
@@ -44,6 +59,10 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
             }
         };
         drained += 1;
+
+        if let NetEvent::LevelParticles(update) = &event {
+            emit_level_particles(&mut particle_events, &mut particle_renderer, update);
+        }
 
         let Some(event) = apply_control_projection_event(event, counters, world) else {
             continue;
@@ -521,6 +540,19 @@ fn emit_stop_sound(
 ) {
     if let Some(audio_events) = audio_events.as_deref_mut() {
         audio_events.stop_sound(state);
+    }
+}
+
+fn emit_level_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    packet: &bbb_protocol::packets::LevelParticles,
+) {
+    if let Some(particle_events) = particle_events.as_deref_mut() {
+        let batch = particle_events.spawn_level_particles(packet);
+        if let Some(renderer) = particle_renderer.as_deref_mut() {
+            renderer.submit_particle_spawns(batch);
+        }
     }
 }
 
