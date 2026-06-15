@@ -96,9 +96,13 @@ impl ProbeContext {
             PlayClientbound::MountScreenOpen(update) => {
                 self.world.apply_mount_screen_open(update);
             }
-            PlayClientbound::ChunkBatchStart => {}
-            PlayClientbound::ChunkBatchFinished { .. } => {
-                let (id, payload) = packets::encode_play_chunk_batch_received(9.0);
+            PlayClientbound::ChunkBatchStart => {
+                self.chunk_batch_size.on_batch_start();
+            }
+            PlayClientbound::ChunkBatchFinished { batch_size } => {
+                let desired_chunks_per_tick = self.chunk_batch_size.on_batch_finished(batch_size);
+                let (id, payload) =
+                    packets::encode_play_chunk_batch_received(desired_chunks_per_tick);
                 self.conn.send_packet(id, &payload).await?;
             }
             PlayClientbound::ContainerClose(update) => {
@@ -481,9 +485,12 @@ mod tests {
         RecipeDisplayType, RemoteDebugSampleType, ShowDialog, StatUpdate, TestInstanceBlockStatus,
         TickingState, TickingStep, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
     };
+    use bbb_protocol::{codec::Decoder, ids};
     use bbb_world::{BlockPos, ChunkPos};
     use bytes::BytesMut;
+    use std::time::Duration;
     use tokio::net::TcpListener;
+    use tokio::time::timeout;
 
     #[tokio::test]
     async fn probe_applies_debug_game_packets_to_world() {
@@ -626,6 +633,25 @@ mod tests {
         assert_eq!(report.world_counters.award_stats_entries_received, 2);
         assert_eq!(report.world_counters.last_award_stats_entry_count, 2);
         assert_eq!(report.world_counters.stats_tracked, 2);
+    }
+
+    #[tokio::test]
+    async fn probe_chunk_batch_feedback_uses_vanilla_calculator() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::ChunkBatchFinished { batch_size: 0 })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("chunk batch received packet should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHUNK_BATCH_RECEIVED);
+        let desired = Decoder::new(&payload).read_f32().unwrap();
+        assert_eq!(desired, 3.5);
     }
 
     #[tokio::test]

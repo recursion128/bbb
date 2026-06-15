@@ -93,9 +93,13 @@ impl EventStreamContext {
             PlayClientbound::MountScreenOpen(update) => {
                 emit(&self.events, NetEvent::MountScreenOpen(update)).await?;
             }
-            PlayClientbound::ChunkBatchStart => {}
-            PlayClientbound::ChunkBatchFinished { .. } => {
-                let (id, payload) = packets::encode_play_chunk_batch_received(9.0);
+            PlayClientbound::ChunkBatchStart => {
+                self.chunk_batch_size.on_batch_start();
+            }
+            PlayClientbound::ChunkBatchFinished { batch_size } => {
+                let desired_chunks_per_tick = self.chunk_batch_size.on_batch_finished(batch_size);
+                let (id, payload) =
+                    packets::encode_play_chunk_batch_received(desired_chunks_per_tick);
                 self.conn.send_packet(id, &payload).await?;
             }
             PlayClientbound::ContainerClose(update) => {

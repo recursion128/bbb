@@ -6,6 +6,7 @@ use bbb_world::{BlockPos, ChunkPos, WorldStore};
 use tokio::time::{timeout, Interval};
 
 use crate::{
+    chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
     driver::read_packet_or_send_play_tick,
     types::{ChunkProbeSummary, ConnectionOptions, ConnectionState, ProbeReport},
@@ -23,6 +24,7 @@ struct ProbeContext {
     player_position_state: PlayerPositionState,
     player_was_dead: bool,
     play_tick: Option<Interval>,
+    chunk_batch_size: ChunkBatchSizeCalculator,
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
 }
@@ -37,6 +39,7 @@ impl ProbeContext {
             player_position_state: PlayerPositionState::default(),
             player_was_dead: false,
             play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
         }

@@ -11,6 +11,7 @@ use tokio::{
 };
 
 use crate::{
+    chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
     driver::{read_packet_or_drive_connection, ConnectionDrive},
     types::{ConnectionOptions, ConnectionState, NetCommand, NetEvent},
@@ -29,6 +30,7 @@ struct EventStreamContext {
     player_position_state: PlayerPositionState,
     player_was_dead: bool,
     play_tick: Option<Interval>,
+    chunk_batch_size: ChunkBatchSizeCalculator,
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
     accepted_code_of_conduct_hash: Option<i32>,
@@ -54,6 +56,7 @@ pub async fn run_offline_event_stream(
         player_position_state: PlayerPositionState::default(),
         player_was_dead: false,
         play_tick: None,
+        chunk_batch_size: ChunkBatchSizeCalculator::new(),
         server_cookies: BTreeMap::new(),
         seen_code_of_conduct: false,
         accepted_code_of_conduct_hash: options.accepted_code_of_conduct_hash,
@@ -146,7 +149,7 @@ fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::ids;
+    use bbb_protocol::{codec::Decoder, ids, packets::PlayClientbound};
     use bbb_world::code_of_conduct_text_hash;
     use bytes::BytesMut;
     use std::time::Duration;
@@ -166,6 +169,7 @@ mod tests {
             player_position_state: PlayerPositionState::default(),
             player_was_dead: false,
             play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -209,6 +213,7 @@ mod tests {
             player_position_state: PlayerPositionState::default(),
             player_was_dead: false,
             play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: Some(code_of_conduct_text_hash(text)),
@@ -254,6 +259,7 @@ mod tests {
             player_position_state: PlayerPositionState::default(),
             player_was_dead: false,
             play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
@@ -288,6 +294,39 @@ mod tests {
         assert!(timeout(Duration::from_millis(50), server.read_packet())
             .await
             .is_err());
+    }
+
+    #[tokio::test]
+    async fn play_chunk_batch_feedback_uses_vanilla_calculator() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, _events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ChunkBatchFinished { batch_size: 0 })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("chunk batch received packet should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHUNK_BATCH_RECEIVED);
+        let desired = Decoder::new(&payload).read_f32().unwrap();
+        assert_eq!(desired, 3.5);
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {
