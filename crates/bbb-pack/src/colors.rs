@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use image::ImageReader;
 use serde::{Deserialize, Serialize};
 
-use crate::{rgba_len, rgba_offset, PackRoots};
+use crate::{resources::ResourceLocation, rgba_len, rgba_offset, PackRoots};
 
 fn parse_hex_rgb(color: &str) -> Result<[u8; 3]> {
     let color = color
@@ -115,17 +115,18 @@ impl BiomeColorCatalog {
     }
 
     pub fn load_vanilla_26_1(roots: &PackRoots) -> Result<Self> {
-        let biomes_dir = roots.biomes_dir();
+        let stack = roots.resource_stack();
         let mut profiles = Vec::new();
         for (id, stem) in VANILLA_BIOME_ORDER.iter().enumerate() {
-            let path = biomes_dir.join(format!("{stem}.json"));
-            if !path.exists() {
+            let location =
+                ResourceLocation::new("minecraft", format!("worldgen/biome/{stem}.json"))?;
+            let Some(resource) = stack.get_data_resource(&location) else {
                 continue;
-            }
-            let raw = std::fs::read_to_string(&path)
-                .with_context(|| format!("read biome json {}", path.display()))?;
+            };
+            let raw = std::fs::read_to_string(&resource.path)
+                .with_context(|| format!("read biome json {}", resource.path.display()))?;
             let raw: RawBiomeColorProfile = serde_json::from_str(&raw)
-                .with_context(|| format!("parse biome json {}", path.display()))?;
+                .with_context(|| format!("parse biome json {}", resource.path.display()))?;
             profiles.push(BiomeColorProfile::from_raw(
                 id as i32,
                 format!("minecraft:{stem}"),

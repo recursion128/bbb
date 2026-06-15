@@ -676,6 +676,70 @@ mod tests {
     }
 
     #[test]
+    fn pack_roots_biome_color_catalog_uses_data_pack_precedence() {
+        let root = unique_temp_dir("biome-color-pack-precedence");
+        let base_biome_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("data")
+            .join("minecraft")
+            .join("worldgen")
+            .join("biome");
+        let pack = root.join("pack");
+        let pack_biome_dir = pack
+            .join("data")
+            .join("minecraft")
+            .join("worldgen")
+            .join("biome");
+        write_json(
+            &base_biome_dir.join("plains.json"),
+            r##"{
+              "temperature": 0.8,
+              "downfall": 0.4,
+              "effects": {
+                "water_color": "#123456"
+              }
+            }"##,
+        );
+        write_json(
+            &base_biome_dir.join("swamp.json"),
+            r##"{
+              "temperature": 0.8,
+              "downfall": 0.9,
+              "effects": {
+                "water_color": "#617b64"
+              }
+            }"##,
+        );
+        write_json(
+            &pack_biome_dir.join("plains.json"),
+            r##"{
+              "temperature": 0.7,
+              "downfall": 0.3,
+              "effects": {
+                "water_color": "#abcdef",
+                "grass_color": "#010203"
+              }
+            }"##,
+        );
+
+        let roots = PackRoots::from_root(&root)
+            .unwrap()
+            .with_resource_pack_dirs([pack]);
+        let catalog = roots.load_biome_color_catalog().unwrap();
+        let plains = catalog.profile(1).unwrap();
+        let swamp = catalog.profile(6).unwrap();
+
+        assert_eq!(plains.temperature, 0.7);
+        assert_eq!(plains.downfall, 0.3);
+        assert_eq!(plains.water_color, Some([0xab, 0xcd, 0xef]));
+        assert_eq!(plains.grass_color, Some([1, 2, 3]));
+        assert_eq!(swamp.water_color, Some([0x61, 0x7b, 0x64]));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     #[ignore = "requires local vanilla 26.1 sources"]
     fn loads_all_local_vanilla_atlases() {
         let roots = PackRoots::discover().unwrap();
