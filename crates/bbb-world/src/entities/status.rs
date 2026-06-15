@@ -82,15 +82,18 @@ impl WorldStore {
         self.counters.update_mob_effect_packets += 1;
         let entity_id = packet.entity_id;
         let Some(entity_type_id) = self.entities.entity_type_id(entity_id) else {
+            self.counters.update_mob_effects_ignored += 1;
             return false;
         };
         if !vanilla_living_entity_type(entity_type_id) {
+            self.counters.update_mob_effects_ignored += 1;
             return false;
         }
         let effect = MobEffectState::from(packet);
         let Some(()) = self.entities.with_mob_effects_mut(entity_id, |effects| {
             effects.effects.insert(effect.effect_id, effect);
         }) else {
+            self.counters.update_mob_effects_ignored += 1;
             return false;
         };
         self.update_active_mob_effect_count();
@@ -100,9 +103,11 @@ impl WorldStore {
     pub fn apply_remove_mob_effect(&mut self, packet: ProtocolRemoveMobEffect) -> bool {
         self.counters.remove_mob_effect_packets += 1;
         let Some(entity_type_id) = self.entities.entity_type_id(packet.entity_id) else {
+            self.counters.remove_mob_effects_ignored += 1;
             return false;
         };
         if !vanilla_living_entity_type(entity_type_id) {
+            self.counters.remove_mob_effects_ignored += 1;
             return false;
         }
         let Some(removed) = self
@@ -111,9 +116,13 @@ impl WorldStore {
                 effects.effects.remove(&packet.effect_id).is_some()
             })
         else {
+            self.counters.remove_mob_effects_ignored += 1;
             return false;
         };
         self.update_active_mob_effect_count();
+        if !removed {
+            self.counters.remove_mob_effects_ignored += 1;
+        }
         removed
     }
 
@@ -245,6 +254,7 @@ mod tests {
             flags: MobEffectFlags::default(),
         }));
         assert_eq!(store.counters().update_mob_effect_packets, 2);
+        assert_eq!(store.counters().update_mob_effects_ignored, 1);
         assert_eq!(store.counters().active_mob_effects_tracked, 1);
 
         assert!(!store.apply_update_mob_effect(UpdateMobEffect {
@@ -256,6 +266,7 @@ mod tests {
         }));
         assert!(store.entity_effects(8).unwrap().is_empty());
         assert_eq!(store.counters().update_mob_effect_packets, 3);
+        assert_eq!(store.counters().update_mob_effects_ignored, 2);
         assert_eq!(store.counters().active_mob_effects_tracked, 1);
 
         assert!(store.apply_remove_mob_effect(RemoveMobEffect {
@@ -272,6 +283,7 @@ mod tests {
             effect_id: 4,
         }));
         assert_eq!(store.counters().remove_mob_effect_packets, 2);
+        assert_eq!(store.counters().remove_mob_effects_ignored, 1);
         assert_eq!(store.counters().active_mob_effects_tracked, 0);
     }
 
