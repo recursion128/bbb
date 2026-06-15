@@ -103,8 +103,8 @@ Owns vanilla 26.1 resource-pack and asset loading.
 - Registries and tag data needed by client behavior.
 - `sounds.json`, sound event lookup, subtitles, and resolved `.ogg` resource
   paths.
-- Blockstates, models, textures, atlases, colormaps, language files, and render
-  metadata.
+- Blockstates, models, item model definitions, textures, atlases, colormaps,
+  language files, and render metadata.
 - Stable id or handle lookup APIs for renderer/audio/world systems.
 
 The asset pipeline should follow official 26.1 resource-pack semantics. Avoid
@@ -400,8 +400,8 @@ Target pipeline:
 
 1. Load vanilla 26.1 assets as the baseline pack.
 2. Layer server-provided or user-selected packs according to vanilla precedence.
-3. Build lookup tables for registries, blockstates, models, textures, atlases,
-   colormaps, sounds, language keys, and tags.
+3. Build lookup tables for registries, blockstates, models, item model
+   definitions, textures, atlases, colormaps, sounds, language keys, and tags.
 4. Expose stable ids or handles for renderer/audio/world logic.
 5. Keep pack parsing and cache invalidation in `bbb-pack`.
 

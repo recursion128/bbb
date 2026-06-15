@@ -4,6 +4,7 @@ mod block_models;
 mod colors;
 mod exports;
 mod image;
+mod item_models;
 mod language;
 mod metadata;
 mod mipmap;
