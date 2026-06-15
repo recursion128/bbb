@@ -57,7 +57,6 @@ impl KiraAudioRuntime {
                 command.category.clone(),
                 None,
                 command.position,
-                command.fixed_range,
                 command.gain,
                 command.playback_rate,
             ),
@@ -66,7 +65,6 @@ impl KiraAudioRuntime {
                 command.category.clone(),
                 Some(command.entity_id),
                 command.position.unwrap_or([0.0, 0.0, 0.0]),
-                command.fixed_range,
                 command.gain,
                 command.playback_rate,
             ),
@@ -87,7 +85,6 @@ impl KiraAudioRuntime {
         category: AudioCategory,
         entity_id: Option<i32>,
         position: [f64; 3],
-        fixed_range: Option<f32>,
         gain: f32,
         playback_rate: f32,
     ) -> Result<()> {
@@ -97,10 +94,7 @@ impl KiraAudioRuntime {
             audio_position(position),
             SpatialTrackBuilder::new()
                 .persist_until_sounds_finish(true)
-                .distances((
-                    MIN_SPATIAL_DISTANCE,
-                    spatial_max_distance(sound, fixed_range),
-                )),
+                .distances((MIN_SPATIAL_DISTANCE, spatial_max_distance(sound, gain))),
         )?;
         let volume = decibels_from_gain(gain);
         let handle = if sound.stream {
@@ -214,10 +208,9 @@ fn decibels_from_gain(gain: f32) -> Decibels {
     }
 }
 
-fn spatial_max_distance(sound: &ResolvedSound, fixed_range: Option<f32>) -> f32 {
-    fixed_range
-        .unwrap_or(sound.attenuation_distance as f32)
-        .max(MIN_SPATIAL_DISTANCE + f32::EPSILON)
+fn spatial_max_distance(sound: &ResolvedSound, gain: f32) -> f32 {
+    let gain = if gain.is_finite() { gain } else { 0.0 };
+    (sound.attenuation_distance as f32 * gain.max(1.0)).max(MIN_SPATIAL_DISTANCE + f32::EPSILON)
 }
 
 fn audio_position(position: [f64; 3]) -> [f32; 3] {
@@ -267,7 +260,7 @@ mod tests {
     }
 
     #[test]
-    fn spatial_max_distance_prefers_fixed_range_and_stays_valid() {
+    fn spatial_max_distance_matches_vanilla_gain_scaling() {
         let sound = ResolvedSound {
             event_id: "minecraft:entity.cat.ambient".to_string(),
             sound_name: "minecraft:mob/cat/meow1".to_string(),
@@ -279,9 +272,10 @@ mod tests {
             entry_pitch: 1.0,
         };
 
-        assert_eq!(spatial_max_distance(&sound, None), 16.0);
-        assert_eq!(spatial_max_distance(&sound, Some(32.0)), 32.0);
-        assert!(spatial_max_distance(&sound, Some(0.0)) > MIN_SPATIAL_DISTANCE);
+        assert_eq!(spatial_max_distance(&sound, 0.5), 16.0);
+        assert_eq!(spatial_max_distance(&sound, 1.0), 16.0);
+        assert_eq!(spatial_max_distance(&sound, 2.0), 32.0);
+        assert_eq!(spatial_max_distance(&sound, f32::NAN), 16.0);
     }
 
     #[test]
