@@ -471,11 +471,13 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
-        BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos,
-        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, EntityAnchor,
-        GameRuleValue, GameRuleValues, GameTestHighlightPos, PlayerHealth, PlayerLookAt,
-        PlayerPositionUpdate, PlayerRotationUpdate, RemoteDebugSampleType, TestInstanceBlockStatus,
-        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, ClockUpdate,
+        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
+        EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
+        InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayTime,
+        PlayerHealth, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse,
+        RecipeDisplayType, RemoteDebugSampleType, ShowDialog, TestInstanceBlockStatus,
+        TickingState, TickingStep, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
     };
     use bbb_world::{BlockPos, ChunkPos};
     use bytes::BytesMut;
@@ -589,6 +591,201 @@ mod tests {
                 size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
             })
         );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_client_ui_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::LowDiskSpaceWarning)
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ShowDialog(ShowDialog {
+                dialog: DialogHolder::Direct {
+                    raw_dialog_payload: vec![0xaa, 0xbb, 0xcc],
+                },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ClearDialog)
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MountScreenOpen(MountScreenOpen {
+                container_id: 11,
+                inventory_columns: 5,
+                entity_id: 42,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::OpenBook(OpenBook {
+                hand: InteractionHand::OffHand,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::OpenSignEditor(OpenSignEditor {
+                pos: ProtocolBlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+                is_front_text: false,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::PlaceGhostRecipe(PlaceGhostRecipe {
+                container_id: 9,
+                recipe_display_type: RecipeDisplayType::Stonecutter,
+                recipe_display_body: vec![1, 2, 3],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::PongResponse(PongResponse {
+                time: 123456789,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
+        let ui = report.world.client_ui();
+
+        assert_eq!(ui.low_disk_space_warning_count, 1);
+        assert_eq!(ui.current_dialog, None);
+        assert_eq!(
+            ui.last_mount_screen,
+            Some(bbb_world::MountScreenState {
+                container_id: 11,
+                inventory_columns: 5,
+                entity_id: 42,
+            })
+        );
+        assert_eq!(
+            ui.last_open_book,
+            Some(bbb_world::OpenBookState {
+                hand: "off_hand".to_string()
+            })
+        );
+        assert_eq!(
+            ui.last_open_sign_editor,
+            Some(bbb_world::OpenSignEditorState {
+                pos: BlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+                is_front_text: false,
+            })
+        );
+        assert_eq!(
+            ui.last_ghost_recipe,
+            Some(bbb_world::GhostRecipeState {
+                container_id: 9,
+                recipe_display_type_id: 3,
+                recipe_display_type: "stonecutter".to_string(),
+                recipe_display_body_len: 3,
+            })
+        );
+        assert_eq!(
+            ui.last_pong_response,
+            Some(bbb_world::PongResponseState { time: 123456789 })
+        );
+        assert_eq!(report.world_counters.low_disk_space_warnings, 1);
+        assert_eq!(report.world_counters.show_dialog_packets, 1);
+        assert_eq!(report.world_counters.clear_dialog_packets, 1);
+        assert_eq!(report.world_counters.mount_screen_open_packets, 1);
+        assert_eq!(report.world_counters.open_book_packets, 1);
+        assert_eq!(report.world_counters.open_sign_editor_packets, 1);
+        assert_eq!(report.world_counters.ghost_recipe_packets, 1);
+        assert_eq!(report.world_counters.pong_response_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_world_time_weather_and_ticking_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::SetTime(PlayTime {
+                game_time: 123,
+                clock_updates: vec![ClockUpdate {
+                    clock_id: 0,
+                    total_ticks: 6000,
+                    partial_tick: 0.25,
+                    rate: 1.0,
+                }],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::GameEvent(GameEvent {
+                event_id: 7,
+                param: 0.5,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::GameEvent(GameEvent {
+                event_id: 8,
+                param: 0.75,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::TickingState(TickingState {
+                tick_rate: 0.25,
+                frozen: true,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::TickingStep(TickingStep { tick_steps: 7 }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let time = report.world.world_time().unwrap();
+
+        assert_eq!(time.game_time, 123);
+        assert_eq!(time.day_time, 6000);
+        assert_eq!(
+            time.clock_updates,
+            vec![bbb_world::ClockUpdateState {
+                clock_id: 0,
+                total_ticks: 6000,
+                partial_tick: 0.25,
+                rate: 1.0,
+            }]
+        );
+        assert_eq!(
+            report.world.weather(),
+            bbb_world::WorldWeatherState {
+                raining: true,
+                rain_level: 0.5,
+                thunder_level: 0.75,
+                last_game_event_id: Some(8),
+                last_game_event_param: 0.75,
+            }
+        );
+        assert_eq!(
+            report.world.ticking(),
+            bbb_world::WorldTickingState {
+                tick_rate: 1.0,
+                frozen: true,
+                frozen_ticks_to_run: 7,
+            }
+        );
+        assert_eq!(report.world_counters.world_time_packets, 1);
+        assert_eq!(report.world_counters.game_event_packets, 2);
+        assert_eq!(report.world_counters.ticking_state_packets, 1);
+        assert_eq!(report.world_counters.ticking_step_packets, 1);
     }
 
     #[tokio::test]
