@@ -61,6 +61,7 @@ impl KiraAudioRuntime {
                 command.position,
                 command.gain,
                 command.playback_rate,
+                command.fixed_range,
             ),
             AudioCommand::PlayEntitySound(command) => self.play_spatial_sound(
                 &command.sound,
@@ -69,6 +70,7 @@ impl KiraAudioRuntime {
                 command.position.unwrap_or([0.0, 0.0, 0.0]),
                 command.gain,
                 command.playback_rate,
+                command.fixed_range,
             ),
             AudioCommand::StopSound(command) => {
                 self.stop_sounds(command);
@@ -89,6 +91,7 @@ impl KiraAudioRuntime {
         position: [f64; 3],
         gain: f32,
         playback_rate: f32,
+        fixed_range: Option<f32>,
     ) -> Result<()> {
         self.retain_active_sounds();
         if !sound_should_start(gain, &category) {
@@ -99,7 +102,10 @@ impl KiraAudioRuntime {
             audio_position(position),
             SpatialTrackBuilder::new()
                 .persist_until_sounds_finish(true)
-                .distances((MIN_SPATIAL_DISTANCE, spatial_max_distance(sound, gain))),
+                .distances((
+                    MIN_SPATIAL_DISTANCE,
+                    spatial_max_distance(sound, gain, fixed_range),
+                )),
         )?;
         let volume = channel_decibels_from_gain(gain);
         let playback_rate = channel_playback_rate(playback_rate);
@@ -251,7 +257,12 @@ fn java_clamped_volume(gain: f32) -> f32 {
     }
 }
 
-fn spatial_max_distance(sound: &ResolvedSound, gain: f32) -> f32 {
+fn spatial_max_distance(sound: &ResolvedSound, gain: f32, fixed_range: Option<f32>) -> f32 {
+    if let Some(range) = fixed_range {
+        if range.is_finite() {
+            return range.max(MIN_SPATIAL_DISTANCE + f32::EPSILON);
+        }
+    }
     let gain = if gain.is_finite() { gain } else { 0.0 };
     (sound.attenuation_distance as f32 * gain.max(1.0)).max(MIN_SPATIAL_DISTANCE + f32::EPSILON)
 }
@@ -312,7 +323,7 @@ mod tests {
         assert_eq!(channel_decibels_from_gain(2.0), Decibels::IDENTITY);
         assert_eq!(channel_decibels_from_gain(0.0), Decibels::SILENCE);
         assert_eq!(channel_decibels_from_gain(f32::NAN), Decibels::SILENCE);
-        assert_eq!(spatial_max_distance(&sound, 2.0), 32.0);
+        assert_eq!(spatial_max_distance(&sound, 2.0, None), 32.0);
     }
 
     #[test]
@@ -345,10 +356,32 @@ mod tests {
             entry_pitch: 1.0,
         };
 
-        assert_eq!(spatial_max_distance(&sound, 0.5), 16.0);
-        assert_eq!(spatial_max_distance(&sound, 1.0), 16.0);
-        assert_eq!(spatial_max_distance(&sound, 2.0), 32.0);
-        assert_eq!(spatial_max_distance(&sound, f32::NAN), 16.0);
+        assert_eq!(spatial_max_distance(&sound, 0.5, None), 16.0);
+        assert_eq!(spatial_max_distance(&sound, 1.0, None), 16.0);
+        assert_eq!(spatial_max_distance(&sound, 2.0, None), 32.0);
+        assert_eq!(spatial_max_distance(&sound, f32::NAN, None), 16.0);
+    }
+
+    #[test]
+    fn fixed_range_overrides_sound_attenuation_and_gain_scaling() {
+        let sound = ResolvedSound {
+            event_id: "minecraft:entity.cat.ambient".to_string(),
+            sound_name: "minecraft:mob/cat/meow1".to_string(),
+            ogg_path: "sounds/mob/cat/meow1.ogg".into(),
+            stream: false,
+            preload: false,
+            attenuation_distance: 16,
+            entry_volume: 1.0,
+            entry_pitch: 1.0,
+        };
+
+        assert_eq!(spatial_max_distance(&sound, 0.5, Some(24.0)), 24.0);
+        assert_eq!(spatial_max_distance(&sound, 2.0, Some(24.0)), 24.0);
+        assert_eq!(
+            spatial_max_distance(&sound, 1.0, Some(0.0)),
+            MIN_SPATIAL_DISTANCE + f32::EPSILON
+        );
+        assert_eq!(spatial_max_distance(&sound, 2.0, Some(f32::NAN)), 32.0);
     }
 
     #[test]
