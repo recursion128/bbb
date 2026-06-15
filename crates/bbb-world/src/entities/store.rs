@@ -16,7 +16,7 @@ use crate::entities::dimensions::{
     vanilla_pick_bounds_for_entity_data,
 };
 use crate::entities::dragon::{
-    ender_dragon_part_pick_targets, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    ender_dragon_part_pick_targets_at_partial_tick, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
 };
 use crate::entities::projectiles::entity_hurting_projectile_from_state;
 
@@ -124,7 +124,10 @@ impl EntityStore {
         )
     }
 
-    pub(crate) fn pick_targets(&self) -> Vec<super::EntityPickTargetState> {
+    pub(crate) fn pick_targets_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+    ) -> Vec<super::EntityPickTargetState> {
         let mut targets = Vec::new();
         for id in &self.order {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
@@ -142,10 +145,11 @@ impl EntityStore {
                     .get::<&EntityClientAnimations>(entity)
                     .ok()
                     .and_then(|animations| animations.animations.ender_dragon);
-                targets.extend(ender_dragon_part_pick_targets(
+                targets.extend(ender_dragon_part_pick_targets_at_partial_tick(
                     identity.id,
                     *transform,
                     dragon_animation,
+                    partial_ticks,
                 ));
             } else if let Some(bounds) = self.pick_bounds(identity.id) {
                 targets.push(super::EntityPickTargetState {

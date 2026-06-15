@@ -205,19 +205,29 @@ impl DragonFlightHistoryState {
         let index = (i32::from(self.head) - delay) & DRAGON_FLIGHT_HISTORY_MASK;
         self.samples[index as usize]
     }
+
+    fn get_interpolated(self, delay: i32, partial_ticks: f32) -> DragonFlightHistorySample {
+        let sample = self.get(delay);
+        let sample_old = self.get(delay + 1);
+        DragonFlightHistorySample {
+            y: sample_old.y + (sample.y - sample_old.y) * f64::from(partial_ticks),
+            y_rot: sample_old.y_rot + wrap_degrees(sample.y_rot - sample_old.y_rot) * partial_ticks,
+        }
+    }
 }
 
-pub(crate) fn ender_dragon_part_pick_targets(
+pub(crate) fn ender_dragon_part_pick_targets_at_partial_tick(
     parent_id: i32,
     transform: EntityTransform,
     animation: Option<EnderDragonAnimationState>,
+    partial_ticks: f32,
 ) -> Vec<EntityPickTargetState> {
     let animation = animation.unwrap_or_default();
     ENDER_DRAGON_PARTS
         .iter()
         .map(|part| EntityPickTargetState {
             entity_id: parent_id + part.id_offset,
-            position: part_position(transform, part.offset, animation),
+            position: part_position(transform, part.offset, animation, partial_ticks),
             bounds: EntityPickBoundsState::from_base_size(part.width, part.height, 0.0),
         })
         .collect()
@@ -227,20 +237,21 @@ fn part_position(
     transform: EntityTransform,
     offset: EnderDragonPartOffset,
     animation: EnderDragonAnimationState,
+    partial_ticks: f32,
 ) -> EntityVec3 {
     let yaw = f64::from(transform.y_rot).to_radians();
     let sin_yaw = yaw.sin();
     let cos_yaw = yaw.cos();
-    let tilt = (animation.flight_history.get(5).y - animation.flight_history.get(10).y)
-        * 10.0
-        * std::f64::consts::PI
-        / 180.0;
+    let sample_0 = animation.flight_history.get_interpolated(0, partial_ticks);
+    let sample_5 = animation.flight_history.get_interpolated(5, partial_ticks);
+    let sample_10 = animation.flight_history.get_interpolated(10, partial_ticks);
+    let tilt = (sample_5.y - sample_10.y) * 10.0 * std::f64::consts::PI / 180.0;
     let cos_tilt = tilt.cos();
     let sin_tilt = tilt.sin();
     let head_y_offset = if animation.is_sitting() {
         -1.0
     } else {
-        animation.flight_history.get(5).y - animation.flight_history.get(0).y
+        sample_5.y - sample_0.y
     };
     let (x, y, z) = match offset {
         EnderDragonPartOffset::Head => head_part_offset(
@@ -262,8 +273,10 @@ fn part_position(
         EnderDragonPartOffset::Body => (sin_yaw * 0.5, 0.0, -cos_yaw * 0.5),
         EnderDragonPartOffset::Tail(index) => {
             let distance = f64::from(index + 1) * 2.0;
-            let p1 = animation.flight_history.get(5);
-            let p0 = animation.flight_history.get(12 + i32::from(index) * 2);
+            let p1 = sample_5;
+            let p0 = animation
+                .flight_history
+                .get_interpolated(12 + i32::from(index) * 2, partial_ticks);
             let tail_yaw = yaw + f64::from(wrap_degrees(p0.y_rot - p1.y_rot)).to_radians();
             let tail_sin = tail_yaw.sin();
             let tail_cos = tail_yaw.cos();
@@ -307,4 +320,38 @@ fn wrap_degrees(value: f32) -> f32 {
         wrapped += 360.0;
     }
     wrapped
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dragon_flight_history_interpolates_like_vanilla() {
+        let mut history = DragonFlightHistoryState::default();
+        history.record(64.0, 170.0);
+        history.record(74.0, -170.0);
+
+        assert_eq!(
+            history.get_interpolated(0, 0.0),
+            DragonFlightHistorySample {
+                y: 64.0,
+                y_rot: 170.0,
+            }
+        );
+        assert_eq!(
+            history.get_interpolated(0, 0.5),
+            DragonFlightHistorySample {
+                y: 69.0,
+                y_rot: 180.0,
+            }
+        );
+        assert_eq!(
+            history.get_interpolated(0, 1.0),
+            DragonFlightHistorySample {
+                y: 74.0,
+                y_rot: 190.0,
+            }
+        );
+    }
 }

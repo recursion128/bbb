@@ -959,6 +959,81 @@ fn ender_dragon_pick_targets_follow_flight_history_and_phase() {
 }
 
 #[test]
+fn ender_dragon_pick_targets_interpolate_flight_history_by_partial_tick() {
+    const ENDER_DRAGON_TYPE_ID: i32 = 43;
+    const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
+    const HOLDING_PATTERN_PHASE_ID: i32 = 0;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        130,
+        ENDER_DRAGON_TYPE_ID,
+        0.0,
+    ));
+    store.advance_entity_client_animations(1);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 130,
+        values: vec![protocol_int_data(
+            ENDER_DRAGON_PHASE_DATA_ID,
+            HOLDING_PATTERN_PHASE_ID,
+        )],
+    }));
+    assert!(
+        store.apply_entity_position_sync(ProtocolEntityPositionSync {
+            id: 130,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 74.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            y_rot: 90.0,
+            x_rot: 0.0,
+            on_ground: false,
+        })
+    );
+    store.advance_entity_client_animations(1);
+
+    let targets_at_start = store.entity_pick_targets_at_partial_tick(0.0);
+    let targets_mid_tick = store.entity_pick_targets_at_partial_tick(0.5);
+    let targets_at_end = store.entity_pick_targets_at_partial_tick(1.0);
+    let default_targets = store.entity_pick_targets();
+
+    assert_entity_vec3_close(
+        pick_target(&targets_at_start, 131).position,
+        EntityVec3 {
+            x: 7.5,
+            y: 74.0,
+            z: -2.0,
+        },
+    );
+    assert_entity_vec3_close(
+        pick_target(&targets_mid_tick, 131).position,
+        EntityVec3 {
+            x: 7.5,
+            y: 69.0,
+            z: -2.0,
+        },
+    );
+    assert_entity_vec3_close(
+        pick_target(&targets_at_end, 131).position,
+        EntityVec3 {
+            x: 7.5,
+            y: 64.0,
+            z: -2.0,
+        },
+    );
+    assert_entity_vec3_close(
+        pick_target(&default_targets, 131).position,
+        pick_target(&targets_at_end, 131).position,
+    );
+}
+
+#[test]
 fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_data(20, 73, 2));

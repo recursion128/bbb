@@ -319,8 +319,15 @@ impl WorldStore {
     }
 
     pub fn entity_pick_targets(&self) -> Vec<EntityPickTargetState> {
+        self.entity_pick_targets_at_partial_tick(1.0)
+    }
+
+    pub fn entity_pick_targets_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+    ) -> Vec<EntityPickTargetState> {
         self.entities
-            .pick_targets()
+            .pick_targets_at_partial_tick(partial_ticks)
             .into_iter()
             .filter(|target| {
                 let Some(identity) = self.entities.identity(target.entity_id) else {
