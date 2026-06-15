@@ -334,7 +334,12 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
 
     let snapshot_guard = snapshot.read().expect("control snapshot poisoned");
     let json = match request.method.as_str() {
-        "app.status" => serde_json::to_value(&*snapshot_guard),
+        "app.status" => Ok(serde_json::json!({
+            "app": &snapshot_guard.app,
+            "net": &snapshot_guard.net,
+            "renderer": &snapshot_guard.renderer,
+            "world": snapshot_guard.world_store.counters(),
+        })),
         "net.counters" => serde_json::to_value(&snapshot_guard.net),
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
@@ -558,6 +563,30 @@ mod tests {
 
         assert!(response.ok);
         assert!(!snapshot.read().unwrap().app.running);
+    }
+
+    #[test]
+    fn app_status_reads_world_counters_from_world_store() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "app.status".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let status = response.result.unwrap();
+        assert_eq!(status["app"]["version"], "test");
+        assert_eq!(status["world"]["block_changed_ack_packets"], 1);
+        assert_eq!(status["world"]["block_destructions_tracked"], 0);
     }
 
     #[test]
@@ -1672,7 +1701,6 @@ mod tests {
             store.insert_decoded_chunk(single_section_chunk());
 
             let mut guard = snapshot.write().unwrap();
-            guard.world = store.counters();
             guard.world_store = store;
         }
 

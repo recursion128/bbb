@@ -397,7 +397,6 @@ pub(crate) fn publish_snapshot(
     if let Ok(mut guard) = snapshot.write() {
         guard.renderer = renderer;
         guard.net = net.clone();
-        guard.world = world.counters();
         guard.world_store = world.clone();
         guard.app.running
     } else {

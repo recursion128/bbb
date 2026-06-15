@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use bbb_world::{WorldCounters, WorldStore};
+use bbb_world::WorldStore;
 use serde::{Deserialize, Serialize};
 
 use super::{NetCounters, RendererCounters};
@@ -117,7 +117,6 @@ pub struct ControlSnapshot {
     pub app: AppStatus,
     pub net: NetCounters,
     pub renderer: RendererCounters,
-    pub world: WorldCounters,
     #[serde(skip)]
     pub screenshot_request: Option<String>,
     #[serde(skip)]
