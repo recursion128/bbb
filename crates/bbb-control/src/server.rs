@@ -347,6 +347,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_command_suggestions" => {
             serde_json::to_value(snapshot_guard.world_store.client_command_suggestions())
         }
+        "world.client_features" => {
+            serde_json::to_value(snapshot_guard.world_store.enabled_feature_list())
+        }
         "world.client_debug_query" => {
             serde_json::to_value(snapshot_guard.world_store.client_debug_query())
         }
@@ -364,6 +367,10 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_ui" => serde_json::to_value(snapshot_guard.world_store.client_ui()),
         "world.last_map_color_patch" => {
             serde_json::to_value(snapshot_guard.world_store.last_map_color_patch())
+        }
+        "world.command_tree" => serde_json::to_value(snapshot_guard.world_store.commands()),
+        "world.last_block_changed_ack" => {
+            serde_json::to_value(snapshot_guard.world_store.last_block_changed_ack())
         }
         "world.level_clock" => Ok(serde_json::json!({
             "world_time": snapshot_guard.world_store.world_time(),
@@ -515,19 +522,20 @@ mod tests {
 
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats,
-        BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, CustomChatCompletions,
-        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
-        DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
-        EntityPositionSync as ProtocolEntityPositionSync, GameEvent, GameRuleValue, GameRuleValues,
-        InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, OpenBook,
-        OpenSignEditor, PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill,
-        PlayerExperience, PlayerHealth, PongResponse, RecipeDisplayType, SelectAdvancementsTab,
-        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText,
-        SetChunkCacheCenter, SetChunkCacheRadius, SetDefaultSpawnPosition, SetSimulationDistance,
-        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent,
-        SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery, TickingState,
-        TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements,
+        AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
+        BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, CommandArgumentParser,
+        CommandNode, CommandNodeType, Commands, CustomChatCompletions, CustomChatCompletionsAction,
+        CustomPayload, CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
+        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
+        GameEvent, GameRuleValue, GameRuleValues, InteractionHand, MapColorPatch, MapDecoration,
+        MapItemData, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayTime,
+        PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth, PongResponse,
+        RecipeDisplayType, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
+        ServerLinkType, ServerLinks, SetActionBarText, SetChunkCacheCenter, SetChunkCacheRadius,
+        SetDefaultSpawnPosition, SetSimulationDistance, SetSubtitleText, SetTitleText,
+        SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        StopSound, SystemChat, TagQuery, TickingState, TickingStep, TrackedWaypoint,
+        TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateEnabledFeatures,
         Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
         WaypointVec3i,
     };
@@ -1325,6 +1333,84 @@ mod tests {
     }
 
     #[test]
+    fn client_features_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_update_enabled_features(UpdateEnabledFeatures {
+                features: vec![
+                    "minecraft:unknown".to_string(),
+                    "minecraft:vanilla".to_string(),
+                    "minecraft:trade_rebalance".to_string(),
+                ],
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_features".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(
+            response.result.unwrap(),
+            json!(["minecraft:trade_rebalance", "minecraft:vanilla"])
+        );
+    }
+
+    #[test]
+    fn command_tree_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_commands(command_tree("say"));
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.command_tree".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let commands = response.result.unwrap();
+        assert_eq!(commands["root_index"], 0);
+        assert_eq!(commands["nodes"][1]["name"], "say");
+        assert_eq!(commands["nodes"][2]["parser"]["name"], "brigadier:string");
+        assert_eq!(commands["nodes"][2]["suggestions"], "minecraft:ask_server");
+        assert_eq!(commands["nodes"][2]["executable"], true);
+        assert_eq!(commands["nodes"][2]["restricted"], true);
+    }
+
+    #[test]
+    fn last_block_changed_ack_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.last_block_changed_ack".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["sequence"], 17);
+    }
+
+    #[test]
     fn client_advancements_reads_canonical_world_state() {
         let snapshot = shared_snapshot("test");
         {
@@ -1779,6 +1865,51 @@ mod tests {
             palette_global_ids: vec![global_id],
             packed_data: Vec::new(),
             entry_count,
+        }
+    }
+
+    fn command_tree(literal: &str) -> Commands {
+        Commands {
+            root_index: 0,
+            nodes: vec![
+                CommandNode {
+                    node_type: CommandNodeType::Root,
+                    flags: 0,
+                    children: vec![1],
+                    redirect: None,
+                    name: None,
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Literal,
+                    flags: 1,
+                    children: vec![2],
+                    redirect: None,
+                    name: Some(literal.to_string()),
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Argument,
+                    flags: 2,
+                    children: Vec::new(),
+                    redirect: None,
+                    name: Some("message".to_string()),
+                    parser: Some(CommandArgumentParser {
+                        type_id: 5,
+                        name: "brigadier:string".to_string(),
+                        properties: vec![1, 2],
+                    }),
+                    suggestions: Some("minecraft:ask_server".to_string()),
+                    executable: true,
+                    restricted: true,
+                },
+            ],
         }
     }
 

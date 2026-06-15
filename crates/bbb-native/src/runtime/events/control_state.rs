@@ -356,8 +356,6 @@ pub(super) fn sync_entity_counters(counters: &mut NetCounters, world: &WorldStor
 pub(super) fn sync_block_event_counters(counters: &mut NetCounters, world: &WorldStore) {
     let world_counters = world.counters();
     counters.block_changed_ack_packets = world_counters.block_changed_ack_packets;
-    counters.last_block_changed_ack_sequence =
-        world.last_block_changed_ack().map(|ack| ack.sequence);
     counters.block_destruction_packets = world_counters.block_destructions_received;
     counters.block_destructions_tracked = world_counters.block_destructions_tracked;
     counters.block_destructions_removed = world_counters.block_destructions_removed;
@@ -419,7 +417,6 @@ pub(super) fn sync_command_counters(counters: &mut NetCounters, world: &WorldSto
     counters.command_redirect_nodes_tracked = world_counters.command_redirect_nodes_tracked;
     counters.command_executable_nodes_tracked = world_counters.command_executable_nodes_tracked;
     counters.command_restricted_nodes_tracked = world_counters.command_restricted_nodes_tracked;
-    counters.last_command_root_index = world_counters.last_command_root_index;
     counters.command_suggestion_packets = world_counters.command_suggestion_packets;
     counters.command_suggestion_entries_tracked = world_counters.command_suggestion_entries_tracked;
 }
@@ -470,7 +467,6 @@ fn sync_enabled_feature_counters(counters: &mut NetCounters, world: &WorldStore)
     counters.update_enabled_features_packets = world_counters.update_enabled_features_packets;
     counters.enabled_features_tracked = world_counters.enabled_features_tracked;
     counters.enabled_features_ignored = world_counters.enabled_features_ignored;
-    counters.enabled_features = world.enabled_feature_list();
 }
 
 fn sync_chat_counters(counters: &mut NetCounters, world: &WorldStore) {

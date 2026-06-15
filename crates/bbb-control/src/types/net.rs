@@ -169,8 +169,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub enabled_features_ignored: usize,
     #[serde(default)]
-    pub enabled_features: Vec<String>,
-    #[serde(default)]
     pub code_of_conduct_packets: usize,
     #[serde(default)]
     pub last_code_of_conduct_len: usize,
@@ -274,8 +272,6 @@ pub struct NetCounters {
     pub command_executable_nodes_tracked: usize,
     #[serde(default)]
     pub command_restricted_nodes_tracked: usize,
-    #[serde(default)]
-    pub last_command_root_index: Option<i32>,
     pub command_suggestion_packets: usize,
     #[serde(default)]
     pub command_suggestion_entries_tracked: usize,
@@ -530,7 +526,6 @@ pub struct NetCounters {
     #[serde(default)]
     pub advancement_progress_criteria_tracked: usize,
     pub tag_query_packets: usize,
-    pub last_block_changed_ack_sequence: Option<i32>,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,
     pub player_command_commands_queued: usize,

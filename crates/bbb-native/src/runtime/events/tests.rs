@@ -65,7 +65,6 @@ fn block_changed_ack_updates_snapshot_counters() {
     );
     assert_eq!(world.counters().block_changed_ack_packets, 1);
     assert_eq!(counters.block_changed_ack_packets, 1);
-    assert_eq!(counters.last_block_changed_ack_sequence, Some(17));
 }
 
 #[test]
@@ -575,13 +574,12 @@ fn configuration_state_events_update_snapshot_counters() {
     );
     assert_eq!(counters.update_enabled_features_packets, 1);
     assert_eq!(
-        counters.enabled_features,
+        world.enabled_feature_list(),
         vec![
             "minecraft:minecart_improvements".to_string(),
             "minecraft:vanilla".to_string(),
         ]
     );
-    assert_eq!(world.enabled_feature_list(), counters.enabled_features);
     assert!(world.is_feature_enabled("minecraft:vanilla"));
     assert_eq!(world.counters().update_enabled_features_packets, 1);
     assert_eq!(world.counters().enabled_features_tracked, 2);
@@ -1044,7 +1042,6 @@ fn commands_event_updates_world_and_counters() {
         command_redirect_nodes_tracked: 99,
         command_executable_nodes_tracked: 99,
         command_restricted_nodes_tracked: 99,
-        last_command_root_index: Some(99),
         ..NetCounters::default()
     };
 
@@ -1059,7 +1056,6 @@ fn commands_event_updates_world_and_counters() {
     assert_eq!(counters.command_redirect_nodes_tracked, 0);
     assert_eq!(counters.command_executable_nodes_tracked, 1);
     assert_eq!(counters.command_restricted_nodes_tracked, 1);
-    assert_eq!(counters.last_command_root_index, Some(0));
     assert_eq!(world.counters().command_tree_packets, 1);
     assert_eq!(world.counters().command_nodes_tracked, 3);
     assert_eq!(world.counters().command_literal_nodes_tracked, 1);
