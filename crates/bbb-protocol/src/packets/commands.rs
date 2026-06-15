@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::read_resource_location;
 use crate::codec::{Decoder, ProtocolError, Result};
 
 const MAX_COMMAND_NODES: usize = 65_536;
@@ -197,7 +198,7 @@ fn decode_command_node(decoder: &mut Decoder<'_>) -> Result<CommandNode> {
                 })?;
             let properties = properties_before[..properties_len].to_vec();
             let suggestions = if flags & FLAG_CUSTOM_SUGGESTIONS != 0 {
-                Some(decoder.read_string(32767)?)
+                Some(read_resource_location(decoder)?)
             } else {
                 None
             };
@@ -256,7 +257,7 @@ fn skip_command_argument_properties(decoder: &mut Decoder<'_>, type_id: i32) -> 
             Ok(())
         }
         44..=48 => {
-            decoder.read_string(32767)?;
+            read_resource_location(decoder)?;
             Ok(())
         }
         id if command_argument_parser_name(id).is_some() => Ok(()),
@@ -416,7 +417,7 @@ mod tests {
         payload.write_string("message");
         payload.write_var_i32(5);
         payload.write_var_i32(2);
-        payload.write_string("minecraft:ask_server");
+        payload.write_string("ask_server");
 
         payload.write_var_i32(0);
         let payload = payload.into_inner();
@@ -466,7 +467,7 @@ mod tests {
         assert_eq!(decoder.read_string(32767).unwrap(), "message");
         assert_eq!(decoder.read_var_i32().unwrap(), 5);
         assert_eq!(decoder.read_var_i32().unwrap(), 2);
-        assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:ask_server");
+        assert_eq!(decoder.read_string(32767).unwrap(), "ask_server");
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert!(decoder.is_empty());
     }
@@ -495,7 +496,7 @@ mod tests {
             payload.write_i32(20);
         });
         write_argument_node(&mut payload, "biome", 46, |payload| {
-            payload.write_string("minecraft:worldgen/biome");
+            payload.write_string("worldgen/biome");
         });
 
         payload.write_var_i32(0);
@@ -534,12 +535,47 @@ mod tests {
             commands.nodes[4].parser.as_ref().unwrap().name,
             "minecraft:resource"
         );
-        assert!(!commands.nodes[4]
-            .parser
-            .as_ref()
-            .unwrap()
-            .properties
-            .is_empty());
+
+        let mut expected_resource_properties = Encoder::new();
+        expected_resource_properties.write_string("worldgen/biome");
+        assert_eq!(
+            commands.nodes[4].parser.as_ref().unwrap().properties,
+            expected_resource_properties.into_inner()
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_command_custom_suggestion_id() {
+        let payload = single_argument_command_payload(
+            5,
+            |payload| {
+                payload.write_var_i32(0);
+            },
+            Some("minecraft:AskServer"),
+        );
+
+        let err = decode_play_clientbound(ids::play::CLIENTBOUND_COMMANDS, &payload).unwrap_err();
+        assert!(err.to_string().contains("invalid resource location"));
+    }
+
+    #[test]
+    fn rejects_invalid_command_resource_argument_registry_key() {
+        for parser_id in 44..=48 {
+            let payload = single_argument_command_payload(
+                parser_id,
+                |payload| {
+                    payload.write_string("minecraft:Worldgen/Biome");
+                },
+                None,
+            );
+
+            let err =
+                decode_play_clientbound(ids::play::CLIENTBOUND_COMMANDS, &payload).unwrap_err();
+            assert!(
+                err.to_string().contains("invalid resource location"),
+                "parser {parser_id} produced unexpected error: {err}"
+            );
+        }
     }
 
     #[test]
@@ -576,5 +612,34 @@ mod tests {
         payload.write_string(name);
         payload.write_var_i32(parser_id);
         write_properties(payload);
+    }
+
+    fn single_argument_command_payload(
+        parser_id: i32,
+        write_properties: impl FnOnce(&mut Encoder),
+        suggestions: Option<&str>,
+    ) -> Vec<u8> {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(2);
+
+        payload.write_u8(0);
+        payload.write_var_i32(1);
+        payload.write_var_i32(1);
+
+        let mut flags = FLAG_EXECUTABLE | 2;
+        if suggestions.is_some() {
+            flags |= FLAG_CUSTOM_SUGGESTIONS;
+        }
+        payload.write_u8(flags);
+        payload.write_var_i32(0);
+        payload.write_string("value");
+        payload.write_var_i32(parser_id);
+        write_properties(&mut payload);
+        if let Some(suggestions) = suggestions {
+            payload.write_string(suggestions);
+        }
+
+        payload.write_var_i32(0);
+        payload.into_inner()
     }
 }
