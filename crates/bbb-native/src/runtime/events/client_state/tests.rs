@@ -267,13 +267,9 @@ fn player_abilities_spawn_distance_and_chat_update_snapshot_counters() {
         })
     );
     assert_eq!(counters.simulation_distance, Some(12));
-    assert_eq!(
-        counters.last_system_chat,
-        Some(SystemChatLine {
-            content: "Server restarting".to_string(),
-            overlay: true,
-        })
-    );
+    let system_chat = world.system_chat().unwrap();
+    assert_eq!(system_chat.content, "Server restarting");
+    assert!(system_chat.overlay);
     assert_eq!(counters.player_abilities_packets, 1);
     assert_eq!(counters.default_spawn_position_packets, 1);
     assert_eq!(counters.simulation_distance_packets, 1);
@@ -294,10 +290,10 @@ fn hud_text_and_ticking_updates_snapshot_counters() {
             fade_out: 15,
         },
     );
-    assert_eq!(counters.title.fade_in, 5);
-    assert_eq!(counters.title.stay, 70);
-    assert_eq!(counters.title.fade_out, 15);
-    assert_eq!(counters.title.title_time, 0);
+    assert_eq!(world.title().fade_in, 5);
+    assert_eq!(world.title().stay, 70);
+    assert_eq!(world.title().fade_out, 15);
+    assert_eq!(world.title().title_time, 0);
 
     apply_title_text_update(
         &mut counters,
@@ -336,19 +332,15 @@ fn hud_text_and_ticking_updates_snapshot_counters() {
     world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 7 });
     sync_ticking_counters(&mut counters, &world);
 
-    assert_eq!(counters.title.title.as_deref(), Some("Quest complete"));
-    assert_eq!(counters.title.subtitle.as_deref(), Some("Return to camp"));
-    assert_eq!(counters.title.fade_in, 5);
-    assert_eq!(counters.title.stay, 40);
-    assert_eq!(counters.title.fade_out, 15);
-    assert_eq!(counters.title.title_time, 60);
-    assert_eq!(
-        counters.last_action_bar,
-        Some(ActionBarText {
-            content: "+12 XP".to_string(),
-            display_ticks: 60,
-        })
-    );
+    assert_eq!(world.title().title.as_deref(), Some("Quest complete"));
+    assert_eq!(world.title().subtitle.as_deref(), Some("Return to camp"));
+    assert_eq!(world.title().fade_in, 5);
+    assert_eq!(world.title().stay, 40);
+    assert_eq!(world.title().fade_out, 15);
+    assert_eq!(world.title().title_time, 60);
+    let action_bar = world.action_bar().unwrap();
+    assert_eq!(action_bar.content, "+12 XP");
+    assert_eq!(action_bar.display_ticks, 60);
     assert_eq!(counters.ticking.tick_rate, 1.0);
     assert!(counters.ticking.frozen);
     assert_eq!(counters.ticking.frozen_ticks_to_run, 7);
@@ -394,12 +386,12 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
         &mut world,
         bbb_protocol::packets::ClearTitles { reset_times: false },
     );
-    assert_eq!(counters.title.title, None);
-    assert_eq!(counters.title.subtitle, None);
-    assert_eq!(counters.title.title_time, 0);
-    assert_eq!(counters.title.fade_in, 5);
-    assert_eq!(counters.title.stay, 40);
-    assert_eq!(counters.title.fade_out, 15);
+    assert_eq!(world.title().title.as_deref(), None);
+    assert_eq!(world.title().subtitle.as_deref(), None);
+    assert_eq!(world.title().title_time, 0);
+    assert_eq!(world.title().fade_in, 5);
+    assert_eq!(world.title().stay, 40);
+    assert_eq!(world.title().fade_out, 15);
 
     apply_titles_animation_update(
         &mut counters,
@@ -430,7 +422,12 @@ fn clear_titles_resets_visible_title_and_optionally_times() {
         &mut world,
         bbb_protocol::packets::ClearTitles { reset_times: true },
     );
-    assert_eq!(counters.title, bbb_control::TitleState::default());
+    assert_eq!(world.title().title.as_deref(), None);
+    assert_eq!(world.title().subtitle.as_deref(), None);
+    assert_eq!(world.title().fade_in, 10);
+    assert_eq!(world.title().stay, 70);
+    assert_eq!(world.title().fade_out, 20);
+    assert_eq!(world.title().title_time, 0);
     assert_eq!(counters.clear_titles_packets, 2);
     assert_eq!(counters.title_text_packets, 2);
     assert_eq!(counters.subtitle_text_packets, 2);

@@ -342,6 +342,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_debug_game" => {
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
         }
+        "world.client_hud" => serde_json::to_value(snapshot_guard.world_store.client_hud()),
         "world.client_ui" => serde_json::to_value(snapshot_guard.world_store.client_ui()),
         "world.probe_chunk" => {
             let x = i32_param(&request.params, "x");
@@ -480,8 +481,9 @@ mod tests {
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DebugBlockValue,
         DialogHolder, EntityPositionSync as ProtocolEntityPositionSync, GameRuleValue,
         GameRuleValues, InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor,
-        PlaceGhostRecipe, PongResponse, RecipeDisplayType, ShowDialog, SoundEvent,
-        SoundEventHolder, SoundSource, StopSound, Vec3d as ProtocolVec3d,
+        PlaceGhostRecipe, PongResponse, RecipeDisplayType, SetActionBarText, SetSubtitleText,
+        SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource,
+        StopSound, SystemChat, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -831,6 +833,54 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_state.ok);
+    }
+
+    #[test]
+    fn client_hud_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_system_chat(SystemChat {
+                content: "Server restart soon".to_string(),
+                overlay: false,
+            });
+            store.apply_action_bar_text(SetActionBarText {
+                content: "Action ready".to_string(),
+            });
+            store.apply_titles_animation(SetTitlesAnimation {
+                fade_in: 5,
+                stay: 40,
+                fade_out: 15,
+            });
+            store.apply_title_text(SetTitleText {
+                content: "Quest complete".to_string(),
+            });
+            store.apply_subtitle_text(SetSubtitleText {
+                content: "Return to camp".to_string(),
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_hud".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let hud = response.result.unwrap();
+        assert_eq!(hud["system_chat"]["content"], "Server restart soon");
+        assert_eq!(hud["system_chat"]["overlay"], false);
+        assert_eq!(hud["action_bar"]["content"], "Action ready");
+        assert_eq!(hud["action_bar"]["display_ticks"], 60);
+        assert_eq!(hud["title"]["title"], "Quest complete");
+        assert_eq!(hud["title"]["subtitle"], "Return to camp");
+        assert_eq!(hud["title"]["fade_in"], 5);
+        assert_eq!(hud["title"]["stay"], 40);
+        assert_eq!(hud["title"]["fade_out"], 15);
+        assert_eq!(hud["title"]["title_time"], 60);
     }
 
     #[test]

@@ -112,12 +112,9 @@ pub struct NetCounters {
     pub last_cookie_key: Option<String>,
     pub custom_report_details: BTreeMap<String, String>,
     pub server_links: Vec<ServerLinkState>,
-    pub last_system_chat: Option<SystemChatLine>,
     pub last_player_chat: Option<ClientChatLine>,
     pub last_disguised_chat: Option<ClientChatLine>,
     pub last_deleted_chat: Option<DeletedChatLine>,
-    pub last_action_bar: Option<ActionBarText>,
-    pub title: TitleState,
     pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub last_transfer: Option<TransferTarget>,
@@ -674,12 +671,6 @@ pub struct WorldTime {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SystemChatLine {
-    pub content: String,
-    pub overlay: bool,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ClientChatLine {
     pub kind: String,
     pub content: String,
@@ -700,35 +691,6 @@ pub struct DeletedChatLine {
     pub signature_checksum: Option<i32>,
     pub cache_id: Option<i32>,
     pub resolved: bool,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ActionBarText {
-    pub content: String,
-    pub display_ticks: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TitleState {
-    pub title: Option<String>,
-    pub subtitle: Option<String>,
-    pub fade_in: i32,
-    pub stay: i32,
-    pub fade_out: i32,
-    pub title_time: i32,
-}
-
-impl Default for TitleState {
-    fn default() -> Self {
-        Self {
-            title: None,
-            subtitle: None,
-            fade_in: 10,
-            stay: 70,
-            fade_out: 20,
-            title_time: 0,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

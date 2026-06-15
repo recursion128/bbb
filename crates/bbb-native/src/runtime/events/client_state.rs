@@ -1,6 +1,6 @@
 use bbb_control::{
-    ActionBarText, CameraState, DefaultSpawn, NetCounters, NetVec3, PlayerAbilities,
-    PlayerExperience, PlayerHealth, PlayerLookAtState, PlayerPose, SystemChatLine,
+    CameraState, DefaultSpawn, NetCounters, NetVec3, PlayerAbilities, PlayerExperience,
+    PlayerHealth, PlayerLookAtState, PlayerPose,
 };
 use bbb_protocol::packets::PlayerPositionState;
 use bbb_world::{LocalPlayerLookAtState, LocalPlayerPoseState, WorldStore};
@@ -60,24 +60,6 @@ pub(super) fn apply_titles_animation_update(
 }
 
 pub(super) fn sync_hud_text_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let hud = world.client_hud();
-    counters.last_system_chat = hud.system_chat.as_ref().map(|line| SystemChatLine {
-        content: line.content.clone(),
-        overlay: line.overlay,
-    });
-    counters.last_action_bar = hud.action_bar.as_ref().map(|action_bar| ActionBarText {
-        content: action_bar.content.clone(),
-        display_ticks: action_bar.display_ticks,
-    });
-    counters.title = bbb_control::TitleState {
-        title: hud.title.title.clone(),
-        subtitle: hud.title.subtitle.clone(),
-        fade_in: hud.title.fade_in,
-        stay: hud.title.stay,
-        fade_out: hud.title.fade_out,
-        title_time: hud.title.title_time,
-    };
-
     let world_counters = world.counters();
     counters.system_chat_packets = world_counters.system_chat_packets;
     counters.action_bar_packets = world_counters.action_bar_packets;

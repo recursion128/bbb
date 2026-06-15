@@ -1006,7 +1006,12 @@ fn clear_titles_event_updates_snapshot_counters() {
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         5
     );
-    assert_eq!(counters.title, bbb_control::TitleState::default());
+    assert_eq!(world.title().title.as_deref(), None);
+    assert_eq!(world.title().subtitle.as_deref(), None);
+    assert_eq!(world.title().fade_in, 10);
+    assert_eq!(world.title().stay, 70);
+    assert_eq!(world.title().fade_out, 20);
+    assert_eq!(world.title().title_time, 0);
     assert_eq!(counters.clear_titles_packets, 2);
     assert_eq!(counters.title_text_packets, 1);
     assert_eq!(counters.subtitle_text_packets, 1);
