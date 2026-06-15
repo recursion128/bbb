@@ -99,7 +99,6 @@ pub struct NetCounters {
     pub player_pose: Option<PlayerPose>,
     pub last_player_look_at: Option<PlayerLookAtState>,
     pub selected_hotbar_slot: u8,
-    pub ticking: ClientTickingState,
     pub camera: CameraState,
     pub player_position_packets: usize,
     pub player_info_update_packets: usize,
@@ -595,23 +594,6 @@ pub struct PlayerLookAtState {
     pub position: NetVec3,
     pub target_entity_id: Option<i32>,
     pub to_anchor: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct ClientTickingState {
-    pub tick_rate: f32,
-    pub frozen: bool,
-    pub frozen_ticks_to_run: i32,
-}
-
-impl Default for ClientTickingState {
-    fn default() -> Self {
-        Self {
-            tick_rate: 20.0,
-            frozen: false,
-            frozen_ticks_to_run: 0,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -317,9 +317,14 @@ fn hud_text_and_ticking_updates_snapshot_counters() {
     let action_bar = world.action_bar().unwrap();
     assert_eq!(action_bar.content, "+12 XP");
     assert_eq!(action_bar.display_ticks, 60);
-    assert_eq!(counters.ticking.tick_rate, 1.0);
-    assert!(counters.ticking.frozen);
-    assert_eq!(counters.ticking.frozen_ticks_to_run, 7);
+    assert_eq!(
+        world.ticking(),
+        bbb_world::WorldTickingState {
+            tick_rate: 1.0,
+            frozen: true,
+            frozen_ticks_to_run: 7,
+        }
+    );
     assert_eq!(counters.titles_animation_packets, 2);
     assert_eq!(counters.title_text_packets, 1);
     assert_eq!(counters.subtitle_text_packets, 1);

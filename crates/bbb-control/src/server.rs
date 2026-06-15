@@ -368,6 +368,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.level_clock" => Ok(serde_json::json!({
             "world_time": snapshot_guard.world_store.world_time(),
             "weather": snapshot_guard.world_store.weather(),
+            "ticking": snapshot_guard.world_store.ticking(),
         })),
         "world.server_presentation" => {
             serde_json::to_value(snapshot_guard.world_store.presentation())
@@ -517,9 +518,9 @@ mod tests {
         ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText,
         SetDefaultSpawnPosition, SetSimulationDistance, SetSubtitleText, SetTitleText,
         SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
-        StopSound, SystemChat, TagQuery, TrackedWaypoint, TrackedWaypointPacket, Transfer,
-        UpdateAdvancements, Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier,
-        WaypointOperation, WaypointVec3i,
+        StopSound, SystemChat, TagQuery, TickingState, TickingStep, TrackedWaypoint,
+        TrackedWaypointPacket, Transfer, UpdateAdvancements, Vec3d as ProtocolVec3d, WaypointData,
+        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1472,6 +1473,11 @@ mod tests {
                 event_id: 7,
                 param: 0.5,
             });
+            store.apply_ticking_state(TickingState {
+                tick_rate: 0.25,
+                frozen: true,
+            });
+            store.apply_ticking_step(TickingStep { tick_steps: 7 });
             snapshot.write().unwrap().world_store = store;
         }
 
@@ -1490,6 +1496,9 @@ mod tests {
         assert_eq!(clock["world_time"]["clock_updates"][0]["total_ticks"], 6000);
         assert_eq!(clock["weather"]["raining"], true);
         assert_eq!(clock["weather"]["rain_level"], 0.5);
+        assert_eq!(clock["ticking"]["tick_rate"], 1.0);
+        assert_eq!(clock["ticking"]["frozen"], true);
+        assert_eq!(clock["ticking"]["frozen_ticks_to_run"], 7);
     }
 
     #[test]

@@ -4039,9 +4039,6 @@ fn world_time_and_weather_update_snapshot_and_clear_color() {
         }
     );
 
-    assert_eq!(counters.ticking.tick_rate, 1.0);
-    assert!(counters.ticking.frozen);
-    assert_eq!(counters.ticking.frozen_ticks_to_run, 7);
     assert_eq!(counters.world_time_packets, 1);
     assert_eq!(counters.game_event_packets, 1);
     assert_eq!(counters.ticking_state_packets, 1);
