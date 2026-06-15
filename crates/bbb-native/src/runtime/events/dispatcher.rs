@@ -10,10 +10,10 @@ use crate::particle_runtime::ParticleEventSink;
 use super::client_state::*;
 use super::control_state::{
     apply_control_projection_event, sync_advancement_counters, sync_block_event_counters,
-    sync_client_audio_counters, sync_command_counters, sync_entity_counters,
-    sync_entity_interaction_counters, sync_entity_status_counters, sync_hud_session_counters,
-    sync_inventory_counters, sync_recipe_access_counters, sync_recipe_book_counters,
-    sync_scoreboard_counters, sync_world_border_counters,
+    sync_command_counters, sync_entity_counters, sync_entity_interaction_counters,
+    sync_entity_status_counters, sync_hud_session_counters, sync_inventory_counters,
+    sync_recipe_access_counters, sync_recipe_book_counters, sync_scoreboard_counters,
+    sync_world_border_counters,
 };
 use super::{sync_weather_counters, sync_world_time_counters};
 
@@ -70,14 +70,12 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         match event {
             NetEvent::Sound(update) => {
                 world.apply_sound_event(update);
-                sync_client_audio_counters(counters, world);
                 if let Some(state) = world.last_sound() {
                     emit_positioned_sound(&mut audio_events, state);
                 }
             }
             NetEvent::SoundEntity(update) => {
                 let applied = world.apply_sound_entity_event(update);
-                sync_client_audio_counters(counters, world);
                 if applied {
                     if let Some(state) = world.last_sound_entity() {
                         let position = world
@@ -89,7 +87,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::StopSound(update) => {
                 world.apply_stop_sound(update);
-                sync_client_audio_counters(counters, world);
                 if let Some(state) = world.last_stop_sound() {
                     emit_stop_sound(&mut audio_events, state);
                 }

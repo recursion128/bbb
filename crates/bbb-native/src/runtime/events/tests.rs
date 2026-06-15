@@ -2205,7 +2205,7 @@ fn player_action_events_update_snapshot_counters() {
 }
 
 #[test]
-fn client_audio_events_update_snapshot_counters() {
+fn client_audio_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::Sound(SoundEvent {
         sound: SoundEventHolder::Reference { registry_id: 41 },
@@ -2240,20 +2240,12 @@ fn client_audio_events_update_snapshot_counters() {
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(123));
-    let mut counters = NetCounters {
-        sound_packets: 99,
-        sound_entity_packets: 99,
-        sound_entity_events_applied: 99,
-        sound_entity_events_ignored: 99,
-        stop_sound_packets: 99,
-        ..NetCounters::default()
-    };
+    let mut counters = NetCounters::default();
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
         3
     );
-    assert_eq!(counters.sound_packets, 1);
     assert_eq!(world.counters().sound_packets, 1);
     assert_eq!(
         world.last_sound(),
@@ -2275,9 +2267,6 @@ fn client_audio_events_update_snapshot_counters() {
             seed: 123456789,
         })
     );
-    assert_eq!(counters.sound_entity_packets, 1);
-    assert_eq!(counters.sound_entity_events_applied, 1);
-    assert_eq!(counters.sound_entity_events_ignored, 0);
     assert_eq!(world.counters().sound_entity_packets, 1);
     assert_eq!(world.counters().sound_entity_events_applied, 1);
     assert_eq!(world.counters().sound_entity_events_ignored, 0);
@@ -2297,7 +2286,6 @@ fn client_audio_events_update_snapshot_counters() {
             seed: -9,
         })
     );
-    assert_eq!(counters.stop_sound_packets, 1);
     assert_eq!(world.counters().stop_sound_packets, 1);
     assert_eq!(
         world.last_stop_sound(),
@@ -2369,11 +2357,12 @@ fn client_audio_events_emit_runtime_commands_for_applied_events() {
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
     assert_eq!(audio.commands.len(), 3);
-    assert_eq!(counters.sound_packets, 1);
-    assert_eq!(counters.sound_entity_packets, 2);
-    assert_eq!(counters.sound_entity_events_applied, 1);
-    assert_eq!(counters.sound_entity_events_ignored, 1);
-    assert_eq!(counters.stop_sound_packets, 1);
+    let world_counters = world.counters();
+    assert_eq!(world_counters.sound_packets, 1);
+    assert_eq!(world_counters.sound_entity_packets, 2);
+    assert_eq!(world_counters.sound_entity_events_applied, 1);
+    assert_eq!(world_counters.sound_entity_events_ignored, 1);
+    assert_eq!(world_counters.stop_sound_packets, 1);
 
     match &audio.commands[0] {
         AudioCommand::PlayPositionedSound(command) => {
@@ -2449,9 +2438,9 @@ fn silent_entity_sound_events_do_not_emit_runtime_commands() {
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
     assert!(audio.commands.is_empty(), "{:?}", audio.commands);
     assert_eq!(world.last_sound_entity(), None);
-    assert_eq!(counters.sound_entity_packets, 1);
-    assert_eq!(counters.sound_entity_events_applied, 0);
-    assert_eq!(counters.sound_entity_events_ignored, 1);
+    assert_eq!(world.counters().sound_entity_packets, 1);
+    assert_eq!(world.counters().sound_entity_events_applied, 0);
+    assert_eq!(world.counters().sound_entity_events_ignored, 1);
 }
 
 #[test]

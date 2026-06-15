@@ -375,12 +375,3 @@ pub(super) fn sync_advancement_counters(counters: &mut NetCounters, world: &Worl
     counters.advancement_progress_criteria_tracked =
         world_counters.advancement_progress_criteria_tracked;
 }
-
-pub(super) fn sync_client_audio_counters(counters: &mut NetCounters, world: &WorldStore) {
-    let world_counters = world.counters();
-    counters.sound_packets = world_counters.sound_packets;
-    counters.sound_entity_packets = world_counters.sound_entity_packets;
-    counters.sound_entity_events_applied = world_counters.sound_entity_events_applied;
-    counters.sound_entity_events_ignored = world_counters.sound_entity_events_ignored;
-    counters.stop_sound_packets = world_counters.stop_sound_packets;
-}

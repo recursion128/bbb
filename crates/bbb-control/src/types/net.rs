@@ -298,13 +298,6 @@ pub struct NetCounters {
     pub item_entity_stack_shrinks: usize,
     #[serde(default)]
     pub take_item_entities_removed: usize,
-    pub sound_packets: usize,
-    pub sound_entity_packets: usize,
-    #[serde(default)]
-    pub sound_entity_events_applied: usize,
-    #[serde(default)]
-    pub sound_entity_events_ignored: usize,
-    pub stop_sound_packets: usize,
     pub select_advancements_tab_packets: usize,
     #[serde(default)]
     pub update_advancements_packets: usize,
