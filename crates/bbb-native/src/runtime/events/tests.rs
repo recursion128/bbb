@@ -4,6 +4,7 @@ use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
 use bbb_audio::{
     AudioCategory, AudioCommand, AudioCommandResolver, AudioResolveError, SoundEventRegistry,
 };
+use bbb_control::NetCounters;
 use bbb_net::{NetCommand, NetEvent};
 use bbb_pack::SoundCatalog;
 use bbb_protocol::codec::Encoder;
@@ -3597,7 +3598,7 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
 }
 
 #[test]
-fn world_time_and_weather_update_snapshot_and_clear_color() {
+fn world_time_and_weather_update_world_counters_and_clear_color() {
     let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::SetTime(bbb_protocol::packets::PlayTime {
         game_time: 123,
@@ -3658,8 +3659,8 @@ fn world_time_and_weather_update_snapshot_and_clear_color() {
         }
     );
 
-    assert_eq!(counters.world_time_packets, 1);
-    assert_eq!(counters.game_event_packets, 1);
+    assert_eq!(world.counters().world_time_packets, 1);
+    assert_eq!(world.counters().game_event_packets, 1);
     assert_eq!(counters.ticking_state_packets, 1);
     assert_eq!(counters.ticking_step_packets, 1);
 

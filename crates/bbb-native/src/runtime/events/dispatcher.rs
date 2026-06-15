@@ -9,7 +9,6 @@ use crate::particle_runtime::ParticleEventSink;
 
 use super::client_state::*;
 use super::control_state::apply_control_projection_event;
-use super::{sync_weather_counters, sync_world_time_counters};
 
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
@@ -350,11 +349,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             },
             NetEvent::GameEvent(event) => {
                 world.apply_game_event(event);
-                sync_weather_counters(counters, world);
             }
             NetEvent::SetTime(time) => {
                 world.apply_world_time(time);
-                sync_world_time_counters(counters, world);
             }
             NetEvent::LevelChunkWithLight(chunk) => {
                 match world.insert_level_chunk_with_light(chunk) {

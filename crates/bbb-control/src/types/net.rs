@@ -60,8 +60,6 @@ pub struct NetCounters {
     pub container_click_commands_queued: usize,
     #[serde(default)]
     pub container_slot_state_changed_commands_queued: usize,
-    pub world_time_packets: usize,
-    pub game_event_packets: usize,
     pub player_move_commands_queued: usize,
     pub move_vehicle_commands_queued: usize,
     pub last_error: Option<String>,
