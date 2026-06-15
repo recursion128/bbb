@@ -6,7 +6,7 @@ use crate::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, ChunkColumn, ChunkViewState,
     ClientAdvancementsState, ClientAudioState, ClientChatState, ClientCombatState,
     ClientDebugGameState, ClientDebugQueryState, ClientEffectsState, ClientFeatureState,
-    ClientHudState, ClientRecipesState, ClientUiState, ClientWaypointsState,
+    ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState, LevelEventRecord,
     LocalPlayerState, MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet,
     ScoreboardState, ServerPresentationState, WorldBorderState, WorldCounters, WorldDimension,
@@ -64,6 +64,8 @@ pub struct WorldStore {
     pub(crate) player_info: PlayerInfoState,
     #[serde(default)]
     pub(crate) presentation: ServerPresentationState,
+    #[serde(default)]
+    pub(crate) client_stats: ClientStatsState,
     #[serde(default)]
     pub(crate) cooldowns: BTreeMap<String, ItemCooldownState>,
     #[serde(default)]

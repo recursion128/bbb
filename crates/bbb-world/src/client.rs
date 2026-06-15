@@ -13,6 +13,7 @@ mod player_info;
 mod scoreboard;
 mod server_presentation;
 pub(crate) mod state;
+mod stats;
 mod ui;
 mod waypoints;
 mod world_border;

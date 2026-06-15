@@ -9,33 +9,34 @@ use bbb_pack::SoundCatalog;
 use bbb_protocol::codec::Encoder;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
-    AttributeSnapshot, BlockEntityData, BlockPos as ProtocolBlockPos, BlockUpdate, ChatTypeBound,
-    ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ChunksBiomes,
-    CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent, ContainerSetData, ContainerSetSlot,
-    CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
-    DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat,
-    DialogHolder, DisguisedChat, EntityAnchor, EntityAnimation, EntityDataValue,
-    EntityDataValueKind, EntityEvent, EntityMove, EntityPositionSync, EquipmentSlot,
-    EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameRuleValue,
-    GameRuleValues, GameTestHighlightPos, HurtAnimation, IngredientSummary, InteractionHand,
-    ItemCostSummary, ItemStackSummary, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight,
-    LevelParticles, LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
-    MerchantOffer, MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen,
-    MoveMinecartAlongTrack, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
-    ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill,
-    PlayerLookAt, PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd,
-    RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
-    RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
-    RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType,
-    RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate, SelectAdvancementsTab,
-    ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetChunkCacheCenter,
-    SetChunkCacheRadius, SetCursorItem, SetEntityData, SetEntityLink, SetEntityMotion,
-    SetEquipment, SetPassengers, SetPlayerInventory, ShowDialog, SignedMessageBody,
-    SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
-    StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload, TagQuery, TeleportEntity,
-    TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket, UpdateAdvancements,
-    UpdateAttributes, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
-    WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    AttributeSnapshot, AwardStats, BlockEntityData, BlockPos as ProtocolBlockPos, BlockUpdate,
+    ChatTypeBound, ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData,
+    ChunkPos as ProtocolChunkPos, ChunksBiomes, CommonPlayerSpawnInfo, ContainerClose,
+    ContainerSetContent, ContainerSetData, ContainerSetSlot, CustomChatCompletions,
+    CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, DebugBlockValue,
+    DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat, DialogHolder,
+    DisguisedChat, EntityAnchor, EntityAnimation, EntityDataValue, EntityDataValueKind,
+    EntityEvent, EntityMove, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, Explosion,
+    FilterMask, FilterMaskKind, ForgetLevelChunk, GameRuleValue, GameRuleValues,
+    GameTestHighlightPos, HurtAnimation, IngredientSummary, InteractionHand, ItemCostSummary,
+    ItemStackSummary, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelParticles,
+    LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MerchantOffer,
+    MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen, MoveMinecartAlongTrack,
+    OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature, ParticlePayload,
+    PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill, PlayerLookAt,
+    PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry,
+    RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
+    RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
+    RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType, RemoveEntities, Respawn,
+    RotateHead, SectionBlocksUpdate, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
+    ServerLinkType, ServerLinks, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
+    SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetPassengers, SetPlayerInventory,
+    ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
+    SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
+    TagNetworkPayload, TagQuery, TeleportEntity, TestInstanceBlockStatus, TrackedWaypoint,
+    TrackedWaypointPacket, UpdateAdvancements, UpdateAttributes, UpdateRecipes, UpdateTags,
+    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
+    WaypointOperation, WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, RegistryPacketEntry, WorldStore};
 use std::collections::BTreeMap;
@@ -288,6 +289,63 @@ fn custom_report_details_event_updates_snapshot_counters() {
     assert_eq!(world.custom_report_details(), &details);
     assert_eq!(world.counters().custom_report_detail_packets, 1);
     assert_eq!(world.counters().custom_report_details_tracked, 2);
+}
+
+#[test]
+fn award_stats_event_updates_world_state_and_snapshot_counters() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::AwardStats(AwardStats {
+        stats: vec![
+            StatUpdate {
+                stat_type_id: 8,
+                value_id: 10,
+                amount: 3,
+            },
+            StatUpdate {
+                stat_type_id: 0,
+                value_id: 4,
+                amount: 11,
+            },
+        ],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(world.stat_value(8, 10), Some(3));
+    assert_eq!(world.stat_value(0, 4), Some(11));
+    assert_eq!(world.counters().award_stats_packets, 1);
+    assert_eq!(world.counters().award_stats_entries_received, 2);
+    assert_eq!(world.counters().last_award_stats_entry_count, 2);
+    assert_eq!(world.counters().stats_tracked, 2);
+
+    assert_eq!(counters.award_stats_packets, 1);
+    assert_eq!(counters.award_stats_entries_received, 2);
+    assert_eq!(counters.last_award_stats_entry_count, 2);
+    assert_eq!(counters.stats_tracked, 2);
+    assert_eq!(
+        counters.last_award_stats,
+        Some(bbb_control::AwardStatsState {
+            entries: vec![
+                bbb_control::StatValueState {
+                    stat_type_id: 8,
+                    value_id: 10,
+                    amount: 3,
+                },
+                bbb_control::StatValueState {
+                    stat_type_id: 0,
+                    value_id: 4,
+                    amount: 11,
+                },
+            ],
+        })
+    );
 }
 
 #[test]

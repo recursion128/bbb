@@ -74,6 +74,10 @@ pub(super) fn apply_control_projection_event(
             world.apply_server_links(links);
             sync_server_link_counters(counters, world);
         }
+        NetEvent::AwardStats(update) => {
+            world.apply_award_stats(update);
+            sync_client_stats_counters(counters, world);
+        }
         NetEvent::LowDiskSpaceWarning => {
             world.apply_low_disk_space_warning();
             sync_client_ui_counters(counters, world);
@@ -888,6 +892,29 @@ fn sync_server_link_counters(counters: &mut NetCounters, world: &WorldStore) {
             known_type: link.known_type.clone(),
         })
         .collect();
+}
+
+fn sync_client_stats_counters(counters: &mut NetCounters, world: &WorldStore) {
+    let world_counters = world.counters();
+    counters.award_stats_packets = world_counters.award_stats_packets;
+    counters.award_stats_entries_received = world_counters.award_stats_entries_received;
+    counters.last_award_stats_entry_count = world_counters.last_award_stats_entry_count;
+    counters.stats_tracked = world_counters.stats_tracked;
+    counters.last_award_stats = world.last_stats_update().map(control_award_stats_state);
+}
+
+fn control_award_stats_state(state: &bbb_world::StatsUpdateState) -> bbb_control::AwardStatsState {
+    bbb_control::AwardStatsState {
+        entries: state
+            .entries
+            .iter()
+            .map(|entry| bbb_control::StatValueState {
+                stat_type_id: entry.stat_type_id,
+                value_id: entry.value_id,
+                amount: entry.amount,
+            })
+            .collect(),
+    }
 }
 
 fn control_chat_line(message: &bbb_world::ChatMessageState) -> bbb_control::ClientChatLine {

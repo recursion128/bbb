@@ -209,6 +209,16 @@ pub struct NetCounters {
     pub server_link_invalid_entries: usize,
     #[serde(default)]
     pub server_links_tracked: usize,
+    #[serde(default)]
+    pub award_stats_packets: usize,
+    #[serde(default)]
+    pub award_stats_entries_received: usize,
+    #[serde(default)]
+    pub last_award_stats_entry_count: usize,
+    #[serde(default)]
+    pub stats_tracked: usize,
+    #[serde(default)]
+    pub last_award_stats: Option<AwardStatsState>,
     pub player_abilities_packets: usize,
     pub player_health_packets: usize,
     pub player_experience_packets: usize,
@@ -862,6 +872,18 @@ pub struct GameTestHighlightPosState {
 pub struct TestInstanceBlockStatusState {
     pub status: String,
     pub size: Option<NetVec3i>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AwardStatsState {
+    pub entries: Vec<StatValueState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StatValueState {
+    pub stat_type_id: i32,
+    pub value_id: i32,
+    pub amount: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

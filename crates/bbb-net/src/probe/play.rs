@@ -17,7 +17,9 @@ impl ProbeContext {
             PlayClientbound::EntityAnimation(update) => {
                 self.world.apply_entity_animation(update);
             }
-            PlayClientbound::AwardStats(_) => {}
+            PlayClientbound::AwardStats(update) => {
+                self.world.apply_award_stats(update);
+            }
             PlayClientbound::BlockDestruction(update) => {
                 self.world.apply_block_destruction(update);
             }
@@ -471,12 +473,12 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
-        BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, ClockUpdate,
-        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
-        EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
+        AwardStats, BlockChangedAck, BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos,
+        ClockUpdate, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample,
+        DialogHolder, EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
         InteractionHand, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayTime,
         PlayerHealth, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse,
-        RecipeDisplayType, RemoteDebugSampleType, ShowDialog, TestInstanceBlockStatus,
+        RecipeDisplayType, RemoteDebugSampleType, ShowDialog, StatUpdate, TestInstanceBlockStatus,
         TickingState, TickingStep, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
     };
     use bbb_world::{BlockPos, ChunkPos};
@@ -591,6 +593,39 @@ mod tests {
                 size: Some(bbb_world::DebugVec3iState { x: 3, y: 4, z: 5 }),
             })
         );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_award_stats_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::AwardStats(AwardStats {
+                stats: vec![
+                    StatUpdate {
+                        stat_type_id: 8,
+                        value_id: 10,
+                        amount: 3,
+                    },
+                    StatUpdate {
+                        stat_type_id: 0,
+                        value_id: 4,
+                        amount: 11,
+                    },
+                ],
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world.stat_value(8, 10), Some(3));
+        assert_eq!(report.world.stat_value(0, 4), Some(11));
+        assert_eq!(report.world_counters.award_stats_packets, 1);
+        assert_eq!(report.world_counters.award_stats_entries_received, 2);
+        assert_eq!(report.world_counters.last_award_stats_entry_count, 2);
+        assert_eq!(report.world_counters.stats_tracked, 2);
     }
 
     #[tokio::test]

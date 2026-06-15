@@ -177,6 +177,14 @@ pub struct WorldCounters {
     #[serde(default)]
     pub transfer_packets: usize,
     #[serde(default)]
+    pub award_stats_packets: usize,
+    #[serde(default)]
+    pub award_stats_entries_received: usize,
+    #[serde(default)]
+    pub last_award_stats_entry_count: usize,
+    #[serde(default)]
+    pub stats_tracked: usize,
+    #[serde(default)]
     pub cooldown_packets: usize,
     #[serde(default)]
     pub cooldowns_tracked: usize,

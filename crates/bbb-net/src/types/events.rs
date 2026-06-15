@@ -1,7 +1,7 @@
 use bbb_protocol::packets::{
-    AddEntity, BlockChangedAck, BlockDestruction, BlockEntityData, BlockEvent, BlockUpdate,
-    BossEvent, ChangeDifficulty, ChunksBiomes, ClearTitles, CommandSuggestions, Commands,
-    ContainerClose, ContainerSetContent, ContainerSetData, ContainerSetSlot, Cooldown,
+    AddEntity, AwardStats, BlockChangedAck, BlockDestruction, BlockEntityData, BlockEvent,
+    BlockUpdate, BossEvent, ChangeDifficulty, ChunksBiomes, ClearTitles, CommandSuggestions,
+    Commands, ContainerClose, ContainerSetContent, ContainerSetData, ContainerSetSlot, Cooldown,
     CustomChatCompletions, CustomPayload, CustomReportDetails, DamageEvent, DebugBlockValue,
     DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat, DisguisedChat,
     EntityAnimation, EntityEvent, EntityMove, EntityPositionSync, Explosion, ForgetLevelChunk,
@@ -52,6 +52,7 @@ pub enum NetEvent {
     },
     CustomReportDetails(CustomReportDetails),
     ServerLinks(ServerLinks),
+    AwardStats(AwardStats),
     ResetChat,
     UpdateEnabledFeatures(UpdateEnabledFeatures),
     CodeOfConduct {

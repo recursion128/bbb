@@ -17,7 +17,9 @@ impl EventStreamContext {
             PlayClientbound::EntityAnimation(update) => {
                 emit(&self.events, NetEvent::EntityAnimation(update)).await?;
             }
-            PlayClientbound::AwardStats(_) => {}
+            PlayClientbound::AwardStats(update) => {
+                emit(&self.events, NetEvent::AwardStats(update)).await?;
+            }
             PlayClientbound::BlockDestruction(update) => {
                 emit(&self.events, NetEvent::BlockDestruction(update)).await?;
             }
