@@ -40,13 +40,16 @@ rewrite or clean git history unless the user explicitly asks for that operation.
   - `docs/native-client-architecture.md`
   - `docs/code-organization-style.md`
   - `docs/agent-development-workflow.md`
+  - `docs/unsupported-features.md`
 
 Before changing packet wire format, packet ids, enum ordinals, nullable fields,
 client semantics, entity type checks, resource lookup, rendering behavior, or
 audio behavior, verify the relevant vanilla 26.1 source or official asset data.
 
 When behavior cannot be fully verified in automated tests, record the vanilla
-source path, asset path, or manual comparison required to finish the slice.
+source path, asset path, or manual comparison required to finish the slice. When
+a feature remains unsupported, partial, diagnostic-only, or deferred, update
+`docs/unsupported-features.md` with the owner, status, and next action.
 
 ## Execution Principles
 
