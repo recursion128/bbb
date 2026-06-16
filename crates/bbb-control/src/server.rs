@@ -466,6 +466,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "audio.counters" => serde_json::to_value(&snapshot_guard.audio),
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
+        "world.apply_diagnostics" => {
+            serde_json::to_value(snapshot_guard.world_store.apply_diagnostics())
+        }
         "world.registries" => serde_json::to_value(snapshot_guard.world_store.registries()),
         "world.level_state" => Ok(serde_json::json!({
             "dimension": snapshot_guard.world_store.dimension(),
@@ -2372,6 +2375,36 @@ mod tests {
         assert_eq!(known_packs["offered"][0]["id"], "core");
         assert_eq!(known_packs["offered"][0]["version"], "26.1");
         assert_eq!(known_packs["selected"], json!([]));
+    }
+
+    #[test]
+    fn apply_diagnostics_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.record_apply_error("light_update", "invalid light payload");
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.apply_diagnostics".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let diagnostics = response.result.unwrap();
+        assert_eq!(diagnostics["apply_errors"][0]["source"], "light_update");
+        assert_eq!(
+            diagnostics["apply_errors"][0]["message"],
+            "invalid light payload"
+        );
+        assert_eq!(
+            diagnostics["last_apply_error"]["message"],
+            "invalid light payload"
+        );
     }
 
     #[test]

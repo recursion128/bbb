@@ -371,9 +371,7 @@ impl ProbeContext {
                 self.world.apply_block_changed_ack(update);
             }
             PlayClientbound::BlockEntityData(update) => {
-                if let Err(err) = self.world.apply_block_entity_data(update) {
-                    self.record_world_apply_error(err);
-                }
+                let _ = self.world.apply_block_entity_data(update);
             }
             PlayClientbound::BlockEvent(event) => {
                 self.world.apply_block_event(event);
@@ -439,20 +437,19 @@ impl ProbeContext {
                 self.world.apply_resource_pack_pop(update);
             }
             PlayClientbound::LevelChunkWithLight(chunk) => {
-                return Ok(Some(self.world.insert_level_chunk_with_light(chunk)?));
+                match self.world.insert_level_chunk_with_light(chunk) {
+                    Ok(pos) => return Ok(Some(pos)),
+                    Err(_) => {}
+                }
             }
             PlayClientbound::LevelParticles(update) => {
                 self.world.apply_level_particles(update);
             }
             PlayClientbound::LightUpdate(update) => {
-                if let Err(err) = self.world.apply_light_update(update) {
-                    self.record_world_apply_error(err);
-                }
+                let _ = self.world.apply_light_update(update);
             }
             PlayClientbound::ChunksBiomes(update) => {
-                if let Err(err) = self.world.apply_biome_update(update) {
-                    self.record_world_apply_error(err);
-                }
+                let _ = self.world.apply_biome_update(update);
             }
             PlayClientbound::ForgetLevelChunk(update) => {
                 self.world.forget_chunk(ChunkPos {
@@ -508,11 +505,12 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
         BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
-        BossEventOperation, ChangeDifficulty, ChunkPos as ProtocolChunkPos, ClockUpdate,
-        CommonPlayerSpawnInfo, CookieRequest, DebugBlockValue, DebugChunkValue, DebugEntityValue,
-        DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor, Explosion, GameEvent,
-        GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand, LevelEvent,
-        LevelParticles, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
+        BossEventOperation, ChangeDifficulty, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
+        ClockUpdate, CommonPlayerSpawnInfo, CookieRequest, DebugBlockValue, DebugChunkValue,
+        DebugEntityValue, DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor,
+        Explosion, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
+        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
+        LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
         OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime,
         PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAt, PlayerPositionUpdate,
         PlayerRotationUpdate, PongResponse, ProjectilePower, RecipeDisplayType,
@@ -524,7 +522,10 @@ mod tests {
         Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
         WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
-    use bbb_protocol::{codec::Decoder, ids};
+    use bbb_protocol::{
+        codec::{Decoder, Encoder},
+        ids,
+    };
     use bbb_world::{BlockPos, ChunkPos};
     use bytes::BytesMut;
     use std::time::Duration;
@@ -996,16 +997,52 @@ mod tests {
         let counters = probe.world.counters();
         assert_eq!(counters.block_entity_updates_received, 1);
         assert_eq!(counters.block_entity_updates_applied, 0);
-        assert_eq!(probe.world_apply_errors.len(), 1);
+        let diagnostics = probe.world.apply_diagnostics();
+        assert_eq!(diagnostics.apply_errors.len(), 1);
+        assert_eq!(diagnostics.apply_errors[0].source, "block_entity_data");
         assert!(
-            probe.world_apply_errors[0].contains("nbt byte"),
+            diagnostics.apply_errors[0].message.contains("nbt byte"),
             "{:?}",
-            probe.world_apply_errors
+            diagnostics.apply_errors
         );
+        assert_eq!(counters.world_apply_errors, 1);
 
         let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
         assert_eq!(report.world_apply_errors.len(), 1);
         assert!(report.world_apply_errors[0].contains("nbt byte"));
+        assert_eq!(report.world_counters.world_apply_errors, 1);
+        assert_eq!(report.world.apply_diagnostics().apply_errors.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn probe_records_bad_chunk_and_continues_to_good_chunk() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let mut bad_chunk = synthetic_probe_level_chunk_packet();
+        bad_chunk.chunk_data.section_data = vec![0xff];
+
+        let first_chunk = probe
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(bad_chunk))
+            .await
+            .unwrap();
+
+        assert_eq!(first_chunk, None);
+        assert_eq!(probe.world.counters().world_apply_errors, 1);
+        assert_eq!(
+            probe.world.apply_diagnostics().apply_errors[0].source,
+            "level_chunk_with_light"
+        );
+
+        let first_chunk = probe
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(
+                synthetic_probe_level_chunk_packet(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(first_chunk, Some(ChunkPos { x: 1, z: -2 }));
+        assert_eq!(probe.world.counters().chunks_received, 1);
+        assert_eq!(probe.world.counters().world_apply_errors, 1);
     }
 
     #[tokio::test]
@@ -2079,6 +2116,42 @@ mod tests {
             compression_threshold: None,
         };
         (client, server)
+    }
+
+    fn synthetic_probe_level_chunk_packet() -> LevelChunkWithLight {
+        let mut sections = Encoder::new();
+        sections.write_i16(0);
+        sections.write_i16(0);
+        sections.write_u8(0);
+        sections.write_var_i32(0);
+        sections.write_u8(0);
+        sections.write_var_i32(0);
+
+        LevelChunkWithLight {
+            x: 1,
+            z: -2,
+            chunk_data: LevelChunkData {
+                heightmaps: vec![ChunkHeightmapData {
+                    kind_id: 1,
+                    data: vec![42],
+                }],
+                section_data: sections.into_inner(),
+                block_entities: vec![LevelChunkBlockEntity {
+                    packed_xz: 0,
+                    y: -64,
+                    block_entity_type_id: 7,
+                    raw_nbt: vec![0],
+                }],
+            },
+            light_data: LightUpdateData {
+                sky_y_mask: Vec::new(),
+                block_y_mask: Vec::new(),
+                empty_sky_y_mask: Vec::new(),
+                empty_block_y_mask: Vec::new(),
+                sky_updates: Vec::new(),
+                block_updates: Vec::new(),
+            },
+        }
     }
 
     fn protocol_play_login(player_id: i32) -> PlayLogin {

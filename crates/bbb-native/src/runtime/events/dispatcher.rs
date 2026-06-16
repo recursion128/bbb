@@ -487,9 +487,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::BlockEntityData(update) => match world.apply_block_entity_data(update) {
                 Ok(_) => {}
-                Err(err) => {
-                    counters.last_error = Some(err.to_string());
-                }
+                Err(_) => {}
             },
             NetEvent::GameEvent(event) => {
                 world.apply_game_event(event);
@@ -500,22 +498,16 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::LevelChunkWithLight(chunk) => {
                 match world.insert_level_chunk_with_light(chunk) {
                     Ok(_) => {}
-                    Err(err) => {
-                        counters.last_error = Some(err.to_string());
-                    }
+                    Err(_) => {}
                 }
             }
             NetEvent::LightUpdate(update) => match world.apply_light_update(update) {
                 Ok(_) => {}
-                Err(err) => {
-                    counters.last_error = Some(err.to_string());
-                }
+                Err(_) => {}
             },
             NetEvent::ChunksBiomes(update) => match world.apply_biome_update(update) {
                 Ok(_) => {}
-                Err(err) => {
-                    counters.last_error = Some(err.to_string());
-                }
+                Err(_) => {}
             },
             NetEvent::ForgetLevelChunk(update) => {
                 world.forget_chunk(ChunkPos {

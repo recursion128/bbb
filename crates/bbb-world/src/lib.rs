@@ -4,6 +4,7 @@ mod chunks;
 mod client;
 mod commands;
 mod counters;
+mod diagnostics;
 mod entities;
 mod error;
 mod exports;

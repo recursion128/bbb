@@ -13,7 +13,7 @@ use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
     terrain::{classify_terrain_material, terrain_fluid_state},
     BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkViewState, RegistrySet,
-    Result, TerrainBlockCell, TerrainChunkSnapshot, WorldStore,
+    Result, TerrainBlockCell, TerrainChunkSnapshot, WorldDecodeError, WorldStore,
 };
 
 use super::{
@@ -30,7 +30,14 @@ impl WorldStore {
             x: packet.x,
             z: packet.z,
         };
-        let column = decode_level_chunk_with_light(pos, packet.chunk_data, packet.light_data)?;
+        let decoded = decode_level_chunk_with_light(pos, packet.chunk_data, packet.light_data);
+        let column = match decoded {
+            Ok(column) => column,
+            Err(err) => {
+                self.record_apply_error("level_chunk_with_light", &err);
+                return Err(err);
+            }
+        };
         self.insert_decoded_chunk(column);
         Ok(pos)
     }
@@ -83,10 +90,24 @@ impl WorldStore {
     pub fn apply_block_entity_data(&mut self, packet: ProtocolBlockEntityData) -> Result<bool> {
         self.counters.block_entity_updates_received += 1;
         let pos = protocol_block_pos(packet.pos);
-        let y = i16::try_from(pos.y).map_err(|_| {
-            ProtocolError::InvalidData(format!("block entity y {} is out of i16 range", pos.y))
-        })?;
-        let nbt = decode_nbt_payload_summary(&packet.raw_nbt)?;
+        let y = match i16::try_from(pos.y) {
+            Ok(y) => y,
+            Err(_) => {
+                let err = WorldDecodeError::from(ProtocolError::InvalidData(format!(
+                    "block entity y {} is out of i16 range",
+                    pos.y
+                )));
+                self.record_apply_error("block_entity_data", &err);
+                return Err(err);
+            }
+        };
+        let nbt = match decode_nbt_payload_summary(&packet.raw_nbt) {
+            Ok(nbt) => nbt,
+            Err(err) => {
+                self.record_apply_error("block_entity_data", &err);
+                return Err(err);
+            }
+        };
 
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
@@ -148,7 +169,13 @@ impl WorldStore {
                 continue;
             };
             let section_count = self.chunks[chunk_index].sections.len();
-            let biomes = decode_biome_sections(&chunk_update.raw_biomes, section_count)?;
+            let biomes = match decode_biome_sections(&chunk_update.raw_biomes, section_count) {
+                Ok(biomes) => biomes,
+                Err(err) => {
+                    self.record_apply_error("chunks_biomes", &err);
+                    return Err(err);
+                }
+            };
             replacements.push((chunk_index, biomes));
         }
 

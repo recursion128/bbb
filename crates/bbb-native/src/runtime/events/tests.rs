@@ -299,9 +299,97 @@ fn terrain_chunk_ignored_counters_stay_in_world_store() {
     assert_chunk_counter!(biome_updates_received, 1);
     assert_chunk_counter!(biome_updates_applied, 0);
     assert_chunk_counter!(biome_updates_ignored, 1);
+    assert_chunk_counter!(world_apply_errors, 0);
     assert_chunk_counter!(chunk_forgets_received, 1);
     assert_chunk_counter!(chunks_forgotten, 0);
     assert_chunk_counter!(chunk_forgets_ignored, 1);
+    assert!(world.apply_diagnostics().apply_errors.is_empty());
+    assert!(counters.last_error.is_none());
+}
+
+#[test]
+fn terrain_apply_errors_stay_in_world_store() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
+        pos: ProtocolBlockPos { x: 0, y: 64, z: 0 },
+        block_entity_type_id: 7,
+        raw_nbt: vec![1],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert!(counters.last_error.is_none());
+    assert_eq!(world.counters().world_apply_errors, 1);
+    let diagnostics = world.apply_diagnostics();
+    assert_eq!(diagnostics.apply_errors.len(), 1);
+    assert_eq!(diagnostics.apply_errors[0].source, "block_entity_data");
+    assert!(
+        diagnostics.apply_errors[0].message.contains("nbt byte"),
+        "{:?}",
+        diagnostics.apply_errors
+    );
+}
+
+#[test]
+fn terrain_chunk_decode_errors_stay_in_world_store() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let mut chunk = synthetic_native_level_chunk_packet();
+    chunk.chunk_data.section_data = vec![0xff];
+    tx.try_send(NetEvent::LevelChunkWithLight(chunk)).unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert!(counters.last_error.is_none());
+    assert_eq!(world.counters().chunks_received, 0);
+    assert_eq!(world.counters().world_apply_errors, 1);
+    let diagnostics = world.apply_diagnostics();
+    assert_eq!(diagnostics.apply_errors.len(), 1);
+    assert_eq!(diagnostics.apply_errors[0].source, "level_chunk_with_light");
+}
+
+#[test]
+fn terrain_biome_decode_errors_stay_in_world_store() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::ChunksBiomes(ChunksBiomes {
+        chunks: vec![ChunkBiomeData {
+            pos: ProtocolChunkPos { x: 1, z: -2 },
+            raw_biomes: vec![65],
+        }],
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    assert!(counters.last_error.is_none());
+    assert_eq!(world.counters().chunks_received, 1);
+    assert_eq!(world.counters().biome_updates_received, 1);
+    assert_eq!(world.counters().world_apply_errors, 1);
+    let diagnostics = world.apply_diagnostics();
+    assert_eq!(diagnostics.apply_errors.len(), 1);
+    assert_eq!(diagnostics.apply_errors[0].source, "chunks_biomes");
 }
 
 #[test]

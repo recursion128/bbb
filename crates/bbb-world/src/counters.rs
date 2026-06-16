@@ -110,6 +110,8 @@ pub struct WorldCounters {
     pub biome_updates_applied: usize,
     #[serde(default)]
     pub biome_updates_ignored: usize,
+    #[serde(default)]
+    pub world_apply_errors: usize,
     pub block_updates_received: usize,
     pub block_updates_applied: usize,
     #[serde(default)]

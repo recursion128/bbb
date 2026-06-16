@@ -10,7 +10,8 @@ use crate::{
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
     LastMapColorPatchState, LevelEventRecord, LocalPlayerState, MapItemState, PlayerInfoState,
     ProjectilePowerUpdateState, RegistrySet, ScoreboardState, ServerPresentationState,
-    WorldBorderState, WorldCounters, WorldDimension, WorldGameplayState, WorldLevelInfo,
+    WorldApplyDiagnosticsState, WorldBorderState, WorldCounters, WorldDimension,
+    WorldGameplayState, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -95,6 +96,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) last_projectile_power: Option<ProjectilePowerUpdateState>,
     pub(crate) inventory: InventoryState,
+    #[serde(default)]
+    pub(crate) apply_diagnostics: WorldApplyDiagnosticsState,
     pub(crate) counters: WorldCounters,
 }
 

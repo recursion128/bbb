@@ -28,7 +28,6 @@ struct ProbeContext {
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
     accepted_code_of_conduct_hash: Option<i32>,
-    world_apply_errors: Vec<String>,
     unsupported_packets: usize,
     last_unsupported_packet_state: Option<ConnectionState>,
     last_unsupported_packet_id: Option<i32>,
@@ -80,16 +79,11 @@ impl ProbeContext {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
-            world_apply_errors: Vec::new(),
             unsupported_packets: 0,
             last_unsupported_packet_state: None,
             last_unsupported_packet_id: None,
             last_unsupported_packet_len: None,
         }
-    }
-
-    fn record_world_apply_error(&mut self, err: impl std::fmt::Display) {
-        self.world_apply_errors.push(err.to_string());
     }
 
     fn record_unsupported_packet(&mut self, state: ConnectionState, packet_id: i32, len: usize) {
@@ -110,6 +104,7 @@ impl ProbeContext {
             z: first_chunk.z * 16 + 8,
         });
         let world_counters = self.world.counters();
+        let world_apply_errors = self.world.world_apply_error_messages();
 
         ProbeReport {
             reached_state: self.state,
@@ -138,7 +133,7 @@ impl ProbeContext {
             first_chunk_summary,
             first_chunk_center_block,
             world_counters,
-            world_apply_errors: self.world_apply_errors,
+            world_apply_errors,
             world: self.world,
         }
     }
