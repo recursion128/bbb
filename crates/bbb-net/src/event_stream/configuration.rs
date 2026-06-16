@@ -47,12 +47,20 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::ResetChat).await?;
             }
             ConfigurationClientbound::ResourcePackPush(update) => {
-                let (id, payload) = packets::encode_configuration_resource_pack_response(
-                    update.id,
-                    ResourcePackResponseAction::Declined,
-                );
+                let pack_id = update.id;
+                let action = ResourcePackResponseAction::Declined;
+                let (id, payload) =
+                    packets::encode_configuration_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
                 emit(&self.events, NetEvent::ResourcePackPush(update)).await?;
+                emit(
+                    &self.events,
+                    NetEvent::ResourcePackResponse {
+                        id: pack_id,
+                        action,
+                    },
+                )
+                .await?;
             }
             ConfigurationClientbound::ResourcePackPop(update) => {
                 emit(&self.events, NetEvent::ResourcePackPop(update)).await?;

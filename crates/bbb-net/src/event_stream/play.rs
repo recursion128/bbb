@@ -279,12 +279,19 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::ServerData(update)).await?;
             }
             PlayClientbound::ResourcePackPush(update) => {
-                let (id, payload) = packets::encode_play_resource_pack_response(
-                    update.id,
-                    ResourcePackResponseAction::Declined,
-                );
+                let pack_id = update.id;
+                let action = ResourcePackResponseAction::Declined;
+                let (id, payload) = packets::encode_play_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
                 emit(&self.events, NetEvent::ResourcePackPush(update)).await?;
+                emit(
+                    &self.events,
+                    NetEvent::ResourcePackResponse {
+                        id: pack_id,
+                        action,
+                    },
+                )
+                .await?;
             }
             PlayClientbound::ResourcePackPop(update) => {
                 emit(&self.events, NetEvent::ResourcePackPop(update)).await?;

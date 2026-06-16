@@ -3,9 +3,11 @@ use std::collections::BTreeMap;
 use bbb_protocol::packets::{
     CustomPayload as ProtocolCustomPayload, CustomPayloadBody as ProtocolCustomPayloadBody,
     CustomReportDetails as ProtocolCustomReportDetails, ResourcePackPop as ProtocolResourcePackPop,
-    ResourcePackPush as ProtocolResourcePackPush, ServerData as ProtocolServerData,
-    ServerLinkEntry as ProtocolServerLinkEntry, ServerLinkType as ProtocolServerLinkType,
-    ServerLinks as ProtocolServerLinks, Transfer as ProtocolTransfer,
+    ResourcePackPush as ProtocolResourcePackPush,
+    ResourcePackResponseAction as ProtocolResourcePackResponseAction,
+    ServerData as ProtocolServerData, ServerLinkEntry as ProtocolServerLinkEntry,
+    ServerLinkType as ProtocolServerLinkType, ServerLinks as ProtocolServerLinks,
+    Transfer as ProtocolTransfer,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -71,6 +73,13 @@ pub struct ResourcePackState {
     pub hash: String,
     pub required: bool,
     pub prompt: Option<String>,
+    #[serde(default)]
+    pub last_response: Option<ResourcePackResponseState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourcePackResponseState {
+    pub action: ProtocolResourcePackResponseAction,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,9 +140,29 @@ impl WorldStore {
             hash: packet.hash,
             required: packet.required,
             prompt: non_empty_component_string(packet.prompt),
+            last_response: None,
         };
         self.presentation.resource_packs.insert(pack.id, pack);
         self.update_resource_pack_count();
+    }
+
+    pub fn apply_resource_pack_response(
+        &mut self,
+        id: Uuid,
+        action: ProtocolResourcePackResponseAction,
+    ) -> bool {
+        self.counters.resource_pack_response_packets += 1;
+        let Some(pack) = self.presentation.resource_packs.get_mut(&id) else {
+            self.counters.resource_pack_response_updates_ignored += 1;
+            return false;
+        };
+
+        if pack.required && action == ProtocolResourcePackResponseAction::Declined {
+            self.counters.resource_pack_required_declines += 1;
+        }
+        pack.last_response = Some(ResourcePackResponseState { action });
+        self.counters.resource_pack_response_updates_applied += 1;
+        true
     }
 
     pub fn apply_resource_pack_pop(&mut self, packet: ProtocolResourcePackPop) -> usize {
@@ -493,6 +522,41 @@ mod tests {
         assert_eq!(store.resource_packs().len(), 1);
         let counters = store.counters();
         assert_eq!(counters.resource_pack_push_packets, 2);
+        assert_eq!(counters.resource_packs_tracked, 1);
+    }
+
+    #[test]
+    fn resource_pack_response_updates_existing_pack_only() {
+        let mut store = WorldStore::new();
+        let id = Uuid::from_u128(0x11111111111111111111111111111111);
+        let missing = Uuid::from_u128(0x22222222222222222222222222222222);
+
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            id,
+            "https://example.test/required.zip",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            true,
+            Some("Required pack"),
+        ));
+
+        assert!(
+            store.apply_resource_pack_response(id, ProtocolResourcePackResponseAction::Declined,)
+        );
+        let pack = store.resource_pack(id).expect("pack is tracked");
+        assert_eq!(
+            pack.last_response,
+            Some(ResourcePackResponseState {
+                action: ProtocolResourcePackResponseAction::Declined,
+            })
+        );
+
+        assert!(!store
+            .apply_resource_pack_response(missing, ProtocolResourcePackResponseAction::Accepted,));
+        let counters = store.counters();
+        assert_eq!(counters.resource_pack_response_packets, 2);
+        assert_eq!(counters.resource_pack_response_updates_applied, 1);
+        assert_eq!(counters.resource_pack_response_updates_ignored, 1);
+        assert_eq!(counters.resource_pack_required_declines, 1);
         assert_eq!(counters.resource_packs_tracked, 1);
     }
 

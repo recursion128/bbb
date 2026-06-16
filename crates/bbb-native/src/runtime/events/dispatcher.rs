@@ -248,6 +248,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::ResourcePackPush(update) => {
                 world.apply_resource_pack_push(update);
             }
+            NetEvent::ResourcePackResponse { id, action } => {
+                world.apply_resource_pack_response(id, action);
+            }
             NetEvent::ResourcePackPop(update) => {
                 world.apply_resource_pack_pop(update);
             }

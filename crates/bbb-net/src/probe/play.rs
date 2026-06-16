@@ -425,12 +425,12 @@ impl ProbeContext {
                 self.world.apply_server_data(update);
             }
             PlayClientbound::ResourcePackPush(update) => {
-                let (id, payload) = packets::encode_play_resource_pack_response(
-                    update.id,
-                    ResourcePackResponseAction::Declined,
-                );
+                let pack_id = update.id;
+                let action = ResourcePackResponseAction::Declined;
+                let (id, payload) = packets::encode_play_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
                 self.world.apply_resource_pack_push(update);
+                self.world.apply_resource_pack_response(pack_id, action);
             }
             PlayClientbound::ResourcePackPop(update) => {
                 self.world.apply_resource_pack_pop(update);
@@ -888,6 +888,10 @@ mod tests {
         assert_eq!(pack.hash, "0123456789abcdef0123456789abcdef01234567");
         assert!(pack.required);
         assert_eq!(pack.prompt.as_deref(), Some("Install pack?"));
+        assert_eq!(
+            pack.last_response.as_ref().map(|response| response.action),
+            Some(ResourcePackResponseAction::Declined)
+        );
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
@@ -925,6 +929,16 @@ mod tests {
         assert!(report.world.resource_packs().is_empty());
         assert_eq!(report.world_counters.server_data_packets, 1);
         assert_eq!(report.world_counters.resource_pack_push_packets, 1);
+        assert_eq!(report.world_counters.resource_pack_response_packets, 1);
+        assert_eq!(
+            report.world_counters.resource_pack_response_updates_applied,
+            1
+        );
+        assert_eq!(
+            report.world_counters.resource_pack_response_updates_ignored,
+            0
+        );
+        assert_eq!(report.world_counters.resource_pack_required_declines, 1);
         assert_eq!(report.world_counters.resource_pack_pop_packets, 2);
         assert_eq!(report.world_counters.resource_pack_pop_updates_applied, 1);
         assert_eq!(report.world_counters.resource_pack_pop_updates_ignored, 1);

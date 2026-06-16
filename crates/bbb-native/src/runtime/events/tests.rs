@@ -3298,7 +3298,7 @@ fn player_info_events_update_world_and_world_counters() {
 #[test]
 fn server_presentation_events_update_world_and_world_counters() {
     let pack_id = Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
-    let (tx, mut rx) = mpsc::channel(4);
+    let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::ServerData(bbb_protocol::packets::ServerData {
         motd: "Native test server".to_string(),
         icon_bytes: Some(vec![1, 2, 3, 4]),
@@ -3314,6 +3314,11 @@ fn server_presentation_events_update_world_and_world_counters() {
         },
     ))
     .unwrap();
+    tx.try_send(NetEvent::ResourcePackResponse {
+        id: pack_id,
+        action: bbb_protocol::packets::ResourcePackResponseAction::Declined,
+    })
+    .unwrap();
     tx.try_send(NetEvent::ResourcePackPop(
         bbb_protocol::packets::ResourcePackPop { id: None },
     ))
@@ -3328,7 +3333,7 @@ fn server_presentation_events_update_world_and_world_counters() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        4
+        5
     );
 
     let server_data = world.server_data().unwrap();
@@ -3339,6 +3344,10 @@ fn server_presentation_events_update_world_and_world_counters() {
     let world_counters = world.counters();
     assert_eq!(world_counters.server_data_packets, 1);
     assert_eq!(world_counters.resource_pack_push_packets, 1);
+    assert_eq!(world_counters.resource_pack_response_packets, 1);
+    assert_eq!(world_counters.resource_pack_response_updates_applied, 1);
+    assert_eq!(world_counters.resource_pack_response_updates_ignored, 0);
+    assert_eq!(world_counters.resource_pack_required_declines, 1);
     assert_eq!(world_counters.resource_pack_pop_packets, 2);
     assert_eq!(world_counters.resource_pack_pop_updates_applied, 1);
     assert_eq!(world_counters.resource_pack_pop_updates_ignored, 1);

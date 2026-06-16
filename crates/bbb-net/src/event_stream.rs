@@ -297,6 +297,74 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn configuration_resource_pack_push_emits_push_and_response_events() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(2);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+        };
+        let pack_id = uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::ResourcePackPush(
+                packets::ResourcePackPush {
+                    id: pack_id,
+                    url: "https://example.invalid/config-pack.zip".to_string(),
+                    hash: "0123456789abcdef0123456789abcdef01234567".to_string(),
+                    required: false,
+                    prompt: None,
+                },
+            ))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("resource pack response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_RESOURCE_PACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_uuid().unwrap(), pack_id);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            packets::ResourcePackResponseAction::Declined.ordinal()
+        );
+        assert!(decoder.is_empty());
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("resource pack push event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::ResourcePackPush(update) if update.id == pack_id
+        ));
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("resource pack response event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::ResourcePackResponse {
+                id,
+                action: packets::ResourcePackResponseAction::Declined
+            } if id == pack_id
+        ));
+    }
+
+    #[tokio::test]
     async fn play_chunk_batch_feedback_uses_vanilla_calculator() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, _events_rx) = mpsc::channel(1);
@@ -327,6 +395,74 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_CHUNK_BATCH_RECEIVED);
         let desired = Decoder::new(&payload).read_f32().unwrap();
         assert_eq!(desired, 3.5);
+    }
+
+    #[tokio::test]
+    async fn play_resource_pack_push_emits_push_and_response_events() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(2);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+        };
+        let pack_id = uuid::Uuid::from_u128(0x87654321_4321_8765_90ab_cdef12345678);
+
+        stream
+            .handle_play_packet(PlayClientbound::ResourcePackPush(
+                packets::ResourcePackPush {
+                    id: pack_id,
+                    url: "https://example.invalid/play-pack.zip".to_string(),
+                    hash: "abcdef0123456789abcdef0123456789abcdef01".to_string(),
+                    required: true,
+                    prompt: Some("Install pack?".to_string()),
+                },
+            ))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("resource pack response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_RESOURCE_PACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_uuid().unwrap(), pack_id);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            packets::ResourcePackResponseAction::Declined.ordinal()
+        );
+        assert!(decoder.is_empty());
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("resource pack push event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::ResourcePackPush(update) if update.id == pack_id
+        ));
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("resource pack response event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::ResourcePackResponse {
+                id,
+                action: packets::ResourcePackResponseAction::Declined
+            } if id == pack_id
+        ));
     }
 
     #[tokio::test]

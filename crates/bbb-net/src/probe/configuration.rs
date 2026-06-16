@@ -42,12 +42,13 @@ impl ProbeContext {
                 self.world.apply_reset_chat();
             }
             ConfigurationClientbound::ResourcePackPush(update) => {
-                let (id, payload) = packets::encode_configuration_resource_pack_response(
-                    update.id,
-                    ResourcePackResponseAction::Declined,
-                );
+                let pack_id = update.id;
+                let action = ResourcePackResponseAction::Declined;
+                let (id, payload) =
+                    packets::encode_configuration_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
                 self.world.apply_resource_pack_push(update);
+                self.world.apply_resource_pack_response(pack_id, action);
             }
             ConfigurationClientbound::ResourcePackPop(update) => {
                 self.world.apply_resource_pack_pop(update);
@@ -121,8 +122,7 @@ mod tests {
         },
     };
     use bbb_world::{
-        code_of_conduct_text_hash, ChunkPos, DialogState, RegistryPacketEntry, ResourcePackState,
-        TransferTargetState,
+        code_of_conduct_text_hash, ChunkPos, DialogState, RegistryPacketEntry, TransferTargetState,
     };
     use bytes::BytesMut;
     use std::time::Duration;
@@ -270,15 +270,18 @@ mod tests {
             ]
         );
         assert!(probe.world.client_chat().messages.is_empty());
+        let pack = probe
+            .world
+            .resource_pack(pack_id)
+            .expect("resource pack should be tracked");
+        assert_eq!(pack.id, pack_id);
+        assert_eq!(pack.url, "https://example.invalid/pack.zip");
+        assert_eq!(pack.hash, "abc123");
+        assert!(!pack.required);
+        assert_eq!(pack.prompt.as_deref(), Some("Optional pack"));
         assert_eq!(
-            probe.world.resource_pack(pack_id),
-            Some(&ResourcePackState {
-                id: pack_id,
-                url: "https://example.invalid/pack.zip".to_string(),
-                hash: "abc123".to_string(),
-                required: false,
-                prompt: Some("Optional pack".to_string()),
-            })
+            pack.last_response.as_ref().map(|response| response.action),
+            Some(ResourcePackResponseAction::Declined)
         );
         assert_eq!(
             probe.world.enabled_feature_list(),
@@ -345,6 +348,15 @@ mod tests {
         assert_eq!(report.world_counters.chat_messages_tracked, 0);
         assert_eq!(report.world_counters.update_tags_packets, 1);
         assert_eq!(report.world_counters.resource_pack_push_packets, 1);
+        assert_eq!(report.world_counters.resource_pack_response_packets, 1);
+        assert_eq!(
+            report.world_counters.resource_pack_response_updates_applied,
+            1
+        );
+        assert_eq!(
+            report.world_counters.resource_pack_response_updates_ignored,
+            0
+        );
         assert_eq!(report.world_counters.resource_pack_pop_packets, 2);
         assert_eq!(report.world_counters.resource_pack_pop_updates_applied, 1);
         assert_eq!(report.world_counters.resource_pack_pop_updates_ignored, 1);
