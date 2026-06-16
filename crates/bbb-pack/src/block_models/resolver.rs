@@ -5,6 +5,7 @@ use super::{
     BlockModelDisplayTransform, BlockModelDisplayTransforms, BlockModelFace, BlockModelGuiLight,
     BlockModelShape, RawBlockElement, RawBlockModel,
 };
+use crate::resources::ResourceLocation;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ResolvedBlockModel {
@@ -232,7 +233,7 @@ fn resolve_texture_alias_with_force(
         }
 
         return Some(ResolvedTextureReference {
-            id: normalize_texture_id(current),
+            id: normalize_texture_id(current)?,
             force_translucent,
         });
     }
@@ -248,12 +249,8 @@ pub(crate) fn normalize_cuboid_model_id(id: &str) -> String {
     }
 }
 
-fn normalize_texture_id(id: &str) -> String {
-    if id.contains(':') {
-        id.to_string()
-    } else if id.contains('/') {
-        format!("minecraft:{id}")
-    } else {
-        format!("minecraft:block/{id}")
-    }
+fn normalize_texture_id(id: &str) -> Option<String> {
+    ResourceLocation::parse(id)
+        .ok()
+        .map(|location| location.id())
 }

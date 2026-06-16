@@ -511,7 +511,7 @@ mod tests {
         PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerExperience, PlayerHealth,
         PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
         RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
-        ResourcePackResponseAction, ServerData, SetDefaultSpawnPosition, SetHeldSlot,
+        ResourcePackResponseAction, ServerData, SetCamera, SetDefaultSpawnPosition, SetHeldSlot,
         SetPassengers, SetSimulationDistance, ShowDialog, StatUpdate, StoreCookie, TabList,
         TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
         Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
@@ -1691,6 +1691,39 @@ mod tests {
         assert_eq!(report.world_counters.held_slot_updates_ignored, 1);
         assert_eq!(report.world_counters.default_spawn_position_packets, 1);
         assert_eq!(report.world_counters.simulation_distance_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_set_camera_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Login(protocol_play_login(9)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetCamera(SetCamera { camera_id: 9 }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetCamera(SetCamera { camera_id: 123 }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(3, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(
+            report.world.local_player().camera,
+            bbb_world::CameraState {
+                entity_id: Some(9),
+                follows_player: true,
+                entity_known: true,
+            }
+        );
+        assert_eq!(report.world_counters.set_camera_packets, 2);
+        assert_eq!(report.world_counters.set_camera_updates_applied, 1);
+        assert_eq!(report.world_counters.set_camera_updates_ignored, 1);
     }
 
     #[tokio::test]

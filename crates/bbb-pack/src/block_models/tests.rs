@@ -397,6 +397,70 @@ fn block_model_catalog_resolves_unprefixed_face_texture_slots() {
 }
 
 #[test]
+fn block_model_catalog_uses_vanilla_default_namespace_for_direct_texture_ids() {
+    let root = unique_temp_dir("block-model-direct-texture-default-namespace");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "": { "model": "minecraft:block/test_block" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("test_block.json"),
+        r##"{
+            "textures": {
+                "all": "plain_texture",
+                "glass": {
+                    "sprite": "glass_texture",
+                    "force_translucent": true
+                }
+            },
+            "elements": [{
+                "faces": {
+                    "north": { "texture": "#all" },
+                    "east": { "texture": "#glass" }
+                }
+            }]
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let render_model = catalog
+        .block_render_model("minecraft:test_block", &BTreeMap::new())
+        .unwrap();
+
+    assert_eq!(
+        render_model.face_textures.get(BlockModelFace::North),
+        "minecraft:plain_texture"
+    );
+    assert_eq!(
+        render_model.face_textures.get(BlockModelFace::East),
+        "minecraft:glass_texture"
+    );
+    assert!(render_model
+        .face_textures
+        .force_translucent(BlockModelFace::East));
+    assert!(!render_model
+        .face_textures
+        .force_translucent(BlockModelFace::North));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_resolves_parent_ambient_occlusion() {
     let root = unique_temp_dir("block-model-ambient-occlusion");
     let asset_root = root
