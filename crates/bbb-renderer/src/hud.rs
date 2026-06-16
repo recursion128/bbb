@@ -147,6 +147,20 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn set_hud_code_of_conduct_overlay(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_code_of_conduct_overlay = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn clear_hud_code_of_conduct_overlay(&mut self) {
+        self.hud_code_of_conduct_overlay = None;
+    }
+
     pub fn set_hud_health(&mut self, health: Option<f32>) {
         self.hud_health = health.filter(|health| health.is_finite());
     }
@@ -335,6 +349,16 @@ impl Renderer {
                     );
                 }
             }
+        }
+
+        if let Some(overlay) = &self.hud_code_of_conduct_overlay {
+            push_hud_draw(
+                &mut vertices,
+                &mut commands,
+                overlay,
+                surface_size,
+                centered_hud_rect(surface_size, overlay.width, overlay.height),
+            );
         }
 
         (vertices, commands)

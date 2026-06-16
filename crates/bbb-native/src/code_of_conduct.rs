@@ -72,6 +72,17 @@ impl CodeOfConductAcceptance {
         self.store.save(&self.path)?;
         Ok(removed)
     }
+
+    pub(crate) fn current_world_acceptance_matches(&self, world: &WorldStore) -> bool {
+        let (Some(server), Some(code_of_conduct)) = (
+            self.connected_server.as_deref(),
+            world.last_code_of_conduct(),
+        ) else {
+            return false;
+        };
+
+        self.store.accepted_hash(server) == Some(code_of_conduct.text_hash)
+    }
 }
 
 impl CodeOfConductAcceptStore {
@@ -231,6 +242,25 @@ mod tests {
 
         let loaded = CodeOfConductAcceptance::load(&path).unwrap();
         assert_eq!(loaded.accepted_hash_for_options(&options), None);
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn acceptance_matches_current_world_code_of_conduct_hash() {
+        let path = unique_store_path("matches");
+        let mut acceptance = CodeOfConductAcceptance::load(&path).unwrap();
+        let options = ConnectionOptions::offline("example.org:25565", "bbb").unwrap();
+        let text = "Keep the server friendly.";
+        let mut world = WorldStore::new();
+        world.apply_code_of_conduct(text.to_string());
+
+        acceptance.set_connected_server(&options);
+        assert!(!acceptance.current_world_acceptance_matches(&world));
+        assert!(acceptance.persist_current_world_acceptance(&world).unwrap());
+        assert!(acceptance.current_world_acceptance_matches(&world));
+
+        world.apply_code_of_conduct("Different rules.".to_string());
+        assert!(!acceptance.current_world_acceptance_matches(&world));
         let _ = fs::remove_file(path);
     }
 

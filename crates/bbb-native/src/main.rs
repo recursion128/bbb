@@ -11,6 +11,7 @@ mod biome_tint;
 mod block_outline;
 mod camera_pose;
 mod code_of_conduct;
+mod code_of_conduct_overlay;
 mod crosshair;
 mod hud_assets;
 mod input;
@@ -23,10 +24,11 @@ mod terrain_runtime;
 
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
+use code_of_conduct_overlay::CodeOfConductOverlayState;
 use hud_assets::load_hud_textures;
 use input::{
     handle_focus_change, handle_key_input, handle_mouse_input_at_partial_tick, handle_mouse_motion,
-    handle_mouse_wheel, ClientInputState,
+    handle_mouse_wheel, release_active_input, ClientInputState,
 };
 use item_runtime::NativeItemRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
@@ -143,6 +145,8 @@ fn main() -> Result<()> {
     let mut terrain_upload = TerrainUploadState::default();
     let mut client_animation_ticks = ClientAnimationTickState::default();
     let mut net_disconnect_requested = false;
+    let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();
+    let mut cursor_position = None;
 
     event_loop.run(move |event, target| {
         target.set_control_flow(ControlFlow::Poll);
@@ -150,6 +154,9 @@ fn main() -> Result<()> {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => target.exit(),
                 WindowEvent::Resized(size) => renderer.resize(size),
+                WindowEvent::CursorMoved { position, .. } => {
+                    cursor_position = Some(position);
+                }
                 WindowEvent::Focused(focused) => handle_focus_change(
                     &mut input,
                     &mut world,
@@ -158,6 +165,9 @@ fn main() -> Result<()> {
                     focused,
                 ),
                 WindowEvent::KeyboardInput { event, .. } => {
+                    if code_of_conduct_overlay.is_visible(&world) {
+                        return;
+                    }
                     handle_key_input(
                         &mut input,
                         &mut net_counters,
@@ -168,6 +178,21 @@ fn main() -> Result<()> {
                     );
                 }
                 WindowEvent::MouseInput { state, button, .. } => {
+                    if code_of_conduct_overlay.handle_mouse_input(
+                        &world,
+                        &snapshot,
+                        button,
+                        state,
+                        cursor_position,
+                        window.inner_size(),
+                    ) {
+                        code_of_conduct_overlay.update_renderer(
+                            &mut renderer,
+                            &world,
+                            code_of_conduct_acceptance.current_world_acceptance_matches(&world),
+                        );
+                        return;
+                    }
                     handle_mouse_input_at_partial_tick(
                         &mut input,
                         &mut world,
@@ -179,6 +204,9 @@ fn main() -> Result<()> {
                     );
                 }
                 WindowEvent::MouseWheel { delta, .. } => {
+                    if code_of_conduct_overlay.is_visible(&world) {
+                        return;
+                    }
                     handle_mouse_wheel(
                         &mut input,
                         &mut world,
@@ -188,6 +216,14 @@ fn main() -> Result<()> {
                     );
                 }
                 WindowEvent::RedrawRequested => {
+                    if code_of_conduct_overlay.is_visible(&world) {
+                        release_active_input(
+                            &mut input,
+                            &mut world,
+                            &mut net_counters,
+                            &net_commands,
+                        );
+                    }
                     if !pump_network_and_terrain(
                         &mut net_events,
                         &net_commands,
@@ -212,6 +248,19 @@ fn main() -> Result<()> {
                         return;
                     }
                     renderer.set_clear_color(clear_color_for_world(&world));
+                    code_of_conduct_overlay.update_renderer(
+                        &mut renderer,
+                        &world,
+                        code_of_conduct_acceptance.current_world_acceptance_matches(&world),
+                    );
+                    if code_of_conduct_overlay.is_visible(&world) {
+                        release_active_input(
+                            &mut input,
+                            &mut world,
+                            &mut net_counters,
+                            &net_commands,
+                        );
+                    }
 
                     let terrain_ready_for_screenshot =
                         !screenshot_after_terrain || terrain_upload.has_uploaded_chunks();
@@ -249,6 +298,9 @@ fn main() -> Result<()> {
                 event: DeviceEvent::MouseMotion { delta },
                 ..
             } => {
+                if code_of_conduct_overlay.is_visible(&world) {
+                    return;
+                }
                 handle_mouse_motion(&mut input, delta);
             }
             Event::UserEvent(()) => {
@@ -264,6 +316,9 @@ fn main() -> Result<()> {
                     request_net_disconnect(&net_commands, &mut net_disconnect_requested);
                     target.exit();
                     return;
+                }
+                if code_of_conduct_overlay.is_visible(&world) {
+                    release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
                 }
                 if !pump_network_and_terrain(
                     &mut net_events,
@@ -287,6 +342,14 @@ fn main() -> Result<()> {
                 ) {
                     target.exit();
                     return;
+                }
+                code_of_conduct_overlay.update_renderer(
+                    &mut renderer,
+                    &world,
+                    code_of_conduct_acceptance.current_world_acceptance_matches(&world),
+                );
+                if code_of_conduct_overlay.is_visible(&world) {
+                    release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
                 }
                 window.request_redraw();
             }

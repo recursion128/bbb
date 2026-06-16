@@ -69,6 +69,37 @@ impl ClientInputState {
     }
 }
 
+pub(crate) fn release_active_input(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    let before = player_input_from_state(input);
+    input.clear_pressed();
+    let after = player_input_from_state(input);
+    if after != before {
+        queue_player_input_command(counters, net_commands, after);
+    }
+    if let Some(pos) = world.take_local_destroying_block() {
+        queue_player_action_command(
+            counters,
+            net_commands,
+            PlayerActionKind::AbortDestroyBlock,
+            pos,
+            ProtocolDirection::Down,
+            0,
+        );
+    }
+    if world.take_local_using_item() {
+        queue_zero_pos_player_action_command(
+            counters,
+            net_commands,
+            PlayerActionKind::ReleaseUseItem,
+        );
+    }
+}
+
 pub(crate) fn handle_focus_change(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -78,29 +109,7 @@ pub(crate) fn handle_focus_change(
 ) {
     input.focused = focused;
     if !focused {
-        let before = player_input_from_state(input);
-        input.clear_pressed();
-        let after = player_input_from_state(input);
-        if after != before {
-            queue_player_input_command(counters, net_commands, after);
-        }
-        if let Some(pos) = world.take_local_destroying_block() {
-            queue_player_action_command(
-                counters,
-                net_commands,
-                PlayerActionKind::AbortDestroyBlock,
-                pos,
-                ProtocolDirection::Down,
-                0,
-            );
-        }
-        if world.take_local_using_item() {
-            queue_zero_pos_player_action_command(
-                counters,
-                net_commands,
-                PlayerActionKind::ReleaseUseItem,
-            );
-        }
+        release_active_input(input, world, counters, net_commands);
     }
 }
 

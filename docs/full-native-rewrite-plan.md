@@ -108,7 +108,8 @@ Known priority areas:
   dispatch and offline probe paths.
 - Configuration Code of Conduct text is recorded in world UI state and native
   control counters derive from it. Owner: `bbb-world` + `bbb-native`; status:
-  partial; next action: add native graphical UI for accept/decline. The online
+  covered; next action: replace the native bitmap prompt with fuller vanilla
+  screen/font rendering when the renderer UI stack matures. The online
   event stream auto-accepts only when the persisted Java `String.hashCode()` of
   the server text matches, otherwise it waits for `NetCommand::AcceptCodeOfConduct`;
   the control API can queue non-persistent accepts by default, opt into
@@ -119,7 +120,9 @@ Known priority areas:
   `net.clear_code_of_conduct_acceptance`. Offline probes mirror the online hash
   gate: they record the canonical UI state for every Code of Conduct packet and
   send accept only when `ConnectionOptions.accepted_code_of_conduct_hash`
-  matches the server text.
+  matches the server text. Native runtime shows a graphical accept/remember/
+  decline prompt for unaccepted server text and consumes gameplay input while it
+  is active.
 - Keep audio split into world-observed audio events and the Kira-backed
   `bbb-audio` playback runtime.
 - Native crosshair entity interaction is partially wired: `bbb-world` exposes
