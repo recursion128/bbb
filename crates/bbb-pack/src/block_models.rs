@@ -115,12 +115,14 @@ impl BlockModelCatalog {
             let model = self.resolve_model(&variant.model)?;
             use_ambient_occlusion.get_or_insert_with(|| model.use_ambient_occlusion());
             let local = model.face_textures()?;
-            face_textures
-                .get_or_insert_with(|| apply_variant_rotation(local, variant.x, variant.y));
+            face_textures.get_or_insert_with(|| {
+                apply_variant_rotation(local, variant.x, variant.y, variant.z)
+            });
             shapes.push(rotate_model_shape(
                 model.shape,
                 variant.x,
                 variant.y,
+                variant.z,
                 variant.uvlock,
             ));
         }

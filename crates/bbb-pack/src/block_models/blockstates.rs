@@ -96,6 +96,8 @@ pub(super) struct RawModelVariant {
     #[serde(default)]
     pub(super) y: i32,
     #[serde(default)]
+    pub(super) z: i32,
+    #[serde(default)]
     pub(super) uvlock: bool,
     #[serde(default = "default_model_weight")]
     weight: u32,

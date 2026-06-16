@@ -7,10 +7,11 @@ pub(super) fn apply_variant_rotation(
     local: BlockFaceTextures,
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
 ) -> BlockFaceTextures {
     let mut rotated: [Option<String>; 6] = std::array::from_fn(|_| None);
     for face in BlockModelFace::ALL {
-        let target = face.rotate(x_degrees, y_degrees);
+        let target = face.rotate(x_degrees, y_degrees, z_degrees);
         rotated[target.index()] = Some(local.textures[face.index()].clone());
     }
     BlockFaceTextures {
@@ -19,8 +20,13 @@ pub(super) fn apply_variant_rotation(
                 .clone()
                 .unwrap_or_else(|| local.textures[index].clone())
         }),
-        tint_indices: rotate_face_values(local.tint_indices, x_degrees, y_degrees),
-        force_translucent: rotate_face_values(local.force_translucent, x_degrees, y_degrees),
+        tint_indices: rotate_face_values(local.tint_indices, x_degrees, y_degrees, z_degrees),
+        force_translucent: rotate_face_values(
+            local.force_translucent,
+            x_degrees,
+            y_degrees,
+            z_degrees,
+        ),
     }
 }
 
@@ -28,28 +34,33 @@ pub(super) fn rotate_model_shape(
     shape: BlockModelShape,
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
     uvlock: bool,
 ) -> BlockModelShape {
     match shape {
-        BlockModelShape::Box(model_box) => {
-            BlockModelShape::Box(rotate_model_box(model_box, x_degrees, y_degrees, uvlock))
-        }
+        BlockModelShape::Box(model_box) => BlockModelShape::Box(rotate_model_box(
+            model_box, x_degrees, y_degrees, z_degrees, uvlock,
+        )),
         BlockModelShape::Boxes(model_boxes) => BlockModelShape::Boxes(
             model_boxes
                 .into_iter()
-                .map(|model_box| rotate_model_box(model_box, x_degrees, y_degrees, uvlock))
+                .map(|model_box| {
+                    rotate_model_box(model_box, x_degrees, y_degrees, z_degrees, uvlock)
+                })
                 .collect(),
         ),
         BlockModelShape::Crosses(model_crosses) => BlockModelShape::Crosses(
             model_crosses
                 .into_iter()
-                .map(|model_cross| rotate_model_cross(model_cross, x_degrees, y_degrees))
+                .map(|model_cross| rotate_model_cross(model_cross, x_degrees, y_degrees, z_degrees))
                 .collect(),
         ),
         BlockModelShape::Quads(model_quads) => BlockModelShape::Quads(
             model_quads
                 .into_iter()
-                .map(|model_quad| rotate_model_quad(model_quad, x_degrees, y_degrees, uvlock))
+                .map(|model_quad| {
+                    rotate_model_quad(model_quad, x_degrees, y_degrees, z_degrees, uvlock)
+                })
                 .collect(),
         ),
         BlockModelShape::Cube | BlockModelShape::Cross { .. } | BlockModelShape::Custom => shape,
@@ -80,13 +91,16 @@ impl BlockModelFace {
         }
     }
 
-    fn rotate(self, x_degrees: i32, y_degrees: i32) -> Self {
+    fn rotate(self, x_degrees: i32, y_degrees: i32, z_degrees: i32) -> Self {
         let mut vector = self.vector();
         for _ in 0..quarter_turns(x_degrees) {
             vector = rotate_x_quarter(vector);
         }
         for _ in 0..quarter_turns(y_degrees) {
             vector = rotate_y_quarter(vector);
+        }
+        for _ in 0..quarter_turns(z_degrees) {
+            vector = rotate_z_quarter(vector);
         }
         Self::from_vector(vector).unwrap_or(self)
     }
@@ -96,6 +110,7 @@ fn rotate_model_box(
     model_box: BlockModelBox,
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
     uvlock: bool,
 ) -> BlockModelBox {
     let mut min = [u8::MAX; 3];
@@ -103,7 +118,7 @@ fn rotate_model_box(
     for x in [model_box.from[0], model_box.to[0]] {
         for y in [model_box.from[1], model_box.to[1]] {
             for z in [model_box.from[2], model_box.to[2]] {
-                let rotated = rotate_model_point([x, y, z], x_degrees, y_degrees);
+                let rotated = rotate_model_point([x, y, z], x_degrees, y_degrees, z_degrees);
                 for axis in 0..3 {
                     min[axis] = min[axis].min(rotated[axis]);
                     max[axis] = max[axis].max(rotated[axis]);
@@ -122,7 +137,7 @@ fn rotate_model_box(
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
     let mut face_force_translucent = [false; 6];
     for face in BlockModelFace::ALL {
-        let target = face.rotate(x_degrees, y_degrees);
+        let target = face.rotate(x_degrees, y_degrees, z_degrees);
         face_present[target.index()] = model_box.face_present[face.index()];
         let (uv, uv_rotation) = if uvlock {
             uvlock_face_uvs(
@@ -132,6 +147,7 @@ fn rotate_model_box(
                 model_box.face_uv_rotations[face.index()],
                 x_degrees,
                 y_degrees,
+                z_degrees,
             )
         } else {
             (
@@ -144,7 +160,7 @@ fn rotate_model_box(
         face_shade[target.index()] = model_box.face_shade[face.index()];
         face_light_emission[target.index()] = model_box.face_light_emission[face.index()];
         face_cull[target.index()] = model_box.face_cull[face.index()]
-            .map(|cull_face| cull_face.rotate(x_degrees, y_degrees));
+            .map(|cull_face| cull_face.rotate(x_degrees, y_degrees, z_degrees));
         face_tint_indices[target.index()] = model_box.face_tint_indices[face.index()];
         face_textures[target.index()] = model_box.face_textures[face.index()].clone();
         face_force_translucent[target.index()] = model_box.face_force_translucent[face.index()];
@@ -169,12 +185,13 @@ fn rotate_model_cross(
     model_cross: BlockModelCross,
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
 ) -> BlockModelCross {
     let mut face_textures: [Option<String>; 6] = std::array::from_fn(|_| None);
     let mut face_tint_indices = [None; 6];
     let mut face_force_translucent = [false; 6];
     for face in BlockModelFace::ALL {
-        let target = face.rotate(x_degrees, y_degrees);
+        let target = face.rotate(x_degrees, y_degrees, z_degrees);
         face_textures[target.index()] = model_cross.face_textures[face.index()].clone();
         face_tint_indices[target.index()] = model_cross.face_tint_indices[face.index()];
         face_force_translucent[target.index()] = model_cross.face_force_translucent[face.index()];
@@ -193,19 +210,21 @@ fn rotate_model_quad(
     model_quad: BlockModelQuad,
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
     uvlock: bool,
 ) -> BlockModelQuad {
     let source_face = model_quad.face;
-    let target_face = source_face.rotate(x_degrees, y_degrees);
+    let target_face = source_face.rotate(x_degrees, y_degrees, z_degrees);
     BlockModelQuad {
         face: target_face,
         corners: model_quad
             .corners
-            .map(|corner| rotate_model_point_f32(corner, x_degrees, y_degrees)),
+            .map(|corner| rotate_model_point_f32(corner, x_degrees, y_degrees, z_degrees)),
         normal: normalize3(rotate_model_vector_f32(
             model_quad.normal,
             x_degrees,
             y_degrees,
+            z_degrees,
         )),
         uvs: if uvlock {
             uvlock_quad_uvs(
@@ -214,13 +233,14 @@ fn rotate_model_quad(
                 model_quad.uvs,
                 x_degrees,
                 y_degrees,
+                z_degrees,
             )
         } else {
             model_quad.uvs
         },
         cull: model_quad
             .cull
-            .map(|cull_face| cull_face.rotate(x_degrees, y_degrees)),
+            .map(|cull_face| cull_face.rotate(x_degrees, y_degrees, z_degrees)),
         tint_index: model_quad.tint_index,
         texture: model_quad.texture,
         force_translucent: model_quad.force_translucent,
@@ -229,10 +249,15 @@ fn rotate_model_quad(
     }
 }
 
-fn rotate_face_values<T: Copy>(values: [T; 6], x_degrees: i32, y_degrees: i32) -> [T; 6] {
+fn rotate_face_values<T: Copy>(
+    values: [T; 6],
+    x_degrees: i32,
+    y_degrees: i32,
+    z_degrees: i32,
+) -> [T; 6] {
     let mut rotated = values;
     for face in BlockModelFace::ALL {
-        let target = face.rotate(x_degrees, y_degrees);
+        let target = face.rotate(x_degrees, y_degrees, z_degrees);
         rotated[target.index()] = values[face.index()];
     }
     rotated
@@ -246,11 +271,12 @@ fn uvlock_face_uvs(
     uv_rotation: u8,
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
 ) -> ([u8; 4], u8) {
     let transformed = uv_corners(uv, uv_rotation).map(|[u, v]| {
         let vector = (i32::from(u) - 8, i32::from(v) - 8, 0);
         let vector = local_to_global(target_face, vector);
-        let vector = inverse_model_rotation(vector, x_degrees, y_degrees);
+        let vector = inverse_model_rotation(vector, x_degrees, y_degrees, z_degrees);
         let vector = global_to_local(source_face, vector);
         [
             (vector.0 + 8).clamp(0, 16) as u8,
@@ -292,6 +318,7 @@ fn uvlock_quad_uvs(
     uvs: [[f32; 2]; 4],
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
 ) -> [[f32; 2]; 4] {
     uvs.map(|[u, v]| {
         let [u, v] = uvlock_uv_point_16(
@@ -300,6 +327,7 @@ fn uvlock_quad_uvs(
             [u * 16.0, v * 16.0],
             x_degrees,
             y_degrees,
+            z_degrees,
         );
         [u / 16.0, v / 16.0]
     })
@@ -311,10 +339,11 @@ fn uvlock_uv_point_16(
     uv: [f32; 2],
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
 ) -> [f32; 2] {
     let vector = (uv[0] - 8.0, uv[1] - 8.0, 0.0);
     let vector = local_to_global_f32(target_face, vector);
-    let vector = inverse_model_rotation_f32(vector, x_degrees, y_degrees);
+    let vector = inverse_model_rotation_f32(vector, x_degrees, y_degrees, z_degrees);
     let vector = global_to_local_f32(source_face, vector);
     [
         (vector.0 + 8.0).clamp(0.0, 16.0),
@@ -362,7 +391,11 @@ fn inverse_model_rotation(
     mut vector: (i32, i32, i32),
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
 ) -> (i32, i32, i32) {
+    for _ in 0..quarter_turns(z_degrees) {
+        vector = rotate_z_counter_quarter(vector);
+    }
     for _ in 0..quarter_turns(y_degrees) {
         vector = rotate_y_counter_quarter(vector);
     }
@@ -400,7 +433,11 @@ fn inverse_model_rotation_f32(
     mut vector: (f32, f32, f32),
     x_degrees: i32,
     y_degrees: i32,
+    z_degrees: i32,
 ) -> (f32, f32, f32) {
+    for _ in 0..quarter_turns(z_degrees) {
+        vector = rotate_z_counter_quarter_f32(vector);
+    }
     for _ in 0..quarter_turns(y_degrees) {
         vector = rotate_y_counter_quarter_f32(vector);
     }
@@ -410,7 +447,7 @@ fn inverse_model_rotation_f32(
     vector
 }
 
-fn rotate_model_point(point: [u8; 3], x_degrees: i32, y_degrees: i32) -> [u8; 3] {
+fn rotate_model_point(point: [u8; 3], x_degrees: i32, y_degrees: i32, z_degrees: i32) -> [u8; 3] {
     let mut vector = (
         point[0] as i32 - 8,
         point[1] as i32 - 8,
@@ -422,6 +459,9 @@ fn rotate_model_point(point: [u8; 3], x_degrees: i32, y_degrees: i32) -> [u8; 3]
     for _ in 0..quarter_turns(y_degrees) {
         vector = rotate_y_quarter(vector);
     }
+    for _ in 0..quarter_turns(z_degrees) {
+        vector = rotate_z_quarter(vector);
+    }
     [
         (vector.0 + 8).clamp(0, 16) as u8,
         (vector.1 + 8).clamp(0, 16) as u8,
@@ -429,22 +469,36 @@ fn rotate_model_point(point: [u8; 3], x_degrees: i32, y_degrees: i32) -> [u8; 3]
     ]
 }
 
-fn rotate_model_point_f32(point: [f32; 3], x_degrees: i32, y_degrees: i32) -> [f32; 3] {
+fn rotate_model_point_f32(
+    point: [f32; 3],
+    x_degrees: i32,
+    y_degrees: i32,
+    z_degrees: i32,
+) -> [f32; 3] {
     let vector = rotate_model_vector_f32(
         [point[0] - 8.0, point[1] - 8.0, point[2] - 8.0],
         x_degrees,
         y_degrees,
+        z_degrees,
     );
     [vector[0] + 8.0, vector[1] + 8.0, vector[2] + 8.0]
 }
 
-fn rotate_model_vector_f32(vector: [f32; 3], x_degrees: i32, y_degrees: i32) -> [f32; 3] {
+fn rotate_model_vector_f32(
+    vector: [f32; 3],
+    x_degrees: i32,
+    y_degrees: i32,
+    z_degrees: i32,
+) -> [f32; 3] {
     let mut vector = (vector[0], vector[1], vector[2]);
     for _ in 0..quarter_turns(x_degrees) {
         vector = rotate_x_quarter_f32(vector);
     }
     for _ in 0..quarter_turns(y_degrees) {
         vector = rotate_y_quarter_f32(vector);
+    }
+    for _ in 0..quarter_turns(z_degrees) {
+        vector = rotate_z_quarter_f32(vector);
     }
     [vector.0, vector.1, vector.2]
 }
@@ -478,6 +532,14 @@ fn rotate_y_counter_quarter((x, y, z): (i32, i32, i32)) -> (i32, i32, i32) {
     (-z, y, x)
 }
 
+fn rotate_z_quarter((x, y, z): (i32, i32, i32)) -> (i32, i32, i32) {
+    (-y, x, z)
+}
+
+fn rotate_z_counter_quarter((x, y, z): (i32, i32, i32)) -> (i32, i32, i32) {
+    (y, -x, z)
+}
+
 fn rotate_x_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
     (x, -z, y)
 }
@@ -492,4 +554,12 @@ fn rotate_y_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
 
 fn rotate_y_counter_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
     (-z, y, x)
+}
+
+fn rotate_z_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
+    (-y, x, z)
+}
+
+fn rotate_z_counter_quarter_f32((x, y, z): (f32, f32, f32)) -> (f32, f32, f32) {
+    (y, -x, z)
 }

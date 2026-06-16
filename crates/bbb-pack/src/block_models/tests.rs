@@ -1306,7 +1306,8 @@ fn block_model_catalog_applies_blockstate_rotation_to_faces() {
             "variants": {
                 "axis=x": { "model": "minecraft:block/oak_log", "x": 90, "y": 90 },
                 "axis=y": { "model": "minecraft:block/oak_log" },
-                "axis=z": { "model": "minecraft:block/oak_log", "x": 90 }
+                "axis=z": { "model": "minecraft:block/oak_log", "x": 90 },
+                "axis=z_rot": { "model": "minecraft:block/oak_log", "z": 90 }
             }
         }"##,
     );
@@ -1403,6 +1404,23 @@ fn block_model_catalog_applies_blockstate_rotation_to_faces() {
     );
     assert_eq!(
         north_south.get(BlockModelFace::Up),
+        "minecraft:block/oak_log"
+    );
+
+    properties.insert("axis".to_string(), "z_rot".to_string());
+    let z_rotated = catalog
+        .block_face_textures("minecraft:oak_log", &properties)
+        .unwrap();
+    assert_eq!(
+        z_rotated.get(BlockModelFace::East),
+        "minecraft:block/oak_log_top"
+    );
+    assert_eq!(
+        z_rotated.get(BlockModelFace::West),
+        "minecraft:block/oak_log_top"
+    );
+    assert_eq!(
+        z_rotated.get(BlockModelFace::North),
         "minecraft:block/oak_log"
     );
 
