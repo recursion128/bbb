@@ -1359,6 +1359,14 @@ fn decodes_and_encodes_move_vehicle_packets() {
 }
 
 #[test]
+fn encodes_player_loaded() {
+    let (id, payload) = encode_play_player_loaded();
+    assert_eq!(id, ids::play::SERVERBOUND_PLAYER_LOADED);
+    assert_eq!(id, 44);
+    assert!(payload.is_empty());
+}
+
+#[test]
 fn decodes_chunk_batch_and_encodes_client_play_status_packets() {
     let packet = decode_play_clientbound(ids::play::CLIENTBOUND_CHUNK_BATCH_START, &[]).unwrap();
     assert_eq!(packet, PlayClientbound::ChunkBatchStart);

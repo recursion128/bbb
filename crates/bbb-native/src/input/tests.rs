@@ -87,6 +87,57 @@ fn digit_key_selects_hotbar_slot_updates_world_and_queues_command() {
 }
 
 #[test]
+fn unfocused_movement_key_does_not_queue_player_input() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(false);
+    let mut counters = NetCounters::default();
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.forward);
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn unfocused_hotbar_or_drop_key_does_not_queue_command() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(false);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit5),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyQ),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(world.local_player().selected_hotbar_slot, 0);
+    assert_eq!(counters.held_slot_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn drop_key_queues_drop_item_action() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

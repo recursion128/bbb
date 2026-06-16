@@ -605,6 +605,120 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_player_position_sends_loaded_after_first_position_sync_only() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+        };
+        let first_update = packets::PlayerPositionUpdate {
+            id: 17,
+            position: packets::Vec3d {
+                x: 1.25,
+                y: 64.5,
+                z: -8.75,
+            },
+            delta_movement: packets::Vec3d::default(),
+            y_rot: 90.0,
+            x_rot: -15.0,
+            relatives_mask: 0,
+        };
+
+        stream
+            .handle_play_packet(PlayClientbound::PlayerPosition(first_update))
+            .await
+            .unwrap();
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player position event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::PlayerPosition(update) if update == first_update));
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("teleport ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ACCEPT_TELEPORTATION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 17);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("move player pos/rot ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        assert_move_player_pos_rot_payload(&payload, 1.25, 64.5, -8.75, 90.0, -15.0, 0);
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("player loaded should be sent after first position sync")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_LOADED);
+        assert!(payload.is_empty());
+        assert!(stream.player_loaded_sent);
+
+        let second_update = packets::PlayerPositionUpdate {
+            id: 18,
+            position: packets::Vec3d {
+                x: 2.0,
+                y: 70.0,
+                z: -9.0,
+            },
+            delta_movement: packets::Vec3d::default(),
+            y_rot: 100.0,
+            x_rot: 5.0,
+            relatives_mask: 0,
+        };
+
+        stream
+            .handle_play_packet(PlayClientbound::PlayerPosition(second_update))
+            .await
+            .unwrap();
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("second player position event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::PlayerPosition(update) if update == second_update));
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("second teleport ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ACCEPT_TELEPORTATION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 18);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("second move player pos/rot ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        assert_move_player_pos_rot_payload(&payload, 2.0, 70.0, -9.0, 100.0, 5.0, 0);
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "player loaded must only be sent for the first position sync"
+        );
+    }
+
+    #[tokio::test]
     async fn play_start_configuration_acknowledges_and_resets_configuration_dedup_state() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
@@ -682,5 +796,24 @@ mod tests {
             compression_threshold: None,
         };
         (client, server)
+    }
+
+    fn assert_move_player_pos_rot_payload(
+        payload: &[u8],
+        x: f64,
+        y: f64,
+        z: f64,
+        y_rot: f32,
+        x_rot: f32,
+        flags: u8,
+    ) {
+        let mut decoder = Decoder::new(payload);
+        assert_eq!(decoder.read_f64().unwrap(), x);
+        assert_eq!(decoder.read_f64().unwrap(), y);
+        assert_eq!(decoder.read_f64().unwrap(), z);
+        assert_eq!(decoder.read_f32().unwrap(), y_rot);
+        assert_eq!(decoder.read_f32().unwrap(), x_rot);
+        assert_eq!(decoder.read_u8().unwrap(), flags);
+        assert!(decoder.is_empty());
     }
 }

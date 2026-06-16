@@ -121,6 +121,10 @@ pub(crate) fn handle_key_input(
     physical_key: PhysicalKey,
     state: ElementState,
 ) {
+    if !input.focused {
+        return;
+    }
+
     let pressed = matches!(state, ElementState::Pressed);
     let PhysicalKey::Code(code) = physical_key else {
         return;
