@@ -10,7 +10,7 @@ pub use crate::colors::{
 };
 pub use crate::item_models::{
     ClientItemDefinition, ClientItemProperties, ItemModelCatalog, ItemModelDefinition,
-    ItemTintSource, RangeDispatchEntry, SelectCase,
+    ItemModelTransformation, ItemTintSource, RangeDispatchEntry, SelectCase,
 };
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};

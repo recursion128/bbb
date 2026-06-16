@@ -65,6 +65,13 @@ impl ItemModelCatalog {
         counts
     }
 
+    pub fn transformation_count(&self) -> usize {
+        self.definitions
+            .values()
+            .map(|definition| definition.model.transformation_count())
+            .sum()
+    }
+
     pub fn definitions(&self) -> &BTreeMap<String, ClientItemDefinition> {
         &self.definitions
     }
@@ -142,33 +149,64 @@ pub enum ItemModelDefinition {
     Empty,
     Model {
         model: String,
+        transformation: Option<ItemModelTransformation>,
         tints: Vec<ItemTintSource>,
     },
     Condition {
+        transformation: Option<ItemModelTransformation>,
         property: String,
         on_true: Box<ItemModelDefinition>,
         on_false: Box<ItemModelDefinition>,
     },
     RangeDispatch {
+        transformation: Option<ItemModelTransformation>,
         property: String,
         scale: f32,
         entries: Vec<RangeDispatchEntry>,
         fallback: Option<Box<ItemModelDefinition>>,
     },
     Select {
+        transformation: Option<ItemModelTransformation>,
         property: String,
         block_state_property: Option<String>,
         cases: Vec<SelectCase>,
         fallback: Option<Box<ItemModelDefinition>>,
     },
     Composite {
+        transformation: Option<ItemModelTransformation>,
         models: Vec<ItemModelDefinition>,
     },
     Special {
         base: String,
+        transformation: Option<ItemModelTransformation>,
         special_type: Option<String>,
     },
     BundleSelectedItem,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ItemModelTransformation {
+    raw: Value,
+}
+
+impl ItemModelTransformation {
+    pub fn raw(&self) -> &Value {
+        &self.raw
+    }
+
+    pub fn into_raw(self) -> Value {
+        self.raw
+    }
+
+    fn from_value(value: &Value) -> Result<Self> {
+        match value {
+            Value::Object(object) => validate_component_transformation(object)?,
+            Value::Array(values) => validate_fixed_f32_array(values, "transformation", 16)?,
+            _ => bail!("item model transformation must be an object or 16-value matrix array"),
+        }
+        Ok(Self { raw: value.clone() })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -212,6 +250,67 @@ impl ItemModelDefinition {
         }
     }
 
+    pub fn transformation_count(&self) -> usize {
+        match self {
+            Self::Empty | Self::BundleSelectedItem => 0,
+            Self::Model { transformation, .. } | Self::Special { transformation, .. } => {
+                usize::from(transformation.is_some())
+            }
+            Self::Condition {
+                transformation,
+                on_true,
+                on_false,
+                ..
+            } => {
+                usize::from(transformation.is_some())
+                    + on_true.transformation_count()
+                    + on_false.transformation_count()
+            }
+            Self::RangeDispatch {
+                transformation,
+                entries,
+                fallback,
+                ..
+            } => {
+                usize::from(transformation.is_some())
+                    + entries
+                        .iter()
+                        .map(|entry| entry.model.transformation_count())
+                        .sum::<usize>()
+                    + fallback
+                        .as_ref()
+                        .map(|model| model.transformation_count())
+                        .unwrap_or_default()
+            }
+            Self::Select {
+                transformation,
+                cases,
+                fallback,
+                ..
+            } => {
+                usize::from(transformation.is_some())
+                    + cases
+                        .iter()
+                        .map(|case| case.model.transformation_count())
+                        .sum::<usize>()
+                    + fallback
+                        .as_ref()
+                        .map(|model| model.transformation_count())
+                        .unwrap_or_default()
+            }
+            Self::Composite {
+                transformation,
+                models,
+            } => {
+                usize::from(transformation.is_some())
+                    + models
+                        .iter()
+                        .map(ItemModelDefinition::transformation_count)
+                        .sum::<usize>()
+            }
+        }
+    }
+
     fn collect_model_references(&self, references: &mut BTreeSet<String>) {
         match self {
             Self::Empty | Self::BundleSelectedItem => {}
@@ -244,7 +343,7 @@ impl ItemModelDefinition {
                     fallback.collect_model_references(references);
                 }
             }
-            Self::Composite { models } => {
+            Self::Composite { models, .. } => {
                 for model in models {
                     model.collect_model_references(references);
                 }
@@ -289,7 +388,7 @@ impl ItemModelDefinition {
                     fallback.collect_tint_source_type_counts(counts);
                 }
             }
-            Self::Composite { models } => {
+            Self::Composite { models, .. } => {
                 for model in models {
                     model.collect_tint_source_type_counts(counts);
                 }
@@ -319,6 +418,7 @@ fn parse_item_model_definition(value: &Value) -> Result<ItemModelDefinition> {
         "minecraft:empty" => Ok(ItemModelDefinition::Empty),
         "minecraft:model" => parse_model_item_model(object),
         "minecraft:condition" => Ok(ItemModelDefinition::Condition {
+            transformation: optional_transformation(object)?,
             property: resource_id(required_str(object, "property")?)?,
             on_true: Box::new(parse_item_model_definition(required_value(
                 object, "on_true",
@@ -330,6 +430,7 @@ fn parse_item_model_definition(value: &Value) -> Result<ItemModelDefinition> {
         "minecraft:range_dispatch" => parse_range_dispatch_model(object),
         "minecraft:select" => parse_select_model(object),
         "minecraft:composite" => Ok(ItemModelDefinition::Composite {
+            transformation: optional_transformation(object)?,
             models: required_array(object, "models")?
                 .iter()
                 .map(parse_item_model_definition)
@@ -337,6 +438,7 @@ fn parse_item_model_definition(value: &Value) -> Result<ItemModelDefinition> {
         }),
         "minecraft:special" => Ok(ItemModelDefinition::Special {
             base: resource_id(required_str(object, "base")?)?,
+            transformation: optional_transformation(object)?,
             special_type: object
                 .get("model")
                 .and_then(Value::as_object)
@@ -353,6 +455,7 @@ fn parse_item_model_definition(value: &Value) -> Result<ItemModelDefinition> {
 fn parse_model_item_model(object: &Map<String, Value>) -> Result<ItemModelDefinition> {
     Ok(ItemModelDefinition::Model {
         model: resource_id(required_str(object, "model")?)?,
+        transformation: optional_transformation(object)?,
         tints: optional_tints(object)?,
     })
 }
@@ -373,6 +476,7 @@ fn parse_range_dispatch_model(object: &Map<String, Value>) -> Result<ItemModelDe
         })
         .collect::<Result<Vec<_>>>()?;
     Ok(ItemModelDefinition::RangeDispatch {
+        transformation: optional_transformation(object)?,
         property: resource_id(required_str(object, "property")?)?,
         scale: optional_f32(object, "scale", 1.0)?,
         entries,
@@ -394,6 +498,7 @@ fn parse_select_model(object: &Map<String, Value>) -> Result<ItemModelDefinition
         })
         .collect::<Result<Vec<_>>>()?;
     Ok(ItemModelDefinition::Select {
+        transformation: optional_transformation(object)?,
         property: resource_id(required_str(object, "property")?)?,
         block_state_property: object
             .get("block_state_property")
@@ -417,6 +522,52 @@ fn optional_tints(object: &Map<String, Value>) -> Result<Vec<ItemTintSource>> {
         .as_array()
         .ok_or_else(|| anyhow::anyhow!("item model field \"tints\" must be an array"))?;
     tints.iter().map(parse_item_tint_source).collect()
+}
+
+fn optional_transformation(object: &Map<String, Value>) -> Result<Option<ItemModelTransformation>> {
+    object
+        .get("transformation")
+        .map(ItemModelTransformation::from_value)
+        .transpose()
+}
+
+fn validate_component_transformation(object: &Map<String, Value>) -> Result<()> {
+    validate_vector3(required_value(object, "translation")?, "translation")?;
+    validate_quaternion(required_value(object, "left_rotation")?, "left_rotation")?;
+    validate_vector3(required_value(object, "scale")?, "scale")?;
+    validate_quaternion(required_value(object, "right_rotation")?, "right_rotation")?;
+    Ok(())
+}
+
+fn validate_vector3(value: &Value, field: &str) -> Result<()> {
+    let values = value
+        .as_array()
+        .ok_or_else(|| anyhow::anyhow!("item model field {field:?} must be an array"))?;
+    validate_fixed_f32_array(values, field, 3)
+}
+
+fn validate_quaternion(value: &Value, field: &str) -> Result<()> {
+    if let Some(values) = value.as_array() {
+        return validate_fixed_f32_array(values, field, 4);
+    }
+
+    let object = value.as_object().ok_or_else(|| {
+        anyhow::anyhow!(
+            "item model field {field:?} must be a quaternion array or axis-angle object"
+        )
+    })?;
+    finite_f32(required_value(object, "angle")?, "angle")?;
+    validate_vector3(required_value(object, "axis")?, "axis")
+}
+
+fn validate_fixed_f32_array(values: &[Value], field: &str, len: usize) -> Result<()> {
+    if values.len() != len {
+        bail!("item model field {field:?} must have {len} numeric values");
+    }
+    for value in values {
+        finite_f32(value, field)?;
+    }
+    Ok(())
 }
 
 fn parse_item_tint_source(value: &Value) -> Result<ItemTintSource> {
@@ -616,6 +767,7 @@ mod tests {
             apple.model,
             ItemModelDefinition::Model {
                 model: "minecraft:item/apple".to_string(),
+                transformation: None,
                 tints: Vec::new(),
             }
         );
@@ -689,13 +841,17 @@ mod tests {
             .unwrap()
             .load_item_model_catalog()
             .unwrap();
-        let ItemModelDefinition::Model { model, tints } =
-            &catalog.definition("filled_map").unwrap().model
+        let ItemModelDefinition::Model {
+            model,
+            transformation,
+            tints,
+        } = &catalog.definition("filled_map").unwrap().model
         else {
             panic!("filled map should parse as a model item definition");
         };
 
         assert_eq!(model, "minecraft:item/filled_map");
+        assert_eq!(transformation, &None);
         assert_eq!(
             tints,
             &vec![
@@ -767,6 +923,166 @@ mod tests {
         assert!(err
             .to_string()
             .contains("unsupported item tint source type"));
+    }
+
+    #[test]
+    fn item_model_catalog_preserves_model_transformations() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:composite",
+                "transformation": [
+                  1.0, 0.0, 0.0, 0.0,
+                  0.0, 1.0, 0.0, 0.0,
+                  0.0, 0.0, 1.0, 0.0,
+                  0.0, 0.0, 0.0, 1.0
+                ],
+                "models": [
+                  {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/transformed",
+                    "transformation": {
+                      "left_rotation": [0.0, -0.0, 0.0, 1.0],
+                      "right_rotation": [0.0, 0.0, 0.0, 1.0],
+                      "scale": [0.6666667, -0.6666667, -0.6666667],
+                      "translation": [0.5, 0.0, 0.5]
+                    }
+                  },
+                  {
+                    "type": "minecraft:special",
+                    "base": "minecraft:item/template_banner",
+                    "model": {
+                      "type": "minecraft:banner",
+                      "color": "white"
+                    },
+                    "transformation": {
+                      "left_rotation": [0.0, -0.0, 0.0, 1.0],
+                      "right_rotation": [0.0, 0.0, 0.0, 1.0],
+                      "scale": [0.6666667, -0.6666667, -0.6666667],
+                      "translation": [0.5, 0.0, 0.5]
+                    }
+                  },
+                  {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "transformation": {
+                      "left_rotation": { "angle": 0.0, "axis": [0.0, 1.0, 0.0] },
+                      "right_rotation": [0.0, 0.0, 0.0, 1.0],
+                      "scale": [1.0, 1.0, 1.0],
+                      "translation": [0.0, 0.0, 0.0]
+                    },
+                    "on_true": { "type": "minecraft:empty" },
+                    "on_false": { "type": "minecraft:empty" }
+                  },
+                  {
+                    "type": "minecraft:range_dispatch",
+                    "property": "minecraft:use_duration",
+                    "scale": 0.05,
+                    "transformation": {
+                      "left_rotation": [0.0, 0.0, 0.0, 1.0],
+                      "right_rotation": [0.0, 0.0, 0.0, 1.0],
+                      "scale": [1.0, 1.0, 1.0],
+                      "translation": [0.0, 0.0, 0.0]
+                    },
+                    "entries": [
+                      {
+                        "threshold": 0.65,
+                        "model": {
+                          "type": "minecraft:model",
+                          "model": "minecraft:item/transformed_stage",
+                          "transformation": [
+                            1.0, 0.0, 0.0, 0.0,
+                            0.0, 1.0, 0.0, 0.0,
+                            0.0, 0.0, 1.0, 0.0,
+                            0.0, 0.0, 0.0, 1.0
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "minecraft:select",
+                    "property": "minecraft:display_context",
+                    "transformation": {
+                      "left_rotation": [0.0, 0.0, 0.0, 1.0],
+                      "right_rotation": [0.0, 0.0, 0.0, 1.0],
+                      "scale": [1.0, 1.0, 1.0],
+                      "translation": [0.0, 0.0, 0.0]
+                    },
+                    "cases": [
+                      {
+                        "when": "gui",
+                        "model": {
+                          "type": "minecraft:model",
+                          "model": "minecraft:item/transformed_gui"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Composite {
+            transformation,
+            models,
+        } = &definition.model
+        else {
+            panic!("root should parse as a composite item model");
+        };
+
+        assert!(matches!(
+            transformation.as_ref().map(ItemModelTransformation::raw),
+            Some(Value::Array(values)) if values.len() == 16
+        ));
+        assert_eq!(definition.model.transformation_count(), 7);
+        let ItemModelDefinition::Model { transformation, .. } = &models[0] else {
+            panic!("first child should parse as a model item definition");
+        };
+        assert_eq!(
+            transformation.as_ref().unwrap().raw()["translation"],
+            serde_json::json!([0.5, 0.0, 0.5])
+        );
+        let ItemModelDefinition::Condition { transformation, .. } = &models[2] else {
+            panic!("third child should parse as a condition item definition");
+        };
+        assert_eq!(
+            transformation.as_ref().unwrap().raw()["left_rotation"],
+            serde_json::json!({ "angle": 0.0, "axis": [0.0, 1.0, 0.0] })
+        );
+    }
+
+    #[test]
+    fn item_model_catalog_rejects_invalid_model_transformations() {
+        let err = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:model",
+                "model": "minecraft:item/test",
+                "transformation": [1.0, 0.0]
+              }
+            }"#,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("must have 16 numeric values"));
+
+        let err = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:model",
+                "model": "minecraft:item/test",
+                "transformation": {
+                  "left_rotation": [0.0, 0.0, 0.0, 1.0],
+                  "scale": [1.0, 1.0, 1.0],
+                  "translation": [0.0, 0.0, 0.0]
+                }
+              }
+            }"#,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("\"right_rotation\""));
     }
 
     #[test]
@@ -1050,6 +1366,7 @@ mod tests {
                 ("minecraft:potion".to_string(), 4),
             ])
         );
+        assert_eq!(catalog.transformation_count(), 83);
     }
 
     fn item_dir(root: &Path) -> PathBuf {
