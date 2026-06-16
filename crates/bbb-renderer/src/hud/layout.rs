@@ -158,6 +158,7 @@ pub(super) fn hud_quad_vertices(
     surface_size: PhysicalSize<u32>,
     rect: HudRect,
     uv: HudUvRect,
+    tint: [f32; 4],
 ) -> [HudVertex; 6] {
     let x0 = rect.x;
     let y0 = rect.y;
@@ -173,26 +174,32 @@ pub(super) fn hud_quad_vertices(
         HudVertex {
             position: [left, top],
             uv: uv.min,
+            tint,
         },
         HudVertex {
             position: [right, top],
             uv: [uv.max[0], uv.min[1]],
+            tint,
         },
         HudVertex {
             position: [right, bottom],
             uv: uv.max,
+            tint,
         },
         HudVertex {
             position: [left, top],
             uv: uv.min,
+            tint,
         },
         HudVertex {
             position: [right, bottom],
             uv: uv.max,
+            tint,
         },
         HudVertex {
             position: [left, bottom],
             uv: [uv.min[0], uv.max[1]],
+            tint,
         },
     ]
 }
@@ -208,6 +215,7 @@ mod tests {
             surface_size,
             centered_hud_rect(surface_size, 16, 8),
             full_uv_rect(),
+            [1.0, 1.0, 1.0, 1.0],
         );
         assert_f32_near(vertices[0].position[0], -0.0125);
         assert_f32_near(vertices[0].position[1], 0.011111111);
@@ -227,11 +235,26 @@ mod tests {
                 min: [0.25, 0.5],
                 max: [0.75, 0.875],
             },
+            [1.0, 1.0, 1.0, 1.0],
         );
         assert_eq!(vertices[0].uv, [0.25, 0.5]);
         assert_eq!(vertices[1].uv, [0.75, 0.5]);
         assert_eq!(vertices[2].uv, [0.75, 0.875]);
         assert_eq!(vertices[5].uv, [0.25, 0.875]);
+    }
+
+    #[test]
+    fn hud_quad_vertices_maps_tint_to_all_vertices() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let tint = [0.25, 0.5, 0.75, 1.0];
+        let vertices = hud_quad_vertices(
+            surface_size,
+            centered_hud_rect(surface_size, 16, 8),
+            full_uv_rect(),
+            tint,
+        );
+
+        assert!(vertices.iter().all(|vertex| vertex.tint == tint));
     }
 
     #[test]

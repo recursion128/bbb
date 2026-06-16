@@ -3,12 +3,14 @@ use std::collections::{BTreeSet, HashMap};
 use anyhow::{Context, Result};
 use bbb_pack::{
     AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, ItemCuboidModel, ItemCuboidModelCatalog,
-    ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemModelCatalog, ItemRegistryCatalog,
-    PackRoots, SpriteImage,
+    ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemModelCatalog, ItemModelDefinition,
+    ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage, TerrainColorMaps,
 };
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
+const ITEM_GENERATED_MAX_LAYERS: usize = 5;
 const MISSING_TEXTURE_ID: &str = "minecraft:missingno";
+const ITEM_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
 #[derive(Debug, Clone)]
 pub(crate) struct NativeItemRuntime {
@@ -17,7 +19,7 @@ pub(crate) struct NativeItemRuntime {
     resolved_model_count: usize,
     missing_model_ids: BTreeSet<String>,
     missing_texture_ids: BTreeSet<String>,
-    item_texture_indices: HashMap<String, u32>,
+    item_icon_layers: HashMap<String, Vec<ItemIconTextureLayer>>,
     registry: Option<ItemRegistryCatalog>,
     textures: ItemTextureState,
 }
@@ -40,7 +42,21 @@ impl NativeItemRuntime {
                 err
             })
             .ok();
-        Self::from_loaded(item_models, cuboid_models, texture_images, registry)
+        let colormaps = roots
+            .load_terrain_colormaps()
+            .context("load terrain colormaps for item tints")
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native item tint colormaps");
+                err
+            })
+            .ok();
+        Self::from_loaded(
+            item_models,
+            cuboid_models,
+            texture_images,
+            registry,
+            colormaps,
+        )
     }
 
     fn from_loaded(
@@ -48,21 +64,22 @@ impl NativeItemRuntime {
         cuboid_models: ItemCuboidModelCatalog,
         texture_images: ItemCuboidTextureImageCatalog,
         registry: Option<ItemRegistryCatalog>,
+        colormaps: Option<TerrainColorMaps>,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
-        let mut item_texture_ids = HashMap::new();
+        let mut item_icon_texture_refs = HashMap::new();
         let mut missing_model_ids = BTreeSet::new();
         let mut missing_texture_ids = BTreeSet::new();
         let mut resolved_model_count = 0usize;
 
-        for item_id in item_models.definitions().keys() {
-            let Some(models) = cuboid_models.models_for_item(&item_models, item_id) else {
-                continue;
-            };
+        for (item_id, definition) in item_models.definitions() {
+            let models = cuboid_models.models_for_definition(definition);
             resolved_model_count += models.models.len();
             texture_ids.extend(models.texture_ids());
-            if let Some(texture_id) = item_icon_texture_id(&models) {
-                item_texture_ids.insert(item_id.clone(), texture_id);
+            let model_tints = model_tints_for_definition(&definition.model);
+            let icon_layers = item_icon_texture_layers(&models, &model_tints, colormaps.as_ref());
+            if !icon_layers.is_empty() {
+                item_icon_texture_refs.insert(item_id.clone(), icon_layers);
             }
             missing_model_ids.extend(models.missing_model_ids);
         }
@@ -86,9 +103,18 @@ impl NativeItemRuntime {
         }
 
         let textures = ItemTextureState::from_images(images)?;
-        let item_texture_indices = item_texture_ids
+        let item_icon_layers = item_icon_texture_refs
             .into_iter()
-            .map(|(item_id, texture_id)| (item_id, textures.texture_index(&texture_id)))
+            .map(|(item_id, layers)| {
+                let layers = layers
+                    .into_iter()
+                    .map(|layer| ItemIconTextureLayer {
+                        texture_index: textures.texture_index(&layer.texture_id),
+                        tint: layer.tint,
+                    })
+                    .collect();
+                (item_id, layers)
+            })
             .collect();
 
         Ok(Self {
@@ -97,7 +123,7 @@ impl NativeItemRuntime {
             resolved_model_count,
             missing_model_ids,
             missing_texture_ids,
-            item_texture_indices,
+            item_icon_layers,
             registry,
             textures,
         })
@@ -128,7 +154,7 @@ impl NativeItemRuntime {
     }
 
     pub(crate) fn icon_texture_count(&self) -> usize {
-        self.item_texture_indices.len()
+        self.item_icon_layers.len()
     }
 
     pub(crate) fn atlas_size(&self) -> (u32, u32) {
@@ -143,26 +169,78 @@ impl NativeItemRuntime {
         self.textures.texture_index(texture_id)
     }
 
+    #[cfg(test)]
     pub(crate) fn icon_texture_index_for_protocol_id(&self, protocol_id: i32) -> Option<u32> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
         Some(
-            self.item_texture_indices
+            self.item_icon_layers
                 .get(item_id)
-                .copied()
+                .and_then(|layers| layers.first())
+                .map(|layer| layer.texture_index)
                 .unwrap_or(self.textures.fallback_index()),
         )
     }
 
+    #[cfg(test)]
     pub(crate) fn icon_uv_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasUvRect> {
-        self.textures
-            .texture_uv_rect(self.icon_texture_index_for_protocol_id(protocol_id)?)
+        self.icon_for_protocol_id(protocol_id)
+            .and_then(|icon| icon.layers.first().map(|layer| layer.uv))
     }
+
+    pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
+        let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
+        let layers = self
+            .item_icon_layers
+            .get(item_id)
+            .cloned()
+            .unwrap_or_else(|| {
+                vec![ItemIconTextureLayer {
+                    texture_index: self.textures.fallback_index(),
+                    tint: ITEM_TINT_WHITE,
+                }]
+            });
+        let layers = layers
+            .into_iter()
+            .filter_map(|layer| {
+                self.textures
+                    .texture_uv_rect(layer.texture_index)
+                    .map(|uv| ItemAtlasIconLayer {
+                        uv,
+                        tint: layer.tint,
+                    })
+            })
+            .collect::<Vec<_>>();
+        (!layers.is_empty()).then_some(ItemAtlasIcon { layers })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ItemAtlasIcon {
+    pub(crate) layers: Vec<ItemAtlasIconLayer>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ItemAtlasIconLayer {
+    pub(crate) uv: ItemAtlasUvRect,
+    pub(crate) tint: [f32; 4],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ItemAtlasUvRect {
     pub(crate) min: [f32; 2],
     pub(crate) max: [f32; 2],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ItemIconTextureLayer {
+    texture_index: u32,
+    tint: [f32; 4],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct ItemIconTextureRef {
+    texture_id: String,
+    tint: [f32; 4],
 }
 
 #[derive(Debug, Clone)]
@@ -220,21 +298,50 @@ impl ItemTextureState {
     }
 }
 
-fn item_icon_texture_id(models: &ItemCuboidModelSet) -> Option<String> {
-    // First pass: pick a stable flat base texture. Layered, tinted, and special GUI item
-    // rendering will need a richer icon representation.
+fn item_icon_texture_layers(
+    models: &ItemCuboidModelSet,
+    model_tints: &HashMap<String, Vec<ItemTintSource>>,
+    colormaps: Option<&TerrainColorMaps>,
+) -> Vec<ItemIconTextureRef> {
     models
         .models
         .iter()
-        .find_map(layer0_texture_id)
-        .or_else(|| models.models.iter().find_map(first_texture_id))
+        .find_map(|model| generated_layer_texture_refs(model, model_tints, colormaps))
+        .or_else(|| {
+            models
+                .models
+                .iter()
+                .find_map(first_texture_id)
+                .map(|texture_id| {
+                    vec![ItemIconTextureRef {
+                        texture_id,
+                        tint: ITEM_TINT_WHITE,
+                    }]
+                })
+        })
+        .unwrap_or_default()
 }
 
-fn layer0_texture_id(model: &ItemCuboidModel) -> Option<String> {
-    model
-        .texture_slots
-        .get("layer0")
-        .map(|texture| texture.id.clone())
+fn generated_layer_texture_refs(
+    model: &ItemCuboidModel,
+    model_tints: &HashMap<String, Vec<ItemTintSource>>,
+    colormaps: Option<&TerrainColorMaps>,
+) -> Option<Vec<ItemIconTextureRef>> {
+    let tints = model_tints.get(&model.id);
+    let mut layers = Vec::new();
+    for layer_index in 0..ITEM_GENERATED_MAX_LAYERS {
+        let Some(texture) = model.texture_slots.get(&format!("layer{layer_index}")) else {
+            break;
+        };
+        layers.push(ItemIconTextureRef {
+            texture_id: texture.id.clone(),
+            tint: tints
+                .and_then(|tints| tints.get(layer_index))
+                .map(|tint| item_tint_source_default_color(tint, colormaps))
+                .unwrap_or(ITEM_TINT_WHITE),
+        });
+    }
+    (!layers.is_empty()).then_some(layers)
 }
 
 fn first_texture_id(model: &ItemCuboidModel) -> Option<String> {
@@ -249,6 +356,105 @@ fn first_texture_id(model: &ItemCuboidModel) -> Option<String> {
                 .as_ref()
                 .map(|textures| textures.textures[0].clone())
         })
+}
+
+fn model_tints_for_definition(model: &ItemModelDefinition) -> HashMap<String, Vec<ItemTintSource>> {
+    let mut tints = HashMap::new();
+    collect_model_tints(model, &mut tints);
+    tints
+}
+
+fn collect_model_tints(
+    model: &ItemModelDefinition,
+    tints_by_model: &mut HashMap<String, Vec<ItemTintSource>>,
+) {
+    match model {
+        ItemModelDefinition::Empty | ItemModelDefinition::BundleSelectedItem => {}
+        ItemModelDefinition::Model { model, tints, .. } => {
+            tints_by_model
+                .entry(model.clone())
+                .or_insert_with(|| tints.clone());
+        }
+        ItemModelDefinition::Condition {
+            on_true, on_false, ..
+        } => {
+            collect_model_tints(on_true, tints_by_model);
+            collect_model_tints(on_false, tints_by_model);
+        }
+        ItemModelDefinition::RangeDispatch {
+            entries, fallback, ..
+        } => {
+            for entry in entries {
+                collect_model_tints(&entry.model, tints_by_model);
+            }
+            if let Some(fallback) = fallback {
+                collect_model_tints(fallback, tints_by_model);
+            }
+        }
+        ItemModelDefinition::Select {
+            cases, fallback, ..
+        } => {
+            for case in cases {
+                collect_model_tints(&case.model, tints_by_model);
+            }
+            if let Some(fallback) = fallback {
+                collect_model_tints(fallback, tints_by_model);
+            }
+        }
+        ItemModelDefinition::Composite { models, .. } => {
+            for model in models {
+                collect_model_tints(model, tints_by_model);
+            }
+        }
+        ItemModelDefinition::Special { base, .. } => {
+            tints_by_model.entry(base.clone()).or_default();
+        }
+    }
+}
+
+fn item_tint_source_default_color(
+    tint: &ItemTintSource,
+    colormaps: Option<&TerrainColorMaps>,
+) -> [f32; 4] {
+    match tint {
+        ItemTintSource::CustomModelData { default_color, .. }
+        | ItemTintSource::Dye { default_color }
+        | ItemTintSource::Firework { default_color }
+        | ItemTintSource::Potion { default_color }
+        | ItemTintSource::MapColor { default_color }
+        | ItemTintSource::Team { default_color } => rgb_i32_tint(*default_color),
+        ItemTintSource::Constant { value } => rgb_i32_tint(*value),
+        ItemTintSource::Grass {
+            temperature,
+            downfall,
+        } => colormaps
+            .map(|colormaps| {
+                rgb_u8_tint(
+                    colormaps
+                        .grass
+                        .sample_temperature_downfall(*temperature, *downfall),
+                )
+            })
+            .unwrap_or_else(|| rgb_u8_tint([0x91, 0xbd, 0x59])),
+    }
+}
+
+fn rgb_i32_tint(value: i32) -> [f32; 4] {
+    let rgb = value as u32;
+    rgb_u8_tint([
+        ((rgb >> 16) & 0xff) as u8,
+        ((rgb >> 8) & 0xff) as u8,
+        (rgb & 0xff) as u8,
+    ])
+}
+
+fn rgb_u8_tint(rgb: [u8; 3]) -> [f32; 4] {
+    [
+        f32::from(rgb[0]) / 255.0,
+        f32::from(rgb[1]) / 255.0,
+        f32::from(rgb[2]) / 255.0,
+        1.0,
+    ]
 }
 
 fn item_uv_rect(layout: &AtlasLayout, sprite: &AtlasSprite) -> ItemAtlasUvRect {
@@ -307,7 +513,11 @@ mod tests {
                     "models": [
                         {
                             "type": "minecraft:model",
-                            "model": "minecraft:item/test_sword"
+                            "model": "minecraft:item/test_sword",
+                            "tints": [
+                                { "type": "minecraft:constant", "value": 3368601 },
+                                { "type": "minecraft:potion", "default": 16711935 }
+                            ]
                         },
                         {
                             "type": "minecraft:model",
@@ -362,7 +572,18 @@ mod tests {
             Some(runtime.texture_index("minecraft:item/test_sword"))
         );
         assert_eq!(runtime.icon_texture_index_for_protocol_id(1), None);
-        assert!(runtime.icon_uv_for_protocol_id(0).is_some());
+        let icon = runtime.icon_for_protocol_id(0).unwrap();
+        assert_eq!(icon.layers.len(), 2);
+        assert_eq!(icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
+        assert_eq!(icon.layers[1].tint, rgb_i32_tint(0xff_00_ff));
+        assert_eq!(
+            icon.layers[1].uv,
+            runtime
+                .textures
+                .texture_uv_rect(runtime.texture_index(MISSING_TEXTURE_ID))
+                .unwrap()
+        );
+        assert_eq!(runtime.icon_uv_for_protocol_id(0), Some(icon.layers[0].uv));
 
         std::fs::remove_dir_all(root).unwrap();
     }
