@@ -366,6 +366,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_local_player" => {
             serde_json::to_value(snapshot_guard.world_store.client_local_player())
         }
+        "world.client_player_info" => {
+            serde_json::to_value(snapshot_guard.world_store.player_info())
+        }
         "world.client_scoreboard" => serde_json::to_value(snapshot_guard.world_store.scoreboard()),
         "world.client_stats" => serde_json::to_value(snapshot_guard.world_store.client_stats()),
         "world.client_waypoints" => {
@@ -552,11 +555,12 @@ mod tests {
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
         DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
         EntityPositionSync as ProtocolEntityPositionSync, Explosion as ProtocolExplosion,
-        GameEvent, GameRuleValue, GameRuleValues, InitializeBorder, InteractionHand,
-        LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
-        MountScreenOpen, ObjectiveRenderType, OpenBook, OpenSignEditor, ParticlePayload,
-        PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill, PlayerExperience,
-        PlayerHealth, PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeDisplayType,
+        GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameType,
+        InitializeBorder, InteractionHand, LevelParticles as ProtocolLevelParticles, MapColorPatch,
+        MapDecoration, MapItemData, MountScreenOpen, ObjectiveRenderType, OpenBook, OpenSignEditor,
+        ParticlePayload, PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill,
+        PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
+        PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeDisplayType,
         ScoreboardDisplaySlot, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
         ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
         SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
@@ -573,6 +577,7 @@ mod tests {
         PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
     };
     use serde_json::json;
+    use uuid::Uuid;
 
     #[test]
     fn app_quit_marks_snapshot_not_running() {
@@ -1680,6 +1685,74 @@ mod tests {
         assert_eq!(local["default_spawn"]["pos"]["x"], -5);
         assert_eq!(local["default_spawn"]["yaw"], 90.0);
         assert_eq!(local["simulation_distance"], 12);
+    }
+
+    #[test]
+    fn client_player_info_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        let profile_id = Uuid::from_u128(0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa);
+        {
+            let mut store = WorldStore::new();
+            let applied = store.apply_player_info_update(PlayerInfoUpdate {
+                actions: vec![
+                    PlayerInfoAction::AddPlayer,
+                    PlayerInfoAction::UpdateGameMode,
+                    PlayerInfoAction::UpdateListed,
+                    PlayerInfoAction::UpdateLatency,
+                    PlayerInfoAction::UpdateDisplayName,
+                    PlayerInfoAction::UpdateHat,
+                    PlayerInfoAction::UpdateListOrder,
+                ],
+                entries: vec![PlayerInfoEntry {
+                    profile_id,
+                    profile: Some(GameProfile {
+                        uuid: profile_id,
+                        name: "Ada".to_string(),
+                        properties: vec![GameProfileProperty {
+                            name: "textures".to_string(),
+                            value: "skin-payload".to_string(),
+                            signature: Some("skin-signature".to_string()),
+                        }],
+                    }),
+                    listed: true,
+                    latency: 42,
+                    game_mode: GameType::Creative,
+                    display_name: Some("{\"text\":\"Ada Lovelace\"}".to_string()),
+                    show_hat: true,
+                    list_order: 7,
+                    chat_session: None,
+                }],
+            });
+            assert_eq!(applied, 1);
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_player_info".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let player_info = response.result.unwrap();
+        let key = profile_id.to_string();
+        let entry = &player_info["entries"][&key];
+        assert_eq!(entry["profile"]["uuid"], key);
+        assert_eq!(entry["profile"]["name"], "Ada");
+        assert_eq!(entry["profile"]["properties"][0]["name"], "textures");
+        assert_eq!(entry["listed"], true);
+        assert_eq!(entry["latency"], 42);
+        assert_eq!(entry["game_mode"], "creative");
+        assert_eq!(entry["display_name"], "{\"text\":\"Ada Lovelace\"}");
+        assert_eq!(entry["show_hat"], true);
+        assert_eq!(entry["list_order"], 7);
+        assert_eq!(entry["chat_session_present"], false);
+        assert_eq!(
+            player_info["listed_players"],
+            json!([profile_id.to_string()])
+        );
     }
 
     #[test]
