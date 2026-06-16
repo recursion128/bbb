@@ -507,16 +507,18 @@ mod tests {
         BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
         BossEventOperation, ChangeDifficulty, ChunkPos as ProtocolChunkPos, ClockUpdate,
         CommonPlayerSpawnInfo, CookieRequest, DebugBlockValue, DebugChunkValue, DebugEntityValue,
-        DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor, GameEvent, GameRuleValue,
-        GameRuleValues, GameTestHighlightPos, InteractionHand, LevelEvent, MapColorPatch,
-        MapDecoration, MapItemData, MountScreenOpen, MoveVehicle, OpenBook, OpenSignEditor,
-        PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerExperience, PlayerHealth,
-        PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
-        RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
-        ResourcePackResponseAction, ServerData, SetCamera, SetDefaultSpawnPosition, SetHeldSlot,
-        SetPassengers, SetSimulationDistance, ShowDialog, StatUpdate, StoreCookie, TabList,
-        TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
-        Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
+        DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor, Explosion, GameEvent,
+        GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand, LevelEvent,
+        LevelParticles, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
+        OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime,
+        PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAt, PlayerPositionUpdate,
+        PlayerRotationUpdate, PongResponse, ProjectilePower, RecipeDisplayType,
+        RemoteDebugSampleType, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
+        ServerData, SetCamera, SetDefaultSpawnPosition, SetHeldSlot, SetPassengers,
+        SetSimulationDistance, ShowDialog, SoundEntityEvent, SoundEvent, SoundEventHolder,
+        SoundSource, StatUpdate, StopSound, StoreCookie, TabList, TestInstanceBlockStatus,
+        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
+        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
         WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{codec::Decoder, ids};
@@ -718,6 +720,196 @@ mod tests {
         assert_eq!(report.world_counters.maps_tracked, 1);
         assert_eq!(report.world_counters.map_decorations_tracked, 1);
         assert_eq!(report.world_counters.map_color_patches_applied, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_audio_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(123)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::Sound(SoundEvent {
+                sound: SoundEventHolder::Reference { registry_id: 41 },
+                source: SoundSource::Blocks,
+                position: ProtocolVec3d {
+                    x: 2.5,
+                    y: -1.0,
+                    z: 0.0,
+                },
+                volume: 0.75,
+                pitch: 1.25,
+                seed: 123456789,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SoundEntity(SoundEntityEvent {
+                sound: SoundEventHolder::Direct {
+                    location: "minecraft:entity.cat.ambient".to_string(),
+                    fixed_range: Some(32.0),
+                },
+                source: SoundSource::Neutral,
+                entity_id: 123,
+                volume: 1.0,
+                pitch: 0.5,
+                seed: -9,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::StopSound(StopSound {
+                source: Some(SoundSource::Music),
+                name: Some("minecraft:music.menu".to_string()),
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(4, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.sound_packets, 1);
+        assert_eq!(
+            report.world.last_sound(),
+            Some(&bbb_world::SoundEventState {
+                sound: bbb_world::SoundHolderState {
+                    kind: "reference".to_string(),
+                    registry_id: Some(41),
+                    location: None,
+                    fixed_range: None,
+                },
+                source: "block".to_string(),
+                position: ProtocolVec3d {
+                    x: 2.5,
+                    y: -1.0,
+                    z: 0.0,
+                },
+                volume: 0.75,
+                pitch: 1.25,
+                seed: 123456789,
+            })
+        );
+        assert_eq!(report.world_counters.sound_entity_packets, 1);
+        assert_eq!(report.world_counters.sound_entity_events_applied, 1);
+        assert_eq!(report.world_counters.sound_entity_events_ignored, 0);
+        assert_eq!(
+            report.world.last_sound_entity(),
+            Some(&bbb_world::SoundEntityEventState {
+                sound: bbb_world::SoundHolderState {
+                    kind: "direct".to_string(),
+                    registry_id: None,
+                    location: Some("minecraft:entity.cat.ambient".to_string()),
+                    fixed_range: Some(32.0),
+                },
+                source: "neutral".to_string(),
+                entity_id: 123,
+                volume: 1.0,
+                pitch: 0.5,
+                seed: -9,
+            })
+        );
+        assert_eq!(report.world_counters.stop_sound_packets, 1);
+        assert_eq!(
+            report.world.last_stop_sound(),
+            Some(&bbb_world::StopSoundEventState {
+                source: Some("music".to_string()),
+                name: Some("minecraft:music.menu".to_string()),
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_visual_effect_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Explosion(Explosion {
+                center: ProtocolVec3d {
+                    x: 1.0,
+                    y: 2.0,
+                    z: 3.0,
+                },
+                radius: 4.5,
+                block_count: 7,
+                player_knockback: Some(ProtocolVec3d {
+                    x: 0.25,
+                    y: -0.5,
+                    z: 1.5,
+                }),
+                raw_effect_payload: vec![0x2d, 0x2a, 0x01, 0x00],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::LevelParticles(LevelParticles {
+                override_limiter: true,
+                always_show: false,
+                position: ProtocolVec3d {
+                    x: 10.0,
+                    y: 64.5,
+                    z: -3.25,
+                },
+                offset: ProtocolVec3d {
+                    x: f64::from(0.1_f32),
+                    y: f64::from(0.2_f32),
+                    z: f64::from(0.3_f32),
+                },
+                max_speed: 1.5,
+                count: 16,
+                particle: ParticlePayload {
+                    particle_type_id: 45,
+                    raw_options: vec![0xaa, 0xbb],
+                },
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.explosion_packets, 1);
+        assert_eq!(
+            report.world.last_explosion(),
+            Some(&bbb_world::ExplosionEventState {
+                center: ProtocolVec3d {
+                    x: 1.0,
+                    y: 2.0,
+                    z: 3.0,
+                },
+                radius: 4.5,
+                block_count: 7,
+                player_knockback: Some(ProtocolVec3d {
+                    x: 0.25,
+                    y: -0.5,
+                    z: 1.5,
+                }),
+                raw_effect_payload_len: 4,
+            })
+        );
+        assert_eq!(report.world_counters.level_particles_packets, 1);
+        assert_eq!(
+            report.world.last_level_particles(),
+            Some(&bbb_world::LevelParticlesEventState {
+                override_limiter: true,
+                always_show: false,
+                position: ProtocolVec3d {
+                    x: 10.0,
+                    y: 64.5,
+                    z: -3.25,
+                },
+                offset: ProtocolVec3d {
+                    x: f64::from(0.1_f32),
+                    y: f64::from(0.2_f32),
+                    z: f64::from(0.3_f32),
+                },
+                max_speed: 1.5,
+                count: 16,
+                particle_type_id: 45,
+                raw_options_len: 2,
+            })
+        );
     }
 
     #[tokio::test]
