@@ -6,6 +6,7 @@ use bbb_pack::{
     ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemModelCatalog, ItemModelDefinition,
     ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage, TerrainColorMaps,
 };
+use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
 const ITEM_GENERATED_MAX_LAYERS: usize = 5;
@@ -187,8 +188,22 @@ impl NativeItemRuntime {
             .and_then(|icon| icon.layers.first().map(|layer| layer.uv))
     }
 
+    pub(crate) fn icon_for_stack(&self, stack: &ItemStackSummary) -> Option<ItemAtlasIcon> {
+        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        self.icon_for_resource_id(item_id, Some(&stack.component_patch))
+    }
+
+    #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
+        self.icon_for_resource_id(item_id, None)
+    }
+
+    fn icon_for_resource_id(
+        &self,
+        item_id: &str,
+        component_patch: Option<&DataComponentPatchSummary>,
+    ) -> Option<ItemAtlasIcon> {
         let layers = self
             .item_icon_layers
             .get(item_id)
@@ -196,7 +211,7 @@ impl NativeItemRuntime {
             .unwrap_or_else(|| {
                 vec![ItemIconTextureLayer {
                     texture_index: self.textures.fallback_index(),
-                    tint: ITEM_TINT_WHITE,
+                    tint: ItemIconTint::Static(ITEM_TINT_WHITE),
                 }]
             });
         let layers = layers
@@ -206,7 +221,7 @@ impl NativeItemRuntime {
                     .texture_uv_rect(layer.texture_index)
                     .map(|uv| ItemAtlasIconLayer {
                         uv,
-                        tint: layer.tint,
+                        tint: item_icon_tint_color(&layer.tint, component_patch),
                     })
             })
             .collect::<Vec<_>>();
@@ -231,16 +246,22 @@ pub(crate) struct ItemAtlasUvRect {
     pub(crate) max: [f32; 2],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 struct ItemIconTextureLayer {
     texture_index: u32,
-    tint: [f32; 4],
+    tint: ItemIconTint,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 struct ItemIconTextureRef {
     texture_id: String,
-    tint: [f32; 4],
+    tint: ItemIconTint,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum ItemIconTint {
+    Static([f32; 4]),
+    Source(ItemTintSource),
 }
 
 #[derive(Debug, Clone)]
@@ -315,7 +336,7 @@ fn item_icon_texture_layers(
                 .map(|texture_id| {
                     vec![ItemIconTextureRef {
                         texture_id,
-                        tint: ITEM_TINT_WHITE,
+                        tint: ItemIconTint::Static(ITEM_TINT_WHITE),
                     }]
                 })
         })
@@ -337,8 +358,8 @@ fn generated_layer_texture_refs(
             texture_id: texture.id.clone(),
             tint: tints
                 .and_then(|tints| tints.get(layer_index))
-                .map(|tint| item_tint_source_default_color(tint, colormaps))
-                .unwrap_or(ITEM_TINT_WHITE),
+                .map(|tint| item_tint_source(tint, colormaps))
+                .unwrap_or(ItemIconTint::Static(ITEM_TINT_WHITE)),
         });
     }
     (!layers.is_empty()).then_some(layers)
@@ -439,6 +460,65 @@ fn item_tint_source_default_color(
     }
 }
 
+fn item_tint_source(tint: &ItemTintSource, colormaps: Option<&TerrainColorMaps>) -> ItemIconTint {
+    match tint {
+        ItemTintSource::Constant { .. } | ItemTintSource::Grass { .. } => {
+            ItemIconTint::Static(item_tint_source_default_color(tint, colormaps))
+        }
+        ItemTintSource::CustomModelData { .. }
+        | ItemTintSource::Dye { .. }
+        | ItemTintSource::Firework { .. }
+        | ItemTintSource::Potion { .. }
+        | ItemTintSource::MapColor { .. }
+        | ItemTintSource::Team { .. } => ItemIconTint::Source(tint.clone()),
+    }
+}
+
+fn item_icon_tint_color(
+    tint: &ItemIconTint,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> [f32; 4] {
+    match tint {
+        ItemIconTint::Static(color) => *color,
+        ItemIconTint::Source(source) => item_tint_source_color(source, component_patch),
+    }
+}
+
+fn item_tint_source_color(
+    tint: &ItemTintSource,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> [f32; 4] {
+    match tint {
+        ItemTintSource::CustomModelData {
+            index,
+            default_color,
+        } => {
+            let color = component_patch
+                .and_then(|patch| patch.custom_model_data_colors.get(*index as usize))
+                .copied()
+                .unwrap_or(*default_color);
+            rgb_i32_tint(color)
+        }
+        ItemTintSource::Dye { default_color } => {
+            let color = component_patch
+                .and_then(|patch| patch.dyed_color)
+                .unwrap_or(*default_color);
+            rgb_i32_tint(color)
+        }
+        ItemTintSource::MapColor { default_color } => {
+            let color = component_patch
+                .and_then(|patch| patch.map_color)
+                .unwrap_or(*default_color);
+            rgb_i32_tint(color)
+        }
+        ItemTintSource::Constant { value } => rgb_i32_tint(*value),
+        ItemTintSource::Grass { .. }
+        | ItemTintSource::Firework { .. }
+        | ItemTintSource::Potion { .. }
+        | ItemTintSource::Team { .. } => item_tint_source_default_color(tint, None),
+    }
+}
+
 fn rgb_i32_tint(value: i32) -> [f32; 4] {
     let rgb = value as u32;
     rgb_u8_tint([
@@ -500,6 +580,55 @@ mod tests {
     }
 
     #[test]
+    fn item_tint_sources_use_stack_component_colors_when_available() {
+        let patch = DataComponentPatchSummary {
+            custom_model_data_colors: vec![0x01_02_03, 0x04_05_06],
+            dyed_color: Some(0x07_08_09),
+            map_color: Some(0x0a_0b_0c),
+            ..DataComponentPatchSummary::default()
+        };
+
+        assert_eq!(
+            item_tint_source_color(
+                &ItemTintSource::CustomModelData {
+                    index: 1,
+                    default_color: 0xff_00_ff,
+                },
+                Some(&patch),
+            ),
+            rgb_i32_tint(0x04_05_06)
+        );
+        assert_eq!(
+            item_tint_source_color(
+                &ItemTintSource::Dye {
+                    default_color: 0xff_00_ff,
+                },
+                Some(&patch),
+            ),
+            rgb_i32_tint(0x07_08_09)
+        );
+        assert_eq!(
+            item_tint_source_color(
+                &ItemTintSource::MapColor {
+                    default_color: 0xff_00_ff,
+                },
+                Some(&patch),
+            ),
+            rgb_i32_tint(0x0a_0b_0c)
+        );
+        assert_eq!(
+            item_tint_source_color(
+                &ItemTintSource::CustomModelData {
+                    index: 2,
+                    default_color: 0xff_00_ff,
+                },
+                Some(&patch),
+            ),
+            rgb_i32_tint(0xff_00_ff)
+        );
+    }
+
+    #[test]
     fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         let root = unique_temp_dir("item-runtime");
         let assets = assets_dir(&root);
@@ -516,7 +645,7 @@ mod tests {
                             "model": "minecraft:item/test_sword",
                             "tints": [
                                 { "type": "minecraft:constant", "value": 3368601 },
-                                { "type": "minecraft:potion", "default": 16711935 }
+                                { "type": "minecraft:custom_model_data", "index": 1, "default": 16711935 }
                             ]
                         },
                         {
@@ -584,6 +713,19 @@ mod tests {
                 .unwrap()
         );
         assert_eq!(runtime.icon_uv_for_protocol_id(0), Some(icon.layers[0].uv));
+
+        let stack_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    custom_model_data_colors: vec![0x00_00_00, 0x12_34_56],
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(stack_icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
+        assert_eq!(stack_icon.layers[1].tint, rgb_i32_tint(0x12_34_56));
 
         std::fs::remove_dir_all(root).unwrap();
     }

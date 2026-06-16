@@ -140,10 +140,7 @@ fn hotbar_item_icons(
     };
 
     for (slot_index, item) in world.inventory().hotbar_items().iter().enumerate() {
-        let Some(item_id) = item.item_id else {
-            continue;
-        };
-        let Some(icon) = item_runtime.icon_for_protocol_id(item_id) else {
+        let Some(icon) = item_runtime.icon_for_stack(item) else {
             continue;
         };
         icons[slot_index] = Some(HudItemIcon {

@@ -31,6 +31,12 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub added_type_ids: Vec<i32>,
     pub removed_type_ids: Vec<i32>,
+    #[serde(default)]
+    pub custom_model_data_colors: Vec<i32>,
+    #[serde(default)]
+    pub dyed_color: Option<i32>,
+    #[serde(default)]
+    pub map_color: Option<i32>,
 }
 
 pub(crate) fn decode_data_component_patch_summary(
@@ -45,17 +51,15 @@ pub(crate) fn decode_data_component_patch_summary(
         ));
     }
 
-    let added_type_ids = decode_typed_data_component_list(decoder, added)?;
+    let mut summary = decode_typed_data_component_patch_summary(decoder, added)?;
     let mut removed_type_ids = Vec::with_capacity(removed);
     for _ in 0..removed {
         removed_type_ids.push(decoder.read_var_i32()?);
     }
 
-    Ok(DataComponentPatchSummary {
-        added,
-        added_type_ids,
-        removed_type_ids,
-    })
+    summary.added = added;
+    summary.removed_type_ids = removed_type_ids;
+    Ok(summary)
 }
 
 pub(crate) fn decode_data_component_exact_predicate_type_ids(
@@ -79,6 +83,33 @@ fn decode_typed_data_component_list(decoder: &mut Decoder<'_>, count: usize) -> 
         type_ids.push(type_id);
     }
     Ok(type_ids)
+}
+
+fn decode_typed_data_component_patch_summary(
+    decoder: &mut Decoder<'_>,
+    count: usize,
+) -> Result<DataComponentPatchSummary> {
+    let mut summary = DataComponentPatchSummary {
+        added_type_ids: Vec::with_capacity(count),
+        ..DataComponentPatchSummary::default()
+    };
+    for _ in 0..count {
+        let type_id = decoder.read_var_i32()?;
+        match type_id {
+            17 => {
+                summary.custom_model_data_colors = decode_custom_model_data(decoder)?;
+            }
+            44 => {
+                summary.dyed_color = Some(decoder.read_i32()?);
+            }
+            45 => {
+                summary.map_color = Some(decoder.read_i32()?);
+            }
+            _ => decode_data_component_value(decoder, type_id)?,
+        }
+        summary.added_type_ids.push(type_id);
+    }
+    Ok(summary)
 }
 
 fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Result<()> {
@@ -128,7 +159,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         // attribute_modifiers.
         16 => decode_attribute_modifiers(decoder)?,
         // custom_model_data: floats, flags, strings, colors.
-        17 => decode_custom_model_data(decoder)?,
+        17 => {
+            decode_custom_model_data(decoder)?;
+        }
         // tooltip_display: bool + collection of data component type ids.
         18 => decode_tooltip_display(decoder)?,
         // enchantment_glint_override.
@@ -402,7 +435,7 @@ fn decode_attribute_modifier_display(decoder: &mut Decoder<'_>) -> Result<()> {
     }
 }
 
-fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
     let floats = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     for _ in 0..floats {
         decoder.read_f32()?;
@@ -419,11 +452,12 @@ fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<()> {
     }
 
     let colors = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut color_values = Vec::with_capacity(colors);
     for _ in 0..colors {
-        decoder.read_i32()?;
+        color_values.push(decoder.read_i32()?);
     }
 
-    Ok(())
+    Ok(color_values)
 }
 
 fn decode_use_effects(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -998,6 +1032,7 @@ mod tests {
                 added: 5,
                 added_type_ids: vec![1, 4, 6, 10, 21],
                 removed_type_ids: vec![3, 12],
+                ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());
@@ -1049,6 +1084,8 @@ mod tests {
                 added: 4,
                 added_type_ids: vec![11, 13, 17, 18],
                 removed_type_ids: Vec::new(),
+                custom_model_data_colors: vec![0x112233, 0x445566],
+                ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());
@@ -1110,6 +1147,7 @@ mod tests {
                 added: 3,
                 added_type_ids: vec![14, 15, 16],
                 removed_type_ids: Vec::new(),
+                ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());
@@ -1172,6 +1210,7 @@ mod tests {
                 added: 4,
                 added_type_ids: vec![36, 37, 38, 39],
                 removed_type_ids: Vec::new(),
+                ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());
@@ -1198,6 +1237,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());
@@ -1269,6 +1309,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());
@@ -1301,6 +1342,7 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());
@@ -1504,6 +1546,9 @@ mod tests {
                 added: component_ids.len(),
                 added_type_ids: component_ids.to_vec(),
                 removed_type_ids: Vec::new(),
+                dyed_color: Some(0x112233),
+                map_color: Some(0x445566),
+                ..DataComponentPatchSummary::default()
             }
         );
         assert!(decoder.is_empty());

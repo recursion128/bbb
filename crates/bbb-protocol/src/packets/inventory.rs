@@ -199,8 +199,51 @@ mod tests {
                 added: 2,
                 added_type_ids: vec![1, 10],
                 removed_type_ids: Vec::new(),
+                ..DataComponentPatchSummary::default()
             }
         );
+    }
+
+    #[test]
+    fn decodes_item_stack_component_patch_color_values() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(7);
+        payload.write_var_i32(23);
+        payload.write_i16(5);
+        payload.write_var_i32(1);
+        payload.write_var_i32(99);
+        payload.write_var_i32(3);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(17);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+        payload.write_var_i32(0);
+        payload.write_var_i32(2);
+        payload.write_i32(0x112233);
+        payload.write_i32(0x445566);
+
+        payload.write_var_i32(44);
+        payload.write_i32(0x778899);
+
+        payload.write_var_i32(45);
+        payload.write_i32(0x010203);
+
+        let packet = decode_play_clientbound(
+            ids::play::CLIENTBOUND_CONTAINER_SET_SLOT,
+            &payload.into_inner(),
+        )
+        .unwrap();
+        let PlayClientbound::ContainerSetSlot(update) = packet else {
+            panic!("expected container set slot packet");
+        };
+        assert_eq!(update.item.component_patch.added_type_ids, vec![17, 44, 45]);
+        assert_eq!(
+            update.item.component_patch.custom_model_data_colors,
+            vec![0x112233, 0x445566]
+        );
+        assert_eq!(update.item.component_patch.dyed_color, Some(0x778899));
+        assert_eq!(update.item.component_patch.map_color, Some(0x010203));
     }
 
     #[test]

@@ -1083,6 +1083,7 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
                     added: 1,
                     added_type_ids: vec![41],
                     removed_type_ids: Vec::new(),
+                    ..DataComponentPatchSummary::default()
                 },
             }),
         }],
