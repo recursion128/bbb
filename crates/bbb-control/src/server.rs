@@ -349,6 +349,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_audio" => serde_json::to_value(snapshot_guard.world_store.client_audio()),
         "world.client_chat" => serde_json::to_value(snapshot_guard.world_store.client_chat()),
         "world.client_combat" => serde_json::to_value(snapshot_guard.world_store.client_combat()),
+        "world.client_effects" => serde_json::to_value(snapshot_guard.world_store.client_effects()),
         "world.client_command_suggestions" => {
             serde_json::to_value(snapshot_guard.world_store.client_command_suggestions())
         }
@@ -549,8 +550,9 @@ mod tests {
         CommandNode, CommandNodeType, Commands, CustomChatCompletions, CustomChatCompletionsAction,
         CustomPayload, CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
         DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
-        GameEvent, GameRuleValue, GameRuleValues, InitializeBorder, InteractionHand, MapColorPatch,
-        MapDecoration, MapItemData, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe,
+        Explosion as ProtocolExplosion, GameEvent, GameRuleValue, GameRuleValues, InitializeBorder,
+        InteractionHand, LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration,
+        MapItemData, MountScreenOpen, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
         PlayTime, PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth, PongResponse,
         RecipeDisplayType, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
         ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
@@ -1044,6 +1046,79 @@ mod tests {
         assert_eq!(combat["last_combat"]["duration"], serde_json::Value::Null);
         assert_eq!(combat["last_combat"]["player_id"], 123);
         assert_eq!(combat["last_combat"]["message"], "You died");
+    }
+
+    #[test]
+    fn client_effects_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_explosion(ProtocolExplosion {
+                center: ProtocolVec3d {
+                    x: 1.0,
+                    y: 2.0,
+                    z: 3.0,
+                },
+                radius: 4.5,
+                block_count: 7,
+                player_knockback: Some(ProtocolVec3d {
+                    x: 0.25,
+                    y: -0.5,
+                    z: 1.5,
+                }),
+                raw_effect_payload: vec![0x2d, 0x2a, 0x01, 0x00],
+            });
+            store.apply_level_particles(ProtocolLevelParticles {
+                override_limiter: true,
+                always_show: false,
+                position: ProtocolVec3d {
+                    x: 10.0,
+                    y: 64.5,
+                    z: -3.25,
+                },
+                offset: ProtocolVec3d {
+                    x: f64::from(0.1_f32),
+                    y: f64::from(0.2_f32),
+                    z: f64::from(0.3_f32),
+                },
+                max_speed: 1.5,
+                count: 16,
+                particle: ParticlePayload {
+                    particle_type_id: 45,
+                    raw_options: vec![0xaa, 0xbb],
+                },
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_effects".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let effects = response.result.unwrap();
+        assert_eq!(effects["last_explosion"]["center"]["x"], 1.0);
+        assert_eq!(effects["last_explosion"]["center"]["y"], 2.0);
+        assert_eq!(effects["last_explosion"]["center"]["z"], 3.0);
+        assert_eq!(effects["last_explosion"]["radius"], 4.5);
+        assert_eq!(effects["last_explosion"]["block_count"], 7);
+        assert_eq!(effects["last_explosion"]["player_knockback"]["x"], 0.25);
+        assert_eq!(effects["last_explosion"]["player_knockback"]["y"], -0.5);
+        assert_eq!(effects["last_explosion"]["player_knockback"]["z"], 1.5);
+        assert_eq!(effects["last_explosion"]["raw_effect_payload_len"], 4);
+        assert_eq!(effects["last_level_particles"]["override_limiter"], true);
+        assert_eq!(effects["last_level_particles"]["always_show"], false);
+        assert_eq!(effects["last_level_particles"]["position"]["x"], 10.0);
+        assert_eq!(effects["last_level_particles"]["position"]["y"], 64.5);
+        assert_eq!(effects["last_level_particles"]["position"]["z"], -3.25);
+        assert_eq!(effects["last_level_particles"]["max_speed"], 1.5);
+        assert_eq!(effects["last_level_particles"]["count"], 16);
+        assert_eq!(effects["last_level_particles"]["particle_type_id"], 45);
+        assert_eq!(effects["last_level_particles"]["raw_options_len"], 2);
     }
 
     #[test]
