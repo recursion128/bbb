@@ -33,6 +33,19 @@ impl SoundCatalog {
 
     pub fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
         let mut catalog = Self::default();
+        catalog.merge_resource_stack(stack)?;
+        Ok(catalog)
+    }
+
+    pub fn merge_resource_stack(&mut self, stack: &PackResourceStack) -> Result<()> {
+        self.merge_resource_stack_with_namespace_fallback(stack, None)
+    }
+
+    pub(crate) fn merge_resource_stack_with_namespace_fallback(
+        &mut self,
+        stack: &PackResourceStack,
+        fallback: Option<(&str, &Path)>,
+    ) -> Result<()> {
         for namespace in stack.namespaces()? {
             let sounds_location = ResourceLocation::new(namespace.clone(), "sounds.json")?;
             for resource in stack.get_resource_stack(&sounds_location) {
@@ -43,15 +56,21 @@ impl SoundCatalog {
                     .path
                     .parent()
                     .ok_or_else(|| anyhow::anyhow!("sounds path has no parent"))?;
-                if catalog
-                    .merge_json_bytes(&namespace, namespace_assets_dir, &bytes, Some(stack))
+                if self
+                    .merge_json_bytes(
+                        &namespace,
+                        namespace_assets_dir,
+                        &bytes,
+                        Some(stack),
+                        fallback,
+                    )
                     .is_err()
                 {
                     continue;
                 }
             }
         }
-        Ok(catalog)
+        Ok(())
     }
 
     pub fn load_required_resource_stack(stack: &PackResourceStack) -> Result<Self> {
@@ -77,7 +96,7 @@ impl SoundCatalog {
     ) -> Result<Self> {
         let mut catalog = Self::default();
         let namespace_assets_dir = namespace_assets_dir.as_ref();
-        catalog.merge_json_bytes(namespace, namespace_assets_dir, bytes, None)?;
+        catalog.merge_json_bytes(namespace, namespace_assets_dir, bytes, None, None)?;
         Ok(catalog)
     }
 
@@ -87,6 +106,7 @@ impl SoundCatalog {
         namespace_assets_dir: &Path,
         bytes: &[u8],
         stack: Option<&PackResourceStack>,
+        fallback: Option<(&str, &Path)>,
     ) -> Result<()> {
         ResourceLocation::parse(&format!("{namespace}:_"))?;
         let raw: BTreeMap<String, RawSoundEventDefinition> = serde_json::from_slice(bytes)?;
@@ -94,7 +114,7 @@ impl SoundCatalog {
             let location = ResourceLocation::new(namespace.to_string(), event_path.clone())?;
             let id = location.id();
             let definition = event
-                .into_definition(namespace, id, namespace_assets_dir, stack)
+                .into_definition(namespace, id, namespace_assets_dir, stack, fallback)
                 .with_context(|| format!("parse sound event {event_path:?}"))?;
             self.merge_definition(definition);
         }
@@ -168,11 +188,12 @@ impl RawSoundEventDefinition {
         id: String,
         namespace_assets_dir: &Path,
         stack: Option<&PackResourceStack>,
+        fallback: Option<(&str, &Path)>,
     ) -> Result<SoundEventDefinition> {
         let sounds = self
             .sounds
             .into_iter()
-            .map(|sound| sound.into_entry(namespace, namespace_assets_dir, stack))
+            .map(|sound| sound.into_entry(namespace, namespace_assets_dir, stack, fallback))
             .filter_map(|entry| entry.transpose())
             .collect::<Result<Vec<_>>>()?;
         Ok(SoundEventDefinition {
@@ -197,6 +218,7 @@ impl RawSoundEntry {
         namespace: &str,
         namespace_assets_dir: &Path,
         stack: Option<&PackResourceStack>,
+        fallback: Option<(&str, &Path)>,
     ) -> Result<Option<SoundEntry>> {
         match self {
             Self::Name(name) => sound_entry(
@@ -211,8 +233,9 @@ impl RawSoundEntry {
                 namespace,
                 namespace_assets_dir,
                 stack,
+                fallback,
             ),
-            Self::Object(raw) => raw.into_entry(namespace, namespace_assets_dir, stack),
+            Self::Object(raw) => raw.into_entry(namespace, namespace_assets_dir, stack, fallback),
         }
     }
 }
@@ -242,6 +265,7 @@ impl RawSoundObject {
         namespace: &str,
         namespace_assets_dir: &Path,
         stack: Option<&PackResourceStack>,
+        fallback: Option<(&str, &Path)>,
     ) -> Result<Option<SoundEntry>> {
         sound_entry(
             self.name,
@@ -255,6 +279,7 @@ impl RawSoundObject {
             namespace,
             namespace_assets_dir,
             stack,
+            fallback,
         )
     }
 }
@@ -288,6 +313,7 @@ fn sound_entry(
     namespace: &str,
     namespace_assets_dir: &Path,
     stack: Option<&PackResourceStack>,
+    fallback: Option<(&str, &Path)>,
 ) -> Result<Option<SoundEntry>> {
     if !volume.is_finite() || volume <= 0.0 {
         bail!("invalid sound volume {volume}");
@@ -302,7 +328,7 @@ fn sound_entry(
     let name = location.id();
     let ogg_path = match kind {
         SoundEntryKind::File => {
-            match sound_ogg_path(namespace_assets_dir, namespace, &location, stack)? {
+            match sound_ogg_path(namespace_assets_dir, namespace, &location, stack, fallback)? {
                 Some(path) => Some(path),
                 None => return Ok(None),
             }
@@ -327,6 +353,7 @@ fn sound_ogg_path(
     namespace: &str,
     location: &ResourceLocation,
     stack: Option<&PackResourceStack>,
+    fallback: Option<(&str, &Path)>,
 ) -> Result<Option<PathBuf>> {
     if let Some(resource) = stack.and_then(|stack| {
         sound_resource_location(location)
@@ -334,6 +361,17 @@ fn sound_ogg_path(
             .and_then(|id| stack.get_resource(&id))
     }) {
         return Ok(Some(resource.path));
+    }
+
+    if let Some((fallback_namespace, fallback_assets_dir)) = fallback {
+        if location.namespace() == fallback_namespace {
+            let path = fallback_assets_dir
+                .join("sounds")
+                .join(format!("{}.ogg", location.path()));
+            if path.is_file() {
+                return Ok(Some(path));
+            }
+        }
     }
 
     if stack.is_some() {

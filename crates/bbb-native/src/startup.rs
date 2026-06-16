@@ -184,6 +184,7 @@ mod tests {
             mc_code_root: PathBuf::from("/mc"),
             sources_dir: PathBuf::from("/mc/sources/26.1"),
             assets_dir: PathBuf::from("/mc/sources/26.1/assets/minecraft"),
+            generated_assets_dir: Some(PathBuf::from("/generated/assets-26.1")),
             resource_pack_dirs: Vec::new(),
         };
 
@@ -195,6 +196,10 @@ mod tests {
         assert_eq!(
             roots.resource_pack_dirs,
             vec![PathBuf::from("packs/base"), PathBuf::from("packs/overlay")]
+        );
+        assert_eq!(
+            roots.generated_assets_dir,
+            Some(PathBuf::from("/generated/assets-26.1"))
         );
     }
 }
