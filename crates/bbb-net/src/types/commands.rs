@@ -14,16 +14,39 @@ pub struct PlayerMoveCommand {
 }
 
 impl PlayerMoveCommand {
-    pub(crate) fn encode_packet(self) -> (i32, Vec<u8>) {
-        packets::encode_play_move_player_pos_rot(
-            self.state.position.x,
-            self.state.position.y,
-            self.state.position.z,
-            self.state.y_rot,
-            self.state.x_rot,
-            self.on_ground,
-            self.horizontal_collision,
-        )
+    pub(crate) fn encode_packet_from(self, previous: PlayerPositionState) -> (i32, Vec<u8>) {
+        let position_changed = self.state.position != previous.position;
+        let rotation_changed =
+            self.state.y_rot != previous.y_rot || self.state.x_rot != previous.x_rot;
+
+        match (position_changed, rotation_changed) {
+            (true, true) => packets::encode_play_move_player_pos_rot(
+                self.state.position.x,
+                self.state.position.y,
+                self.state.position.z,
+                self.state.y_rot,
+                self.state.x_rot,
+                self.on_ground,
+                self.horizontal_collision,
+            ),
+            (true, false) => packets::encode_play_move_player_pos(
+                self.state.position.x,
+                self.state.position.y,
+                self.state.position.z,
+                self.on_ground,
+                self.horizontal_collision,
+            ),
+            (false, true) => packets::encode_play_move_player_rot(
+                self.state.y_rot,
+                self.state.x_rot,
+                self.on_ground,
+                self.horizontal_collision,
+            ),
+            (false, false) => packets::encode_play_move_player_status_only(
+                self.on_ground,
+                self.horizontal_collision,
+            ),
+        }
     }
 }
 

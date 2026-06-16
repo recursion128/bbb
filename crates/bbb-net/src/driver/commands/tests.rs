@@ -3,8 +3,8 @@ use super::{
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_interact_entity,
     send_pick_item_from_block, send_pick_item_from_entity, send_player_action, send_player_command,
-    send_player_input_command, send_set_held_slot_command, send_swing_command, send_use_item,
-    send_use_item_on,
+    send_player_input_command, send_player_move_command, send_set_held_slot_command,
+    send_swing_command, send_use_item, send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -48,7 +48,7 @@ fn player_move_command_encodes_pos_rot_packet() {
         horizontal_collision: true,
     };
 
-    let (packet_id, payload) = command.encode_packet();
+    let (packet_id, payload) = command.encode_packet_from(PlayerPositionState::default());
 
     assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
     let mut decoder = Decoder::new(&payload);
@@ -59,6 +59,133 @@ fn player_move_command_encodes_pos_rot_packet() {
     assert_eq!(decoder.read_f32().unwrap(), -15.0);
     assert_eq!(decoder.read_u8().unwrap(), 0b11);
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn player_move_command_selects_vanilla_move_player_variant_from_previous_state() {
+    let previous = PlayerPositionState {
+        position: Vec3d {
+            x: 1.25,
+            y: 64.5,
+            z: -8.75,
+        },
+        delta_movement: Vec3d::default(),
+        y_rot: 90.0,
+        x_rot: -15.0,
+    };
+
+    let (packet_id, payload) = PlayerMoveCommand {
+        state: PlayerPositionState {
+            position: Vec3d {
+                x: 2.0,
+                ..previous.position
+            },
+            ..previous
+        },
+        on_ground: true,
+        horizontal_collision: false,
+    }
+    .encode_packet_from(previous);
+    assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS);
+    assert_eq!(payload.len(), 25);
+
+    let (packet_id, payload) = PlayerMoveCommand {
+        state: PlayerPositionState {
+            y_rot: 100.0,
+            x_rot: 5.0,
+            ..previous
+        },
+        on_ground: false,
+        horizontal_collision: true,
+    }
+    .encode_packet_from(previous);
+    assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_ROT);
+    assert_eq!(payload.len(), 9);
+
+    let (packet_id, payload) = PlayerMoveCommand {
+        state: PlayerPositionState {
+            position: Vec3d {
+                z: -9.25,
+                ..previous.position
+            },
+            y_rot: 100.0,
+            ..previous
+        },
+        on_ground: true,
+        horizontal_collision: true,
+    }
+    .encode_packet_from(previous);
+    assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+    assert_eq!(payload.len(), 33);
+
+    let (packet_id, payload) = PlayerMoveCommand {
+        state: previous,
+        on_ground: false,
+        horizontal_collision: true,
+    }
+    .encode_packet_from(previous);
+    assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_STATUS_ONLY);
+    assert_eq!(payload, vec![0b10]);
+}
+
+#[tokio::test]
+async fn send_player_move_command_selects_variant_and_updates_position_state() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("move player command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 2.0);
+        assert_eq!(decoder.read_f64().unwrap(), 64.5);
+        assert_eq!(decoder.read_f64().unwrap(), -8.75);
+        assert_eq!(decoder.read_u8().unwrap(), 0b01);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+    let mut player_position_state = PlayerPositionState {
+        position: Vec3d {
+            x: 1.25,
+            y: 64.5,
+            z: -8.75,
+        },
+        delta_movement: Vec3d::default(),
+        y_rot: 90.0,
+        x_rot: -15.0,
+    };
+    let next = PlayerPositionState {
+        position: Vec3d {
+            x: 2.0,
+            ..player_position_state.position
+        },
+        ..player_position_state
+    };
+
+    send_player_move_command(
+        &mut conn,
+        PlayerMoveCommand {
+            state: next,
+            on_ground: true,
+            horizontal_collision: false,
+        },
+        &mut player_position_state,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(player_position_state, next);
+    server.await.unwrap();
 }
 
 #[test]

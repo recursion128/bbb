@@ -16,7 +16,7 @@ pub(super) async fn send_player_move_command(
     command: PlayerMoveCommand,
     player_position_state: &mut PlayerPositionState,
 ) -> Result<()> {
-    let (id, payload) = command.encode_packet();
+    let (id, payload) = command.encode_packet_from(*player_position_state);
     conn.send_packet(id, &payload).await?;
     *player_position_state = command.state;
     Ok(())

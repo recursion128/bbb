@@ -163,6 +163,46 @@ pub fn encode_play_move_player_pos_rot(
     (ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT, out.into_inner())
 }
 
+pub fn encode_play_move_player_pos(
+    x: f64,
+    y: f64,
+    z: f64,
+    on_ground: bool,
+    horizontal_collision: bool,
+) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_f64(x);
+    out.write_f64(y);
+    out.write_f64(z);
+    out.write_u8(super::pack_move_flags(on_ground, horizontal_collision));
+    (ids::play::SERVERBOUND_MOVE_PLAYER_POS, out.into_inner())
+}
+
+pub fn encode_play_move_player_rot(
+    y_rot: f32,
+    x_rot: f32,
+    on_ground: bool,
+    horizontal_collision: bool,
+) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_f32(y_rot);
+    out.write_f32(x_rot);
+    out.write_u8(super::pack_move_flags(on_ground, horizontal_collision));
+    (ids::play::SERVERBOUND_MOVE_PLAYER_ROT, out.into_inner())
+}
+
+pub fn encode_play_move_player_status_only(
+    on_ground: bool,
+    horizontal_collision: bool,
+) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_u8(super::pack_move_flags(on_ground, horizontal_collision));
+    (
+        ids::play::SERVERBOUND_MOVE_PLAYER_STATUS_ONLY,
+        out.into_inner(),
+    )
+}
+
 fn absolute_or_relative(current: f64, change: f64, mask: i32, relative_bit: i32) -> f64 {
     if mask & relative_bit != 0 {
         current + change
@@ -247,6 +287,48 @@ mod tests {
         );
         assert_eq!(id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
         assert_eq!(pos.len(), 33);
+    }
+
+    #[test]
+    fn encodes_move_player_packet_variants() {
+        let (id, payload) = encode_play_move_player_pos(1.25, 64.5, -8.75, true, false);
+        assert_eq!(id, ids::play::SERVERBOUND_MOVE_PLAYER_POS);
+        assert_eq!(id, 30);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 1.25);
+        assert_eq!(decoder.read_f64().unwrap(), 64.5);
+        assert_eq!(decoder.read_f64().unwrap(), -8.75);
+        assert_eq!(decoder.read_u8().unwrap(), 0b01);
+        assert!(decoder.is_empty());
+
+        let (id, payload) =
+            encode_play_move_player_pos_rot(1.25, 64.5, -8.75, 90.0, -15.0, true, true);
+        assert_eq!(id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        assert_eq!(id, 31);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 1.25);
+        assert_eq!(decoder.read_f64().unwrap(), 64.5);
+        assert_eq!(decoder.read_f64().unwrap(), -8.75);
+        assert_eq!(decoder.read_f32().unwrap(), 90.0);
+        assert_eq!(decoder.read_f32().unwrap(), -15.0);
+        assert_eq!(decoder.read_u8().unwrap(), 0b11);
+        assert!(decoder.is_empty());
+
+        let (id, payload) = encode_play_move_player_rot(90.0, -15.0, false, true);
+        assert_eq!(id, ids::play::SERVERBOUND_MOVE_PLAYER_ROT);
+        assert_eq!(id, 32);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f32().unwrap(), 90.0);
+        assert_eq!(decoder.read_f32().unwrap(), -15.0);
+        assert_eq!(decoder.read_u8().unwrap(), 0b10);
+        assert!(decoder.is_empty());
+
+        let (id, payload) = encode_play_move_player_status_only(true, true);
+        assert_eq!(id, ids::play::SERVERBOUND_MOVE_PLAYER_STATUS_ONLY);
+        assert_eq!(id, 33);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_u8().unwrap(), 0b11);
+        assert!(decoder.is_empty());
     }
 
     #[test]
