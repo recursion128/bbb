@@ -380,6 +380,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             serde_json::to_value(snapshot_guard.world_store.client_waypoints())
         }
         "world.client_ui" => serde_json::to_value(snapshot_guard.world_store.client_ui()),
+        "world.client_maps" => serde_json::to_value(snapshot_guard.world_store.map_items()),
         "world.last_map_color_patch" => {
             serde_json::to_value(snapshot_guard.world_store.last_map_color_patch())
         }
@@ -2026,6 +2027,59 @@ mod tests {
             scoreboard["teams"]["red"]["players"],
             json!(["Alice", "Bob"])
         );
+    }
+
+    #[test]
+    fn client_maps_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            assert!(store.apply_map_item_data(MapItemData {
+                map_id: 42,
+                scale: 2,
+                locked: true,
+                decorations: Some(vec![MapDecoration {
+                    type_id: 4,
+                    x: -20,
+                    y: 30,
+                    rot: 7,
+                    name: Some("Village".to_string()),
+                }]),
+                color_patch: Some(MapColorPatch {
+                    start_x: 3,
+                    start_y: 4,
+                    width: 2,
+                    height: 2,
+                    colors: vec![1, 2, 3, 4],
+                }),
+            }));
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_maps".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let maps = response.result.unwrap();
+        let map = &maps["42"];
+        assert_eq!(map["id"], 42);
+        assert_eq!(map["scale"], 2);
+        assert_eq!(map["locked"], true);
+        assert_eq!(map["decorations"][0]["type_id"], 4);
+        assert_eq!(map["decorations"][0]["x"], -20);
+        assert_eq!(map["decorations"][0]["name"], "Village");
+        assert_eq!(map["last_color_patch"]["start_x"], 3);
+        assert_eq!(map["last_color_patch"]["height"], 2);
+        let colors = map["colors"].as_array().unwrap();
+        assert_eq!(colors[3 + 4 * 128], 1);
+        assert_eq!(colors[4 + 4 * 128], 2);
+        assert_eq!(colors[3 + 5 * 128], 3);
+        assert_eq!(colors[4 + 5 * 128], 4);
     }
 
     #[test]
