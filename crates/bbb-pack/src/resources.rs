@@ -102,7 +102,9 @@ impl PackResourceStack {
                         .file_name()
                         .into_string()
                         .map_err(|name| anyhow::anyhow!("non-utf8 {domain} namespace {name:?}"))?;
-                    validate_resource_namespace(&namespace)?;
+                    if validate_resource_namespace(&namespace).is_err() {
+                        continue;
+                    }
                     namespaces.insert(namespace.clone(), namespace);
                 }
             }
@@ -295,7 +297,9 @@ fn collect_resources(
         if !resource_path.ends_with(extension) {
             continue;
         }
-        let location = ResourceLocation::new(namespace, resource_path)?;
+        let Ok(location) = ResourceLocation::new(namespace, resource_path) else {
+            continue;
+        };
         resources.insert(
             location.clone(),
             PackResource {
@@ -402,7 +406,9 @@ impl PackEntry {
                     .file_name()
                     .into_string()
                     .map_err(|name| anyhow::anyhow!("non-utf8 {domain} namespace {name:?}"))?;
-                validate_resource_namespace(&namespace)?;
+                if validate_resource_namespace(&namespace).is_err() {
+                    continue;
+                }
                 let list_root = namespace_dir.join(path_prefix);
                 if !list_root.is_dir() {
                     continue;
@@ -750,6 +756,79 @@ mod tests {
                 "minecraft:textures/block/stone.png"
             ]
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn resource_stack_skips_invalid_namespace_directories_when_listing() {
+        let root = unique_temp_dir("resource-invalid-namespace");
+        let pack = root.join("pack");
+        write_file(
+            &pack
+                .join("assets")
+                .join("BadNamespace")
+                .join("textures")
+                .join("block")
+                .join("bad.png"),
+            b"bad",
+        );
+        write_file(
+            &pack
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png"),
+            b"stone",
+        );
+
+        let stack = PackResourceStack::from_roots([pack]);
+        let listed = stack
+            .list_resources("textures/block", ".png")
+            .unwrap()
+            .into_iter()
+            .map(|resource| resource.location.id())
+            .collect::<Vec<_>>();
+
+        assert_eq!(stack.namespaces().unwrap(), vec!["minecraft"]);
+        assert_eq!(listed, vec!["minecraft:textures/block/stone.png"]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn resource_stack_skips_invalid_resource_paths_when_listing() {
+        let root = unique_temp_dir("resource-invalid-path");
+        let pack = root.join("pack");
+        write_file(
+            &pack
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("bad name.png"),
+            b"bad",
+        );
+        write_file(
+            &pack
+                .join("assets")
+                .join("minecraft")
+                .join("textures")
+                .join("block")
+                .join("stone.png"),
+            b"stone",
+        );
+
+        let stack = PackResourceStack::from_roots([pack]);
+        let listed = stack
+            .list_resources("textures/block", ".png")
+            .unwrap()
+            .into_iter()
+            .map(|resource| resource.location.id())
+            .collect::<Vec<_>>();
+
+        assert_eq!(listed, vec!["minecraft:textures/block/stone.png"]);
 
         std::fs::remove_dir_all(root).unwrap();
     }

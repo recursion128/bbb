@@ -501,16 +501,17 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
-        AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockPos as ProtocolBlockPos,
-        ChunkPos as ProtocolChunkPos, ClockUpdate, CommonPlayerSpawnInfo, CookieRequest,
-        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
-        EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
-        InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
-        OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities,
-        PlayerExperience, PlayerHealth, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate,
-        PongResponse, ProjectilePower, RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop,
-        ResourcePackPush, ResourcePackResponseAction, ServerData, SetDefaultSpawnPosition,
-        SetHeldSlot, SetPassengers, SetSimulationDistance, ShowDialog, StatUpdate, StoreCookie,
+        AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
+        BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, ClockUpdate,
+        CommonPlayerSpawnInfo, CookieRequest, DebugBlockValue, DebugChunkValue, DebugEntityValue,
+        DebugEvent, DebugSample, DialogHolder, EntityAnchor, GameEvent, GameRuleValue,
+        GameRuleValues, GameTestHighlightPos, InteractionHand, LevelEvent, MapColorPatch,
+        MapDecoration, MapItemData, MountScreenOpen, MoveVehicle, OpenBook, OpenSignEditor,
+        PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerExperience, PlayerHealth,
+        PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
+        RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
+        ResourcePackResponseAction, ServerData, SetDefaultSpawnPosition, SetHeldSlot,
+        SetPassengers, SetSimulationDistance, ShowDialog, StatUpdate, StoreCookie,
         TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
         Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
         WaypointIdentifier, WaypointOperation, WaypointVec3i,
@@ -1347,6 +1348,61 @@ mod tests {
             report.world.last_block_changed_ack(),
             Some(&bbb_world::BlockChangedAckState { sequence: 17 })
         );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_block_and_level_events_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::BlockEvent(BlockEvent {
+                pos: ProtocolBlockPos {
+                    x: 12,
+                    y: 65,
+                    z: -5,
+                },
+                b0: 2,
+                b1: 9,
+                block_id: 54,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 1001,
+                pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+                data: 42,
+                global: true,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.block_events_received, 1);
+        assert_eq!(report.world_counters.block_events_tracked, 1);
+        assert_eq!(report.world_counters.level_events_received, 1);
+        assert_eq!(report.world_counters.level_events_tracked, 1);
+
+        let block_event = report.world.block_events().first().unwrap();
+        assert_eq!(
+            block_event.pos,
+            BlockPos {
+                x: 12,
+                y: 65,
+                z: -5,
+            }
+        );
+        assert_eq!(block_event.b0, 2);
+        assert_eq!(block_event.b1, 9);
+        assert_eq!(block_event.block_id, 54);
+
+        let level_event = report.world.level_events().first().unwrap();
+        assert_eq!(level_event.event_type, 1001);
+        assert_eq!(level_event.pos, BlockPos { x: 3, y: 4, z: 5 });
+        assert_eq!(level_event.data, 42);
+        assert!(level_event.global);
     }
 
     #[tokio::test]
