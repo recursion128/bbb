@@ -366,6 +366,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_local_player" => {
             serde_json::to_value(snapshot_guard.world_store.client_local_player())
         }
+        "world.client_scoreboard" => serde_json::to_value(snapshot_guard.world_store.scoreboard()),
         "world.client_stats" => serde_json::to_value(snapshot_guard.world_store.client_stats()),
         "world.client_waypoints" => {
             serde_json::to_value(snapshot_guard.world_store.client_waypoints())
@@ -546,23 +547,26 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
-        BlockPos as ProtocolBlockPos, ChatTypeBound, ChatTypeHolder, CommandArgumentParser,
-        CommandNode, CommandNodeType, Commands, CustomChatCompletions, CustomChatCompletionsAction,
-        CustomPayload, CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
-        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
-        Explosion as ProtocolExplosion, GameEvent, GameRuleValue, GameRuleValues, InitializeBorder,
-        InteractionHand, LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration,
-        MapItemData, MountScreenOpen, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
-        PlayTime, PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth, PongResponse,
-        RecipeDisplayType, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
+        BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound, ChatTypeHolder,
+        CommandArgumentParser, CommandNode, CommandNodeType, Commands, CustomChatCompletions,
+        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
+        DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
+        EntityPositionSync as ProtocolEntityPositionSync, Explosion as ProtocolExplosion,
+        GameEvent, GameRuleValue, GameRuleValues, InitializeBorder, InteractionHand,
+        LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
+        MountScreenOpen, ObjectiveRenderType, OpenBook, OpenSignEditor, ParticlePayload,
+        PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill, PlayerExperience,
+        PlayerHealth, PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeDisplayType,
+        ScoreboardDisplaySlot, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
         ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
         SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
-        SetDefaultSpawnPosition, SetSimulationDistance, SetSubtitleText, SetTitleText,
-        SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
-        StopSound, SystemChat, TagQuery, TickingState, TickingStep, TrackedWaypoint,
-        TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateEnabledFeatures,
-        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetObjective, SetObjectiveMethod,
+        SetObjectiveParameters, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
+        SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource,
+        StatUpdate, StopSound, SystemChat, TagQuery, TeamCollisionRule, TeamVisibility,
+        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
+        UpdateAdvancements, UpdateEnabledFeatures, Vec3d as ProtocolVec3d, WaypointData,
+        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1676,6 +1680,86 @@ mod tests {
         assert_eq!(local["default_spawn"]["pos"]["x"], -5);
         assert_eq!(local["default_spawn"]["yaw"], 90.0);
         assert_eq!(local["simulation_distance"], 12);
+    }
+
+    #[test]
+    fn client_scoreboard_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            assert!(store.apply_set_objective(SetObjective {
+                objective_name: "kills".to_string(),
+                method: SetObjectiveMethod::Add,
+                parameters: Some(SetObjectiveParameters {
+                    display_name: "Kills".to_string(),
+                    render_type: ObjectiveRenderType::Hearts,
+                    number_format: Some(vec![1, 2, 3]),
+                }),
+            }));
+            assert!(store.apply_set_display_objective(SetDisplayObjective {
+                slot: ScoreboardDisplaySlot::Sidebar,
+                objective_name: Some("kills".to_string()),
+            }));
+            assert!(store.apply_set_score(SetScore {
+                owner: "Alice".to_string(),
+                objective_name: "kills".to_string(),
+                score: 4,
+                display: Some("Alice".to_string()),
+                number_format: Some(vec![9]),
+            }));
+            assert!(store.apply_set_player_team(SetPlayerTeam {
+                name: "red".to_string(),
+                method: PlayerTeamMethod::Add,
+                parameters: Some(PlayerTeamParameters {
+                    display_name: "Red Team".to_string(),
+                    options: 3,
+                    nametag_visibility: TeamVisibility::Always,
+                    collision_rule: TeamCollisionRule::PushOtherTeams,
+                    color: ChatFormatting::Red,
+                    player_prefix: "[R] ".to_string(),
+                    player_suffix: "!".to_string(),
+                }),
+                players: vec!["Alice".to_string(), "Bob".to_string()],
+            }));
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_scoreboard".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let scoreboard = response.result.unwrap();
+        assert_eq!(scoreboard["objectives"]["kills"]["display_name"], "Kills");
+        assert_eq!(scoreboard["objectives"]["kills"]["render_type"], "hearts");
+        assert_eq!(
+            scoreboard["objectives"]["kills"]["number_format"],
+            json!([1, 2, 3])
+        );
+        assert_eq!(scoreboard["display_slots"]["sidebar"], "kills");
+        assert_eq!(scoreboard["scores"]["Alice"]["kills"]["value"], 4);
+        assert_eq!(scoreboard["scores"]["Alice"]["kills"]["display"], "Alice");
+        assert_eq!(
+            scoreboard["scores"]["Alice"]["kills"]["number_format"],
+            json!([9])
+        );
+        assert_eq!(
+            scoreboard["teams"]["red"]["parameters"]["display_name"],
+            "Red Team"
+        );
+        assert_eq!(scoreboard["teams"]["red"]["parameters"]["color"], "red");
+        assert_eq!(
+            scoreboard["teams"]["red"]["parameters"]["collision_rule"],
+            "pushOtherTeams"
+        );
+        assert_eq!(
+            scoreboard["teams"]["red"]["players"],
+            json!(["Alice", "Bob"])
+        );
     }
 
     #[test]
