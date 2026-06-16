@@ -1488,6 +1488,17 @@ fn decodes_and_encodes_cookie_packets() {
 }
 
 #[test]
+fn login_unknown_packet_preserves_unsupported_diagnostics() {
+    assert_eq!(
+        decode_login_clientbound(0x7f, &[1, 2, 3]).unwrap(),
+        LoginClientbound::Unknown {
+            packet_id: 0x7f,
+            len: 3,
+        }
+    );
+}
+
+#[test]
 fn rejects_invalid_cookie_keys() {
     let mut request_payload = Encoder::new();
     request_payload.write_string("bbb:Session");

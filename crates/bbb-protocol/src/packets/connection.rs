@@ -54,6 +54,7 @@ pub enum LoginClientbound {
     SetCompression { threshold: i32 },
     CustomQuery { transaction_id: i32 },
     CookieRequest(CookieRequest),
+    Unknown { packet_id: i32, len: usize },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -266,7 +267,10 @@ pub fn decode_login_clientbound(packet_id: i32, payload: &[u8]) -> Result<LoginC
                 &mut decoder,
             )?))
         }
-        id => Err(ProtocolError::UnknownPacket { state: "login", id }),
+        id => Ok(LoginClientbound::Unknown {
+            packet_id: id,
+            len: payload.len(),
+        }),
     }
 }
 

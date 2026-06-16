@@ -46,6 +46,9 @@ impl ProbeContext {
                 let (id, payload) = packets::encode_client_information_default();
                 self.conn.send_packet(id, &payload).await?;
             }
+            LoginClientbound::Unknown { packet_id, len } => {
+                self.record_unsupported_packet(self.state, packet_id, len);
+            }
         }
         Ok(())
     }
@@ -56,6 +59,7 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::{codec::Decoder, packets::CookieRequest};
+    use bbb_world::ChunkPos;
     use bytes::BytesMut;
     use std::time::Duration;
     use tokio::net::TcpListener;
@@ -87,6 +91,31 @@ mod tests {
         assert_eq!(probe.world.counters().cookie_request_packets, 1);
         assert_eq!(probe.world.counters().cookie_response_hits, 0);
         assert_eq!(probe.world.counters().cookie_response_misses, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_login_unknown_packets_update_report_diagnostics() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Login;
+
+        probe
+            .handle_login_packet(LoginClientbound::Unknown {
+                packet_id: 0x7d,
+                len: 5,
+            })
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+        assert_eq!(report.unsupported_packets, 1);
+        assert_eq!(
+            report.last_unsupported_packet_state.as_deref(),
+            Some("Login")
+        );
+        assert_eq!(report.last_unsupported_packet_id, Some(0x7d));
+        assert_eq!(report.last_unsupported_packet_len, Some(5));
+        assert_eq!(report.world_counters.cookie_request_packets, 0);
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {

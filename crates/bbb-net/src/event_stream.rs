@@ -149,7 +149,11 @@ fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::{codec::Decoder, ids, packets::PlayClientbound};
+    use bbb_protocol::{
+        codec::Decoder,
+        ids,
+        packets::{LoginClientbound, PlayClientbound},
+    };
     use bbb_world::code_of_conduct_text_hash;
     use bytes::BytesMut;
     use std::time::Duration;
@@ -405,6 +409,51 @@ mod tests {
                 state: ConnectionState::Configuration,
                 packet_id: 0x7f,
                 len: 12,
+            }
+        ));
+    }
+
+    #[tokio::test]
+    async fn login_unknown_packets_emit_unsupported_packet_events() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Login,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+        };
+
+        stream
+            .handle_login_packet(LoginClientbound::Unknown {
+                packet_id: 0x7d,
+                len: 5,
+            })
+            .await
+            .unwrap();
+
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("unsupported packet event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::UnsupportedPacket {
+                state: ConnectionState::Login,
+                packet_id: 0x7d,
+                len: 5,
             }
         ));
     }
