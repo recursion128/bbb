@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
 
 const STANDING_EYE_HEIGHT: f64 = 1.62;
+const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
+const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
+const LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocalPlayerState {
@@ -95,6 +98,20 @@ pub struct LocalPlayerPoseState {
     pub y_rot: f32,
     pub x_rot: f32,
     pub last_teleport_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct LocalPlayerInputState {
+    pub focused: bool,
+    pub forward: bool,
+    pub backward: bool,
+    pub left: bool,
+    pub right: bool,
+    pub jump: bool,
+    pub sneak: bool,
+    pub sprint: bool,
+    pub mouse_delta_x: f64,
+    pub mouse_delta_y: f64,
 }
 
 impl LocalPlayerPoseState {
@@ -298,6 +315,16 @@ impl WorldStore {
         self.local_player.pose = Some(pose);
     }
 
+    pub fn advance_local_player_input(
+        &mut self,
+        input: LocalPlayerInputState,
+        dt_seconds: f64,
+    ) -> Option<LocalPlayerPoseState> {
+        let pose = integrate_local_player_input_pose(self.local_player.pose?, input, dt_seconds);
+        self.local_player.pose = Some(pose);
+        Some(pose)
+    }
+
     pub fn local_player_pose(&self) -> Option<LocalPlayerPoseState> {
         self.local_player.pose
     }
@@ -350,6 +377,58 @@ impl WorldStore {
                     .map(|entity| entity_anchor_position(entity.position, target.to_anchor))
             })
             .unwrap_or(packet.position)
+    }
+}
+
+fn integrate_local_player_input_pose(
+    mut pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+    dt_seconds: f64,
+) -> LocalPlayerPoseState {
+    if input.focused {
+        pose.y_rot = wrap_degrees_f32(
+            pose.y_rot + input.mouse_delta_x as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES,
+        );
+        pose.x_rot = (pose.x_rot
+            + input.mouse_delta_y as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES)
+            .clamp(-90.0, 90.0);
+    }
+
+    let forward_input = axis(input.forward, input.backward);
+    let strafe_input = axis(input.right, input.left);
+    let vertical_input = axis(input.jump, input.sneak);
+    let speed = if input.sprint {
+        LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND
+    } else {
+        LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
+    };
+    let yaw = f64::from(pose.y_rot).to_radians();
+    let forward = (-yaw.sin(), yaw.cos());
+    let right = (-yaw.cos(), -yaw.sin());
+    let mut move_x = forward.0 * forward_input + right.0 * strafe_input;
+    let mut move_z = forward.1 * forward_input + right.1 * strafe_input;
+    let horizontal_len = (move_x * move_x + move_z * move_z).sqrt();
+    if horizontal_len > f64::EPSILON {
+        move_x /= horizontal_len;
+        move_z /= horizontal_len;
+    }
+
+    pose.position.x += move_x * speed * dt_seconds;
+    pose.position.y += vertical_input * speed * dt_seconds;
+    pose.position.z += move_z * speed * dt_seconds;
+    pose.delta_movement = ProtocolVec3d {
+        x: move_x * speed / 20.0,
+        y: vertical_input * speed / 20.0,
+        z: move_z * speed / 20.0,
+    };
+    pose
+}
+
+fn axis(positive: bool, negative: bool) -> f64 {
+    match (positive, negative) {
+        (true, false) => 1.0,
+        (false, true) => -1.0,
+        _ => 0.0,
     }
 }
 
@@ -546,6 +625,75 @@ mod tests {
         assert!(store.set_local_flying(false));
         assert!(!store.local_player().abilities.unwrap().flying);
         assert_eq!(store.counters().player_abilities_packets, 2);
+    }
+
+    #[test]
+    fn local_player_input_moves_forward_with_minecraft_yaw() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            y_rot: 0.0,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = store
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                1.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.x, 0.0, 0.000001);
+        assert_f64_near(pose.position.y, 64.0, 0.000001);
+        assert_f64_near(
+            pose.position.z,
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND,
+            0.000001,
+        );
+        assert_f64_near(
+            pose.delta_movement.z,
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND / 20.0,
+            0.000001,
+        );
+        assert_eq!(store.local_player_pose(), Some(pose));
+    }
+
+    #[test]
+    fn local_player_input_rotates_and_clamps_pitch() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = store
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    mouse_delta_x: 100.0,
+                    mouse_delta_y: 1000.0,
+                    ..LocalPlayerInputState::default()
+                },
+                0.0,
+            )
+            .unwrap();
+
+        assert_eq!(pose.y_rot, 12.0);
+        assert_eq!(pose.x_rot, 90.0);
+    }
+
+    #[test]
+    fn local_player_input_is_ignored_without_pose() {
+        let mut store = WorldStore::new();
+
+        assert_eq!(
+            store.advance_local_player_input(LocalPlayerInputState::default(), 1.0),
+            None
+        );
     }
 
     #[test]
@@ -776,5 +924,12 @@ mod tests {
 
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
         ProtocolVec3d { x, y, z }
+    }
+
+    fn assert_f64_near(actual: f64, expected: f64, epsilon: f64) {
+        assert!(
+            (actual - expected).abs() <= epsilon,
+            "expected {actual} to be within {epsilon} of {expected}"
+        );
     }
 }

@@ -2,17 +2,30 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::{NetCommand, PlayerMoveCommand};
-use bbb_protocol::packets::Vec3d as ProtocolVec3d;
-use bbb_world::{LocalPlayerPoseState, WorldStore};
+use bbb_world::{LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
 
 use super::ClientInputState;
 
-const INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
-const INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
-const INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 const MOVE_COMMAND_INTERVAL: Duration = Duration::from_millis(50);
 const MOVE_COMMAND_POSITION_REMINDER_INTERVAL: Duration = Duration::from_secs(1);
+
+impl ClientInputState {
+    fn local_player_input(&self) -> LocalPlayerInputState {
+        LocalPlayerInputState {
+            focused: self.focused,
+            forward: self.forward,
+            backward: self.backward,
+            left: self.left,
+            right: self.right,
+            jump: self.jump,
+            sneak: self.sneak,
+            sprint: self.sprint,
+            mouse_delta_x: self.mouse_delta_x,
+            mouse_delta_y: self.mouse_delta_y,
+        }
+    }
+}
 
 pub(crate) fn advance_player_input(
     input: &mut ClientInputState,
@@ -29,59 +42,16 @@ pub(crate) fn advance_player_input(
         .min(0.25);
     input.last_step = Some(now);
 
-    let Some(current_pose) = world.local_player_pose() else {
+    let Some(pose) = world.advance_local_player_input(input.local_player_input(), dt_seconds)
+    else {
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
     };
 
-    let pose = integrate_player_input_pose(current_pose, input, dt_seconds);
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
-    world.set_local_player_pose(pose);
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
-}
-
-fn integrate_player_input_pose(
-    mut pose: LocalPlayerPoseState,
-    input: &ClientInputState,
-    dt_seconds: f64,
-) -> LocalPlayerPoseState {
-    if input.focused {
-        pose.y_rot =
-            wrap_degrees(pose.y_rot + input.mouse_delta_x as f32 * INPUT_MOUSE_SENSITIVITY_DEGREES);
-        pose.x_rot = (pose.x_rot + input.mouse_delta_y as f32 * INPUT_MOUSE_SENSITIVITY_DEGREES)
-            .clamp(-90.0, 90.0);
-    }
-
-    let forward_input = axis(input.forward, input.backward);
-    let strafe_input = axis(input.right, input.left);
-    let vertical_input = axis(input.jump, input.sneak);
-    let speed = if input.sprint {
-        INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND
-    } else {
-        INPUT_WALK_SPEED_BLOCKS_PER_SECOND
-    };
-    let yaw = f64::from(pose.y_rot).to_radians();
-    let forward = (-yaw.sin(), yaw.cos());
-    let right = (-yaw.cos(), -yaw.sin());
-    let mut move_x = forward.0 * forward_input + right.0 * strafe_input;
-    let mut move_z = forward.1 * forward_input + right.1 * strafe_input;
-    let horizontal_len = (move_x * move_x + move_z * move_z).sqrt();
-    if horizontal_len > f64::EPSILON {
-        move_x /= horizontal_len;
-        move_z /= horizontal_len;
-    }
-
-    pose.position.x += move_x * speed * dt_seconds;
-    pose.position.y += vertical_input * speed * dt_seconds;
-    pose.position.z += move_z * speed * dt_seconds;
-    pose.delta_movement = ProtocolVec3d {
-        x: move_x * speed / 20.0,
-        y: vertical_input * speed / 20.0,
-        z: move_z * speed / 20.0,
-    };
-    pose
 }
 
 fn maybe_queue_player_move_command(
@@ -119,66 +89,36 @@ fn maybe_queue_player_move_command(
     }
 }
 
-fn axis(positive: bool, negative: bool) -> f64 {
-    match (positive, negative) {
-        (true, false) => 1.0,
-        (false, true) => -1.0,
-        _ => 0.0,
-    }
-}
-
-fn wrap_degrees(degrees: f32) -> f32 {
-    (degrees + 180.0).rem_euclid(360.0) - 180.0
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::packets::Vec3d as ProtocolVec3d;
 
     #[test]
-    fn player_input_moves_forward_with_minecraft_yaw() {
+    fn local_input_projection_includes_focus_keys_and_mouse_delta() {
         let mut input = ClientInputState::new(true);
         input.forward = true;
-        let pose = integrate_player_input_pose(
-            LocalPlayerPoseState {
-                position: vec3(0.0, 64.0, 0.0),
-                y_rot: 0.0,
-                ..LocalPlayerPoseState::default()
-            },
-            &input,
-            1.0,
-        );
-
-        assert_f64_near(pose.position.x, 0.0, 0.000001);
-        assert_f64_near(pose.position.y, 64.0, 0.000001);
-        assert_f64_near(
-            pose.position.z,
-            INPUT_WALK_SPEED_BLOCKS_PER_SECOND,
-            0.000001,
-        );
-        assert_f64_near(
-            pose.delta_movement.z,
-            INPUT_WALK_SPEED_BLOCKS_PER_SECOND / 20.0,
-            0.000001,
-        );
-    }
-
-    #[test]
-    fn player_input_rotates_and_clamps_pitch() {
-        let mut input = ClientInputState::new(true);
+        input.left = true;
+        input.jump = true;
+        input.sprint = true;
         input.mouse_delta_x = 100.0;
         input.mouse_delta_y = 1000.0;
-        let pose = integrate_player_input_pose(
-            LocalPlayerPoseState {
-                position: vec3(0.0, 64.0, 0.0),
-                ..LocalPlayerPoseState::default()
-            },
-            &input,
-            0.0,
-        );
 
-        assert_eq!(pose.y_rot, 12.0);
-        assert_eq!(pose.x_rot, 90.0);
+        assert_eq!(
+            input.local_player_input(),
+            LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                backward: false,
+                left: true,
+                right: false,
+                jump: true,
+                sneak: false,
+                sprint: true,
+                mouse_delta_x: 100.0,
+                mouse_delta_y: 1000.0,
+            }
+        );
     }
 
     #[test]
