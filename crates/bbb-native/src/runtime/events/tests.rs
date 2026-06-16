@@ -68,6 +68,32 @@ fn block_changed_ack_updates_world_counters() {
 }
 
 #[test]
+fn configuration_reentry_clears_online_client_level_state() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity_with_type(55, 1));
+    world.set_local_using_item(true);
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(counters.state.as_deref(), Some("Configuration"));
+    assert_eq!(world.entity_count(), 0);
+    assert_eq!(
+        world.local_player(),
+        &bbb_world::LocalPlayerState::default()
+    );
+}
+
+#[test]
 fn chunk_cache_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::SetChunkCacheCenter(SetChunkCacheCenter {
