@@ -11,11 +11,13 @@ pub struct PlayerMoveCommand {
     pub state: PlayerPositionState,
     pub on_ground: bool,
     pub horizontal_collision: bool,
+    #[serde(default)]
+    pub force_position: bool,
 }
 
 impl PlayerMoveCommand {
     pub(crate) fn encode_packet_from(self, previous: PlayerPositionState) -> (i32, Vec<u8>) {
-        let position_changed = self.state.position != previous.position;
+        let position_changed = self.force_position || self.state.position != previous.position;
         let rotation_changed =
             self.state.y_rot != previous.y_rot || self.state.x_rot != previous.x_rot;
 

@@ -12,6 +12,7 @@ const INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 const INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
 const INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 const MOVE_COMMAND_INTERVAL: Duration = Duration::from_millis(50);
+const MOVE_COMMAND_POSITION_REMINDER_INTERVAL: Duration = Duration::from_secs(1);
 
 pub(crate) fn advance_player_input(
     input: &mut ClientInputState,
@@ -93,11 +94,15 @@ fn maybe_queue_player_move_command(
     let Some(tx) = net_commands else {
         return;
     };
-    let command_due = input
+    let elapsed_since_last = input
         .last_move_command_at
-        .and_then(|last| now.checked_duration_since(last))
-        .map_or(true, |elapsed| elapsed >= MOVE_COMMAND_INTERVAL);
-    if !command_due || input.last_move_command_pose == Some(pose) {
+        .and_then(|last| now.checked_duration_since(last));
+    let command_due = elapsed_since_last.map_or(true, |elapsed| elapsed >= MOVE_COMMAND_INTERVAL);
+    let pose_changed = input.last_move_command_pose != Some(pose);
+    let force_position = !pose_changed
+        && elapsed_since_last
+            .is_some_and(|elapsed| elapsed >= MOVE_COMMAND_POSITION_REMINDER_INTERVAL);
+    if !command_due || (!pose_changed && !force_position) {
         return;
     }
 
@@ -105,6 +110,7 @@ fn maybe_queue_player_move_command(
         state: pose.position_state(),
         on_ground: pose.delta_movement.y.abs() <= f64::EPSILON,
         horizontal_collision: false,
+        force_position,
     });
     if tx.try_send(command).is_ok() {
         input.last_move_command_at = Some(now);
@@ -221,6 +227,51 @@ mod tests {
         assert!(second.state.position.z > 0.0);
         let world_pose = world.local_player_pose().unwrap();
         assert_f64_near(world_pose.position.z, second.state.position.z, 0.000001);
+        assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
+    fn advance_player_input_forces_position_after_vanilla_reminder_interval() {
+        let (tx, mut rx) = mpsc::channel(3);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        });
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+        let first = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected move command, got {other:?}"),
+        };
+        assert!(!first.force_position);
+
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + MOVE_COMMAND_POSITION_REMINDER_INTERVAL - Duration::from_millis(1),
+        );
+        assert!(rx.try_recv().is_err());
+
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + MOVE_COMMAND_POSITION_REMINDER_INTERVAL,
+        );
+        let reminder = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected move command, got {other:?}"),
+        };
+        assert!(reminder.force_position);
+        assert_eq!(reminder.state, first.state);
         assert_eq!(counters.player_move_commands_queued, 2);
     }
 

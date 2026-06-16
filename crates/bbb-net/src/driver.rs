@@ -310,6 +310,7 @@ mod tests {
             state: move_state,
             on_ground: true,
             horizontal_collision: false,
+            force_position: false,
         }))
         .await
         .unwrap();
