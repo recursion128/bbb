@@ -15,7 +15,9 @@ mod shape;
 mod types;
 
 use blockstates::{RawBlockstate, RawBlockstateSelection};
-use raw_model::{RawBlockElement, RawBlockElementRotation, RawBlockModel};
+pub(crate) use raw_model::RawBlockModel;
+use raw_model::{RawBlockElement, RawBlockElementRotation};
+pub(crate) use resolver::{normalize_cuboid_model_id, resolve_cuboid_model};
 use resolver::{resolve_texture_alias, ResolvedTextureReference};
 use rotation::{apply_variant_rotation, rotate_model_shape};
 use shape::{classify_model_shape, combine_model_shapes};
@@ -51,15 +53,7 @@ impl BlockModelCatalog {
             blockstates.insert(id, blockstate_stack);
         }
 
-        let mut models = HashMap::new();
-        for resource in stack.list_resources("models/block", ".json")? {
-            let id = block_model_id_from_resource(&resource.location)?;
-            let bytes = std::fs::read(&resource.path)
-                .with_context(|| format!("read block model {}", resource.path.display()))?;
-            let model = serde_json::from_slice(&bytes)
-                .with_context(|| format!("parse block model {}", resource.path.display()))?;
-            models.insert(id, model);
-        }
+        let models = load_cuboid_model_resources(stack, "models/block", "block model")?;
 
         Ok(Self {
             blockstates,
@@ -164,14 +158,29 @@ fn blockstate_id_from_resource(location: &ResourceLocation) -> Result<String> {
     ResourceLocation::new(location.namespace().to_string(), path.to_string()).map(|id| id.id())
 }
 
-fn block_model_id_from_resource(location: &ResourceLocation) -> Result<String> {
+pub(crate) fn load_cuboid_model_resources(
+    stack: &PackResourceStack,
+    path_prefix: &str,
+    label: &str,
+) -> Result<HashMap<String, RawBlockModel>> {
+    let mut models = HashMap::new();
+    for resource in stack.list_resources(path_prefix, ".json")? {
+        let id = cuboid_model_id_from_resource(&resource.location)?;
+        let bytes = std::fs::read(&resource.path)
+            .with_context(|| format!("read {label} {}", resource.path.display()))?;
+        let model = serde_json::from_slice(&bytes)
+            .with_context(|| format!("parse {label} {}", resource.path.display()))?;
+        models.insert(id, model);
+    }
+    Ok(models)
+}
+
+fn cuboid_model_id_from_resource(location: &ResourceLocation) -> Result<String> {
     let path = location
         .path()
         .strip_prefix("models/")
         .and_then(|path| path.strip_suffix(".json"))
-        .ok_or_else(|| {
-            anyhow::anyhow!("block model resource {} is outside models", location.id())
-        })?;
+        .ok_or_else(|| anyhow::anyhow!("model resource {} is outside models", location.id()))?;
     ResourceLocation::new(location.namespace().to_string(), path.to_string()).map(|id| id.id())
 }
 

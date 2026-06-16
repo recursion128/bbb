@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use super::{
     classify_model_shape, BlockFaceTextures, BlockModelCatalog, BlockModelDisplayContext,
@@ -7,14 +7,14 @@ use super::{
 };
 
 #[derive(Debug, Clone, Default)]
-pub(super) struct ResolvedBlockModel {
+pub(crate) struct ResolvedBlockModel {
     textures: BTreeMap<String, ResolvedTextureReference>,
     faces: [Option<ResolvedModelFace>; 6],
     elements: Vec<RawBlockElement>,
     ambient_occlusion: Option<bool>,
     gui_light: Option<BlockModelGuiLight>,
     display_transforms: ResolvedBlockModelDisplayTransforms,
-    pub(super) shape: BlockModelShape,
+    pub(crate) shape: BlockModelShape,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -59,19 +59,19 @@ struct ResolvedModelFace {
 }
 
 impl ResolvedBlockModel {
-    pub(super) fn use_ambient_occlusion(&self) -> bool {
+    pub(crate) fn use_ambient_occlusion(&self) -> bool {
         self.ambient_occlusion.unwrap_or(true)
     }
 
-    pub(super) fn gui_light(&self) -> BlockModelGuiLight {
+    pub(crate) fn gui_light(&self) -> BlockModelGuiLight {
         self.gui_light.unwrap_or_default()
     }
 
-    pub(super) fn display_transforms(&self) -> BlockModelDisplayTransforms {
+    pub(crate) fn display_transforms(&self) -> BlockModelDisplayTransforms {
         self.display_transforms.to_display_transforms()
     }
 
-    pub(super) fn face_textures(&self) -> Option<BlockFaceTextures> {
+    pub(crate) fn face_textures(&self) -> Option<BlockFaceTextures> {
         let resolved_faces: [Option<ResolvedTextureReference>; 6] = std::array::from_fn(|index| {
             self.faces[index]
                 .as_ref()
@@ -105,16 +105,23 @@ impl ResolvedBlockModel {
 
 impl BlockModelCatalog {
     pub(super) fn resolve_model(&self, model_id: &str) -> Option<ResolvedBlockModel> {
-        resolve_model_inner(&self.models, model_id, &mut HashSet::new())
+        resolve_cuboid_model(&self.models, model_id)
     }
 }
 
+pub(crate) fn resolve_cuboid_model(
+    models: &HashMap<String, RawBlockModel>,
+    model_id: &str,
+) -> Option<ResolvedBlockModel> {
+    resolve_model_inner(models, model_id, &mut HashSet::new())
+}
+
 fn resolve_model_inner(
-    models: &std::collections::HashMap<String, RawBlockModel>,
+    models: &HashMap<String, RawBlockModel>,
     model_id: &str,
     seen: &mut HashSet<String>,
 ) -> Option<ResolvedBlockModel> {
-    let model_id = normalize_model_id(model_id);
+    let model_id = normalize_cuboid_model_id(model_id);
     if !seen.insert(model_id.clone()) {
         return None;
     }
@@ -221,7 +228,7 @@ fn resolve_texture_alias_with_force(
     }
 }
 
-fn normalize_model_id(id: &str) -> String {
+pub(crate) fn normalize_cuboid_model_id(id: &str) -> String {
     if id.contains(':') {
         id.to_string()
     } else if id.contains('/') {

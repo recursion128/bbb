@@ -5,9 +5,9 @@ use serde::Deserialize;
 use super::{BlockModelDisplayContext, BlockModelDisplayTransform, BlockModelGuiLight};
 
 #[derive(Debug, Clone, Default, Deserialize)]
-pub(super) struct RawBlockModel {
+pub(crate) struct RawBlockModel {
     #[serde(default)]
-    pub(super) parent: Option<String>,
+    pub(crate) parent: Option<String>,
     #[serde(default)]
     pub(super) ambientocclusion: Option<bool>,
     #[serde(default)]

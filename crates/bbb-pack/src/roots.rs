@@ -7,6 +7,7 @@ use crate::{
     atlas_sources::{load_atlas_texture_entries, AtlasTextureEntry},
     block_models::BlockModelCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
+    item_cuboid_models::ItemCuboidModelCatalog,
     item_models::ItemModelCatalog,
     language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE},
     metadata::PackMetadataCatalog,
@@ -177,6 +178,10 @@ impl PackRoots {
 
     pub fn load_item_model_catalog(&self) -> Result<ItemModelCatalog> {
         ItemModelCatalog::load(self)
+    }
+
+    pub fn load_item_cuboid_model_catalog(&self) -> Result<ItemCuboidModelCatalog> {
+        ItemCuboidModelCatalog::load(self)
     }
 
     pub fn load_waypoint_style_catalog(&self) -> Result<WaypointStyleCatalog> {
