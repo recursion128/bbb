@@ -344,6 +344,10 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
         "world.registries" => serde_json::to_value(snapshot_guard.world_store.registries()),
+        "world.level_state" => Ok(serde_json::json!({
+            "dimension": snapshot_guard.world_store.dimension(),
+            "level": snapshot_guard.world_store.level_info(),
+        })),
         "world.client_advancements" => {
             serde_json::to_value(snapshot_guard.world_store.client_advancements())
         }
@@ -564,32 +568,32 @@ mod tests {
         AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
         BlockDestruction, BlockEvent, BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound,
         ChatTypeHolder, CommandArgumentParser, CommandNode, CommandNodeType, Commands,
-        ContainerSetContent, ContainerSetData, ContainerSetSlot, CustomChatCompletions,
-        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
-        DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
-        EntityPositionSync as ProtocolEntityPositionSync, Explosion as ProtocolExplosion,
-        GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameType,
-        IngredientSummary, InitializeBorder, InteractionHand, ItemStackSummary, LevelEvent,
-        LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
-        MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
-        ParticlePayload, PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill,
-        PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
-        PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeBookAdd, RecipeBookAddEntry,
-        RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
-        RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
-        RegistryData, RegistryDataEntry, RegistryTags, ScoreboardDisplaySlot,
-        SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
-        SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderWarningDelay,
-        SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetObjective, SetObjectiveMethod,
-        SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance,
-        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SlotDisplaySummary,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
-        StopSound, SystemChat, TagNetworkPayload, TagQuery, TeamCollisionRule, TeamVisibility,
-        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
-        UpdateAdvancements, UpdateEnabledFeatures, UpdateRecipes, UpdateTags,
-        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerSetContent, ContainerSetData,
+        ContainerSetSlot, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
+        CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
+        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
+        Explosion as ProtocolExplosion, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
+        GameRuleValues, GameType, IngredientSummary, InitializeBorder, InteractionHand,
+        ItemStackSummary, LevelEvent, LevelParticles as ProtocolLevelParticles, MapColorPatch,
+        MapDecoration, MapItemData, MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen,
+        OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin as ProtocolPlayLogin,
+        PlayTime, PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth,
+        PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
+        PlayerTeamParameters, PongResponse, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
+        RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
+        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RegistryData,
+        RegistryDataEntry, RegistryTags, ScoreboardDisplaySlot, SelectAdvancementsTab,
+        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText,
+        SetBorderCenter, SetBorderLerpSize, SetBorderWarningDelay, SetBorderWarningDistance,
+        SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
+        SetDisplayObjective, SetObjective, SetObjectiveMethod, SetObjectiveParameters,
+        SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
+        SetTitleText, SetTitlesAnimation, ShowDialog, SlotDisplaySummary, SoundEvent,
+        SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
+        SystemChat, TagNetworkPayload, TagQuery, TeamCollisionRule, TeamVisibility, TickingState,
+        TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements,
+        UpdateEnabledFeatures, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, WaypointData,
+        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -711,6 +715,80 @@ mod tests {
             7
         );
         assert!(registries.get("block_states").is_none());
+    }
+
+    #[test]
+    fn level_state_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_login(&ProtocolPlayLogin {
+                player_id: 42,
+                hardcore: false,
+                levels: vec![
+                    "minecraft:overworld".to_string(),
+                    "minecraft:the_nether".to_string(),
+                    "minecraft:the_end".to_string(),
+                ],
+                max_players: 20,
+                chunk_radius: 8,
+                simulation_distance: 6,
+                reduced_debug_info: false,
+                show_death_screen: true,
+                do_limited_crafting: false,
+                common_spawn_info: ProtocolSpawnInfo {
+                    dimension_type_id: 1,
+                    dimension: "minecraft:the_nether".to_string(),
+                    seed: 12345,
+                    game_type: 1,
+                    previous_game_type: -1,
+                    is_debug: false,
+                    is_flat: false,
+                    last_death_location: None,
+                    portal_cooldown: 0,
+                    sea_level: 32,
+                },
+                enforces_secure_chat: true,
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.level_state".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let level_state = response.result.unwrap();
+        assert_eq!(level_state["dimension"]["min_y"], 0);
+        assert_eq!(level_state["dimension"]["height"], 256);
+        assert_eq!(level_state["level"]["dimension"], "minecraft:the_nether");
+        assert_eq!(level_state["level"]["dimension_type_id"], 1);
+        assert_eq!(
+            level_state["level"]["dimension_type_name"],
+            "minecraft:the_nether"
+        );
+        assert_eq!(level_state["level"]["sea_level"], 32);
+        assert_eq!(level_state["level"]["is_debug"], false);
+        assert_eq!(level_state["level"]["is_flat"], false);
+
+        snapshot.write().unwrap().world_store.clear_client_level();
+        let response = dispatch(
+            ControlRequest {
+                method: "world.level_state".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let cleared = response.result.unwrap();
+        assert_eq!(cleared["dimension"]["min_y"], -64);
+        assert_eq!(cleared["dimension"]["height"], 384);
+        assert!(cleared["level"].is_null());
     }
 
     #[test]
