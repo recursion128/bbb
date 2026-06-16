@@ -38,7 +38,10 @@ pub(crate) fn load_atlas_texture_entries(
         };
 
         for source in atlas.sources {
-            match source.source_type.as_str() {
+            let source_type = ResourceLocation::parse(&source.source_type)
+                .with_context(|| format!("invalid atlas source type {:?}", source.source_type))?
+                .id();
+            match source_type.as_str() {
                 "minecraft:directory" => {
                     let source_path = source.required_path("source")?;
                     let prefix = source.required_field("prefix")?;
@@ -831,6 +834,31 @@ mod tests {
                 "minecraft:block/stone",
                 "minecraft:block/deepslate"
             ]
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn atlas_source_type_accepts_default_namespace() {
+        let root = unique_temp_dir("atlas-source-default-namespace");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        write_file(&assets_dir.join("textures").join("block").join("stone.png"));
+        write_json(
+            &assets_dir.join("atlases").join("blocks.json"),
+            r#"{"sources":[{"type":"single","resource":"minecraft:block/stone"}]}"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let entries = load_atlas_texture_entries(&roots, "blocks").unwrap();
+
+        assert_eq!(
+            entries.iter().map(entry_id).collect::<Vec<_>>(),
+            vec!["minecraft:missingno", "minecraft:block/stone"]
         );
 
         std::fs::remove_dir_all(root).unwrap();

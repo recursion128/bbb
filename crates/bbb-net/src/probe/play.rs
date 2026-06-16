@@ -502,16 +502,17 @@ mod tests {
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
         AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
-        BlockPos as ProtocolBlockPos, ChunkPos as ProtocolChunkPos, ClockUpdate,
+        BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
+        BossEventOperation, ChangeDifficulty, ChunkPos as ProtocolChunkPos, ClockUpdate,
         CommonPlayerSpawnInfo, CookieRequest, DebugBlockValue, DebugChunkValue, DebugEntityValue,
-        DebugEvent, DebugSample, DialogHolder, EntityAnchor, GameEvent, GameRuleValue,
+        DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor, GameEvent, GameRuleValue,
         GameRuleValues, GameTestHighlightPos, InteractionHand, LevelEvent, MapColorPatch,
         MapDecoration, MapItemData, MountScreenOpen, MoveVehicle, OpenBook, OpenSignEditor,
         PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerExperience, PlayerHealth,
         PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
         RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
         ResourcePackResponseAction, ServerData, SetDefaultSpawnPosition, SetHeldSlot,
-        SetPassengers, SetSimulationDistance, ShowDialog, StatUpdate, StoreCookie,
+        SetPassengers, SetSimulationDistance, ShowDialog, StatUpdate, StoreCookie, TabList,
         TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
         Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
         WaypointIdentifier, WaypointOperation, WaypointVec3i,
@@ -1327,6 +1328,79 @@ mod tests {
         assert_eq!(report.world_counters.game_event_packets, 2);
         assert_eq!(report.world_counters.ticking_state_packets, 1);
         assert_eq!(report.world_counters.ticking_step_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_hud_session_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let boss_id = Uuid::from_u128(1);
+
+        probe
+            .handle_play_packet(PlayClientbound::BossEvent(BossEvent {
+                id: boss_id,
+                operation: BossEventOperation::Add {
+                    name: "Ender Dragon".to_string(),
+                    progress: 0.75,
+                    color: BossBarColor::Purple,
+                    overlay: BossBarOverlay::Progress,
+                    flags: BossEventFlags {
+                        darken_screen: true,
+                        play_music: false,
+                        create_world_fog: true,
+                    },
+                },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::BossEvent(BossEvent {
+                id: boss_id,
+                operation: BossEventOperation::UpdateProgress { progress: 0.25 },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::BossEvent(BossEvent {
+                id: Uuid::from_u128(99),
+                operation: BossEventOperation::UpdateProgress { progress: 1.0 },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::TabList(TabList {
+                header: Some("Welcome".to_string()),
+                footer: None,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ChangeDifficulty(ChangeDifficulty {
+                difficulty: Difficulty::Hard,
+                locked: true,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let boss = report.world.boss_bars().get(&boss_id).unwrap();
+
+        assert_eq!(boss.name, "Ender Dragon");
+        assert_eq!(boss.progress, 0.25);
+        assert_eq!(boss.color, "purple");
+        assert_eq!(boss.overlay, "progress");
+        assert!(boss.darken_screen);
+        assert!(boss.create_world_fog);
+        assert_eq!(report.world.tab_list().header.as_deref(), Some("Welcome"));
+        assert_eq!(report.world.tab_list().footer, None);
+        assert_eq!(report.world.difficulty().difficulty, "hard");
+        assert!(report.world.difficulty().difficulty_locked);
+
+        assert_eq!(report.world_counters.boss_event_packets, 3);
+        assert_eq!(report.world_counters.boss_bars_tracked, 1);
+        assert_eq!(report.world_counters.boss_events_ignored, 1);
+        assert_eq!(report.world_counters.tab_list_packets, 1);
+        assert_eq!(report.world_counters.change_difficulty_packets, 1);
     }
 
     #[tokio::test]
