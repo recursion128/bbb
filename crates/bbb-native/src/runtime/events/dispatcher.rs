@@ -1,5 +1,7 @@
+use bbb_audio::SoundEventRegistry;
 use bbb_control::NetCounters;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
+use bbb_protocol::packets::RegistryData;
 use bbb_world::{ChunkPos, WorldStore};
 use tokio::sync::mpsc;
 
@@ -403,7 +405,13 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 world.apply_teleport_entity(update);
             }
             NetEvent::RegistryData(update) => {
+                let sound_event_registry = sound_event_registry_from_registry_data(&update);
                 world.record_registry_data(update);
+                if let (Some(audio_events), Some(registry)) =
+                    (audio_events.as_mut(), sound_event_registry)
+                {
+                    audio_events.set_sound_event_registry(registry);
+                }
             }
             NetEvent::UpdateTags(update) => {
                 world.apply_update_tags(update);
@@ -528,6 +536,15 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         }
     }
     drained
+}
+
+fn sound_event_registry_from_registry_data(update: &RegistryData) -> Option<SoundEventRegistry> {
+    if update.registry != "minecraft:sound_event" || update.entries.is_empty() {
+        return None;
+    }
+    Some(SoundEventRegistry::from_ids(
+        update.entries.iter().map(|entry| entry.id.as_str()),
+    ))
 }
 
 fn emit_positioned_sound(

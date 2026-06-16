@@ -7,6 +7,7 @@ use bbb_pack::{PackRoots, SoundCatalog};
 use bbb_world::{SoundEntityEventState, SoundEventState, StopSoundEventState};
 
 pub(crate) trait AudioEventSink {
+    fn set_sound_event_registry(&mut self, registry: SoundEventRegistry);
     fn play_positioned_sound(&mut self, state: &SoundEventState);
     fn play_entity_sound(&mut self, state: &SoundEntityEventState, position: Option<[f64; 3]>);
     fn stop_sound(&mut self, state: &StopSoundEventState);
@@ -48,6 +49,10 @@ impl NativeAudioRuntime {
 }
 
 impl AudioEventSink for NativeAudioRuntime {
+    fn set_sound_event_registry(&mut self, registry: SoundEventRegistry) {
+        self.registry = registry;
+    }
+
     fn play_positioned_sound(&mut self, state: &SoundEventState) {
         let command = {
             let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);

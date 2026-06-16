@@ -2368,6 +2368,60 @@ fn client_audio_events_emit_runtime_commands_for_applied_events() {
 }
 
 #[test]
+fn sound_event_registry_data_updates_audio_reference_resolution() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::RegistryData(RegistryData {
+        registry: "minecraft:sound_event".to_string(),
+        raw_payload_len: 64,
+        entries: vec![RegistryDataEntry {
+            id: "minecraft:ambient.cave".to_string(),
+            raw_data: None,
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::Sound(SoundEvent {
+        sound: SoundEventHolder::Reference { registry_id: 0 },
+        source: SoundSource::Ambient,
+        position: ProtocolVec3d {
+            x: 2.5,
+            y: -1.0,
+            z: 0.0,
+        },
+        volume: 0.75,
+        pitch: 1.25,
+        seed: 123456789,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(world.counters().registries_seen, 1);
+    assert_eq!(
+        world
+            .registry_content("minecraft:sound_event")
+            .unwrap()
+            .entries[0]
+            .id,
+        "minecraft:ambient.cave"
+    );
+    match &audio.commands[0] {
+        AudioCommand::PlayPositionedSound(command) => {
+            assert_eq!(command.sound.event_id, "minecraft:ambient.cave");
+            assert_eq!(command.sound.sound_name, "minecraft:ambient/cave/cave1");
+        }
+        other => panic!("expected positioned sound command, got {other:?}"),
+    }
+}
+
+#[test]
 fn silent_entity_sound_events_do_not_emit_runtime_commands() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::SetEntityData(SetEntityData {
@@ -3929,6 +3983,10 @@ impl RecordingAudioSink {
 }
 
 impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
+    fn set_sound_event_registry(&mut self, registry: SoundEventRegistry) {
+        self.registry = registry;
+    }
+
     fn play_positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
         let command = {
             let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
