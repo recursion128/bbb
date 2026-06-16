@@ -1,9 +1,10 @@
 use anyhow::{bail, Result};
-use bbb_protocol::packets::{self, PlayClientbound, ResourcePackResponseAction};
+use bbb_protocol::packets::{self, PlayClientbound};
 
 use crate::{
     driver::maybe_send_perform_respawn,
     event_stream::{emit, EventStreamContext},
+    resource_pack::response_action_for_push,
     types::{ConnectionState, NetEvent},
 };
 
@@ -280,7 +281,7 @@ impl EventStreamContext {
             }
             PlayClientbound::ResourcePackPush(update) => {
                 let pack_id = update.id;
-                let action = ResourcePackResponseAction::Declined;
+                let action = response_action_for_push(&update);
                 let (id, payload) = packets::encode_play_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
                 emit(&self.events, NetEvent::ResourcePackPush(update)).await?;

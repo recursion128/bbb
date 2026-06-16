@@ -1,10 +1,11 @@
 use anyhow::{bail, Result};
-use bbb_protocol::packets::{self, ConfigurationClientbound, ResourcePackResponseAction};
+use bbb_protocol::packets::{self, ConfigurationClientbound};
 use bbb_world::code_of_conduct_text_hash;
 
 use crate::{
     connection::play_tick_interval,
     event_stream::{emit, EventStreamContext},
+    resource_pack::response_action_for_push,
     types::{ConnectionState, NetEvent},
 };
 
@@ -48,7 +49,7 @@ impl EventStreamContext {
             }
             ConfigurationClientbound::ResourcePackPush(update) => {
                 let pack_id = update.id;
-                let action = ResourcePackResponseAction::Declined;
+                let action = response_action_for_push(&update);
                 let (id, payload) =
                     packets::encode_configuration_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;

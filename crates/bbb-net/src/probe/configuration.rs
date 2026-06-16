@@ -1,8 +1,11 @@
 use anyhow::{bail, Result};
-use bbb_protocol::packets::{self, ConfigurationClientbound, ResourcePackResponseAction};
+use bbb_protocol::packets::{self, ConfigurationClientbound};
 use bbb_world::code_of_conduct_text_hash;
 
-use crate::{connection::play_tick_interval, probe::ProbeContext, types::ConnectionState};
+use crate::{
+    connection::play_tick_interval, probe::ProbeContext, resource_pack::response_action_for_push,
+    types::ConnectionState,
+};
 
 impl ProbeContext {
     pub(super) async fn handle_configuration_packet(
@@ -43,7 +46,7 @@ impl ProbeContext {
             }
             ConfigurationClientbound::ResourcePackPush(update) => {
                 let pack_id = update.id;
-                let action = ResourcePackResponseAction::Declined;
+                let action = response_action_for_push(&update);
                 let (id, payload) =
                     packets::encode_configuration_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
@@ -115,12 +118,13 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::{
+        codec::Decoder,
         ids,
         packets::{
             ChatTypeBound, ChatTypeHolder, CookieRequest, CustomPayload, CustomPayloadBody,
             DialogHolder, DisguisedChat, RegistryData, RegistryDataEntry, RegistryTags,
-            ResourcePackPop, ResourcePackPush, ShowDialog, StoreCookie, TagNetworkPayload,
-            Transfer, UpdateEnabledFeatures, UpdateTags,
+            ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, ShowDialog, StoreCookie,
+            TagNetworkPayload, Transfer, UpdateEnabledFeatures, UpdateTags,
         },
     };
     use bbb_world::{
@@ -378,6 +382,48 @@ mod tests {
         assert_eq!(report.world_counters.cookie_request_packets, 2);
         assert_eq!(report.world_counters.cookie_response_hits, 1);
         assert_eq!(report.world_counters.cookie_response_misses, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_configuration_resource_pack_invalid_url_updates_world_and_response() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let pack_id = Uuid::from_u128(0x22222222_3333_4444_5555_666666666666);
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::ResourcePackPush(
+                ResourcePackPush {
+                    id: pack_id,
+                    url: "ftp://example.invalid/pack.zip".to_string(),
+                    hash: "abc123".to_string(),
+                    required: false,
+                    prompt: Some("Optional pack".to_string()),
+                },
+            ))
+            .await
+            .unwrap();
+
+        let pack = probe
+            .world
+            .resource_pack(pack_id)
+            .expect("resource pack should be tracked");
+        assert_eq!(
+            pack.last_response.as_ref().map(|response| response.action),
+            Some(ResourcePackResponseAction::InvalidUrl)
+        );
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("resource pack response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_RESOURCE_PACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_uuid().unwrap(), pack_id);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            ResourcePackResponseAction::InvalidUrl.ordinal()
+        );
+        assert!(decoder.is_empty());
     }
 
     #[tokio::test]

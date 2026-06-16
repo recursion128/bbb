@@ -1,8 +1,11 @@
 use anyhow::{bail, Result};
-use bbb_protocol::packets::{self, PlayClientbound, ResourcePackResponseAction};
+use bbb_protocol::packets::{self, PlayClientbound};
 use bbb_world::ChunkPos;
 
-use crate::{driver::maybe_send_perform_respawn, probe::ProbeContext, types::ConnectionState};
+use crate::{
+    driver::maybe_send_perform_respawn, probe::ProbeContext,
+    resource_pack::response_action_for_push, types::ConnectionState,
+};
 
 impl ProbeContext {
     pub(super) async fn handle_play_packet(
@@ -426,7 +429,7 @@ impl ProbeContext {
             }
             PlayClientbound::ResourcePackPush(update) => {
                 let pack_id = update.id;
-                let action = ResourcePackResponseAction::Declined;
+                let action = response_action_for_push(&update);
                 let (id, payload) = packets::encode_play_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
                 self.world.apply_resource_pack_push(update);
@@ -1137,6 +1140,46 @@ mod tests {
         assert_eq!(report.world_counters.resource_pack_pop_updates_applied, 1);
         assert_eq!(report.world_counters.resource_pack_pop_updates_ignored, 1);
         assert_eq!(report.world_counters.resource_packs_tracked, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_play_resource_pack_invalid_url_updates_world_and_response() {
+        let pack_id = Uuid::from_u128(0x77777777_3333_4444_5555_666666666666);
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::ResourcePackPush(ResourcePackPush {
+                id: pack_id,
+                url: "not a valid resource pack url".to_string(),
+                hash: "0123456789abcdef0123456789abcdef01234567".to_string(),
+                required: true,
+                prompt: Some("Install pack?".to_string()),
+            }))
+            .await
+            .unwrap();
+
+        let pack = probe
+            .world
+            .resource_pack(pack_id)
+            .expect("resource pack should be tracked after push");
+        assert_eq!(
+            pack.last_response.as_ref().map(|response| response.action),
+            Some(ResourcePackResponseAction::InvalidUrl)
+        );
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("resource pack response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_RESOURCE_PACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_uuid().unwrap(), pack_id);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            ResourcePackResponseAction::InvalidUrl.ordinal()
+        );
+        assert!(decoder.is_empty());
     }
 
     #[tokio::test]
