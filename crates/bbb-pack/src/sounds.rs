@@ -157,6 +157,7 @@ impl RawSoundEventDefinition {
             .sounds
             .into_iter()
             .map(|sound| sound.into_entry(namespace, namespace_assets_dir, stack))
+            .filter_map(|entry| entry.transpose())
             .collect::<Result<Vec<_>>>()?;
         Ok(SoundEventDefinition {
             id,
@@ -180,7 +181,7 @@ impl RawSoundEntry {
         namespace: &str,
         namespace_assets_dir: &Path,
         stack: Option<&PackResourceStack>,
-    ) -> Result<SoundEntry> {
+    ) -> Result<Option<SoundEntry>> {
         match self {
             Self::Name(name) => sound_entry(
                 name,
@@ -225,7 +226,7 @@ impl RawSoundObject {
         namespace: &str,
         namespace_assets_dir: &Path,
         stack: Option<&PackResourceStack>,
-    ) -> Result<SoundEntry> {
+    ) -> Result<Option<SoundEntry>> {
         sound_entry(
             self.name,
             self.kind.into(),
@@ -271,7 +272,7 @@ fn sound_entry(
     namespace: &str,
     namespace_assets_dir: &Path,
     stack: Option<&PackResourceStack>,
-) -> Result<SoundEntry> {
+) -> Result<Option<SoundEntry>> {
     if !volume.is_finite() || volume <= 0.0 {
         bail!("invalid sound volume {volume}");
     }
@@ -284,15 +285,15 @@ fn sound_entry(
     let location = ResourceLocation::parse(&name)?;
     let name = location.id();
     let ogg_path = match kind {
-        SoundEntryKind::File => Some(sound_ogg_path(
-            namespace_assets_dir,
-            namespace,
-            &location,
-            stack,
-        )?),
+        SoundEntryKind::File => {
+            match sound_ogg_path(namespace_assets_dir, namespace, &location, stack)? {
+                Some(path) => Some(path),
+                None => return Ok(None),
+            }
+        }
         SoundEntryKind::Event => None,
     };
-    Ok(SoundEntry {
+    Ok(Some(SoundEntry {
         name,
         kind,
         volume,
@@ -302,7 +303,7 @@ fn sound_entry(
         preload,
         attenuation_distance,
         ogg_path,
-    })
+    }))
 }
 
 fn sound_ogg_path(
@@ -310,13 +311,17 @@ fn sound_ogg_path(
     namespace: &str,
     location: &ResourceLocation,
     stack: Option<&PackResourceStack>,
-) -> Result<PathBuf> {
+) -> Result<Option<PathBuf>> {
     if let Some(resource) = stack.and_then(|stack| {
         sound_resource_location(location)
             .ok()
             .and_then(|id| stack.get_resource(&id))
     }) {
-        return Ok(resource.path);
+        return Ok(Some(resource.path));
+    }
+
+    if stack.is_some() {
+        return Ok(None);
     }
 
     let assets_dir = if location.namespace() == namespace {
@@ -327,9 +332,11 @@ fn sound_ogg_path(
             .unwrap_or(namespace_assets_dir)
             .join(location.namespace())
     };
-    Ok(assets_dir
-        .join("sounds")
-        .join(format!("{}.ogg", location.path())))
+    Ok(Some(
+        assets_dir
+            .join("sounds")
+            .join(format!("{}.ogg", location.path())),
+    ))
 }
 
 fn sound_resource_location(location: &ResourceLocation) -> Result<ResourceLocation> {
@@ -457,6 +464,7 @@ mod tests {
             .join("assets")
             .join("minecraft");
         std::fs::create_dir_all(&assets_dir).unwrap();
+        write_file(&assets_dir.join("sounds").join("random/click_stereo.ogg"));
         std::fs::write(
             assets_dir.join("sounds.json"),
             r#"{
@@ -627,6 +635,48 @@ mod tests {
             event.sounds[0].ogg_path,
             Some(base_assets.join("sounds").join("random").join("click.ogg"))
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn sound_catalog_skips_missing_file_sounds_from_resource_stack() {
+        let root = unique_temp_dir("sound-stack-missing-files");
+        let base = root.join("sources").join(MC_VERSION);
+        let assets_dir = base.join("assets").join("minecraft");
+        let present_ogg = assets_dir.join("sounds").join("random").join("present.ogg");
+        write_file(&present_ogg);
+        write_json(
+            &assets_dir.join("sounds.json"),
+            r#"{
+              "ui.button.click": {
+                "sounds": [
+                  "random/present",
+                  "random/missing",
+                  {
+                    "name": "ui.forward",
+                    "type": "event"
+                  }
+                ]
+              },
+              "ui.forward": {
+                "sounds": ["random/missing_reference_target"]
+              }
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let catalog = roots.load_sound_catalog().unwrap();
+        let event = catalog.event("minecraft:ui.button.click").unwrap();
+        let referenced = catalog.event("minecraft:ui.forward").unwrap();
+
+        assert_eq!(event.sounds.len(), 2);
+        assert_eq!(event.sounds[0].name, "minecraft:random/present");
+        assert_eq!(event.sounds[0].ogg_path, Some(present_ogg));
+        assert_eq!(event.sounds[1].kind, SoundEntryKind::Event);
+        assert_eq!(event.sounds[1].name, "minecraft:ui.forward");
+        assert!(event.sounds[1].ogg_path.is_none());
+        assert!(referenced.sounds.is_empty());
 
         std::fs::remove_dir_all(root).unwrap();
     }
