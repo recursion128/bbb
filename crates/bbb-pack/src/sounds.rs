@@ -18,6 +18,13 @@ impl SoundCatalog {
         Self::load_namespace_assets_dir("minecraft", assets_dir)
     }
 
+    pub(crate) fn load_minecraft_assets_dir_with_resource_stack_fallback(
+        assets_dir: impl AsRef<Path>,
+        stack: &PackResourceStack,
+    ) -> Result<Self> {
+        Self::load_namespace_assets_dir_with_resource_stack_fallback("minecraft", assets_dir, stack)
+    }
+
     pub fn load_namespace_assets_dir(
         namespace: &str,
         namespace_assets_dir: impl AsRef<Path>,
@@ -29,6 +36,29 @@ impl SoundCatalog {
             std::fs::read(&path).with_context(|| format!("read sounds {}", path.display()))?;
         Self::from_json_bytes(namespace, namespace_assets_dir, &bytes)
             .with_context(|| format!("parse sounds {}", path.display()))
+    }
+
+    fn load_namespace_assets_dir_with_resource_stack_fallback(
+        namespace: &str,
+        namespace_assets_dir: impl AsRef<Path>,
+        stack: &PackResourceStack,
+    ) -> Result<Self> {
+        ResourceLocation::parse(&format!("{namespace}:_"))?;
+        let namespace_assets_dir = namespace_assets_dir.as_ref();
+        let path = namespace_assets_dir.join("sounds.json");
+        let bytes =
+            std::fs::read(&path).with_context(|| format!("read sounds {}", path.display()))?;
+        let mut catalog = Self::default();
+        catalog
+            .merge_json_bytes(
+                namespace,
+                namespace_assets_dir,
+                &bytes,
+                Some(stack),
+                Some((namespace, namespace_assets_dir)),
+            )
+            .with_context(|| format!("parse sounds {}", path.display()))?;
+        Ok(catalog)
     }
 
     pub fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
@@ -355,16 +385,17 @@ fn sound_ogg_path(
     stack: Option<&PackResourceStack>,
     fallback: Option<(&str, &Path)>,
 ) -> Result<Option<PathBuf>> {
-    if let Some(resource) = stack.and_then(|stack| {
-        sound_resource_location(location)
-            .ok()
-            .and_then(|id| stack.get_resource(&id))
-    }) {
+    let sound_location = sound_resource_location(location)?;
+    if let Some(resource) = stack.and_then(|stack| stack.get_resource(&sound_location)) {
         return Ok(Some(resource.path));
     }
 
     if let Some((fallback_namespace, fallback_assets_dir)) = fallback {
-        if location.namespace() == fallback_namespace {
+        if location.namespace() == fallback_namespace
+            && stack.map_or(true, |stack| {
+                !stack.filters_lower_priority_resource(&sound_location)
+            })
+        {
             let path = fallback_assets_dir
                 .join("sounds")
                 .join(format!("{}.ogg", location.path()));

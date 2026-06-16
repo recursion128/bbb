@@ -139,8 +139,23 @@ impl PackResourceStack {
         self.get_resource_stack_in("assets", location)
     }
 
+    pub(crate) fn filters_lower_priority_resource(&self, location: &ResourceLocation) -> bool {
+        self.filters_lower_priority_resource_in("assets", location)
+    }
+
     pub fn get_data_resource_stack(&self, location: &ResourceLocation) -> Vec<PackResource> {
         self.get_resource_stack_in("data", location)
+    }
+
+    fn filters_lower_priority_resource_in(
+        &self,
+        domain: &str,
+        location: &ResourceLocation,
+    ) -> bool {
+        self.pack_entries(domain)
+            .iter()
+            .rev()
+            .any(|pack| pack.is_filtered(location))
     }
 
     fn get_resource_stack_in(
