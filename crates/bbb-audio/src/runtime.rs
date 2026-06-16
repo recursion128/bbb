@@ -60,6 +60,7 @@ impl KiraAudioRuntime {
                 None,
                 command.position,
                 command.gain,
+                command.channel_gain,
                 command.playback_rate,
                 command.fixed_range,
             ),
@@ -69,6 +70,7 @@ impl KiraAudioRuntime {
                 Some(command.entity_id),
                 command.position.unwrap_or([0.0, 0.0, 0.0]),
                 command.gain,
+                command.channel_gain,
                 command.playback_rate,
                 command.fixed_range,
             ),
@@ -90,11 +92,12 @@ impl KiraAudioRuntime {
         entity_id: Option<i32>,
         position: [f64; 3],
         gain: f32,
+        channel_gain: f32,
         playback_rate: f32,
         fixed_range: Option<f32>,
     ) -> Result<()> {
         self.retain_active_sounds();
-        if !sound_should_start(gain, &category) {
+        if !sound_should_start(channel_gain, &category) {
             return Ok(());
         }
         let mut track = self.manager.add_spatial_sub_track(
@@ -107,7 +110,7 @@ impl KiraAudioRuntime {
                     spatial_max_distance(sound, gain, fixed_range),
                 )),
         )?;
-        let volume = channel_decibels_from_gain(gain);
+        let volume = channel_decibels_from_gain(channel_gain);
         let playback_rate = channel_playback_rate(playback_rate);
         let handle = if sound.stream {
             let data = StreamingSoundData::from_file(&sound.ogg_path)?

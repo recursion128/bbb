@@ -7,8 +7,9 @@ mod resolver;
 mod runtime;
 
 pub use command::{
-    AudioCategory, AudioCommand, AudioListenerState, EntitySoundPosition, PlayEntitySoundCommand,
-    PlayPositionedSoundCommand, ResolvedSound, StopSoundCommand, TickEntitySoundPositionsCommand,
+    AudioCategory, AudioCommand, AudioListenerState, AudioVolumeSettings, EntitySoundPosition,
+    PlayEntitySoundCommand, PlayPositionedSoundCommand, ResolvedSound, StopSoundCommand,
+    TickEntitySoundPositionsCommand,
 };
 pub use registry::SoundEventRegistry;
 pub use resolver::{AudioCommandResolver, AudioResolveError};

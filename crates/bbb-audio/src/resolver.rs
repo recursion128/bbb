@@ -4,8 +4,8 @@ use thiserror::Error;
 
 use crate::{
     command::{
-        AudioCategory, AudioCommand, PlayEntitySoundCommand, PlayPositionedSoundCommand,
-        ResolvedSound, StopSoundCommand,
+        AudioCategory, AudioCommand, AudioVolumeSettings, PlayEntitySoundCommand,
+        PlayPositionedSoundCommand, ResolvedSound, StopSoundCommand,
     },
     random::LegacyRandom,
     SoundEventRegistry,
@@ -37,11 +37,24 @@ pub enum AudioResolveError {
 pub struct AudioCommandResolver<'a> {
     catalog: &'a SoundCatalog,
     registry: &'a SoundEventRegistry,
+    volume_settings: AudioVolumeSettings,
 }
 
 impl<'a> AudioCommandResolver<'a> {
     pub fn new(catalog: &'a SoundCatalog, registry: &'a SoundEventRegistry) -> Self {
-        Self { catalog, registry }
+        Self::with_volume_settings(catalog, registry, AudioVolumeSettings::default())
+    }
+
+    pub fn with_volume_settings(
+        catalog: &'a SoundCatalog,
+        registry: &'a SoundEventRegistry,
+        volume_settings: AudioVolumeSettings,
+    ) -> Self {
+        Self {
+            catalog,
+            registry,
+            volume_settings,
+        }
     }
 
     pub fn play_positioned_sound(
@@ -51,9 +64,12 @@ impl<'a> AudioCommandResolver<'a> {
         let (event_id, fixed_range) = self.event_id_for_holder(&state.sound)?;
         let sound = self.resolve_event_for_seed(&event_id, state.seed)?;
         let category = AudioCategory::from_world_source(&state.source);
+        let gain = state.volume * sound.entry_volume;
+        let channel_gain = self.volume_settings.channel_gain(gain, &category);
         Ok(AudioCommand::PlayPositionedSound(
             PlayPositionedSoundCommand {
-                gain: state.volume * sound.entry_volume,
+                gain,
+                channel_gain,
                 playback_rate: state.pitch * sound.entry_pitch,
                 packet_volume: state.volume,
                 packet_pitch: state.pitch,
@@ -81,8 +97,11 @@ impl<'a> AudioCommandResolver<'a> {
         let (event_id, fixed_range) = self.event_id_for_holder(&state.sound)?;
         let sound = self.resolve_event_for_seed(&event_id, state.seed)?;
         let category = AudioCategory::from_world_source(&state.source);
+        let gain = state.volume * sound.entry_volume;
+        let channel_gain = self.volume_settings.channel_gain(gain, &category);
         Ok(AudioCommand::PlayEntitySound(PlayEntitySoundCommand {
-            gain: state.volume * sound.entry_volume,
+            gain,
+            channel_gain,
             playback_rate: state.pitch * sound.entry_pitch,
             packet_volume: state.volume,
             packet_pitch: state.pitch,
@@ -463,6 +482,60 @@ mod tests {
         assert_near(play.sound.entry_pitch, 0.96);
         assert_near(play.gain, 0.6);
         assert_near(play.playback_rate, 2.88);
+    }
+
+    #[test]
+    fn category_volume_settings_affect_channel_gain_not_instance_gain() {
+        let assets_dir = unique_assets_dir("category-volume-settings");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "entity.cat.ambient": {
+                "sounds": [
+                  {
+                    "name": "mob/cat/meow1",
+                    "volume": 0.6
+                  }
+                ]
+              }
+            }"#,
+        );
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::with_volume_settings(
+            &catalog,
+            &registry,
+            AudioVolumeSettings {
+                master: 0.5,
+                ambient: 0.25,
+                ..AudioVolumeSettings::default()
+            },
+        );
+
+        let command = resolver
+            .play_positioned_sound(&SoundEventState {
+                sound: SoundHolderState {
+                    kind: "direct".to_string(),
+                    registry_id: None,
+                    location: Some("minecraft:entity.cat.ambient".to_string()),
+                    fixed_range: None,
+                },
+                source: "ambient".to_string(),
+                position: Vec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                volume: 2.0,
+                pitch: 1.0,
+                seed: 0,
+            })
+            .unwrap();
+
+        let AudioCommand::PlayPositionedSound(play) = command else {
+            panic!("expected positioned sound command");
+        };
+        assert_near(play.gain, 1.2);
+        assert_near(play.channel_gain, 0.125);
     }
 
     #[test]
