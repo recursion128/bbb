@@ -26,7 +26,7 @@ pub use types::{
 
 #[derive(Debug, Clone)]
 pub struct BlockModelCatalog {
-    blockstates: HashMap<String, RawBlockstate>,
+    blockstates: HashMap<String, Vec<RawBlockstate>>,
     models: HashMap<String, RawBlockModel>,
 }
 
@@ -37,13 +37,17 @@ impl BlockModelCatalog {
 
     fn load_resource_stack(stack: &PackResourceStack) -> Result<Self> {
         let mut blockstates = HashMap::new();
-        for resource in stack.list_resources("blockstates", ".json")? {
-            let id = blockstate_id_from_resource(&resource.location)?;
-            let bytes = std::fs::read(&resource.path)
-                .with_context(|| format!("read blockstate {}", resource.path.display()))?;
-            let blockstate = serde_json::from_slice(&bytes)
-                .with_context(|| format!("parse blockstate {}", resource.path.display()))?;
-            blockstates.insert(id, blockstate);
+        for (location, resources) in stack.list_resource_stacks("blockstates", ".json")? {
+            let id = blockstate_id_from_resource(&location)?;
+            let mut blockstate_stack = Vec::with_capacity(resources.len());
+            for resource in resources {
+                let bytes = std::fs::read(&resource.path)
+                    .with_context(|| format!("read blockstate {}", resource.path.display()))?;
+                let blockstate = serde_json::from_slice(&bytes)
+                    .with_context(|| format!("parse blockstate {}", resource.path.display()))?;
+                blockstate_stack.push(blockstate);
+            }
+            blockstates.insert(id, blockstate_stack);
         }
 
         let mut models = HashMap::new();
@@ -93,8 +97,14 @@ impl BlockModelCatalog {
         properties: &BTreeMap<String, String>,
         seed: Option<i64>,
     ) -> Option<BlockRenderModel> {
-        let blockstate = self.blockstates.get(&normalize_block_id(block_name))?;
-        let variants = match blockstate.select_variants(properties, seed)? {
+        let blockstate_stack = self.blockstates.get(&normalize_block_id(block_name))?;
+        let mut selected = None;
+        for blockstate in blockstate_stack {
+            if let Some(selection) = blockstate.select_variants(properties, seed) {
+                selected = Some(selection);
+            }
+        }
+        let variants = match selected? {
             RawBlockstateSelection::Variants(variants) => variants,
             RawBlockstateSelection::Empty => return Some(BlockRenderModel::empty()),
         };

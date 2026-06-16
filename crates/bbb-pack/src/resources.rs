@@ -176,6 +176,14 @@ impl PackResourceStack {
         self.list_resources_in("assets", path_prefix, extension)
     }
 
+    pub fn list_resource_stacks(
+        &self,
+        path_prefix: &str,
+        extension: &str,
+    ) -> Result<BTreeMap<ResourceLocation, Vec<PackResource>>> {
+        self.list_resource_stacks_in("assets", path_prefix, extension)
+    }
+
     pub fn list_data_resources(
         &self,
         path_prefix: &str,

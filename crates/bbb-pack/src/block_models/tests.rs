@@ -252,6 +252,84 @@ fn block_model_catalog_uses_resource_pack_precedence_for_blockstates_and_models(
 }
 
 #[test]
+fn block_model_catalog_merges_blockstate_resource_stacks_by_matching_state() {
+    let root = unique_temp_dir("block-model-blockstate-stack");
+    let base_assets = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    let pack = root.join("resource_pack");
+    let pack_assets = pack.join("assets").join("minecraft");
+
+    write_json(
+        &base_assets.join("blockstates").join("partial_stack.json"),
+        r##"{
+            "variants": {
+                "facing=north": { "model": "minecraft:block/base_north" },
+                "facing=south": { "model": "minecraft:block/base_south" }
+            }
+        }"##,
+    );
+    write_json(
+        &pack_assets.join("blockstates").join("partial_stack.json"),
+        r##"{
+            "variants": {
+                "facing=north": { "model": "minecraft:block/overlay_north" }
+            }
+        }"##,
+    );
+    write_single_texture_model(
+        &base_assets
+            .join("models")
+            .join("block")
+            .join("base_north.json"),
+        "minecraft:block/base_north_texture",
+    );
+    write_single_texture_model(
+        &base_assets
+            .join("models")
+            .join("block")
+            .join("base_south.json"),
+        "minecraft:block/base_south_texture",
+    );
+    write_single_texture_model(
+        &pack_assets
+            .join("models")
+            .join("block")
+            .join("overlay_north.json"),
+        "minecraft:block/overlay_north_texture",
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .with_resource_pack_dirs([pack])
+        .load_block_model_catalog()
+        .unwrap();
+    let mut properties = BTreeMap::new();
+
+    properties.insert("facing".to_string(), "north".to_string());
+    let north = catalog
+        .block_render_model("minecraft:partial_stack", &properties)
+        .unwrap();
+    assert_eq!(
+        north.face_textures.get(BlockModelFace::North),
+        "minecraft:block/overlay_north_texture"
+    );
+
+    properties.insert("facing".to_string(), "south".to_string());
+    let south = catalog
+        .block_render_model("minecraft:partial_stack", &properties)
+        .unwrap();
+    assert_eq!(
+        south.face_textures.get(BlockModelFace::North),
+        "minecraft:block/base_south_texture"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_resolves_unprefixed_face_texture_slots() {
     let root = unique_temp_dir("block-model-unprefixed-face-texture");
     let asset_root = root
