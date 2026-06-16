@@ -599,7 +599,7 @@ fn parse_model_item_model(object: &Map<String, Value>) -> Result<ItemModelDefini
 }
 
 fn parse_range_dispatch_model(object: &Map<String, Value>) -> Result<ItemModelDefinition> {
-    let entries = required_array(object, "entries")?
+    let mut entries = required_array(object, "entries")?
         .iter()
         .map(|entry| {
             let entry = entry
@@ -613,6 +613,7 @@ fn parse_range_dispatch_model(object: &Map<String, Value>) -> Result<ItemModelDe
             })
         })
         .collect::<Result<Vec<_>>>()?;
+    entries.sort_by(|left, right| left.threshold.total_cmp(&right.threshold));
     Ok(ItemModelDefinition::RangeDispatch {
         transformation: optional_transformation(object)?,
         property: parse_item_model_property(
@@ -1422,6 +1423,64 @@ mod tests {
                 "minecraft:item/bow_pulling_2".to_string(),
             ]
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn item_model_catalog_sorts_range_dispatch_entries_by_threshold() {
+        let root = unique_temp_dir("item-model-range-sort");
+        let items = item_dir(&root);
+        write_json(
+            &items.join("bow.json"),
+            r#"{
+              "model": {
+                "type": "minecraft:range_dispatch",
+                "entries": [
+                  {
+                    "model": {
+                      "type": "minecraft:model",
+                      "model": "minecraft:item/bow_pulling_2"
+                    },
+                    "threshold": 0.9
+                  },
+                  {
+                    "model": {
+                      "type": "minecraft:model",
+                      "model": "minecraft:item/bow_pulling_1"
+                    },
+                    "threshold": 0.65
+                  }
+                ],
+                "fallback": {
+                  "type": "minecraft:model",
+                  "model": "minecraft:item/bow"
+                },
+                "property": "minecraft:use_duration"
+              }
+            }"#,
+        );
+
+        let catalog = PackRoots::from_root(&root)
+            .unwrap()
+            .load_item_model_catalog()
+            .unwrap();
+        let bow = catalog.definition("minecraft:bow").unwrap();
+
+        let ItemModelDefinition::RangeDispatch { entries, .. } = &bow.model else {
+            panic!("bow should parse as a range dispatch item model");
+        };
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].threshold, 0.65);
+        assert_eq!(entries[1].threshold, 0.9);
+        let ItemModelDefinition::Model { model, .. } = entries[0].model.as_ref() else {
+            panic!("first sorted entry should be a model item model");
+        };
+        assert_eq!(model, "minecraft:item/bow_pulling_1");
+        let ItemModelDefinition::Model { model, .. } = entries[1].model.as_ref() else {
+            panic!("second sorted entry should be a model item model");
+        };
+        assert_eq!(model, "minecraft:item/bow_pulling_2");
 
         std::fs::remove_dir_all(root).unwrap();
     }

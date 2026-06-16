@@ -377,6 +377,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.last_block_changed_ack" => {
             serde_json::to_value(snapshot_guard.world_store.last_block_changed_ack())
         }
+        "world.world_border" => serde_json::to_value(snapshot_guard.world_store.world_border()),
         "world.level_clock" => Ok(serde_json::json!({
             "world_time": snapshot_guard.world_store.world_time(),
             "weather": snapshot_guard.world_store.weather(),
@@ -548,11 +549,12 @@ mod tests {
         CommandNode, CommandNodeType, Commands, CustomChatCompletions, CustomChatCompletionsAction,
         CustomPayload, CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
         DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
-        GameEvent, GameRuleValue, GameRuleValues, InteractionHand, MapColorPatch, MapDecoration,
-        MapItemData, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayTime,
-        PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth, PongResponse,
+        GameEvent, GameRuleValue, GameRuleValues, InitializeBorder, InteractionHand, MapColorPatch,
+        MapDecoration, MapItemData, MountScreenOpen, OpenBook, OpenSignEditor, PlaceGhostRecipe,
+        PlayTime, PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth, PongResponse,
         RecipeDisplayType, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
-        ServerLinkType, ServerLinks, SetActionBarText, SetChunkCacheCenter, SetChunkCacheRadius,
+        ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
+        SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
         SetDefaultSpawnPosition, SetSimulationDistance, SetSubtitleText, SetTitleText,
         SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
         StopSound, SystemChat, TagQuery, TickingState, TickingStep, TrackedWaypoint,
@@ -1453,6 +1455,56 @@ mod tests {
 
         assert!(response.ok);
         assert_eq!(response.result.unwrap()["sequence"], 17);
+    }
+
+    #[test]
+    fn world_border_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_initialize_border(InitializeBorder {
+                new_center_x: 10.5,
+                new_center_z: -20.25,
+                old_size: 100.0,
+                new_size: 200.0,
+                lerp_time: 0,
+                new_absolute_max_size: 400,
+                warning_blocks: 6,
+                warning_time: 7,
+            });
+            store.apply_set_border_center(SetBorderCenter {
+                new_center_x: 30.0,
+                new_center_z: -40.0,
+            });
+            store.apply_set_border_lerp_size(SetBorderLerpSize {
+                old_size: 200.0,
+                new_size: 300.0,
+                lerp_time: 50,
+            });
+            store.apply_set_border_warning_delay(SetBorderWarningDelay { warning_delay: 11 });
+            store
+                .apply_set_border_warning_distance(SetBorderWarningDistance { warning_blocks: 12 });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.world_border".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let border = response.result.unwrap();
+        assert_eq!(border["center_x"], 30.0);
+        assert_eq!(border["center_z"], -40.0);
+        assert_eq!(border["size"], 200.0);
+        assert_eq!(border["lerp_target"], 300.0);
+        assert_eq!(border["lerp_time"], 50);
+        assert_eq!(border["absolute_max_size"], 400);
+        assert_eq!(border["warning_blocks"], 12);
+        assert_eq!(border["warning_time"], 11);
     }
 
     #[test]
