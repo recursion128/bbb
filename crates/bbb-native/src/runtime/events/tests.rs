@@ -4,7 +4,7 @@ use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
 use bbb_audio::{
     AudioCategory, AudioCommand, AudioCommandResolver, AudioResolveError, SoundEventRegistry,
 };
-use bbb_control::NetCounters;
+use bbb_control::{AudioCounters, NetCounters};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_pack::SoundCatalog;
 use bbb_protocol::codec::Encoder;
@@ -3992,6 +3992,18 @@ impl RecordingAudioSink {
 }
 
 impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
+    fn counters(&self) -> AudioCounters {
+        AudioCounters {
+            enabled: true,
+            catalog_events: self.catalog.len(),
+            registry_entries: self.registry.len(),
+            commands_submitted: self.commands.len() as u64,
+            resolve_failures: self.errors.len() as u64,
+            last_resolve_error: self.errors.last().cloned(),
+            ..AudioCounters::default()
+        }
+    }
+
     fn set_sound_event_registry(&mut self, registry: SoundEventRegistry) {
         self.registry = registry;
     }

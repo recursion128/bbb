@@ -6,7 +6,7 @@ use std::{
 use bbb_world::WorldStore;
 use serde::{Deserialize, Serialize};
 
-use super::{NetCounters, RendererCounters};
+use super::{AudioCounters, NetCounters, RendererCounters};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AppStatus {
@@ -116,6 +116,7 @@ where
 pub struct ControlSnapshot {
     pub app: AppStatus,
     pub net: NetCounters,
+    pub audio: AudioCounters,
     pub renderer: RendererCounters,
     #[serde(skip)]
     pub screenshot_request: Option<String>,

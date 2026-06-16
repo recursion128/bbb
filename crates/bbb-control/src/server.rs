@@ -337,10 +337,12 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "app.status" => Ok(serde_json::json!({
             "app": &snapshot_guard.app,
             "net": &snapshot_guard.net,
+            "audio": &snapshot_guard.audio,
             "renderer": &snapshot_guard.renderer,
             "world": snapshot_guard.world_store.counters(),
         })),
         "net.counters" => serde_json::to_value(&snapshot_guard.net),
+        "audio.counters" => serde_json::to_value(&snapshot_guard.audio),
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
         "world.registries" => serde_json::to_value(snapshot_guard.world_store.registries()),
@@ -590,6 +592,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
+    use crate::types::AudioCounters;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
         BlockDestruction, BlockEvent, BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound,
@@ -653,7 +656,14 @@ mod tests {
         {
             let mut store = WorldStore::new();
             store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
-            snapshot.write().unwrap().world_store = store;
+            let mut guard = snapshot.write().unwrap();
+            guard.audio = AudioCounters {
+                enabled: true,
+                catalog_events: 123,
+                commands_submitted: 4,
+                ..AudioCounters::default()
+            };
+            guard.world_store = store;
         }
 
         let response = dispatch(
@@ -667,8 +677,45 @@ mod tests {
         assert!(response.ok);
         let status = response.result.unwrap();
         assert_eq!(status["app"]["version"], "test");
+        assert_eq!(status["audio"]["enabled"], true);
+        assert_eq!(status["audio"]["catalog_events"], 123);
+        assert_eq!(status["audio"]["commands_submitted"], 4);
         assert_eq!(status["world"]["block_changed_ack_packets"], 1);
         assert_eq!(status["world"]["block_destructions_tracked"], 0);
+    }
+
+    #[test]
+    fn audio_counters_reads_runtime_projection() {
+        let snapshot = shared_snapshot("test");
+        snapshot.write().unwrap().audio = AudioCounters {
+            enabled: false,
+            disabled_reason: Some("initialize Kira audio runtime".to_string()),
+            resolve_failures: 2,
+            submit_failures: 1,
+            last_resolve_error: Some("missing sound event minecraft:missing".to_string()),
+            last_submit_error: Some("failed to submit audio command".to_string()),
+            ..AudioCounters::default()
+        };
+
+        let response = dispatch(
+            ControlRequest {
+                method: "audio.counters".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let audio = response.result.unwrap();
+        assert_eq!(audio["enabled"], false);
+        assert_eq!(audio["disabled_reason"], "initialize Kira audio runtime");
+        assert_eq!(audio["resolve_failures"], 2);
+        assert_eq!(audio["submit_failures"], 1);
+        assert_eq!(
+            audio["last_resolve_error"],
+            "missing sound event minecraft:missing"
+        );
+        assert_eq!(audio["last_submit_error"], "failed to submit audio command");
     }
 
     #[test]

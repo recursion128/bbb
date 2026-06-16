@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bbb_control::{shared_snapshot, NetCounters};
+use bbb_control::{shared_snapshot, AudioCounters, NetCounters};
 use bbb_world::WorldStore;
 use winit::{
     event::{DeviceEvent, Event, WindowEvent},
@@ -81,14 +81,22 @@ fn main() -> Result<()> {
         commands: net_commands,
     } = start_network_if_requested(&runtime, &args, &mut code_of_conduct_acceptance)?;
     start_control_api(&runtime, args.control, &snapshot);
-    let mut audio_runtime = pack_roots.as_ref().and_then(|roots| {
-        NativeAudioRuntime::load(roots)
-            .map_err(|err| {
+    let (mut audio_runtime, audio_status) = match pack_roots.as_ref() {
+        Some(roots) => match NativeAudioRuntime::load(roots) {
+            Ok(runtime) => {
+                let status = runtime.counters();
+                (Some(runtime), status)
+            }
+            Err(err) => {
                 tracing::warn!(?err, "continuing without native audio runtime");
-                err
-            })
-            .ok()
-    });
+                (None, AudioCounters::disabled(err.to_string()))
+            }
+        },
+        None => (
+            None,
+            AudioCounters::disabled("pack roots unavailable for native audio runtime"),
+        ),
+    };
     let mut particle_runtime = pack_roots.as_ref().and_then(|roots| {
         NativeParticleRuntime::load(roots)
             .map_err(|err| {
@@ -230,6 +238,7 @@ fn main() -> Result<()> {
                         audio_runtime
                             .as_mut()
                             .map(|runtime| runtime as &mut dyn AudioEventSink),
+                        &audio_status,
                         particle_runtime
                             .as_mut()
                             .map(|runtime| runtime as &mut dyn ParticleEventSink),
@@ -288,7 +297,17 @@ fn main() -> Result<()> {
                         }
                     }
 
-                    if !publish_snapshot(&snapshot, renderer.counters(), &net_counters, &world) {
+                    let audio_counters = audio_runtime
+                        .as_ref()
+                        .map(NativeAudioRuntime::counters)
+                        .unwrap_or_else(|| audio_status.clone());
+                    if !publish_snapshot(
+                        &snapshot,
+                        renderer.counters(),
+                        &net_counters,
+                        &audio_counters,
+                        &world,
+                    ) {
                         target.exit();
                     }
                 }
@@ -326,6 +345,7 @@ fn main() -> Result<()> {
                     audio_runtime
                         .as_mut()
                         .map(|runtime| runtime as &mut dyn AudioEventSink),
+                    &audio_status,
                     particle_runtime
                         .as_mut()
                         .map(|runtime| runtime as &mut dyn ParticleEventSink),

@@ -4,7 +4,7 @@ use std::{
 };
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
-use bbb_control::{NetCounters, RendererCounters, SharedSnapshot};
+use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{
     CameraPose, ClearColor, HudIconLayer, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
@@ -82,6 +82,7 @@ pub(crate) fn pump_network_and_terrain(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     audio_events: Option<&mut dyn AudioEventSink>,
+    audio_status: &AudioCounters,
     particle_events: Option<&mut dyn ParticleEventSink>,
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -136,7 +137,17 @@ pub(crate) fn pump_network_and_terrain(
     if let Some(audio_events) = audio_events.as_mut() {
         audio_events.tick_entity_sound_positions(audio_scene_command_from_world(world));
     }
-    publish_snapshot(snapshot, renderer.counters(), net_counters, world)
+    let audio_counters = audio_events
+        .as_deref()
+        .map(AudioEventSink::counters)
+        .unwrap_or_else(|| audio_status.clone());
+    publish_snapshot(
+        snapshot,
+        renderer.counters(),
+        net_counters,
+        &audio_counters,
+        world,
+    )
 }
 
 fn hotbar_item_icons(
@@ -267,11 +278,13 @@ pub(crate) fn publish_snapshot(
     snapshot: &SharedSnapshot,
     renderer: RendererCounters,
     net: &NetCounters,
+    audio: &AudioCounters,
     world: &WorldStore,
 ) -> bool {
     if let Ok(mut guard) = snapshot.write() {
         guard.renderer = renderer;
         guard.net = net.clone();
+        guard.audio = audio.clone();
         guard.world_store = world.clone();
         guard.app.running
     } else {
@@ -553,6 +566,32 @@ mod tests {
                 1.4, 2.8, 0.0
             ))
         );
+    }
+
+    #[test]
+    fn publish_snapshot_includes_audio_runtime_counters() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        let audio = AudioCounters {
+            enabled: true,
+            catalog_events: 1902,
+            registry_entries: 1902,
+            commands_submitted: 3,
+            submit_failures: 1,
+            last_submit_error: Some("failed to submit audio command".to_string()),
+            ..AudioCounters::default()
+        };
+        let net = NetCounters::default();
+        let world = WorldStore::new();
+
+        assert!(publish_snapshot(
+            &snapshot,
+            RendererCounters::default(),
+            &net,
+            &audio,
+            &world,
+        ));
+
+        assert_eq!(snapshot.read().unwrap().audio, audio);
     }
 
     fn local_player_pose(position: [f64; 3], y_rot: f32, x_rot: f32) -> LocalPlayerPoseState {
