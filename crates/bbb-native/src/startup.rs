@@ -35,6 +35,8 @@ pub(crate) struct Args {
     pub(crate) exit_after_screenshot: bool,
     #[arg(long, value_name = "PATH")]
     pub(crate) code_of_conduct_store: Option<PathBuf>,
+    #[arg(long = "resource-pack-dir", value_name = "PATH")]
+    pub(crate) resource_pack_dirs: Vec<PathBuf>,
 }
 
 pub(crate) struct NetworkHandles {
@@ -64,14 +66,24 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
     Ok(true)
 }
 
-pub(crate) fn load_pack_roots() -> Option<PackRoots> {
+pub(crate) fn load_pack_roots(args: &Args) -> Option<PackRoots> {
     match PackRoots::discover() {
-        Ok(roots) => Some(roots),
+        Ok(roots) => Some(apply_resource_pack_dirs(
+            roots,
+            args.resource_pack_dirs.iter().cloned(),
+        )),
         Err(err) => {
             tracing::warn!(?err, "vanilla 26.1 pack roots unavailable");
             None
         }
     }
+}
+
+fn apply_resource_pack_dirs(
+    roots: PackRoots,
+    dirs: impl IntoIterator<Item = PathBuf>,
+) -> PackRoots {
+    roots.with_resource_pack_dirs(dirs)
 }
 
 pub(crate) fn start_network_if_requested(
@@ -143,4 +155,46 @@ pub(crate) fn spawn_frame_tick(event_loop: &EventLoop<()>) {
             thread::sleep(Duration::from_millis(16));
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn args_accept_repeated_resource_pack_dirs() {
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--resource-pack-dir",
+            "packs/base",
+            "--resource-pack-dir",
+            "packs/overlay",
+        ])
+        .unwrap();
+
+        assert_eq!(
+            args.resource_pack_dirs,
+            vec![PathBuf::from("packs/base"), PathBuf::from("packs/overlay")]
+        );
+    }
+
+    #[test]
+    fn apply_resource_pack_dirs_updates_pack_roots() {
+        let roots = PackRoots {
+            mc_code_root: PathBuf::from("/mc"),
+            sources_dir: PathBuf::from("/mc/sources/26.1"),
+            assets_dir: PathBuf::from("/mc/sources/26.1/assets/minecraft"),
+            resource_pack_dirs: Vec::new(),
+        };
+
+        let roots = apply_resource_pack_dirs(
+            roots,
+            [PathBuf::from("packs/base"), PathBuf::from("packs/overlay")],
+        );
+
+        assert_eq!(
+            roots.resource_pack_dirs,
+            vec![PathBuf::from("packs/base"), PathBuf::from("packs/overlay")]
+        );
+    }
 }

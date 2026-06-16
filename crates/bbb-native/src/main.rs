@@ -52,7 +52,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let pack_roots = load_pack_roots();
+    let pack_roots = load_pack_roots(&args);
     let snapshot = shared_snapshot(format!(
         "bbb-native {} / protocol {}",
         bbb_protocol::MC_VERSION,
