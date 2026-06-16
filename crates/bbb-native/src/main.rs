@@ -14,6 +14,7 @@ mod code_of_conduct;
 mod crosshair;
 mod hud_assets;
 mod input;
+mod item_runtime;
 mod particle_registry;
 mod particle_runtime;
 mod runtime;
@@ -27,6 +28,7 @@ use input::{
     handle_focus_change, handle_key_input, handle_mouse_input, handle_mouse_motion,
     handle_mouse_wheel, ClientInputState,
 };
+use item_runtime::NativeItemRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     clear_color_for_world, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
@@ -93,6 +95,29 @@ fn main() -> Result<()> {
             })
             .ok()
     });
+    let item_runtime = pack_roots.as_ref().and_then(|roots| {
+        NativeItemRuntime::load(roots)
+            .map_err(|err| {
+                tracing::warn!(?err, "continuing without native item asset runtime");
+                err
+            })
+            .ok()
+    });
+    if let Some(items) = &item_runtime {
+        let (atlas_width, atlas_height) = items.atlas_size();
+        let missingno_index = items.texture_index("minecraft:missingno");
+        tracing::info!(
+            item_definitions = items.item_definition_count(),
+            resolved_models = items.resolved_model_count(),
+            textures = items.texture_count(),
+            missing_models = items.missing_model_count(),
+            missing_textures = items.missing_texture_count(),
+            missingno_index,
+            atlas_width,
+            atlas_height,
+            "loaded native item assets"
+        );
+    }
 
     let event_loop = create_event_loop()?;
     let window = build_window(&event_loop)?;
