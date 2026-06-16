@@ -166,6 +166,7 @@ impl ProbeContext {
                 self.state = ConnectionState::Configuration;
                 self.play_tick = None;
                 self.seen_code_of_conduct = false;
+                self.world.clear_client_level();
             }
             PlayClientbound::StoreCookie(cookie) => {
                 let key = cookie.key;
@@ -730,6 +731,51 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_CHUNK_BATCH_RECEIVED);
         let desired = Decoder::new(&payload).read_f32().unwrap();
         assert_eq!(desired, 3.5);
+    }
+
+    #[tokio::test]
+    async fn probe_start_configuration_acknowledges_and_resets_configuration_dedup_state() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Play;
+        probe.play_tick = Some(crate::connection::play_tick_interval());
+        probe.seen_code_of_conduct = true;
+        probe.world.apply_add_entity(protocol_add_entity(55));
+        probe.world.set_local_using_item(true);
+
+        probe
+            .handle_play_packet(PlayClientbound::StartConfiguration)
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("configuration acknowledgement should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONFIGURATION_ACKNOWLEDGED);
+        assert!(payload.is_empty());
+        assert_eq!(probe.state, ConnectionState::Configuration);
+        assert!(probe.play_tick.is_none());
+        assert!(!probe.seen_code_of_conduct);
+        assert_eq!(probe.world.entity_count(), 0);
+        assert_eq!(
+            probe.world.local_player(),
+            &bbb_world::LocalPlayerState::default()
+        );
+
+        probe
+            .handle_configuration_packet(packets::ConfigurationClientbound::CodeOfConduct {
+                text: "Fresh configuration rules.".to_string(),
+            })
+            .await
+            .unwrap();
+
+        assert!(probe.seen_code_of_conduct);
+        assert_eq!(
+            probe.world.last_code_of_conduct().unwrap().text,
+            "Fresh configuration rules."
+        );
+        assert_eq!(probe.world.counters().code_of_conduct_packets, 1);
     }
 
     #[tokio::test]

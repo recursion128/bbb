@@ -343,6 +343,70 @@ fn respawn_clears_world_first_chunk_when_world_changes() {
 }
 
 #[test]
+fn configuration_state_change_clears_client_level_state() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(55));
+    assert!(
+        world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
+            id: 4,
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 64,
+                z: -5,
+            },
+            progress: 6,
+        })
+    );
+    world.apply_block_event(bbb_protocol::packets::BlockEvent {
+        pos: ProtocolBlockPos {
+            x: 12,
+            y: 65,
+            z: -5,
+        },
+        b0: 2,
+        b1: 9,
+        block_id: 54,
+    });
+    world.apply_level_event(bbb_protocol::packets::LevelEvent {
+        event_type: 1001,
+        pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+        data: 42,
+        global: true,
+    });
+    world.set_local_using_item(true);
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    assert_eq!(counters.state.as_deref(), Some("Configuration"));
+    assert_eq!(world.first_chunk(), None);
+    assert_eq!(world.entity_count(), 0);
+    assert_eq!(
+        world.local_player(),
+        &bbb_world::LocalPlayerState::default()
+    );
+    assert_eq!(world.counters().chunks_received, 1);
+    assert_eq!(world.counters().chunks_decoded, 1);
+    assert_eq!(world.counters().entities_tracked, 0);
+    assert_eq!(world.counters().block_destructions_tracked, 0);
+    assert_eq!(world.counters().block_events_tracked, 0);
+    assert_eq!(world.counters().level_events_tracked, 0);
+}
+
+#[test]
 fn transfer_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Transfer(bbb_protocol::packets::Transfer {

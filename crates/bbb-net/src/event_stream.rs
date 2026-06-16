@@ -329,6 +329,68 @@ mod tests {
         assert_eq!(desired, 3.5);
     }
 
+    #[tokio::test]
+    async fn play_start_configuration_acknowledges_and_resets_configuration_dedup_state() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: Some(crate::connection::play_tick_interval()),
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: true,
+            accepted_code_of_conduct_hash: None,
+        };
+
+        stream
+            .handle_play_packet(PlayClientbound::StartConfiguration)
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("configuration acknowledgement should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONFIGURATION_ACKNOWLEDGED);
+        assert!(payload.is_empty());
+        assert_eq!(stream.state, ConnectionState::Configuration);
+        assert!(stream.play_tick.is_none());
+        assert!(!stream.seen_code_of_conduct);
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("state-changed event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::StateChanged {
+                state: ConnectionState::Configuration
+            }
+        ));
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::CodeOfConduct {
+                text: "Fresh configuration rules.".to_string(),
+            })
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("code-of-conduct event should be emitted after reconfiguration")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::CodeOfConduct { text } if text == "Fresh configuration rules."
+        ));
+    }
+
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();

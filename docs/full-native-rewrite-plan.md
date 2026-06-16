@@ -102,6 +102,10 @@ Known priority areas:
   sequence state should stay in `WorldStore`.
 - Keep offline probes aligned with online event handling; play/configuration
   packets with world apply APIs should stay covered by probe regression tests.
+- Play -> configuration re-entry is a level teardown boundary. `StartConfiguration`
+  must acknowledge the server, stop play ticking, reset Code of Conduct
+  duplicate detection, and clear current client-level state in both online native
+  dispatch and offline probe paths.
 - Configuration Code of Conduct text is recorded in world UI state and native
   control counters derive from it. Owner: `bbb-world` + `bbb-native`; status:
   partial; next action: add native graphical UI for accept/decline. The online

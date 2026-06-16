@@ -193,6 +193,22 @@ impl WorldStore {
         self.ticking
     }
 
+    pub fn clear_client_level(&mut self) {
+        self.dimension = WorldDimension::default();
+        self.level = None;
+        self.world_border = crate::WorldBorderState::default();
+        self.world_time = None;
+        self.weather = crate::WorldWeatherState::default();
+        self.ticking = crate::WorldTickingState::default();
+        self.chunk_view = crate::ChunkViewState::default();
+        self.last_block_changed_ack = None;
+        self.local_player = crate::LocalPlayerState::default();
+        self.local_player_id = None;
+        self.local_player_vehicle_id = None;
+        self.last_projectile_power = None;
+        self.clear_level_bound_state();
+    }
+
     fn apply_spawn_info(&mut self, spawn_info: &ProtocolSpawnInfo) {
         let profile = dimension_profile(spawn_info.dimension_type_id, &spawn_info.dimension);
         let dimension_key_changed = self
@@ -200,17 +216,7 @@ impl WorldStore {
             .as_ref()
             .is_some_and(|level| level.dimension != spawn_info.dimension);
         if self.dimension != profile.dimension || dimension_key_changed {
-            self.chunks.clear();
-            self.first_chunk = None;
-            self.block_destructions.clear();
-            self.block_events.clear();
-            self.level_events.clear();
-            self.entities.clear();
-            self.counters.block_destructions_tracked = 0;
-            self.counters.block_events_tracked = 0;
-            self.counters.level_events_tracked = 0;
-            self.update_active_mob_effect_count();
-            self.update_entity_count();
+            self.clear_level_bound_state();
         }
         self.dimension = profile.dimension;
         self.level = Some(WorldLevelInfo {
@@ -221,6 +227,20 @@ impl WorldStore {
             is_debug: spawn_info.is_debug,
             is_flat: spawn_info.is_flat,
         });
+    }
+
+    fn clear_level_bound_state(&mut self) {
+        self.chunks.clear();
+        self.first_chunk = None;
+        self.block_destructions.clear();
+        self.block_events.clear();
+        self.level_events.clear();
+        self.entities.clear();
+        self.counters.block_destructions_tracked = 0;
+        self.counters.block_events_tracked = 0;
+        self.counters.level_events_tracked = 0;
+        self.update_active_mob_effect_count();
+        self.update_entity_count();
     }
 
     pub fn dimension(&self) -> WorldDimension {
@@ -289,7 +309,11 @@ fn dimension_profile(dimension_type_id: i32, dimension: &str) -> DimensionProfil
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{AddEntity as ProtocolAddEntity, Vec3d as ProtocolVec3d};
+    use bbb_protocol::packets::{
+        AddEntity as ProtocolAddEntity, BlockDestruction as ProtocolBlockDestruction,
+        BlockEvent as ProtocolBlockEvent, BlockPos as ProtocolBlockPos,
+        LevelEvent as ProtocolLevelEvent, Vec3d as ProtocolVec3d,
+    };
     use uuid::Uuid;
 
     use crate::{ChunkColumn, ChunkPos, ChunkState, LightData};
@@ -411,6 +435,91 @@ mod tests {
             level.dimension_type_name.as_deref(),
             Some("minecraft:the_end")
         );
+    }
+
+    #[test]
+    fn clear_client_level_removes_level_bound_state_without_resetting_packet_counters() {
+        let mut store = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 256,
+        });
+        store.level = Some(WorldLevelInfo {
+            dimension: "minecraft:the_nether".to_string(),
+            dimension_type_id: 1,
+            dimension_type_name: Some("minecraft:the_nether".to_string()),
+            sea_level: 32,
+            is_debug: false,
+            is_flat: false,
+        });
+        store.chunks.push(stale_chunk());
+        store.first_chunk = Some(ChunkPos { x: 1, z: -2 });
+        store.apply_add_entity(protocol_add_entity(123));
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 4,
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 64,
+                z: -5,
+            },
+            progress: 6,
+        }));
+        store.apply_block_event(ProtocolBlockEvent {
+            pos: ProtocolBlockPos {
+                x: 12,
+                y: 65,
+                z: -5,
+            },
+            b0: 2,
+            b1: 9,
+            block_id: 54,
+        });
+        store.apply_level_event(ProtocolLevelEvent {
+            event_type: 1001,
+            pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+            data: 42,
+            global: true,
+        });
+        store.apply_world_time(ProtocolPlayTime {
+            game_time: 123,
+            clock_updates: Vec::new(),
+        });
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: 7,
+            param: 0.5,
+        });
+        store.apply_ticking_state(ProtocolTickingState {
+            tick_rate: 0.25,
+            frozen: true,
+        });
+        store.apply_ticking_step(ProtocolTickingStep { tick_steps: 7 });
+        store.local_player_id = Some(123);
+        store.local_player_vehicle_id = Some(456);
+        store.set_local_using_item(true);
+        store.counters.play_logins_received = 1;
+
+        store.clear_client_level();
+
+        assert_eq!(store.dimension(), WorldDimension::default());
+        assert!(store.level_info().is_none());
+        assert_eq!(store.chunk_count(), 0);
+        assert_eq!(store.first_chunk(), None);
+        assert_eq!(store.entity_count(), 0);
+        assert!(store.block_destructions.is_empty());
+        assert!(store.block_events.is_empty());
+        assert!(store.level_events.is_empty());
+        assert!(store.world_time().is_none());
+        assert_eq!(store.weather(), WorldWeatherState::default());
+        assert_eq!(store.ticking(), WorldTickingState::default());
+        assert_eq!(store.local_player_id(), None);
+        assert_eq!(store.local_player_vehicle_id(), None);
+        assert_eq!(store.local_player(), &crate::LocalPlayerState::default());
+
+        let counters = store.counters();
+        assert_eq!(counters.play_logins_received, 1);
+        assert_eq!(counters.entities_tracked, 0);
+        assert_eq!(counters.block_destructions_tracked, 0);
+        assert_eq!(counters.block_events_tracked, 0);
+        assert_eq!(counters.level_events_tracked, 0);
     }
 
     #[test]
