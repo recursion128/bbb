@@ -489,6 +489,36 @@ fn focus_loss_clears_pressed_input_and_queues_release() {
 }
 
 #[test]
+fn focus_loss_stops_active_sprinting() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.forward = true;
+    input.sprint = true;
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+
+    handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
+
+    assert!(!input.focused);
+    assert_eq!(player_input_from_state(&input), PlayerInput::default());
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::StopSprinting,
+            data: 0,
+        })
+    );
+}
+
+#[test]
 fn focus_loss_aborts_destroying_block() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

@@ -80,6 +80,9 @@ pub(crate) fn release_active_input(
     let after = player_input_from_state(input);
     if after != before {
         queue_player_input_command(counters, net_commands, after);
+        if before.sprint != after.sprint {
+            queue_sprint_command(counters, world, net_commands, after.sprint);
+        }
     }
     if let Some(pos) = world.take_local_destroying_block() {
         queue_player_action_command(
