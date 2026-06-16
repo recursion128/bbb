@@ -354,6 +354,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_audio" => serde_json::to_value(snapshot_guard.world_store.client_audio()),
         "world.client_chat" => serde_json::to_value(snapshot_guard.world_store.client_chat()),
         "world.client_combat" => serde_json::to_value(snapshot_guard.world_store.client_combat()),
+        "world.client_cooldowns" => serde_json::to_value(snapshot_guard.world_store.cooldowns()),
         "world.client_effects" => serde_json::to_value(snapshot_guard.world_store.client_effects()),
         "world.client_command_suggestions" => {
             serde_json::to_value(snapshot_guard.world_store.client_command_suggestions())
@@ -435,6 +436,28 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                     .world_store
                     .probe_entity(id)
                     .map(|entity| serde_json::to_value(entity).expect("entity state serializes"))
+                    .unwrap_or(serde_json::Value::Null),
+                None => serde_json::Value::Null,
+            };
+            Ok(result)
+        }
+        "world.probe_entity_status" => {
+            let id = i32_param(&request.params, "id");
+            let result = match id {
+                Some(id) => snapshot_guard
+                    .world_store
+                    .probe_entity(id)
+                    .map(|entity| {
+                        serde_json::json!({
+                            "id": entity.id,
+                            "entity_type_id": entity.entity_type_id,
+                            "last_animation_action": entity.last_animation_action,
+                            "last_event_id": entity.last_event_id,
+                            "last_hurt_yaw": entity.last_hurt_yaw,
+                            "mob_effects": entity.mob_effects,
+                            "last_damage": entity.last_damage,
+                        })
+                    })
                     .unwrap_or(serde_json::Value::Null),
                 None => serde_json::Value::Null,
             };
@@ -572,32 +595,33 @@ mod tests {
         BlockDestruction, BlockEvent, BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound,
         ChatTypeHolder, CommandArgumentParser, CommandNode, CommandNodeType, Commands,
         CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerSetContent, ContainerSetData,
-        ContainerSetSlot, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
-        CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
-        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
+        ContainerSetSlot, Cooldown, CustomChatCompletions, CustomChatCompletionsAction,
+        CustomPayload, CustomPayloadBody, CustomReportDetails, DamageEvent as ProtocolDamageEvent,
+        DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
+        EntityEvent as ProtocolEntityEvent, EntityPositionSync as ProtocolEntityPositionSync,
         Explosion as ProtocolExplosion, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
-        GameRuleValues, GameType, IngredientSummary, InitializeBorder, InteractionHand,
-        ItemStackSummary, LevelEvent, LevelParticles as ProtocolLevelParticles, MapColorPatch,
-        MapDecoration, MapItemData, MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen,
-        OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin as ProtocolPlayLogin,
-        PlayTime, PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth,
-        PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
-        PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry,
-        RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
-        RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
-        RegistryData, RegistryDataEntry, RegistryTags, ScoreboardDisplaySlot,
-        SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
-        SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderWarningDelay,
-        SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetObjective, SetObjectiveMethod,
-        SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance,
-        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SlotDisplaySummary,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
-        StopSound, SystemChat, TagNetworkPayload, TagQuery, TeamCollisionRule, TeamVisibility,
-        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
-        UpdateAdvancements, UpdateEnabledFeatures, UpdateRecipes, UpdateTags,
-        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        GameRuleValues, GameType, HurtAnimation as ProtocolHurtAnimation, IngredientSummary,
+        InitializeBorder, InteractionHand, ItemStackSummary, LevelEvent,
+        LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
+        MobEffectFlags, MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
+        ParticlePayload, PlaceGhostRecipe, PlayLogin as ProtocolPlayLogin, PlayTime,
+        PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth, PlayerInfoAction,
+        PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod, PlayerTeamParameters, PongResponse,
+        ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
+        RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
+        RecipeDisplayType, RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags,
+        ScoreboardDisplaySlot, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
+        ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
+        SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
+        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetObjective,
+        SetObjectiveMethod, SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore,
+        SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
+        SlotDisplaySummary, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        StonecutterSelectableRecipeSummary, StopSound, SystemChat, TagNetworkPayload, TagQuery,
+        TeamCollisionRule, TeamVisibility, TickingState, TickingStep, TrackedWaypoint,
+        TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateEnabledFeatures,
+        UpdateMobEffect, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, WaypointData,
+        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1416,6 +1440,58 @@ mod tests {
         assert_eq!(combat["last_combat"]["duration"], serde_json::Value::Null);
         assert_eq!(combat["last_combat"]["player_id"], 123);
         assert_eq!(combat["last_combat"]["message"], "You died");
+    }
+
+    #[test]
+    fn client_cooldowns_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_cooldown(Cooldown {
+                cooldown_group: "minecraft:ender_pearl".to_string(),
+                duration: 20,
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_cooldowns".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let cooldowns = response.result.unwrap();
+        assert_eq!(
+            cooldowns["minecraft:ender_pearl"]["cooldown_group"],
+            "minecraft:ender_pearl"
+        );
+        assert_eq!(cooldowns["minecraft:ender_pearl"]["duration"], 20);
+
+        snapshot
+            .write()
+            .unwrap()
+            .world_store
+            .apply_cooldown(Cooldown {
+                cooldown_group: "minecraft:ender_pearl".to_string(),
+                duration: 0,
+            });
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_cooldowns".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert!(response
+            .result
+            .unwrap()
+            .get("minecraft:ender_pearl")
+            .is_none());
     }
 
     #[test]
@@ -2696,6 +2772,83 @@ mod tests {
         assert_eq!(ignored["entity_id"], 20);
         assert_eq!(ignored["acceleration_power"], 0.25);
         assert_eq!(ignored["applied"], false);
+    }
+
+    #[test]
+    fn probe_entity_status_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_add_entity(protocol_add_entity(7, 7));
+            assert!(store.apply_entity_event(ProtocolEntityEvent {
+                entity_id: 7,
+                event_id: 35,
+            }));
+            assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 7, yaw: 45.5 }));
+            assert!(store.apply_damage_event(ProtocolDamageEvent {
+                entity_id: 7,
+                source_type_id: 5,
+                source_cause_id: -1,
+                source_direct_id: 42,
+                source_position: Some(ProtocolVec3d {
+                    x: 1.0,
+                    y: 2.0,
+                    z: 3.0,
+                }),
+            }));
+            assert!(store.apply_update_mob_effect(UpdateMobEffect {
+                entity_id: 7,
+                effect_id: 3,
+                amplifier: 2,
+                duration_ticks: 400,
+                flags: MobEffectFlags {
+                    raw: 0b1011,
+                    ambient: true,
+                    visible: true,
+                    show_icon: false,
+                    blend: true,
+                },
+            }));
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.probe_entity_status".to_string(),
+                params: json!({"id": 7}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let status = response.result.unwrap();
+        assert_eq!(status["id"], 7);
+        assert_eq!(status["entity_type_id"], 7);
+        assert_eq!(status["last_event_id"], 35);
+        assert_eq!(status["last_hurt_yaw"], 45.5);
+        assert_eq!(status["mob_effects"]["3"]["effect_id"], 3);
+        assert_eq!(status["mob_effects"]["3"]["amplifier"], 2);
+        assert_eq!(status["mob_effects"]["3"]["duration_ticks"], 400);
+        assert_eq!(status["mob_effects"]["3"]["ambient"], true);
+        assert_eq!(status["mob_effects"]["3"]["visible"], true);
+        assert_eq!(status["mob_effects"]["3"]["show_icon"], false);
+        assert_eq!(status["mob_effects"]["3"]["blend"], true);
+        assert_eq!(status["last_damage"]["source_type_id"], 5);
+        assert_eq!(status["last_damage"]["source_cause_id"], -1);
+        assert_eq!(status["last_damage"]["source_direct_id"], 42);
+        assert_eq!(status["last_damage"]["source_position"]["x"], 1.0);
+        assert_eq!(status["last_damage"]["source_position"]["y"], 2.0);
+        assert_eq!(status["last_damage"]["source_position"]["z"], 3.0);
+
+        let missing_response = dispatch(
+            ControlRequest {
+                method: "world.probe_entity_status".to_string(),
+                params: json!({"id": 999}),
+            },
+            &snapshot,
+        );
+        assert!(missing_response.ok);
+        assert!(missing_response.result.unwrap().is_null());
     }
 
     #[test]
