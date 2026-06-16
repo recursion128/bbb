@@ -57,20 +57,14 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         if let NetEvent::LevelParticles(update) = &event {
             emit_level_particles(&mut particle_events, &mut particle_renderer, update);
         }
-        if matches!(
-            &event,
-            NetEvent::StateChanged {
-                state: ConnectionState::Configuration,
-            }
-        ) {
-            world.clear_client_level();
-        }
-
-        let Some(event) = apply_control_projection_event(event, counters) else {
-            continue;
-        };
+        apply_control_projection_event(&event, counters);
 
         match event {
+            NetEvent::StateChanged {
+                state: ConnectionState::Configuration,
+            } => {
+                world.clear_client_level();
+            }
             NetEvent::CookieRequest {
                 key,
                 response_payload_present,
@@ -533,7 +527,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             | NetEvent::CompressionSet { .. }
             | NetEvent::PacketSeen { .. }
             | NetEvent::UnsupportedPacket { .. } => {
-                unreachable!("control projection event reached world dispatcher")
+                // Runtime/control projection events have no canonical world mutation here.
             }
         }
     }
