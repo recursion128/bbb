@@ -470,6 +470,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.level_state" => Ok(serde_json::json!({
             "dimension": snapshot_guard.world_store.dimension(),
             "level": snapshot_guard.world_store.level_info(),
+            "gameplay": snapshot_guard.world_store.gameplay(),
         })),
         "world.client_advancements" => {
             serde_json::to_value(snapshot_guard.world_store.client_advancements())
@@ -972,6 +973,14 @@ mod tests {
         assert_eq!(level_state["level"]["sea_level"], 32);
         assert_eq!(level_state["level"]["is_debug"], false);
         assert_eq!(level_state["level"]["is_flat"], false);
+        assert_eq!(level_state["gameplay"]["game_type"], 1);
+        assert_eq!(level_state["gameplay"]["game_type_name"], "creative");
+        assert_eq!(
+            level_state["gameplay"]["previous_game_type"],
+            serde_json::Value::Null
+        );
+        assert_eq!(level_state["gameplay"]["show_death_screen"], true);
+        assert_eq!(level_state["gameplay"]["do_limited_crafting"], false);
 
         snapshot.write().unwrap().world_store.clear_client_level();
         let response = dispatch(

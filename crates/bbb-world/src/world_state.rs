@@ -4,7 +4,7 @@ pub use crate::commands::{
 pub use crate::counters::WorldCounters;
 pub use crate::error::{Result, WorldDecodeError};
 pub use crate::level::{
-    ClockUpdateState, WorldDimension, WorldLevelInfo, WorldTickingState, WorldTimeState,
-    WorldWeatherState,
+    ClockUpdateState, WorldDimension, WorldGameplayState, WorldLevelInfo, WorldTickingState,
+    WorldTimeState, WorldWeatherState,
 };
 pub use crate::store::WorldStore;

@@ -43,6 +43,29 @@ pub struct WorldLevelInfo {
     pub is_flat: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldGameplayState {
+    pub game_type: i32,
+    pub game_type_name: String,
+    pub previous_game_type: Option<i32>,
+    pub previous_game_type_name: Option<String>,
+    pub show_death_screen: bool,
+    pub do_limited_crafting: bool,
+}
+
+impl Default for WorldGameplayState {
+    fn default() -> Self {
+        Self {
+            game_type: 0,
+            game_type_name: game_type_name(0).to_string(),
+            previous_game_type: None,
+            previous_game_type_name: None,
+            show_death_screen: true,
+            do_limited_crafting: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldTimeState {
     pub game_time: i64,
@@ -124,6 +147,8 @@ impl WorldStore {
             self.local_player_vehicle_id = None;
         }
         self.local_player_id = Some(login.player_id);
+        self.gameplay.show_death_screen = login.show_death_screen;
+        self.gameplay.do_limited_crafting = login.do_limited_crafting;
         self.apply_spawn_info(&login.common_spawn_info);
     }
 
@@ -174,6 +199,15 @@ impl WorldStore {
             8 => {
                 self.weather.thunder_level = event.param.clamp(0.0, 1.0);
             }
+            3 => {
+                self.set_game_type_from_game_event_param(event.param);
+            }
+            11 => {
+                self.gameplay.show_death_screen = event.param == 0.0;
+            }
+            12 => {
+                self.gameplay.do_limited_crafting = event.param == 1.0;
+            }
             _ => {}
         }
 
@@ -196,6 +230,7 @@ impl WorldStore {
     pub fn clear_client_level(&mut self) {
         self.dimension = WorldDimension::default();
         self.level = None;
+        self.gameplay = WorldGameplayState::default();
         self.world_border = crate::WorldBorderState::default();
         self.world_time = None;
         self.weather = crate::WorldWeatherState::default();
@@ -227,6 +262,35 @@ impl WorldStore {
             is_debug: spawn_info.is_debug,
             is_flat: spawn_info.is_flat,
         });
+        self.set_game_type_from_spawn_info(
+            i32::from(spawn_info.game_type),
+            i32::from(spawn_info.previous_game_type),
+        );
+    }
+
+    fn set_game_type_from_spawn_info(&mut self, game_type: i32, previous_game_type: i32) {
+        let game_type = canonical_game_type_id(game_type);
+        self.gameplay.game_type = game_type;
+        self.gameplay.game_type_name = game_type_name(game_type).to_string();
+        if previous_game_type == -1 {
+            self.gameplay.previous_game_type = None;
+            self.gameplay.previous_game_type_name = None;
+        } else {
+            let previous_game_type = canonical_game_type_id(previous_game_type);
+            self.gameplay.previous_game_type = Some(previous_game_type);
+            self.gameplay.previous_game_type_name =
+                Some(game_type_name(previous_game_type).to_string());
+        }
+    }
+
+    fn set_game_type_from_game_event_param(&mut self, param: f32) {
+        let game_type = canonical_game_type_id(rounded_game_event_param(param));
+        if self.gameplay.game_type != game_type {
+            self.gameplay.previous_game_type = Some(self.gameplay.game_type);
+            self.gameplay.previous_game_type_name = Some(self.gameplay.game_type_name.clone());
+        }
+        self.gameplay.game_type = game_type;
+        self.gameplay.game_type_name = game_type_name(game_type).to_string();
     }
 
     fn clear_level_bound_state(&mut self) {
@@ -249,6 +313,10 @@ impl WorldStore {
 
     pub fn level_info(&self) -> Option<&WorldLevelInfo> {
         self.level.as_ref()
+    }
+
+    pub fn gameplay(&self) -> &WorldGameplayState {
+        &self.gameplay
     }
 
     pub fn world_time(&self) -> Option<&WorldTimeState> {
@@ -303,6 +371,31 @@ fn dimension_profile(dimension_type_id: i32, dimension: &str) -> DimensionProfil
             dimension: WorldDimension::default(),
             name: None,
         },
+    }
+}
+
+fn rounded_game_event_param(param: f32) -> i32 {
+    if param.is_finite() {
+        (param + 0.5).floor() as i32
+    } else {
+        0
+    }
+}
+
+fn canonical_game_type_id(id: i32) -> i32 {
+    if (0..=3).contains(&id) {
+        id
+    } else {
+        0
+    }
+}
+
+fn game_type_name(id: i32) -> &'static str {
+    match canonical_game_type_id(id) {
+        1 => "creative",
+        2 => "adventure",
+        3 => "spectator",
+        _ => "survival",
     }
 }
 
@@ -369,6 +462,17 @@ mod tests {
             Some("minecraft:the_nether")
         );
         assert_eq!(level.sea_level, 32);
+        assert_eq!(
+            store.gameplay(),
+            &WorldGameplayState {
+                game_type: 1,
+                game_type_name: "creative".to_string(),
+                previous_game_type: None,
+                previous_game_type_name: None,
+                show_death_screen: true,
+                do_limited_crafting: false,
+            }
+        );
     }
 
     #[test]
@@ -434,6 +538,13 @@ mod tests {
         assert_eq!(
             level.dimension_type_name.as_deref(),
             Some("minecraft:the_end")
+        );
+        assert_eq!(store.gameplay().game_type, 1);
+        assert_eq!(store.gameplay().game_type_name, "creative");
+        assert_eq!(store.gameplay().previous_game_type, Some(1));
+        assert_eq!(
+            store.gameplay().previous_game_type_name.as_deref(),
+            Some("creative")
         );
     }
 
@@ -510,6 +621,7 @@ mod tests {
         assert!(store.world_time().is_none());
         assert_eq!(store.weather(), WorldWeatherState::default());
         assert_eq!(store.ticking(), WorldTickingState::default());
+        assert_eq!(store.gameplay(), &WorldGameplayState::default());
         assert_eq!(store.local_player_id(), None);
         assert_eq!(store.local_player_vehicle_id(), None);
         assert_eq!(store.local_player(), &crate::LocalPlayerState::default());
@@ -586,6 +698,62 @@ mod tests {
         assert_eq!(counters.game_event_packets, 2);
         assert_eq!(counters.ticking_state_packets, 1);
         assert_eq!(counters.ticking_step_packets, 1);
+    }
+
+    #[test]
+    fn game_events_update_local_gameplay_state() {
+        let mut store = WorldStore::new();
+
+        store.apply_login(&ProtocolPlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 12345,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
+        });
+
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: 3,
+            param: 3.0,
+        });
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: 11,
+            param: 1.0,
+        });
+        store.apply_game_event(ProtocolGameEvent {
+            event_id: 12,
+            param: 1.0,
+        });
+
+        assert_eq!(
+            store.gameplay(),
+            &WorldGameplayState {
+                game_type: 3,
+                game_type_name: "spectator".to_string(),
+                previous_game_type: Some(0),
+                previous_game_type_name: Some("survival".to_string()),
+                show_death_screen: false,
+                do_limited_crafting: true,
+            }
+        );
+        assert_eq!(store.counters().game_event_packets, 3);
     }
 
     fn stale_chunk() -> ChunkColumn {

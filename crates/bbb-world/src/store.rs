@@ -10,13 +10,15 @@ use crate::{
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
     LastMapColorPatchState, LevelEventRecord, LocalPlayerState, MapItemState, PlayerInfoState,
     ProjectilePowerUpdateState, RegistrySet, ScoreboardState, ServerPresentationState,
-    WorldBorderState, WorldCounters, WorldDimension, WorldLevelInfo,
+    WorldBorderState, WorldCounters, WorldDimension, WorldGameplayState, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WorldStore {
     pub(crate) dimension: WorldDimension,
     pub(crate) level: Option<WorldLevelInfo>,
+    #[serde(default)]
+    pub(crate) gameplay: WorldGameplayState,
     #[serde(default)]
     pub(crate) world_border: WorldBorderState,
     #[serde(default)]

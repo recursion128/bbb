@@ -1532,6 +1532,27 @@ mod tests {
             .await
             .unwrap();
         probe
+            .handle_play_packet(PlayClientbound::GameEvent(GameEvent {
+                event_id: 3,
+                param: 2.0,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::GameEvent(GameEvent {
+                event_id: 11,
+                param: 1.0,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::GameEvent(GameEvent {
+                event_id: 12,
+                param: 1.0,
+            }))
+            .await
+            .unwrap();
+        probe
             .handle_play_packet(PlayClientbound::TickingState(TickingState {
                 tick_rate: 0.25,
                 frozen: true,
@@ -1543,7 +1564,7 @@ mod tests {
             .await
             .unwrap();
 
-        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
         let time = report.world.world_time().unwrap();
 
         assert_eq!(time.game_time, 123);
@@ -1563,10 +1584,15 @@ mod tests {
                 raining: true,
                 rain_level: 0.5,
                 thunder_level: 0.75,
-                last_game_event_id: Some(8),
-                last_game_event_param: 0.75,
+                last_game_event_id: Some(12),
+                last_game_event_param: 1.0,
             }
         );
+        assert_eq!(report.world.gameplay().game_type, 2);
+        assert_eq!(report.world.gameplay().game_type_name, "adventure");
+        assert_eq!(report.world.gameplay().previous_game_type, Some(0));
+        assert!(!report.world.gameplay().show_death_screen);
+        assert!(report.world.gameplay().do_limited_crafting);
         assert_eq!(
             report.world.ticking(),
             bbb_world::WorldTickingState {
@@ -1576,7 +1602,7 @@ mod tests {
             }
         );
         assert_eq!(report.world_counters.world_time_packets, 1);
-        assert_eq!(report.world_counters.game_event_packets, 2);
+        assert_eq!(report.world_counters.game_event_packets, 5);
         assert_eq!(report.world_counters.ticking_state_packets, 1);
         assert_eq!(report.world_counters.ticking_step_packets, 1);
     }

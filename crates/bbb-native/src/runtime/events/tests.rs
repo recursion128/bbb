@@ -3797,7 +3797,7 @@ fn local_player_events_update_world_state_and_snapshot_counters() {
 
 #[test]
 fn world_time_and_weather_update_world_counters_and_clear_color() {
-    let (tx, mut rx) = mpsc::channel(4);
+    let (tx, mut rx) = mpsc::channel(7);
     tx.try_send(NetEvent::SetTime(bbb_protocol::packets::PlayTime {
         game_time: 123,
         clock_updates: vec![bbb_protocol::packets::ClockUpdate {
@@ -3811,6 +3811,21 @@ fn world_time_and_weather_update_world_counters_and_clear_color() {
     tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
         event_id: 7,
         param: 0.5,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
+        event_id: 3,
+        param: 3.0,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
+        event_id: 11,
+        param: 1.0,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::GameEvent(bbb_protocol::packets::GameEvent {
+        event_id: 12,
+        param: 1.0,
     }))
     .unwrap();
     tx.try_send(NetEvent::TickingState(
@@ -3830,7 +3845,7 @@ fn world_time_and_weather_update_world_counters_and_clear_color() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        4
+        7
     );
 
     assert_eq!(
@@ -3848,6 +3863,11 @@ fn world_time_and_weather_update_world_counters_and_clear_color() {
         })
     );
     assert_eq!(world.weather().rain_level, 0.5);
+    assert_eq!(world.gameplay().game_type, 3);
+    assert_eq!(world.gameplay().game_type_name, "spectator");
+    assert_eq!(world.gameplay().previous_game_type, Some(0));
+    assert!(!world.gameplay().show_death_screen);
+    assert!(world.gameplay().do_limited_crafting);
     assert_eq!(
         world.ticking(),
         bbb_world::WorldTickingState {
@@ -3858,7 +3878,7 @@ fn world_time_and_weather_update_world_counters_and_clear_color() {
     );
 
     assert_eq!(world.counters().world_time_packets, 1);
-    assert_eq!(world.counters().game_event_packets, 1);
+    assert_eq!(world.counters().game_event_packets, 4);
     assert_eq!(world.counters().ticking_state_packets, 1);
     assert_eq!(world.counters().ticking_step_packets, 1);
 
