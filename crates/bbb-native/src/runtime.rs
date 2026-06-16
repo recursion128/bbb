@@ -29,10 +29,8 @@ mod events;
 const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
 
 pub(crate) use control_requests::pump_control_net_requests;
-pub(crate) use events::{
-    local_player_pose_from_player_pose, player_pose_from_local_player_pose,
-    player_position_state_from_local_player_pose,
-};
+#[cfg(test)]
+pub(crate) use events::local_player_pose_from_player_pose;
 
 #[derive(Debug, Default)]
 pub(crate) struct ClientAnimationTickState {

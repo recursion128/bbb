@@ -1,11 +1,11 @@
 use std::time::Instant;
 
-use bbb_control::{NetCounters, PlayerPose};
+use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     Direction as ProtocolDirection, PlayerActionKind, PlayerCommandAction, PlayerInput,
 };
-use bbb_world::WorldStore;
+use bbb_world::{LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
 use winit::{
     event::ElementState,
@@ -43,7 +43,7 @@ pub(crate) struct ClientInputState {
     scroll_accumulated_y: f64,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
-    last_move_command_pose: Option<PlayerPose>,
+    last_move_command_pose: Option<LocalPlayerPoseState>,
     destroying_block: Option<CrosshairBlockHit>,
     using_item: bool,
     prediction_sequence: i32,

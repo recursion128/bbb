@@ -7,7 +7,6 @@ use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::{crosshair_target_from_camera, CrosshairTarget};
-use crate::runtime::player_pose_from_local_player_pose;
 
 use super::{
     commands::{
@@ -38,9 +37,7 @@ pub(crate) fn handle_mouse_input(
     if !input.focused {
         return;
     }
-    let player_pose = world
-        .local_player_pose()
-        .map(player_pose_from_local_player_pose);
+    let player_pose = world.local_player_pose();
     let camera_target = match (button, state) {
         (MouseButton::Left | MouseButton::Right | MouseButton::Middle, ElementState::Pressed) => {
             crosshair_target_from_camera(world, camera_pose_from_world(world))
@@ -103,7 +100,8 @@ pub(crate) fn handle_mouse_input(
                         counters,
                         net_commands,
                         InteractionHand::MainHand,
-                        pose,
+                        pose.y_rot,
+                        pose.x_rot,
                         sequence,
                     );
                 }
@@ -199,16 +197,14 @@ fn scroll_signum(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_control::PlayerPose;
     use bbb_protocol::packets::{
         AddEntity, AttackEntity, BlockPos as ProtocolBlockPos, InteractEntity, PickItemFromEntity,
         PlayerAction, UseItem, Vec3d as ProtocolVec3d,
     };
-    use bbb_world::BlockPos;
+    use bbb_world::{BlockPos, LocalPlayerPoseState};
     use uuid::Uuid;
 
     use crate::crosshair::CrosshairBlockHit;
-    use crate::runtime::local_player_pose_from_player_pose;
 
     const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
@@ -313,11 +309,11 @@ mod tests {
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = WorldStore::new();
-        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+        world.set_local_player_pose(LocalPlayerPoseState {
             y_rot: 45.0,
             x_rot: -20.0,
-            ..PlayerPose::default()
-        }));
+            ..LocalPlayerPoseState::default()
+        });
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
@@ -399,14 +395,14 @@ mod tests {
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = WorldStore::new();
-        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
-            position: bbb_control::NetVec3 {
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: ProtocolVec3d {
                 x: 10.0,
                 y: 0.0,
                 z: 0.0,
             },
-            ..PlayerPose::default()
-        }));
+            ..LocalPlayerPoseState::default()
+        });
         world.apply_add_entity(AddEntity {
             id: 200,
             uuid: Uuid::from_u128(200),
@@ -634,7 +630,7 @@ mod tests {
 
     fn world_with_crosshair_entity(entity_id: i32) -> WorldStore {
         let mut world = WorldStore::new();
-        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose::default()));
+        world.set_local_player_pose(LocalPlayerPoseState::default());
         world.apply_add_entity(AddEntity {
             id: entity_id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678),

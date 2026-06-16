@@ -1,4 +1,4 @@
-use bbb_control::{NetCounters, PlayerPose};
+use bbb_control::NetCounters;
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
     AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
@@ -318,15 +318,16 @@ pub(super) fn queue_use_item_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     hand: InteractionHand,
-    pose: PlayerPose,
+    y_rot: f32,
+    x_rot: f32,
     sequence: i32,
 ) -> bool {
     if let Some(tx) = net_commands {
         let packet = UseItem {
             hand,
             sequence,
-            y_rot: pose.y_rot,
-            x_rot: pose.x_rot,
+            y_rot,
+            x_rot,
         };
         if tx.try_send(NetCommand::UseItem(packet)).is_ok() {
             counters.use_item_commands_queued += 1;

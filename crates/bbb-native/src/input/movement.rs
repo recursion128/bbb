@@ -1,14 +1,10 @@
 use std::time::{Duration, Instant};
 
-use bbb_control::{NetCounters, NetVec3, PlayerPose};
+use bbb_control::NetCounters;
 use bbb_net::{NetCommand, PlayerMoveCommand};
-use bbb_world::WorldStore;
+use bbb_protocol::packets::Vec3d as ProtocolVec3d;
+use bbb_world::{LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
-
-use crate::runtime::{
-    local_player_pose_from_player_pose, player_pose_from_local_player_pose,
-    player_position_state_from_local_player_pose,
-};
 
 use super::ClientInputState;
 
@@ -32,10 +28,7 @@ pub(crate) fn advance_player_input(
         .min(0.25);
     input.last_step = Some(now);
 
-    let Some(current_pose) = world
-        .local_player_pose()
-        .map(player_pose_from_local_player_pose)
-    else {
+    let Some(current_pose) = world.local_player_pose() else {
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
@@ -44,15 +37,15 @@ pub(crate) fn advance_player_input(
     let pose = integrate_player_input_pose(current_pose, input, dt_seconds);
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
-    world.set_local_player_pose(local_player_pose_from_player_pose(pose));
+    world.set_local_player_pose(pose);
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
 }
 
 fn integrate_player_input_pose(
-    mut pose: PlayerPose,
+    mut pose: LocalPlayerPoseState,
     input: &ClientInputState,
     dt_seconds: f64,
-) -> PlayerPose {
+) -> LocalPlayerPoseState {
     if input.focused {
         pose.y_rot =
             wrap_degrees(pose.y_rot + input.mouse_delta_x as f32 * INPUT_MOUSE_SENSITIVITY_DEGREES);
@@ -82,7 +75,7 @@ fn integrate_player_input_pose(
     pose.position.x += move_x * speed * dt_seconds;
     pose.position.y += vertical_input * speed * dt_seconds;
     pose.position.z += move_z * speed * dt_seconds;
-    pose.delta_movement = NetVec3 {
+    pose.delta_movement = ProtocolVec3d {
         x: move_x * speed / 20.0,
         y: vertical_input * speed / 20.0,
         z: move_z * speed / 20.0,
@@ -94,7 +87,7 @@ fn maybe_queue_player_move_command(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
-    pose: PlayerPose,
+    pose: LocalPlayerPoseState,
     now: Instant,
 ) {
     let Some(tx) = net_commands else {
@@ -109,9 +102,7 @@ fn maybe_queue_player_move_command(
     }
 
     let command = NetCommand::MovePlayer(PlayerMoveCommand {
-        state: player_position_state_from_local_player_pose(local_player_pose_from_player_pose(
-            pose,
-        )),
+        state: pose.position_state(),
         on_ground: pose.delta_movement.y.abs() <= f64::EPSILON,
         horizontal_collision: false,
     });
@@ -143,10 +134,10 @@ mod tests {
         let mut input = ClientInputState::new(true);
         input.forward = true;
         let pose = integrate_player_input_pose(
-            PlayerPose {
+            LocalPlayerPoseState {
                 position: vec3(0.0, 64.0, 0.0),
                 y_rot: 0.0,
-                ..PlayerPose::default()
+                ..LocalPlayerPoseState::default()
             },
             &input,
             1.0,
@@ -172,9 +163,9 @@ mod tests {
         input.mouse_delta_x = 100.0;
         input.mouse_delta_y = 1000.0;
         let pose = integrate_player_input_pose(
-            PlayerPose {
+            LocalPlayerPoseState {
                 position: vec3(0.0, 64.0, 0.0),
-                ..PlayerPose::default()
+                ..LocalPlayerPoseState::default()
             },
             &input,
             0.0,
@@ -191,10 +182,10 @@ mod tests {
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
         let mut world = WorldStore::new();
-        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
+        world.set_local_player_pose(LocalPlayerPoseState {
             position: vec3(0.0, 64.0, 0.0),
-            ..PlayerPose::default()
-        }));
+            ..LocalPlayerPoseState::default()
+        });
         let mut counters = NetCounters::default();
 
         advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
@@ -233,8 +224,8 @@ mod tests {
         assert_eq!(counters.player_move_commands_queued, 2);
     }
 
-    fn vec3(x: f64, y: f64, z: f64) -> NetVec3 {
-        NetVec3 { x, y, z }
+    fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
+        ProtocolVec3d { x, y, z }
     }
 
     fn assert_f64_near(actual: f64, expected: f64, epsilon: f64) {
