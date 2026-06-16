@@ -55,6 +55,16 @@ impl ItemModelCatalog {
         counts
     }
 
+    pub fn tint_source_type_counts(&self) -> BTreeMap<String, usize> {
+        let mut counts = BTreeMap::new();
+        for definition in self.definitions.values() {
+            definition
+                .model
+                .collect_tint_source_type_counts(&mut counts);
+        }
+        counts
+    }
+
     pub fn definitions(&self) -> &BTreeMap<String, ClientItemDefinition> {
         &self.definitions
     }
@@ -132,6 +142,7 @@ pub enum ItemModelDefinition {
     Empty,
     Model {
         model: String,
+        tints: Vec<ItemTintSource>,
     },
     Condition {
         property: String,
@@ -160,6 +171,33 @@ pub enum ItemModelDefinition {
     BundleSelectedItem,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ItemTintSource {
+    CustomModelData { index: u32, default_color: i32 },
+    Constant { value: i32 },
+    Dye { default_color: i32 },
+    Grass { temperature: f32, downfall: f32 },
+    Firework { default_color: i32 },
+    Potion { default_color: i32 },
+    MapColor { default_color: i32 },
+    Team { default_color: i32 },
+}
+
+impl ItemTintSource {
+    pub fn tint_type(&self) -> &'static str {
+        match self {
+            Self::CustomModelData { .. } => "minecraft:custom_model_data",
+            Self::Constant { .. } => "minecraft:constant",
+            Self::Dye { .. } => "minecraft:dye",
+            Self::Grass { .. } => "minecraft:grass",
+            Self::Firework { .. } => "minecraft:firework",
+            Self::Potion { .. } => "minecraft:potion",
+            Self::MapColor { .. } => "minecraft:map_color",
+            Self::Team { .. } => "minecraft:team",
+        }
+    }
+}
+
 impl ItemModelDefinition {
     pub fn model_type(&self) -> &'static str {
         match self {
@@ -177,7 +215,7 @@ impl ItemModelDefinition {
     fn collect_model_references(&self, references: &mut BTreeSet<String>) {
         match self {
             Self::Empty | Self::BundleSelectedItem => {}
-            Self::Model { model } => {
+            Self::Model { model, .. } => {
                 references.insert(model.clone());
             }
             Self::Condition {
@@ -216,6 +254,48 @@ impl ItemModelDefinition {
             }
         }
     }
+
+    fn collect_tint_source_type_counts(&self, counts: &mut BTreeMap<String, usize>) {
+        match self {
+            Self::Empty | Self::BundleSelectedItem | Self::Special { .. } => {}
+            Self::Model { tints, .. } => {
+                for tint in tints {
+                    *counts.entry(tint.tint_type().to_string()).or_default() += 1;
+                }
+            }
+            Self::Condition {
+                on_true, on_false, ..
+            } => {
+                on_true.collect_tint_source_type_counts(counts);
+                on_false.collect_tint_source_type_counts(counts);
+            }
+            Self::RangeDispatch {
+                entries, fallback, ..
+            } => {
+                for entry in entries {
+                    entry.model.collect_tint_source_type_counts(counts);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_tint_source_type_counts(counts);
+                }
+            }
+            Self::Select {
+                cases, fallback, ..
+            } => {
+                for case in cases {
+                    case.model.collect_tint_source_type_counts(counts);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_tint_source_type_counts(counts);
+                }
+            }
+            Self::Composite { models } => {
+                for model in models {
+                    model.collect_tint_source_type_counts(counts);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -237,9 +317,7 @@ fn parse_item_model_definition(value: &Value) -> Result<ItemModelDefinition> {
     let model_type = resource_id(required_str(object, "type")?)?;
     match model_type.as_str() {
         "minecraft:empty" => Ok(ItemModelDefinition::Empty),
-        "minecraft:model" => Ok(ItemModelDefinition::Model {
-            model: resource_id(required_str(object, "model")?)?,
-        }),
+        "minecraft:model" => parse_model_item_model(object),
         "minecraft:condition" => Ok(ItemModelDefinition::Condition {
             property: resource_id(required_str(object, "property")?)?,
             on_true: Box::new(parse_item_model_definition(required_value(
@@ -270,6 +348,13 @@ fn parse_item_model_definition(value: &Value) -> Result<ItemModelDefinition> {
         "minecraft:bundle/selected_item" => Ok(ItemModelDefinition::BundleSelectedItem),
         other => bail!("unsupported item model type {other:?}"),
     }
+}
+
+fn parse_model_item_model(object: &Map<String, Value>) -> Result<ItemModelDefinition> {
+    Ok(ItemModelDefinition::Model {
+        model: resource_id(required_str(object, "model")?)?,
+        tints: optional_tints(object)?,
+    })
 }
 
 fn parse_range_dispatch_model(object: &Map<String, Value>) -> Result<ItemModelDefinition> {
@@ -324,6 +409,57 @@ fn parse_select_model(object: &Map<String, Value>) -> Result<ItemModelDefinition
     })
 }
 
+fn optional_tints(object: &Map<String, Value>) -> Result<Vec<ItemTintSource>> {
+    let Some(tints) = object.get("tints") else {
+        return Ok(Vec::new());
+    };
+    let tints = tints
+        .as_array()
+        .ok_or_else(|| anyhow::anyhow!("item model field \"tints\" must be an array"))?;
+    tints.iter().map(parse_item_tint_source).collect()
+}
+
+fn parse_item_tint_source(value: &Value) -> Result<ItemTintSource> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("item tint source must be a JSON object"))?;
+    let tint_type = resource_id(required_str(object, "type")?)?;
+    match tint_type.as_str() {
+        "minecraft:custom_model_data" => Ok(ItemTintSource::CustomModelData {
+            index: optional_u32(object, "index", 0)?,
+            default_color: required_color(object, "default")?,
+        }),
+        "minecraft:constant" => Ok(ItemTintSource::Constant {
+            value: required_color(object, "value")?,
+        }),
+        "minecraft:dye" => Ok(ItemTintSource::Dye {
+            default_color: required_color(object, "default")?,
+        }),
+        "minecraft:grass" => Ok(ItemTintSource::Grass {
+            temperature: ranged_f32(
+                required_value(object, "temperature")?,
+                "temperature",
+                0.0,
+                1.0,
+            )?,
+            downfall: ranged_f32(required_value(object, "downfall")?, "downfall", 0.0, 1.0)?,
+        }),
+        "minecraft:firework" => Ok(ItemTintSource::Firework {
+            default_color: required_color(object, "default")?,
+        }),
+        "minecraft:potion" => Ok(ItemTintSource::Potion {
+            default_color: required_color(object, "default")?,
+        }),
+        "minecraft:map_color" => Ok(ItemTintSource::MapColor {
+            default_color: required_color(object, "default")?,
+        }),
+        "minecraft:team" => Ok(ItemTintSource::Team {
+            default_color: required_color(object, "default")?,
+        }),
+        other => bail!("unsupported item tint source type {other:?}"),
+    }
+}
+
 fn optional_model(
     object: &Map<String, Value>,
     field: &str,
@@ -370,6 +506,17 @@ fn optional_f32(object: &Map<String, Value>, field: &str, default: f32) -> Resul
         .unwrap_or(Ok(default))
 }
 
+fn optional_u32(object: &Map<String, Value>, field: &str, default: u32) -> Result<u32> {
+    object
+        .get(field)
+        .map(|value| u32_value(value, field))
+        .unwrap_or(Ok(default))
+}
+
+fn required_color(object: &Map<String, Value>, field: &str) -> Result<i32> {
+    i32_value(required_value(object, field)?, field)
+}
+
 fn finite_f32(value: &Value, field: &str) -> Result<f32> {
     let value = value
         .as_f64()
@@ -378,6 +525,34 @@ fn finite_f32(value: &Value, field: &str) -> Result<f32> {
         bail!("item model field {field:?} must be a finite f32");
     }
     Ok(value as f32)
+}
+
+fn ranged_f32(value: &Value, field: &str, min: f32, max: f32) -> Result<f32> {
+    let value = finite_f32(value, field)?;
+    if value < min || value > max {
+        bail!("item model field {field:?} must be in range {min}..={max}");
+    }
+    Ok(value)
+}
+
+fn i32_value(value: &Value, field: &str) -> Result<i32> {
+    let value = value
+        .as_i64()
+        .ok_or_else(|| anyhow::anyhow!("item model field {field:?} must be an integer"))?;
+    if value < i64::from(i32::MIN) || value > i64::from(i32::MAX) {
+        bail!("item model field {field:?} must fit in i32");
+    }
+    Ok(value as i32)
+}
+
+fn u32_value(value: &Value, field: &str) -> Result<u32> {
+    let value = value.as_u64().ok_or_else(|| {
+        anyhow::anyhow!("item model field {field:?} must be a non-negative integer")
+    })?;
+    if value > u64::from(u32::MAX) {
+        bail!("item model field {field:?} must fit in u32");
+    }
+    Ok(value as u32)
 }
 
 fn resource_id(value: &str) -> Result<String> {
@@ -440,7 +615,8 @@ mod tests {
         assert_eq!(
             apple.model,
             ItemModelDefinition::Model {
-                model: "minecraft:item/apple".to_string()
+                model: "minecraft:item/apple".to_string(),
+                tints: Vec::new(),
             }
         );
         assert_eq!(apple.properties, ClientItemProperties::default());
@@ -461,6 +637,136 @@ mod tests {
         );
 
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn item_model_catalog_parses_model_tint_sources() {
+        let root = unique_temp_dir("item-model-tints");
+        let items = item_dir(&root);
+        write_json(
+            &items.join("filled_map.json"),
+            r#"{
+              "model": {
+                "type": "minecraft:model",
+                "model": "minecraft:item/filled_map",
+                "tints": [
+                  { "type": "minecraft:constant", "value": -1 },
+                  { "type": "minecraft:map_color", "default": 4603950 },
+                  { "type": "minecraft:custom_model_data", "index": 2, "default": 1193046 },
+                  { "type": "minecraft:team", "default": 16711680 }
+                ]
+              }
+            }"#,
+        );
+        write_json(
+            &items.join("mixed_tints.json"),
+            r#"{
+              "model": {
+                "type": "minecraft:composite",
+                "models": [
+                  {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/leather_horse_armor",
+                    "tints": [
+                      { "type": "minecraft:dye", "default": -6265536 }
+                    ]
+                  },
+                  {
+                    "type": "minecraft:model",
+                    "model": "minecraft:block/grass_block",
+                    "tints": [
+                      { "type": "minecraft:grass", "temperature": 0.5, "downfall": 1.0 },
+                      { "type": "minecraft:firework", "default": -7697782 },
+                      { "type": "minecraft:potion", "default": -13083194 }
+                    ]
+                  }
+                ]
+              }
+            }"#,
+        );
+
+        let catalog = PackRoots::from_root(&root)
+            .unwrap()
+            .load_item_model_catalog()
+            .unwrap();
+        let ItemModelDefinition::Model { model, tints } =
+            &catalog.definition("filled_map").unwrap().model
+        else {
+            panic!("filled map should parse as a model item definition");
+        };
+
+        assert_eq!(model, "minecraft:item/filled_map");
+        assert_eq!(
+            tints,
+            &vec![
+                ItemTintSource::Constant { value: -1 },
+                ItemTintSource::MapColor {
+                    default_color: 4603950,
+                },
+                ItemTintSource::CustomModelData {
+                    index: 2,
+                    default_color: 1193046,
+                },
+                ItemTintSource::Team {
+                    default_color: 16711680,
+                },
+            ]
+        );
+        assert_eq!(
+            catalog.tint_source_type_counts(),
+            BTreeMap::from([
+                ("minecraft:constant".to_string(), 1),
+                ("minecraft:custom_model_data".to_string(), 1),
+                ("minecraft:dye".to_string(), 1),
+                ("minecraft:firework".to_string(), 1),
+                ("minecraft:grass".to_string(), 1),
+                ("minecraft:map_color".to_string(), 1),
+                ("minecraft:potion".to_string(), 1),
+                ("minecraft:team".to_string(), 1),
+            ])
+        );
+        assert_eq!(
+            catalog.model_references("mixed_tints").unwrap(),
+            vec![
+                "minecraft:block/grass_block".to_string(),
+                "minecraft:item/leather_horse_armor".to_string(),
+            ]
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn item_model_catalog_rejects_invalid_model_tints() {
+        let err = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:model",
+                "model": "minecraft:block/grass_block",
+                "tints": [
+                  { "type": "minecraft:grass", "temperature": 1.5, "downfall": 1.0 }
+                ]
+              }
+            }"#,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("must be in range"));
+
+        let err = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:model",
+                "model": "minecraft:item/test",
+                "tints": [
+                  { "type": "minecraft:unknown_tint" }
+                ]
+              }
+            }"#,
+        )
+        .unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("unsupported item tint source type"));
     }
 
     #[test]
@@ -732,6 +1038,17 @@ mod tests {
                 "minecraft:block/beehive_empty".to_string(),
                 "minecraft:block/beehive_honey".to_string(),
             ]
+        );
+        assert_eq!(
+            catalog.tint_source_type_counts(),
+            BTreeMap::from([
+                ("minecraft:constant".to_string(), 12),
+                ("minecraft:dye".to_string(), 50),
+                ("minecraft:firework".to_string(), 1),
+                ("minecraft:grass".to_string(), 6),
+                ("minecraft:map_color".to_string(), 1),
+                ("minecraft:potion".to_string(), 4),
+            ])
         );
     }
 
