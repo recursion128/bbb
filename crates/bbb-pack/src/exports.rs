@@ -9,7 +9,9 @@ pub use crate::block_models::{
 pub use crate::colors::{
     BiomeColorCatalog, BiomeColorProfile, ColorMapImage, GrassColorModifier, TerrainColorMaps,
 };
-pub use crate::item_cuboid_models::{ItemCuboidModel, ItemCuboidModelCatalog, ItemCuboidModelSet};
+pub use crate::item_cuboid_models::{
+    ItemCuboidModel, ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTexture,
+};
 pub use crate::item_models::{
     ClientItemDefinition, ClientItemProperties, ItemModelCatalog, ItemModelDefinition,
     ItemModelProperty, ItemModelTransformation, ItemSpecialModel, ItemTintSource,

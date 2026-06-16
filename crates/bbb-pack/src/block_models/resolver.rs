@@ -71,6 +71,16 @@ impl ResolvedBlockModel {
         self.display_transforms.to_display_transforms()
     }
 
+    pub(crate) fn texture_slots(&self) -> BTreeMap<String, (String, bool)> {
+        self.textures
+            .iter()
+            .filter_map(|(slot, texture)| {
+                resolve_texture_reference(&self.textures, texture)
+                    .map(|texture| (slot.clone(), (texture.id, texture.force_translucent)))
+            })
+            .collect()
+    }
+
     pub(crate) fn face_textures(&self) -> Option<BlockFaceTextures> {
         let resolved_faces: [Option<ResolvedTextureReference>; 6] = std::array::from_fn(|index| {
             self.faces[index]

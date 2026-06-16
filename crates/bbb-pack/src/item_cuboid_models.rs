@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -46,6 +46,19 @@ impl ItemCuboidModelCatalog {
             use_ambient_occlusion: resolved.use_ambient_occlusion(),
             gui_light: resolved.gui_light(),
             display_transforms: resolved.display_transforms(),
+            texture_slots: resolved
+                .texture_slots()
+                .into_iter()
+                .map(|(slot, (id, force_translucent))| {
+                    (
+                        slot,
+                        ItemCuboidTexture {
+                            id,
+                            force_translucent,
+                        },
+                    )
+                })
+                .collect(),
             face_textures: resolved.face_textures(),
             shape: resolved.shape,
         })
@@ -121,6 +134,14 @@ impl ItemCuboidModelSet {
         self.missing_model_ids.is_empty()
     }
 
+    pub fn texture_ids(&self) -> Vec<String> {
+        let mut texture_ids = BTreeSet::new();
+        for model in &self.models {
+            texture_ids.extend(model.texture_ids());
+        }
+        texture_ids.into_iter().collect()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.models.is_empty() && self.missing_model_ids.is_empty()
     }
@@ -133,8 +154,30 @@ pub struct ItemCuboidModel {
     pub use_ambient_occlusion: bool,
     pub gui_light: BlockModelGuiLight,
     pub display_transforms: BlockModelDisplayTransforms,
+    pub texture_slots: BTreeMap<String, ItemCuboidTexture>,
     pub face_textures: Option<BlockFaceTextures>,
     pub shape: BlockModelShape,
+}
+
+impl ItemCuboidModel {
+    pub fn texture_ids(&self) -> Vec<String> {
+        let mut texture_ids = BTreeSet::new();
+        texture_ids.extend(
+            self.texture_slots
+                .values()
+                .map(|texture| texture.id.clone()),
+        );
+        if let Some(face_textures) = &self.face_textures {
+            texture_ids.extend(face_textures.textures.iter().cloned());
+        }
+        texture_ids.into_iter().collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemCuboidTexture {
+    pub id: String,
+    pub force_translucent: bool,
 }
 
 fn normalize_item_model_query_id(model_id: &str) -> Option<String> {
@@ -358,14 +401,22 @@ mod tests {
         );
         write_json(
             &assets.join("models").join("item").join("test_sword.json"),
-            r#"{
+            r##"{
                 "gui_light": "front",
+                "textures": {
+                    "layer0": "minecraft:item/test_sword",
+                    "layer1": "#overlay",
+                    "overlay": {
+                        "sprite": "custom:item/test_overlay",
+                        "force_translucent": true
+                    }
+                },
                 "display": {
                     "gui": {
                         "scale": [2, 2, 2]
                     }
                 }
-            }"#,
+            }"##,
         );
         write_full_cube_model(
             &assets.join("models").join("block").join("test_block.json"),
@@ -407,6 +458,23 @@ mod tests {
                 .scale,
             [2.0, 2.0, 2.0]
         );
+        assert_eq!(
+            resolved.models[1].texture_slots["layer0"].id,
+            "minecraft:item/test_sword"
+        );
+        assert_eq!(
+            resolved.models[1].texture_slots["layer1"].id,
+            "custom:item/test_overlay"
+        );
+        assert!(resolved.models[1].texture_slots["layer1"].force_translucent);
+        assert_eq!(
+            resolved.texture_ids(),
+            vec![
+                "custom:item/test_overlay",
+                "minecraft:block/test_block",
+                "minecraft:item/test_sword",
+            ]
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -434,6 +502,45 @@ mod tests {
                 .get(BlockModelDisplayContext::Ground)
                 .translation,
             [0.0, 0.125, 0.0]
+        );
+
+        let apple = catalog.model("minecraft:item/apple").unwrap();
+        assert_eq!(apple.texture_slots["layer0"].id, "minecraft:item/apple");
+        assert_eq!(apple.texture_ids(), vec!["minecraft:item/apple"]);
+
+        let tipped_arrow = catalog.model("minecraft:item/tipped_arrow").unwrap();
+        assert_eq!(
+            tipped_arrow.texture_slots["layer0"].id,
+            "minecraft:item/tipped_arrow_head"
+        );
+        assert_eq!(
+            tipped_arrow.texture_slots["layer1"].id,
+            "minecraft:item/tipped_arrow_base"
+        );
+        assert_eq!(
+            tipped_arrow.texture_ids(),
+            vec![
+                "minecraft:item/tipped_arrow_base",
+                "minecraft:item/tipped_arrow_head"
+            ]
+        );
+
+        let spyglass = catalog.model("minecraft:item/spyglass_in_hand").unwrap();
+        assert_eq!(
+            spyglass.texture_slots["spyglass"].id,
+            "minecraft:item/spyglass_model"
+        );
+        assert_eq!(
+            spyglass.texture_slots["particle"].id,
+            "minecraft:item/spyglass_model"
+        );
+        assert_eq!(
+            spyglass
+                .face_textures
+                .as_ref()
+                .unwrap()
+                .get(BlockModelFace::North),
+            "minecraft:item/spyglass_model"
         );
 
         let stone_sword = catalog.model("stone_sword").unwrap();
@@ -493,6 +600,24 @@ mod tests {
         );
         assert!(beehive.all_models_resolved());
 
+        let glass = cuboid_models
+            .models_for_item(&item_models, "minecraft:glass")
+            .unwrap();
+        assert_eq!(
+            glass
+                .models
+                .iter()
+                .map(|model| model.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["minecraft:block/glass"]
+        );
+        assert_eq!(
+            glass.models[0].texture_slots["all"].id,
+            "minecraft:block/glass"
+        );
+        assert!(glass.models[0].texture_slots["all"].force_translucent);
+        assert_eq!(glass.texture_ids(), vec!["minecraft:block/glass"]);
+
         let air = cuboid_models
             .models_for_item(&item_models, "minecraft:air")
             .unwrap();
@@ -512,6 +637,8 @@ mod tests {
                 .get(BlockModelFace::North),
             "minecraft:missingno"
         );
+        assert_eq!(air.models[0].texture_ids(), vec!["minecraft:missingno"]);
+        assert_eq!(air.texture_ids(), vec!["minecraft:missingno"]);
     }
 
     fn write_full_cube_model(path: &Path, texture: &str) {
