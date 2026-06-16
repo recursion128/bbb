@@ -506,12 +506,13 @@ mod tests {
         DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
         EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
         InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
-        OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerHealth,
-        PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
-        RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
-        ResourcePackResponseAction, ServerData, SetPassengers, ShowDialog, StatUpdate, StoreCookie,
+        OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities,
+        PlayerExperience, PlayerHealth, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate,
+        PongResponse, ProjectilePower, RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop,
+        ResourcePackPush, ResourcePackResponseAction, ServerData, SetDefaultSpawnPosition,
+        SetHeldSlot, SetPassengers, SetSimulationDistance, ShowDialog, StatUpdate, StoreCookie,
         TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
-        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
+        Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
         WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{codec::Decoder, ids};
@@ -926,6 +927,31 @@ mod tests {
         assert_eq!(report.world_counters.resource_pack_pop_updates_applied, 1);
         assert_eq!(report.world_counters.resource_pack_pop_updates_ignored, 1);
         assert_eq!(report.world_counters.resource_packs_tracked, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_play_transfer_updates_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Transfer(Transfer {
+                host: "next.example.invalid".to_string(),
+                port: 25566,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.transfer_packets, 1);
+        assert_eq!(
+            report.world.last_transfer(),
+            Some(&bbb_world::TransferTargetState {
+                host: "next.example.invalid".to_string(),
+                port: 25566,
+            })
+        );
     }
 
     #[tokio::test]
@@ -1435,6 +1461,106 @@ mod tests {
         assert_eq!(pose.y_rot, 100.0);
         assert_eq!(pose.x_rot, -5.0);
         assert_eq!(pose.last_teleport_id, 23);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_local_player_status_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerAbilities(PlayerAbilities {
+                invulnerable: true,
+                flying: false,
+                can_fly: true,
+                instabuild: false,
+                flying_speed: 0.08,
+                walking_speed: 0.12,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetExperience(PlayerExperience {
+                progress: 0.5,
+                level: 12,
+                total: 345,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetHeldSlot(SetHeldSlot { slot: 5 }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetHeldSlot(SetHeldSlot { slot: 99 }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetDefaultSpawnPosition(
+                SetDefaultSpawnPosition {
+                    dimension: "minecraft:overworld".to_string(),
+                    pos: ProtocolBlockPos {
+                        x: -12,
+                        y: 70,
+                        z: 44,
+                    },
+                    yaw: 180.0,
+                    pitch: -15.0,
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetSimulationDistance(
+                SetSimulationDistance { distance: 12 },
+            ))
+            .await
+            .unwrap();
+
+        let report = probe.finish(6, ChunkPos { x: 0, z: 0 });
+        let local = report.world.local_player();
+
+        assert_eq!(
+            local.abilities,
+            Some(bbb_world::LocalPlayerAbilitiesState {
+                invulnerable: true,
+                flying: false,
+                can_fly: true,
+                instabuild: false,
+                flying_speed: 0.08,
+                walking_speed: 0.12,
+            })
+        );
+        assert_eq!(
+            local.experience,
+            Some(bbb_world::LocalPlayerExperienceState {
+                progress: 0.5,
+                level: 12,
+                total: 345,
+            })
+        );
+        assert_eq!(local.selected_hotbar_slot, 5);
+        assert_eq!(
+            local.default_spawn,
+            Some(bbb_world::DefaultSpawnState {
+                dimension: "minecraft:overworld".to_string(),
+                pos: BlockPos {
+                    x: -12,
+                    y: 70,
+                    z: 44,
+                },
+                yaw: 180.0,
+                pitch: -15.0,
+            })
+        );
+        assert_eq!(local.simulation_distance, Some(12));
+        assert_eq!(report.world_counters.player_abilities_packets, 1);
+        assert_eq!(report.world_counters.player_experience_packets, 1);
+        assert_eq!(report.world_counters.held_slot_packets, 2);
+        assert_eq!(report.world_counters.held_slot_updates_applied, 1);
+        assert_eq!(report.world_counters.held_slot_updates_ignored, 1);
+        assert_eq!(report.world_counters.default_spawn_position_packets, 1);
+        assert_eq!(report.world_counters.simulation_distance_packets, 1);
     }
 
     #[tokio::test]
