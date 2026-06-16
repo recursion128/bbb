@@ -19,7 +19,7 @@ pub use crate::client::debug_query::{ClientDebugQueryState, TagQueryResponseStat
 pub use crate::client::effects::{
     ClientEffectsState, ExplosionEventState, LevelParticlesEventState,
 };
-pub use crate::client::features::ClientFeatureState;
+pub use crate::client::features::{ClientFeatureState, ClientKnownPacksState, KnownPackState};
 pub use crate::client::hud::{
     ActionBarState, BossBarState, ClientHudState, DifficultyState, HudTitleState,
     SystemChatLineState, TabListState,

@@ -69,9 +69,17 @@ impl EventStreamContext {
             ConfigurationClientbound::UpdateEnabledFeatures(update) => {
                 emit(&self.events, NetEvent::UpdateEnabledFeatures(update)).await?;
             }
-            ConfigurationClientbound::SelectKnownPacks { .. } => {
+            ConfigurationClientbound::SelectKnownPacks { known_packs } => {
                 let (id, payload) = packets::encode_select_known_packs_empty();
                 self.conn.send_packet(id, &payload).await?;
+                emit(
+                    &self.events,
+                    NetEvent::SelectKnownPacks {
+                        known_packs,
+                        selected_packs: Vec::new(),
+                    },
+                )
+                .await?;
             }
             ConfigurationClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);

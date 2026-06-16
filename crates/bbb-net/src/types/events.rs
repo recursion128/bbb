@@ -5,7 +5,7 @@ use bbb_protocol::packets::{
     CustomChatCompletions, CustomPayload, CustomReportDetails, DamageEvent, DebugBlockValue,
     DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat, DisguisedChat,
     EntityAnimation, EntityEvent, EntityMove, EntityPositionSync, Explosion, ForgetLevelChunk,
-    GameEvent, GameRuleValues, GameTestHighlightPos, HurtAnimation, InitializeBorder,
+    GameEvent, GameRuleValues, GameTestHighlightPos, HurtAnimation, InitializeBorder, KnownPack,
     LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdate, MapItemData, MerchantOffers,
     MountScreenOpen, MoveMinecartAlongTrack, MoveVehicle, OpenBook, OpenScreen, OpenSignEditor,
     PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerCombatEnd,
@@ -55,6 +55,10 @@ pub enum NetEvent {
     AwardStats(AwardStats),
     ResetChat,
     UpdateEnabledFeatures(UpdateEnabledFeatures),
+    SelectKnownPacks {
+        known_packs: Vec<KnownPack>,
+        selected_packs: Vec<KnownPack>,
+    },
     CodeOfConduct {
         text: String,
     },

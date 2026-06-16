@@ -575,7 +575,7 @@ fn award_stats_event_updates_world_state_and_world_counters() {
 
 #[test]
 fn configuration_state_events_update_snapshot_counters() {
-    let (tx, mut rx) = mpsc::channel(3);
+    let (tx, mut rx) = mpsc::channel(4);
     tx.try_send(NetEvent::UpdateEnabledFeatures(
         bbb_protocol::packets::UpdateEnabledFeatures {
             features: vec![
@@ -584,6 +584,15 @@ fn configuration_state_events_update_snapshot_counters() {
             ],
         },
     ))
+    .unwrap();
+    tx.try_send(NetEvent::SelectKnownPacks {
+        known_packs: vec![bbb_protocol::packets::KnownPack {
+            namespace: "minecraft".to_string(),
+            id: "core".to_string(),
+            version: "26.1".to_string(),
+        }],
+        selected_packs: Vec::new(),
+    })
     .unwrap();
     tx.try_send(NetEvent::ResetChat).unwrap();
     tx.try_send(NetEvent::CodeOfConduct {
@@ -622,7 +631,7 @@ fn configuration_state_events_update_snapshot_counters() {
 
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        3
+        4
     );
     assert_eq!(
         world.enabled_feature_list(),
@@ -635,6 +644,14 @@ fn configuration_state_events_update_snapshot_counters() {
     assert_eq!(world.counters().update_enabled_features_packets, 1);
     assert_eq!(world.counters().enabled_features_tracked, 2);
     assert_eq!(world.counters().enabled_features_ignored, 0);
+    assert_eq!(world.known_packs().offered.len(), 1);
+    assert_eq!(world.known_packs().offered[0].namespace, "minecraft");
+    assert_eq!(world.known_packs().offered[0].id, "core");
+    assert_eq!(world.known_packs().offered[0].version, "26.1");
+    assert!(world.known_packs().selected.is_empty());
+    assert_eq!(world.counters().select_known_packs_packets, 1);
+    assert_eq!(world.counters().known_packs_offered, 1);
+    assert_eq!(world.counters().known_packs_selected, 0);
     assert!(world.client_chat().messages.is_empty());
     assert!(world.client_chat().deleted_messages.is_empty());
     assert_eq!(world.client_chat().expected_player_chat_global_index, 0);

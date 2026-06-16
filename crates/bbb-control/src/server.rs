@@ -486,6 +486,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_features" => {
             serde_json::to_value(snapshot_guard.world_store.enabled_feature_list())
         }
+        "world.client_known_packs" => {
+            serde_json::to_value(snapshot_guard.world_store.known_packs())
+        }
         "world.client_debug_query" => {
             serde_json::to_value(snapshot_guard.world_store.client_debug_query())
         }
@@ -727,7 +730,7 @@ mod tests {
         EntityPositionSync as ProtocolEntityPositionSync, Explosion as ProtocolExplosion,
         GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameType,
         HurtAnimation as ProtocolHurtAnimation, IngredientSummary, InitializeBorder,
-        InteractionHand, ItemCostSummary, ItemStackSummary, LevelEvent,
+        InteractionHand, ItemCostSummary, ItemStackSummary, KnownPack, LevelEvent,
         LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
         MerchantOffer, MerchantOffers, MobEffectFlags, MountScreenOpen, ObjectiveRenderType,
         OpenBook, OpenScreen, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
@@ -2337,6 +2340,38 @@ mod tests {
             response.result.unwrap(),
             json!(["minecraft:trade_rebalance", "minecraft:vanilla"])
         );
+    }
+
+    #[test]
+    fn client_known_packs_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_select_known_packs(
+                vec![KnownPack {
+                    namespace: "minecraft".to_string(),
+                    id: "core".to_string(),
+                    version: "26.1".to_string(),
+                }],
+                Vec::new(),
+            );
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_known_packs".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let known_packs = response.result.unwrap();
+        assert_eq!(known_packs["offered"][0]["namespace"], "minecraft");
+        assert_eq!(known_packs["offered"][0]["id"], "core");
+        assert_eq!(known_packs["offered"][0]["version"], "26.1");
+        assert_eq!(known_packs["selected"], json!([]));
     }
 
     #[test]

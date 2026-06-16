@@ -102,6 +102,12 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::UpdateEnabledFeatures(update) => {
                 world.apply_update_enabled_features(update);
             }
+            NetEvent::SelectKnownPacks {
+                known_packs,
+                selected_packs,
+            } => {
+                world.apply_select_known_packs(known_packs, selected_packs);
+            }
             NetEvent::CodeOfConduct { text } => {
                 world.apply_code_of_conduct(text);
             }

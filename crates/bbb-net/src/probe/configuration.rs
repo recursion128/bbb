@@ -59,9 +59,10 @@ impl ProbeContext {
             ConfigurationClientbound::UpdateEnabledFeatures(update) => {
                 self.world.apply_update_enabled_features(update);
             }
-            ConfigurationClientbound::SelectKnownPacks { .. } => {
+            ConfigurationClientbound::SelectKnownPacks { known_packs } => {
                 let (id, payload) = packets::encode_select_known_packs_empty();
                 self.conn.send_packet(id, &payload).await?;
+                self.world.apply_select_known_packs(known_packs, Vec::new());
             }
             ConfigurationClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
@@ -122,7 +123,7 @@ mod tests {
         ids,
         packets::{
             ChatTypeBound, ChatTypeHolder, CookieRequest, CustomPayload, CustomPayloadBody,
-            DialogHolder, DisguisedChat, RegistryData, RegistryDataEntry, RegistryTags,
+            DialogHolder, DisguisedChat, KnownPack, RegistryData, RegistryDataEntry, RegistryTags,
             ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, ShowDialog, StoreCookie,
             TagNetworkPayload, Transfer, UpdateEnabledFeatures, UpdateTags,
         },
@@ -201,6 +202,16 @@ mod tests {
                     ],
                 },
             ))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::SelectKnownPacks {
+                known_packs: vec![KnownPack {
+                    namespace: "minecraft".to_string(),
+                    id: "core".to_string(),
+                    version: "26.1".to_string(),
+                }],
+            })
             .await
             .unwrap();
         probe
@@ -293,6 +304,11 @@ mod tests {
             probe.world.enabled_feature_list(),
             vec!["minecraft:vanilla".to_string()]
         );
+        assert_eq!(probe.world.known_packs().offered.len(), 1);
+        assert_eq!(probe.world.known_packs().offered[0].namespace, "minecraft");
+        assert_eq!(probe.world.known_packs().offered[0].id, "core");
+        assert_eq!(probe.world.known_packs().offered[0].version, "26.1");
+        assert!(probe.world.known_packs().selected.is_empty());
         assert_eq!(
             probe.world.last_transfer(),
             Some(&TransferTargetState {
@@ -332,10 +348,10 @@ mod tests {
             .await
             .unwrap();
 
-        let report = probe.finish(15, ChunkPos { x: 0, z: 0 });
+        let report = probe.finish(16, ChunkPos { x: 0, z: 0 });
         assert!(report.world.resource_packs().is_empty());
         assert!(report.world.current_dialog().is_none());
-        assert_eq!(report.packets_seen, 15);
+        assert_eq!(report.packets_seen, 16);
         assert_eq!(report.registries_seen, 1);
         assert_eq!(report.registry_entries_seen, 2);
         assert_eq!(report.registry_entries_with_data, 1);
@@ -369,6 +385,9 @@ mod tests {
         assert_eq!(report.world_counters.update_enabled_features_packets, 1);
         assert_eq!(report.world_counters.enabled_features_tracked, 1);
         assert_eq!(report.world_counters.enabled_features_ignored, 1);
+        assert_eq!(report.world_counters.select_known_packs_packets, 1);
+        assert_eq!(report.world_counters.known_packs_offered, 1);
+        assert_eq!(report.world_counters.known_packs_selected, 0);
         assert_eq!(report.world_counters.transfer_packets, 1);
         assert_eq!(report.world_counters.show_dialog_packets, 1);
         assert_eq!(report.world_counters.clear_dialog_packets, 1);
