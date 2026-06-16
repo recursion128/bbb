@@ -343,6 +343,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "net.counters" => serde_json::to_value(&snapshot_guard.net),
         "renderer.counters" => serde_json::to_value(&snapshot_guard.renderer),
         "world.counters" => serde_json::to_value(snapshot_guard.world_store.counters()),
+        "world.registries" => serde_json::to_value(snapshot_guard.world_store.registries()),
         "world.client_advancements" => {
             serde_json::to_value(snapshot_guard.world_store.client_advancements())
         }
@@ -576,17 +577,19 @@ mod tests {
         PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeBookAdd, RecipeBookAddEntry,
         RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
         RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
-        ScoreboardDisplaySlot, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
-        ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
-        SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
-        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetObjective,
-        SetObjectiveMethod, SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore,
-        SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
-        SlotDisplaySummary, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
-        StonecutterSelectableRecipeSummary, StopSound, SystemChat, TagQuery, TeamCollisionRule,
-        TeamVisibility, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
-        Transfer, UpdateAdvancements, UpdateEnabledFeatures, UpdateRecipes, Vec3d as ProtocolVec3d,
-        WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        RegistryData, RegistryDataEntry, RegistryTags, ScoreboardDisplaySlot,
+        SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+        SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderWarningDelay,
+        SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetObjective, SetObjectiveMethod,
+        SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance,
+        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SlotDisplaySummary,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
+        StopSound, SystemChat, TagNetworkPayload, TagQuery, TeamCollisionRule, TeamVisibility,
+        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
+        UpdateAdvancements, UpdateEnabledFeatures, UpdateRecipes, UpdateTags,
+        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -632,6 +635,82 @@ mod tests {
         assert_eq!(status["app"]["version"], "test");
         assert_eq!(status["world"]["block_changed_ack_packets"], 1);
         assert_eq!(status["world"]["block_destructions_tracked"], 0);
+    }
+
+    #[test]
+    fn registries_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.record_registry_data(RegistryData {
+                registry: "minecraft:chat_type".to_string(),
+                raw_payload_len: 128,
+                entries: vec![
+                    RegistryDataEntry {
+                        id: "minecraft:chat".to_string(),
+                        raw_data: Some(vec![1, 2, 3]),
+                    },
+                    RegistryDataEntry {
+                        id: "minecraft:raw".to_string(),
+                        raw_data: None,
+                    },
+                ],
+            });
+            store.record_registry_data(RegistryData {
+                registry: "minecraft:chat_type".to_string(),
+                raw_payload_len: 96,
+                entries: vec![RegistryDataEntry {
+                    id: "minecraft:chat".to_string(),
+                    raw_data: Some(vec![4, 5]),
+                }],
+            });
+            store.apply_update_tags(UpdateTags {
+                registries: vec![RegistryTags {
+                    registry: "minecraft:item".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: "minecraft:logs".to_string(),
+                        entries: vec![5, 6, 7],
+                    }],
+                }],
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.registries".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let registries = response.result.unwrap();
+        assert_eq!(registries["registries"][0]["name"], "minecraft:chat_type");
+        assert_eq!(registries["registries"][0]["raw_payload_len"], 128);
+        assert_eq!(
+            registries["registries"][0]["entries"][0]["id"],
+            "minecraft:chat"
+        );
+        assert_eq!(registries["registries"][0]["entries"][0]["has_data"], true);
+        assert_eq!(registries["registries"][0]["entries"][0]["raw_data_len"], 3);
+        assert!(registries["registries"][0]["entries"][0]
+            .get("raw_data")
+            .is_none());
+        assert_eq!(registries["registries"][1]["raw_payload_len"], 96);
+        assert_eq!(
+            registries["contents"]["minecraft:chat_type"]["packet_count"],
+            2
+        );
+        assert_eq!(
+            registries["contents"]["minecraft:chat_type"]["duplicate_entry_ids"]["minecraft:chat"],
+            1
+        );
+        assert_eq!(
+            registries["tags"]["minecraft:item"]["tags"]["minecraft:logs"][2],
+            7
+        );
+        assert!(registries.get("block_states").is_none());
     }
 
     #[test]
