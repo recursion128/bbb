@@ -370,6 +370,10 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.client_player_info" => {
             serde_json::to_value(snapshot_guard.world_store.player_info())
         }
+        "world.client_recipe_book" => {
+            serde_json::to_value(snapshot_guard.world_store.recipe_book())
+        }
+        "world.client_recipes" => serde_json::to_value(snapshot_guard.world_store.recipes()),
         "world.client_scoreboard" => serde_json::to_value(snapshot_guard.world_store.scoreboard()),
         "world.client_stats" => serde_json::to_value(snapshot_guard.world_store.client_stats()),
         "world.client_waypoints" => {
@@ -557,23 +561,25 @@ mod tests {
         CustomPayload, CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
         DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
         Explosion as ProtocolExplosion, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
-        GameRuleValues, GameType, InitializeBorder, InteractionHand, ItemStackSummary,
-        LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
-        MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
+        GameRuleValues, GameType, IngredientSummary, InitializeBorder, InteractionHand,
+        ItemStackSummary, LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration,
+        MapItemData, MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
         ParticlePayload, PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill,
         PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
-        PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeDisplayType,
+        PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeBookAdd, RecipeBookAddEntry,
+        RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
+        RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
         ScoreboardDisplaySlot, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
         ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
         SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
         SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetObjective,
         SetObjectiveMethod, SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore,
         SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
-        TeamCollisionRule, TeamVisibility, TickingState, TickingStep, TrackedWaypoint,
-        TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateEnabledFeatures,
-        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        SlotDisplaySummary, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        StonecutterSelectableRecipeSummary, StopSound, SystemChat, TagQuery, TeamCollisionRule,
+        TeamVisibility, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
+        Transfer, UpdateAdvancements, UpdateEnabledFeatures, UpdateRecipes, Vec3d as ProtocolVec3d,
+        WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -1066,6 +1072,120 @@ mod tests {
         assert_eq!(inventory["open_container"]["slots"][1]["item"]["count"], 3);
         assert_eq!(inventory["open_container"]["data_values"][0]["id"], 2);
         assert_eq!(inventory["open_container"]["data_values"][0]["value"], 10);
+    }
+
+    #[test]
+    fn client_recipe_book_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_recipe_book_add(RecipeBookAdd {
+                replace: true,
+                entries: vec![
+                    recipe_book_entry(7, true, true),
+                    recipe_book_entry(8, false, false),
+                ],
+            });
+            store.apply_recipe_book_remove(RecipeBookRemove {
+                recipe_ids: vec![RecipeDisplayId { index: 8 }],
+            });
+            store.apply_recipe_book_settings(RecipeBookSettings {
+                crafting: RecipeBookTypeSettings {
+                    open: true,
+                    filtering: false,
+                },
+                furnace: RecipeBookTypeSettings {
+                    open: false,
+                    filtering: true,
+                },
+                blast_furnace: RecipeBookTypeSettings {
+                    open: true,
+                    filtering: true,
+                },
+                smoker: RecipeBookTypeSettings {
+                    open: false,
+                    filtering: false,
+                },
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_recipe_book".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let recipe_book = response.result.unwrap();
+        let known = recipe_book["known"].as_object().unwrap();
+        assert!(known.contains_key("7"));
+        assert!(!known.contains_key("8"));
+        assert_eq!(recipe_book["known"]["7"]["id"]["index"], 7);
+        assert_eq!(recipe_book["known"]["7"]["category_id"], 10);
+        assert_eq!(
+            recipe_book["known"]["7"]["crafting_requirements"][0]["item_ids"],
+            json!([42])
+        );
+        assert_eq!(recipe_book["highlights"], json!([7]));
+        assert_eq!(recipe_book["notification_ids"], json!([7]));
+        assert_eq!(recipe_book["settings"]["crafting"]["open"], true);
+        assert_eq!(recipe_book["settings"]["furnace"]["filtering"], true);
+        assert_eq!(recipe_book["settings"]["smoker"]["open"], false);
+    }
+
+    #[test]
+    fn client_recipes_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_update_recipes(UpdateRecipes {
+                property_sets: vec![RecipePropertySetSummary {
+                    key: "minecraft:furnace_input".to_string(),
+                    item_ids: vec![42, 43],
+                }],
+                stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
+                    input: IngredientSummary {
+                        tag: None,
+                        item_ids: vec![11, 12],
+                    },
+                    option_display: SlotDisplaySummary {
+                        display_type_id: 4,
+                        raw_payload: vec![4, 77],
+                    },
+                }],
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_recipes".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let recipes = response.result.unwrap();
+        assert_eq!(
+            recipes["property_sets"]["minecraft:furnace_input"],
+            json!([42, 43])
+        );
+        assert_eq!(
+            recipes["stonecutter_recipes"][0]["input"]["item_ids"],
+            json!([11, 12])
+        );
+        assert_eq!(
+            recipes["stonecutter_recipes"][0]["option_display"]["display_type_id"],
+            4
+        );
+        assert_eq!(
+            recipes["stonecutter_recipes"][0]["option_display"]["raw_payload"],
+            json!([4, 77])
+        );
     }
 
     #[test]
@@ -2316,6 +2436,27 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn recipe_book_entry(id: i32, notification: bool, highlight: bool) -> RecipeBookAddEntry {
+        RecipeBookAddEntry {
+            contents: RecipeDisplayEntry {
+                id: RecipeDisplayId { index: id },
+                display: RecipeDisplaySummary {
+                    display_type: RecipeDisplayType::Stonecutter,
+                    raw_body: vec![3, 0, 0, 0],
+                },
+                group: None,
+                category_id: 10,
+                crafting_requirements: Some(vec![IngredientSummary {
+                    tag: None,
+                    item_ids: vec![42],
+                }]),
+            },
+            flags: u8::from(notification) | (u8::from(highlight) << 1),
+            notification,
+            highlight,
         }
     }
 
