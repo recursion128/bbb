@@ -231,6 +231,28 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.set_flying" {
+        let Some(flying) = bool_param(&request.params, "flying") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.set_flying requires boolean param flying".to_string()),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::SetFlying { flying });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.container_button_click" {
         let Some(container_id) = i32_param(&request.params, "container_id") else {
             return ControlResponse {
@@ -1099,6 +1121,34 @@ mod tests {
             &snapshot,
         );
         assert!(!invalid_slot.ok);
+    }
+
+    #[test]
+    fn net_set_flying_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.set_flying".to_string(),
+                params: json!({"flying": true}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SetFlying { flying: true }]
+        );
+
+        let missing_flying = dispatch(
+            ControlRequest {
+                method: "net.set_flying".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_flying.ok);
     }
 
     #[test]

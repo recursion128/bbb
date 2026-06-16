@@ -26,6 +26,9 @@ pub enum NetControlRequest {
     SetHeldSlot {
         slot: u8,
     },
+    SetFlying {
+        flying: bool,
+    },
     ChatCommand {
         command: String,
     },

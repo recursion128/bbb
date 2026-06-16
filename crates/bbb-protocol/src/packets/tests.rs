@@ -966,6 +966,15 @@ fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order
 }
 
 #[test]
+fn play_serverbound_player_state_packet_ids_match_vanilla_26_1_registration_order() {
+    assert_eq!(ids::play::SERVERBOUND_PLAYER_ABILITIES, 40);
+    assert_eq!(ids::play::SERVERBOUND_PLAYER_ACTION, 41);
+    assert_eq!(ids::play::SERVERBOUND_PLAYER_COMMAND, 42);
+    assert_eq!(ids::play::SERVERBOUND_PLAYER_INPUT, 43);
+    assert_eq!(ids::play::SERVERBOUND_PLAYER_LOADED, 44);
+}
+
+#[test]
 fn encodes_container_inventory_packets() {
     let (id, payload) = encode_play_container_button_click(ContainerButtonClick {
         container_id: 7,
@@ -1056,6 +1065,20 @@ fn encodes_player_input_flags() {
     assert_eq!(id, ids::play::SERVERBOUND_PLAYER_INPUT);
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_u8().unwrap(), 0b0011_0101);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_player_abilities_flying_bit() {
+    let (id, payload) = encode_play_player_abilities(PlayerAbilitiesCommand { flying: true });
+    assert_eq!(id, ids::play::SERVERBOUND_PLAYER_ABILITIES);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_u8().unwrap(), 0x02);
+    assert!(decoder.is_empty());
+
+    let (_, payload) = encode_play_player_abilities(PlayerAbilitiesCommand { flying: false });
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_u8().unwrap(), 0x00);
     assert!(decoder.is_empty());
 }
 

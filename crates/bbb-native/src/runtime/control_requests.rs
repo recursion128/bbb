@@ -15,7 +15,8 @@ use crate::{
     input::{
         queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
         queue_container_click_command, queue_container_close_request_command,
-        queue_container_slot_state_changed_command, select_hotbar_slot,
+        queue_container_slot_state_changed_command, queue_player_abilities_command,
+        select_hotbar_slot,
     },
 };
 
@@ -90,6 +91,9 @@ pub(crate) fn pump_control_net_requests(
         match request {
             NetControlRequest::SetHeldSlot { slot } => {
                 select_hotbar_slot(counters, world, net_commands, slot);
+            }
+            NetControlRequest::SetFlying { flying } => {
+                queue_player_abilities_command(counters, world, net_commands, flying);
             }
             NetControlRequest::ChatCommand { command } => {
                 queue_chat_command(counters, net_commands, command);
@@ -259,6 +263,68 @@ mod tests {
         assert_eq!(world.counters().held_slot_packets, 0);
         assert_eq!(counters.held_slot_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(4));
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_sets_flying_when_allowed_and_queues_command() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::SetFlying { flying: true });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: true,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert!(world.local_player().abilities.unwrap().flying);
+        assert_eq!(world.counters().player_abilities_packets, 1);
+        assert_eq!(counters.player_abilities_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAbilities(bbb_protocol::packets::PlayerAbilitiesCommand {
+                flying: true
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_does_not_set_flying_without_permission() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::SetFlying { flying: true });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: false,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert!(!world.local_player().abilities.unwrap().flying);
+        assert_eq!(counters.player_abilities_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 

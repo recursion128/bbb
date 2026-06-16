@@ -3,9 +3,9 @@ use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
     AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
     ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection,
-    InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAction,
-    PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem, UseItemOn,
-    Vec3d as ProtocolVec3d,
+    InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAbilitiesCommand,
+    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem,
+    UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -38,6 +38,28 @@ pub(super) fn queue_sprint_command(
         PlayerCommandAction::StopSprinting
     };
     queue_player_command_action(counters, world, net_commands, action, 0);
+}
+
+pub(crate) fn queue_player_abilities_command(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    flying: bool,
+) -> bool {
+    if !world.set_local_flying(flying) {
+        return false;
+    }
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::PlayerAbilities(PlayerAbilitiesCommand {
+                flying,
+            }))
+            .is_ok()
+        {
+            counters.player_abilities_commands_queued += 1;
+        }
+    }
+    true
 }
 
 pub(super) fn queue_player_command_action(

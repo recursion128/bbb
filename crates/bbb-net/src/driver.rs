@@ -13,9 +13,9 @@ pub(crate) use commands::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_interact_entity,
-    send_pick_item_from_block, send_pick_item_from_entity, send_player_action, send_player_command,
-    send_player_input_command, send_set_held_slot_command, send_swing_command, send_use_item,
-    send_use_item_on,
+    send_pick_item_from_block, send_pick_item_from_entity, send_player_abilities_command,
+    send_player_action, send_player_command, send_player_input_command, send_set_held_slot_command,
+    send_swing_command, send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -84,6 +84,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                     Some(NetCommand::PlayerCommand(command)) => {
                         send_player_command(conn, command).await?;
+                    }
+                    Some(NetCommand::PlayerAbilities(command)) => {
+                        send_player_abilities_command(conn, command).await?;
                     }
                     Some(NetCommand::PlayerInput(input)) => {
                         send_player_input_command(conn, input).await?;
@@ -157,6 +160,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::MoveVehicle(_)) => {}
                     Some(NetCommand::PlayerAction(_)) => {}
                     Some(NetCommand::PlayerCommand(_)) => {}
+                    Some(NetCommand::PlayerAbilities(_)) => {}
                     Some(NetCommand::PlayerInput(_)) => {}
                     Some(NetCommand::ChatCommand(_)) => {}
                     Some(NetCommand::AttackEntity(_)) => {}
@@ -196,8 +200,8 @@ mod tests {
             AttackEntity, BlockHitResult, BlockPos, ChatCommand, CommandSuggestionRequest,
             ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
             ContainerSlotStateChanged, Direction, HashedStack, InteractEntity, InteractionHand,
-            PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind, UseItem,
-            UseItemOn, Vec3d,
+            PickItemFromBlock, PickItemFromEntity, PlayerAbilitiesCommand, PlayerAction,
+            PlayerActionKind, UseItem, UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -395,6 +399,27 @@ mod tests {
             decoder.read_string(32767).unwrap(),
             "/give @p minecraft:stone"
         );
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_player_abilities_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::PlayerAbilities(PlayerAbilitiesCommand {
+            flying: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "player abilities").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_ABILITIES);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_u8().unwrap(), 0x02);
         assert!(decoder.is_empty());
     }
 

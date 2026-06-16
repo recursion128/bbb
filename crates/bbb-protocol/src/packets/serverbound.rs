@@ -349,6 +349,21 @@ pub fn encode_play_player_input(input: PlayerInput) -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_PLAYER_INPUT, out.into_inner())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerAbilitiesCommand {
+    pub flying: bool,
+}
+
+pub fn encode_play_player_abilities(command: PlayerAbilitiesCommand) -> (i32, Vec<u8>) {
+    let mut flags = 0u8;
+    if command.flying {
+        flags |= 0x02;
+    }
+    let mut out = Encoder::new();
+    out.write_u8(flags);
+    (ids::play::SERVERBOUND_PLAYER_ABILITIES, out.into_inner())
+}
+
 pub fn encode_play_player_command(command: PlayerCommand) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(command.entity_id);

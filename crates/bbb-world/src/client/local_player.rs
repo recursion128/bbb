@@ -164,6 +164,17 @@ impl WorldStore {
         });
     }
 
+    pub fn set_local_flying(&mut self, flying: bool) -> bool {
+        let Some(abilities) = self.local_player.abilities.as_mut() else {
+            return false;
+        };
+        if !abilities.can_fly {
+            return false;
+        }
+        abilities.flying = flying;
+        true
+    }
+
     pub fn apply_player_health(&mut self, packet: ProtocolPlayerHealth) {
         self.counters.player_health_packets += 1;
         self.local_player.health = Some(LocalPlayerHealthState {
@@ -503,6 +514,38 @@ mod tests {
         assert_eq!(store.counters().held_slot_packets, 0);
         assert_eq!(store.counters().held_slot_updates_applied, 0);
         assert_eq!(store.counters().held_slot_updates_ignored, 0);
+    }
+
+    #[test]
+    fn local_flying_updates_only_when_server_allows_flight() {
+        let mut store = WorldStore::new();
+
+        assert!(!store.set_local_flying(true));
+
+        store.apply_player_abilities(ProtocolPlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: false,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        assert!(!store.set_local_flying(true));
+        assert!(!store.local_player().abilities.unwrap().flying);
+
+        store.apply_player_abilities(ProtocolPlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: true,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        assert!(store.set_local_flying(true));
+        assert!(store.local_player().abilities.unwrap().flying);
+        assert!(store.set_local_flying(false));
+        assert!(!store.local_player().abilities.unwrap().flying);
+        assert_eq!(store.counters().player_abilities_packets, 2);
     }
 
     #[test]
