@@ -388,6 +388,11 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.last_block_changed_ack" => {
             serde_json::to_value(snapshot_guard.world_store.last_block_changed_ack())
         }
+        "world.client_block_events" => Ok(serde_json::json!({
+            "destructions": snapshot_guard.world_store.block_destructions(),
+            "block_events": snapshot_guard.world_store.block_events(),
+            "level_events": snapshot_guard.world_store.level_events(),
+        })),
         "world.world_border" => serde_json::to_value(snapshot_guard.world_store.world_border()),
         "world.level_clock" => Ok(serde_json::json!({
             "world_time": snapshot_guard.world_store.world_time(),
@@ -556,15 +561,16 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
-        BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound, ChatTypeHolder,
-        CommandArgumentParser, CommandNode, CommandNodeType, Commands, ContainerSetContent,
-        ContainerSetData, ContainerSetSlot, CustomChatCompletions, CustomChatCompletionsAction,
-        CustomPayload, CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
-        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
-        Explosion as ProtocolExplosion, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
-        GameRuleValues, GameType, IngredientSummary, InitializeBorder, InteractionHand,
-        ItemStackSummary, LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration,
-        MapItemData, MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
+        BlockDestruction, BlockEvent, BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound,
+        ChatTypeHolder, CommandArgumentParser, CommandNode, CommandNodeType, Commands,
+        ContainerSetContent, ContainerSetData, ContainerSetSlot, CustomChatCompletions,
+        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
+        DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
+        EntityPositionSync as ProtocolEntityPositionSync, Explosion as ProtocolExplosion,
+        GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameType,
+        IngredientSummary, InitializeBorder, InteractionHand, ItemStackSummary, LevelEvent,
+        LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
+        MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
         ParticlePayload, PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill,
         PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
         PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeBookAdd, RecipeBookAddEntry,
@@ -1733,6 +1739,67 @@ mod tests {
 
         assert!(response.ok);
         assert_eq!(response.result.unwrap()["sequence"], 17);
+    }
+
+    #[test]
+    fn client_block_events_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            assert!(store.apply_block_destruction(BlockDestruction {
+                id: 7,
+                pos: ProtocolBlockPos {
+                    x: 12,
+                    y: 64,
+                    z: -5
+                },
+                progress: 3,
+            }));
+            store.apply_block_event(BlockEvent {
+                pos: ProtocolBlockPos {
+                    x: 13,
+                    y: 65,
+                    z: -6,
+                },
+                b0: 1,
+                b1: 5,
+                block_id: 123,
+            });
+            store.apply_level_event(LevelEvent {
+                event_type: 2001,
+                pos: ProtocolBlockPos {
+                    x: 14,
+                    y: 66,
+                    z: -7,
+                },
+                data: 9,
+                global: true,
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_block_events".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let events = response.result.unwrap();
+        assert_eq!(events["destructions"][0]["id"], 7);
+        assert_eq!(events["destructions"][0]["pos"]["x"], 12);
+        assert_eq!(events["destructions"][0]["pos"]["z"], -5);
+        assert_eq!(events["destructions"][0]["progress"], 3);
+        assert_eq!(events["block_events"][0]["pos"]["x"], 13);
+        assert_eq!(events["block_events"][0]["b0"], 1);
+        assert_eq!(events["block_events"][0]["b1"], 5);
+        assert_eq!(events["block_events"][0]["block_id"], 123);
+        assert_eq!(events["level_events"][0]["event_type"], 2001);
+        assert_eq!(events["level_events"][0]["pos"]["y"], 66);
+        assert_eq!(events["level_events"][0]["data"], 9);
+        assert_eq!(events["level_events"][0]["global"], true);
     }
 
     #[test]
