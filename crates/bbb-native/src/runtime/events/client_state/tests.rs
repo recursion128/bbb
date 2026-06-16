@@ -1,9 +1,9 @@
 use super::*;
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_X,
-    PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y_ROT,
+    BlockPos as ProtocolBlockPos, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X,
+    PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT, PLAYER_RELATIVE_Y_ROT,
 };
-use bbb_world::BlockPos;
+use bbb_world::{BlockPos, LocalPlayerPoseState};
 
 #[test]
 fn player_position_updates_absolute_and_relative_pose() {
@@ -12,7 +12,7 @@ fn player_position_updates_absolute_and_relative_pose() {
         &mut world,
         player_position_update(1, [10.0, 64.0, -5.0], [0.125, 0.0, 0.0], 90.0, 15.0, 0),
     );
-    let pose = player_pose_from_local_player_pose(world.local_player_pose().unwrap());
+    let pose = world.local_player_pose().unwrap();
     assert_eq!(pose.position, vec3(10.0, 64.0, -5.0));
     assert_eq!(pose.delta_movement, vec3(0.125, 0.0, 0.0));
     assert_eq!(pose.y_rot, 90.0);
@@ -34,7 +34,7 @@ fn player_position_updates_absolute_and_relative_pose() {
                 | PLAYER_RELATIVE_DELTA_X,
         ),
     );
-    let pose = player_pose_from_local_player_pose(world.local_player_pose().unwrap());
+    let pose = world.local_player_pose().unwrap();
     assert_eq!(pose.position, vec3(11.5, -2.0, 7.0));
     assert_eq!(pose.delta_movement, vec3(0.375, 0.5, 0.75));
     assert_eq!(pose.y_rot, 110.0);
@@ -47,13 +47,13 @@ fn player_position_updates_absolute_and_relative_pose() {
 #[test]
 fn player_rotation_updates_pose_orientation() {
     let mut world = WorldStore::new();
-    world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
-        position: vec3(10.0, 64.0, -5.0),
-        delta_movement: vec3(0.125, 0.0, 0.0),
-        y_rot: 90.0,
-        x_rot: 15.0,
-        last_teleport_id: 7,
-    }));
+    world.set_local_player_pose(local_player_pose(
+        [10.0, 64.0, -5.0],
+        [0.125, 0.0, 0.0],
+        90.0,
+        15.0,
+        7,
+    ));
 
     apply_player_rotation_update(
         &mut world,
@@ -65,7 +65,7 @@ fn player_rotation_updates_pose_orientation() {
         },
     );
 
-    let pose = player_pose_from_local_player_pose(world.local_player_pose().unwrap());
+    let pose = world.local_player_pose().unwrap();
     assert_eq!(pose.position, vec3(10.0, 64.0, -5.0));
     assert_eq!(pose.delta_movement, vec3(0.125, 0.0, 0.0));
     assert_eq!(pose.y_rot, 110.0);
@@ -78,13 +78,13 @@ fn player_rotation_updates_pose_orientation() {
 #[test]
 fn player_look_at_updates_world_pose_orientation() {
     let mut world = WorldStore::new();
-    world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
-        position: vec3(0.0, 64.0, 0.0),
-        delta_movement: vec3(0.0, 0.0, 0.0),
-        y_rot: 90.0,
-        x_rot: 30.0,
-        last_teleport_id: 7,
-    }));
+    world.set_local_player_pose(local_player_pose(
+        [0.0, 64.0, 0.0],
+        [0.0, 0.0, 0.0],
+        90.0,
+        30.0,
+        7,
+    ));
 
     apply_player_look_at_update(
         &mut world,
@@ -99,7 +99,7 @@ fn player_look_at_updates_world_pose_orientation() {
         },
     );
 
-    let pose = player_pose_from_local_player_pose(world.local_player_pose().unwrap());
+    let pose = world.local_player_pose().unwrap();
     assert_eq!(pose.position, vec3(0.0, 64.0, 0.0));
     assert_eq!(pose.delta_movement, vec3(0.0, 0.0, 0.0));
     assert!((pose.y_rot - 0.0).abs() < 0.001);
@@ -473,6 +473,22 @@ fn player_position_update(
     }
 }
 
-fn vec3(x: f64, y: f64, z: f64) -> NetVec3 {
-    NetVec3 { x, y, z }
+fn local_player_pose(
+    position: [f64; 3],
+    delta_movement: [f64; 3],
+    y_rot: f32,
+    x_rot: f32,
+    last_teleport_id: i32,
+) -> LocalPlayerPoseState {
+    LocalPlayerPoseState {
+        position: vec3(position[0], position[1], position[2]),
+        delta_movement: vec3(delta_movement[0], delta_movement[1], delta_movement[2]),
+        y_rot,
+        x_rot,
+        last_teleport_id,
+    }
+}
+
+fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
+    ProtocolVec3d { x, y, z }
 }

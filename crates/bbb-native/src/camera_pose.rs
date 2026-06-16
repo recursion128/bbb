@@ -25,20 +25,6 @@ pub(crate) fn camera_pose_from_world(world: &WorldStore) -> Option<CameraPose> {
         .map(camera_pose_from_local_player_pose)
 }
 
-#[cfg(test)]
-pub(crate) fn camera_pose_from_player_pose(player: bbb_control::PlayerPose) -> CameraPose {
-    CameraPose {
-        position: [
-            player.position.x as f32,
-            player.position.y as f32,
-            player.position.z as f32,
-        ],
-        y_rot: player.y_rot,
-        x_rot: player.x_rot,
-        eye_height: CameraPose::STANDING_EYE_HEIGHT,
-    }
-}
-
 fn camera_pose_from_local_player_pose(player: LocalPlayerPoseState) -> CameraPose {
     CameraPose {
         position: [

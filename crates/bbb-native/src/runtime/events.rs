@@ -2,8 +2,6 @@ mod client_state;
 mod control_state;
 mod dispatcher;
 
-#[cfg(test)]
-pub(crate) use client_state::local_player_pose_from_player_pose;
 pub(super) use dispatcher::drain_net_events_with_sinks;
 #[cfg(test)]
 pub(super) use dispatcher::{drain_net_events, drain_net_events_with_audio};

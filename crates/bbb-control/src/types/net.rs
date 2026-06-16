@@ -35,19 +35,3 @@ pub struct NetCounters {
     pub move_vehicle_commands_queued: usize,
     pub last_error: Option<String>,
 }
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
-pub struct NetVec3 {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
-pub struct PlayerPose {
-    pub position: NetVec3,
-    pub delta_movement: NetVec3,
-    pub y_rot: f32,
-    pub x_rot: f32,
-    pub last_teleport_id: i32,
-}

@@ -93,6 +93,9 @@ Known priority areas:
   needs them.
 - Continue removing native-only `last_*` snapshots where a world owner exists or
   should exist.
+- Local player pose is canonical in `bbb-world::LocalPlayerPoseState`.
+  `bbb-control` must not reintroduce duplicate pose/vector snapshot structs for
+  runtime tests or control projections.
 - Keep offline probes aligned with online event handling; play/configuration
   packets with world apply APIs should stay covered by probe regression tests.
 - Configuration Code of Conduct text is recorded in world UI state and native

@@ -1,10 +1,10 @@
-#[cfg(test)]
-use bbb_control::PlayerPose;
 use bbb_protocol::packets::{
     BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
     Direction as ProtocolDirection, Vec3d as ProtocolVec3d,
 };
 use bbb_renderer::{CameraPose, SelectionOutline};
+#[cfg(test)]
+use bbb_world::LocalPlayerPoseState;
 use bbb_world::{BlockPos, EntityPickTargetState, WorldStore};
 
 use crate::block_outline::{
@@ -85,7 +85,7 @@ pub(crate) fn crosshair_target_from_camera_at_partial_tick(
 #[cfg(test)]
 pub(crate) fn crosshair_target_from_world(
     world: &WorldStore,
-    pose: Option<PlayerPose>,
+    pose: Option<LocalPlayerPoseState>,
 ) -> Option<CrosshairTarget> {
     crosshair_target_from_world_at_partial_tick(world, pose, 1.0)
 }
@@ -93,7 +93,7 @@ pub(crate) fn crosshair_target_from_world(
 #[cfg(test)]
 fn crosshair_target_from_world_at_partial_tick(
     world: &WorldStore,
-    pose: Option<PlayerPose>,
+    pose: Option<LocalPlayerPoseState>,
     entity_partial_tick: f32,
 ) -> Option<CrosshairTarget> {
     let local_player_id = world.local_player_id();
@@ -191,7 +191,7 @@ fn clamp_entity_partial_tick(partial_tick: f32) -> f32 {
 
 #[cfg(test)]
 fn raycast_crosshair_block<F>(
-    pose: PlayerPose,
+    pose: LocalPlayerPoseState,
     max_distance: f64,
     mut material_at: F,
 ) -> Option<BlockPos>
@@ -208,7 +208,7 @@ where
 
 #[cfg(test)]
 fn raycast_crosshair_block_hit<F>(
-    pose: PlayerPose,
+    pose: LocalPlayerPoseState,
     max_distance: f64,
     target_at: F,
 ) -> Option<CrosshairBlockHit>
@@ -571,7 +571,7 @@ pub(crate) fn protocol_block_hit_result_from_crosshair_hit(
 }
 
 #[cfg(test)]
-fn eye_position_from_player_pose(pose: PlayerPose) -> [f64; 3] {
+fn eye_position_from_player_pose(pose: LocalPlayerPoseState) -> [f64; 3] {
     [
         pose.position.x,
         pose.position.y + f64::from(CameraPose::STANDING_EYE_HEIGHT),
@@ -587,7 +587,7 @@ struct CrosshairRay {
 }
 
 #[cfg(test)]
-fn crosshair_ray_from_player_pose(pose: PlayerPose) -> CrosshairRay {
+fn crosshair_ray_from_player_pose(pose: LocalPlayerPoseState) -> CrosshairRay {
     CrosshairRay {
         eye: eye_position_from_player_pose(pose),
         y_rot: pose.y_rot,
@@ -625,7 +625,6 @@ fn look_direction_from_crosshair_ray(ray: CrosshairRay) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_control::NetVec3;
     use bbb_protocol::packets::{
         AddEntity, EntityDataValue, EntityDataValueKind, EntityPositionSync, SetEntityData,
         Vec3d as ProtocolVec3d,
@@ -1131,20 +1130,20 @@ mod tests {
         );
     }
 
-    fn player_pose(y_rot: f32, x_rot: f32, z: f64) -> PlayerPose {
+    fn player_pose(y_rot: f32, x_rot: f32, z: f64) -> LocalPlayerPoseState {
         player_pose_at([0.0, 0.0, z], y_rot, x_rot)
     }
 
-    fn player_pose_at(position: [f64; 3], y_rot: f32, x_rot: f32) -> PlayerPose {
-        PlayerPose {
-            position: NetVec3 {
+    fn player_pose_at(position: [f64; 3], y_rot: f32, x_rot: f32) -> LocalPlayerPoseState {
+        LocalPlayerPoseState {
+            position: ProtocolVec3d {
                 x: position[0],
                 y: position[1],
                 z: position[2],
             },
             y_rot,
             x_rot,
-            ..PlayerPose::default()
+            ..LocalPlayerPoseState::default()
         }
     }
 

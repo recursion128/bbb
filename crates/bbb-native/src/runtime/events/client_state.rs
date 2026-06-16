@@ -1,7 +1,3 @@
-#[cfg(test)]
-use bbb_control::{NetVec3, PlayerPose};
-#[cfg(test)]
-use bbb_world::LocalPlayerPoseState;
 use bbb_world::WorldStore;
 
 pub(super) fn apply_system_chat_update(
@@ -65,46 +61,6 @@ pub(super) fn apply_player_look_at_update(
     update: bbb_protocol::packets::PlayerLookAt,
 ) {
     world.apply_player_look_at(update);
-}
-
-#[cfg(test)]
-pub(crate) fn player_pose_from_local_player_pose(player: LocalPlayerPoseState) -> PlayerPose {
-    PlayerPose {
-        position: net_vec3_from_protocol(player.position),
-        delta_movement: net_vec3_from_protocol(player.delta_movement),
-        y_rot: player.y_rot,
-        x_rot: player.x_rot,
-        last_teleport_id: player.last_teleport_id,
-    }
-}
-
-#[cfg(test)]
-pub(crate) fn local_player_pose_from_player_pose(player: PlayerPose) -> LocalPlayerPoseState {
-    LocalPlayerPoseState {
-        position: protocol_vec3_from_net(player.position),
-        delta_movement: protocol_vec3_from_net(player.delta_movement),
-        y_rot: player.y_rot,
-        x_rot: player.x_rot,
-        last_teleport_id: player.last_teleport_id,
-    }
-}
-
-#[cfg(test)]
-fn protocol_vec3_from_net(vec: NetVec3) -> bbb_protocol::packets::Vec3d {
-    bbb_protocol::packets::Vec3d {
-        x: vec.x,
-        y: vec.y,
-        z: vec.z,
-    }
-}
-
-#[cfg(test)]
-fn net_vec3_from_protocol(vec: bbb_protocol::packets::Vec3d) -> NetVec3 {
-    NetVec3 {
-        x: vec.x,
-        y: vec.y,
-        z: vec.z,
-    }
 }
 
 #[cfg(test)]

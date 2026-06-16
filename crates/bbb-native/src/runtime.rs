@@ -32,8 +32,6 @@ mod events;
 const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
 
 pub(crate) use control_requests::pump_control_net_requests;
-#[cfg(test)]
-pub(crate) use events::local_player_pose_from_player_pose;
 
 #[derive(Debug, Default)]
 pub(crate) struct ClientAnimationTickState {
@@ -284,22 +282,22 @@ pub(crate) fn publish_snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_control::PlayerPose;
-
-    use crate::camera_pose::camera_pose_from_player_pose;
+    use bbb_world::LocalPlayerPoseState;
 
     #[test]
     fn camera_pose_uses_standing_eye_height() {
-        let pose = camera_pose_from_player_pose(PlayerPose {
-            position: bbb_control::NetVec3 {
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
                 x: 1.0,
                 y: 2.0,
                 z: 3.0,
             },
             y_rot: 45.0,
             x_rot: -10.0,
-            ..PlayerPose::default()
+            ..LocalPlayerPoseState::default()
         });
+        let pose = camera_pose_from_world(&world).unwrap();
 
         assert_eq!(pose.position, [1.0, 2.0, 3.0]);
         assert_eq!(pose.y_rot, 45.0);
@@ -332,16 +330,7 @@ mod tests {
     #[test]
     fn renderer_camera_pose_follows_active_camera_entity() {
         let mut world = WorldStore::new();
-        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
-            position: bbb_control::NetVec3 {
-                x: 10.0,
-                y: 64.0,
-                z: -5.0,
-            },
-            y_rot: 90.0,
-            x_rot: -10.0,
-            ..PlayerPose::default()
-        }));
+        world.set_local_player_pose(local_player_pose([10.0, 64.0, -5.0], 90.0, -10.0));
         world.apply_add_entity(bbb_protocol::packets::AddEntity {
             id: 123,
             uuid: uuid::Uuid::from_u128(123),
@@ -399,16 +388,7 @@ mod tests {
     #[test]
     fn audio_scene_command_tracks_listener_and_entity_positions() {
         let mut world = WorldStore::new();
-        world.set_local_player_pose(local_player_pose_from_player_pose(PlayerPose {
-            position: bbb_control::NetVec3 {
-                x: 10.0,
-                y: 64.0,
-                z: -5.0,
-            },
-            y_rot: 90.0,
-            x_rot: -10.0,
-            ..PlayerPose::default()
-        }));
+        world.set_local_player_pose(local_player_pose([10.0, 64.0, -5.0], 90.0, -10.0));
         world.apply_add_entity(bbb_protocol::packets::AddEntity {
             id: 123,
             uuid: uuid::Uuid::from_u128(123),
@@ -573,6 +553,19 @@ mod tests {
                 1.4, 2.8, 0.0
             ))
         );
+    }
+
+    fn local_player_pose(position: [f64; 3], y_rot: f32, x_rot: f32) -> LocalPlayerPoseState {
+        LocalPlayerPoseState {
+            position: bbb_protocol::packets::Vec3d {
+                x: position[0],
+                y: position[1],
+                z: position[2],
+            },
+            y_rot,
+            x_rot,
+            ..LocalPlayerPoseState::default()
+        }
     }
 
     fn test_add_entity(id: i32, entity_type_id: i32) -> bbb_protocol::packets::AddEntity {
