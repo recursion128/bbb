@@ -29,6 +29,11 @@ pub enum NetControlRequest {
     SetFlying {
         flying: bool,
     },
+    PlaceRecipe {
+        container_id: i32,
+        recipe_index: i32,
+        use_max_items: bool,
+    },
     ChatCommand {
         command: String,
     },

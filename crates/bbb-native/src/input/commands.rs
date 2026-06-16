@@ -3,9 +3,9 @@ use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
     AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
     ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection,
-    InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlayerAbilitiesCommand,
-    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput, UseItem,
-    UseItemOn, Vec3d as ProtocolVec3d,
+    InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+    PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
+    PlayerInput, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -60,6 +60,18 @@ pub(crate) fn queue_player_abilities_command(
         }
     }
     true
+}
+
+pub(crate) fn queue_place_recipe_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: PlaceRecipeCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::PlaceRecipe(command)).is_ok() {
+            counters.place_recipe_commands_queued += 1;
+        }
+    }
 }
 
 pub(super) fn queue_player_command_action(

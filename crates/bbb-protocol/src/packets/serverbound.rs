@@ -350,6 +350,21 @@ pub fn encode_play_player_input(input: PlayerInput) -> (i32, Vec<u8>) {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlaceRecipeCommand {
+    pub container_id: i32,
+    pub recipe_index: i32,
+    pub use_max_items: bool,
+}
+
+pub fn encode_play_place_recipe(command: PlaceRecipeCommand) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(command.container_id);
+    out.write_var_i32(command.recipe_index);
+    out.write_bool(command.use_max_items);
+    (ids::play::SERVERBOUND_PLACE_RECIPE, out.into_inner())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerAbilitiesCommand {
     pub flying: bool,
 }

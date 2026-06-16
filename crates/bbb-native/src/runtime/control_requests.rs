@@ -15,8 +15,8 @@ use crate::{
     input::{
         queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
         queue_container_click_command, queue_container_close_request_command,
-        queue_container_slot_state_changed_command, queue_player_abilities_command,
-        select_hotbar_slot,
+        queue_container_slot_state_changed_command, queue_place_recipe_command,
+        queue_player_abilities_command, select_hotbar_slot,
     },
 };
 
@@ -94,6 +94,21 @@ pub(crate) fn pump_control_net_requests(
             }
             NetControlRequest::SetFlying { flying } => {
                 queue_player_abilities_command(counters, world, net_commands, flying);
+            }
+            NetControlRequest::PlaceRecipe {
+                container_id,
+                recipe_index,
+                use_max_items,
+            } => {
+                queue_place_recipe_command(
+                    counters,
+                    net_commands,
+                    bbb_protocol::packets::PlaceRecipeCommand {
+                        container_id,
+                        recipe_index,
+                        use_max_items,
+                    },
+                );
             }
             NetControlRequest::ChatCommand { command } => {
                 queue_chat_command(counters, net_commands, command);
@@ -325,6 +340,36 @@ mod tests {
         assert!(!world.local_player().abilities.unwrap().flying);
         assert_eq!(counters.player_abilities_commands_queued, 0);
         assert!(rx.try_recv().is_err());
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_place_recipe() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::PlaceRecipe {
+                container_id: 7,
+                recipe_index: 123,
+                use_max_items: true,
+            });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.place_recipe_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlaceRecipe(bbb_protocol::packets::PlaceRecipeCommand {
+                container_id: 7,
+                recipe_index: 123,
+                use_max_items: true,
+            })
+        );
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 

@@ -967,6 +967,7 @@ fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order
 
 #[test]
 fn play_serverbound_player_state_packet_ids_match_vanilla_26_1_registration_order() {
+    assert_eq!(ids::play::SERVERBOUND_PLACE_RECIPE, 39);
     assert_eq!(ids::play::SERVERBOUND_PLAYER_ABILITIES, 40);
     assert_eq!(ids::play::SERVERBOUND_PLAYER_ACTION, 41);
     assert_eq!(ids::play::SERVERBOUND_PLAYER_COMMAND, 42);
@@ -1046,6 +1047,21 @@ fn encodes_container_inventory_packets() {
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 12);
     assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_place_recipe_packet() {
+    let (id, payload) = encode_play_place_recipe(PlaceRecipeCommand {
+        container_id: 7,
+        recipe_index: 123,
+        use_max_items: true,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_PLACE_RECIPE);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert_eq!(decoder.read_var_i32().unwrap(), 123);
     assert!(decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
 }

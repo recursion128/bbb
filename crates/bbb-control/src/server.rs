@@ -253,6 +253,46 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.place_recipe" {
+        let Some(container_id) = i32_param(&request.params, "container_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.place_recipe requires integer param container_id".to_string()),
+            };
+        };
+        let Some(recipe_index) = i32_param(&request.params, "recipe_index") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.place_recipe requires integer param recipe_index".to_string()),
+            };
+        };
+        let Some(use_max_items) = bool_param(&request.params, "use_max_items") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.place_recipe requires boolean param use_max_items".to_string()),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::PlaceRecipe {
+                container_id,
+                recipe_index,
+                use_max_items,
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.container_button_click" {
         let Some(container_id) = i32_param(&request.params, "container_id") else {
             return ControlResponse {
@@ -1149,6 +1189,38 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_flying.ok);
+    }
+
+    #[test]
+    fn net_place_recipe_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.place_recipe".to_string(),
+                params: json!({"container_id": 7, "recipe_index": 123, "use_max_items": true}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::PlaceRecipe {
+                container_id: 7,
+                recipe_index: 123,
+                use_max_items: true,
+            }]
+        );
+
+        let missing_recipe = dispatch(
+            ControlRequest {
+                method: "net.place_recipe".to_string(),
+                params: json!({"container_id": 7, "use_max_items": true}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_recipe.ok);
     }
 
     #[test]
