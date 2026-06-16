@@ -594,22 +594,24 @@ mod tests {
         AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
         BlockDestruction, BlockEvent, BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound,
         ChatTypeHolder, CommandArgumentParser, CommandNode, CommandNodeType, Commands,
-        CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerSetContent, ContainerSetData,
-        ContainerSetSlot, Cooldown, CustomChatCompletions, CustomChatCompletionsAction,
-        CustomPayload, CustomPayloadBody, CustomReportDetails, DamageEvent as ProtocolDamageEvent,
-        DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
-        EntityEvent as ProtocolEntityEvent, EntityPositionSync as ProtocolEntityPositionSync,
-        Explosion as ProtocolExplosion, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
-        GameRuleValues, GameType, HurtAnimation as ProtocolHurtAnimation, IngredientSummary,
-        InitializeBorder, InteractionHand, ItemStackSummary, LevelEvent,
+        CommonPlayerSpawnInfo as ProtocolSpawnInfo, ContainerClose, ContainerSetContent,
+        ContainerSetData, ContainerSetSlot, Cooldown, CustomChatCompletions,
+        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
+        DamageEvent as ProtocolDamageEvent, DebugBlockValue, DialogHolder,
+        DisguisedChat as ProtocolDisguisedChat, EntityEvent as ProtocolEntityEvent,
+        EntityPositionSync as ProtocolEntityPositionSync, Explosion as ProtocolExplosion,
+        GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameType,
+        HurtAnimation as ProtocolHurtAnimation, IngredientSummary, InitializeBorder,
+        InteractionHand, ItemCostSummary, ItemStackSummary, LevelEvent,
         LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
-        MobEffectFlags, MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
-        ParticlePayload, PlaceGhostRecipe, PlayLogin as ProtocolPlayLogin, PlayTime,
-        PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth, PlayerInfoAction,
-        PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod, PlayerTeamParameters, PongResponse,
-        ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
-        RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
-        RecipeDisplayType, RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags,
+        MerchantOffer, MerchantOffers, MobEffectFlags, MountScreenOpen, ObjectiveRenderType,
+        OpenBook, OpenScreen, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
+        PlayLogin as ProtocolPlayLogin, PlayTime, PlayerAbilities, PlayerCombatKill,
+        PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
+        PlayerTeamMethod, PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd,
+        RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
+        RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
+        RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags,
         ScoreboardDisplaySlot, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
         ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
         SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
@@ -1264,6 +1266,102 @@ mod tests {
         assert_eq!(inventory["open_container"]["slots"][1]["item"]["count"], 3);
         assert_eq!(inventory["open_container"]["data_values"][0]["id"], 2);
         assert_eq!(inventory["open_container"]["data_values"][0]["value"], 10);
+    }
+
+    #[test]
+    fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_open_screen(OpenScreen {
+                container_id: 7,
+                menu_type_id: 19,
+                title: "Merchant".to_string(),
+            });
+            assert!(store.apply_merchant_offers(MerchantOffers {
+                container_id: 7,
+                offers: vec![
+                    MerchantOffer {
+                        buy_a: item_cost(42, 3),
+                        sell: item_stack(99, 1),
+                        buy_b: Some(item_cost(43, 4)),
+                        is_out_of_stock: false,
+                        uses: 1,
+                        max_uses: 12,
+                        xp: 8,
+                        special_price_diff: -2,
+                        price_multiplier: 0.05,
+                        demand: 6,
+                    },
+                    MerchantOffer {
+                        buy_a: item_cost(44, 5),
+                        sell: item_stack(100, 2),
+                        buy_b: None,
+                        is_out_of_stock: true,
+                        uses: 12,
+                        max_uses: 12,
+                        xp: 9,
+                        special_price_diff: 1,
+                        price_multiplier: 0.1,
+                        demand: 7,
+                    },
+                ],
+                villager_level: 3,
+                villager_xp: 120,
+                show_progress: true,
+                can_restock: false,
+            }));
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_inventory".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let inventory = response.result.unwrap();
+        let offers = &inventory["open_container"]["merchant_offers"];
+        assert_eq!(offers["container_id"], 7);
+        assert_eq!(offers["villager_level"], 3);
+        assert_eq!(offers["villager_xp"], 120);
+        assert_eq!(offers["show_progress"], true);
+        assert_eq!(offers["can_restock"], false);
+        assert_eq!(offers["offers"].as_array().unwrap().len(), 2);
+        assert_eq!(offers["offers"][0]["buy_a"]["item_id"], 42);
+        assert_eq!(offers["offers"][0]["buy_a"]["count"], 3);
+        assert_eq!(offers["offers"][0]["sell"]["item_id"], 99);
+        assert_eq!(offers["offers"][0]["sell"]["count"], 1);
+        assert_eq!(offers["offers"][0]["buy_b"]["item_id"], 43);
+        assert_eq!(offers["offers"][0]["buy_b"]["count"], 4);
+        assert_eq!(offers["offers"][0]["is_out_of_stock"], false);
+        assert_eq!(offers["offers"][0]["uses"], 1);
+        assert_eq!(offers["offers"][0]["max_uses"], 12);
+        assert_eq!(offers["offers"][0]["xp"], 8);
+        assert_eq!(offers["offers"][0]["special_price_diff"], -2);
+        assert!((offers["offers"][0]["price_multiplier"].as_f64().unwrap() - 0.05).abs() < 0.0001);
+        assert_eq!(offers["offers"][0]["demand"], 6);
+        assert_eq!(offers["offers"][1]["buy_b"], serde_json::Value::Null);
+        assert_eq!(offers["offers"][1]["is_out_of_stock"], true);
+
+        assert!(snapshot
+            .write()
+            .unwrap()
+            .world_store
+            .apply_container_close(ContainerClose { container_id: 7 }));
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_inventory".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert!(response.result.unwrap()["open_container"].is_null());
     }
 
     #[test]
@@ -2932,6 +3030,14 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {
+        ItemCostSummary {
+            item_id,
+            count,
+            component_predicate: Default::default(),
         }
     }
 
