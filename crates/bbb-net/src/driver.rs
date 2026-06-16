@@ -189,10 +189,22 @@ async fn read_packet_or_disconnect_command(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::ids;
+    use bbb_protocol::{
+        codec::Decoder,
+        ids,
+        packets::{
+            ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+            ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedStack, Vec3d,
+        },
+    };
     use bytes::BytesMut;
-    use std::time::Duration;
-    use tokio::{sync::mpsc, time::timeout};
+    use std::{collections::BTreeMap, time::Duration};
+    use tokio::{
+        sync::mpsc,
+        time::{interval_at, timeout, Instant as TokioInstant},
+    };
+
+    use crate::types::{PlayerMoveCommand, VehicleMoveCommand};
 
     #[tokio::test]
     async fn drive_connection_disconnects_when_command_channel_closes_before_play() {
@@ -273,6 +285,200 @@ mod tests {
         server.await.unwrap();
     }
 
+    #[tokio::test]
+    async fn drive_connection_sends_movement_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        let move_state = PlayerPositionState {
+            position: Vec3d {
+                x: 1.25,
+                y: 64.5,
+                z: -8.75,
+            },
+            delta_movement: Vec3d {
+                x: 0.1,
+                y: 0.0,
+                z: -0.2,
+            },
+            y_rot: 90.0,
+            x_rot: -15.0,
+        };
+        tx.send(NetCommand::MovePlayer(PlayerMoveCommand {
+            state: move_state,
+            on_ground: true,
+            horizontal_collision: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::MoveVehicle(VehicleMoveCommand {
+            position: Vec3d {
+                x: 2.5,
+                y: 70.0,
+                z: -9.25,
+            },
+            y_rot: 180.0,
+            x_rot: 12.5,
+            on_ground: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        assert_eq!(player_position_state, move_state);
+        let (packet_id, payload) = read_server_packet(&mut server, "move player").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 1.25);
+        assert_eq!(decoder.read_f64().unwrap(), 64.5);
+        assert_eq!(decoder.read_f64().unwrap(), -8.75);
+        assert_eq!(decoder.read_f32().unwrap(), 90.0);
+        assert_eq!(decoder.read_f32().unwrap(), -15.0);
+        assert_eq!(decoder.read_u8().unwrap(), 0b01);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "move vehicle").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_VEHICLE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f64().unwrap(), 2.5);
+        assert_eq!(decoder.read_f64().unwrap(), 70.0);
+        assert_eq!(decoder.read_f64().unwrap(), -9.25);
+        assert_eq!(decoder.read_f32().unwrap(), 180.0);
+        assert_eq!(decoder.read_f32().unwrap(), 12.5);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_chat_and_command_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        tx.send(NetCommand::ChatCommand(ChatCommand {
+            command: "give @p minecraft:stone".to_string(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::CommandSuggestionRequest(
+            CommandSuggestionRequest {
+                id: 44,
+                command: "/give @p minecraft:stone".to_string(),
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "chat command").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_COMMAND);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decoder.read_string(32767).unwrap(),
+            "give @p minecraft:stone"
+        );
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) =
+            read_server_packet(&mut server, "command suggestion request").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_COMMAND_SUGGESTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 44);
+        assert_eq!(
+            decoder.read_string(32767).unwrap(),
+            "/give @p minecraft:stone"
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_inventory_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(6);
+        tx.send(NetCommand::SetHeldSlot(12)).await.unwrap();
+        tx.send(NetCommand::ContainerButtonClick(ContainerButtonClick {
+            container_id: 7,
+            button_id: 2,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ContainerClick(ContainerClick {
+            container_id: 7,
+            state_id: 33,
+            slot_num: 5,
+            button_num: 1,
+            input: ContainerInput::Pickup,
+            changed_slots: BTreeMap::new(),
+            carried_item: HashedStack::empty(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ContainerClose(ContainerCloseRequest {
+            container_id: 7,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ContainerSlotStateChanged(
+            ContainerSlotStateChanged {
+                slot_id: 12,
+                container_id: 7,
+                new_state: true,
+            },
+        ))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set carried item").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 8);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "container button click").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "container click").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_CLICK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), 33);
+        assert_eq!(decoder.read_i16().unwrap(), 5);
+        assert_eq!(decoder.read_i8().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "container close").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_CLOSE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) =
+            read_server_packet(&mut server, "container slot state changed").await;
+        assert_eq!(
+            packet_id,
+            ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 12);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
     async fn raw_connection_pair() -> (RawConnection, tokio::task::JoinHandle<()>) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
@@ -284,6 +490,24 @@ mod tests {
             .await
             .unwrap();
         (conn, server)
+    }
+
+    async fn raw_connection_pair_with_server() -> (RawConnection, RawConnection) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let client = tokio::spawn(async move {
+            RawConnection::connect(&addr.to_string(), None)
+                .await
+                .unwrap()
+        });
+        let (server_stream, _) = listener.accept().await.unwrap();
+        let client = client.await.unwrap();
+        let server = RawConnection {
+            stream: server_stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        (client, server)
     }
 
     async fn raw_connection_pair_expect_accept_code_of_conduct(
@@ -311,5 +535,41 @@ mod tests {
             .await
             .unwrap();
         (conn, server)
+    }
+
+    async fn drive_play_until_disconnect(
+        conn: &mut RawConnection,
+        commands: &mut mpsc::Receiver<NetCommand>,
+        player_position_state: &mut PlayerPositionState,
+    ) {
+        let mut play_tick = Some(dormant_play_tick());
+        let result = timeout(
+            Duration::from_secs(1),
+            read_packet_or_drive_connection(
+                conn,
+                ConnectionState::Play,
+                &mut play_tick,
+                commands,
+                player_position_state,
+            ),
+        )
+        .await
+        .expect("drive should not hang")
+        .unwrap();
+        assert!(matches!(result, ConnectionDrive::Disconnect));
+    }
+
+    fn dormant_play_tick() -> Interval {
+        interval_at(
+            TokioInstant::now() + Duration::from_secs(60),
+            Duration::from_secs(60),
+        )
+    }
+
+    async fn read_server_packet(conn: &mut RawConnection, label: &str) -> (i32, Vec<u8>) {
+        timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .unwrap_or_else(|_| panic!("{label} packet should be sent"))
+            .unwrap()
     }
 }
