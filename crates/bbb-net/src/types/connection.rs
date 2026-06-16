@@ -15,6 +15,8 @@ pub struct ConnectionOptions {
     pub timeout: Duration,
     #[serde(default)]
     pub accepted_code_of_conduct_hash: Option<i32>,
+    #[serde(default)]
+    pub probe_after_first_chunk_packets: usize,
 }
 
 impl ConnectionOptions {
@@ -31,6 +33,7 @@ impl ConnectionOptions {
             profile_id,
             timeout: Duration::from_secs(20),
             accepted_code_of_conduct_hash: None,
+            probe_after_first_chunk_packets: 0,
         })
     }
 }

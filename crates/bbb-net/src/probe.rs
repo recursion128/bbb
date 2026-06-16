@@ -31,6 +31,37 @@ struct ProbeContext {
     world_apply_errors: Vec<String>,
 }
 
+#[derive(Debug)]
+struct ProbeDrain {
+    first_chunk: Option<ChunkPos>,
+    packets_after_first_chunk: usize,
+    after_first_chunk_limit: usize,
+}
+
+impl ProbeDrain {
+    fn new(after_first_chunk_limit: usize) -> Self {
+        Self {
+            first_chunk: None,
+            packets_after_first_chunk: 0,
+            after_first_chunk_limit,
+        }
+    }
+
+    fn observe_packet(&mut self, packet_first_chunk: Option<ChunkPos>) -> bool {
+        if self.first_chunk.is_some() {
+            self.packets_after_first_chunk += 1;
+            return self.packets_after_first_chunk >= self.after_first_chunk_limit;
+        }
+
+        self.first_chunk = packet_first_chunk;
+        self.first_chunk.is_some() && self.after_first_chunk_limit == 0
+    }
+
+    fn first_chunk(&self) -> Option<ChunkPos> {
+        self.first_chunk
+    }
+}
+
 impl ProbeContext {
     fn new(conn: RawConnection) -> Self {
         Self {
@@ -108,7 +139,8 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
     let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id);
     probe.conn.send_packet(id, &payload).await?;
 
-    let first_chunk = loop {
+    let mut drain = ProbeDrain::new(options.probe_after_first_chunk_packets);
+    loop {
         let (packet_id, payload) =
             read_packet_or_send_play_tick(&mut probe.conn, probe.state, &mut probe.play_tick)
                 .await?;
@@ -120,6 +152,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
             "clientbound packet"
         );
 
+        let mut packet_first_chunk = None;
         match probe.state {
             ConnectionState::Login => {
                 let packet = packets::decode_login_clientbound(packet_id, &payload)?;
@@ -131,15 +164,54 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
             }
             ConnectionState::Play => {
                 let packet = packets::decode_play_clientbound(packet_id, &payload)?;
-                if let Some(first_chunk) = probe.handle_play_packet(packet).await? {
-                    break first_chunk;
-                }
+                packet_first_chunk = probe.handle_play_packet(packet).await?;
             }
             ConnectionState::Handshake | ConnectionState::Status => {
                 unreachable!("probe starts at login")
             }
         }
-    };
 
+        if drain.observe_packet(packet_first_chunk) {
+            break;
+        }
+    }
+
+    let first_chunk = drain
+        .first_chunk()
+        .expect("probe exits only after the first chunk is observed");
     Ok(probe.finish(packets_seen, first_chunk))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn probe_drain_finishes_on_first_chunk_by_default() {
+        let first_chunk = ChunkPos { x: 1, z: -2 };
+        let mut drain = ProbeDrain::new(0);
+
+        assert!(!drain.observe_packet(None));
+        assert!(drain.observe_packet(Some(first_chunk)));
+        assert_eq!(drain.first_chunk(), Some(first_chunk));
+        assert_eq!(drain.packets_after_first_chunk, 0);
+    }
+
+    #[test]
+    fn probe_drain_counts_bounded_packets_after_first_chunk() {
+        let first_chunk = ChunkPos { x: 1, z: -2 };
+        let later_chunk = ChunkPos { x: 3, z: 4 };
+        let mut drain = ProbeDrain::new(2);
+
+        assert!(!drain.observe_packet(None));
+        assert!(!drain.observe_packet(Some(first_chunk)));
+        assert_eq!(drain.first_chunk(), Some(first_chunk));
+        assert_eq!(drain.packets_after_first_chunk, 0);
+
+        assert!(!drain.observe_packet(None));
+        assert_eq!(drain.packets_after_first_chunk, 1);
+        assert!(drain.observe_packet(Some(later_chunk)));
+        assert_eq!(drain.packets_after_first_chunk, 2);
+        assert_eq!(drain.first_chunk(), Some(first_chunk));
+    }
 }

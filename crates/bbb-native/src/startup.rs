@@ -23,6 +23,8 @@ pub(crate) struct Args {
     pub(crate) username: String,
     #[arg(long)]
     pub(crate) probe_server: bool,
+    #[arg(long, default_value_t = 0)]
+    pub(crate) probe_after_first_chunk_packets: usize,
     #[arg(long)]
     pub(crate) connect_server: bool,
     #[arg(long)]
@@ -55,7 +57,8 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
         return Ok(false);
     }
 
-    let options = ConnectionOptions::offline(&args.server, &args.username)?;
+    let mut options = ConnectionOptions::offline(&args.server, &args.username)?;
+    options.probe_after_first_chunk_packets = args.probe_after_first_chunk_packets;
     let report = runtime.block_on(bbb_net::run_offline_probe(options))?;
     println!("{}", serde_json::to_string_pretty(&report)?);
     Ok(true)
