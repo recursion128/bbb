@@ -65,6 +65,16 @@ impl ItemModelCatalog {
         counts
     }
 
+    pub fn special_model_type_counts(&self) -> BTreeMap<String, usize> {
+        let mut counts = BTreeMap::new();
+        for definition in self.definitions.values() {
+            definition
+                .model
+                .collect_special_model_type_counts(&mut counts);
+        }
+        counts
+    }
+
     pub fn transformation_count(&self) -> usize {
         self.definitions
             .values()
@@ -179,7 +189,7 @@ pub enum ItemModelDefinition {
     Special {
         base: String,
         transformation: Option<ItemModelTransformation>,
-        special_type: Option<String>,
+        special: ItemSpecialModel,
     },
     BundleSelectedItem,
 }
@@ -206,6 +216,22 @@ impl ItemModelTransformation {
             _ => bail!("item model transformation must be an object or 16-value matrix array"),
         }
         Ok(Self { raw: value.clone() })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ItemSpecialModel {
+    pub model_type: String,
+    raw: Value,
+}
+
+impl ItemSpecialModel {
+    pub fn raw(&self) -> &Value {
+        &self.raw
+    }
+
+    pub fn into_raw(self) -> Value {
+        self.raw
     }
 }
 
@@ -395,6 +421,46 @@ impl ItemModelDefinition {
             }
         }
     }
+
+    fn collect_special_model_type_counts(&self, counts: &mut BTreeMap<String, usize>) {
+        match self {
+            Self::Empty | Self::BundleSelectedItem | Self::Model { .. } => {}
+            Self::Special { special, .. } => {
+                *counts.entry(special.model_type.clone()).or_default() += 1;
+            }
+            Self::Condition {
+                on_true, on_false, ..
+            } => {
+                on_true.collect_special_model_type_counts(counts);
+                on_false.collect_special_model_type_counts(counts);
+            }
+            Self::RangeDispatch {
+                entries, fallback, ..
+            } => {
+                for entry in entries {
+                    entry.model.collect_special_model_type_counts(counts);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_special_model_type_counts(counts);
+                }
+            }
+            Self::Select {
+                cases, fallback, ..
+            } => {
+                for case in cases {
+                    case.model.collect_special_model_type_counts(counts);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_special_model_type_counts(counts);
+                }
+            }
+            Self::Composite { models, .. } => {
+                for model in models {
+                    model.collect_special_model_type_counts(counts);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -439,13 +505,7 @@ fn parse_item_model_definition(value: &Value) -> Result<ItemModelDefinition> {
         "minecraft:special" => Ok(ItemModelDefinition::Special {
             base: resource_id(required_str(object, "base")?)?,
             transformation: optional_transformation(object)?,
-            special_type: object
-                .get("model")
-                .and_then(Value::as_object)
-                .and_then(|model| model.get("type"))
-                .and_then(Value::as_str)
-                .map(resource_id)
-                .transpose()?,
+            special: parse_item_special_model(required_value(object, "model")?)?,
         }),
         "minecraft:bundle/selected_item" => Ok(ItemModelDefinition::BundleSelectedItem),
         other => bail!("unsupported item model type {other:?}"),
@@ -511,6 +571,16 @@ fn parse_select_model(object: &Map<String, Value>) -> Result<ItemModelDefinition
             .transpose()?,
         cases,
         fallback: optional_model(object, "fallback")?,
+    })
+}
+
+fn parse_item_special_model(value: &Value) -> Result<ItemSpecialModel> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("item special model must be a JSON object"))?;
+    Ok(ItemSpecialModel {
+        model_type: resource_id(required_str(object, "type")?)?,
+        raw: value.clone(),
     })
 }
 
@@ -1247,13 +1317,15 @@ mod tests {
         let root = unique_temp_dir("item-model-special");
         let items = item_dir(&root);
         write_json(
-            &items.join("compass.json"),
+            &items.join("white_banner.json"),
             r#"{
               "model": {
                 "type": "minecraft:special",
-                "base": "minecraft:item/compass",
+                "base": "minecraft:item/template_banner",
                 "model": {
-                  "type": "minecraft:compass"
+                  "type": "minecraft:banner",
+                  "color": "white",
+                  "attachment": "ground"
                 }
               }
             }"#,
@@ -1289,15 +1361,16 @@ mod tests {
             .load_item_model_catalog()
             .unwrap();
 
-        let ItemModelDefinition::Special { special_type, .. } =
-            &catalog.definition("compass").unwrap().model
+        let ItemModelDefinition::Special { special, .. } =
+            &catalog.definition("white_banner").unwrap().model
         else {
-            panic!("compass should parse as a special item model");
+            panic!("white banner should parse as a special item model");
         };
-        assert_eq!(special_type.as_deref(), Some("minecraft:compass"));
+        assert_eq!(special.model_type, "minecraft:banner");
+        assert_eq!(special.raw()["color"], serde_json::json!("white"));
         assert_eq!(
-            catalog.model_references("compass").unwrap(),
-            vec!["minecraft:item/compass".to_string()]
+            catalog.model_references("white_banner").unwrap(),
+            vec!["minecraft:item/template_banner".to_string()]
         );
         assert_eq!(
             catalog.model_references("bundle").unwrap(),
@@ -1311,6 +1384,10 @@ mod tests {
                 ("minecraft:empty".to_string(), 1),
                 ("minecraft:special".to_string(), 1),
             ])
+        );
+        assert_eq!(
+            catalog.special_model_type_counts(),
+            BTreeMap::from([("minecraft:banner".to_string(), 1)])
         );
 
         std::fs::remove_dir_all(root).unwrap();
@@ -1364,6 +1441,22 @@ mod tests {
                 ("minecraft:grass".to_string(), 6),
                 ("minecraft:map_color".to_string(), 1),
                 ("minecraft:potion".to_string(), 4),
+            ])
+        );
+        assert_eq!(
+            catalog.special_model_type_counts(),
+            BTreeMap::from([
+                ("minecraft:banner".to_string(), 16),
+                ("minecraft:bed".to_string(), 32),
+                ("minecraft:chest".to_string(), 13),
+                ("minecraft:conduit".to_string(), 1),
+                ("minecraft:copper_golem_statue".to_string(), 32),
+                ("minecraft:decorated_pot".to_string(), 1),
+                ("minecraft:head".to_string(), 6),
+                ("minecraft:player_head".to_string(), 1),
+                ("minecraft:shield".to_string(), 2),
+                ("minecraft:shulker_box".to_string(), 17),
+                ("minecraft:trident".to_string(), 2),
             ])
         );
         assert_eq!(catalog.transformation_count(), 83);
