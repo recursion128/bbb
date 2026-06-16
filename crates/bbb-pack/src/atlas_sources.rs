@@ -327,7 +327,9 @@ impl RawAtlasSource {
             _ => bail!("unsupported required atlas path field {field:?}"),
         }
         .ok_or_else(|| anyhow::anyhow!("missing atlas source {field}"))?;
-        validate_resource_path(value)?;
+        if !value.is_empty() {
+            validate_resource_path(value)?;
+        }
         Ok(value)
     }
 
@@ -1071,6 +1073,39 @@ mod tests {
             .find(|entry| entry_id(entry) == "minecraft:block/stone")
             .unwrap();
         assert!(entry_path(stone).ends_with(&overlay_texture));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn directory_source_accepts_empty_source_path() {
+        let root = unique_temp_dir("atlas-directory-empty-source");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        write_file(&assets_dir.join("textures").join("block").join("stone.png"));
+        write_json(
+            &assets_dir.join("atlases").join("blocks.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "source": "",
+                  "prefix": ""
+                }
+              ]
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let entries = load_atlas_texture_entries(&roots, "blocks").unwrap();
+
+        assert_eq!(
+            entries.iter().map(entry_id).collect::<Vec<_>>(),
+            vec!["minecraft:missingno", "minecraft:block/stone"]
+        );
 
         std::fs::remove_dir_all(root).unwrap();
     }
