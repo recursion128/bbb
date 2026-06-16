@@ -363,6 +363,7 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             serde_json::to_value(snapshot_guard.world_store.client_debug_game())
         }
         "world.client_hud" => serde_json::to_value(snapshot_guard.world_store.client_hud()),
+        "world.client_inventory" => serde_json::to_value(snapshot_guard.world_store.inventory()),
         "world.client_local_player" => {
             serde_json::to_value(snapshot_guard.world_store.client_local_player())
         }
@@ -551,26 +552,28 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
         BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound, ChatTypeHolder,
-        CommandArgumentParser, CommandNode, CommandNodeType, Commands, CustomChatCompletions,
-        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
-        DebugBlockValue, DialogHolder, DisguisedChat as ProtocolDisguisedChat,
-        EntityPositionSync as ProtocolEntityPositionSync, Explosion as ProtocolExplosion,
-        GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameType,
-        InitializeBorder, InteractionHand, LevelParticles as ProtocolLevelParticles, MapColorPatch,
-        MapDecoration, MapItemData, MountScreenOpen, ObjectiveRenderType, OpenBook, OpenSignEditor,
+        CommandArgumentParser, CommandNode, CommandNodeType, Commands, ContainerSetContent,
+        ContainerSetData, ContainerSetSlot, CustomChatCompletions, CustomChatCompletionsAction,
+        CustomPayload, CustomPayloadBody, CustomReportDetails, DebugBlockValue, DialogHolder,
+        DisguisedChat as ProtocolDisguisedChat, EntityPositionSync as ProtocolEntityPositionSync,
+        Explosion as ProtocolExplosion, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
+        GameRuleValues, GameType, InitializeBorder, InteractionHand, ItemStackSummary,
+        LevelParticles as ProtocolLevelParticles, MapColorPatch, MapDecoration, MapItemData,
+        MountScreenOpen, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
         ParticlePayload, PlaceGhostRecipe, PlayTime, PlayerAbilities, PlayerCombatKill,
         PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
         PlayerTeamMethod, PlayerTeamParameters, PongResponse, RecipeDisplayType,
         ScoreboardDisplaySlot, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
         ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize,
         SetBorderWarningDelay, SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetObjective, SetObjectiveMethod,
-        SetObjectiveParameters, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
-        SetTitleText, SetTitlesAnimation, ShowDialog, SoundEvent, SoundEventHolder, SoundSource,
-        StatUpdate, StopSound, SystemChat, TagQuery, TeamCollisionRule, TeamVisibility,
-        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
-        UpdateAdvancements, UpdateEnabledFeatures, Vec3d as ProtocolVec3d, WaypointData,
-        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetObjective,
+        SetObjectiveMethod, SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore,
+        SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, SystemChat, TagQuery,
+        TeamCollisionRule, TeamVisibility, TickingState, TickingStep, TrackedWaypoint,
+        TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateEnabledFeatures,
+        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -993,6 +996,76 @@ mod tests {
         assert_eq!(hud["title"]["stay"], 40);
         assert_eq!(hud["title"]["fade_out"], 15);
         assert_eq!(hud["title"]["title_time"], 60);
+    }
+
+    #[test]
+    fn client_inventory_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_set_player_inventory(SetPlayerInventory {
+                slot: 36,
+                item: item_stack(43, 2),
+            });
+            store.apply_set_cursor_item(SetCursorItem {
+                item: item_stack(99, 1),
+            });
+            store.apply_open_screen(OpenScreen {
+                container_id: 7,
+                menu_type_id: 2,
+                title: "Chest".to_string(),
+            });
+            store.apply_container_set_content(ContainerSetContent {
+                container_id: 7,
+                state_id: 12,
+                items: vec![ItemStackSummary::empty(), item_stack(42, 64)],
+                carried_item: ItemStackSummary::empty(),
+            });
+            store.apply_container_set_slot(ContainerSetSlot {
+                container_id: 7,
+                state_id: 13,
+                slot: 1,
+                item: item_stack(44, 3),
+            });
+            store.apply_container_set_data(ContainerSetData {
+                container_id: 7,
+                id: 2,
+                value: 10,
+            });
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.client_inventory".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let inventory = response.result.unwrap();
+        assert_eq!(inventory["player_slots"][0]["slot"], 36);
+        assert_eq!(inventory["player_slots"][0]["item"]["item_id"], 43);
+        assert_eq!(inventory["player_slots"][0]["item"]["count"], 2);
+        assert_eq!(inventory["cursor_item"]["item_id"], serde_json::Value::Null);
+        assert_eq!(inventory["cursor_item"]["count"], 0);
+        assert_eq!(inventory["open_container"]["container_id"], 7);
+        assert_eq!(inventory["open_container"]["menu_type_id"], 2);
+        assert_eq!(inventory["open_container"]["title"], "Chest");
+        assert_eq!(inventory["open_container"]["state_id"], 13);
+        assert_eq!(
+            inventory["open_container"]["slots"][0]["item"]["item_id"],
+            serde_json::Value::Null
+        );
+        assert_eq!(inventory["open_container"]["slots"][1]["slot"], 1);
+        assert_eq!(
+            inventory["open_container"]["slots"][1]["item"]["item_id"],
+            44
+        );
+        assert_eq!(inventory["open_container"]["slots"][1]["item"]["count"], 3);
+        assert_eq!(inventory["open_container"]["data_values"][0]["id"], 2);
+        assert_eq!(inventory["open_container"]["data_values"][0]["value"], 10);
     }
 
     #[test]
@@ -2235,6 +2308,14 @@ mod tests {
             palette_global_ids: vec![global_id],
             packed_data: Vec::new(),
             entry_count,
+        }
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
         }
     }
 
