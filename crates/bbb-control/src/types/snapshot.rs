@@ -23,6 +23,9 @@ pub enum CodeOfConductControlRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetControlRequest {
+    SetHeldSlot {
+        slot: u8,
+    },
     ChatCommand {
         command: String,
     },

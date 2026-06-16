@@ -15,7 +15,7 @@ use crate::{
     input::{
         queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
         queue_container_click_command, queue_container_close_request_command,
-        queue_container_slot_state_changed_command,
+        queue_container_slot_state_changed_command, select_hotbar_slot,
     },
 };
 
@@ -73,7 +73,7 @@ pub(crate) fn pump_control_net_requests(
     snapshot: &SharedSnapshot,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     counters: &mut NetCounters,
-    world: &WorldStore,
+    world: &mut WorldStore,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
 ) {
     let (requests, net_requests) = snapshot
@@ -88,6 +88,9 @@ pub(crate) fn pump_control_net_requests(
 
     for request in net_requests {
         match request {
+            NetControlRequest::SetHeldSlot { slot } => {
+                select_hotbar_slot(counters, world, net_commands, slot);
+            }
             NetControlRequest::ChatCommand { command } => {
                 queue_chat_command(counters, net_commands, command);
             }
@@ -196,10 +199,10 @@ mod tests {
                 command: "give @p minecraft:stone".to_string(),
             });
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.chat_command_commands_queued, 1);
         assert_eq!(
@@ -221,10 +224,10 @@ mod tests {
             },
         );
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.command_suggestion_commands_queued, 1);
         assert_eq!(
@@ -238,6 +241,27 @@ mod tests {
     }
 
     #[test]
+    fn pump_control_net_requests_sets_held_slot_and_queues_command() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::SetHeldSlot { slot: 4 });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(world.local_player().selected_hotbar_slot, 4);
+        assert_eq!(world.counters().held_slot_packets, 0);
+        assert_eq!(counters.held_slot_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(4));
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
     fn pump_control_net_requests_queues_container_button_click() {
         let snapshot = bbb_control::shared_snapshot("test");
         snapshot.write().unwrap().net_requests.push(
@@ -247,10 +271,10 @@ mod tests {
             },
         );
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_button_click_commands_queued, 1);
         assert_eq!(
@@ -290,10 +314,10 @@ mod tests {
             ),
         );
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_click_commands_queued, 1);
         assert_eq!(
@@ -332,10 +356,10 @@ mod tests {
             .net_requests
             .push(bbb_control::NetControlRequest::ContainerClose { container_id: 7 });
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_close_commands_queued, 1);
         assert_eq!(
@@ -358,10 +382,10 @@ mod tests {
             },
         );
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
         assert_eq!(
@@ -386,10 +410,10 @@ mod tests {
             .code_of_conduct_requests
             .push(CodeOfConductControlRequest::Accept { remember: false });
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
-        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &world, None);
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(rx.try_recv().unwrap(), NetCommand::AcceptCodeOfConduct);
         assert!(snapshot.read().unwrap().code_of_conduct_requests.is_empty());
@@ -417,7 +441,7 @@ mod tests {
             &snapshot,
             &Some(tx.clone()),
             &mut counters,
-            &world,
+            &mut world,
             Some(&mut acceptance),
         );
 
@@ -452,7 +476,7 @@ mod tests {
             &snapshot,
             &Some(tx.clone()),
             &mut counters,
-            &world,
+            &mut world,
             Some(&mut acceptance),
         );
 
@@ -484,7 +508,7 @@ mod tests {
             &snapshot,
             &Some(tx.clone()),
             &mut counters,
-            &world,
+            &mut world,
             Some(&mut acceptance),
         );
 
@@ -516,7 +540,7 @@ mod tests {
             &snapshot,
             &Some(tx.clone()),
             &mut counters,
-            &world,
+            &mut world,
             Some(&mut acceptance),
         );
 

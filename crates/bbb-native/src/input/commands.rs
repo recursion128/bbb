@@ -75,7 +75,7 @@ pub(super) fn hotbar_slot_for_key(code: KeyCode) -> Option<u8> {
     }
 }
 
-pub(super) fn select_hotbar_slot(
+pub(crate) fn select_hotbar_slot(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,

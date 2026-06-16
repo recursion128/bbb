@@ -201,6 +201,36 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.set_held_slot" {
+        let Some(slot) = i32_param(&request.params, "slot") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.set_held_slot requires integer param slot".to_string()),
+            };
+        };
+        if !(0..=8).contains(&slot) {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.set_held_slot requires slot in range 0..=8".to_string()),
+            };
+        }
+        let slot = slot as u8;
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::SetHeldSlot { slot });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.container_button_click" {
         let Some(container_id) = i32_param(&request.params, "container_id") else {
             return ControlResponse {
@@ -1032,6 +1062,43 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_id.ok);
+    }
+
+    #[test]
+    fn net_set_held_slot_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.set_held_slot".to_string(),
+                params: json!({"slot": 4}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SetHeldSlot { slot: 4 }]
+        );
+
+        let missing_slot = dispatch(
+            ControlRequest {
+                method: "net.set_held_slot".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_slot.ok);
+
+        let invalid_slot = dispatch(
+            ControlRequest {
+                method: "net.set_held_slot".to_string(),
+                params: json!({"slot": 9}),
+            },
+            &snapshot,
+        );
+        assert!(!invalid_slot.ok);
     }
 
     #[test]
