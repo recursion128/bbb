@@ -491,7 +491,17 @@ impl EventStreamContext {
             PlayClientbound::RecipeBookSettings(update) => {
                 emit(&self.events, NetEvent::RecipeBookSettings(update)).await?;
             }
-            PlayClientbound::Unknown { .. } => {}
+            PlayClientbound::Unknown { packet_id, len } => {
+                emit(
+                    &self.events,
+                    NetEvent::UnsupportedPacket {
+                        state: self.state,
+                        packet_id,
+                        len,
+                    },
+                )
+                .await?;
+            }
         }
         Ok(())
     }

@@ -127,7 +127,17 @@ impl EventStreamContext {
                 }
                 emit(&self.events, NetEvent::CodeOfConduct { text }).await?;
             }
-            ConfigurationClientbound::Unknown { .. } => {}
+            ConfigurationClientbound::Unknown { packet_id, len } => {
+                emit(
+                    &self.events,
+                    NetEvent::UnsupportedPacket {
+                        state: self.state,
+                        packet_id,
+                        len,
+                    },
+                )
+                .await?;
+            }
         }
         Ok(())
     }

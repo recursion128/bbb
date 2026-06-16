@@ -533,7 +533,8 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             | NetEvent::Disconnected { .. }
             | NetEvent::StateChanged { .. }
             | NetEvent::CompressionSet { .. }
-            | NetEvent::PacketSeen { .. } => {
+            | NetEvent::PacketSeen { .. }
+            | NetEvent::UnsupportedPacket { .. } => {
                 unreachable!("control projection event reached world dispatcher")
             }
         }

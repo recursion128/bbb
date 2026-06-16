@@ -490,7 +490,9 @@ impl ProbeContext {
             PlayClientbound::UpdateRecipes(update) => {
                 self.world.apply_update_recipes(update);
             }
-            PlayClientbound::Unknown { .. } => {}
+            PlayClientbound::Unknown { packet_id, len } => {
+                self.record_unsupported_packet(self.state, packet_id, len);
+            }
         }
         Ok(None)
     }
@@ -1773,6 +1775,31 @@ mod tests {
         );
         assert!(probe.player_was_dead);
         assert_eq!(probe.world.counters().player_health_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_play_unknown_packets_update_report_diagnostics() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Play;
+
+        probe
+            .handle_play_packet(PlayClientbound::Unknown {
+                packet_id: 0x7e,
+                len: 9,
+            })
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+        assert_eq!(report.unsupported_packets, 1);
+        assert_eq!(
+            report.last_unsupported_packet_state.as_deref(),
+            Some("Play")
+        );
+        assert_eq!(report.last_unsupported_packet_id, Some(0x7e));
+        assert_eq!(report.last_unsupported_packet_len, Some(9));
+        assert_eq!(report.world_counters.play_logins_received, 0);
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {

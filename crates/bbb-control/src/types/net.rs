@@ -6,6 +6,14 @@ pub struct NetCounters {
     pub state: Option<String>,
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
+    #[serde(default)]
+    pub unsupported_packets: usize,
+    #[serde(default)]
+    pub last_unsupported_packet_state: Option<String>,
+    #[serde(default)]
+    pub last_unsupported_packet_id: Option<i32>,
+    #[serde(default)]
+    pub last_unsupported_packet_len: Option<usize>,
     pub held_slot_commands_queued: usize,
     pub player_action_commands_queued: usize,
     pub player_command_commands_queued: usize,

@@ -29,6 +29,10 @@ struct ProbeContext {
     seen_code_of_conduct: bool,
     accepted_code_of_conduct_hash: Option<i32>,
     world_apply_errors: Vec<String>,
+    unsupported_packets: usize,
+    last_unsupported_packet_state: Option<ConnectionState>,
+    last_unsupported_packet_id: Option<i32>,
+    last_unsupported_packet_len: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -77,11 +81,22 @@ impl ProbeContext {
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
             world_apply_errors: Vec::new(),
+            unsupported_packets: 0,
+            last_unsupported_packet_state: None,
+            last_unsupported_packet_id: None,
+            last_unsupported_packet_len: None,
         }
     }
 
     fn record_world_apply_error(&mut self, err: impl std::fmt::Display) {
         self.world_apply_errors.push(err.to_string());
+    }
+
+    fn record_unsupported_packet(&mut self, state: ConnectionState, packet_id: i32, len: usize) {
+        self.unsupported_packets += 1;
+        self.last_unsupported_packet_state = Some(state);
+        self.last_unsupported_packet_id = Some(packet_id);
+        self.last_unsupported_packet_len = Some(len);
     }
 
     fn finish(self, packets_seen: usize, first_chunk: ChunkPos) -> ProbeReport {
@@ -100,6 +115,12 @@ impl ProbeContext {
             reached_state: self.state,
             compression_threshold: self.conn.compression_threshold,
             packets_seen,
+            unsupported_packets: self.unsupported_packets,
+            last_unsupported_packet_state: self
+                .last_unsupported_packet_state
+                .map(|state| format!("{state:?}")),
+            last_unsupported_packet_id: self.last_unsupported_packet_id,
+            last_unsupported_packet_len: self.last_unsupported_packet_len,
             registries_seen: world_counters.registries_seen,
             registry_entries_seen: world_counters.registry_entries_seen,
             registry_entries_with_data: world_counters.registry_entries_with_data,

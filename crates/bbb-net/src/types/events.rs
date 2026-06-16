@@ -83,6 +83,11 @@ pub enum NetEvent {
         packet_id: i32,
         len: usize,
     },
+    UnsupportedPacket {
+        state: ConnectionState,
+        packet_id: i32,
+        len: usize,
+    },
     ContainerClose(ContainerClose),
     ContainerSetContent(ContainerSetContent),
     ContainerSetData(ContainerSetData),

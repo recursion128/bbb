@@ -365,6 +365,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn configuration_unknown_packets_emit_unsupported_packet_events() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+        };
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::Unknown {
+                packet_id: 0x7f,
+                len: 12,
+            })
+            .await
+            .unwrap();
+
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("unsupported packet event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::UnsupportedPacket {
+                state: ConnectionState::Configuration,
+                packet_id: 0x7f,
+                len: 12,
+            }
+        ));
+    }
+
+    #[tokio::test]
     async fn play_chunk_batch_feedback_uses_vanilla_calculator() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, _events_rx) = mpsc::channel(1);
@@ -462,6 +507,51 @@ mod tests {
                 id,
                 action: packets::ResourcePackResponseAction::Declined
             } if id == pack_id
+        ));
+    }
+
+    #[tokio::test]
+    async fn play_unknown_packets_emit_unsupported_packet_events() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+        };
+
+        stream
+            .handle_play_packet(PlayClientbound::Unknown {
+                packet_id: 0x7e,
+                len: 9,
+            })
+            .await
+            .unwrap();
+
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("unsupported packet event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::UnsupportedPacket {
+                state: ConnectionState::Play,
+                packet_id: 0x7e,
+                len: 9,
+            }
         ));
     }
 

@@ -102,7 +102,9 @@ impl ProbeContext {
                 }
                 self.world.apply_code_of_conduct(text);
             }
-            ConfigurationClientbound::Unknown { .. } => {}
+            ConfigurationClientbound::Unknown { packet_id, len } => {
+                self.record_unsupported_packet(self.state, packet_id, len);
+            }
         }
         Ok(())
     }
@@ -454,6 +456,31 @@ mod tests {
             "First rules."
         );
         assert_eq!(probe.world.counters().code_of_conduct_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_configuration_unknown_packets_update_report_diagnostics() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Configuration;
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::Unknown {
+                packet_id: 0x7f,
+                len: 12,
+            })
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+        assert_eq!(report.unsupported_packets, 1);
+        assert_eq!(
+            report.last_unsupported_packet_state.as_deref(),
+            Some("Configuration")
+        );
+        assert_eq!(report.last_unsupported_packet_id, Some(0x7f));
+        assert_eq!(report.last_unsupported_packet_len, Some(12));
+        assert_eq!(report.world_counters.custom_payload_packets, 0);
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {

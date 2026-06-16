@@ -8,6 +8,14 @@ pub struct ProbeReport {
     pub reached_state: ConnectionState,
     pub compression_threshold: Option<i32>,
     pub packets_seen: usize,
+    #[serde(default)]
+    pub unsupported_packets: usize,
+    #[serde(default)]
+    pub last_unsupported_packet_state: Option<String>,
+    #[serde(default)]
+    pub last_unsupported_packet_id: Option<i32>,
+    #[serde(default)]
+    pub last_unsupported_packet_len: Option<usize>,
     pub registries_seen: usize,
     #[serde(default)]
     pub registry_entries_seen: usize,

@@ -23,6 +23,16 @@ pub(super) fn apply_control_projection_event(
         NetEvent::PacketSeen { .. } => {
             counters.packets_seen += 1;
         }
+        NetEvent::UnsupportedPacket {
+            state,
+            packet_id,
+            len,
+        } => {
+            counters.unsupported_packets += 1;
+            counters.last_unsupported_packet_state = Some(format!("{state:?}"));
+            counters.last_unsupported_packet_id = Some(packet_id);
+            counters.last_unsupported_packet_len = Some(len);
+        }
         other => return Some(other),
     }
 
@@ -67,6 +77,23 @@ mod tests {
         )
         .is_none());
         assert_eq!(counters.packets_seen, 1);
+
+        assert!(apply_control_projection_event(
+            NetEvent::UnsupportedPacket {
+                state: bbb_net::ConnectionState::Play,
+                packet_id: 0x7f,
+                len: 12,
+            },
+            &mut counters,
+        )
+        .is_none());
+        assert_eq!(counters.unsupported_packets, 1);
+        assert_eq!(
+            counters.last_unsupported_packet_state.as_deref(),
+            Some("Play")
+        );
+        assert_eq!(counters.last_unsupported_packet_id, Some(0x7f));
+        assert_eq!(counters.last_unsupported_packet_len, Some(12));
 
         assert!(apply_control_projection_event(
             NetEvent::Disconnected {
