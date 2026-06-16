@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Deserialize;
 
-use super::{BlockModelFace, BlockModelShape};
+use super::{BlockModelFace, BlockModelGuiLight, BlockModelShape};
 use crate::{PackRoots, MC_VERSION};
 
 const VANILLA_BLOCK_STATES_JSON: &str =
@@ -472,6 +472,132 @@ fn block_model_catalog_resolves_parent_ambient_occlusion() {
         inherited.face_textures.get(BlockModelFace::North),
         "minecraft:block/oak_planks"
     );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_resolves_parent_gui_light() {
+    let root = unique_temp_dir("block-model-gui-light");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "kind=inherit": { "model": "minecraft:block/child_inherit" },
+                "kind=override": { "model": "minecraft:block/child_override" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("parent_model.json"),
+        r##"{
+            "gui_light": "front",
+            "textures": { "particle": "#all" },
+            "elements": [{
+                "faces": {
+                    "down": { "texture": "#all" },
+                    "up": { "texture": "#all" },
+                    "north": { "texture": "#all" },
+                    "south": { "texture": "#all" },
+                    "west": { "texture": "#all" },
+                    "east": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("child_inherit.json"),
+        r##"{
+            "parent": "minecraft:block/parent_model",
+            "textures": { "all": "minecraft:block/oak_planks" }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("child_override.json"),
+        r##"{
+            "parent": "minecraft:block/parent_model",
+            "gui_light": "side",
+            "textures": { "all": "minecraft:block/stone" }
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let inherited_resolved = catalog
+        .resolve_model("minecraft:block/child_inherit")
+        .unwrap();
+    let overridden_resolved = catalog
+        .resolve_model("minecraft:block/child_override")
+        .unwrap();
+    assert_eq!(inherited_resolved.gui_light(), BlockModelGuiLight::Front);
+    assert_eq!(overridden_resolved.gui_light(), BlockModelGuiLight::Side);
+
+    let mut properties = BTreeMap::new();
+    properties.insert("kind".to_string(), "inherit".to_string());
+    let inherited = catalog
+        .block_render_model("minecraft:test_block", &properties)
+        .unwrap();
+    properties.insert("kind".to_string(), "override".to_string());
+    let overridden = catalog
+        .block_render_model("minecraft:test_block", &properties)
+        .unwrap();
+
+    assert_eq!(inherited.gui_light, BlockModelGuiLight::Front);
+    assert_eq!(overridden.gui_light, BlockModelGuiLight::Side);
+    assert!(!inherited.gui_light.light_like_block());
+    assert!(overridden.gui_light.light_like_block());
+    assert_eq!(
+        inherited.face_textures.get(BlockModelFace::North),
+        "minecraft:block/oak_planks"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_rejects_invalid_gui_light() {
+    let root = unique_temp_dir("block-model-invalid-gui-light");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("invalid_model.json"),
+        r##"{
+            "gui_light": "diagonal"
+        }"##,
+    );
+
+    let error = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap_err();
+    let message = format!("{error:#}");
+
+    assert!(message.contains("parse block model"));
+    assert!(message.contains("diagonal"));
+    assert!(message.contains("front"));
+    assert!(message.contains("side"));
 
     std::fs::remove_dir_all(root).unwrap();
 }

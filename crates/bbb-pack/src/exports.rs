@@ -3,14 +3,15 @@ pub use crate::atlas::{
 };
 pub use crate::block_models::{
     BlockFaceTextures, BlockModelBox, BlockModelCatalog, BlockModelCross, BlockModelFace,
-    BlockModelQuad, BlockModelShape, BlockRenderModel,
+    BlockModelGuiLight, BlockModelQuad, BlockModelShape, BlockRenderModel,
 };
 pub use crate::colors::{
     BiomeColorCatalog, BiomeColorProfile, ColorMapImage, GrassColorModifier, TerrainColorMaps,
 };
 pub use crate::item_models::{
     ClientItemDefinition, ClientItemProperties, ItemModelCatalog, ItemModelDefinition,
-    ItemModelTransformation, ItemSpecialModel, ItemTintSource, RangeDispatchEntry, SelectCase,
+    ItemModelProperty, ItemModelTransformation, ItemSpecialModel, ItemTintSource,
+    RangeDispatchEntry, SelectCase,
 };
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};

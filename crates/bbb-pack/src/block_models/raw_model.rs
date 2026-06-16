@@ -2,12 +2,16 @@ use std::collections::BTreeMap;
 
 use serde::Deserialize;
 
+use super::BlockModelGuiLight;
+
 #[derive(Debug, Clone, Default, Deserialize)]
 pub(super) struct RawBlockModel {
     #[serde(default)]
     pub(super) parent: Option<String>,
     #[serde(default)]
     pub(super) ambientocclusion: Option<bool>,
+    #[serde(default)]
+    pub(super) gui_light: Option<BlockModelGuiLight>,
     #[serde(default)]
     pub(super) textures: BTreeMap<String, RawTextureReference>,
     #[serde(default)]

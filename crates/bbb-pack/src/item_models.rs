@@ -75,6 +75,14 @@ impl ItemModelCatalog {
         counts
     }
 
+    pub fn property_type_counts(&self) -> BTreeMap<String, usize> {
+        let mut counts = BTreeMap::new();
+        for definition in self.definitions.values() {
+            definition.model.collect_property_type_counts(&mut counts);
+        }
+        counts
+    }
+
     pub fn transformation_count(&self) -> usize {
         self.definitions
             .values()
@@ -164,20 +172,20 @@ pub enum ItemModelDefinition {
     },
     Condition {
         transformation: Option<ItemModelTransformation>,
-        property: String,
+        property: ItemModelProperty,
         on_true: Box<ItemModelDefinition>,
         on_false: Box<ItemModelDefinition>,
     },
     RangeDispatch {
         transformation: Option<ItemModelTransformation>,
-        property: String,
+        property: ItemModelProperty,
         scale: f32,
         entries: Vec<RangeDispatchEntry>,
         fallback: Option<Box<ItemModelDefinition>>,
     },
     Select {
         transformation: Option<ItemModelTransformation>,
-        property: String,
+        property: ItemModelProperty,
         block_state_property: Option<String>,
         cases: Vec<SelectCase>,
         fallback: Option<Box<ItemModelDefinition>>,
@@ -216,6 +224,22 @@ impl ItemModelTransformation {
             _ => bail!("item model transformation must be an object or 16-value matrix array"),
         }
         Ok(Self { raw: value.clone() })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ItemModelProperty {
+    pub property_type: String,
+    raw: Value,
+}
+
+impl ItemModelProperty {
+    pub fn raw(&self) -> &Value {
+        &self.raw
+    }
+
+    pub fn into_raw(self) -> Value {
+        self.raw
     }
 }
 
@@ -461,6 +485,55 @@ impl ItemModelDefinition {
             }
         }
     }
+
+    fn collect_property_type_counts(&self, counts: &mut BTreeMap<String, usize>) {
+        match self {
+            Self::Empty | Self::BundleSelectedItem | Self::Model { .. } | Self::Special { .. } => {}
+            Self::Condition {
+                property,
+                on_true,
+                on_false,
+                ..
+            } => {
+                *counts.entry(property.property_type.clone()).or_default() += 1;
+                on_true.collect_property_type_counts(counts);
+                on_false.collect_property_type_counts(counts);
+            }
+            Self::RangeDispatch {
+                property,
+                entries,
+                fallback,
+                ..
+            } => {
+                *counts.entry(property.property_type.clone()).or_default() += 1;
+                for entry in entries {
+                    entry.model.collect_property_type_counts(counts);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_property_type_counts(counts);
+                }
+            }
+            Self::Select {
+                property,
+                cases,
+                fallback,
+                ..
+            } => {
+                *counts.entry(property.property_type.clone()).or_default() += 1;
+                for case in cases {
+                    case.model.collect_property_type_counts(counts);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_property_type_counts(counts);
+                }
+            }
+            Self::Composite { models, .. } => {
+                for model in models {
+                    model.collect_property_type_counts(counts);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -485,7 +558,10 @@ fn parse_item_model_definition(value: &Value) -> Result<ItemModelDefinition> {
         "minecraft:model" => parse_model_item_model(object),
         "minecraft:condition" => Ok(ItemModelDefinition::Condition {
             transformation: optional_transformation(object)?,
-            property: resource_id(required_str(object, "property")?)?,
+            property: parse_item_model_property(
+                object,
+                &["type", "transformation", "on_true", "on_false"],
+            )?,
             on_true: Box::new(parse_item_model_definition(required_value(
                 object, "on_true",
             )?)?),
@@ -537,7 +613,10 @@ fn parse_range_dispatch_model(object: &Map<String, Value>) -> Result<ItemModelDe
         .collect::<Result<Vec<_>>>()?;
     Ok(ItemModelDefinition::RangeDispatch {
         transformation: optional_transformation(object)?,
-        property: resource_id(required_str(object, "property")?)?,
+        property: parse_item_model_property(
+            object,
+            &["type", "transformation", "entries", "fallback", "scale"],
+        )?,
         scale: optional_f32(object, "scale", 1.0)?,
         entries,
         fallback: optional_model(object, "fallback")?,
@@ -559,7 +638,10 @@ fn parse_select_model(object: &Map<String, Value>) -> Result<ItemModelDefinition
         .collect::<Result<Vec<_>>>()?;
     Ok(ItemModelDefinition::Select {
         transformation: optional_transformation(object)?,
-        property: resource_id(required_str(object, "property")?)?,
+        property: parse_item_model_property(
+            object,
+            &["type", "transformation", "cases", "fallback"],
+        )?,
         block_state_property: object
             .get("block_state_property")
             .map(|value| {
@@ -571,6 +653,25 @@ fn parse_select_model(object: &Map<String, Value>) -> Result<ItemModelDefinition
             .transpose()?,
         cases,
         fallback: optional_model(object, "fallback")?,
+    })
+}
+
+fn parse_item_model_property(
+    object: &Map<String, Value>,
+    ignored_fields: &[&str],
+) -> Result<ItemModelProperty> {
+    let property_type = resource_id(required_str(object, "property")?)?;
+    let mut raw = Map::new();
+    raw.insert("property".to_string(), Value::String(property_type.clone()));
+    for (key, value) in object {
+        if key == "property" || ignored_fields.contains(&key.as_str()) {
+            continue;
+        }
+        raw.insert(key.clone(), value.clone());
+    }
+    Ok(ItemModelProperty {
+        property_type,
+        raw: Value::Object(raw),
     })
 }
 
@@ -1156,6 +1257,93 @@ mod tests {
     }
 
     #[test]
+    fn item_model_catalog_preserves_property_payloads() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:has_component",
+                "component": "minecraft:lodestone_tracker",
+                "on_true": {
+                  "type": "minecraft:range_dispatch",
+                  "property": "minecraft:compass",
+                  "target": "lodestone",
+                  "scale": 32.0,
+                  "entries": [
+                    {
+                      "threshold": 0.015625,
+                      "model": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/compass_01"
+                      }
+                    }
+                  ]
+                },
+                "on_false": {
+                  "type": "minecraft:select",
+                  "property": "minecraft:local_time",
+                  "pattern": "MM-dd",
+                  "time_zone": "GMT",
+                  "cases": [
+                    {
+                      "when": "12-25",
+                      "model": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/chest_christmas"
+                      }
+                    }
+                  ],
+                  "fallback": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/chest"
+                  }
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:has_component");
+        assert_eq!(
+            property.raw()["component"],
+            serde_json::json!("minecraft:lodestone_tracker")
+        );
+        assert!(property.raw().get("on_true").is_none());
+
+        let ItemModelDefinition::RangeDispatch {
+            property, entries, ..
+        } = on_true.as_ref()
+        else {
+            panic!("true branch should parse as a range dispatch item model");
+        };
+        assert_eq!(property.property_type, "minecraft:compass");
+        assert_eq!(property.raw()["target"], serde_json::json!("lodestone"));
+        assert!(property.raw().get("entries").is_none());
+        assert_eq!(entries.len(), 1);
+
+        let ItemModelDefinition::Select {
+            property, cases, ..
+        } = on_false.as_ref()
+        else {
+            panic!("false branch should parse as a select item model");
+        };
+        assert_eq!(property.property_type, "minecraft:local_time");
+        assert_eq!(property.raw()["pattern"], serde_json::json!("MM-dd"));
+        assert_eq!(property.raw()["time_zone"], serde_json::json!("GMT"));
+        assert!(property.raw().get("cases").is_none());
+        assert_eq!(cases.len(), 1);
+    }
+
+    #[test]
     fn item_model_catalog_collects_nested_bow_model_references() {
         let root = unique_temp_dir("item-model-bow");
         let items = item_dir(&root);
@@ -1210,7 +1398,7 @@ mod tests {
         else {
             panic!("bow root should be a condition model");
         };
-        assert_eq!(property, "minecraft:using_item");
+        assert_eq!(property.property_type, "minecraft:using_item");
         let ItemModelDefinition::RangeDispatch {
             property,
             scale,
@@ -1220,7 +1408,7 @@ mod tests {
         else {
             panic!("bow true branch should be range dispatch");
         };
-        assert_eq!(property, "minecraft:use_duration");
+        assert_eq!(property.property_type, "minecraft:use_duration");
         assert_eq!(*scale, 0.05);
         assert_eq!(entries.len(), 2);
         assert_eq!(
@@ -1293,7 +1481,11 @@ mod tests {
         else {
             panic!("beehive should resolve to the pack override select model");
         };
-        assert_eq!(property, "minecraft:block_state");
+        assert_eq!(property.property_type, "minecraft:block_state");
+        assert_eq!(
+            property.raw()["block_state_property"],
+            serde_json::json!("honey_level")
+        );
         assert_eq!(block_state_property.as_deref(), Some("honey_level"));
         assert_eq!(cases.len(), 1);
         assert_eq!(cases[0].when, vec![Value::String("5".to_string())]);
@@ -1457,6 +1649,27 @@ mod tests {
                 ("minecraft:shield".to_string(), 2),
                 ("minecraft:shulker_box".to_string(), 17),
                 ("minecraft:trident".to_string(), 2),
+            ])
+        );
+        assert_eq!(
+            catalog.property_type_counts(),
+            BTreeMap::from([
+                ("minecraft:block_state".to_string(), 12),
+                ("minecraft:broken".to_string(), 1),
+                ("minecraft:bundle/has_selected_item".to_string(), 17),
+                ("minecraft:charge_type".to_string(), 1),
+                ("minecraft:compass".to_string(), 3),
+                ("minecraft:context_dimension".to_string(), 1),
+                ("minecraft:crossbow/pull".to_string(), 1),
+                ("minecraft:display_context".to_string(), 26),
+                ("minecraft:fishing_rod/cast".to_string(), 1),
+                ("minecraft:has_component".to_string(), 2),
+                ("minecraft:local_time".to_string(), 2),
+                ("minecraft:time".to_string(), 2),
+                ("minecraft:trim_material".to_string(), 29),
+                ("minecraft:use_cycle".to_string(), 1),
+                ("minecraft:use_duration".to_string(), 1),
+                ("minecraft:using_item".to_string(), 5),
             ])
         );
         assert_eq!(catalog.transformation_count(), 83);

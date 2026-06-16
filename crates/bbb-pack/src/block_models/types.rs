@@ -1,5 +1,19 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockModelGuiLight {
+    Front,
+    #[default]
+    Side,
+}
+
+impl BlockModelGuiLight {
+    pub fn light_like_block(self) -> bool {
+        self == Self::Side
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BlockModelFace {
     Down,
@@ -107,6 +121,8 @@ pub struct BlockRenderModel {
     pub face_textures: BlockFaceTextures,
     pub shape: BlockModelShape,
     pub use_ambient_occlusion: bool,
+    #[serde(default)]
+    pub gui_light: BlockModelGuiLight,
 }
 
 impl BlockRenderModel {
@@ -115,6 +131,7 @@ impl BlockRenderModel {
             face_textures: BlockFaceTextures::uniform("minecraft:block/stone"),
             shape: BlockModelShape::Boxes(Vec::new()),
             use_ambient_occlusion: true,
+            gui_light: BlockModelGuiLight::default(),
         }
     }
 }

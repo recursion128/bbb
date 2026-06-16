@@ -20,8 +20,8 @@ use resolver::{resolve_texture_alias, ResolvedTextureReference};
 use rotation::{apply_variant_rotation, rotate_model_shape};
 use shape::{classify_model_shape, combine_model_shapes};
 pub use types::{
-    BlockFaceTextures, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelQuad,
-    BlockModelShape, BlockRenderModel,
+    BlockFaceTextures, BlockModelBox, BlockModelCross, BlockModelFace, BlockModelGuiLight,
+    BlockModelQuad, BlockModelShape, BlockRenderModel,
 };
 
 #[derive(Debug, Clone)]
@@ -110,10 +110,12 @@ impl BlockModelCatalog {
         };
         let mut face_textures = None;
         let mut use_ambient_occlusion = None;
+        let mut gui_light = None;
         let mut shapes = Vec::with_capacity(variants.len());
         for variant in variants {
             let model = self.resolve_model(&variant.model)?;
             use_ambient_occlusion.get_or_insert_with(|| model.use_ambient_occlusion());
+            gui_light.get_or_insert_with(|| model.gui_light());
             let local = model.face_textures()?;
             face_textures.get_or_insert_with(|| {
                 apply_variant_rotation(local, variant.x, variant.y, variant.z)
@@ -131,6 +133,7 @@ impl BlockModelCatalog {
             face_textures: face_textures?,
             shape: combine_model_shapes(shapes),
             use_ambient_occlusion: use_ambient_occlusion.unwrap_or(true),
+            gui_light: gui_light.unwrap_or_default(),
         })
     }
 }

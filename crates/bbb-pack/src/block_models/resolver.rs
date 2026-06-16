@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, HashSet};
 
 use super::{
-    classify_model_shape, BlockFaceTextures, BlockModelCatalog, BlockModelFace, BlockModelShape,
-    RawBlockElement, RawBlockModel,
+    classify_model_shape, BlockFaceTextures, BlockModelCatalog, BlockModelFace, BlockModelGuiLight,
+    BlockModelShape, RawBlockElement, RawBlockModel,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -11,6 +11,7 @@ pub(super) struct ResolvedBlockModel {
     faces: [Option<ResolvedModelFace>; 6],
     elements: Vec<RawBlockElement>,
     ambient_occlusion: Option<bool>,
+    gui_light: Option<BlockModelGuiLight>,
     pub(super) shape: BlockModelShape,
 }
 
@@ -29,6 +30,10 @@ struct ResolvedModelFace {
 impl ResolvedBlockModel {
     pub(super) fn use_ambient_occlusion(&self) -> bool {
         self.ambient_occlusion.unwrap_or(true)
+    }
+
+    pub(super) fn gui_light(&self) -> BlockModelGuiLight {
+        self.gui_light.unwrap_or_default()
     }
 
     pub(super) fn face_textures(&self) -> Option<BlockFaceTextures> {
@@ -100,6 +105,9 @@ fn resolve_model_inner(
     }
     if let Some(ambient_occlusion) = raw.ambientocclusion {
         resolved.ambient_occlusion = Some(ambient_occlusion);
+    }
+    if let Some(gui_light) = raw.gui_light {
+        resolved.gui_light = Some(gui_light);
     }
 
     if !raw.elements.is_empty() {
