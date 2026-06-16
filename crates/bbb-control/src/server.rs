@@ -457,6 +457,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.entity_transforms" => {
             serde_json::to_value(snapshot_guard.world_store.entity_transforms())
         }
+        "world.last_projectile_power" => {
+            serde_json::to_value(snapshot_guard.world_store.last_projectile_power_update())
+        }
         "world.entity_pick_targets" => {
             let partial_tick = f32_param(&request.params, "partial_tick").unwrap_or(1.0);
             serde_json::to_value(
@@ -579,21 +582,22 @@ mod tests {
         OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin as ProtocolPlayLogin,
         PlayTime, PlayerAbilities, PlayerCombatKill, PlayerExperience, PlayerHealth,
         PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate, PlayerTeamMethod,
-        PlayerTeamParameters, PongResponse, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
-        RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
-        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RegistryData,
-        RegistryDataEntry, RegistryTags, ScoreboardDisplaySlot, SelectAdvancementsTab,
-        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText,
-        SetBorderCenter, SetBorderLerpSize, SetBorderWarningDelay, SetBorderWarningDistance,
-        SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition,
-        SetDisplayObjective, SetObjective, SetObjectiveMethod, SetObjectiveParameters,
-        SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText,
-        SetTitleText, SetTitlesAnimation, ShowDialog, SlotDisplaySummary, SoundEvent,
-        SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
-        SystemChat, TagNetworkPayload, TagQuery, TeamCollisionRule, TeamVisibility, TickingState,
-        TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements,
-        UpdateEnabledFeatures, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, WaypointData,
-        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry,
+        RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
+        RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
+        RegistryData, RegistryDataEntry, RegistryTags, ScoreboardDisplaySlot,
+        SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+        SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderWarningDelay,
+        SetBorderWarningDistance, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetObjective, SetObjectiveMethod,
+        SetObjectiveParameters, SetPlayerInventory, SetPlayerTeam, SetScore, SetSimulationDistance,
+        SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog, SlotDisplaySummary,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
+        StopSound, SystemChat, TagNetworkPayload, TagQuery, TeamCollisionRule, TeamVisibility,
+        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
+        UpdateAdvancements, UpdateEnabledFeatures, UpdateRecipes, UpdateTags,
+        Vec3d as ProtocolVec3d, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_world::{
         BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
@@ -2631,6 +2635,67 @@ mod tests {
         );
         assert!(missing_response.ok);
         assert!(missing_response.result.unwrap().is_null());
+    }
+
+    #[test]
+    fn last_projectile_power_reads_canonical_world_state() {
+        let snapshot = shared_snapshot("test");
+
+        let empty_response = dispatch(
+            ControlRequest {
+                method: "world.last_projectile_power".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+        assert!(empty_response.ok);
+        assert!(empty_response.result.unwrap().is_null());
+
+        {
+            let mut store = WorldStore::new();
+            store.apply_add_entity(protocol_add_entity(10, 52));
+            store.apply_add_entity(protocol_add_entity(20, 7));
+            assert!(store.apply_projectile_power(ProjectilePower {
+                entity_id: 10,
+                acceleration_power: 0.75,
+            }));
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let applied_response = dispatch(
+            ControlRequest {
+                method: "world.last_projectile_power".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+        assert!(applied_response.ok);
+        let applied = applied_response.result.unwrap();
+        assert_eq!(applied["entity_id"], 10);
+        assert_eq!(applied["acceleration_power"], 0.75);
+        assert_eq!(applied["applied"], true);
+
+        assert!(!snapshot
+            .write()
+            .unwrap()
+            .world_store
+            .apply_projectile_power(ProjectilePower {
+                entity_id: 20,
+                acceleration_power: 0.25,
+            }));
+
+        let ignored_response = dispatch(
+            ControlRequest {
+                method: "world.last_projectile_power".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+        assert!(ignored_response.ok);
+        let ignored = ignored_response.result.unwrap();
+        assert_eq!(ignored["entity_id"], 20);
+        assert_eq!(ignored["acceleration_power"], 0.25);
+        assert_eq!(ignored["applied"], false);
     }
 
     #[test]
