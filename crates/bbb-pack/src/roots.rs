@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -216,6 +216,15 @@ impl PackRoots {
 
     pub fn load_sound_catalog(&self) -> Result<SoundCatalog> {
         SoundCatalog::load_resource_stack(&self.resource_stack())
+    }
+
+    pub fn load_required_sound_catalog(&self) -> Result<SoundCatalog> {
+        SoundCatalog::load_required_resource_stack(&self.resource_stack()).with_context(|| {
+            format!(
+                "load required sound catalog from {}",
+                self.sounds_definition().display()
+            )
+        })
     }
 
     pub fn load_language_catalog(&self, language_code: &str) -> Result<LanguageCatalog> {

@@ -54,6 +54,22 @@ impl SoundCatalog {
         Ok(catalog)
     }
 
+    pub fn load_required_resource_stack(stack: &PackResourceStack) -> Result<Self> {
+        let catalog = Self::load_resource_stack(stack)?;
+        if catalog.is_empty() {
+            bail!(
+                "required sound catalog is empty; checked resource roots [{}]",
+                stack
+                    .roots()
+                    .iter()
+                    .map(|root| root.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
+        Ok(catalog)
+    }
+
     pub fn from_json_bytes(
         namespace: &str,
         namespace_assets_dir: impl AsRef<Path>,
@@ -484,6 +500,49 @@ mod tests {
             catalog.event("ui.button.click").unwrap().sounds[0].ogg_path,
             Some(assets_dir.join("sounds").join("random/click_stereo.ogg"))
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn required_sound_catalog_errors_when_resource_stack_has_no_sounds() {
+        let root = unique_temp_dir("sound-required-empty");
+        std::fs::create_dir_all(root.join("sources").join(MC_VERSION))
+            .expect("test source root should exist");
+        let roots = PackRoots::from_root(&root).unwrap();
+
+        let err = roots.load_required_sound_catalog().unwrap_err();
+        let message = format!("{err:#}");
+        assert!(message.contains("load required sound catalog"));
+        assert!(message.contains("sounds.json"));
+        assert!(message.contains("required sound catalog is empty"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn required_sound_catalog_loads_minimal_valid_catalog() {
+        let root = unique_temp_dir("sound-required-valid");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        write_file(&assets_dir.join("sounds").join("random/click.ogg"));
+        write_json(
+            &assets_dir.join("sounds.json"),
+            r#"{
+              "ui.button.click": {
+                "sounds": ["random/click"]
+              }
+            }"#,
+        );
+        let roots = PackRoots::from_root(&root).unwrap();
+
+        let catalog = roots.load_required_sound_catalog().unwrap();
+
+        assert_eq!(catalog.len(), 1);
+        assert!(catalog.event("minecraft:ui.button.click").is_some());
 
         std::fs::remove_dir_all(root).unwrap();
     }

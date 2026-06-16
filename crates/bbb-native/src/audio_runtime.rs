@@ -25,7 +25,7 @@ pub(crate) struct NativeAudioRuntime {
 
 impl NativeAudioRuntime {
     pub(crate) fn load(roots: &PackRoots) -> Result<Self> {
-        let catalog = roots.load_sound_catalog().context("load sound catalog")?;
+        let catalog = load_required_native_sound_catalog(roots)?;
         let registry = SoundEventRegistry::vanilla_26_1();
         let playback = KiraAudioRuntime::new().context("initialize Kira audio runtime")?;
         let counters = AudioCounters {
@@ -74,6 +74,12 @@ impl NativeAudioRuntime {
     }
 }
 
+fn load_required_native_sound_catalog(roots: &PackRoots) -> Result<SoundCatalog> {
+    roots
+        .load_required_sound_catalog()
+        .context("load native sound catalog")
+}
+
 impl AudioEventSink for NativeAudioRuntime {
     fn counters(&self) -> AudioCounters {
         self.counters()
@@ -111,5 +117,38 @@ impl AudioEventSink for NativeAudioRuntime {
 
     fn tick_entity_sound_positions(&mut self, command: TickEntitySoundPositionsCommand) {
         self.submit_command(AudioCommand::TickEntitySoundPositions(command));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use super::*;
+
+    #[test]
+    fn native_audio_catalog_loader_errors_before_kira_when_catalog_is_empty() {
+        let root = unique_temp_dir("native-audio-empty-catalog");
+        std::fs::create_dir_all(root.join("sources").join("26.1"))
+            .expect("test source root should exist");
+        let roots = PackRoots::from_root(&root).unwrap();
+
+        let err = load_required_native_sound_catalog(&roots).unwrap_err();
+        let message = format!("{err:#}");
+        assert!(message.contains("load native sound catalog"));
+        assert!(message.contains("required sound catalog is empty"));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn unique_temp_dir(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("bbb-native-{label}-{nanos}"))
     }
 }
