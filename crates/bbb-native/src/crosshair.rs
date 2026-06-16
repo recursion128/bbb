@@ -893,6 +893,39 @@ mod tests {
     }
 
     #[test]
+    fn crosshair_target_hits_ender_dragon_tail_and_wing_part_ids() {
+        const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            100,
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            [0.0, 2.0, 9.0],
+        ));
+        world.advance_entity_client_animations(1);
+
+        let tail_pose = player_pose_at([0.0, 4.5 - 1.6200000047683716, 11.25], 0.0, 0.0);
+        let CrosshairTarget::Entity(tail_hit) =
+            crosshair_target_from_world(&world, Some(tail_pose)).unwrap()
+        else {
+            panic!("expected dragon tail part entity hit");
+        };
+        assert_eq!(tail_hit.entity_id, 104);
+        assert_vec3_close(tail_hit.location, [0.0, 4.5, 11.5]);
+        assert_vec3_close(tail_hit.relative_location, [0.0, 1.0, -1.0]);
+
+        let wing_pose = player_pose_at([4.5, 5.0 - 1.6200000047683716, 6.0], 0.0, 0.0);
+        let CrosshairTarget::Entity(wing_hit) =
+            crosshair_target_from_world(&world, Some(wing_pose)).unwrap()
+        else {
+            panic!("expected dragon wing part entity hit");
+        };
+        assert_eq!(wing_hit.entity_id, 107);
+        assert_vec3_close(wing_hit.location, [4.5, 5.0, 7.0]);
+        assert_vec3_close(wing_hit.relative_location, [0.0, 1.0, -2.0]);
+    }
+
+    #[test]
     fn crosshair_target_uses_entity_partial_tick_for_dragon_parts() {
         const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
         const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;

@@ -222,6 +222,7 @@ mod tests {
     use uuid::Uuid;
 
     const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
+    const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 
     #[test]
@@ -504,6 +505,40 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_on_ender_dragon_part_queues_interact_with_part_id() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_ender_dragon();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(counters.interact_entity_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::InteractEntity(InteractEntity {
+                entity_id: 101,
+                hand: InteractionHand::MainHand,
+                location: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.6200000047683716,
+                    z: -0.5,
+                },
+                using_secondary_action: false,
+            })
+        );
+    }
+
+    #[test]
     fn middle_mouse_press_on_entity_queues_pick_entity() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -656,6 +691,28 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         });
+        world
+    }
+
+    fn world_with_ender_dragon() -> WorldStore {
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        world.apply_add_entity(AddEntity {
+            id: 100,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            position: ProtocolVec3d {
+                x: 0.0,
+                y: 2.0,
+                z: 9.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        world.advance_entity_client_animations(1);
         world
     }
 }

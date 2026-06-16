@@ -435,6 +435,14 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         "world.entity_transforms" => {
             serde_json::to_value(snapshot_guard.world_store.entity_transforms())
         }
+        "world.entity_pick_targets" => {
+            let partial_tick = f32_param(&request.params, "partial_tick").unwrap_or(1.0);
+            serde_json::to_value(
+                snapshot_guard
+                    .world_store
+                    .entity_pick_targets_at_partial_tick(partial_tick),
+            )
+        }
         "world.probe_block" => {
             let x = i32_param(&request.params, "x");
             let y = i32_param(&request.params, "y");
@@ -490,6 +498,14 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
 
 fn i32_param(params: &serde_json::Value, key: &str) -> Option<i32> {
     params.get(key)?.as_i64()?.try_into().ok()
+}
+
+fn f32_param(params: &serde_json::Value, key: &str) -> Option<f32> {
+    params
+        .get(key)?
+        .as_f64()
+        .filter(|value| value.is_finite())
+        .map(|value| value as f32)
 }
 
 fn string_param<'a>(params: &'a serde_json::Value, key: &str) -> Option<&'a str> {
@@ -1860,6 +1876,48 @@ mod tests {
         );
         assert!(missing_response.ok);
         assert!(missing_response.result.unwrap().is_null());
+    }
+
+    #[test]
+    fn entity_pick_targets_probe_exposes_ender_dragon_part_targets() {
+        let snapshot = shared_snapshot("test");
+        {
+            let mut store = WorldStore::new();
+            store.apply_add_entity(protocol_add_entity(100, 43));
+            store.advance_entity_client_animations(1);
+            snapshot.write().unwrap().world_store = store;
+        }
+
+        let response = dispatch(
+            ControlRequest {
+                method: "world.entity_pick_targets".to_string(),
+                params: json!({"partial_tick": 1.0}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let targets = response.result.unwrap();
+        let targets = targets.as_array().unwrap();
+        let ids = targets
+            .iter()
+            .map(|target| target["entity_id"].as_i64().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(ids, vec![101, 102, 103, 104, 105, 106, 107, 108]);
+        assert!(!ids.contains(&100));
+
+        let head = &targets[0];
+        assert!(head["position"]["x"].is_number());
+        assert!(head["position"]["y"].is_number());
+        assert!(head["position"]["z"].is_number());
+        assert_eq!(head["bounds"]["max"][0], 0.5);
+        assert_eq!(head["bounds"]["max"][1], 1.0);
+
+        let wing = &targets[6];
+        assert_eq!(wing["entity_id"], 107);
+        assert_eq!(wing["bounds"]["min"][0], -2.0);
+        assert_eq!(wing["bounds"]["max"][0], 2.0);
+        assert_eq!(wing["bounds"]["max"][1], 2.0);
     }
 
     fn single_section_chunk() -> ChunkColumn {
