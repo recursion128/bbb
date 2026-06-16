@@ -365,6 +365,17 @@ pub fn encode_play_place_recipe(command: PlaceRecipeCommand) -> (i32, Vec<u8>) {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SelectTradeCommand {
+    pub item: i32,
+}
+
+pub fn encode_play_select_trade(command: SelectTradeCommand) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(command.item);
+    (ids::play::SERVERBOUND_SELECT_TRADE, out.into_inner())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerAbilitiesCommand {
     pub flying: bool,
 }

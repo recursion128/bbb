@@ -2,8 +2,8 @@ use bbb_protocol::packets::{
     self, AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
     ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, InteractEntity,
     InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, UseItem,
-    UseItemOn, Vec3d,
+    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
+    SelectTradeCommand, UseItem, UseItemOn, Vec3d,
 };
 use serde::{Deserialize, Serialize};
 
@@ -92,6 +92,7 @@ pub enum NetCommand {
     PickItemFromBlock(PickItemFromBlock),
     PickItemFromEntity(PickItemFromEntity),
     PlaceRecipe(PlaceRecipeCommand),
+    SelectTrade(SelectTradeCommand),
     ContainerButtonClick(ContainerButtonClick),
     ContainerClick(ContainerClick),
     ContainerClose(ContainerCloseRequest),

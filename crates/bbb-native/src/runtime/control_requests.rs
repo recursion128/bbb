@@ -16,7 +16,7 @@ use crate::{
         queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
         queue_container_click_command, queue_container_close_request_command,
         queue_container_slot_state_changed_command, queue_place_recipe_command,
-        queue_player_abilities_command, select_hotbar_slot,
+        queue_player_abilities_command, queue_select_trade_command, select_hotbar_slot,
     },
 };
 
@@ -108,6 +108,13 @@ pub(crate) fn pump_control_net_requests(
                         recipe_index,
                         use_max_items,
                     },
+                );
+            }
+            NetControlRequest::SelectTrade { item } => {
+                queue_select_trade_command(
+                    counters,
+                    net_commands,
+                    bbb_protocol::packets::SelectTradeCommand { item },
                 );
             }
             NetControlRequest::ChatCommand { command } => {
@@ -369,6 +376,28 @@ mod tests {
                 recipe_index: 123,
                 use_max_items: true,
             })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_select_trade() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::SelectTrade { item: 2 });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.select_trade_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectTrade(bbb_protocol::packets::SelectTradeCommand { item: 2 })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }

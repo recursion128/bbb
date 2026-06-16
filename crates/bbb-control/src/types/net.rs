@@ -34,6 +34,8 @@ pub struct NetCounters {
     pub pick_item_from_entity_commands_queued: usize,
     #[serde(default)]
     pub place_recipe_commands_queued: usize,
+    #[serde(default)]
+    pub select_trade_commands_queued: usize,
     pub command_suggestion_commands_queued: usize,
     #[serde(default)]
     pub container_close_commands_queued: usize,

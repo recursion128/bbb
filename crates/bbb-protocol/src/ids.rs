@@ -233,6 +233,7 @@ pub mod play {
     pub const SERVERBOUND_PLAYER_LOADED: i32 = 44;
     pub const SERVERBOUND_PONG: i32 = 45;
     pub const SERVERBOUND_RESOURCE_PACK: i32 = 49;
+    pub const SERVERBOUND_SELECT_TRADE: i32 = 51;
     pub const SERVERBOUND_SET_CARRIED_ITEM: i32 = 53;
     pub const SERVERBOUND_SWING: i32 = 63;
     pub const SERVERBOUND_USE_ITEM_ON: i32 = 66;

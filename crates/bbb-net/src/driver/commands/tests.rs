@@ -4,8 +4,8 @@ use super::{
     send_container_close, send_container_slot_state_changed, send_interact_entity,
     send_pick_item_from_block, send_pick_item_from_entity, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
-    send_player_input_command, send_player_move_command, send_set_held_slot_command,
-    send_swing_command, send_use_item, send_use_item_on,
+    send_player_input_command, send_player_move_command, send_select_trade,
+    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -19,7 +19,7 @@ use bbb_protocol::{
         ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedComponentPatch,
         HashedItemStack, HashedStack, InteractEntity, InteractionHand, PickItemFromEntity,
         PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth,
-        PlayerInput, PlayerPositionState, Vec3d,
+        PlayerInput, PlayerPositionState, SelectTradeCommand, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -597,6 +597,37 @@ async fn send_place_recipe_encodes_place_recipe_packet() {
     )
     .await
     .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_select_trade_encodes_select_trade_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("select trade command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SELECT_TRADE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_select_trade(&mut conn, SelectTradeCommand { item: 2 })
+        .await
+        .unwrap();
 
     server.await.unwrap();
 }

@@ -955,6 +955,7 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLICK, 18);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLOSE, 19);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED, 20);
+    assert_eq!(ids::play::SERVERBOUND_SELECT_TRADE, 51);
 }
 
 #[test]
@@ -1063,6 +1064,15 @@ fn encodes_place_recipe_packet() {
     assert_eq!(decoder.read_var_i32().unwrap(), 7);
     assert_eq!(decoder.read_var_i32().unwrap(), 123);
     assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_select_trade_packet() {
+    let (id, payload) = encode_play_select_trade(SelectTradeCommand { item: 2 });
+    assert_eq!(id, ids::play::SERVERBOUND_SELECT_TRADE);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 2);
     assert!(decoder.is_empty());
 }
 

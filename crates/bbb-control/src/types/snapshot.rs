@@ -34,6 +34,9 @@ pub enum NetControlRequest {
         recipe_index: i32,
         use_max_items: bool,
     },
+    SelectTrade {
+        item: i32,
+    },
     ChatCommand {
         command: String,
     },
