@@ -85,7 +85,32 @@ pub(crate) fn load_atlas_texture_entries(
             }
         }
     }
+    entries.retain(|entry| entry.id() != MISSING_TEXTURE_ID);
+    entries.insert(0, AtlasTextureEntry::Image(missing_texture_image()?));
     Ok(entries)
+}
+
+const MISSING_TEXTURE_ID: &str = "minecraft:missingno";
+const MISSING_TEXTURE_SIZE: u32 = 16;
+
+fn missing_texture_image() -> Result<SpriteImage> {
+    let mut rgba = Vec::with_capacity((MISSING_TEXTURE_SIZE * MISSING_TEXTURE_SIZE * 4) as usize);
+    for y in 0..MISSING_TEXTURE_SIZE {
+        for x in 0..MISSING_TEXTURE_SIZE {
+            let magenta = (y < MISSING_TEXTURE_SIZE / 2) ^ (x < MISSING_TEXTURE_SIZE / 2);
+            if magenta {
+                rgba.extend_from_slice(&[248, 0, 248, 255]);
+            } else {
+                rgba.extend_from_slice(&[0, 0, 0, 255]);
+            }
+        }
+    }
+    SpriteImage::new(
+        MISSING_TEXTURE_ID,
+        MISSING_TEXTURE_SIZE,
+        MISSING_TEXTURE_SIZE,
+        rgba,
+    )
 }
 
 fn atlas_definition_location(atlas_name: &str) -> Result<ResourceLocation> {
@@ -748,7 +773,7 @@ mod tests {
         let entries = load_atlas_texture_entries(&roots, "filtered").unwrap();
         let ids = entries.iter().map(entry_id).collect::<Vec<_>>();
 
-        assert_eq!(ids, vec!["minecraft:block/stone"]);
+        assert_eq!(ids, vec!["minecraft:missingno", "minecraft:block/stone"]);
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -799,7 +824,11 @@ mod tests {
 
         assert_eq!(
             ids,
-            vec!["minecraft:block/stone", "minecraft:block/deepslate"]
+            vec![
+                "minecraft:missingno",
+                "minecraft:block/stone",
+                "minecraft:block/deepslate"
+            ]
         );
 
         std::fs::remove_dir_all(root).unwrap();
@@ -858,12 +887,13 @@ mod tests {
         let block_entries = load_atlas_texture_entries(&roots, "blocks").unwrap();
         assert_eq!(
             block_entries.iter().map(entry_id).collect::<Vec<_>>(),
-            vec!["minecraft:block/stone"]
+            vec!["minecraft:missingno", "minecraft:block/stone"]
         );
 
         let particle_sources = roots.load_atlas_texture_sources("particles").unwrap();
-        assert_eq!(particle_sources.len(), 1);
-        assert_eq!(particle_sources[0].id, "minecraft:particle/spark");
+        assert_eq!(particle_sources.len(), 2);
+        assert_eq!(particle_sources[0].id, "minecraft:missingno");
+        assert_eq!(particle_sources[1].id, "minecraft:particle/spark");
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -928,9 +958,13 @@ mod tests {
 
         assert_eq!(
             entries.iter().map(entry_id).collect::<Vec<_>>(),
-            vec!["minecraft:block/shared"]
+            vec!["minecraft:missingno", "minecraft:block/shared"]
         );
-        assert!(entry_path(&entries[0]).ends_with(&overlay_texture));
+        let shared = entries
+            .iter()
+            .find(|entry| entry_id(entry) == "minecraft:block/shared")
+            .unwrap();
+        assert!(entry_path(shared).ends_with(&overlay_texture));
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -975,9 +1009,13 @@ mod tests {
 
         assert_eq!(
             entries.iter().map(entry_id).collect::<Vec<_>>(),
-            vec!["minecraft:block/stone"]
+            vec!["minecraft:missingno", "minecraft:block/stone"]
         );
-        assert!(entry_path(&entries[0]).ends_with(&dirt));
+        let stone = entries
+            .iter()
+            .find(|entry| entry_id(entry) == "minecraft:block/stone")
+            .unwrap();
+        assert!(entry_path(stone).ends_with(&dirt));
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -1026,9 +1064,13 @@ mod tests {
 
         assert_eq!(
             entries.iter().map(entry_id).collect::<Vec<_>>(),
-            vec!["minecraft:block/stone"]
+            vec!["minecraft:missingno", "minecraft:block/stone"]
         );
-        assert!(entry_path(&entries[0]).ends_with(&overlay_texture));
+        let stone = entries
+            .iter()
+            .find(|entry| entry_id(entry) == "minecraft:block/stone")
+            .unwrap();
+        assert!(entry_path(stone).ends_with(&overlay_texture));
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -1070,7 +1112,7 @@ mod tests {
         let source = load_atlas_texture_entries(&roots, "blocks")
             .unwrap()
             .into_iter()
-            .next()
+            .find(|entry| entry_id(entry) == "minecraft:block/stone")
             .unwrap()
             .into_source()
             .unwrap();
@@ -1128,7 +1170,7 @@ mod tests {
         let source = load_atlas_texture_entries(&roots, "blocks")
             .unwrap()
             .into_iter()
-            .next()
+            .find(|entry| entry_id(entry) == "minecraft:block/stone")
             .unwrap()
             .into_source()
             .unwrap();
@@ -1270,8 +1312,13 @@ mod tests {
 
         let roots = PackRoots::from_root(&root).unwrap();
         let entries = load_atlas_texture_entries(&roots, "unstitch").unwrap();
-        assert_eq!(entries.len(), 1);
-        let image = entries.into_iter().next().unwrap().into_image().unwrap();
+        assert_eq!(entries.len(), 2);
+        let image = entries
+            .into_iter()
+            .find(|entry| entry_id(entry) == "minecraft:widget/center")
+            .unwrap()
+            .into_image()
+            .unwrap();
 
         assert_eq!(image.id, "minecraft:widget/center");
         assert_eq!((image.width, image.height), (2, 2));

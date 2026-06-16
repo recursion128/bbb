@@ -11,8 +11,11 @@ use crate::{
     },
     item_models::{ClientItemDefinition, ItemModelCatalog},
     resources::{PackResourceStack, ResourceLocation},
+    sprites::SpriteImage,
     PackRoots,
 };
+
+pub const ITEM_CUBOID_TEXTURE_ATLASES: &[&str] = &["items", "blocks"];
 
 #[derive(Debug, Clone)]
 pub struct ItemCuboidModelCatalog {
@@ -142,8 +145,109 @@ impl ItemCuboidModelSet {
         texture_ids.into_iter().collect()
     }
 
+    pub fn load_texture_images(&self, roots: &PackRoots) -> Result<ItemCuboidTextureImageSet> {
+        self.load_texture_images_from_atlases(roots, ITEM_CUBOID_TEXTURE_ATLASES.iter().copied())
+    }
+
+    pub fn load_texture_images_from_atlases(
+        &self,
+        roots: &PackRoots,
+        atlas_names: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Result<ItemCuboidTextureImageSet> {
+        Ok(
+            ItemCuboidTextureImageCatalog::load_from_atlases(roots, atlas_names)?
+                .images_for_model_set(self),
+        )
+    }
+
     pub fn is_empty(&self) -> bool {
         self.models.is_empty() && self.missing_model_ids.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ItemCuboidTextureImageCatalog {
+    images: BTreeMap<String, SpriteImage>,
+}
+
+impl ItemCuboidTextureImageCatalog {
+    pub fn load(roots: &PackRoots) -> Result<Self> {
+        Self::load_from_atlases(roots, ITEM_CUBOID_TEXTURE_ATLASES.iter().copied())
+    }
+
+    pub fn load_from_atlases(
+        roots: &PackRoots,
+        atlas_names: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Result<Self> {
+        let mut image_by_id = BTreeMap::new();
+        for atlas_name in atlas_names {
+            for image in roots.load_atlas_texture_images(atlas_name.as_ref())? {
+                image_by_id.entry(image.id.clone()).or_insert(image);
+            }
+        }
+        Ok(Self {
+            images: image_by_id,
+        })
+    }
+
+    pub fn images_for_model_set(
+        &self,
+        model_set: &ItemCuboidModelSet,
+    ) -> ItemCuboidTextureImageSet {
+        let mut images = Vec::new();
+        let mut missing_texture_ids = Vec::new();
+        for texture_id in model_set.texture_ids() {
+            match self.images.get(&texture_id) {
+                Some(image) => images.push(image.clone()),
+                None => missing_texture_ids.push(texture_id),
+            }
+        }
+        ItemCuboidTextureImageSet {
+            images,
+            missing_texture_ids,
+        }
+    }
+
+    pub fn image(&self, texture_id: &str) -> Option<&SpriteImage> {
+        let texture_id = ResourceLocation::parse(texture_id).ok()?.id();
+        self.images.get(&texture_id)
+    }
+
+    pub fn images(&self) -> &BTreeMap<String, SpriteImage> {
+        &self.images
+    }
+
+    pub fn len(&self) -> usize {
+        self.images.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.images.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ItemCuboidTextureImageSet {
+    pub images: Vec<SpriteImage>,
+    pub missing_texture_ids: Vec<String>,
+}
+
+impl ItemCuboidTextureImageSet {
+    pub fn all_textures_loaded(&self) -> bool {
+        self.missing_texture_ids.is_empty()
+    }
+
+    pub fn image(&self, texture_id: &str) -> Option<&SpriteImage> {
+        let texture_id = ResourceLocation::parse(texture_id).ok()?.id();
+        self.images.iter().find(|image| image.id == texture_id)
+    }
+
+    pub fn len(&self) -> usize {
+        self.images.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.images.is_empty() && self.missing_texture_ids.is_empty()
     }
 }
 
@@ -371,6 +475,30 @@ mod tests {
             .join("assets")
             .join("minecraft");
         write_json(
+            &assets.join("atlases").join("items.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "item/",
+                        "source": "item"
+                    }
+                ]
+            }"#,
+        );
+        write_json(
+            &assets.join("atlases").join("blocks.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "block/",
+                        "source": "block"
+                    }
+                ]
+            }"#,
+        );
+        write_json(
             &assets.join("items").join("test_combo.json"),
             r#"{
                 "model": {
@@ -421,6 +549,18 @@ mod tests {
         write_full_cube_model(
             &assets.join("models").join("block").join("test_block.json"),
             "minecraft:block/test_block",
+        );
+        write_test_rgba_png(
+            &assets.join("textures").join("item").join("test_sword.png"),
+            1,
+            1,
+            &[255, 0, 0, 255],
+        );
+        write_test_rgba_png(
+            &assets.join("textures").join("block").join("test_block.png"),
+            1,
+            1,
+            &[0, 255, 0, 255],
         );
 
         let roots = PackRoots::from_root(&root).unwrap();
@@ -475,6 +615,24 @@ mod tests {
                 "minecraft:item/test_sword",
             ]
         );
+        let texture_images = resolved.load_texture_images(&roots).unwrap();
+        assert_eq!(
+            texture_images
+                .images
+                .iter()
+                .map(|image| image.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["minecraft:block/test_block", "minecraft:item/test_sword"]
+        );
+        assert_eq!(
+            texture_images.missing_texture_ids,
+            vec!["custom:item/test_overlay".to_string()]
+        );
+        assert_eq!(
+            texture_images.image("item/test_sword").unwrap().rgba,
+            vec![255, 0, 0, 255]
+        );
+        assert!(!texture_images.all_textures_loaded());
 
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -571,6 +729,7 @@ mod tests {
         let roots = PackRoots::discover().unwrap();
         let item_models = roots.load_item_model_catalog().unwrap();
         let cuboid_models = roots.load_item_cuboid_model_catalog().unwrap();
+        let texture_images = ItemCuboidTextureImageCatalog::load(&roots).unwrap();
         let mut missing_model_ids = BTreeSet::new();
         for item_id in item_models.definitions().keys() {
             let resolved = cuboid_models
@@ -617,6 +776,14 @@ mod tests {
         );
         assert!(glass.models[0].texture_slots["all"].force_translucent);
         assert_eq!(glass.texture_ids(), vec!["minecraft:block/glass"]);
+        let glass_images = glass.load_texture_images(&roots).unwrap();
+        assert!(glass_images.all_textures_loaded());
+        assert_eq!(
+            glass_images
+                .image("minecraft:block/glass")
+                .map(|image| (image.width, image.height)),
+            Some((16, 16))
+        );
 
         let air = cuboid_models
             .models_for_item(&item_models, "minecraft:air")
@@ -639,6 +806,16 @@ mod tests {
         );
         assert_eq!(air.models[0].texture_ids(), vec!["minecraft:missingno"]);
         assert_eq!(air.texture_ids(), vec!["minecraft:missingno"]);
+
+        let mut missing_texture_ids = BTreeSet::new();
+        for item_id in item_models.definitions().keys() {
+            let resolved = cuboid_models
+                .models_for_item(&item_models, item_id)
+                .unwrap();
+            let images = texture_images.images_for_model_set(&resolved);
+            missing_texture_ids.extend(images.missing_texture_ids);
+        }
+        assert!(missing_texture_ids.is_empty());
     }
 
     fn write_full_cube_model(path: &Path, texture: &str) {
@@ -667,6 +844,11 @@ mod tests {
     fn write_json(path: &Path, contents: &str) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, contents).unwrap();
+    }
+
+    fn write_test_rgba_png(path: &Path, width: u32, height: u32, rgba: &[u8]) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        image::save_buffer(path, rgba, width, height, image::ColorType::Rgba8).unwrap();
     }
 
     fn unique_temp_dir(name: &str) -> PathBuf {

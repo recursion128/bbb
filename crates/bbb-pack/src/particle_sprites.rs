@@ -100,7 +100,13 @@ mod tests {
             .load_particle_sprite_catalog()
             .unwrap();
 
-        assert_eq!(catalog.len(), 2);
+        assert_eq!(catalog.len(), 3);
+        assert_eq!(
+            catalog
+                .sprite("minecraft:missingno")
+                .map(|sprite| (sprite.width, sprite.height)),
+            Some((16, 16))
+        );
         assert_eq!(
             catalog
                 .sprite("minecraft:generic_0")

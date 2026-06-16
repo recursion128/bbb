@@ -11,6 +11,7 @@ pub use crate::colors::{
 };
 pub use crate::item_cuboid_models::{
     ItemCuboidModel, ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTexture,
+    ItemCuboidTextureImageCatalog, ItemCuboidTextureImageSet, ITEM_CUBOID_TEXTURE_ATLASES,
 };
 pub use crate::item_models::{
     ClientItemDefinition, ClientItemProperties, ItemModelCatalog, ItemModelDefinition,

@@ -348,6 +348,7 @@ mod tests {
         assert_eq!(
             sources,
             vec![
+                SpriteSource::new("minecraft:missingno", 16, 16),
                 SpriteSource::new("minecraft:block/a_hd_overlay", 64, 32),
                 SpriteSource::new("minecraft:block/sub/deepslate", 8, 8),
                 SpriteSource::new("minecraft:block/z_stone", 16, 16),
@@ -413,6 +414,7 @@ mod tests {
         assert_eq!(
             sources,
             vec![
+                SpriteSource::new("minecraft:missingno", 16, 16),
                 SpriteSource::new("example:block/gem", 16, 16),
                 SpriteSource::new("example:block/sub/ore", 8, 8),
                 SpriteSource::new("minecraft:block/stone", 16, 16),
@@ -474,7 +476,11 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             ids,
-            vec!["minecraft:hud/crosshair", "minecraft:mob_effect/speed"]
+            vec![
+                "minecraft:missingno",
+                "minecraft:hud/crosshair",
+                "minecraft:mob_effect/speed"
+            ]
         );
         let crosshair = roots.load_gui_sprite_image("hud/crosshair").unwrap();
         assert_eq!(crosshair.id, "minecraft:hud/crosshair");
@@ -531,13 +537,17 @@ mod tests {
         let sources = roots.load_atlas_texture_sources("items").unwrap();
         assert_eq!(
             sources,
-            vec![SpriteSource::new("minecraft:pattern/base_ruby", 3, 1)]
+            vec![
+                SpriteSource::new("minecraft:missingno", 16, 16),
+                SpriteSource::new("minecraft:pattern/base_ruby", 3, 1)
+            ]
         );
         let images = roots.load_atlas_texture_images("items").unwrap();
-        assert_eq!(images.len(), 1);
-        assert_eq!(images[0].id, "minecraft:pattern/base_ruby");
+        assert_eq!(images.len(), 2);
+        assert_eq!(images[0].id, "minecraft:missingno");
+        assert_eq!(images[1].id, "minecraft:pattern/base_ruby");
         assert_eq!(
-            images[0].rgba,
+            images[1].rgba,
             vec![100, 10, 20, 100, 20, 20, 20, 77, 10, 10, 10, 0]
         );
 
@@ -749,21 +759,21 @@ mod tests {
     fn loads_all_local_vanilla_atlases() {
         let roots = PackRoots::discover().unwrap();
         let expected = [
-            ("armor_trims", 576),
-            ("banner_patterns", 44),
-            ("beds", 16),
-            ("blocks", 1_121),
-            ("celestials", 10),
-            ("chests", 22),
-            ("decorated_pot", 25),
-            ("gui", 486),
-            ("items", 856),
-            ("map_decorations", 35),
-            ("paintings", 52),
-            ("particles", 254),
-            ("shield_patterns", 45),
-            ("shulker_boxes", 18),
-            ("signs", 24),
+            ("armor_trims", 577),
+            ("banner_patterns", 45),
+            ("beds", 17),
+            ("blocks", 1_122),
+            ("celestials", 11),
+            ("chests", 23),
+            ("decorated_pot", 26),
+            ("gui", 487),
+            ("items", 857),
+            ("map_decorations", 36),
+            ("paintings", 53),
+            ("particles", 255),
+            ("shield_patterns", 46),
+            ("shulker_boxes", 19),
+            ("signs", 25),
         ];
 
         for (atlas_name, expected_count) in expected {
@@ -787,7 +797,7 @@ mod tests {
     fn loads_local_vanilla_block_texture_dimensions() {
         let roots = PackRoots::discover().unwrap();
         let sources = roots.load_block_texture_sources().unwrap();
-        assert_eq!(sources.len(), 1_121);
+        assert_eq!(sources.len(), 1_122);
         let biome_colors = roots.load_biome_color_catalog().unwrap();
         assert_eq!(biome_colors.len(), VANILLA_BIOME_ORDER.len());
         let plains = biome_colors.profile(1).unwrap();
@@ -935,7 +945,7 @@ mod tests {
     fn loads_local_vanilla_item_and_armor_trim_atlases() {
         let roots = PackRoots::discover().unwrap();
         let item_sources = roots.load_atlas_texture_sources("items").unwrap();
-        assert_eq!(item_sources.len(), 856);
+        assert_eq!(item_sources.len(), 857);
         let helmet_trim = item_sources
             .iter()
             .find(|source| source.id == "minecraft:trims/items/helmet_trim_diamond")
@@ -948,7 +958,7 @@ mod tests {
         assert_eq!((apple.width, apple.height), (16, 16));
 
         let armor_sources = roots.load_atlas_texture_sources("armor_trims").unwrap();
-        assert_eq!(armor_sources.len(), 576);
+        assert_eq!(armor_sources.len(), 577);
         let sentry = armor_sources
             .iter()
             .find(|source| source.id == "minecraft:trims/entity/humanoid/sentry_diamond")
@@ -961,7 +971,7 @@ mod tests {
     fn loads_local_vanilla_gui_atlas() {
         let roots = PackRoots::discover().unwrap();
         let gui_sources = roots.load_atlas_texture_sources("gui").unwrap();
-        assert_eq!(gui_sources.len(), 486);
+        assert_eq!(gui_sources.len(), 487);
         let crosshair = gui_sources
             .iter()
             .find(|source| source.id == "minecraft:hud/crosshair")
