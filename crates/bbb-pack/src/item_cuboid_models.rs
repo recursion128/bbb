@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,7 @@ use crate::{
         BlockFaceTextures, BlockModelDisplayTransforms, BlockModelGuiLight, BlockModelShape,
         RawBlockModel,
     },
+    item_models::{ClientItemDefinition, ItemModelCatalog},
     resources::{PackResourceStack, ResourceLocation},
     PackRoots,
 };
@@ -50,6 +51,47 @@ impl ItemCuboidModelCatalog {
         })
     }
 
+    pub fn models_for_item(
+        &self,
+        item_models: &ItemModelCatalog,
+        item_id: &str,
+    ) -> Option<ItemCuboidModelSet> {
+        item_models
+            .definition(item_id)
+            .map(|definition| self.models_for_definition(definition))
+    }
+
+    pub fn models_for_definition(&self, definition: &ClientItemDefinition) -> ItemCuboidModelSet {
+        self.models_for_references(definition.model_references())
+    }
+
+    pub fn models_for_references(
+        &self,
+        model_ids: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> ItemCuboidModelSet {
+        let mut models = Vec::new();
+        let mut missing_model_ids = Vec::new();
+        let mut seen = BTreeSet::new();
+        for model_id in model_ids {
+            let model_id = model_id.as_ref();
+            let Some(normalized_id) = normalize_item_model_query_id(model_id) else {
+                missing_model_ids.push(model_id.to_string());
+                continue;
+            };
+            if !seen.insert(normalized_id.clone()) {
+                continue;
+            }
+            match self.model(&normalized_id) {
+                Some(model) => models.push(model),
+                None => missing_model_ids.push(normalized_id),
+            }
+        }
+        ItemCuboidModelSet {
+            models,
+            missing_model_ids,
+        }
+    }
+
     pub fn contains_model(&self, model_id: &str) -> bool {
         normalize_item_model_query_id(model_id)
             .is_some_and(|model_id| self.models.contains_key(&model_id))
@@ -65,6 +107,22 @@ impl ItemCuboidModelCatalog {
 
     pub fn is_empty(&self) -> bool {
         self.item_model_count == 0
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ItemCuboidModelSet {
+    pub models: Vec<ItemCuboidModel>,
+    pub missing_model_ids: Vec<String>,
+}
+
+impl ItemCuboidModelSet {
+    pub fn all_models_resolved(&self) -> bool {
+        self.missing_model_ids.is_empty()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.models.is_empty() && self.missing_model_ids.is_empty()
     }
 }
 
@@ -262,6 +320,98 @@ mod tests {
     }
 
     #[test]
+    fn item_cuboid_catalog_resolves_models_for_item_definitions() {
+        let root = unique_temp_dir("item-cuboid-definition-resolution");
+        let assets = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        write_json(
+            &assets.join("items").join("test_combo.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:composite",
+                    "models": [
+                        {
+                            "type": "minecraft:model",
+                            "model": "minecraft:item/test_sword"
+                        },
+                        {
+                            "type": "minecraft:model",
+                            "model": "minecraft:block/test_block"
+                        },
+                        {
+                            "type": "minecraft:model",
+                            "model": "minecraft:item/missing_model"
+                        },
+                        {
+                            "type": "minecraft:special",
+                            "base": "minecraft:item/test_sword",
+                            "model": {
+                                "type": "minecraft:chest"
+                            }
+                        }
+                    ]
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("models").join("item").join("test_sword.json"),
+            r#"{
+                "gui_light": "front",
+                "display": {
+                    "gui": {
+                        "scale": [2, 2, 2]
+                    }
+                }
+            }"#,
+        );
+        write_full_cube_model(
+            &assets.join("models").join("block").join("test_block.json"),
+            "minecraft:block/test_block",
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let item_models = roots.load_item_model_catalog().unwrap();
+        let cuboid_models = roots.load_item_cuboid_model_catalog().unwrap();
+        let resolved = cuboid_models
+            .models_for_item(&item_models, "test_combo")
+            .unwrap();
+
+        assert!(!resolved.all_models_resolved());
+        assert_eq!(
+            resolved
+                .models
+                .iter()
+                .map(|model| model.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["minecraft:block/test_block", "minecraft:item/test_sword"]
+        );
+        assert_eq!(
+            resolved.missing_model_ids,
+            vec!["minecraft:item/missing_model".to_string()]
+        );
+        assert_eq!(
+            resolved.models[0]
+                .face_textures
+                .as_ref()
+                .unwrap()
+                .get(BlockModelFace::North),
+            "minecraft:block/test_block"
+        );
+        assert_eq!(
+            resolved.models[1]
+                .display_transforms
+                .get(BlockModelDisplayContext::Gui)
+                .scale,
+            [2.0, 2.0, 2.0]
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     #[ignore]
     fn loads_local_vanilla_item_cuboid_model_catalog() {
         let catalog = PackRoots::discover()
@@ -306,6 +456,62 @@ mod tests {
             Some("minecraft:block/small_dripleaf_top")
         );
         assert!(small_dripleaf.face_textures.is_some());
+    }
+
+    #[test]
+    #[ignore]
+    fn resolves_local_vanilla_item_definition_cuboid_models() {
+        let roots = PackRoots::discover().unwrap();
+        let item_models = roots.load_item_model_catalog().unwrap();
+        let cuboid_models = roots.load_item_cuboid_model_catalog().unwrap();
+        let mut missing_model_ids = BTreeSet::new();
+        for item_id in item_models.definitions().keys() {
+            let resolved = cuboid_models
+                .models_for_item(&item_models, item_id)
+                .unwrap();
+            missing_model_ids.extend(resolved.missing_model_ids);
+        }
+
+        assert!(
+            missing_model_ids.is_empty(),
+            "missing item cuboid models: {missing_model_ids:?}"
+        );
+
+        let beehive = cuboid_models
+            .models_for_item(&item_models, "minecraft:beehive")
+            .unwrap();
+        assert_eq!(
+            beehive
+                .models
+                .iter()
+                .map(|model| model.id.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "minecraft:block/beehive_empty",
+                "minecraft:block/beehive_honey"
+            ]
+        );
+        assert!(beehive.all_models_resolved());
+
+        let air = cuboid_models
+            .models_for_item(&item_models, "minecraft:air")
+            .unwrap();
+        assert_eq!(
+            air.models
+                .iter()
+                .map(|model| model.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["minecraft:item/air"]
+        );
+        assert!(air.all_models_resolved());
+        assert_eq!(
+            air.models[0]
+                .face_textures
+                .as_ref()
+                .unwrap()
+                .get(BlockModelFace::North),
+            "minecraft:missingno"
+        );
     }
 
     fn write_full_cube_model(path: &Path, texture: &str) {

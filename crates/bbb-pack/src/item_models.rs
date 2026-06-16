@@ -38,11 +38,7 @@ impl ItemModelCatalog {
     }
 
     pub fn model_references(&self, item_id: &str) -> Option<Vec<String>> {
-        let mut references = BTreeSet::new();
-        self.definition(item_id)?
-            .model
-            .collect_model_references(&mut references);
-        Some(references.into_iter().collect())
+        Some(self.definition(item_id)?.model_references())
     }
 
     pub fn root_type_counts(&self) -> BTreeMap<String, usize> {
@@ -113,6 +109,12 @@ impl ClientItemDefinition {
     pub fn from_json_bytes(bytes: &[u8]) -> Result<Self> {
         let raw: Value = serde_json::from_slice(bytes)?;
         Self::from_value(raw)
+    }
+
+    pub fn model_references(&self) -> Vec<String> {
+        let mut references = BTreeSet::new();
+        self.model.collect_model_references(&mut references);
+        references.into_iter().collect()
     }
 
     fn from_value(value: Value) -> Result<Self> {
