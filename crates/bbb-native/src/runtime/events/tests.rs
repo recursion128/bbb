@@ -1505,6 +1505,51 @@ fn entity_events_update_world_and_world_counters() {
 }
 
 #[test]
+fn entity_events_materialize_ender_dragon_part_pick_targets() {
+    const ENDER_DRAGON_TYPE_ID: i32 = 43;
+
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::AddEntity(protocol_add_entity_with_type(
+        100,
+        ENDER_DRAGON_TYPE_ID,
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    world.advance_entity_client_animations(1);
+
+    assert_eq!(world.probe_entity_pick_bounds(100), None);
+    let targets = world.entity_pick_targets();
+    assert_eq!(
+        targets
+            .iter()
+            .map(|target| target.entity_id)
+            .collect::<Vec<_>>(),
+        vec![101, 102, 103, 104, 105, 106, 107, 108]
+    );
+    assert_eq!(
+        targets[0].bounds,
+        bbb_world::EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0)
+    );
+    assert_eq!(
+        targets[2].bounds,
+        bbb_world::EntityPickBoundsState::from_base_size(5.0, 3.0, 0.0)
+    );
+    assert_eq!(
+        targets[6].bounds,
+        bbb_world::EntityPickBoundsState::from_base_size(4.0, 2.0, 0.0)
+    );
+    assert_eq!(world.counters().entities_received, 1);
+    assert_eq!(world.counters().entities_tracked, 1);
+}
+
+#[test]
 fn transient_entity_event_ignored_counters_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::EntityAnimation(EntityAnimation {

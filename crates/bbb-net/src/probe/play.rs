@@ -510,8 +510,9 @@ mod tests {
         PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
         RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
         ResourcePackResponseAction, ServerData, SetPassengers, ShowDialog, StatUpdate, StoreCookie,
-        TestInstanceBlockStatus, TickingState, TickingStep, Vec3d as ProtocolVec3d,
-        Vec3i as ProtocolVec3i,
+        TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
+        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
+        WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{codec::Decoder, ids};
     use bbb_world::{BlockPos, ChunkPos};
@@ -1046,6 +1047,63 @@ mod tests {
                 acceleration_power: 0.5,
                 applied: false,
             })
+        );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_waypoint_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let waypoint_id = Uuid::from_u128(0x00112233445566778899aabbccddeeff);
+
+        probe
+            .handle_play_packet(PlayClientbound::Waypoint(TrackedWaypointPacket {
+                operation: WaypointOperation::Track,
+                waypoint: TrackedWaypoint {
+                    identifier: WaypointIdentifier::Uuid(waypoint_id),
+                    icon: WaypointIcon {
+                        style: "minecraft:default".to_string(),
+                        color_rgb: Some(0x112233),
+                    },
+                    data: WaypointData::Position(WaypointVec3i {
+                        x: 12,
+                        y: 70,
+                        z: -8,
+                    }),
+                },
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+        let key = format!("uuid:{waypoint_id}");
+        let waypoint = report
+            .world
+            .tracked_waypoints()
+            .get(&key)
+            .expect("waypoint should be tracked");
+
+        assert_eq!(report.world_counters.waypoint_packets, 1);
+        assert_eq!(report.world_counters.waypoints_tracked, 1);
+        assert_eq!(waypoint.identifier_kind, "uuid");
+        assert_eq!(waypoint.identifier, waypoint_id.to_string());
+        assert_eq!(waypoint.icon_style, "minecraft:default");
+        assert_eq!(waypoint.icon_color_rgb, Some(0x112233));
+        assert_eq!(waypoint.data.kind, "position");
+        assert_eq!(
+            waypoint.data.position,
+            Some(bbb_world::WaypointVec3iState {
+                x: 12,
+                y: 70,
+                z: -8,
+            })
+        );
+        assert_eq!(
+            report
+                .world
+                .last_waypoint_event()
+                .map(|event| event.applied),
+            Some(true)
         );
     }
 

@@ -147,9 +147,12 @@ Known priority areas:
   those targets, using vanilla default block/entity interaction ranges of
   4.5/3.0 blocks. `bbb-native` drives world client animations from a stable
   20Hz accumulator and feeds the current entity partial tick into crosshair
-  entity picking. Owner: `bbb-world` + `bbb-native`; status: partial; next
-  action: validate any future `yRotA` source and broaden debug/render coverage
-  around dragon part targets.
+  entity picking. `bbb-control` exposes the same targets through
+  `world.entity_pick_targets`, and native event coverage asserts that network
+  entity events materialize Ender Dragon virtual part targets. Owner:
+  `bbb-world` + `bbb-native`; status: partial; next action: validate any future
+  `yRotA` source and add renderer-visible target coverage when a debug target
+  overlay exists.
 
 ## Phases
 
