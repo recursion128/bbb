@@ -510,7 +510,13 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::SetChunkCacheRadius(update) => {
                 world.apply_set_chunk_cache_radius(update);
             }
-            _ => unreachable!("unhandled net event reached world dispatcher"),
+            NetEvent::Connected
+            | NetEvent::Disconnected { .. }
+            | NetEvent::StateChanged { .. }
+            | NetEvent::CompressionSet { .. }
+            | NetEvent::PacketSeen { .. } => {
+                unreachable!("control projection event reached world dispatcher")
+            }
         }
     }
     drained

@@ -506,10 +506,11 @@ mod tests {
         EntityAnchor, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
         InteractionHand, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
         OpenBook, OpenSignEditor, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerHealth,
-        PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, RecipeDisplayType,
-        RemoteDebugSampleType, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
-        ServerData, SetPassengers, ShowDialog, StatUpdate, StoreCookie, TestInstanceBlockStatus,
-        TickingState, TickingStep, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
+        RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
+        ResourcePackResponseAction, ServerData, SetPassengers, ShowDialog, StatUpdate, StoreCookie,
+        TestInstanceBlockStatus, TickingState, TickingStep, Vec3d as ProtocolVec3d,
+        Vec3i as ProtocolVec3i,
     };
     use bbb_protocol::{codec::Decoder, ids};
     use bbb_world::{BlockPos, ChunkPos};
@@ -936,6 +937,70 @@ mod tests {
         assert_eq!(report.world_counters.vehicle_moves_applied, 1);
         assert_eq!(report.world_counters.vehicle_moves_acked, 1);
         assert_eq!(report.world_counters.vehicle_moves_snapped, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_projectile_power_updates_world_entity_state_and_counters() {
+        const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
+
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity_with_type(
+                123,
+                VANILLA_ENTITY_TYPE_FIREBALL_ID,
+            )))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity_with_type(
+                456, 7,
+            )))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ProjectilePower(ProjectilePower {
+                entity_id: 123,
+                acceleration_power: 0.75,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ProjectilePower(ProjectilePower {
+                entity_id: 456,
+                acceleration_power: 0.25,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ProjectilePower(ProjectilePower {
+                entity_id: 404,
+                acceleration_power: 0.5,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(
+            report.world.hurting_projectile(123),
+            Some(bbb_world::HurtingProjectileState {
+                acceleration_power: 0.75,
+            })
+        );
+        assert_eq!(report.world.hurting_projectile(456), None);
+        assert_eq!(report.world_counters.projectile_power_packets, 3);
+        assert_eq!(report.world_counters.projectile_power_updates_applied, 1);
+        assert_eq!(report.world_counters.projectile_power_updates_ignored, 2);
+        assert_eq!(
+            report.world.last_projectile_power_update(),
+            Some(&bbb_world::ProjectilePowerUpdateState {
+                entity_id: 404,
+                acceleration_power: 0.5,
+                applied: false,
+            })
+        );
     }
 
     #[tokio::test]
@@ -1367,6 +1432,13 @@ mod tests {
             y_rot: 20.0,
             y_head_rot: 30.0,
             data: 99,
+        }
+    }
+
+    fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
+        AddEntity {
+            entity_type_id,
+            ..protocol_add_entity(id)
         }
     }
 }
