@@ -193,8 +193,11 @@ mod tests {
         codec::Decoder,
         ids,
         packets::{
-            ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-            ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedStack, Vec3d,
+            AttackEntity, BlockHitResult, BlockPos, ChatCommand, CommandSuggestionRequest,
+            ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
+            ContainerSlotStateChanged, Direction, HashedStack, InteractEntity, InteractionHand,
+            PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind, UseItem,
+            UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -395,6 +398,165 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn drive_connection_sends_interaction_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(9);
+        tx.send(NetCommand::PlayerAction(PlayerAction {
+            action: PlayerActionKind::StartDestroyBlock,
+            pos: BlockPos { x: 1, y: 64, z: -2 },
+            direction: Direction::West,
+            sequence: 9,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::AttackEntity(AttackEntity { entity_id: 123 }))
+            .await
+            .unwrap();
+        tx.send(NetCommand::InteractEntity(InteractEntity {
+            entity_id: 5,
+            hand: InteractionHand::OffHand,
+            location: Vec3d::default(),
+            using_secondary_action: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Swing(InteractionHand::MainHand))
+            .await
+            .unwrap();
+        tx.send(NetCommand::UseItemOn(UseItemOn {
+            hand: InteractionHand::MainHand,
+            hit: BlockHitResult {
+                pos: BlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+                direction: Direction::South,
+                cursor_x: 0.25,
+                cursor_y: 0.5,
+                cursor_z: 0.75,
+                inside: false,
+                world_border_hit: false,
+            },
+            sequence: 4,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::UseItem(UseItem {
+            hand: InteractionHand::OffHand,
+            sequence: 8,
+            y_rot: 45.0,
+            x_rot: -20.0,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::PickItemFromBlock(PickItemFromBlock {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            include_data: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::PickItemFromEntity(PickItemFromEntity {
+            entity_id: 456,
+            include_data: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "player action").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_ACTION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos { x: 1, y: 64, z: -2 }
+        );
+        assert_eq!(decoder.read_u8().unwrap(), 4);
+        assert_eq!(decoder.read_var_i32().unwrap(), 9);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "attack entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ATTACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 123);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "interact entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_INTERACT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 5);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_u8().unwrap(), 0);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "swing hand").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SWING);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "use item on").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_USE_ITEM_ON);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            }
+        );
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_f32().unwrap(), 0.25);
+        assert_eq!(decoder.read_f32().unwrap(), 0.5);
+        assert_eq!(decoder.read_f32().unwrap(), 0.75);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 4);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "use item").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_USE_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_var_i32().unwrap(), 8);
+        assert_eq!(decoder.read_f32().unwrap(), 45.0);
+        assert_eq!(decoder.read_f32().unwrap(), -20.0);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "pick item from block").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PICK_ITEM_FROM_BLOCK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            }
+        );
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "pick item from entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 456);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
     async fn drive_connection_sends_inventory_net_commands_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
         let (tx, mut commands) = mpsc::channel(6);
@@ -571,5 +733,13 @@ mod tests {
             .await
             .unwrap_or_else(|_| panic!("{label} packet should be sent"))
             .unwrap()
+    }
+
+    fn decode_packed_block_pos(packed: i64) -> BlockPos {
+        BlockPos {
+            x: (packed >> 38) as i32,
+            y: ((packed << 52) >> 52) as i32,
+            z: ((packed << 26) >> 38) as i32,
+        }
     }
 }
