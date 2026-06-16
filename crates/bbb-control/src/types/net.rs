@@ -51,28 +51,3 @@ pub struct PlayerPose {
     pub x_rot: f32,
     pub last_teleport_id: i32,
 }
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct PlayerLookAtState {
-    pub from_anchor: String,
-    pub position: NetVec3,
-    pub target_entity_id: Option<i32>,
-    pub to_anchor: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CameraState {
-    pub entity_id: Option<i32>,
-    pub follows_player: bool,
-    pub entity_known: bool,
-}
-
-impl Default for CameraState {
-    fn default() -> Self {
-        Self {
-            entity_id: None,
-            follows_player: true,
-            entity_known: true,
-        }
-    }
-}
