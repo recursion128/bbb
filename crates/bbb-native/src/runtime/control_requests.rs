@@ -116,6 +116,7 @@ pub(crate) fn pump_control_net_requests(
                 );
             }
             NetControlRequest::ContainerClose { container_id } => {
+                world.close_local_container(container_id);
                 queue_container_close_request_command(counters, net_commands, container_id);
             }
             NetControlRequest::ContainerSlotStateChanged {
@@ -369,6 +370,36 @@ mod tests {
             })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_closes_matching_world_container() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::ContainerClose { container_id: 7 });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 18,
+            title: "Inventory".to_string(),
+        });
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert!(world.inventory().open_container.is_none());
+        assert_eq!(world.counters().container_close_updates_received, 0);
+        assert_eq!(counters.container_close_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClose(bbb_protocol::packets::ContainerCloseRequest {
+                container_id: 7,
+            })
+        );
     }
 
     #[test]
