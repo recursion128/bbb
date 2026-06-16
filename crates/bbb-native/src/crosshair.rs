@@ -64,16 +64,22 @@ fn crosshair_block_hit_from_ray(
     })
 }
 
-pub(crate) fn crosshair_target_from_camera(
+pub(crate) fn crosshair_target_from_camera_at_partial_tick(
     world: &WorldStore,
     pose: Option<CameraPose>,
+    entity_partial_tick: f32,
 ) -> Option<CrosshairTarget> {
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
-    crosshair_target_from_ray(world, crosshair_ray_from_camera_pose(pose?), |entity_id| {
-        local_player_id.is_some_and(|id| id == entity_id)
-            || camera_entity_id.is_some_and(|id| id == entity_id)
-    })
+    crosshair_target_from_ray(
+        world,
+        crosshair_ray_from_camera_pose(pose?),
+        entity_partial_tick,
+        |entity_id| {
+            local_player_id.is_some_and(|id| id == entity_id)
+                || camera_entity_id.is_some_and(|id| id == entity_id)
+        },
+    )
 }
 
 #[cfg(test)]
@@ -81,15 +87,28 @@ pub(crate) fn crosshair_target_from_world(
     world: &WorldStore,
     pose: Option<PlayerPose>,
 ) -> Option<CrosshairTarget> {
+    crosshair_target_from_world_at_partial_tick(world, pose, 1.0)
+}
+
+#[cfg(test)]
+fn crosshair_target_from_world_at_partial_tick(
+    world: &WorldStore,
+    pose: Option<PlayerPose>,
+    entity_partial_tick: f32,
+) -> Option<CrosshairTarget> {
     let local_player_id = world.local_player_id();
-    crosshair_target_from_ray(world, crosshair_ray_from_player_pose(pose?), |entity_id| {
-        local_player_id.is_some_and(|id| id == entity_id)
-    })
+    crosshair_target_from_ray(
+        world,
+        crosshair_ray_from_player_pose(pose?),
+        entity_partial_tick,
+        |entity_id| local_player_id.is_some_and(|id| id == entity_id),
+    )
 }
 
 fn crosshair_target_from_ray<F>(
     world: &WorldStore,
     ray: CrosshairRay,
+    entity_partial_tick: f32,
     excluded_entity_id: F,
 ) -> Option<CrosshairTarget>
 where
@@ -103,8 +122,13 @@ where
     let entity_max_distance = block_distance_sq
         .sqrt()
         .min(DEFAULT_BLOCK_INTERACTION_RANGE);
-    let entity_hit =
-        crosshair_entity_hit_from_ray(world, ray, entity_max_distance, excluded_entity_id);
+    let entity_hit = crosshair_entity_hit_from_ray(
+        world,
+        ray,
+        entity_max_distance,
+        entity_partial_tick,
+        excluded_entity_id,
+    );
 
     choose_crosshair_target(eye, block_hit, entity_hit, DEFAULT_ENTITY_INTERACTION_RANGE)
 }
@@ -138,13 +162,14 @@ fn crosshair_entity_hit_from_ray<F>(
     world: &WorldStore,
     ray: CrosshairRay,
     max_distance: f64,
+    entity_partial_tick: f32,
     mut excluded_entity_id: F,
 ) -> Option<RaycastEntityHit>
 where
     F: FnMut(i32) -> bool,
 {
     let targets = world
-        .entity_pick_targets()
+        .entity_pick_targets_at_partial_tick(clamp_entity_partial_tick(entity_partial_tick))
         .into_iter()
         .filter_map(|target| {
             if excluded_entity_id(target.entity_id) {
@@ -154,6 +179,14 @@ where
             }
         });
     raycast_crosshair_entity_hit(ray, max_distance, targets)
+}
+
+fn clamp_entity_partial_tick(partial_tick: f32) -> f32 {
+    if partial_tick.is_finite() {
+        partial_tick.clamp(0.0, 1.0)
+    } else {
+        1.0
+    }
 }
 
 #[cfg(test)]
@@ -594,7 +627,8 @@ mod tests {
     use super::*;
     use bbb_control::NetVec3;
     use bbb_protocol::packets::{
-        AddEntity, EntityDataValue, EntityDataValueKind, SetEntityData, Vec3d as ProtocolVec3d,
+        AddEntity, EntityDataValue, EntityDataValueKind, EntityPositionSync, SetEntityData,
+        Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -857,6 +891,61 @@ mod tests {
         assert_eq!(hit.entity_id, 101);
         assert_vec3_close(hit.location, [0.0, 1.6200000047683716, 2.0]);
         assert_vec3_close(hit.relative_location, [0.0, 0.6200000047683716, -0.5]);
+    }
+
+    #[test]
+    fn crosshair_target_uses_entity_partial_tick_for_dragon_parts() {
+        const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
+        const ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
+        const HOLDING_PATTERN_PHASE_ID: i32 = 0;
+
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            130,
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.advance_entity_client_animations(1);
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 130,
+            values: vec![EntityDataValue {
+                data_id: ENDER_DRAGON_PHASE_DATA_ID,
+                serializer_id: 1,
+                value: EntityDataValueKind::Int(HOLDING_PATTERN_PHASE_ID),
+            }],
+        }));
+        assert!(world.apply_entity_position_sync(EntityPositionSync {
+            id: 130,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 74.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            y_rot: 90.0,
+            x_rot: 0.0,
+            on_ground: false,
+        }));
+        world.advance_entity_client_animations(1);
+
+        let pose = player_pose_at(
+            [7.5, 64.0 - f64::from(CameraPose::STANDING_EYE_HEIGHT), -5.0],
+            0.0,
+            0.0,
+        );
+
+        assert_eq!(
+            crosshair_target_from_world_at_partial_tick(&world, Some(pose), 0.0),
+            None
+        );
+        let target = crosshair_target_from_world_at_partial_tick(&world, Some(pose), 1.0);
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected dragon part entity hit");
+        };
+        assert_eq!(hit.entity_id, 132);
+        assert_vec3_close(hit.location, [7.5, 64.0, -3.5]);
+        assert_vec3_close(hit.relative_location, [1.0, 0.0, -1.5]);
     }
 
     #[test]

@@ -132,10 +132,10 @@ Known priority areas:
   left/right/middle mouse actions to attack/interact/pick entity packets for
   those targets, using vanilla default block/entity interaction ranges of
   4.5/3.0 blocks. `bbb-native` drives world client animations from a stable
-  20Hz accumulator. Owner: `bbb-world` + `bbb-native`; status: partial; next
-  action: align Ender Dragon placement with vanilla interpolation timing,
-  validate any future `yRotA` source, and broaden debug/render coverage around
-  dragon part targets.
+  20Hz accumulator and feeds the current entity partial tick into crosshair
+  entity picking. Owner: `bbb-world` + `bbb-native`; status: partial; next
+  action: validate any future `yRotA` source and broaden debug/render coverage
+  around dragon part targets.
 
 ## Phases
 

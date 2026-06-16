@@ -6,7 +6,7 @@ use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 
 use crate::camera_pose::camera_pose_from_world;
-use crate::crosshair::{crosshair_target_from_camera, CrosshairTarget};
+use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
 
 use super::{
     commands::{
@@ -26,7 +26,8 @@ pub(crate) fn handle_mouse_motion(input: &mut ClientInputState, delta: (f64, f64
     input.mouse_delta_y += delta.1;
 }
 
-pub(crate) fn handle_mouse_input(
+#[cfg(test)]
+fn handle_mouse_input(
     input: &mut ClientInputState,
     world: &WorldStore,
     counters: &mut NetCounters,
@@ -34,13 +35,29 @@ pub(crate) fn handle_mouse_input(
     button: MouseButton,
     state: ElementState,
 ) {
+    handle_mouse_input_at_partial_tick(input, world, counters, net_commands, button, state, 1.0);
+}
+
+pub(crate) fn handle_mouse_input_at_partial_tick(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    button: MouseButton,
+    state: ElementState,
+    entity_partial_tick: f32,
+) {
     if !input.focused {
         return;
     }
     let player_pose = world.local_player_pose();
     let camera_target = match (button, state) {
         (MouseButton::Left | MouseButton::Right | MouseButton::Middle, ElementState::Pressed) => {
-            crosshair_target_from_camera(world, camera_pose_from_world(world))
+            crosshair_target_from_camera_at_partial_tick(
+                world,
+                camera_pose_from_world(world),
+                entity_partial_tick,
+            )
         }
         _ => None,
     };

@@ -25,7 +25,7 @@ use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use hud_assets::load_hud_textures;
 use input::{
-    handle_focus_change, handle_key_input, handle_mouse_input, handle_mouse_motion,
+    handle_focus_change, handle_key_input, handle_mouse_input_at_partial_tick, handle_mouse_motion,
     handle_mouse_wheel, ClientInputState,
 };
 use item_runtime::NativeItemRuntime;
@@ -164,13 +164,14 @@ fn main() -> Result<()> {
                     );
                 }
                 WindowEvent::MouseInput { state, button, .. } => {
-                    handle_mouse_input(
+                    handle_mouse_input_at_partial_tick(
                         &mut input,
                         &world,
                         &mut net_counters,
                         &net_commands,
                         button,
                         state,
+                        client_animation_ticks.entity_partial_tick(std::time::Instant::now()),
                     );
                 }
                 WindowEvent::MouseWheel { delta, .. } => {

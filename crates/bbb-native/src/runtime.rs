@@ -40,6 +40,17 @@ pub(crate) struct ClientAnimationTickState {
     last_entity_animation_at: Option<Instant>,
 }
 
+impl ClientAnimationTickState {
+    pub(crate) fn entity_partial_tick(&self, now: Instant) -> f32 {
+        let Some(last) = self.last_entity_animation_at else {
+            return 1.0;
+        };
+        let elapsed = now.saturating_duration_since(last);
+        (elapsed.as_secs_f32() / CLIENT_ENTITY_ANIMATION_TICK_INTERVAL.as_secs_f32())
+            .clamp(0.0, 1.0)
+    }
+}
+
 pub(crate) fn snapshot_is_running(snapshot: &SharedSnapshot) -> bool {
     snapshot
         .read()
@@ -294,6 +305,28 @@ mod tests {
         assert_eq!(pose.y_rot, 45.0);
         assert_eq!(pose.x_rot, -10.0);
         assert_eq!(pose.eye_height, CameraPose::STANDING_EYE_HEIGHT);
+    }
+
+    #[test]
+    fn entity_animation_partial_tick_tracks_time_since_last_client_tick() {
+        let now = Instant::now();
+        let mut ticks = ClientAnimationTickState::default();
+        let mut world = WorldStore::new();
+
+        assert_eq!(ticks.entity_partial_tick(now), 1.0);
+        assert_eq!(
+            advance_entity_client_animations(&mut world, &mut ticks, now),
+            0
+        );
+        assert_eq!(ticks.entity_partial_tick(now), 0.0);
+        assert_eq!(
+            ticks.entity_partial_tick(now + Duration::from_millis(25)),
+            0.5
+        );
+        assert_eq!(
+            ticks.entity_partial_tick(now + Duration::from_millis(75)),
+            1.0
+        );
     }
 
     #[test]
