@@ -56,11 +56,48 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             emit_level_particles(&mut particle_events, &mut particle_renderer, update);
         }
 
-        let Some(event) = apply_control_projection_event(event, counters, world) else {
+        let Some(event) = apply_control_projection_event(event, counters) else {
             continue;
         };
 
         match event {
+            NetEvent::CookieRequest {
+                key,
+                response_payload_present,
+            } => {
+                world.apply_cookie_request(key, response_payload_present);
+            }
+            NetEvent::StoreCookie {
+                key,
+                payload_len,
+                stored_cookie_count,
+            } => {
+                world.apply_store_cookie(key, payload_len, stored_cookie_count);
+            }
+            NetEvent::CustomReportDetails(details) => {
+                world.apply_custom_report_details(details);
+            }
+            NetEvent::CustomPayload(update) => {
+                world.apply_custom_payload(update);
+            }
+            NetEvent::ServerLinks(links) => {
+                world.apply_server_links(links);
+            }
+            NetEvent::Transfer(transfer) => {
+                world.apply_transfer(transfer);
+            }
+            NetEvent::ResetChat => {
+                world.apply_reset_chat();
+            }
+            NetEvent::UpdateEnabledFeatures(update) => {
+                world.apply_update_enabled_features(update);
+            }
+            NetEvent::CodeOfConduct { text } => {
+                world.apply_code_of_conduct(text);
+            }
+            NetEvent::CustomChatCompletions(update) => {
+                world.apply_custom_chat_completions(update);
+            }
             NetEvent::Sound(update) => {
                 world.apply_sound_event(update);
                 if let Some(state) = world.last_sound() {
@@ -84,6 +121,93 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                     emit_stop_sound(&mut audio_events, state);
                 }
             }
+            NetEvent::AwardStats(update) => {
+                world.apply_award_stats(update);
+            }
+            NetEvent::LowDiskSpaceWarning => {
+                world.apply_low_disk_space_warning();
+            }
+            NetEvent::MapItemData(update) => {
+                world.apply_map_item_data(update);
+            }
+            NetEvent::MountScreenOpen(update) => {
+                world.apply_mount_screen_open(update);
+            }
+            NetEvent::OpenBook(update) => {
+                world.apply_open_book(update);
+            }
+            NetEvent::OpenSignEditor(update) => {
+                world.apply_open_sign_editor(update);
+            }
+            NetEvent::PlaceGhostRecipe(update) => {
+                world.apply_place_ghost_recipe(update);
+            }
+            NetEvent::ClearDialog => {
+                world.apply_clear_dialog();
+            }
+            NetEvent::ShowDialog(update) => {
+                world.apply_show_dialog(update);
+            }
+            NetEvent::Waypoint(update) => {
+                world.apply_waypoint(update);
+            }
+            NetEvent::PlayerCombatEnd(update) => {
+                world.apply_player_combat_end(update);
+            }
+            NetEvent::PlayerCombatEnter => {
+                world.apply_player_combat_enter();
+            }
+            NetEvent::PlayerCombatKill(update) => {
+                world.apply_player_combat_kill(update);
+            }
+            NetEvent::PlayerLookAt(update) => {
+                apply_player_look_at_update(world, update);
+            }
+            NetEvent::PongResponse(update) => {
+                world.apply_pong_response(update);
+            }
+            NetEvent::Explosion(update) => {
+                world.apply_explosion(update);
+            }
+            NetEvent::LevelParticles(update) => {
+                world.apply_level_particles(update);
+            }
+            NetEvent::ProjectilePower(update) => {
+                world.apply_projectile_power(update);
+            }
+            NetEvent::DebugBlockValue(update) => {
+                world.apply_debug_block_value(update);
+            }
+            NetEvent::DebugChunkValue(update) => {
+                world.apply_debug_chunk_value(update);
+            }
+            NetEvent::DebugEntityValue(update) => {
+                world.apply_debug_entity_value(update);
+            }
+            NetEvent::DebugEvent(update) => {
+                world.apply_debug_event(update);
+            }
+            NetEvent::DebugSample(update) => {
+                world.apply_debug_sample(update);
+            }
+            NetEvent::DeleteChat(update) => {
+                world.apply_delete_chat(update);
+            }
+            NetEvent::DisguisedChat(update) => {
+                world.apply_disguised_chat(update);
+            }
+            NetEvent::PlayerChat(update) => {
+                world.apply_player_chat(update);
+            }
+            NetEvent::GameRuleValues(update) => {
+                world.apply_game_rule_values(update);
+            }
+            NetEvent::GameTestHighlightPos(update) => {
+                world.apply_game_test_highlight_pos(update);
+            }
+            NetEvent::TestInstanceBlockStatus(update) => {
+                world.apply_test_instance_block_status(update);
+            }
             NetEvent::RecipeBookAdd(update) => {
                 world.apply_recipe_book_add(update);
             }
@@ -95,6 +219,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::UpdateAdvancements(update) => {
                 world.apply_update_advancements(update);
+            }
+            NetEvent::SelectAdvancementsTab(update) => {
+                world.apply_select_advancements_tab(update);
             }
             NetEvent::UpdateRecipes(update) => {
                 world.apply_update_recipes(update);
@@ -203,6 +330,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::CommandSuggestions(update) => {
                 world.apply_command_suggestions(update);
+            }
+            NetEvent::TagQuery(update) => {
+                world.apply_tag_query(update);
             }
             NetEvent::TabList(update) => {
                 world.apply_tab_list(update);
@@ -380,7 +510,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             NetEvent::SetChunkCacheRadius(update) => {
                 world.apply_set_chunk_cache_radius(update);
             }
-            _ => unreachable!("control projection event reached world dispatcher"),
+            _ => unreachable!("unhandled net event reached world dispatcher"),
         }
     }
     drained
