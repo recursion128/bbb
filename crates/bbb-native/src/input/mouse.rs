@@ -215,12 +215,19 @@ fn scroll_signum(value: f64) -> f64 {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, AttackEntity, BlockPos as ProtocolBlockPos, InteractEntity, PickItemFromEntity,
-        PlayerAction, UseItem, Vec3d as ProtocolVec3d,
+        AddEntity, AttackEntity, BlockHitResult as ProtocolBlockHitResult,
+        BlockPos as ProtocolBlockPos, BlockUpdate, InteractEntity, PickItemFromBlock,
+        PickItemFromEntity, PlayerAction, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
     };
-    use bbb_world::{BlockPos, LocalPlayerPoseState};
+    use bbb_world::{
+        BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+    };
     use uuid::Uuid;
 
+    const CROSSHAIR_BLOCK_POS: BlockPos = BlockPos { x: 0, y: 1, z: 3 };
+    const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
+    const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
     const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
@@ -401,6 +408,44 @@ mod tests {
     }
 
     #[test]
+    fn left_mouse_press_on_block_queues_start_destroy_and_swing() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                direction: ProtocolDirection::North,
+                sequence: 1,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
     fn left_mouse_press_uses_active_camera_entity_raycast() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
@@ -505,6 +550,43 @@ mod tests {
     }
 
     #[test]
+    fn right_mouse_press_on_block_queues_use_item_on() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: ProtocolBlockHitResult {
+                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                    direction: ProtocolDirection::North,
+                    cursor_x: 0.0,
+                    cursor_y: 0.62,
+                    cursor_z: 0.0,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 1,
+            })
+        );
+    }
+
+    #[test]
     fn right_mouse_press_on_ender_dragon_part_queues_interact_with_part_id() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -534,6 +616,34 @@ mod tests {
                     z: -0.5,
                 },
                 using_secondary_action: false,
+            })
+        );
+    }
+
+    #[test]
+    fn middle_mouse_press_on_block_queues_pick_block() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.sprint = true;
+        let mut world = world_with_crosshair_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Middle,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.pick_item_from_block_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PickItemFromBlock(PickItemFromBlock {
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                include_data: true,
             })
         );
     }
@@ -692,6 +802,51 @@ mod tests {
             data: 0,
         });
         world
+    }
+
+    fn world_with_crosshair_block() -> WorldStore {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![ChunkSection {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: single_value_container(
+                    PaletteDomain::BlockStates,
+                    4096,
+                    VANILLA_AIR_BLOCK_STATE_ID,
+                ),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            }],
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+        assert!(world.apply_block_update(BlockUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+            block_state_id: VANILLA_GRASS_BLOCK_STATE_ID,
+        }));
+        world
+    }
+
+    fn single_value_container(
+        domain: PaletteDomain,
+        entry_count: usize,
+        global_id: i32,
+    ) -> PalettedContainerData {
+        PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        }
     }
 
     fn world_with_ender_dragon() -> WorldStore {
