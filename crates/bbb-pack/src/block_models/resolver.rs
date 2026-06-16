@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, HashSet};
 
 use super::{
-    classify_model_shape, BlockFaceTextures, BlockModelCatalog, BlockModelFace, BlockModelGuiLight,
+    classify_model_shape, BlockFaceTextures, BlockModelCatalog, BlockModelDisplayContext,
+    BlockModelDisplayTransform, BlockModelDisplayTransforms, BlockModelFace, BlockModelGuiLight,
     BlockModelShape, RawBlockElement, RawBlockModel,
 };
 
@@ -12,7 +13,37 @@ pub(super) struct ResolvedBlockModel {
     elements: Vec<RawBlockElement>,
     ambient_occlusion: Option<bool>,
     gui_light: Option<BlockModelGuiLight>,
+    display_transforms: ResolvedBlockModelDisplayTransforms,
     pub(super) shape: BlockModelShape,
+}
+
+#[derive(Debug, Clone, Default)]
+struct ResolvedBlockModelDisplayTransforms {
+    transforms: [Option<BlockModelDisplayTransform>; 9],
+}
+
+impl ResolvedBlockModelDisplayTransforms {
+    fn set(&mut self, context: BlockModelDisplayContext, transform: BlockModelDisplayTransform) {
+        self.transforms[context.index()] = Some(transform);
+    }
+
+    fn get(&self, context: BlockModelDisplayContext) -> BlockModelDisplayTransform {
+        self.transforms[context.index()].unwrap_or_default()
+    }
+
+    fn to_display_transforms(&self) -> BlockModelDisplayTransforms {
+        BlockModelDisplayTransforms {
+            third_person_left_hand: self.get(BlockModelDisplayContext::ThirdPersonLeftHand),
+            third_person_right_hand: self.get(BlockModelDisplayContext::ThirdPersonRightHand),
+            first_person_left_hand: self.get(BlockModelDisplayContext::FirstPersonLeftHand),
+            first_person_right_hand: self.get(BlockModelDisplayContext::FirstPersonRightHand),
+            head: self.get(BlockModelDisplayContext::Head),
+            gui: self.get(BlockModelDisplayContext::Gui),
+            ground: self.get(BlockModelDisplayContext::Ground),
+            fixed: self.get(BlockModelDisplayContext::Fixed),
+            on_shelf: self.get(BlockModelDisplayContext::OnShelf),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +65,10 @@ impl ResolvedBlockModel {
 
     pub(super) fn gui_light(&self) -> BlockModelGuiLight {
         self.gui_light.unwrap_or_default()
+    }
+
+    pub(super) fn display_transforms(&self) -> BlockModelDisplayTransforms {
+        self.display_transforms.to_display_transforms()
     }
 
     pub(super) fn face_textures(&self) -> Option<BlockFaceTextures> {
@@ -108,6 +143,13 @@ fn resolve_model_inner(
     }
     if let Some(gui_light) = raw.gui_light {
         resolved.gui_light = Some(gui_light);
+    }
+    if let Some(display) = &raw.display {
+        for context in BlockModelDisplayContext::ALL {
+            if let Some(transform) = display.transform(context) {
+                resolved.display_transforms.set(context, transform);
+            }
+        }
     }
 
     if !raw.elements.is_empty() {

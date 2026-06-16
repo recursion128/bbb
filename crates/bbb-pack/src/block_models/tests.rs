@@ -4,7 +4,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Deserialize;
 
-use super::{BlockModelFace, BlockModelGuiLight, BlockModelShape};
+use super::{
+    BlockModelDisplayContext, BlockModelDisplayTransform, BlockModelFace, BlockModelGuiLight,
+    BlockModelShape,
+};
 use crate::{PackRoots, MC_VERSION};
 
 const VANILLA_BLOCK_STATES_JSON: &str =
@@ -598,6 +601,192 @@ fn block_model_catalog_rejects_invalid_gui_light() {
     assert!(message.contains("diagonal"));
     assert!(message.contains("front"));
     assert!(message.contains("side"));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_resolves_parent_display_transforms() {
+    let root = unique_temp_dir("block-model-display-transforms");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "kind=inherit": { "model": "minecraft:block/child_inherit" },
+                "kind=override": { "model": "minecraft:block/child_override" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("parent_model.json"),
+        r##"{
+            "display": {
+                "thirdperson_righthand": {
+                    "rotation": [ 10, 20, 30 ],
+                    "translation": [ 16, -160, 96 ],
+                    "scale": [ 5, -5, 0.5 ]
+                },
+                "ground": {
+                    "translation": [ 0, 2, 0 ],
+                    "scale": [ 0.5, 0.5, 0.5 ]
+                }
+            },
+            "textures": { "particle": "#all" },
+            "elements": [{
+                "faces": {
+                    "down": { "texture": "#all" },
+                    "up": { "texture": "#all" },
+                    "north": { "texture": "#all" },
+                    "south": { "texture": "#all" },
+                    "west": { "texture": "#all" },
+                    "east": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("child_inherit.json"),
+        r##"{
+            "parent": "minecraft:block/parent_model",
+            "textures": { "all": "minecraft:block/oak_planks" }
+        }"##,
+    );
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("child_override.json"),
+        r##"{
+            "parent": "minecraft:block/parent_model",
+            "display": {
+                "thirdperson_righthand": {
+                    "translation": [ 0, 32, 0 ]
+                },
+                "gui": {
+                    "rotation": [ 0, 180, 0 ],
+                    "scale": [ 1.25, 1.25, 1.25 ]
+                }
+            },
+            "textures": { "all": "minecraft:block/stone" }
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let inherited_resolved = catalog
+        .resolve_model("minecraft:block/child_inherit")
+        .unwrap();
+    let overridden_resolved = catalog
+        .resolve_model("minecraft:block/child_override")
+        .unwrap();
+
+    let inherited = inherited_resolved.display_transforms();
+    let expected_parent_hand = BlockModelDisplayTransform {
+        rotation: [10.0, 20.0, 30.0],
+        translation: [1.0, -5.0, 5.0],
+        scale: [4.0, -4.0, 0.5],
+    };
+    assert_eq!(
+        inherited.get(BlockModelDisplayContext::ThirdPersonRightHand),
+        expected_parent_hand
+    );
+    assert_eq!(
+        inherited.get(BlockModelDisplayContext::ThirdPersonLeftHand),
+        expected_parent_hand
+    );
+    assert_eq!(
+        inherited.get(BlockModelDisplayContext::Ground),
+        BlockModelDisplayTransform {
+            rotation: [0.0; 3],
+            translation: [0.0, 0.125, 0.0],
+            scale: [0.5, 0.5, 0.5],
+        }
+    );
+    assert_eq!(
+        inherited.get(BlockModelDisplayContext::Gui),
+        BlockModelDisplayTransform::default()
+    );
+
+    let overridden = overridden_resolved.display_transforms();
+    let expected_child_hand = BlockModelDisplayTransform {
+        rotation: [0.0; 3],
+        translation: [0.0, 2.0, 0.0],
+        scale: [1.0; 3],
+    };
+    assert_eq!(
+        overridden.get(BlockModelDisplayContext::ThirdPersonRightHand),
+        expected_child_hand
+    );
+    assert_eq!(
+        overridden.get(BlockModelDisplayContext::ThirdPersonLeftHand),
+        expected_child_hand
+    );
+    assert_eq!(
+        overridden.get(BlockModelDisplayContext::Ground),
+        inherited.get(BlockModelDisplayContext::Ground)
+    );
+    assert_eq!(
+        overridden.get(BlockModelDisplayContext::Gui),
+        BlockModelDisplayTransform {
+            rotation: [0.0, 180.0, 0.0],
+            translation: [0.0; 3],
+            scale: [1.25, 1.25, 1.25],
+        }
+    );
+
+    let mut properties = BTreeMap::new();
+    properties.insert("kind".to_string(), "override".to_string());
+    let render_model = catalog
+        .block_render_model("minecraft:test_block", &properties)
+        .unwrap();
+    assert_eq!(render_model.display_transforms, overridden);
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn block_model_catalog_rejects_invalid_display_transform_vectors() {
+    let root = unique_temp_dir("block-model-invalid-display");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root
+            .join("models")
+            .join("block")
+            .join("invalid_model.json"),
+        r##"{
+            "display": {
+                "gui": {
+                    "translation": [ 0, 1 ]
+                }
+            }
+        }"##,
+    );
+
+    let error = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap_err();
+    let message = format!("{error:#}");
+
+    assert!(message.contains("parse block model"));
+    assert!(message.contains("invalid length 2"));
 
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -1559,6 +1748,60 @@ fn loads_local_vanilla_block_model_catalog() {
     let roots = PackRoots::discover().unwrap();
     let catalog = roots.load_block_model_catalog().unwrap();
     assert!(catalog.len() > 1_000);
+
+    let base_block_transforms = catalog
+        .resolve_model("minecraft:block/block")
+        .unwrap()
+        .display_transforms();
+    assert_eq!(
+        base_block_transforms.get(BlockModelDisplayContext::Gui),
+        BlockModelDisplayTransform {
+            rotation: [30.0, 225.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [0.625, 0.625, 0.625],
+        }
+    );
+    assert_eq!(
+        base_block_transforms.get(BlockModelDisplayContext::Ground),
+        BlockModelDisplayTransform {
+            rotation: [0.0, 0.0, 0.0],
+            translation: [0.0, 0.1875, 0.0],
+            scale: [0.25, 0.25, 0.25],
+        }
+    );
+    assert_eq!(
+        base_block_transforms.get(BlockModelDisplayContext::OnShelf),
+        BlockModelDisplayTransform {
+            rotation: [0.0, 180.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [1.0, 1.0, 1.0],
+        }
+    );
+    assert_eq!(
+        base_block_transforms.get(BlockModelDisplayContext::ThirdPersonLeftHand),
+        base_block_transforms.get(BlockModelDisplayContext::ThirdPersonRightHand)
+    );
+
+    let orientable_transforms = catalog
+        .resolve_model("minecraft:block/orientable_with_bottom")
+        .unwrap()
+        .display_transforms();
+    assert_eq!(
+        orientable_transforms.get(BlockModelDisplayContext::FirstPersonRightHand),
+        BlockModelDisplayTransform {
+            rotation: [0.0, 135.0, 0.0],
+            translation: [0.0, 0.0, 0.0],
+            scale: [0.4, 0.4, 0.4],
+        }
+    );
+    assert_eq!(
+        orientable_transforms.get(BlockModelDisplayContext::FirstPersonLeftHand),
+        orientable_transforms.get(BlockModelDisplayContext::FirstPersonRightHand)
+    );
+    assert_eq!(
+        orientable_transforms.get(BlockModelDisplayContext::Ground),
+        base_block_transforms.get(BlockModelDisplayContext::Ground)
+    );
 
     let mut grass = BTreeMap::new();
     grass.insert("snowy".to_string(), "false".to_string());

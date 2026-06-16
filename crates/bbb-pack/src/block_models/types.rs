@@ -15,6 +15,118 @@ impl BlockModelGuiLight {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum BlockModelDisplayContext {
+    #[serde(rename = "thirdperson_lefthand")]
+    ThirdPersonLeftHand,
+    #[serde(rename = "thirdperson_righthand")]
+    ThirdPersonRightHand,
+    #[serde(rename = "firstperson_lefthand")]
+    FirstPersonLeftHand,
+    #[serde(rename = "firstperson_righthand")]
+    FirstPersonRightHand,
+    #[serde(rename = "head")]
+    Head,
+    #[serde(rename = "gui")]
+    Gui,
+    #[serde(rename = "ground")]
+    Ground,
+    #[serde(rename = "fixed")]
+    Fixed,
+    #[serde(rename = "on_shelf")]
+    OnShelf,
+}
+
+impl BlockModelDisplayContext {
+    pub const ALL: [Self; 9] = [
+        Self::ThirdPersonLeftHand,
+        Self::ThirdPersonRightHand,
+        Self::FirstPersonLeftHand,
+        Self::FirstPersonRightHand,
+        Self::Head,
+        Self::Gui,
+        Self::Ground,
+        Self::Fixed,
+        Self::OnShelf,
+    ];
+
+    pub(crate) fn index(self) -> usize {
+        match self {
+            Self::ThirdPersonLeftHand => 0,
+            Self::ThirdPersonRightHand => 1,
+            Self::FirstPersonLeftHand => 2,
+            Self::FirstPersonRightHand => 3,
+            Self::Head => 4,
+            Self::Gui => 5,
+            Self::Ground => 6,
+            Self::Fixed => 7,
+            Self::OnShelf => 8,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BlockModelDisplayTransform {
+    pub rotation: [f32; 3],
+    pub translation: [f32; 3],
+    pub scale: [f32; 3],
+}
+
+impl Default for BlockModelDisplayTransform {
+    fn default() -> Self {
+        Self {
+            rotation: [0.0; 3],
+            translation: [0.0; 3],
+            scale: [1.0; 3],
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BlockModelDisplayTransforms {
+    pub third_person_left_hand: BlockModelDisplayTransform,
+    pub third_person_right_hand: BlockModelDisplayTransform,
+    pub first_person_left_hand: BlockModelDisplayTransform,
+    pub first_person_right_hand: BlockModelDisplayTransform,
+    pub head: BlockModelDisplayTransform,
+    pub gui: BlockModelDisplayTransform,
+    pub ground: BlockModelDisplayTransform,
+    pub fixed: BlockModelDisplayTransform,
+    pub on_shelf: BlockModelDisplayTransform,
+}
+
+impl BlockModelDisplayTransforms {
+    pub fn get(&self, context: BlockModelDisplayContext) -> BlockModelDisplayTransform {
+        match context {
+            BlockModelDisplayContext::ThirdPersonLeftHand => self.third_person_left_hand,
+            BlockModelDisplayContext::ThirdPersonRightHand => self.third_person_right_hand,
+            BlockModelDisplayContext::FirstPersonLeftHand => self.first_person_left_hand,
+            BlockModelDisplayContext::FirstPersonRightHand => self.first_person_right_hand,
+            BlockModelDisplayContext::Head => self.head,
+            BlockModelDisplayContext::Gui => self.gui,
+            BlockModelDisplayContext::Ground => self.ground,
+            BlockModelDisplayContext::Fixed => self.fixed,
+            BlockModelDisplayContext::OnShelf => self.on_shelf,
+        }
+    }
+}
+
+impl Default for BlockModelDisplayTransforms {
+    fn default() -> Self {
+        Self {
+            third_person_left_hand: BlockModelDisplayTransform::default(),
+            third_person_right_hand: BlockModelDisplayTransform::default(),
+            first_person_left_hand: BlockModelDisplayTransform::default(),
+            first_person_right_hand: BlockModelDisplayTransform::default(),
+            head: BlockModelDisplayTransform::default(),
+            gui: BlockModelDisplayTransform::default(),
+            ground: BlockModelDisplayTransform::default(),
+            fixed: BlockModelDisplayTransform::default(),
+            on_shelf: BlockModelDisplayTransform::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BlockModelFace {
     Down,
     Up,
@@ -123,6 +235,8 @@ pub struct BlockRenderModel {
     pub use_ambient_occlusion: bool,
     #[serde(default)]
     pub gui_light: BlockModelGuiLight,
+    #[serde(default)]
+    pub display_transforms: BlockModelDisplayTransforms,
 }
 
 impl BlockRenderModel {
@@ -132,6 +246,7 @@ impl BlockRenderModel {
             shape: BlockModelShape::Boxes(Vec::new()),
             use_ambient_occlusion: true,
             gui_light: BlockModelGuiLight::default(),
+            display_transforms: BlockModelDisplayTransforms::default(),
         }
     }
 }
