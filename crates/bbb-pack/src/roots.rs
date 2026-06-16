@@ -9,6 +9,7 @@ use crate::{
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
     item_cuboid_models::ItemCuboidModelCatalog,
     item_models::ItemModelCatalog,
+    item_registry::ItemRegistryCatalog,
     language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE},
     metadata::PackMetadataCatalog,
     particle_definitions::ParticleDefinitionCatalog,
@@ -182,6 +183,10 @@ impl PackRoots {
 
     pub fn load_item_cuboid_model_catalog(&self) -> Result<ItemCuboidModelCatalog> {
         ItemCuboidModelCatalog::load(self)
+    }
+
+    pub fn load_item_registry_catalog(&self) -> Result<ItemRegistryCatalog> {
+        ItemRegistryCatalog::load(self)
     }
 
     pub fn load_waypoint_style_catalog(&self) -> Result<WaypointStyleCatalog> {

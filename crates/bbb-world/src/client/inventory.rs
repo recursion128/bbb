@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 use crate::WorldStore;
 
 const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
+const PLAYER_HOTBAR_SIZE: usize = 9;
+const INVENTORY_MENU_CONTAINER_ID: i32 = 0;
+const INVENTORY_MENU_HOTBAR_START: i16 = 36;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InventorySlot {
@@ -79,6 +82,41 @@ impl Default for InventoryState {
             cursor_item: ProtocolItemStackSummary::empty(),
             open_container: None,
         }
+    }
+}
+
+impl InventoryState {
+    pub fn hotbar_items(&self) -> [ProtocolItemStackSummary; PLAYER_HOTBAR_SIZE] {
+        let mut items = std::array::from_fn(|_| ProtocolItemStackSummary::empty());
+
+        for slot in &self.player_slots {
+            let Ok(slot_index) = usize::try_from(slot.slot) else {
+                continue;
+            };
+            if slot_index < PLAYER_HOTBAR_SIZE {
+                items[slot_index] = slot.item.clone();
+            }
+        }
+
+        if let Some(container) = self
+            .open_container
+            .as_ref()
+            .filter(|container| container.container_id == INVENTORY_MENU_CONTAINER_ID)
+        {
+            for slot in &container.slots {
+                let Some(index) = slot.slot.checked_sub(INVENTORY_MENU_HOTBAR_START) else {
+                    continue;
+                };
+                let Ok(slot_index) = usize::try_from(index) else {
+                    continue;
+                };
+                if slot_index < PLAYER_HOTBAR_SIZE {
+                    items[slot_index] = slot.item.clone();
+                }
+            }
+        }
+
+        items
     }
 }
 
@@ -434,6 +472,52 @@ mod tests {
         assert_eq!(store.counters().container_close_updates_received, 2);
         assert_eq!(store.counters().container_close_updates_applied, 1);
         assert_eq!(store.counters().container_close_updates_ignored, 1);
+    }
+
+    #[test]
+    fn hotbar_items_merge_player_inventory_and_inventory_menu_slots() {
+        let mut store = WorldStore::new();
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(10, 1),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 8,
+            item: item_stack(18, 1),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(99, 1),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 0,
+            state_id: 1,
+            items: (0..45)
+                .map(|slot| {
+                    if slot == 36 {
+                        item_stack(20, 2)
+                    } else if slot == 44 {
+                        item_stack(28, 2)
+                    } else {
+                        ProtocolItemStackSummary::empty()
+                    }
+                })
+                .collect(),
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        store.apply_container_set_slot(ProtocolContainerSetSlot {
+            container_id: 0,
+            state_id: 2,
+            slot: 40,
+            item: item_stack(24, 3),
+        });
+
+        let hotbar = store.inventory().hotbar_items();
+        assert_eq!(hotbar[0], item_stack(20, 2));
+        assert_eq!(hotbar[4], item_stack(24, 3));
+        assert_eq!(hotbar[8], item_stack(28, 2));
+        assert_eq!(hotbar[1], ProtocolItemStackSummary::empty());
     }
 
     #[test]

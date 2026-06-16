@@ -6,7 +6,7 @@ use std::{
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{NetCounters, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
-use bbb_renderer::{CameraPose, ClearColor};
+use bbb_renderer::{CameraPose, ClearColor, HudUvRect, HUD_HOTBAR_SLOTS};
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 
@@ -16,6 +16,7 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::selection_outline_from_camera,
     input::{advance_player_input, ClientInputState},
+    item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, TerrainTextureState,
@@ -78,6 +79,7 @@ pub(crate) fn pump_network_and_terrain(
     client_animation_ticks: &mut ClientAnimationTickState,
     terrain_upload: &mut TerrainUploadState,
     terrain_textures: &TerrainTextureState,
+    item_runtime: Option<&NativeItemRuntime>,
     snapshot: &SharedSnapshot,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
 ) -> bool {
@@ -114,6 +116,7 @@ pub(crate) fn pump_network_and_terrain(
             .map(|experience| experience.progress),
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
+    renderer.set_hud_hotbar_item_uvs(hotbar_item_uvs(world, item_runtime));
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));
@@ -123,6 +126,31 @@ pub(crate) fn pump_network_and_terrain(
         audio_events.tick_entity_sound_positions(audio_scene_command_from_world(world));
     }
     publish_snapshot(snapshot, renderer.counters(), net_counters, world)
+}
+
+fn hotbar_item_uvs(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> [Option<HudUvRect>; HUD_HOTBAR_SLOTS] {
+    let mut uvs = [None; HUD_HOTBAR_SLOTS];
+    let Some(item_runtime) = item_runtime else {
+        return uvs;
+    };
+
+    for (slot_index, item) in world.inventory().hotbar_items().iter().enumerate() {
+        let Some(item_id) = item.item_id else {
+            continue;
+        };
+        let Some(uv) = item_runtime.icon_uv_for_protocol_id(item_id) else {
+            continue;
+        };
+        uvs[slot_index] = Some(HudUvRect {
+            min: uv.min,
+            max: uv.max,
+        });
+    }
+
+    uvs
 }
 
 fn advance_entity_client_animations(

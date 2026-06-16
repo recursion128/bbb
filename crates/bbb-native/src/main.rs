@@ -108,8 +108,10 @@ fn main() -> Result<()> {
         let missingno_index = items.texture_index("minecraft:missingno");
         tracing::info!(
             item_definitions = items.item_definition_count(),
+            item_registry_entries = items.item_registry_count(),
             resolved_models = items.resolved_model_count(),
             textures = items.texture_count(),
+            icon_textures = items.icon_texture_count(),
             missing_models = items.missing_model_count(),
             missing_textures = items.missing_texture_count(),
             missingno_index,
@@ -127,6 +129,14 @@ fn main() -> Result<()> {
     let mut renderer = pollster::block_on(bbb_renderer::Renderer::new(&window))?;
     let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     load_hud_textures(&mut renderer, pack_roots.as_ref());
+    if let Some(items) = &item_runtime {
+        let (atlas_width, atlas_height) = items.atlas_size();
+        if let Err(err) =
+            renderer.upload_hud_item_atlas(atlas_width, atlas_height, items.atlas_rgba())
+        {
+            tracing::warn!(?err, "continuing without native item HUD atlas");
+        }
+    }
     let mut screenshot = args.screenshot;
     let screenshot_after_terrain = args.connect_server;
     let exit_after_screenshot = args.exit_after_screenshot;
@@ -189,6 +199,7 @@ fn main() -> Result<()> {
                         &mut client_animation_ticks,
                         &mut terrain_upload,
                         &terrain_textures,
+                        item_runtime.as_ref(),
                         &snapshot,
                         Some(&mut code_of_conduct_acceptance),
                     ) {
@@ -265,6 +276,7 @@ fn main() -> Result<()> {
                     &mut client_animation_ticks,
                     &mut terrain_upload,
                     &terrain_textures,
+                    item_runtime.as_ref(),
                     &snapshot,
                     Some(&mut code_of_conduct_acceptance),
                 ) {

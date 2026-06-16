@@ -18,6 +18,7 @@ pub use crate::item_models::{
     ItemModelProperty, ItemModelTransformation, ItemSpecialModel, ItemTintSource,
     RangeDispatchEntry, SelectCase,
 };
+pub use crate::item_registry::ItemRegistryCatalog;
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};

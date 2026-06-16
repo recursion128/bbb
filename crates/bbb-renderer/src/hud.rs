@@ -10,9 +10,18 @@ use self::gpu::create_hud_sprite_gpu;
 pub(super) use self::gpu::{create_hud_bind_group_layout, create_hud_pipeline, HudSpriteGpu};
 use self::layout::{
     centered_hud_rect, experience_bar_hud_rect, food_hud_rect, heart_hud_rect, hotbar_hud_rect,
-    hotbar_selection_hud_rect, hud_experience_progress_width, hud_food_fill, hud_heart_fill,
-    hud_quad_vertices, HudIconFill, HudRect, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
+    hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_experience_progress_width, hud_food_fill,
+    hud_heart_fill, hud_quad_vertices, HudIconFill, HudRect, HUD_FOOD_ICONS_PER_ROW,
+    HUD_HEARTS_PER_ROW,
 };
+
+pub const HUD_HOTBAR_SLOTS: usize = 9;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudUvRect {
+    pub min: [f32; 2],
+    pub max: [f32; 2],
+}
 
 pub(super) struct HudDrawCommand<'a> {
     pub(super) sprite: &'a HudSpriteGpu,
@@ -48,6 +57,11 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_hotbar_selection = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_item_atlas(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_item_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -121,7 +135,11 @@ impl Renderer {
     }
 
     pub fn set_hud_selected_slot(&mut self, slot: u8) {
-        self.hud_selected_slot = slot.min(8);
+        self.hud_selected_slot = slot.min((HUD_HOTBAR_SLOTS - 1) as u8);
+    }
+
+    pub fn set_hud_hotbar_item_uvs(&mut self, uvs: [Option<HudUvRect>; HUD_HOTBAR_SLOTS]) {
+        self.hud_hotbar_item_uvs = uvs.map(|uv| uv.and_then(sanitize_hud_uv_rect));
     }
 
     fn upload_hud_sprite(&self, width: u32, height: u32, rgba: &[u8]) -> Result<HudSpriteGpu> {
@@ -174,6 +192,21 @@ impl Renderer {
             );
         }
 
+        if let Some(atlas) = &self.hud_item_atlas {
+            for (slot, uv) in self.hud_hotbar_item_uvs.iter().copied().enumerate() {
+                if let Some(uv) = uv {
+                    push_hud_draw_with_uv(
+                        &mut vertices,
+                        &mut commands,
+                        atlas,
+                        surface_size,
+                        hotbar_item_hud_rect(surface_size, slot),
+                        uv,
+                    );
+                }
+            }
+        }
+
         if let (Some(progress), Some(background)) = (
             self.hud_experience_progress_value,
             &self.hud_experience_background,
@@ -199,7 +232,14 @@ impl Renderer {
                             progress_width,
                             progress_sprite.height,
                         ),
-                        progress_width as f32 / progress_sprite.width.max(1) as f32,
+                        HudUvRect {
+                            min: [0.0, 0.0],
+                            max: [
+                                (progress_width as f32 / progress_sprite.width.max(1) as f32)
+                                    .clamp(0.0, 1.0),
+                                1.0,
+                            ],
+                        },
                     );
                 }
             }
@@ -274,7 +314,17 @@ fn push_hud_draw<'a>(
     surface_size: PhysicalSize<u32>,
     rect: HudRect,
 ) {
-    push_hud_draw_with_uv(vertices, commands, sprite, surface_size, rect, 1.0);
+    push_hud_draw_with_uv(
+        vertices,
+        commands,
+        sprite,
+        surface_size,
+        rect,
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+    );
 }
 
 fn push_hud_draw_with_uv<'a>(
@@ -283,14 +333,61 @@ fn push_hud_draw_with_uv<'a>(
     sprite: &'a HudSpriteGpu,
     surface_size: PhysicalSize<u32>,
     rect: HudRect,
-    uv_max_x: f32,
+    uv: HudUvRect,
 ) {
     let start = vertices.len() as u32;
-    vertices.extend_from_slice(&hud_quad_vertices(
-        surface_size,
-        rect,
-        uv_max_x.clamp(0.0, 1.0),
-    ));
+    vertices.extend_from_slice(&hud_quad_vertices(surface_size, rect, uv));
     let end = vertices.len() as u32;
     commands.push(HudDrawCommand { sprite, start, end });
+}
+
+fn sanitize_hud_uv_rect(rect: HudUvRect) -> Option<HudUvRect> {
+    let components = [rect.min[0], rect.min[1], rect.max[0], rect.max[1]];
+    if !components.iter().all(|component| component.is_finite()) {
+        return None;
+    }
+
+    let min_x = rect.min[0].clamp(0.0, 1.0);
+    let min_y = rect.min[1].clamp(0.0, 1.0);
+    let max_x = rect.max[0].clamp(0.0, 1.0);
+    let max_y = rect.max[1].clamp(0.0, 1.0);
+    Some(HudUvRect {
+        min: [min_x.min(max_x), min_y.min(max_y)],
+        max: [min_x.max(max_x), min_y.max(max_y)],
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_hud_uv_rect_discards_non_finite_values() {
+        let rect = HudUvRect {
+            min: [0.0, f32::NAN],
+            max: [1.0, 1.0],
+        };
+        assert_eq!(sanitize_hud_uv_rect(rect), None);
+
+        let rect = HudUvRect {
+            min: [0.0, 0.0],
+            max: [f32::INFINITY, 1.0],
+        };
+        assert_eq!(sanitize_hud_uv_rect(rect), None);
+    }
+
+    #[test]
+    fn sanitize_hud_uv_rect_clamps_and_orders_bounds() {
+        let rect = HudUvRect {
+            min: [1.25, 0.75],
+            max: [-0.5, 0.25],
+        };
+        assert_eq!(
+            sanitize_hud_uv_rect(rect),
+            Some(HudUvRect {
+                min: [0.0, 0.25],
+                max: [1.0, 0.75],
+            })
+        );
+    }
 }

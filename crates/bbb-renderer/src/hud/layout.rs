@@ -1,9 +1,11 @@
 use winit::dpi::PhysicalSize;
 
-use super::HudVertex;
+use super::{HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
 
 const HUD_HOTBAR_WIDTH: u32 = 182;
 const HUD_HOTBAR_HEIGHT: u32 = 22;
+const HUD_HOTBAR_SLOT_SPACING: f32 = 20.0;
+const HUD_HOTBAR_ITEM_SIZE: u32 = 16;
 const HUD_EXPERIENCE_BAR_WIDTH: u32 = 182;
 const HUD_EXPERIENCE_BAR_HEIGHT: u32 = 5;
 const HUD_EXPERIENCE_MARGIN_BOTTOM: f32 = 24.0;
@@ -78,10 +80,21 @@ pub(super) fn hotbar_selection_hud_rect(
 ) -> HudRect {
     let hotbar = hotbar_hud_rect(surface_size, HUD_HOTBAR_WIDTH, HUD_HOTBAR_HEIGHT);
     HudRect {
-        x: hotbar.x - 1.0 + f32::from(selected_slot.min(8)) * 20.0,
+        x: hotbar.x - 1.0
+            + f32::from(selected_slot.min((HUD_HOTBAR_SLOTS - 1) as u8)) * HUD_HOTBAR_SLOT_SPACING,
         y: hotbar.y - 1.0,
         width,
         height,
+    }
+}
+
+pub(super) fn hotbar_item_hud_rect(surface_size: PhysicalSize<u32>, slot: usize) -> HudRect {
+    let hotbar = hotbar_hud_rect(surface_size, HUD_HOTBAR_WIDTH, HUD_HOTBAR_HEIGHT);
+    HudRect {
+        x: hotbar.x + 3.0 + slot.min(HUD_HOTBAR_SLOTS - 1) as f32 * HUD_HOTBAR_SLOT_SPACING,
+        y: hotbar.y + 3.0,
+        width: HUD_HOTBAR_ITEM_SIZE,
+        height: HUD_HOTBAR_ITEM_SIZE,
     }
 }
 
@@ -144,7 +157,7 @@ pub(super) fn hud_food_fill(food: i32, index: u32) -> HudIconFill {
 pub(super) fn hud_quad_vertices(
     surface_size: PhysicalSize<u32>,
     rect: HudRect,
-    uv_max_x: f32,
+    uv: HudUvRect,
 ) -> [HudVertex; 6] {
     let x0 = rect.x;
     let y0 = rect.y;
@@ -159,27 +172,27 @@ pub(super) fn hud_quad_vertices(
     [
         HudVertex {
             position: [left, top],
-            uv: [0.0, 0.0],
+            uv: uv.min,
         },
         HudVertex {
             position: [right, top],
-            uv: [uv_max_x, 0.0],
+            uv: [uv.max[0], uv.min[1]],
         },
         HudVertex {
             position: [right, bottom],
-            uv: [uv_max_x, 1.0],
+            uv: uv.max,
         },
         HudVertex {
             position: [left, top],
-            uv: [0.0, 0.0],
+            uv: uv.min,
         },
         HudVertex {
             position: [right, bottom],
-            uv: [uv_max_x, 1.0],
+            uv: uv.max,
         },
         HudVertex {
             position: [left, bottom],
-            uv: [0.0, 1.0],
+            uv: [uv.min[0], uv.max[1]],
         },
     ]
 }
@@ -191,13 +204,34 @@ mod tests {
     #[test]
     fn hud_quad_vertices_center_sprite_in_ndc() {
         let surface_size = PhysicalSize::new(1280, 720);
-        let vertices = hud_quad_vertices(surface_size, centered_hud_rect(surface_size, 16, 8), 1.0);
+        let vertices = hud_quad_vertices(
+            surface_size,
+            centered_hud_rect(surface_size, 16, 8),
+            full_uv_rect(),
+        );
         assert_f32_near(vertices[0].position[0], -0.0125);
         assert_f32_near(vertices[0].position[1], 0.011111111);
         assert_f32_near(vertices[2].position[0], 0.0125);
         assert_f32_near(vertices[2].position[1], -0.011111111);
         assert_eq!(vertices[0].uv, [0.0, 0.0]);
         assert_eq!(vertices[2].uv, [1.0, 1.0]);
+    }
+
+    #[test]
+    fn hud_quad_vertices_maps_full_uv_rect() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let vertices = hud_quad_vertices(
+            surface_size,
+            centered_hud_rect(surface_size, 16, 8),
+            HudUvRect {
+                min: [0.25, 0.5],
+                max: [0.75, 0.875],
+            },
+        );
+        assert_eq!(vertices[0].uv, [0.25, 0.5]);
+        assert_eq!(vertices[1].uv, [0.75, 0.5]);
+        assert_eq!(vertices[2].uv, [0.75, 0.875]);
+        assert_eq!(vertices[5].uv, [0.25, 0.875]);
     }
 
     #[test]
@@ -218,6 +252,20 @@ mod tests {
         let last_selection = hotbar_selection_hud_rect(surface_size, 8, 24, 23);
         assert_eq!(last_selection.x, 708.0);
         assert_eq!(last_selection.y, 697.0);
+    }
+
+    #[test]
+    fn hud_layout_matches_vanilla_hotbar_item_positions() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let first = hotbar_item_hud_rect(surface_size, 0);
+        assert_eq!(first.x, 552.0);
+        assert_eq!(first.y, 701.0);
+        assert_eq!(first.width, 16);
+        assert_eq!(first.height, 16);
+
+        let last = hotbar_item_hud_rect(surface_size, 8);
+        assert_eq!(last.x, 712.0);
+        assert_eq!(last.y, 701.0);
     }
 
     #[test]
@@ -281,5 +329,12 @@ mod tests {
             (actual - expected).abs() <= 0.000001,
             "actual {actual} expected {expected}"
         );
+    }
+
+    fn full_uv_rect() -> HudUvRect {
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        }
     }
 }

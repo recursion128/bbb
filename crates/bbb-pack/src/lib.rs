@@ -6,6 +6,7 @@ mod exports;
 mod image;
 mod item_cuboid_models;
 mod item_models;
+mod item_registry;
 mod language;
 mod metadata;
 mod mipmap;
