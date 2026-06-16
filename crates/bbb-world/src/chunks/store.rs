@@ -12,8 +12,9 @@ use bbb_protocol::{
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
     terrain::{classify_terrain_material, terrain_fluid_state},
-    BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkViewState, RegistrySet,
-    Result, TerrainBlockCell, TerrainChunkSnapshot, WorldDecodeError, WorldStore,
+    BlockEntityRecord, BlockPos, BlockProbe, ChunkColumn, ChunkPos, ChunkProbeSummaryState,
+    ChunkViewState, RegistrySet, Result, TerrainBlockCell, TerrainChunkSnapshot, WorldDecodeError,
+    WorldStore,
 };
 
 use super::{
@@ -242,6 +243,11 @@ impl WorldStore {
 
     pub fn probe_chunk(&self, pos: ChunkPos) -> Option<&ChunkColumn> {
         self.chunks.iter().find(|chunk| chunk.pos == pos)
+    }
+
+    pub fn probe_chunk_summary(&self, pos: ChunkPos) -> Option<ChunkProbeSummaryState> {
+        self.probe_chunk(pos)
+            .map(ChunkProbeSummaryState::from_chunk)
     }
 
     pub fn probe_block(&self, pos: BlockPos) -> Option<BlockProbe> {

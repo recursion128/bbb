@@ -3,6 +3,6 @@ pub use crate::entities::status::{EntityDamageEventState, ItemCooldownState, Mob
 pub use crate::entities::{
     DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState,
     EntityCameraPoseState, EntityClientAnimationState, EntityPickTargetState, EntityState,
-    EntityTransformState, EntityVec3, HurtingProjectileState, PolarBearStandingAnimationState,
-    ProjectilePowerUpdateState, VehicleMoveReport,
+    EntityStatusProbeState, EntityTransformState, EntityVec3, HurtingProjectileState,
+    PolarBearStandingAnimationState, ProjectilePowerUpdateState, VehicleMoveReport,
 };

@@ -3322,6 +3322,30 @@ fn tracks_entity_transient_events() {
 }
 
 #[test]
+fn probes_entity_status_from_world_store() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity(123));
+
+    assert!(store.apply_entity_animation(ProtocolEntityAnimation { id: 123, action: 3 }));
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 123,
+        event_id: 35,
+    }));
+    assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 123, yaw: 45.5 }));
+
+    let status = store.probe_entity_status(123).unwrap();
+
+    assert_eq!(status.id, 123);
+    assert_eq!(status.entity_type_id, 7);
+    assert_eq!(status.last_animation_action, Some(3));
+    assert_eq!(status.last_event_id, Some(35));
+    assert_eq!(status.last_hurt_yaw, Some(45.5));
+    assert!(status.mob_effects.is_empty());
+    assert!(status.last_damage.is_none());
+    assert!(store.probe_entity_status(999).is_none());
+}
+
+#[test]
 fn tracks_entity_link_updates() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity(10));

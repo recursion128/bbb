@@ -51,6 +51,27 @@ fn decodes_level_chunk_with_light_structure() {
 }
 
 #[test]
+fn probes_chunk_summary_from_world_store() {
+    let mut store = WorldStore::new();
+    let pos = store
+        .insert_level_chunk_with_light(synthetic_level_chunk_packet())
+        .unwrap();
+
+    let summary = store.probe_chunk_summary(pos).unwrap();
+
+    assert_eq!(summary.pos, ChunkPos { x: 1, z: -2 });
+    assert_eq!(summary.state, ChunkState::Decoded);
+    assert_eq!(summary.heightmaps, 1);
+    assert_eq!(summary.sections, 1);
+    assert_eq!(summary.block_entities, 1);
+    assert_eq!(summary.sky_light_arrays, 1);
+    assert_eq!(summary.block_light_arrays, 1);
+    assert!(store
+        .probe_chunk_summary(ChunkPos { x: 99, z: 99 })
+        .is_none());
+}
+
+#[test]
 fn first_chunk_tracks_first_decoded_chunk_and_survives_forget() {
     let mut store = WorldStore::with_dimension(WorldDimension {
         min_y: 0,

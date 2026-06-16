@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use bbb_world::{BlockPos, ChunkColumn, ChunkPos};
+use bbb_world::{BlockPos, ChunkPos};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
@@ -552,8 +552,10 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             let result = match (x, z) {
                 (Some(x), Some(z)) => snapshot_guard
                     .world_store
-                    .probe_chunk(ChunkPos { x, z })
-                    .map(chunk_probe_summary)
+                    .probe_chunk_summary(ChunkPos { x, z })
+                    .map(|summary| {
+                        serde_json::to_value(summary).expect("chunk probe summary serializes")
+                    })
                     .unwrap_or(serde_json::Value::Null),
                 _ => serde_json::Value::Null,
             };
@@ -576,17 +578,9 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             let result = match id {
                 Some(id) => snapshot_guard
                     .world_store
-                    .probe_entity(id)
-                    .map(|entity| {
-                        serde_json::json!({
-                            "id": entity.id,
-                            "entity_type_id": entity.entity_type_id,
-                            "last_animation_action": entity.last_animation_action,
-                            "last_event_id": entity.last_event_id,
-                            "last_hurt_yaw": entity.last_hurt_yaw,
-                            "mob_effects": entity.mob_effects,
-                            "last_damage": entity.last_damage,
-                        })
+                    .probe_entity_status(id)
+                    .map(|status| {
+                        serde_json::to_value(status).expect("entity status probe serializes")
                     })
                     .unwrap_or(serde_json::Value::Null),
                 None => serde_json::Value::Null,
@@ -703,18 +697,6 @@ fn bool_param(params: &serde_json::Value, key: &str) -> Option<bool> {
     params.get(key)?.as_bool()
 }
 
-fn chunk_probe_summary(chunk: &ChunkColumn) -> serde_json::Value {
-    serde_json::json!({
-        "pos": chunk.pos,
-        "state": chunk.state,
-        "heightmaps": chunk.heightmaps.len(),
-        "sections": chunk.sections.len(),
-        "block_entities": chunk.block_entities.len(),
-        "sky_light_arrays": chunk.light.sky_updates.len(),
-        "block_light_arrays": chunk.light.block_updates.len(),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
@@ -757,8 +739,8 @@ mod tests {
         WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_world::{
-        BlockEntityRecord, ChunkSection, ChunkState, HeightmapData, LightData, PaletteDomain,
-        PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
+        BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, LightData,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
     };
     use serde_json::json;
     use uuid::Uuid;

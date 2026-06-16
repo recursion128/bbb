@@ -136,6 +136,17 @@ pub struct EntityTransformState {
     pub on_ground: Option<bool>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EntityStatusProbeState {
+    pub id: i32,
+    pub entity_type_id: i32,
+    pub last_animation_action: Option<u8>,
+    pub last_event_id: Option<i8>,
+    pub last_hurt_yaw: Option<f32>,
+    pub mob_effects: BTreeMap<i32, MobEffectState>,
+    pub last_damage: Option<EntityDamageEventState>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityCameraPoseState {
     pub id: i32,
@@ -296,6 +307,19 @@ impl WorldStore {
 
     pub fn probe_entity(&self, id: i32) -> Option<EntityState> {
         self.entities.get(id)
+    }
+
+    pub fn probe_entity_status(&self, id: i32) -> Option<EntityStatusProbeState> {
+        let entity = self.probe_entity(id)?;
+        Some(EntityStatusProbeState {
+            id: entity.id,
+            entity_type_id: entity.entity_type_id,
+            last_animation_action: entity.last_animation_action,
+            last_event_id: entity.last_event_id,
+            last_hurt_yaw: entity.last_hurt_yaw,
+            mob_effects: entity.mob_effects,
+            last_damage: entity.last_damage,
+        })
     }
 
     pub fn probe_entity_transform(&self, id: i32) -> Option<EntityTransformState> {

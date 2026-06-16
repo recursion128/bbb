@@ -2,9 +2,9 @@ pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
 };
 pub use crate::chunks::{
-    decode_level_chunk_with_light, BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState,
-    ChunkViewState, HeightmapData, LightData, NbtPayloadSummary, PaletteDomain, PaletteKind,
-    PaletteValue, PalettedContainerData,
+    decode_level_chunk_with_light, BlockEntityRecord, ChunkColumn, ChunkProbeSummaryState,
+    ChunkSection, ChunkState, ChunkViewState, HeightmapData, LightData, NbtPayloadSummary,
+    PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData,
 };
 pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{

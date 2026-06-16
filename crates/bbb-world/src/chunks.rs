@@ -10,8 +10,8 @@ pub use light::LightData;
 pub(crate) use light::{merge_light_data, sample_terrain_light};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub use state::{
-    BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, ChunkViewState, HeightmapData,
-    NbtPayloadSummary,
+    BlockEntityRecord, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
+    ChunkViewState, HeightmapData, NbtPayloadSummary,
 };
 
 #[cfg(test)]

@@ -36,6 +36,31 @@ pub struct ChunkColumn {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChunkProbeSummaryState {
+    pub pos: ChunkPos,
+    pub state: ChunkState,
+    pub heightmaps: usize,
+    pub sections: usize,
+    pub block_entities: usize,
+    pub sky_light_arrays: usize,
+    pub block_light_arrays: usize,
+}
+
+impl ChunkProbeSummaryState {
+    pub(crate) fn from_chunk(chunk: &ChunkColumn) -> Self {
+        Self {
+            pos: chunk.pos,
+            state: chunk.state,
+            heightmaps: chunk.heightmaps.len(),
+            sections: chunk.sections.len(),
+            block_entities: chunk.block_entities.len(),
+            sky_light_arrays: chunk.light.sky_updates.len(),
+            block_light_arrays: chunk.light.block_updates.len(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HeightmapData {
     pub kind_id: i32,
     pub data: Vec<i64>,
