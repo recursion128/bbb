@@ -461,6 +461,57 @@ fn block_model_catalog_uses_vanilla_default_namespace_for_direct_texture_ids() {
 }
 
 #[test]
+fn block_model_catalog_uses_vanilla_default_namespace_for_model_ids() {
+    let root = unique_temp_dir("block-model-default-namespace");
+    let asset_root = root
+        .join("sources")
+        .join(MC_VERSION)
+        .join("assets")
+        .join("minecraft");
+    write_json(
+        &asset_root.join("blockstates").join("test_block.json"),
+        r##"{
+            "variants": {
+                "": { "model": "root_child" }
+            }
+        }"##,
+    );
+    write_json(
+        &asset_root.join("models").join("root_child.json"),
+        r##"{
+            "parent": "root_parent",
+            "textures": { "all": "child_texture" }
+        }"##,
+    );
+    write_json(
+        &asset_root.join("models").join("root_parent.json"),
+        r##"{
+            "textures": { "all": "parent_texture" },
+            "elements": [{
+                "faces": {
+                    "north": { "texture": "#all" }
+                }
+            }]
+        }"##,
+    );
+
+    let catalog = PackRoots::from_root(&root)
+        .unwrap()
+        .load_block_model_catalog()
+        .unwrap();
+    let render_model = catalog
+        .block_render_model("minecraft:test_block", &BTreeMap::new())
+        .unwrap();
+
+    assert_eq!(
+        render_model.face_textures.get(BlockModelFace::North),
+        "minecraft:child_texture"
+    );
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn block_model_catalog_resolves_parent_ambient_occlusion() {
     let root = unique_temp_dir("block-model-ambient-occlusion");
     let asset_root = root

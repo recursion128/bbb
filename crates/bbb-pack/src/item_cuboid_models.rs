@@ -45,7 +45,7 @@ impl ItemCuboidModelCatalog {
         let resolved = resolve_cuboid_model(&self.models, &model_id)?;
         Some(ItemCuboidModel {
             id: model_id,
-            parent: raw.parent.as_deref().map(normalize_cuboid_model_id),
+            parent: raw.parent.as_deref().and_then(normalize_cuboid_model_id),
             use_ambient_occlusion: resolved.use_ambient_occlusion(),
             gui_light: resolved.gui_light(),
             display_transforms: resolved.display_transforms(),

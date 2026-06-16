@@ -132,7 +132,7 @@ fn resolve_model_inner(
     model_id: &str,
     seen: &mut HashSet<String>,
 ) -> Option<ResolvedBlockModel> {
-    let model_id = normalize_cuboid_model_id(model_id);
+    let model_id = normalize_cuboid_model_id(model_id)?;
     if !seen.insert(model_id.clone()) {
         return None;
     }
@@ -239,14 +239,10 @@ fn resolve_texture_alias_with_force(
     }
 }
 
-pub(crate) fn normalize_cuboid_model_id(id: &str) -> String {
-    if id.contains(':') {
-        id.to_string()
-    } else if id.contains('/') {
-        format!("minecraft:{id}")
-    } else {
-        format!("minecraft:block/{id}")
-    }
+pub(crate) fn normalize_cuboid_model_id(id: &str) -> Option<String> {
+    ResourceLocation::parse(id)
+        .ok()
+        .map(|location| location.id())
 }
 
 fn normalize_texture_id(id: &str) -> Option<String> {

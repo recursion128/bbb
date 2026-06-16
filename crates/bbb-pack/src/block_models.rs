@@ -53,7 +53,7 @@ impl BlockModelCatalog {
             blockstates.insert(id, blockstate_stack);
         }
 
-        let models = load_cuboid_model_resources(stack, "models/block", "block model")?;
+        let models = load_cuboid_model_resources(stack, "models", "block model")?;
 
         Ok(Self {
             blockstates,
