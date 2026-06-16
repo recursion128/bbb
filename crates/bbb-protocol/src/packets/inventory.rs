@@ -212,7 +212,7 @@ mod tests {
         payload.write_i16(5);
         payload.write_var_i32(1);
         payload.write_var_i32(99);
-        payload.write_var_i32(3);
+        payload.write_var_i32(5);
         payload.write_var_i32(0);
 
         payload.write_var_i32(17);
@@ -229,6 +229,23 @@ mod tests {
         payload.write_var_i32(45);
         payload.write_i32(0x010203);
 
+        payload.write_var_i32(51);
+        payload.write_bool(false);
+        payload.write_bool(true);
+        payload.write_i32(0x0a0b0c);
+        payload.write_var_i32(0);
+        payload.write_bool(false);
+
+        payload.write_var_i32(68);
+        payload.write_var_i32(1);
+        payload.write_var_i32(2);
+        payload.write_i32(0x102030);
+        payload.write_i32(0x405060);
+        payload.write_var_i32(1);
+        payload.write_i32(0x708090);
+        payload.write_bool(true);
+        payload.write_bool(false);
+
         let packet = decode_play_clientbound(
             ids::play::CLIENTBOUND_CONTAINER_SET_SLOT,
             &payload.into_inner(),
@@ -237,13 +254,24 @@ mod tests {
         let PlayClientbound::ContainerSetSlot(update) = packet else {
             panic!("expected container set slot packet");
         };
-        assert_eq!(update.item.component_patch.added_type_ids, vec![17, 44, 45]);
+        assert_eq!(
+            update.item.component_patch.added_type_ids,
+            vec![17, 44, 45, 51, 68]
+        );
         assert_eq!(
             update.item.component_patch.custom_model_data_colors,
             vec![0x112233, 0x445566]
         );
         assert_eq!(update.item.component_patch.dyed_color, Some(0x778899));
         assert_eq!(update.item.component_patch.map_color, Some(0x010203));
+        assert_eq!(
+            update.item.component_patch.potion_custom_color,
+            Some(0x0a0b0c)
+        );
+        assert_eq!(
+            update.item.component_patch.firework_explosion_colors,
+            vec![0x102030, 0x405060]
+        );
     }
 
     #[test]

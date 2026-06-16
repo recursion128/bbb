@@ -511,12 +511,44 @@ fn item_tint_source_color(
                 .unwrap_or(*default_color);
             rgb_i32_tint(color)
         }
+        ItemTintSource::Potion { default_color } => {
+            let color = component_patch
+                .and_then(|patch| patch.potion_custom_color)
+                .unwrap_or(*default_color);
+            rgb_i32_tint(color)
+        }
+        ItemTintSource::Firework { default_color } => {
+            let color = component_patch
+                .and_then(|patch| firework_explosion_tint_color(&patch.firework_explosion_colors))
+                .unwrap_or(*default_color);
+            rgb_i32_tint(color)
+        }
         ItemTintSource::Constant { value } => rgb_i32_tint(*value),
-        ItemTintSource::Grass { .. }
-        | ItemTintSource::Firework { .. }
-        | ItemTintSource::Potion { .. }
-        | ItemTintSource::Team { .. } => item_tint_source_default_color(tint, None),
+        ItemTintSource::Grass { .. } | ItemTintSource::Team { .. } => {
+            item_tint_source_default_color(tint, None)
+        }
     }
+}
+
+fn firework_explosion_tint_color(colors: &[i32]) -> Option<i32> {
+    if colors.is_empty() {
+        return None;
+    }
+    if colors.len() == 1 {
+        return Some(colors[0]);
+    }
+
+    let mut red = 0u32;
+    let mut green = 0u32;
+    let mut blue = 0u32;
+    for color in colors {
+        let color = *color as u32;
+        red += (color >> 16) & 0xff;
+        green += (color >> 8) & 0xff;
+        blue += color & 0xff;
+    }
+    let len = colors.len() as u32;
+    Some(((red / len) << 16 | (green / len) << 8 | (blue / len)) as i32)
 }
 
 fn rgb_i32_tint(value: i32) -> [f32; 4] {
@@ -585,6 +617,8 @@ mod tests {
             custom_model_data_colors: vec![0x01_02_03, 0x04_05_06],
             dyed_color: Some(0x07_08_09),
             map_color: Some(0x0a_0b_0c),
+            potion_custom_color: Some(0x0d_0e_0f),
+            firework_explosion_colors: vec![0x10_20_30, 0x20_40_60],
             ..DataComponentPatchSummary::default()
         };
 
@@ -618,11 +652,38 @@ mod tests {
         );
         assert_eq!(
             item_tint_source_color(
+                &ItemTintSource::Potion {
+                    default_color: 0xff_00_ff,
+                },
+                Some(&patch),
+            ),
+            rgb_i32_tint(0x0d_0e_0f)
+        );
+        assert_eq!(
+            item_tint_source_color(
+                &ItemTintSource::Firework {
+                    default_color: 0xff_00_ff,
+                },
+                Some(&patch),
+            ),
+            rgb_i32_tint(0x18_30_48)
+        );
+        assert_eq!(
+            item_tint_source_color(
                 &ItemTintSource::CustomModelData {
                     index: 2,
                     default_color: 0xff_00_ff,
                 },
                 Some(&patch),
+            ),
+            rgb_i32_tint(0xff_00_ff)
+        );
+        assert_eq!(
+            item_tint_source_color(
+                &ItemTintSource::Firework {
+                    default_color: 0xff_00_ff,
+                },
+                Some(&DataComponentPatchSummary::default()),
             ),
             rgb_i32_tint(0xff_00_ff)
         );

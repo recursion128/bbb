@@ -37,6 +37,10 @@ pub struct DataComponentPatchSummary {
     pub dyed_color: Option<i32>,
     #[serde(default)]
     pub map_color: Option<i32>,
+    #[serde(default)]
+    pub potion_custom_color: Option<i32>,
+    #[serde(default)]
+    pub firework_explosion_colors: Vec<i32>,
 }
 
 pub(crate) fn decode_data_component_patch_summary(
@@ -104,6 +108,12 @@ fn decode_typed_data_component_patch_summary(
             }
             45 => {
                 summary.map_color = Some(decoder.read_i32()?);
+            }
+            51 => {
+                summary.potion_custom_color = decode_potion_contents(decoder)?;
+            }
+            68 => {
+                summary.firework_explosion_colors = decode_firework_explosion(decoder)?;
             }
             _ => decode_data_component_value(decoder, type_id)?,
         }
@@ -198,7 +208,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         // charged_projectiles and bundle_contents.
         49 | 50 => decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?,
         // potion_contents.
-        51 => decode_potion_contents(decoder)?,
+        51 => {
+            decode_potion_contents(decoder)?;
+        }
         // suspicious_stew_effects.
         53 => decode_suspicious_stew_effects(decoder)?,
         // writable_book_content and written_book_content.
@@ -218,7 +230,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         80 => decode_sound_event_holder(decoder)?,
         102 => decode_painting_variant_holder(decoder)?,
         // firework_explosion and fireworks.
-        68 => decode_firework_explosion(decoder)?,
+        68 => {
+            decode_firework_explosion(decoder)?;
+        }
         69 => decode_fireworks(decoder)?,
         // banner_patterns, pot_decorations, and bees.
         72 => decode_banner_pattern_layers(decoder)?,
@@ -291,11 +305,11 @@ fn decode_optional_identifier(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_optional_i32(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_optional_i32_value(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
     if decoder.read_bool()? {
-        decoder.read_i32()?;
+        return Ok(Some(decoder.read_i32()?));
     }
-    Ok(())
+    Ok(None)
 }
 
 fn decode_optional_f32(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -857,17 +871,17 @@ fn decode_swing_animation(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
     if decoder.read_bool()? {
         decode_holder_registry(decoder)?;
     }
-    decode_optional_i32(decoder)?;
+    let custom_color = decode_optional_i32_value(decoder)?;
     let effects = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     for _ in 0..effects {
         decode_mob_effect_instance(decoder)?;
     }
     decode_optional_string(decoder, MAX_STRING_CHARS)?;
-    Ok(())
+    Ok(custom_color)
 }
 
 fn decode_suspicious_stew_effects(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -950,21 +964,22 @@ fn decode_fireworks(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_firework_explosion(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_firework_explosion(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
     decoder.read_var_i32()?;
-    decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let colors = decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     decode_int_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     decoder.read_bool()?;
     decoder.read_bool()?;
-    Ok(())
+    Ok(colors)
 }
 
-fn decode_int_list(decoder: &mut Decoder<'_>, max: usize) -> Result<()> {
+fn decode_int_list(decoder: &mut Decoder<'_>, max: usize) -> Result<Vec<i32>> {
     let count = read_bounded_len(decoder, max)?;
+    let mut values = Vec::with_capacity(count);
     for _ in 0..count {
-        decoder.read_i32()?;
+        values.push(decoder.read_i32()?);
     }
-    Ok(())
+    Ok(values)
 }
 
 fn decode_string_map(decoder: &mut Decoder<'_>, max: usize) -> Result<()> {
@@ -1548,6 +1563,8 @@ mod tests {
                 removed_type_ids: Vec::new(),
                 dyed_color: Some(0x112233),
                 map_color: Some(0x445566),
+                potion_custom_color: Some(0x778899),
+                firework_explosion_colors: vec![0x010203, 0x040506],
                 ..DataComponentPatchSummary::default()
             }
         );
