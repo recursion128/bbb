@@ -12,8 +12,6 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
-use crate::crosshair::CrosshairBlockHit;
-
 mod commands;
 mod mouse;
 mod movement;
@@ -46,9 +44,6 @@ pub(crate) struct ClientInputState {
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
     last_move_command_pose: Option<LocalPlayerPoseState>,
-    destroying_block: Option<CrosshairBlockHit>,
-    using_item: bool,
-    prediction_sequence: i32,
 }
 
 impl ClientInputState {
@@ -72,19 +67,11 @@ impl ClientInputState {
         self.scroll_accumulated_x = 0.0;
         self.scroll_accumulated_y = 0.0;
     }
-
-    fn next_prediction_sequence(&mut self) -> i32 {
-        self.prediction_sequence = if self.prediction_sequence == i32::MAX {
-            1
-        } else {
-            self.prediction_sequence + 1
-        };
-        self.prediction_sequence
-    }
 }
 
 pub(crate) fn handle_focus_change(
     input: &mut ClientInputState,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     focused: bool,
@@ -97,18 +84,17 @@ pub(crate) fn handle_focus_change(
         if after != before {
             queue_player_input_command(counters, net_commands, after);
         }
-        if let Some(hit) = input.destroying_block.take() {
+        if let Some(pos) = world.take_local_destroying_block() {
             queue_player_action_command(
                 counters,
                 net_commands,
                 PlayerActionKind::AbortDestroyBlock,
-                hit.pos,
+                pos,
                 ProtocolDirection::Down,
                 0,
             );
         }
-        if input.using_item {
-            input.using_item = false;
+        if world.take_local_using_item() {
             queue_zero_pos_player_action_command(
                 counters,
                 net_commands,

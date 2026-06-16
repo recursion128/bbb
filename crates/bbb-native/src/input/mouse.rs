@@ -29,7 +29,7 @@ pub(crate) fn handle_mouse_motion(input: &mut ClientInputState, delta: (f64, f64
 #[cfg(test)]
 fn handle_mouse_input(
     input: &mut ClientInputState,
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     button: MouseButton,
@@ -40,7 +40,7 @@ fn handle_mouse_input(
 
 pub(crate) fn handle_mouse_input_at_partial_tick(
     input: &mut ClientInputState,
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     button: MouseButton,
@@ -68,7 +68,7 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                     queue_attack_entity_command(counters, net_commands, hit.entity_id);
                 }
                 Some(CrosshairTarget::Block(hit)) => {
-                    let sequence = input.next_prediction_sequence();
+                    let sequence = world.next_local_prediction_sequence();
                     queue_player_action_command(
                         counters,
                         net_commands,
@@ -77,19 +77,19 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                         hit.face,
                         sequence,
                     );
-                    input.destroying_block = Some(hit);
+                    world.set_local_destroying_block(hit.pos);
                 }
                 None => {}
             }
             queue_swing_command(counters, net_commands, InteractionHand::MainHand);
         }
         (MouseButton::Left, ElementState::Released) => {
-            if let Some(hit) = input.destroying_block.take() {
+            if let Some(pos) = world.take_local_destroying_block() {
                 queue_player_action_command(
                     counters,
                     net_commands,
                     PlayerActionKind::AbortDestroyBlock,
-                    hit.pos,
+                    pos,
                     ProtocolDirection::Down,
                     0,
                 );
@@ -107,13 +107,13 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                 );
             }
             Some(CrosshairTarget::Block(hit)) => {
-                let sequence = input.next_prediction_sequence();
+                let sequence = world.next_local_prediction_sequence();
                 queue_use_item_on_command(counters, net_commands, hit, sequence);
             }
             None => {
                 if let Some(pose) = player_pose {
-                    let sequence = input.next_prediction_sequence();
-                    input.using_item = queue_use_item_command(
+                    let sequence = world.next_local_prediction_sequence();
+                    let using_item = queue_use_item_command(
                         counters,
                         net_commands,
                         InteractionHand::MainHand,
@@ -121,12 +121,12 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                         pose.x_rot,
                         sequence,
                     );
+                    world.set_local_using_item(using_item);
                 }
             }
         },
         (MouseButton::Right, ElementState::Released) => {
-            if input.using_item {
-                input.using_item = false;
+            if world.take_local_using_item() {
                 queue_zero_pos_player_action_command(
                     counters,
                     net_commands,
@@ -221,8 +221,6 @@ mod tests {
     use bbb_world::{BlockPos, LocalPlayerPoseState};
     use uuid::Uuid;
 
-    use crate::crosshair::CrosshairBlockHit;
-
     const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 
@@ -231,18 +229,18 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Left,
             ElementState::Pressed,
         );
-        assert!(input.destroying_block.is_none());
+        assert_eq!(world.local_player().interaction.destroying_block, None);
 
         assert_eq!(counters.swing_commands_queued, 1);
         assert_eq!(
@@ -252,7 +250,7 @@ mod tests {
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Left,
@@ -267,12 +265,12 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(false);
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Left,
@@ -288,25 +286,20 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
-        input.destroying_block = Some(CrosshairBlockHit {
-            pos: BlockPos { x: 2, y: 65, z: -3 },
-            face: ProtocolDirection::East,
-            cursor: [1.0, 0.5, 0.5],
-            inside: false,
-        });
-        let world = WorldStore::new();
+        let mut world = WorldStore::new();
+        world.set_local_destroying_block(BlockPos { x: 2, y: 65, z: -3 });
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Left,
             ElementState::Released,
         );
 
-        assert!(input.destroying_block.is_none());
+        assert_eq!(world.local_player().interaction.destroying_block, None);
         assert_eq!(counters.player_action_commands_queued, 1);
         assert_eq!(counters.swing_commands_queued, 0);
         assert_eq!(
@@ -335,14 +328,14 @@ mod tests {
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Right,
             ElementState::Pressed,
         );
 
-        assert!(input.using_item);
+        assert!(world.local_player().interaction.using_item);
         assert_eq!(counters.use_item_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -356,14 +349,14 @@ mod tests {
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Right,
             ElementState::Released,
         );
 
-        assert!(!input.using_item);
+        assert!(!world.local_player().interaction.using_item);
         assert_eq!(counters.player_action_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -381,19 +374,19 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
-        let world = world_with_crosshair_entity(123);
+        let mut world = world_with_crosshair_entity(123);
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Left,
             ElementState::Pressed,
         );
 
-        assert!(input.destroying_block.is_none());
+        assert_eq!(world.local_player().interaction.destroying_block, None);
         assert_eq!(counters.attack_entity_commands_queued, 1);
         assert_eq!(counters.swing_commands_queued, 1);
         assert_eq!(
@@ -455,14 +448,14 @@ mod tests {
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Left,
             ElementState::Pressed,
         );
 
-        assert!(input.destroying_block.is_none());
+        assert_eq!(world.local_player().interaction.destroying_block, None);
         assert_eq!(counters.attack_entity_commands_queued, 1);
         assert_eq!(counters.swing_commands_queued, 1);
         assert_eq!(
@@ -481,19 +474,19 @@ mod tests {
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.sneak = true;
-        let world = world_with_crosshair_entity(123);
+        let mut world = world_with_crosshair_entity(123);
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Right,
             ElementState::Pressed,
         );
 
-        assert!(!input.using_item);
+        assert!(!world.local_player().interaction.using_item);
         assert_eq!(counters.interact_entity_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -516,12 +509,12 @@ mod tests {
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.sprint = true;
-        let world = world_with_crosshair_entity(123);
+        let mut world = world_with_crosshair_entity(123);
         let mut counters = NetCounters::default();
 
         handle_mouse_input(
             &mut input,
-            &world,
+            &mut world,
             &mut counters,
             &commands,
             MouseButton::Middle,

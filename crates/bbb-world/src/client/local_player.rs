@@ -33,6 +33,8 @@ pub struct LocalPlayerState {
     pub pose: Option<LocalPlayerPoseState>,
     #[serde(default)]
     pub last_look_at: Option<LocalPlayerLookAtState>,
+    #[serde(default)]
+    pub interaction: LocalPlayerInteractionState,
 }
 
 impl Default for LocalPlayerState {
@@ -47,6 +49,7 @@ impl Default for LocalPlayerState {
             camera: CameraState::default(),
             pose: None,
             last_look_at: None,
+            interaction: LocalPlayerInteractionState::default(),
         }
     }
 }
@@ -73,6 +76,16 @@ pub struct LocalPlayerExperienceState {
     pub progress: f32,
     pub level: i32,
     pub total: i32,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalPlayerInteractionState {
+    #[serde(default)]
+    pub destroying_block: Option<BlockPos>,
+    #[serde(default)]
+    pub using_item: bool,
+    #[serde(default)]
+    pub prediction_sequence: i32,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
@@ -286,6 +299,38 @@ impl WorldStore {
         self.local_player()
     }
 
+    pub fn next_local_prediction_sequence(&mut self) -> i32 {
+        let sequence = self.local_player.interaction.prediction_sequence;
+        self.local_player.interaction.prediction_sequence = if sequence == i32::MAX {
+            1
+        } else {
+            sequence + 1
+        };
+        self.local_player.interaction.prediction_sequence
+    }
+
+    pub fn set_local_prediction_sequence(&mut self, sequence: i32) {
+        self.local_player.interaction.prediction_sequence = sequence.max(0);
+    }
+
+    pub fn set_local_destroying_block(&mut self, pos: BlockPos) {
+        self.local_player.interaction.destroying_block = Some(pos);
+    }
+
+    pub fn take_local_destroying_block(&mut self) -> Option<BlockPos> {
+        self.local_player.interaction.destroying_block.take()
+    }
+
+    pub fn set_local_using_item(&mut self, using_item: bool) {
+        self.local_player.interaction.using_item = using_item;
+    }
+
+    pub fn take_local_using_item(&mut self) -> bool {
+        let using_item = self.local_player.interaction.using_item;
+        self.local_player.interaction.using_item = false;
+        using_item
+    }
+
     fn resolve_look_at_target_position(&self, packet: ProtocolPlayerLookAt) -> ProtocolVec3d {
         packet
             .target
@@ -458,6 +503,48 @@ mod tests {
         assert_eq!(store.counters().held_slot_packets, 0);
         assert_eq!(store.counters().held_slot_updates_applied, 0);
         assert_eq!(store.counters().held_slot_updates_ignored, 0);
+    }
+
+    #[test]
+    fn local_interaction_state_tracks_prediction_destroy_and_use_item() {
+        let mut store = WorldStore::new();
+
+        assert_eq!(store.next_local_prediction_sequence(), 1);
+        assert_eq!(store.next_local_prediction_sequence(), 2);
+        store.set_local_prediction_sequence(i32::MAX);
+        assert_eq!(store.next_local_prediction_sequence(), 1);
+        store.set_local_prediction_sequence(-5);
+        assert_eq!(store.next_local_prediction_sequence(), 1);
+
+        let pos = BlockPos { x: 4, y: 70, z: -6 };
+        store.set_local_destroying_block(pos);
+        assert_eq!(store.local_player().interaction.destroying_block, Some(pos));
+        assert_eq!(store.take_local_destroying_block(), Some(pos));
+        assert_eq!(store.take_local_destroying_block(), None);
+
+        store.set_local_using_item(true);
+        assert!(store.take_local_using_item());
+        assert!(!store.take_local_using_item());
+    }
+
+    #[test]
+    fn local_interaction_state_survives_world_store_json_round_trip() {
+        let mut store = WorldStore::new();
+        store.set_local_destroying_block(BlockPos { x: 1, y: 2, z: 3 });
+        store.set_local_using_item(true);
+        assert_eq!(store.next_local_prediction_sequence(), 1);
+
+        let restored: WorldStore = serde_json::from_value(serde_json::to_value(&store).unwrap())
+            .expect("world store local interaction should deserialize");
+
+        assert_eq!(
+            restored.local_player().interaction,
+            LocalPlayerInteractionState {
+                destroying_block: Some(BlockPos { x: 1, y: 2, z: 3 }),
+                using_item: true,
+                prediction_sequence: 1,
+            }
+        );
     }
 
     #[test]

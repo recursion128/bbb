@@ -54,13 +54,13 @@ fn world_with_local_player_id(player_id: i32) -> WorldStore {
 
 #[test]
 fn prediction_sequence_starts_at_one_and_wraps_positive() {
-    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
 
-    assert_eq!(input.next_prediction_sequence(), 1);
-    assert_eq!(input.next_prediction_sequence(), 2);
+    assert_eq!(world.next_local_prediction_sequence(), 1);
+    assert_eq!(world.next_local_prediction_sequence(), 2);
 
-    input.prediction_sequence = i32::MAX;
-    assert_eq!(input.next_prediction_sequence(), 1);
+    world.set_local_prediction_sequence(i32::MAX);
+    assert_eq!(world.next_local_prediction_sequence(), 1);
 }
 
 #[test]
@@ -424,8 +424,9 @@ fn focus_loss_clears_pressed_input_and_queues_release() {
     input.jump = true;
     input.sprint = true;
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
-    handle_focus_change(&mut input, &mut counters, &commands, false);
+    handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
 
     assert!(!input.focused);
     assert_eq!(player_input_from_state(&input), PlayerInput::default());
@@ -441,17 +442,13 @@ fn focus_loss_aborts_destroying_block() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
-    input.destroying_block = Some(CrosshairBlockHit {
-        pos: BlockPos { x: 4, y: 70, z: -6 },
-        face: ProtocolDirection::North,
-        cursor: [0.5, 0.5, 0.0],
-        inside: false,
-    });
+    let mut world = WorldStore::new();
+    world.set_local_destroying_block(BlockPos { x: 4, y: 70, z: -6 });
     let mut counters = NetCounters::default();
 
-    handle_focus_change(&mut input, &mut counters, &commands, false);
+    handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
 
-    assert!(input.destroying_block.is_none());
+    assert_eq!(world.local_player().interaction.destroying_block, None);
     assert_eq!(counters.player_action_commands_queued, 1);
     assert_eq!(
         rx.try_recv().unwrap(),
@@ -469,12 +466,13 @@ fn focus_loss_releases_using_item() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
-    input.using_item = true;
+    let mut world = WorldStore::new();
+    world.set_local_using_item(true);
     let mut counters = NetCounters::default();
 
-    handle_focus_change(&mut input, &mut counters, &commands, false);
+    handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
 
-    assert!(!input.using_item);
+    assert!(!world.local_player().interaction.using_item);
     assert_eq!(counters.player_action_commands_queued, 1);
     assert_eq!(
         rx.try_recv().unwrap(),

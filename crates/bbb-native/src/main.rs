@@ -150,9 +150,13 @@ fn main() -> Result<()> {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => target.exit(),
                 WindowEvent::Resized(size) => renderer.resize(size),
-                WindowEvent::Focused(focused) => {
-                    handle_focus_change(&mut input, &mut net_counters, &net_commands, focused)
-                }
+                WindowEvent::Focused(focused) => handle_focus_change(
+                    &mut input,
+                    &mut world,
+                    &mut net_counters,
+                    &net_commands,
+                    focused,
+                ),
                 WindowEvent::KeyboardInput { event, .. } => {
                     handle_key_input(
                         &mut input,
@@ -166,7 +170,7 @@ fn main() -> Result<()> {
                 WindowEvent::MouseInput { state, button, .. } => {
                     handle_mouse_input_at_partial_tick(
                         &mut input,
-                        &world,
+                        &mut world,
                         &mut net_counters,
                         &net_commands,
                         button,

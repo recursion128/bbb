@@ -96,6 +96,10 @@ Known priority areas:
 - Local player pose is canonical in `bbb-world::LocalPlayerPoseState`.
   `bbb-control` must not reintroduce duplicate pose/vector snapshot structs for
   runtime tests or control projections.
+- Local player interaction prediction state is canonical in
+  `bbb-world::LocalPlayerInteractionState`. Native input may derive commands
+  from mouse/keyboard events, but block destruction, item-use, and prediction
+  sequence state should stay in `WorldStore`.
 - Keep offline probes aligned with online event handling; play/configuration
   packets with world apply APIs should stay covered by probe regression tests.
 - Configuration Code of Conduct text is recorded in world UI state and native
