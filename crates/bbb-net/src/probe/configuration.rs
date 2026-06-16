@@ -114,13 +114,15 @@ mod tests {
     use bbb_protocol::{
         ids,
         packets::{
-            CookieRequest, CustomPayload, CustomPayloadBody, DialogHolder, RegistryTags,
+            ChatTypeBound, ChatTypeHolder, CookieRequest, CustomPayload, CustomPayloadBody,
+            DialogHolder, DisguisedChat, RegistryData, RegistryDataEntry, RegistryTags,
             ResourcePackPop, ResourcePackPush, ShowDialog, StoreCookie, TagNetworkPayload,
             Transfer, UpdateEnabledFeatures, UpdateTags,
         },
     };
     use bbb_world::{
-        code_of_conduct_text_hash, ChunkPos, DialogState, ResourcePackState, TransferTargetState,
+        code_of_conduct_text_hash, ChunkPos, DialogState, RegistryPacketEntry, ResourcePackState,
+        TransferTargetState,
     };
     use bytes::BytesMut;
     use std::time::Duration;
@@ -152,6 +154,23 @@ mod tests {
                         entries: vec![1, 2, 3],
                     }],
                 }],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::RegistryData(RegistryData {
+                registry: "minecraft:chat_type".to_string(),
+                raw_payload_len: 96,
+                entries: vec![
+                    RegistryDataEntry {
+                        id: "minecraft:chat".to_string(),
+                        raw_data: Some(vec![10; 24]),
+                    },
+                    RegistryDataEntry {
+                        id: "minecraft:raw".to_string(),
+                        raw_data: None,
+                    },
+                ],
             }))
             .await
             .unwrap();
@@ -197,6 +216,19 @@ mod tests {
             })
             .await
             .unwrap();
+        probe.world.apply_disguised_chat(DisguisedChat {
+            message: "previous notice".to_string(),
+            chat_type: ChatTypeBound {
+                chat_type: ChatTypeHolder::Registry { id: 0 },
+                name: "Server".to_string(),
+                target_name: None,
+            },
+        });
+        assert_eq!(probe.world.counters().chat_messages_tracked, 1);
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::ResetChat)
+            .await
+            .unwrap();
         probe
             .handle_configuration_packet(ConfigurationClientbound::StoreCookie(StoreCookie {
                 key: "bbb:session".to_string(),
@@ -227,6 +259,17 @@ mod tests {
                 ["minecraft:mineable/pickaxe"],
             vec![1, 2, 3],
         );
+        let registry_packet = &probe.world.registries().registries[0];
+        assert_eq!(registry_packet.name, "minecraft:chat_type");
+        assert_eq!(registry_packet.raw_payload_len, 96);
+        assert_eq!(
+            registry_packet.entries,
+            vec![
+                RegistryPacketEntry::with_raw_data("minecraft:chat", vec![10; 24]),
+                RegistryPacketEntry::stub("minecraft:raw"),
+            ]
+        );
+        assert!(probe.world.client_chat().messages.is_empty());
         assert_eq!(
             probe.world.resource_pack(pack_id),
             Some(&ResourcePackState {
@@ -280,11 +323,26 @@ mod tests {
             .await
             .unwrap();
 
-        let report = probe.finish(13, ChunkPos { x: 0, z: 0 });
+        let report = probe.finish(15, ChunkPos { x: 0, z: 0 });
         assert!(report.world.resource_packs().is_empty());
         assert!(report.world.current_dialog().is_none());
-        assert_eq!(report.packets_seen, 13);
+        assert_eq!(report.packets_seen, 15);
+        assert_eq!(report.registries_seen, 1);
+        assert_eq!(report.registry_entries_seen, 2);
+        assert_eq!(report.registry_entries_with_data, 1);
+        assert_eq!(report.registry_entry_stubs, 1);
+        assert_eq!(report.registry_entry_payload_bytes, 24);
+        assert_eq!(report.registry_content_registries_tracked, 1);
+        assert_eq!(report.registry_content_packets_tracked, 1);
+        assert_eq!(report.registry_content_entries_tracked, 2);
+        assert_eq!(
+            report.last_registry_data_registry.as_deref(),
+            Some("minecraft:chat_type")
+        );
+        assert_eq!(report.last_registry_data_entry_count, 2);
         assert_eq!(report.world_counters.custom_payload_packets, 1);
+        assert_eq!(report.world_counters.reset_chat_packets, 1);
+        assert_eq!(report.world_counters.chat_messages_tracked, 0);
         assert_eq!(report.world_counters.update_tags_packets, 1);
         assert_eq!(report.world_counters.resource_pack_push_packets, 1);
         assert_eq!(report.world_counters.resource_pack_pop_packets, 2);
