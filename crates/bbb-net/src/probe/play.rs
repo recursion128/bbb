@@ -506,7 +506,8 @@ mod tests {
         AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
         BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
         BossEventOperation, ChangeDifficulty, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
-        ClockUpdate, CommonPlayerSpawnInfo, CookieRequest, DebugBlockValue, DebugChunkValue,
+        ClockUpdate, CommandSuggestion, CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest,
+        CustomChatCompletions, CustomChatCompletionsAction, DebugBlockValue, DebugChunkValue,
         DebugEntityValue, DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor,
         Explosion, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
         LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
@@ -517,9 +518,9 @@ mod tests {
         RemoteDebugSampleType, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
         ServerData, SetCamera, SetDefaultSpawnPosition, SetHeldSlot, SetPassengers,
         SetSimulationDistance, ShowDialog, SoundEntityEvent, SoundEvent, SoundEventHolder,
-        SoundSource, StatUpdate, StopSound, StoreCookie, TabList, TestInstanceBlockStatus,
-        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
-        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
+        SoundSource, StatUpdate, StopSound, StoreCookie, TabList, TagQuery,
+        TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
+        Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
         WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
@@ -674,6 +675,109 @@ mod tests {
         assert_eq!(report.world_counters.award_stats_entries_received, 2);
         assert_eq!(report.world_counters.last_award_stats_entry_count, 2);
         assert_eq!(report.world_counters.stats_tracked, 2);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_tag_query_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::TagQuery(TagQuery {
+                transaction_id: 12,
+                tag_present: true,
+                raw_nbt: vec![10, 0],
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(
+            report.world.last_tag_query(),
+            Some(&bbb_world::TagQueryResponseState {
+                transaction_id: 12,
+                tag_present: true,
+                raw_nbt: vec![10, 0],
+            })
+        );
+        assert_eq!(report.world.last_tag_query().unwrap().raw_nbt_len(), 2);
+        assert_eq!(report.world_counters.tag_query_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_command_suggestion_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::CustomChatCompletions(
+                CustomChatCompletions {
+                    action: CustomChatCompletionsAction::Set,
+                    entries: vec!["/spawn".to_string(), "/warp".to_string()],
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::CustomChatCompletions(
+                CustomChatCompletions {
+                    action: CustomChatCompletionsAction::Remove,
+                    entries: vec!["/spawn".to_string()],
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::CommandSuggestions(CommandSuggestions {
+                id: 77,
+                start: 1,
+                length: 4,
+                suggestions: vec![
+                    CommandSuggestion {
+                        text: "give".to_string(),
+                        tooltip: Some("Run give".to_string()),
+                    },
+                    CommandSuggestion {
+                        text: "gamemode".to_string(),
+                        tooltip: None,
+                    },
+                ],
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(3, ChunkPos { x: 0, z: 0 });
+        let completions = report.world.custom_chat_completions();
+        assert_eq!(completions.len(), 1);
+        assert!(completions.contains("/warp"));
+        assert_eq!(
+            report.world.last_custom_chat_completion_update(),
+            Some(&bbb_world::CustomChatCompletionUpdateState {
+                action: "remove".to_string(),
+                entries: 1,
+            })
+        );
+
+        let suggestions = report
+            .world
+            .command_suggestions_by_id(77)
+            .expect("suggestions tracked by id");
+        assert_eq!(suggestions.start, 1);
+        assert_eq!(suggestions.length, 4);
+        assert_eq!(suggestions.suggestions.len(), 2);
+        assert_eq!(suggestions.suggestions[0].text, "give");
+        assert_eq!(
+            suggestions.suggestions[0].tooltip.as_deref(),
+            Some("Run give")
+        );
+        assert_eq!(suggestions.suggestions[1].text, "gamemode");
+        assert_eq!(suggestions.suggestions[1].tooltip, None);
+        assert_eq!(report.world.last_command_suggestions(), Some(suggestions));
+        assert_eq!(report.world_counters.custom_chat_completion_packets, 2);
+        assert_eq!(report.world_counters.custom_chat_completions_tracked, 1);
+        assert_eq!(report.world_counters.command_suggestion_packets, 1);
+        assert_eq!(report.world_counters.command_suggestion_entries_tracked, 2);
     }
 
     #[tokio::test]
