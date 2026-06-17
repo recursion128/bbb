@@ -6,8 +6,8 @@ use bbb_protocol::packets::{
     EntityDataValueKind, HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate,
     OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerCommand,
-    PlayerHealth, SetEntityData as ProtocolSetEntityData, SetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
+    PlayerHealth, SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData,
+    SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, LocalPlayerPoseState, WorldStore};
 use uuid::Uuid;
@@ -941,6 +941,184 @@ fn local_inventory_drop_key_without_hovered_slot_does_not_queue_player_drop() {
 }
 
 #[test]
+fn local_inventory_hovered_number_keys_queue_swap_container_clicks() {
+    const HOTBAR_KEYS: [(KeyCode, i8); 9] = [
+        (KeyCode::Digit1, 0),
+        (KeyCode::Digit2, 1),
+        (KeyCode::Digit3, 2),
+        (KeyCode::Digit4, 3),
+        (KeyCode::Digit5, 4),
+        (KeyCode::Digit6, 5),
+        (KeyCode::Digit7, 6),
+        (KeyCode::Digit8, 7),
+        (KeyCode::Digit9, 8),
+    ];
+
+    for (code, button_num) in HOTBAR_KEYS {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.inventory_hovered_slot = Some(9);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: i32::from(button_num),
+            item: test_item_stack(42 + i32::from(button_num), 1),
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: test_item_stack(99, 2),
+        });
+        assert!(world.open_local_inventory());
+
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(counters.held_slot_commands_queued, 0);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(world.local_player().selected_hotbar_slot, 0);
+        match rx.try_recv().unwrap() {
+            NetCommand::ContainerClick(click) => {
+                assert_eq!(click.container_id, 0);
+                assert_eq!(click.state_id, 0);
+                assert_eq!(click.slot_num, 9);
+                assert_eq!(click.button_num, button_num);
+                assert_eq!(click.input, ContainerInput::Swap);
+                assert_eq!(
+                    click.changed_slots,
+                    [
+                        (9, test_hashed_item_stack(42 + i32::from(button_num), 1)),
+                        (36 + i16::from(button_num), test_hashed_item_stack(99, 2)),
+                    ]
+                    .into()
+                );
+                assert_eq!(click.carried_item, HashedStack::Empty);
+            }
+            command => panic!("expected container click command, got {command:?}"),
+        }
+        assert_eq!(
+            test_player_slot_item(&world, 9),
+            test_item_stack(42 + i32::from(button_num), 1)
+        );
+        assert_eq!(
+            test_player_slot_item(&world, i32::from(button_num)),
+            test_item_stack(99, 2)
+        );
+        assert!(rx.try_recv().is_err());
+    }
+}
+
+#[test]
+fn local_inventory_hovered_offhand_swap_key_queues_swap_container_click() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.inventory_hovered_slot = Some(9);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 9,
+        item: test_item_stack(42, 1),
+    });
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 40,
+        item: test_item_stack(77, 1),
+    });
+    assert!(world.open_local_inventory());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyF),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.container_click_commands_queued, 1);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    match rx.try_recv().unwrap() {
+        NetCommand::ContainerClick(click) => {
+            assert_eq!(click.container_id, 0);
+            assert_eq!(click.state_id, 0);
+            assert_eq!(click.slot_num, 9);
+            assert_eq!(click.button_num, 40);
+            assert_eq!(click.input, ContainerInput::Swap);
+            assert_eq!(
+                click.changed_slots,
+                [
+                    (9, test_hashed_item_stack(77, 1)),
+                    (45, test_hashed_item_stack(42, 1)),
+                ]
+                .into()
+            );
+            assert_eq!(click.carried_item, HashedStack::Empty);
+        }
+        command => panic!("expected container click command, got {command:?}"),
+    }
+    assert_eq!(test_player_slot_item(&world, 9), test_item_stack(77, 1));
+    assert_eq!(test_player_slot_item(&world, 40), test_item_stack(42, 1));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn local_inventory_swap_keys_without_hover_or_with_carried_item_are_no_ops() {
+    for code in [KeyCode::Digit5, KeyCode::KeyF] {
+        assert_local_inventory_swap_key_noop(code, None, ProtocolItemStackSummary::empty());
+        assert_local_inventory_swap_key_noop(
+            code,
+            Some(36),
+            ProtocolItemStackSummary {
+                item_id: Some(42),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        );
+    }
+}
+
+fn assert_local_inventory_swap_key_noop(
+    code: KeyCode,
+    hovered_slot: Option<i16>,
+    cursor_item: ProtocolItemStackSummary,
+) {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.inventory_hovered_slot = hovered_slot;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_set_cursor_item(ProtocolSetCursorItem { item: cursor_item });
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: test_item_stack(42, 1),
+    });
+    assert!(world.open_local_inventory());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(code),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.container_click_commands_queued, 0);
+    assert_eq!(counters.held_slot_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert_eq!(world.local_player().selected_hotbar_slot, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn swap_offhand_key_queues_swap_action() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -1636,4 +1814,30 @@ fn focus_loss_releases_using_item() {
             sequence: 0,
         })
     );
+}
+
+fn test_item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
+    ProtocolItemStackSummary {
+        item_id: Some(item_id),
+        count,
+        component_patch: Default::default(),
+    }
+}
+
+fn test_hashed_item_stack(item_id: i32, count: i32) -> HashedStack {
+    HashedStack::Item(HashedItemStack {
+        item_id,
+        count,
+        components: HashedComponentPatch::default(),
+    })
+}
+
+fn test_player_slot_item(world: &WorldStore, slot: i32) -> ProtocolItemStackSummary {
+    world
+        .inventory()
+        .player_slots
+        .iter()
+        .find(|state| state.slot == slot)
+        .map(|state| state.item.clone())
+        .unwrap_or_else(ProtocolItemStackSummary::empty)
 }

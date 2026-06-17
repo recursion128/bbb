@@ -11,7 +11,7 @@ use winit::{
 
 use super::{
     bundle::{handle_bundle_slot_hover_end, handle_bundle_slot_mouse_scroll},
-    commands::queue_container_click_command,
+    commands::{hotbar_slot_for_key, queue_container_click_command},
     ClientInputState,
 };
 
@@ -161,8 +161,17 @@ pub(crate) fn handle_inventory_key_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     code: KeyCode,
 ) -> bool {
-    if !input.focused || !world.local_inventory_is_open() || code != KeyCode::KeyQ {
+    if !input.focused || !world.local_inventory_is_open() {
         return false;
+    }
+
+    if let Some(button_num) = local_inventory_swap_button_num(code) {
+        handle_inventory_swap_key(input, world, counters, net_commands, button_num);
+        return true;
+    }
+
+    if code != KeyCode::KeyQ {
+        return true;
     }
 
     let Some(slot_num) = input.inventory_hovered_slot else {
@@ -184,6 +193,40 @@ pub(crate) fn handle_inventory_key_input(
     }
     queue_container_click_command(counters, net_commands, click);
     true
+}
+
+fn local_inventory_swap_button_num(code: KeyCode) -> Option<i8> {
+    if code == KeyCode::KeyF {
+        return Some(40);
+    }
+    hotbar_slot_for_key(code).map(|slot| slot as i8)
+}
+
+fn handle_inventory_swap_key(
+    input: &ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    button_num: i8,
+) {
+    if !inventory_cursor_is_empty(world) {
+        return;
+    }
+    let Some(slot_num) = input.inventory_hovered_slot else {
+        return;
+    };
+    let request = ContainerClickSlotRequest {
+        slot_num,
+        button_num,
+        input: ContainerInput::Swap,
+    };
+    let Ok(click) = world.apply_local_container_click_slot(request) else {
+        return;
+    };
+    if click.changed_slots.is_empty() {
+        return;
+    }
+    queue_container_click_command(counters, net_commands, click);
 }
 
 pub(crate) fn handle_inventory_mouse_wheel(

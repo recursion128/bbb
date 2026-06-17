@@ -614,6 +614,16 @@ impl WorldStore {
                     request.button_num,
                 )
             }
+            ProtocolContainerInput::Swap if container_id == INVENTORY_MENU_CONTAINER_ID => {
+                apply_swap_click_to_slots(
+                    container_id,
+                    &mut slots_after,
+                    &cursor_after,
+                    request.slot_num,
+                    request.button_num,
+                    &self.default_item_max_stack_sizes,
+                )
+            }
             input => {
                 return Err(ContainerClickBuildError::UnsupportedLocalClickInput(input));
             }
@@ -941,6 +951,136 @@ fn apply_throw_click_to_slots(
         slot.item = ProtocolItemStackSummary::empty();
     }
     normalize_container_slot_selection(slot);
+}
+
+fn apply_swap_click_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    cursor: &ProtocolItemStackSummary,
+    slot_num: i16,
+    button_num: i8,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if container_id != INVENTORY_MENU_CONTAINER_ID || !item_stack_is_empty(cursor) || slot_num < 0 {
+        return;
+    }
+    let Some(source_slot_num) = swap_button_inventory_menu_slot(button_num) else {
+        return;
+    };
+    if source_slot_num == slot_num {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == source_slot_num) else {
+        return;
+    };
+    let Some(target_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+
+    let source_item = slots[source_index].item.clone();
+    let target_item = slots[target_index].item.clone();
+    if item_stack_is_empty(&source_item) && item_stack_is_empty(&target_item) {
+        return;
+    }
+
+    if item_stack_is_empty(&source_item) {
+        if container_slot_max_stack_size(
+            container_id,
+            source_slot_num,
+            &target_item,
+            default_item_max_stack_sizes,
+        ) <= 0
+        {
+            return;
+        }
+        slots[source_index].item = target_item;
+        slots[target_index].item = ProtocolItemStackSummary::empty();
+        normalize_container_slot_selection(&mut slots[source_index]);
+        normalize_container_slot_selection(&mut slots[target_index]);
+        return;
+    }
+
+    let target_max_stack_size = container_slot_max_stack_size(
+        container_id,
+        slot_num,
+        &source_item,
+        default_item_max_stack_sizes,
+    );
+    if target_max_stack_size <= 0 {
+        return;
+    }
+
+    if item_stack_is_empty(&target_item) {
+        move_between_container_slots(slots, source_index, target_index, target_max_stack_size);
+        return;
+    }
+
+    let source_max_stack_size = container_slot_max_stack_size(
+        container_id,
+        source_slot_num,
+        &target_item,
+        default_item_max_stack_sizes,
+    );
+    if source_max_stack_size <= 0 {
+        return;
+    }
+
+    if source_item.count <= target_max_stack_size && target_item.count <= source_max_stack_size {
+        slots[source_index].item = target_item;
+        slots[target_index].item = source_item;
+        normalize_container_slot_selection(&mut slots[source_index]);
+        normalize_container_slot_selection(&mut slots[target_index]);
+        return;
+    }
+
+    let moved = source_item.count.min(target_max_stack_size);
+    let mut target_replacement = source_item.clone();
+    target_replacement.count = moved;
+    let mut source_remainder = source_item;
+    source_remainder.count -= moved;
+    normalize_item_stack(&mut source_remainder);
+    slots[source_index].item = source_remainder;
+    slots[target_index].item = target_replacement;
+    normalize_container_slot_selection(&mut slots[source_index]);
+    normalize_container_slot_selection(&mut slots[target_index]);
+
+    let mut displaced = target_item;
+    move_item_stack_to_slots(
+        container_id,
+        slots,
+        target_index,
+        &mut displaced,
+        INVENTORY_MENU_MAIN_START,
+        INVENTORY_MENU_HOTBAR_END,
+        false,
+        default_item_max_stack_sizes,
+    );
+}
+
+fn move_between_container_slots(
+    slots: &mut [ContainerSlot],
+    source_index: usize,
+    target_index: usize,
+    max_count: i32,
+) {
+    let mut source = slots[source_index].item.clone();
+    let amount = source.count.min(max_count);
+    let mut target = source.clone();
+    target.count = amount;
+    source.count -= amount;
+    normalize_item_stack(&mut source);
+    slots[source_index].item = source;
+    slots[target_index].item = target;
+    normalize_container_slot_selection(&mut slots[source_index]);
+    normalize_container_slot_selection(&mut slots[target_index]);
+}
+
+fn swap_button_inventory_menu_slot(button_num: i8) -> Option<i16> {
+    match button_num {
+        0..=8 => Some(INVENTORY_MENU_HOTBAR_START + i16::from(button_num)),
+        40 => Some(INVENTORY_MENU_OFFHAND_SLOT),
+        _ => None,
+    }
 }
 
 fn apply_quick_move_to_slots(
@@ -2646,10 +2786,168 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_container_click_slot_rejects_unsupported_local_simulation() {
+    fn apply_local_container_swap_exchanges_hovered_slot_with_hotbar_button() {
         let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 3),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(43, 2),
+        });
         assert!(store.open_local_inventory());
 
+        let swap = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::Swap,
+            })
+            .unwrap();
+
+        assert_eq!(swap.container_id, INVENTORY_MENU_CONTAINER_ID);
+        assert_eq!(swap.input, ProtocolContainerInput::Swap);
+        assert_eq!(
+            swap.changed_slots,
+            BTreeMap::from([
+                (INVENTORY_MENU_MAIN_START, hashed_item_stack(42, 3)),
+                (INVENTORY_MENU_HOTBAR_START, hashed_item_stack(43, 2)),
+            ])
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            item_stack(42, 3)
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START),
+            item_stack(43, 2)
+        );
+        assert_eq!(player_slot_item(&store, 9), item_stack(42, 3));
+        assert_eq!(player_slot_item(&store, 0), item_stack(43, 2));
+    }
+
+    #[test]
+    fn apply_local_container_swap_moves_hovered_slot_to_empty_offhand() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(44, 5),
+        });
+        assert!(store.open_local_inventory());
+
+        let swap = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START,
+                button_num: 40,
+                input: ProtocolContainerInput::Swap,
+            })
+            .unwrap();
+
+        assert_eq!(
+            swap.changed_slots,
+            BTreeMap::from([
+                (INVENTORY_MENU_MAIN_START, ProtocolHashedStack::Empty),
+                (INVENTORY_MENU_OFFHAND_SLOT, hashed_item_stack(44, 5)),
+            ])
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_OFFHAND_SLOT),
+            item_stack(44, 5)
+        );
+        assert_eq!(
+            player_slot_item(&store, 9),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            player_slot_item(&store, PLAYER_OFFHAND_SLOT),
+            item_stack(44, 5)
+        );
+    }
+
+    #[test]
+    fn apply_local_container_swap_splits_source_when_target_slot_has_lower_limit() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(45, 3),
+        });
+        assert!(store.open_local_inventory());
+
+        let swap = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 5,
+                button_num: 0,
+                input: ProtocolContainerInput::Swap,
+            })
+            .unwrap();
+
+        assert_eq!(
+            swap.changed_slots,
+            BTreeMap::from([
+                (5, hashed_item_stack(45, 1)),
+                (INVENTORY_MENU_HOTBAR_START, hashed_item_stack(45, 2)),
+            ])
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 5), item_stack(45, 1));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START),
+            item_stack(45, 2)
+        );
+        assert_eq!(player_slot_item(&store, 39), item_stack(45, 1));
+        assert_eq!(player_slot_item(&store, 0), item_stack(45, 2));
+    }
+
+    #[test]
+    fn apply_local_container_swap_requires_empty_cursor_and_inventory_menu() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 3),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(43, 2),
+        });
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(99, 1),
+        });
+        assert!(store.open_local_inventory());
+
+        let blocked = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::Swap,
+            })
+            .unwrap();
+        assert!(blocked.changed_slots.is_empty());
+        assert_eq!(blocked.carried_item, hashed_item_stack(99, 1));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            item_stack(43, 2)
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START),
+            item_stack(42, 3)
+        );
+
+        store.close_local_container(INVENTORY_MENU_CONTAINER_ID);
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 1,
+            title: "Chest".to_string(),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 3,
+            items: vec![item_stack(42, 3)],
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
         assert_eq!(
             store
                 .apply_local_container_click_slot(ContainerClickSlotRequest {
@@ -2659,6 +2957,23 @@ mod tests {
                 })
                 .unwrap_err(),
             ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::Swap)
+        );
+    }
+
+    #[test]
+    fn apply_local_container_click_slot_rejects_unsupported_local_simulation() {
+        let mut store = WorldStore::new();
+        assert!(store.open_local_inventory());
+
+        assert_eq!(
+            store
+                .apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: 0,
+                    button_num: 0,
+                    input: ProtocolContainerInput::Clone,
+                })
+                .unwrap_err(),
+            ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::Clone)
         );
     }
 
