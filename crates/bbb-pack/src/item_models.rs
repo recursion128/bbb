@@ -238,6 +238,7 @@ pub struct ItemModelProperty {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ItemModelPropertyKind {
     Broken,
+    BundleHasSelectedItem,
     Damaged,
     HasComponent,
     Other,
@@ -255,6 +256,7 @@ impl ItemModelProperty {
     pub fn kind(&self) -> ItemModelPropertyKind {
         match self.property_type.as_str() {
             "minecraft:broken" => ItemModelPropertyKind::Broken,
+            "minecraft:bundle/has_selected_item" => ItemModelPropertyKind::BundleHasSelectedItem,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
             _ => ItemModelPropertyKind::Other,
@@ -1577,6 +1579,46 @@ mod tests {
         assert_eq!(
             property.raw(),
             &serde_json::json!({"property": "minecraft:damaged"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_bundle_has_selected_item_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:bundle/has_selected_item",
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a bundle has selected item condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:bundle/has_selected_item");
+        assert_eq!(
+            property.kind(),
+            ItemModelPropertyKind::BundleHasSelectedItem
+        );
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:bundle/has_selected_item"})
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));

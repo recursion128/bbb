@@ -47,6 +47,8 @@ pub struct DataComponentPatchSummary {
     pub potion_custom_color: Option<i32>,
     #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
+    #[serde(default)]
+    pub bundle_contents_item_count: Option<usize>,
 }
 
 pub(crate) fn decode_data_component_patch_summary(
@@ -123,6 +125,12 @@ fn decode_typed_data_component_patch_summary(
             }
             45 => {
                 summary.map_color = Some(decoder.read_i32()?);
+            }
+            50 => {
+                summary.bundle_contents_item_count = Some(decode_item_stack_template_list(
+                    decoder,
+                    MAX_DATA_COMPONENT_LIST_ITEMS,
+                )?);
             }
             51 => {
                 summary.potion_custom_color = decode_potion_contents(decoder)?;
@@ -221,7 +229,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
             decoder.read_i32()?;
         }
         // charged_projectiles and bundle_contents.
-        49 | 50 => decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?,
+        49 | 50 => {
+            decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+        }
         // potion_contents.
         51 => {
             decode_potion_contents(decoder)?;
@@ -561,12 +571,12 @@ fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_item_stack_template_list(decoder: &mut Decoder<'_>, max: usize) -> Result<()> {
+fn decode_item_stack_template_list(decoder: &mut Decoder<'_>, max: usize) -> Result<usize> {
     let count = read_bounded_len(decoder, max)?;
     for _ in 0..count {
         decode_item_stack_template(decoder)?;
     }
-    Ok(())
+    Ok(count)
 }
 
 fn decode_optional_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1587,6 +1597,35 @@ mod tests {
                 map_color: Some(0x445566),
                 potion_custom_color: Some(0x778899),
                 firework_explosion_colors: vec![0x010203, 0x040506],
+                bundle_contents_item_count: Some(1),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_bundle_contents_item_count_from_component_patch() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(50);
+        payload.write_var_i32(2);
+        write_item_stack_template(&mut payload, 12, 1);
+        write_item_stack_template(&mut payload, 34, 3);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![50],
+                removed_type_ids: Vec::new(),
+                bundle_contents_item_count: Some(2),
                 ..DataComponentPatchSummary::default()
             }
         );
