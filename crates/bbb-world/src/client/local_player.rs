@@ -91,6 +91,8 @@ pub struct LocalPlayerInteractionState {
     #[serde(default)]
     pub destroying_block_progress: u32,
     #[serde(default)]
+    pub destroying_block_stage: Option<u8>,
+    #[serde(default)]
     pub destroying_block_ticks: u32,
     #[serde(default)]
     pub destroy_delay_ticks: u8,
@@ -388,6 +390,7 @@ impl WorldStore {
         self.local_player.interaction.destroying_block_face = None;
         self.local_player.interaction.destroying_item_signature = Some(item_signature);
         self.local_player.interaction.destroying_block_progress = 0;
+        self.local_player.interaction.destroying_block_stage = None;
         self.local_player.interaction.destroying_block_ticks = 0;
         self.local_player.interaction.destroy_delay_ticks = 0;
     }
@@ -398,6 +401,7 @@ impl WorldStore {
         self.local_player.interaction.destroying_block_face = Some(face);
         self.local_player.interaction.destroying_item_signature = Some(item_signature);
         self.local_player.interaction.destroying_block_progress = 0;
+        self.local_player.interaction.destroying_block_stage = None;
         self.local_player.interaction.destroying_block_ticks = 0;
         self.local_player.interaction.destroy_delay_ticks = 0;
     }
@@ -420,6 +424,7 @@ impl WorldStore {
         self.local_player.interaction.destroying_block_face = None;
         self.local_player.interaction.destroying_item_signature = None;
         self.local_player.interaction.destroying_block_progress = 0;
+        self.local_player.interaction.destroying_block_stage = None;
         self.local_player.interaction.destroying_block_ticks = 0;
         self.local_player.interaction.destroying_block.take()
     }
@@ -434,6 +439,7 @@ impl WorldStore {
             .unwrap_or(ProtocolDirection::Down);
         self.local_player.interaction.destroying_item_signature = None;
         self.local_player.interaction.destroying_block_progress = 0;
+        self.local_player.interaction.destroying_block_stage = None;
         self.local_player.interaction.destroying_block_ticks = 0;
         Some((pos, face))
     }
@@ -744,15 +750,23 @@ mod tests {
 
         let pos = BlockPos { x: 4, y: 70, z: -6 };
         store.set_local_destroying_block(pos);
+        store.local_player.interaction.destroying_block_progress = 123;
+        store.local_player.interaction.destroying_block_stage = Some(1);
         assert_eq!(store.local_player().interaction.destroying_block, Some(pos));
         assert_eq!(store.local_player().interaction.destroying_block_face, None);
         assert_eq!(
             store.take_local_destroying_block_hit(),
             Some((pos, ProtocolDirection::Down))
         );
+        assert_eq!(
+            store.local_player().interaction.destroying_block_stage,
+            None
+        );
         assert_eq!(store.take_local_destroying_block_hit(), None);
 
         store.set_local_destroying_block_hit(pos, ProtocolDirection::North);
+        store.local_player.interaction.destroying_block_progress = 456;
+        store.local_player.interaction.destroying_block_stage = Some(4);
         assert_eq!(store.local_player().interaction.destroying_block, Some(pos));
         assert_eq!(
             store.local_player().interaction.destroying_block_face,
@@ -761,6 +775,10 @@ mod tests {
         assert_eq!(store.take_local_destroying_block(), Some(pos));
         assert_eq!(store.take_local_destroying_block(), None);
         assert_eq!(store.local_player().interaction.destroying_block_face, None);
+        assert_eq!(
+            store.local_player().interaction.destroying_block_stage,
+            None
+        );
 
         store.set_local_using_item(true);
         assert!(store.take_local_using_item());
@@ -786,6 +804,7 @@ mod tests {
                     &ProtocolItemStackSummary::empty(),
                 )),
                 destroying_block_progress: 0,
+                destroying_block_stage: None,
                 destroying_block_ticks: 0,
                 destroy_delay_ticks: 0,
                 using_item: true,

@@ -654,6 +654,10 @@ mod tests {
             world.local_player().interaction.destroying_block_progress,
             0
         );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            None
+        );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
         assert_eq!(counters.player_action_commands_queued, 2);
         assert_eq!(
@@ -701,6 +705,10 @@ mod tests {
         assert!(input.destroy_block_held);
         assert_eq!(world.local_player().interaction.destroying_block, None);
         assert_eq!(world.local_player().interaction.destroying_block_face, None);
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            None
+        );
         assert_eq!(counters.player_action_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -736,6 +744,10 @@ mod tests {
         assert_eq!(
             world.local_player().interaction.destroying_block_progress,
             0
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            None
         );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
         assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
@@ -787,7 +799,44 @@ mod tests {
             world.local_player().interaction.destroying_block_progress,
             0
         );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            None
+        );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn held_left_mouse_same_target_updates_local_destroy_stage_on_client_tick() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            1,
+        );
+
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        assert!(world.local_player().interaction.destroying_block_progress > 0);
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            Some(0)
+        );
+        assert_eq!(world.local_player().interaction.destroying_block_ticks, 1);
         assert_eq!(counters.player_action_commands_queued, 0);
         assert!(rx.try_recv().is_err());
     }
@@ -819,6 +868,10 @@ mod tests {
 
         assert!(input.destroy_block_held);
         assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            None
+        );
         assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
         assert_eq!(
             world

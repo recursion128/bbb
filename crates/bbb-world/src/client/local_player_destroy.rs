@@ -48,6 +48,8 @@ impl WorldStore {
             .saturating_add(progress_delta);
         interaction.destroying_block_ticks = interaction.destroying_block_ticks.saturating_add(1);
         if interaction.destroying_block_progress < LOCAL_DESTROY_PROGRESS_SCALE {
+            interaction.destroying_block_stage =
+                local_destroy_stage(interaction.destroying_block_progress);
             return None;
         }
 
@@ -58,6 +60,7 @@ impl WorldStore {
         interaction.destroying_block = None;
         interaction.destroying_item_signature = None;
         interaction.destroying_block_progress = 0;
+        interaction.destroying_block_stage = None;
         interaction.destroying_block_ticks = 0;
         interaction.destroy_delay_ticks = LOCAL_DESTROY_COMPLETION_DELAY_TICKS;
         let sequence = self.next_local_prediction_sequence();
@@ -103,6 +106,13 @@ fn local_destroy_progress_per_tick(block_name: &str) -> Option<u32> {
         LOCAL_DESTROY_PROGRESS_SCALE.saturating_mul(10),
         denominator,
     ))
+}
+
+fn local_destroy_stage(progress: u32) -> Option<u8> {
+    if progress == 0 {
+        return None;
+    }
+    Some(((progress.saturating_mul(10)) / LOCAL_DESTROY_PROGRESS_SCALE).min(9) as u8)
 }
 
 fn local_block_destroy_profile(block_name: &str) -> Option<LocalBlockDestroyProfile> {
@@ -192,6 +202,20 @@ mod tests {
     }
 
     #[test]
+    fn local_destroy_stage_tracks_active_progress_range() {
+        assert_eq!(local_destroy_stage(0), None);
+        assert_eq!(local_destroy_stage(1), Some(0));
+        assert_eq!(
+            local_destroy_stage(LOCAL_DESTROY_PROGRESS_SCALE / 2),
+            Some(5)
+        );
+        assert_eq!(
+            local_destroy_stage(LOCAL_DESTROY_PROGRESS_SCALE - 1),
+            Some(9)
+        );
+    }
+
+    #[test]
     fn local_destroy_progress_finishes_known_block_after_client_ticks() {
         let pos = BlockPos { x: 0, y: 1, z: 3 };
         let mut world = world_with_block(pos, 9);
@@ -203,6 +227,10 @@ mod tests {
         assert_eq!(world.local_player().interaction.destroying_block, Some(pos));
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 17);
         assert!(world.local_player().interaction.destroying_block_progress > 0);
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            Some(9)
+        );
 
         assert_eq!(
             world.advance_local_destroying_block_tick(),
@@ -216,6 +244,10 @@ mod tests {
         assert_eq!(
             world.local_player().interaction.destroying_block_progress,
             0
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            None
         );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
         assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
