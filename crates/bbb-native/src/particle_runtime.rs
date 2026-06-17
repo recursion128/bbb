@@ -1,9 +1,14 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
-use bbb_pack::{PackRoots, ParticleDefinitionCatalog, ParticleSpriteCatalog};
+use bbb_pack::{
+    AtlasLayout, AtlasPacker, AtlasSprite, PackRoots, ParticleDefinitionCatalog,
+    ParticleSpriteCatalog, SpriteImage,
+};
 use bbb_protocol::packets::{LevelParticles, Vec3d};
-use bbb_renderer::{ParticleSpawnBatch, ParticleSpawnCommand};
+use bbb_renderer::{
+    ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
+};
 
 use crate::particle_registry::{vanilla_particle_type, ParticleTypeInfo};
 
@@ -13,20 +18,32 @@ pub(crate) trait ParticleEventSink {
 
 pub(crate) struct NativeParticleRuntime {
     resolver: ParticleCommandResolver,
+    atlas: NativeParticleAtlas,
 }
 
 impl NativeParticleRuntime {
     pub(crate) fn load(roots: &PackRoots) -> Result<Self> {
+        let definitions = roots
+            .load_particle_definition_catalog()
+            .context("load particle definition catalog")?;
+        let sprites = roots
+            .load_particle_sprite_catalog()
+            .context("load particle sprite catalog")?;
+        let atlas = particle_atlas_from_images(sprites.sprites().values().cloned().collect())
+            .context("stitch particle atlas")?;
         Ok(Self {
-            resolver: ParticleCommandResolver::new(
-                roots
-                    .load_particle_definition_catalog()
-                    .context("load particle definition catalog")?,
-                roots
-                    .load_particle_sprite_catalog()
-                    .context("load particle sprite catalog")?,
-            ),
+            resolver: ParticleCommandResolver::new(definitions, sprites),
+            atlas,
         })
+    }
+
+    pub(crate) fn upload_particle_atlas(&self, renderer: &mut Renderer) -> Result<()> {
+        renderer.upload_particle_atlas(
+            self.atlas.width,
+            self.atlas.height,
+            &self.atlas.rgba,
+            self.atlas.sprite_uvs.clone(),
+        )
     }
 }
 
@@ -41,6 +58,46 @@ struct ParticleCommandResolver {
     definitions: ParticleDefinitionCatalog,
     sprites: ParticleSpriteCatalog,
     random: LegacyRandom,
+}
+
+#[derive(Debug, Clone)]
+struct NativeParticleAtlas {
+    width: u32,
+    height: u32,
+    rgba: Vec<u8>,
+    sprite_uvs: Vec<ParticleSpriteUv>,
+}
+
+fn particle_atlas_from_images(images: Vec<SpriteImage>) -> Result<NativeParticleAtlas> {
+    let atlas = AtlasPacker::new(4096, 1)?.stitch(&images)?;
+    let sprite_uvs = atlas
+        .layout
+        .sprites
+        .iter()
+        .map(|sprite| ParticleSpriteUv {
+            id: sprite.id.clone(),
+            uv: particle_uv_rect(&atlas.layout, sprite),
+        })
+        .collect();
+    Ok(NativeParticleAtlas {
+        width: atlas.layout.width,
+        height: atlas.layout.height,
+        rgba: atlas.rgba,
+        sprite_uvs,
+    })
+}
+
+fn particle_uv_rect(layout: &AtlasLayout, sprite: &AtlasSprite) -> ParticleUvRect {
+    let width = layout.width as f32;
+    let height = layout.height as f32;
+    let x0 = sprite.content.x as f32;
+    let y0 = sprite.content.y as f32;
+    let x1 = (sprite.content.x + sprite.content.width) as f32;
+    let y1 = (sprite.content.y + sprite.content.height) as f32;
+    ParticleUvRect {
+        min: [(x0 + 0.5) / width, (y0 + 0.5) / height],
+        max: [(x1 - 0.5) / width, (y1 - 0.5) / height],
+    }
 }
 
 impl ParticleCommandResolver {
@@ -330,6 +387,35 @@ mod tests {
                 "minecraft:generic_7".to_string(),
                 "minecraft:missing_particle".to_string(),
             ]
+        );
+    }
+
+    #[test]
+    fn particle_atlas_from_images_exports_renderer_uvs() {
+        let image = SpriteImage::new(
+            "minecraft:generic_0",
+            2,
+            2,
+            vec![
+                255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+            ],
+        )
+        .unwrap();
+
+        let atlas = particle_atlas_from_images(vec![image]).unwrap();
+
+        assert_eq!(atlas.width, 4);
+        assert_eq!(atlas.height, 4);
+        assert_eq!(atlas.rgba.len(), 4 * 4 * 4);
+        assert_eq!(
+            atlas.sprite_uvs,
+            vec![ParticleSpriteUv {
+                id: "minecraft:generic_0".to_string(),
+                uv: ParticleUvRect {
+                    min: [0.375, 0.375],
+                    max: [0.625, 0.625],
+                },
+            }]
         );
     }
 

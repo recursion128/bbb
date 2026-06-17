@@ -288,17 +288,20 @@ Deliverables:
 - Particle runtime for visual effects and particle packets.
 - Level-particle packets resolve through vanilla 26.1 particle type order and
   `bbb-pack` particle definitions/atlas sprites into renderer-owned spawn
-  batches before GPU particle drawing is added. Missing sprites are diagnostics
-  and should not drop otherwise valid particle spawns.
+  batches. Missing sprites are diagnostics and should not drop otherwise valid
+  particle spawns.
 - `bbb-renderer` drains pending particle spawn batches into renderer-owned
   active CPU-side particle instances through the native runtime pump and advances
   their age only on client ticks. It has data-only provider/lifetime descriptors
   for common 26.1 particles such as cloud, flame, smoke, large smoke, and poof;
   active instances apply a vanilla-shaped no-collision motion tick using stored
   gravity and friction, and track current particle sprite ids using vanilla
-  SpriteSet age/random selection rules. Full vanilla provider behavior,
-  collision/player-coupled physics, particle limits, and GPU drawing remain
-  separate follow-up work.
+  SpriteSet age/random selection rules. Native uploads a stitched official
+  particle atlas when assets are available, and renderer draws active particles
+  as alpha-blended, depth-tested, camera-facing textured billboards. Full vanilla
+  provider behavior, scale/color/light curves, sorting, collision/player-coupled
+  physics, particle limits/settings, atlas mip animation, and terrain/item
+  particle option rendering remain separate follow-up work.
 - HUD, title/action bar, scoreboard, chat, debug overlays, selection outline,
   camera pose, screenshots, and interaction feedback.
 - Renderer caches and GPU resources remain outside `bbb-world`.

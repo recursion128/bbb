@@ -141,6 +141,11 @@ fn main() -> Result<()> {
     let mut renderer = pollster::block_on(bbb_renderer::Renderer::new(&window))?;
     let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     load_hud_textures(&mut renderer, pack_roots.as_ref());
+    if let Some(particles) = &particle_runtime {
+        if let Err(err) = particles.upload_particle_atlas(&mut renderer) {
+            tracing::warn!(?err, "continuing without native particle atlas");
+        }
+    }
     if let Some(items) = &item_runtime {
         let (atlas_width, atlas_height) = items.atlas_size();
         if let Err(err) =

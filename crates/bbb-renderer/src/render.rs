@@ -29,6 +29,7 @@ impl Renderer {
         let mut cutout_draw_calls = 0;
         let mut translucent_draw_calls = 0;
         let mut block_destroy_overlay_draw_calls = 0;
+        let mut particle_draw_calls = 0;
         let mut selection_draw_calls = 0;
         let mut entity_target_draw_calls = 0;
         let mut hud_draw_calls = 0;
@@ -166,6 +167,46 @@ impl Renderer {
             block_destroy_overlay_draw_calls += 1;
         }
 
+        let particle_vertices = self.collect_particle_vertices();
+        if let Some(atlas) = &self.particle_atlas {
+            if !particle_vertices.is_empty() {
+                let particle_vertex_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("bbb-particle-frame-vertices"),
+                            contents: bytemuck::cast_slice(&particle_vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("bbb-native-particle-pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.particle_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_vertex_buffer(0, particle_vertex_buffer.slice(..));
+                pass.draw(0..particle_vertices.len() as u32, 0..1);
+                particle_draw_calls += 1;
+            }
+        }
+
         if self.selection_outline.is_some() || self.entity_target_outline.is_some() {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-selection-outline-pass"),
@@ -257,6 +298,7 @@ impl Renderer {
         self.counters.cutout_draw_calls = cutout_draw_calls;
         self.counters.translucent_draw_calls = translucent_draw_calls;
         self.counters.block_destroy_overlay_draw_calls = block_destroy_overlay_draw_calls;
+        self.counters.particle_draw_calls = particle_draw_calls;
         self.counters.selection_draw_calls = selection_draw_calls;
         self.counters.entity_target_draw_calls = entity_target_draw_calls;
         self.counters.hud_draw_calls = hud_draw_calls;
@@ -264,6 +306,7 @@ impl Renderer {
             + cutout_draw_calls
             + translucent_draw_calls
             + block_destroy_overlay_draw_calls
+            + particle_draw_calls
             + selection_draw_calls
             + entity_target_draw_calls
             + hud_draw_calls;

@@ -1,18 +1,25 @@
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 
+use anyhow::Result;
+use glam::Vec3;
 use serde::{Deserialize, Serialize};
 
 use crate::Renderer;
 
 mod descriptors;
+mod gpu;
 
 use descriptors::{
     select_initial_sprite, sprite_index_for_age, ParticleDescriptor, ParticleRandom,
     ParticleSpriteSelection, DEFAULT_PARTICLE_RANDOM_SEED,
 };
+pub(super) use gpu::{
+    create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticleVertex,
+};
 
 const DEFAULT_MAX_PENDING_PARTICLE_SPAWNS: usize = 16_384;
 const DEFAULT_MAX_ACTIVE_PARTICLE_INSTANCES: usize = 16_384;
+const DEFAULT_PARTICLE_QUAD_SIZE: f32 = 0.2;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParticleSpawnCommand {
@@ -25,6 +32,18 @@ pub struct ParticleSpawnCommand {
     pub override_limiter: bool,
     pub always_show: bool,
     pub raw_options_len: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ParticleUvRect {
+    pub min: [f32; 2],
+    pub max: [f32; 2],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParticleSpriteUv {
+    pub id: String,
+    pub uv: ParticleUvRect,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -350,6 +369,26 @@ impl ParticleInstance {
 }
 
 impl Renderer {
+    pub fn upload_particle_atlas(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        sprite_uvs: Vec<ParticleSpriteUv>,
+    ) -> Result<()> {
+        self.particle_atlas = Some(create_particle_atlas_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            width,
+            height,
+            rgba,
+            sprite_uvs,
+        )?);
+        Ok(())
+    }
+
     pub fn submit_particle_spawns(&mut self, batch: ParticleSpawnBatch) {
         let is_empty = batch.is_empty();
         let summary = self.particles.submit_batch(batch);
@@ -395,6 +434,109 @@ impl Renderer {
         self.counters.particle_instances_created = summary.total_instances_created;
         self.counters.particle_instances_expired = summary.total_instances_expired;
         self.counters.dropped_active_particle_instances = summary.total_dropped_active_instances;
+    }
+
+    pub(crate) fn collect_particle_vertices(&self) -> Vec<ParticleVertex> {
+        let Some(pose) = self.camera_pose else {
+            return Vec::new();
+        };
+        let Some(atlas) = &self.particle_atlas else {
+            return Vec::new();
+        };
+        particle_billboard_vertices(
+            self.particles.active_instances.iter(),
+            &atlas.sprite_uvs,
+            camera_billboard_axes(pose),
+        )
+    }
+}
+
+fn particle_billboard_vertices<'a>(
+    instances: impl IntoIterator<Item = &'a ParticleInstance>,
+    sprite_uvs: &BTreeMap<String, ParticleUvRect>,
+    axes: ParticleBillboardAxes,
+) -> Vec<ParticleVertex> {
+    let mut vertices = Vec::new();
+    for instance in instances {
+        let Some(sprite_id) = instance.current_sprite_id.as_deref() else {
+            continue;
+        };
+        let Some(uv) = sprite_uvs.get(sprite_id).copied() else {
+            continue;
+        };
+        vertices.extend(particle_instance_vertices(instance, uv, axes));
+    }
+    vertices
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ParticleBillboardAxes {
+    right: Vec3,
+    up: Vec3,
+}
+
+fn camera_billboard_axes(pose: crate::CameraPose) -> ParticleBillboardAxes {
+    let yaw = pose.y_rot.to_radians();
+    let pitch = pose.x_rot.to_radians();
+    let cos_pitch = pitch.cos();
+    let forward =
+        Vec3::new(-yaw.sin() * cos_pitch, -pitch.sin(), yaw.cos() * cos_pitch).normalize_or_zero();
+    let forward = if forward.length_squared() > 0.0 {
+        forward
+    } else {
+        Vec3::Z
+    };
+    let right = Vec3::Y.cross(forward).normalize_or_zero();
+    let right = if right.length_squared() > 0.0 {
+        right
+    } else {
+        Vec3::X
+    };
+    let up = forward.cross(right).normalize_or_zero();
+    ParticleBillboardAxes {
+        right,
+        up: if up.length_squared() > 0.0 {
+            up
+        } else {
+            Vec3::Y
+        },
+    }
+}
+
+fn particle_instance_vertices(
+    instance: &ParticleInstance,
+    uv: ParticleUvRect,
+    axes: ParticleBillboardAxes,
+) -> [ParticleVertex; 6] {
+    let center = Vec3::new(
+        instance.position[0] as f32,
+        instance.position[1] as f32,
+        instance.position[2] as f32,
+    );
+    let half_size = DEFAULT_PARTICLE_QUAD_SIZE * 0.5;
+    let right = axes.right * half_size;
+    let up = axes.up * half_size;
+    let bottom_left = center - right - up;
+    let bottom_right = center + right - up;
+    let top_right = center + right + up;
+    let top_left = center - right + up;
+    let tint = [1.0, 1.0, 1.0, 1.0];
+
+    [
+        particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint),
+        particle_vertex(bottom_right, [uv.max[0], uv.max[1]], tint),
+        particle_vertex(top_right, [uv.max[0], uv.min[1]], tint),
+        particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint),
+        particle_vertex(top_right, [uv.max[0], uv.min[1]], tint),
+        particle_vertex(top_left, [uv.min[0], uv.min[1]], tint),
+    ]
+}
+
+fn particle_vertex(position: Vec3, uv: [f32; 2], color: [f32; 4]) -> ParticleVertex {
+    ParticleVertex {
+        position: position.to_array(),
+        uv,
+        color,
     }
 }
 
@@ -821,6 +963,54 @@ mod tests {
         assert_eq!(ids, vec!["minecraft:flame", "minecraft:smoke"]);
     }
 
+    #[test]
+    fn particle_billboard_vertices_emit_camera_facing_textured_quad() {
+        let mut instance = test_instance_with_lifetime("minecraft:cloud", 20);
+        instance.position = [1.0, 2.0, 3.0];
+        instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        let sprite_uvs = BTreeMap::from([(
+            "minecraft:generic_0".to_string(),
+            ParticleUvRect {
+                min: [0.25, 0.125],
+                max: [0.5, 0.375],
+            },
+        )]);
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &sprite_uvs,
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+        );
+
+        assert_eq!(vertices.len(), 6);
+        assert_close3_f32(vertices[0].position, [0.9, 1.9, 3.0]);
+        assert_eq!(vertices[0].uv, [0.25, 0.375]);
+        assert_close3_f32(vertices[2].position, [1.1, 2.1, 3.0]);
+        assert_eq!(vertices[2].uv, [0.5, 0.125]);
+        assert_close3_f32(vertices[5].position, [0.9, 2.1, 3.0]);
+        assert_eq!(vertices[5].uv, [0.25, 0.125]);
+    }
+
+    #[test]
+    fn particle_billboard_vertices_skip_instances_without_uploaded_sprite_uv() {
+        let mut instance = test_instance_with_lifetime("minecraft:cloud", 20);
+        instance.current_sprite_id = Some("minecraft:missing".to_string());
+
+        let vertices = particle_billboard_vertices(
+            [&instance],
+            &BTreeMap::new(),
+            ParticleBillboardAxes {
+                right: Vec3::X,
+                up: Vec3::Y,
+            },
+        );
+
+        assert!(vertices.is_empty());
+    }
+
     fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> ParticleInstance {
         let descriptor = ParticleDescriptor::for_particle(particle_id);
         ParticleInstance {
@@ -867,6 +1057,15 @@ mod tests {
     }
 
     fn assert_close3(actual: [f64; 3], expected: [f64; 3]) {
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert!(
+                (actual - expected).abs() < 1.0e-6,
+                "expected {expected}, got {actual}"
+            );
+        }
+    }
+
+    fn assert_close3_f32(actual: [f32; 3], expected: [f32; 3]) {
         for (actual, expected) in actual.into_iter().zip(expected) {
             assert!(
                 (actual - expected).abs() < 1.0e-6,

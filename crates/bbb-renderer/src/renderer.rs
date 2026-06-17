@@ -19,7 +19,7 @@ use crate::{
         create_hud_bind_group_layout, create_hud_pipeline, HudItemIcon, HudSpriteGpu,
         HUD_HOTBAR_SLOTS,
     },
-    particles::ParticleRuntimeState,
+    particles::{create_particle_pipeline, ParticleAtlasGpu, ParticleRuntimeState},
     selection::{
         create_selection_outline_gpu, create_selection_pipeline, SelectionOutline,
         SelectionOutlineGpu,
@@ -39,6 +39,7 @@ pub struct Renderer {
     pub(super) terrain_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
+    pub(super) particle_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
@@ -53,6 +54,7 @@ pub struct Renderer {
     pub(super) terrain_bounds: Option<TerrainBounds>,
     pub(super) camera_pose: Option<CameraPose>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
+    pub(super) particle_atlas: Option<ParticleAtlasGpu>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
@@ -162,6 +164,8 @@ impl Renderer {
             create_terrain_translucent_pipeline(&device, format, &terrain_bind_group_layout);
         let block_destroy_pipeline =
             create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
+        let particle_pipeline =
+            create_particle_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
@@ -182,6 +186,7 @@ impl Renderer {
             terrain_pipeline,
             terrain_translucent_pipeline,
             block_destroy_pipeline,
+            particle_pipeline,
             selection_pipeline,
             hud_pipeline,
             hud_bind_group_layout,
@@ -196,6 +201,7 @@ impl Renderer {
             terrain_bounds: None,
             camera_pose: None,
             block_destroy_overlays: None,
+            particle_atlas: None,
             selection_outline: None,
             entity_target_outline: None,
             hud_crosshair: None,

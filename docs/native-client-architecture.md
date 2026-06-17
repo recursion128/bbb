@@ -393,17 +393,19 @@ Target ownership:
   then submits renderer-owned spawn batches. Missing particle sprites are
   reported as diagnostics while the spawn command is preserved for renderer
   fallback behavior.
-- `bbb-renderer` keeps a bounded pending spawn queue so future GPU particle
-  drawing consumes renderer-owned commands instead of native/world snapshots.
+- `bbb-renderer` keeps a bounded pending spawn queue so particle drawing consumes
+  renderer-owned commands instead of native/world snapshots.
 - `bbb-renderer` drains pending spawn commands into active CPU-side particle
   instances through the native runtime pump, advances instance age only on the
   native 20Hz client tick path, applies data-only provider/lifetime descriptors
   for common 26.1 particles, applies no-collision gravity/friction motion, tracks
   current sprite ids with vanilla SpriteSet age/random selection rules, and
-  reports active/intake/expired/drop counters. The active instance state is
-  renderer runtime state, not canonical world state.
+  reports active/intake/expired/drop counters. Native uploads a stitched
+  official particle atlas when assets are available, and renderer draws active
+  instances as camera-facing textured billboards. The active instance state and
+  GPU resources are renderer runtime state, not canonical world state.
 - `bbb-renderer` owns actual particle creation, culling, settings, distance
-  limits, GPU buffers, and lifetime ticking.
+  limits, GPU buffers, lifetime ticking, and future vanilla presentation parity.
 - Local-player knockback from explosion is a gameplay/client movement semantic
   and should be handled by local-player or movement systems if implemented.
 
