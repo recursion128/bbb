@@ -34,8 +34,8 @@ pub(crate) use commands::{
     queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
 pub(crate) use inventory::{
-    handle_inventory_cursor_moved, handle_inventory_mouse_input, handle_inventory_mouse_wheel,
-    local_inventory_slot_layouts,
+    handle_inventory_cursor_moved, handle_inventory_key_input, handle_inventory_mouse_input,
+    handle_inventory_mouse_wheel, local_inventory_slot_layouts,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -57,6 +57,8 @@ pub(crate) struct ClientInputState {
     use_item_held: bool,
     shift_left_down: bool,
     shift_right_down: bool,
+    control_left_down: bool,
+    control_right_down: bool,
     use_item_repeat_delay_ticks: u8,
     mouse_delta_x: f64,
     mouse_delta_y: f64,
@@ -114,6 +116,8 @@ impl ClientInputState {
     fn clear_modifiers(&mut self) {
         self.shift_left_down = false;
         self.shift_right_down = false;
+        self.control_left_down = false;
+        self.control_right_down = false;
     }
 
     fn set_shift_key(&mut self, code: KeyCode, pressed: bool) {
@@ -126,6 +130,18 @@ impl ClientInputState {
 
     fn shift_down(&self) -> bool {
         self.shift_left_down || self.shift_right_down
+    }
+
+    fn set_control_key(&mut self, code: KeyCode, pressed: bool) {
+        match code {
+            KeyCode::ControlLeft => self.control_left_down = pressed,
+            KeyCode::ControlRight => self.control_right_down = pressed,
+            _ => {}
+        }
+    }
+
+    fn control_down(&self) -> bool {
+        self.control_left_down || self.control_right_down
     }
 
     pub(crate) fn command_entry_is_active(&self) -> bool {
@@ -211,6 +227,9 @@ pub(crate) fn handle_key_input(
     if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
         input.set_shift_key(code, pressed);
     }
+    if matches!(code, KeyCode::ControlLeft | KeyCode::ControlRight) {
+        input.set_control_key(code, pressed);
+    }
 
     if input.command_entry_is_active() {
         handle_chat_entry_key(input, counters, world, net_commands, code, pressed);
@@ -243,6 +262,15 @@ pub(crate) fn handle_key_input(
         {
             return;
         }
+    }
+    if world.local_inventory_is_open() {
+        if pressed {
+            handle_inventory_key_input(input, world, counters, net_commands, code);
+        }
+        return;
+    }
+
+    if pressed {
         if let Some(slot) = hotbar_slot_for_key(code) {
             select_hotbar_slot(counters, world, net_commands, slot);
             return;

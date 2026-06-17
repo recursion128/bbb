@@ -6,6 +6,7 @@ use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::{ElementState, MouseButton, MouseScrollDelta},
+    keyboard::KeyCode,
 };
 
 use super::{
@@ -153,6 +154,38 @@ pub(crate) fn handle_inventory_mouse_input(
     true
 }
 
+pub(crate) fn handle_inventory_key_input(
+    input: &ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    code: KeyCode,
+) -> bool {
+    if !input.focused || !world.local_inventory_is_open() || code != KeyCode::KeyQ {
+        return false;
+    }
+
+    let Some(slot_num) = input.inventory_hovered_slot else {
+        return true;
+    };
+    if !local_inventory_slot_has_item(world, slot_num) {
+        return true;
+    }
+    let request = ContainerClickSlotRequest {
+        slot_num,
+        button_num: if input.control_down() { 1 } else { 0 },
+        input: ContainerInput::Throw,
+    };
+    let Ok(click) = world.apply_local_container_click_slot(request) else {
+        return true;
+    };
+    if click.changed_slots.is_empty() {
+        return true;
+    }
+    queue_container_click_command(counters, net_commands, click);
+    true
+}
+
 pub(crate) fn handle_inventory_mouse_wheel(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -221,6 +254,16 @@ fn local_inventory_screen_origin(surface_size: PhysicalSize<u32>) -> (f64, f64) 
 fn inventory_cursor_is_empty(world: &WorldStore) -> bool {
     let cursor = &world.inventory().cursor_item;
     cursor.item_id.is_none() || cursor.count <= 0
+}
+
+fn local_inventory_slot_has_item(world: &WorldStore, slot_num: i16) -> bool {
+    world
+        .inventory()
+        .inventory_menu
+        .slots
+        .iter()
+        .find(|slot| slot.slot == slot_num)
+        .is_some_and(|slot| slot.item.item_id.is_some() && slot.item.count > 0)
 }
 
 #[cfg(test)]
