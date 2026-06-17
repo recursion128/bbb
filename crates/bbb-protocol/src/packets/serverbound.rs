@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{codec::Encoder, ids};
 
+use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::{chunks, connection, BlockPos, Vec3d};
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
@@ -138,6 +139,18 @@ pub struct ContainerSlotStateChanged {
 pub struct SelectBundleItem {
     pub slot_id: i32,
     pub selected_item_index: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeBookChangeSettingsCommand {
+    pub book_type: RecipeBookType,
+    pub open: bool,
+    pub filtering: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecipeBookSeenRecipeCommand {
+    pub recipe: RecipeDisplayId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -387,6 +400,28 @@ pub fn encode_play_place_recipe(command: PlaceRecipeCommand) -> (i32, Vec<u8>) {
     out.write_var_i32(command.recipe_index);
     out.write_bool(command.use_max_items);
     (ids::play::SERVERBOUND_PLACE_RECIPE, out.into_inner())
+}
+
+pub fn encode_play_recipe_book_change_settings(
+    command: RecipeBookChangeSettingsCommand,
+) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(command.book_type.id());
+    out.write_bool(command.open);
+    out.write_bool(command.filtering);
+    (
+        ids::play::SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS,
+        out.into_inner(),
+    )
+}
+
+pub fn encode_play_recipe_book_seen_recipe(command: RecipeBookSeenRecipeCommand) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(command.recipe.index);
+    (
+        ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE,
+        out.into_inner(),
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -5,7 +5,8 @@ use bbb_protocol::packets::{
     ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection,
     InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
-    PlayerInput, SelectBundleItem, SelectTradeCommand, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, SelectBundleItem,
+    SelectTradeCommand, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -70,6 +71,36 @@ pub(crate) fn queue_place_recipe_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::PlaceRecipe(command)).is_ok() {
             counters.place_recipe_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_recipe_book_change_settings_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: RecipeBookChangeSettingsCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::RecipeBookChangeSettings(command))
+            .is_ok()
+        {
+            counters.recipe_book_change_settings_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_recipe_book_seen_recipe_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: RecipeBookSeenRecipeCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::RecipeBookSeenRecipe(command))
+            .is_ok()
+        {
+            counters.recipe_book_seen_recipe_commands_queued += 1;
         }
     }
 }
@@ -492,7 +523,8 @@ mod tests {
         AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
         ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerSlotStateChanged,
         Direction as ProtocolDirection, InteractEntity, InteractionHand, PickItemFromBlock,
-        PickItemFromEntity, PlayerAction, PlayerActionKind, UseItemOn,
+        PickItemFromEntity, PlayerAction, PlayerActionKind, RecipeBookType, RecipeDisplayId,
+        UseItemOn,
     };
     use bbb_protocol::packets::{
         ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
@@ -541,6 +573,47 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::ChatCommand(ChatCommand {
                 command: "give @p minecraft:stone".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn queues_recipe_book_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_recipe_book_change_settings_command(
+            &mut counters,
+            &commands,
+            RecipeBookChangeSettingsCommand {
+                book_type: RecipeBookType::Furnace,
+                open: true,
+                filtering: false,
+            },
+        );
+        queue_recipe_book_seen_recipe_command(
+            &mut counters,
+            &commands,
+            RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 321 },
+            },
+        );
+
+        assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
+        assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookChangeSettings(RecipeBookChangeSettingsCommand {
+                book_type: RecipeBookType::Furnace,
+                open: true,
+                filtering: false,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookSeenRecipe(RecipeBookSeenRecipeCommand {
+                recipe: RecipeDisplayId { index: 321 },
             })
         );
     }

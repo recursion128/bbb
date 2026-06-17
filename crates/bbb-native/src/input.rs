@@ -23,7 +23,8 @@ pub(crate) use commands::{
     queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
     queue_container_click_command, queue_container_close_request_command,
     queue_container_slot_state_changed_command, queue_place_recipe_command,
-    queue_player_abilities_command, queue_select_trade_command, queue_vehicle_move_command,
+    queue_player_abilities_command, queue_recipe_book_change_settings_command,
+    queue_recipe_book_seen_recipe_command, queue_select_trade_command, queue_vehicle_move_command,
     select_hotbar_slot,
 };
 pub(crate) use mouse::{

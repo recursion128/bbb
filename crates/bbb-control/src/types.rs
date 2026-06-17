@@ -11,5 +11,6 @@ pub use renderer::RendererCounters;
 pub use snapshot::{
     AppStatus, CodeOfConductControlRequest, ContainerChangedSlotControl,
     ContainerClickControlRequest, ContainerInputControl, ControlSnapshot,
-    HashedComponentPatchControl, HashedStackControl, NetControlRequest, SharedSnapshot,
+    HashedComponentPatchControl, HashedStackControl, NetControlRequest, RecipeBookTypeControl,
+    SharedSnapshot,
 };

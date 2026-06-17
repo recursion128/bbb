@@ -101,6 +101,26 @@ pub struct RecipeBookTypeSettings {
     pub filtering: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RecipeBookType {
+    Crafting,
+    Furnace,
+    BlastFurnace,
+    Smoker,
+}
+
+impl RecipeBookType {
+    pub fn id(self) -> i32 {
+        match self {
+            Self::Crafting => 0,
+            Self::Furnace => 1,
+            Self::BlastFurnace => 2,
+            Self::Smoker => 3,
+        }
+    }
+}
+
 impl Default for RecipeBookSettings {
     fn default() -> Self {
         Self {

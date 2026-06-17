@@ -34,6 +34,14 @@ pub enum NetControlRequest {
         recipe_index: i32,
         use_max_items: bool,
     },
+    ChangeRecipeBookSettings {
+        book_type: RecipeBookTypeControl,
+        open: bool,
+        filtering: bool,
+    },
+    MarkRecipeSeen {
+        recipe_index: i32,
+    },
     SelectTrade {
         item: i32,
     },
@@ -61,6 +69,15 @@ pub enum NetControlRequest {
         container_id: i32,
         new_state: bool,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RecipeBookTypeControl {
+    Crafting,
+    Furnace,
+    BlastFurnace,
+    Smoker,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,11 +1,12 @@
 use bbb_control::{
     CodeOfConductControlRequest, ContainerClickControlRequest, ContainerInputControl,
     HashedComponentPatchControl, HashedStackControl, NetControlRequest, NetCounters,
-    SharedSnapshot,
+    RecipeBookTypeControl, SharedSnapshot,
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     ContainerClick, ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
+    RecipeBookType,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -16,7 +17,8 @@ use crate::{
         queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
         queue_container_click_command, queue_container_close_request_command,
         queue_container_slot_state_changed_command, queue_place_recipe_command,
-        queue_player_abilities_command, queue_select_trade_command, select_bundle_item,
+        queue_player_abilities_command, queue_recipe_book_change_settings_command,
+        queue_recipe_book_seen_recipe_command, queue_select_trade_command, select_bundle_item,
         select_hotbar_slot,
     },
 };
@@ -71,6 +73,15 @@ fn protocol_hashed_components(components: HashedComponentPatchControl) -> Hashed
     }
 }
 
+fn protocol_recipe_book_type(book_type: RecipeBookTypeControl) -> RecipeBookType {
+    match book_type {
+        RecipeBookTypeControl::Crafting => RecipeBookType::Crafting,
+        RecipeBookTypeControl::Furnace => RecipeBookType::Furnace,
+        RecipeBookTypeControl::BlastFurnace => RecipeBookType::BlastFurnace,
+        RecipeBookTypeControl::Smoker => RecipeBookType::Smoker,
+    }
+}
+
 pub(crate) fn pump_control_net_requests(
     snapshot: &SharedSnapshot,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -108,6 +119,32 @@ pub(crate) fn pump_control_net_requests(
                         container_id,
                         recipe_index,
                         use_max_items,
+                    },
+                );
+            }
+            NetControlRequest::ChangeRecipeBookSettings {
+                book_type,
+                open,
+                filtering,
+            } => {
+                queue_recipe_book_change_settings_command(
+                    counters,
+                    net_commands,
+                    bbb_protocol::packets::RecipeBookChangeSettingsCommand {
+                        book_type: protocol_recipe_book_type(book_type),
+                        open,
+                        filtering,
+                    },
+                );
+            }
+            NetControlRequest::MarkRecipeSeen { recipe_index } => {
+                queue_recipe_book_seen_recipe_command(
+                    counters,
+                    net_commands,
+                    bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+                        recipe: bbb_protocol::packets::RecipeDisplayId {
+                            index: recipe_index,
+                        },
                     },
                 );
             }
@@ -382,6 +419,44 @@ mod tests {
                 container_id: 7,
                 recipe_index: 123,
                 use_max_items: true,
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_recipe_book_commands() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.extend([
+            bbb_control::NetControlRequest::ChangeRecipeBookSettings {
+                book_type: bbb_control::RecipeBookTypeControl::BlastFurnace,
+                open: true,
+                filtering: false,
+            },
+            bbb_control::NetControlRequest::MarkRecipeSeen { recipe_index: 321 },
+        ]);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.recipe_book_change_settings_commands_queued, 1);
+        assert_eq!(counters.recipe_book_seen_recipe_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookChangeSettings(
+                bbb_protocol::packets::RecipeBookChangeSettingsCommand {
+                    book_type: bbb_protocol::packets::RecipeBookType::BlastFurnace,
+                    open: true,
+                    filtering: false,
+                }
+            )
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RecipeBookSeenRecipe(bbb_protocol::packets::RecipeBookSeenRecipeCommand {
+                recipe: bbb_protocol::packets::RecipeDisplayId { index: 321 },
             })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());

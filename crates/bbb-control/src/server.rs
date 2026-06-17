@@ -12,7 +12,7 @@ use tokio::{
 
 use crate::types::{
     AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest, ControlRequest,
-    ControlResponse, ControlSnapshot, NetControlRequest, SharedSnapshot,
+    ControlResponse, ControlSnapshot, NetControlRequest, RecipeBookTypeControl, SharedSnapshot,
 };
 
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
@@ -283,6 +283,75 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
                 recipe_index,
                 use_max_items,
             });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.change_recipe_book_settings" {
+        let Some(book_type) = recipe_book_type_param(&request.params, "book_type") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.change_recipe_book_settings requires book_type crafting, furnace, blast_furnace, or smoker"
+                        .to_string(),
+                ),
+            };
+        };
+        let Some(open) = bool_param(&request.params, "open") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.change_recipe_book_settings requires boolean param open".to_string(),
+                ),
+            };
+        };
+        let Some(filtering) = bool_param(&request.params, "filtering") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.change_recipe_book_settings requires boolean param filtering".to_string(),
+                ),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::ChangeRecipeBookSettings {
+                book_type,
+                open,
+                filtering,
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.mark_recipe_seen" {
+        let Some(recipe_index) = i32_param(&request.params, "recipe_index") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.mark_recipe_seen requires integer param recipe_index".to_string()),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::MarkRecipeSeen { recipe_index });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -733,6 +802,16 @@ fn non_empty_string_param<'a>(params: &'a serde_json::Value, key: &str) -> Optio
         None
     } else {
         Some(value)
+    }
+}
+
+fn recipe_book_type_param(params: &serde_json::Value, key: &str) -> Option<RecipeBookTypeControl> {
+    match string_param(params, key)? {
+        "crafting" => Some(RecipeBookTypeControl::Crafting),
+        "furnace" => Some(RecipeBookTypeControl::Furnace),
+        "blast_furnace" => Some(RecipeBookTypeControl::BlastFurnace),
+        "smoker" => Some(RecipeBookTypeControl::Smoker),
+        _ => None,
     }
 }
 
@@ -1286,6 +1365,71 @@ mod tests {
             ControlRequest {
                 method: "net.place_recipe".to_string(),
                 params: json!({"container_id": 7, "use_max_items": true}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_recipe.ok);
+    }
+
+    #[test]
+    fn net_recipe_book_commands_queue_requests() {
+        let snapshot = shared_snapshot("test");
+        let change_response = dispatch(
+            ControlRequest {
+                method: "net.change_recipe_book_settings".to_string(),
+                params: json!({
+                    "book_type": "blast_furnace",
+                    "open": true,
+                    "filtering": false
+                }),
+            },
+            &snapshot,
+        );
+        let seen_response = dispatch(
+            ControlRequest {
+                method: "net.mark_recipe_seen".to_string(),
+                params: json!({"recipe_index": 321}),
+            },
+            &snapshot,
+        );
+
+        assert!(change_response.ok);
+        assert!(seen_response.ok);
+        assert_eq!(seen_response.result.unwrap()["pending"], 2);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![
+                NetControlRequest::ChangeRecipeBookSettings {
+                    book_type: RecipeBookTypeControl::BlastFurnace,
+                    open: true,
+                    filtering: false,
+                },
+                NetControlRequest::MarkRecipeSeen { recipe_index: 321 },
+            ]
+        );
+
+        let missing_open = dispatch(
+            ControlRequest {
+                method: "net.change_recipe_book_settings".to_string(),
+                params: json!({"book_type": "crafting", "filtering": false}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_open.ok);
+
+        let invalid_type = dispatch(
+            ControlRequest {
+                method: "net.change_recipe_book_settings".to_string(),
+                params: json!({"book_type": "campfire", "open": true, "filtering": false}),
+            },
+            &snapshot,
+        );
+        assert!(!invalid_type.ok);
+
+        let missing_recipe = dispatch(
+            ControlRequest {
+                method: "net.mark_recipe_seen".to_string(),
+                params: json!({}),
             },
             &snapshot,
         );

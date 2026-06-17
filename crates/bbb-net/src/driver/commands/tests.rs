@@ -4,9 +4,9 @@ use super::{
     send_container_close, send_container_slot_state_changed, send_interact_entity,
     send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
-    send_player_input_command, send_player_move_command, send_select_bundle_item,
-    send_select_trade, send_set_held_slot_command, send_swing_command, send_use_item,
-    send_use_item_on,
+    send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
+    send_recipe_book_seen_recipe, send_select_bundle_item, send_select_trade,
+    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -20,8 +20,9 @@ use bbb_protocol::{
         ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedComponentPatch,
         HashedItemStack, HashedStack, InteractEntity, InteractionHand, PaddleBoat,
         PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
-        PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState, SelectBundleItem,
-        SelectTradeCommand, Vec3d,
+        PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
+        RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
+        RecipeDisplayId, SelectBundleItem, SelectTradeCommand, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -970,6 +971,67 @@ async fn send_ping_request_encodes_play_ping_request_packet() {
         .unwrap();
 
     send_ping_request(&mut conn, 123_456_789).await.unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_recipe_book_commands_encode_packets() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("recipe book settings command should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::play::SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert!(decoder.read_bool().unwrap());
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("recipe book seen recipe command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 321);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_recipe_book_change_settings(
+        &mut conn,
+        RecipeBookChangeSettingsCommand {
+            book_type: RecipeBookType::Smoker,
+            open: true,
+            filtering: false,
+        },
+    )
+    .await
+    .unwrap();
+    send_recipe_book_seen_recipe(
+        &mut conn,
+        RecipeBookSeenRecipeCommand {
+            recipe: RecipeDisplayId { index: 321 },
+        },
+    )
+    .await
+    .unwrap();
 
     server.await.unwrap();
 }

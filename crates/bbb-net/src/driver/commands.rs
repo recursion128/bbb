@@ -4,7 +4,8 @@ use bbb_protocol::packets::{
     ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, InteractEntity,
     InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
-    PlayerPositionState, SelectBundleItem, SelectTradeCommand, UseItem, UseItemOn,
+    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+    SelectBundleItem, SelectTradeCommand, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -138,6 +139,22 @@ pub(crate) async fn send_place_recipe(
     command: PlaceRecipeCommand,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_place_recipe(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_recipe_book_change_settings(
+    conn: &mut RawConnection,
+    command: RecipeBookChangeSettingsCommand,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_recipe_book_change_settings(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_recipe_book_seen_recipe(
+    conn: &mut RawConnection,
+    command: RecipeBookSeenRecipeCommand,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_recipe_book_seen_recipe(command);
     conn.send_packet(id, &payload).await
 }
 

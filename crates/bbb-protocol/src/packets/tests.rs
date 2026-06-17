@@ -977,6 +977,8 @@ fn play_serverbound_player_state_packet_ids_match_vanilla_26_1_registration_orde
     assert_eq!(ids::play::SERVERBOUND_PLAYER_COMMAND, 42);
     assert_eq!(ids::play::SERVERBOUND_PLAYER_INPUT, 43);
     assert_eq!(ids::play::SERVERBOUND_PLAYER_LOADED, 44);
+    assert_eq!(ids::play::SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS, 46);
+    assert_eq!(ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE, 47);
 }
 
 #[test]
@@ -1067,6 +1069,32 @@ fn encodes_place_recipe_packet() {
     assert_eq!(decoder.read_var_i32().unwrap(), 7);
     assert_eq!(decoder.read_var_i32().unwrap(), 123);
     assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_recipe_book_change_settings_packet() {
+    let (id, payload) = encode_play_recipe_book_change_settings(RecipeBookChangeSettingsCommand {
+        book_type: RecipeBookType::BlastFurnace,
+        open: true,
+        filtering: false,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_RECIPE_BOOK_CHANGE_SETTINGS);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 2);
+    assert!(decoder.read_bool().unwrap());
+    assert!(!decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_recipe_book_seen_recipe_packet() {
+    let (id, payload) = encode_play_recipe_book_seen_recipe(RecipeBookSeenRecipeCommand {
+        recipe: RecipeDisplayId { index: 321 },
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 321);
     assert!(decoder.is_empty());
 }
 
