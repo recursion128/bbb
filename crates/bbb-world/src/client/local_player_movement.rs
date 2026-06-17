@@ -282,12 +282,17 @@ mod tests {
     const OAK_TOP_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3928;
     const OAK_BOTTOM_STRAIGHT_NORTH_STAIR_BLOCK_STATE_ID: i32 = 3918;
     const OAK_BOTTOM_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3938;
+    const OAK_LEAVES_BLOCK_STATE_ID: i32 = 255;
+    const SNOW_5_LAYERS_BLOCK_STATE_ID: i32 = 6923;
+    const SNOW_6_LAYERS_BLOCK_STATE_ID: i32 = 6924;
     const OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID: i32 = 5666;
     const OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7121;
+    const STONE_PRESSURE_PLATE_BLOCK_STATE_ID: i32 = 6796;
     const OAK_NORTH_FENCE_BLOCK_STATE_ID: i32 = 6988;
     const OAK_CLOSED_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8653;
     const OAK_OPEN_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8651;
     const GLASS_NORTH_PANE_BLOCK_STATE_ID: i32 = 8323;
+    const WHITE_CARPET_BLOCK_STATE_ID: i32 = 12896;
     const COBBLESTONE_NORTH_EAST_WALL_BLOCK_STATE_ID: i32 = 10236;
 
     #[test]
@@ -419,6 +424,73 @@ mod tests {
         assert_f64_near(pose.position.y, 1.0, 0.0005);
         assert!(
             pose.position.z <= 1.7005,
+            "position was {:?}",
+            pose.position
+        );
+        assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_leaves() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, OAK_LEAVES_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 2, 1, OAK_LEAVES_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+        assert!(
+            pose.position.z <= 0.7005,
+            "position was {:?}",
+            pose.position
+        );
+        assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_steps_over_thin_ground_shapes() {
+        let cases = [
+            ("white carpet", WHITE_CARPET_BLOCK_STATE_ID, 1.0625),
+            ("five snow layers", SNOW_5_LAYERS_BLOCK_STATE_ID, 1.5),
+        ];
+
+        for (name, block_state_id, expected_y) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, expected_y, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_does_not_collide_with_pressure_plate_outline() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, STONE_PRESSURE_PLATE_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.position.z > 1.0, "position was {:?}", pose.position);
+        assert!(!pose.horizontal_collision);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_does_not_step_over_tall_snow_layer() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, SNOW_6_LAYERS_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(
+            pose.position.z <= 0.7005,
             "position was {:?}",
             pose.position
         );

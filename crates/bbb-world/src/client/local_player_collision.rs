@@ -56,6 +56,15 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
         return stair_collision_shape(&block.block_properties);
     }
     if let Some(block_name) = block.block_name.as_deref() {
+        if is_leaves_block_name(block_name) {
+            return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+        }
+        if block_name == "minecraft:snow" {
+            return snow_layer_collision_shape(&block.block_properties);
+        }
+        if is_flat_carpet_block_name(block_name) {
+            return Some(BlockCollisionShape::single(BlockCollisionBox::CARPET));
+        }
         if is_door_block_name(block_name) {
             return door_collision_shape(&block.block_properties);
         }
@@ -104,6 +113,38 @@ fn is_stair_block(block: &BlockProbe) -> bool {
         .block_name
         .as_deref()
         .is_some_and(|name| name.ends_with("_stairs"))
+}
+
+fn is_leaves_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_leaves"))
+}
+
+fn is_flat_carpet_block_name(block_name: &str) -> bool {
+    let Some(path) = block_name.strip_prefix("minecraft:") else {
+        return false;
+    };
+    matches!(
+        path,
+        "white_carpet"
+            | "orange_carpet"
+            | "magenta_carpet"
+            | "light_blue_carpet"
+            | "yellow_carpet"
+            | "lime_carpet"
+            | "pink_carpet"
+            | "gray_carpet"
+            | "light_gray_carpet"
+            | "cyan_carpet"
+            | "purple_carpet"
+            | "blue_carpet"
+            | "brown_carpet"
+            | "green_carpet"
+            | "red_carpet"
+            | "black_carpet"
+            | "moss_carpet"
+    )
 }
 
 fn is_door_block_name(block_name: &str) -> bool {
@@ -186,6 +227,19 @@ fn stair_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockC
         shape = shape.invert_y();
     }
     Some(shape.rotate_to_direction(direction))
+}
+
+fn snow_layer_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let layers = properties.get("layers")?.parse::<u8>().ok()?;
+    if !(1..=8).contains(&layers) {
+        return None;
+    }
+    let height = f64::from(layers - 1) / 8.0;
+    Some(BlockCollisionShape::single(BlockCollisionBox::column(
+        0.0, 0.0, 1.0, height, 1.0,
+    )))
 }
 
 fn door_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
@@ -594,6 +648,14 @@ impl BlockCollisionBox {
         max_y: 1.0,
         max_z: 1.0,
     };
+    const CARPET: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: PX,
+        max_z: 1.0,
+    };
     const BOTTOM_TRAPDOOR: Self = Self {
         min_x: 0.0,
         min_y: 0.0,
@@ -778,6 +840,17 @@ impl BlockCollisionBox {
         max_y: 1.5,
         max_z: 11.0 * PX,
     };
+
+    fn column(min_x: f64, min_z: f64, max_x: f64, max_y: f64, max_z: f64) -> Self {
+        Self {
+            min_x,
+            min_y: 0.0,
+            min_z,
+            max_x,
+            max_y,
+            max_z,
+        }
+    }
 
     fn invert_y(self) -> Self {
         Self {
