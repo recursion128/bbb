@@ -2,7 +2,7 @@ use super::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_interact_entity,
-    send_pick_item_from_block, send_pick_item_from_entity, send_place_recipe,
+    send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_select_bundle_item,
     send_select_trade, send_set_held_slot_command, send_swing_command, send_use_item,
@@ -18,9 +18,10 @@ use bbb_protocol::{
     packets::{
         AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
         ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedComponentPatch,
-        HashedItemStack, HashedStack, InteractEntity, InteractionHand, PickItemFromEntity,
-        PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth,
-        PlayerInput, PlayerPositionState, SelectBundleItem, SelectTradeCommand, Vec3d,
+        HashedItemStack, HashedStack, InteractEntity, InteractionHand, PaddleBoat,
+        PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
+        PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState, SelectBundleItem,
+        SelectTradeCommand, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -898,6 +899,44 @@ async fn send_pick_item_from_entity_encodes_pick_packet() {
         PickItemFromEntity {
             entity_id: 123,
             include_data: true,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_paddle_boat_encodes_left_and_right_flags() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("paddle boat command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PADDLE_BOAT);
+        let mut decoder = Decoder::new(&payload);
+        assert!(decoder.read_bool().unwrap());
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_paddle_boat(
+        &mut conn,
+        PaddleBoat {
+            left: true,
+            right: false,
         },
     )
     .await

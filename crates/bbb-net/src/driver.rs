@@ -13,7 +13,7 @@ pub(crate) use commands::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_interact_entity,
-    send_pick_item_from_block, send_pick_item_from_entity, send_place_recipe,
+    send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_select_bundle_item, send_select_trade,
     send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
@@ -119,6 +119,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::PickItemFromEntity(packet)) => {
                         send_pick_item_from_entity(conn, packet).await?;
                     }
+                    Some(NetCommand::PaddleBoat(packet)) => {
+                        send_paddle_boat(conn, packet).await?;
+                    }
                     Some(NetCommand::PlaceRecipe(command)) => {
                         send_place_recipe(conn, command).await?;
                     }
@@ -181,6 +184,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::UseItem(_)) => {}
                     Some(NetCommand::PickItemFromBlock(_)) => {}
                     Some(NetCommand::PickItemFromEntity(_)) => {}
+                    Some(NetCommand::PaddleBoat(_)) => {}
                     Some(NetCommand::PlaceRecipe(_)) => {}
                     Some(NetCommand::SelectTrade(_)) => {}
                     Some(NetCommand::SelectBundleItem(_)) => {}
@@ -213,9 +217,9 @@ mod tests {
             AttackEntity, BlockHitResult, BlockPos, ChatCommand, CommandSuggestionRequest,
             ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
             ContainerSlotStateChanged, Direction, HashedStack, InteractEntity, InteractionHand,
-            PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-            PlayerAction, PlayerActionKind, SelectBundleItem, SelectTradeCommand, UseItem,
-            UseItemOn, Vec3d,
+            PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+            PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, SelectBundleItem,
+            SelectTradeCommand, UseItem, UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -484,7 +488,7 @@ mod tests {
     #[tokio::test]
     async fn drive_connection_sends_interaction_net_commands_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
-        let (tx, mut commands) = mpsc::channel(9);
+        let (tx, mut commands) = mpsc::channel(10);
         tx.send(NetCommand::PlayerAction(PlayerAction {
             action: PlayerActionKind::StartDestroyBlock,
             pos: BlockPos { x: 1, y: 64, z: -2 },
@@ -547,6 +551,12 @@ mod tests {
         tx.send(NetCommand::PickItemFromEntity(PickItemFromEntity {
             entity_id: 456,
             include_data: false,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::PaddleBoat(PaddleBoat {
+            left: true,
+            right: false,
         }))
         .await
         .unwrap();
@@ -636,6 +646,13 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 456);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "paddle boat").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PADDLE_BOAT);
+        let mut decoder = Decoder::new(&payload);
+        assert!(decoder.read_bool().unwrap());
         assert!(!decoder.read_bool().unwrap());
         assert!(decoder.is_empty());
     }

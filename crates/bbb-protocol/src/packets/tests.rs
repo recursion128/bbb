@@ -964,6 +964,7 @@ fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order
     assert_eq!(ids::play::SERVERBOUND_ATTACK, 1);
     assert_eq!(ids::play::SERVERBOUND_CHAT_COMMAND, 7);
     assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
+    assert_eq!(ids::play::SERVERBOUND_PADDLE_BOAT, 35);
     assert_eq!(ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY, 37);
 }
 
@@ -1425,6 +1426,21 @@ fn decodes_and_encodes_move_vehicle_packets() {
     assert_eq!(decoder.read_f32().unwrap(), 135.0);
     assert_eq!(decoder.read_f32().unwrap(), -12.5);
     assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_paddle_boat() {
+    let (id, payload) = encode_play_paddle_boat(PaddleBoat {
+        left: true,
+        right: false,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_PADDLE_BOAT);
+    assert_eq!(id, 35);
+
+    let mut decoder = Decoder::new(&payload);
+    assert!(decoder.read_bool().unwrap());
+    assert!(!decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
 }
 

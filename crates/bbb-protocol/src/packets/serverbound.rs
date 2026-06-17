@@ -100,6 +100,12 @@ pub struct PickItemFromEntity {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PaddleBoat {
+    pub left: bool,
+    pub right: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContainerButtonClick {
     pub container_id: i32,
     pub button_id: i32,
@@ -316,6 +322,13 @@ pub fn encode_play_move_vehicle(
     out.write_f32(x_rot);
     out.write_bool(on_ground);
     (ids::play::SERVERBOUND_MOVE_VEHICLE, out.into_inner())
+}
+
+pub fn encode_play_paddle_boat(packet: PaddleBoat) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_bool(packet.left);
+    out.write_bool(packet.right);
+    (ids::play::SERVERBOUND_PADDLE_BOAT, out.into_inner())
 }
 
 pub fn encode_play_player_loaded() -> (i32, Vec<u8>) {

@@ -1,7 +1,7 @@
 use bbb_protocol::packets::{
     self, AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
     ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, InteractEntity,
-    InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+    InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
     SelectBundleItem, SelectTradeCommand, UseItem, UseItemOn, Vec3d,
 };
@@ -91,6 +91,7 @@ pub enum NetCommand {
     UseItem(UseItem),
     PickItemFromBlock(PickItemFromBlock),
     PickItemFromEntity(PickItemFromEntity),
+    PaddleBoat(PaddleBoat),
     PlaceRecipe(PlaceRecipeCommand),
     SelectTrade(SelectTradeCommand),
     SelectBundleItem(SelectBundleItem),
