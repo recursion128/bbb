@@ -5,8 +5,8 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
     block_destroy::{
-        create_block_destroy_overlay_gpu, create_block_destroy_pipeline, BlockDestroyOverlay,
-        BlockDestroyOverlayGpu,
+        create_block_destroy_overlays_gpu, create_block_destroy_pipeline, BlockDestroyOverlay,
+        BlockDestroyOverlaysGpu,
     },
     camera::{CameraPose, CameraUniform, ClearColor, TerrainBounds},
     gpu::{
@@ -52,7 +52,7 @@ pub struct Renderer {
     pub(super) terrain_source_sections: usize,
     pub(super) terrain_bounds: Option<TerrainBounds>,
     pub(super) camera_pose: Option<CameraPose>,
-    pub(super) block_destroy_overlay: Option<BlockDestroyOverlayGpu>,
+    pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
@@ -194,7 +194,7 @@ impl Renderer {
             terrain_source_sections: 0,
             terrain_bounds: None,
             camera_pose: None,
-            block_destroy_overlay: None,
+            block_destroy_overlays: None,
             selection_outline: None,
             hud_crosshair: None,
             hud_hotbar: None,
@@ -261,17 +261,22 @@ impl Renderer {
             outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
     }
 
-    pub fn set_block_destroy_overlay(&mut self, overlay: Option<BlockDestroyOverlay>) {
+    pub fn set_block_destroy_overlays(&mut self, overlays: Vec<BlockDestroyOverlay>) {
+        let overlays = if overlays.is_empty() {
+            None
+        } else {
+            Some(overlays)
+        };
         if self
-            .block_destroy_overlay
+            .block_destroy_overlays
             .as_ref()
-            .map(|resident| resident.overlay)
-            == overlay
+            .map(|resident| resident.overlays.as_slice())
+            == overlays.as_deref()
         {
             return;
         }
-        self.block_destroy_overlay =
-            overlay.map(|overlay| create_block_destroy_overlay_gpu(&self.device, overlay));
+        self.block_destroy_overlays =
+            overlays.map(|overlays| create_block_destroy_overlays_gpu(&self.device, overlays));
     }
 
     pub fn upload_terrain_meshes(&mut self, meshes: Vec<terrain::TerrainMesh>) {

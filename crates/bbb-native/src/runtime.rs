@@ -141,7 +141,7 @@ pub(crate) fn pump_network_and_terrain(
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));
-    renderer.set_block_destroy_overlay(block_destroy_overlay_from_world(world, terrain_textures));
+    renderer.set_block_destroy_overlays(block_destroy_overlays_from_world(world, terrain_textures));
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     if let Some(audio_events) = audio_events.as_mut() {
@@ -160,17 +160,50 @@ pub(crate) fn pump_network_and_terrain(
     )
 }
 
-fn block_destroy_overlay_from_world(
+fn block_destroy_overlays_from_world(
     world: &WorldStore,
     textures: &TerrainTextureState,
-) -> Option<BlockDestroyOverlay> {
+) -> Vec<BlockDestroyOverlay> {
+    let mut stages = Vec::new();
+    for progress in world.block_destructions() {
+        if progress.progress < 10 {
+            merge_block_destroy_stage(&mut stages, progress.pos, progress.progress);
+        }
+    }
+
     let interaction = &world.local_player().interaction;
-    let pos = interaction.destroying_block?;
-    let stage = interaction.destroying_block_stage?;
-    Some(BlockDestroyOverlay {
-        pos: [pos.x, pos.y, pos.z],
-        uv: textures.destroy_stage_uv_rect(stage)?,
-    })
+    if let (Some(pos), Some(stage)) = (
+        interaction.destroying_block,
+        interaction.destroying_block_stage,
+    ) {
+        merge_block_destroy_stage(&mut stages, pos, stage);
+    }
+
+    stages.sort_by_key(|(pos, _stage)| (pos.x, pos.y, pos.z));
+    stages
+        .into_iter()
+        .filter_map(|(pos, stage)| {
+            Some(BlockDestroyOverlay {
+                pos: [pos.x, pos.y, pos.z],
+                uv: textures.destroy_stage_uv_rect(stage)?,
+            })
+        })
+        .collect()
+}
+
+fn merge_block_destroy_stage(
+    stages: &mut Vec<(bbb_world::BlockPos, u8)>,
+    pos: bbb_world::BlockPos,
+    stage: u8,
+) {
+    if let Some((_pos, existing)) = stages
+        .iter_mut()
+        .find(|(existing_pos, _)| *existing_pos == pos)
+    {
+        *existing = (*existing).max(stage);
+    } else {
+        stages.push((pos, stage));
+    }
 }
 
 fn hotbar_item_icons(
@@ -500,6 +533,57 @@ mod tests {
     }
 
     #[test]
+    fn block_destroy_overlays_include_server_progress_and_keep_highest_per_position() {
+        let mut world = WorldStore::new();
+        let textures = destroy_stage_test_textures();
+        let pos = bbb_protocol::packets::BlockPos { x: 2, y: 3, z: 4 };
+        assert!(
+            world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
+                id: 10,
+                pos,
+                progress: 2,
+            })
+        );
+        assert!(
+            world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
+                id: 11,
+                pos,
+                progress: 7,
+            })
+        );
+        assert!(
+            world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
+                id: 12,
+                pos: bbb_protocol::packets::BlockPos { x: 1, y: 3, z: 4 },
+                progress: 3,
+            })
+        );
+
+        let overlays = block_destroy_overlays_from_world(&world, &textures);
+
+        assert_eq!(overlays.len(), 2);
+        assert_eq!(overlays[0].pos, [1, 3, 4]);
+        assert_eq!(overlays[0].uv, textures.destroy_stage_uv_rect(3).unwrap());
+        assert_eq!(overlays[1].pos, [2, 3, 4]);
+        assert_eq!(overlays[1].uv, textures.destroy_stage_uv_rect(7).unwrap());
+    }
+
+    #[test]
+    fn block_destroy_overlays_skip_missing_destroy_stage_textures() {
+        let mut world = WorldStore::new();
+        let textures = TerrainTextureState::default();
+        assert!(
+            world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
+                id: 10,
+                pos: bbb_protocol::packets::BlockPos { x: 2, y: 3, z: 4 },
+                progress: 2,
+            })
+        );
+
+        assert!(block_destroy_overlays_from_world(&world, &textures).is_empty());
+    }
+
+    #[test]
     fn entity_client_animations_advance_at_vanilla_tick_interval() {
         let start = Instant::now();
         let mut ticks = ClientAnimationTickState::default();
@@ -631,6 +715,25 @@ mod tests {
             x_rot,
             ..LocalPlayerPoseState::default()
         }
+    }
+
+    fn destroy_stage_test_textures() -> TerrainTextureState {
+        let images = (0..10)
+            .map(|stage| {
+                bbb_pack::SpriteImage::new(
+                    format!("minecraft:block/destroy_stage_{stage}"),
+                    1,
+                    1,
+                    vec![255, 255, 255, 255],
+                )
+                .unwrap()
+            })
+            .collect::<Vec<_>>();
+        let atlas = bbb_pack::AtlasPacker::new(16, 1)
+            .unwrap()
+            .stitch(&images)
+            .unwrap();
+        TerrainTextureState::from_layout(&atlas.layout, None, None, None)
     }
 
     fn test_add_entity(id: i32, entity_type_id: i32) -> bbb_protocol::packets::AddEntity {

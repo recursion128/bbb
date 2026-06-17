@@ -63,18 +63,18 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
-pub(super) struct BlockDestroyOverlayGpu {
-    pub(super) overlay: BlockDestroyOverlay,
+pub(super) struct BlockDestroyOverlaysGpu {
+    pub(super) overlays: Vec<BlockDestroyOverlay>,
     pub(super) vertex_buffer: wgpu::Buffer,
     pub(super) index_buffer: wgpu::Buffer,
     pub(super) index_count: u32,
 }
 
-pub(super) fn create_block_destroy_overlay_gpu(
+pub(super) fn create_block_destroy_overlays_gpu(
     device: &wgpu::Device,
-    overlay: BlockDestroyOverlay,
-) -> BlockDestroyOverlayGpu {
-    let mesh = block_destroy_overlay_mesh(overlay);
+    overlays: Vec<BlockDestroyOverlay>,
+) -> BlockDestroyOverlaysGpu {
+    let mesh = block_destroy_overlays_mesh(&overlays);
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("bbb-block-destroy-overlay-vertices"),
         contents: bytemuck::cast_slice(&mesh.vertices),
@@ -85,8 +85,8 @@ pub(super) fn create_block_destroy_overlay_gpu(
         contents: bytemuck::cast_slice(&mesh.indices),
         usage: wgpu::BufferUsages::INDEX,
     });
-    BlockDestroyOverlayGpu {
-        overlay,
+    BlockDestroyOverlaysGpu {
+        overlays,
         vertex_buffer,
         index_buffer,
         index_count: mesh.indices.len() as u32,
@@ -151,13 +151,31 @@ struct BlockDestroyOverlayMesh {
     indices: Vec<u32>,
 }
 
+fn block_destroy_overlays_mesh(overlays: &[BlockDestroyOverlay]) -> BlockDestroyOverlayMesh {
+    let mut vertices = Vec::with_capacity(overlays.len() * 24);
+    let mut indices = Vec::with_capacity(overlays.len() * 36);
+    for overlay in overlays {
+        emit_block_destroy_overlay(&mut vertices, &mut indices, *overlay);
+    }
+    BlockDestroyOverlayMesh { vertices, indices }
+}
+
+#[cfg(test)]
 fn block_destroy_overlay_mesh(overlay: BlockDestroyOverlay) -> BlockDestroyOverlayMesh {
     let mut vertices = Vec::with_capacity(24);
     let mut indices = Vec::with_capacity(36);
-    for face in DESTROY_OVERLAY_FACES {
-        emit_block_destroy_face(&mut vertices, &mut indices, overlay, face);
-    }
+    emit_block_destroy_overlay(&mut vertices, &mut indices, overlay);
     BlockDestroyOverlayMesh { vertices, indices }
+}
+
+fn emit_block_destroy_overlay(
+    vertices: &mut Vec<TerrainVertex>,
+    indices: &mut Vec<u32>,
+    overlay: BlockDestroyOverlay,
+) {
+    for face in DESTROY_OVERLAY_FACES {
+        emit_block_destroy_face(vertices, indices, overlay, face);
+    }
 }
 
 fn emit_block_destroy_face(
@@ -289,5 +307,27 @@ mod tests {
                 [1.0, 0.0, 0.0],
             ]
         );
+    }
+
+    #[test]
+    fn block_destroy_overlays_mesh_batches_multiple_positions() {
+        let overlays = [
+            BlockDestroyOverlay {
+                pos: [0, 0, 0],
+                uv: TerrainUvRect::UNIT,
+            },
+            BlockDestroyOverlay {
+                pos: [2, 0, 0],
+                uv: TerrainUvRect::UNIT,
+            },
+        ];
+
+        let mesh = block_destroy_overlays_mesh(&overlays);
+
+        assert_eq!(mesh.vertices.len(), 48);
+        assert_eq!(mesh.indices.len(), 72);
+        assert_eq!(mesh.vertices[0].position, [0.0, -0.003, 1.0]);
+        assert_eq!(mesh.vertices[24].position, [2.0, -0.003, 1.0]);
+        assert_eq!(mesh.indices[36..42], [24, 25, 26, 24, 26, 27]);
     }
 }

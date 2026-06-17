@@ -134,7 +134,7 @@ impl Renderer {
             }
         }
 
-        if let Some(overlay) = &self.block_destroy_overlay {
+        if let Some(overlays) = &self.block_destroy_overlays {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-block-destroy-overlay-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -159,9 +159,9 @@ impl Renderer {
             pass.set_pipeline(&self.block_destroy_pipeline);
             pipeline_switches += 1;
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            pass.set_vertex_buffer(0, overlay.vertex_buffer.slice(..));
-            pass.set_index_buffer(overlay.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..overlay.index_count, 0, 0..1);
+            pass.set_vertex_buffer(0, overlays.vertex_buffer.slice(..));
+            pass.set_index_buffer(overlays.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..overlays.index_count, 0, 0..1);
             block_destroy_overlay_draw_calls += 1;
         }
 
