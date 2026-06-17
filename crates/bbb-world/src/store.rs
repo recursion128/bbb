@@ -8,10 +8,10 @@ use crate::{
     ClientDebugGameState, ClientDebugQueryState, ClientEffectsState, ClientFeatureState,
     ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
-    LastMapColorPatchState, LevelEventRecord, LocalPlayerState, MapItemState, PlayerInfoState,
-    ProjectilePowerUpdateState, RegistrySet, ScoreboardState, ServerPresentationState,
-    WorldApplyDiagnosticsState, WorldBorderState, WorldCounters, WorldDimension,
-    WorldGameplayState, WorldLevelInfo,
+    LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState, LocalPlayerState,
+    MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet, ScoreboardState,
+    ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState, WorldCounters,
+    WorldDimension, WorldGameplayState, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -42,6 +42,8 @@ pub struct WorldStore {
     pub(crate) level_events: Vec<LevelEventRecord>,
     #[serde(default)]
     pub(crate) last_block_changed_ack: Option<BlockChangedAckState>,
+    #[serde(default)]
+    pub(crate) local_block_predictions: Vec<LocalBlockPredictionState>,
     pub(crate) entities: crate::entities::EntityStore,
     #[serde(default)]
     pub(crate) scoreboard: ScoreboardState,

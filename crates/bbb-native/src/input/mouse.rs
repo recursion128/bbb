@@ -217,6 +217,7 @@ fn start_destroy_block(
         sequence,
     );
     if local_player_instabuild(world) || world.local_destroy_block_is_immediate(hit.pos) {
+        world.predict_local_destroy_block(hit.pos, sequence);
         world.set_local_destroy_delay_ticks(5);
         return;
     }
@@ -738,6 +739,15 @@ mod tests {
         );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
         assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+        assert_eq!(
+            world
+                .probe_block(CROSSHAIR_BLOCK_POS)
+                .unwrap()
+                .block_state_id,
+            VANILLA_AIR_BLOCK_STATE_ID
+        );
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.local_block_predictions()[0].sequence, 1);
         assert_eq!(counters.player_action_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -810,6 +820,14 @@ mod tests {
         assert!(input.destroy_block_held);
         assert_eq!(world.local_player().interaction.destroying_block, None);
         assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+        assert_eq!(
+            world
+                .probe_block(CROSSHAIR_BLOCK_POS)
+                .unwrap()
+                .block_state_id,
+            VANILLA_AIR_BLOCK_STATE_ID
+        );
+        assert_eq!(world.local_block_predictions().len(), 1);
         assert_eq!(counters.player_action_commands_queued, 1);
         assert_eq!(counters.swing_commands_queued, 1);
         assert_eq!(

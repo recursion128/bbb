@@ -61,6 +61,7 @@ impl WorldStore {
         interaction.destroying_block_ticks = 0;
         interaction.destroy_delay_ticks = LOCAL_DESTROY_COMPLETION_DELAY_TICKS;
         let sequence = self.next_local_prediction_sequence();
+        self.predict_local_destroy_block(pos, sequence);
         Some(LocalDestroyBlockFinished {
             pos,
             face,
@@ -218,6 +219,14 @@ mod tests {
         );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
         assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+        assert_eq!(world.probe_block(pos).unwrap().block_state_id, 0);
+        assert_eq!(world.local_block_predictions().len(), 1);
+        assert_eq!(world.local_block_predictions()[0].sequence, 1);
+        assert_eq!(world.local_block_predictions()[0].server_block_state_id, 9);
+        assert_eq!(
+            world.local_block_predictions()[0].predicted_block_state_id,
+            0
+        );
     }
 
     #[test]

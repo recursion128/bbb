@@ -69,6 +69,16 @@ impl RegistrySet {
         self.block_states.by_id(id)
     }
 
+    pub fn block_state_id_by_name_and_properties(
+        &self,
+        name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<i32> {
+        self.block_states
+            .find_by_name_and_properties(name, properties)
+            .map(|state| state.id)
+    }
+
     pub fn block_state_count(&self) -> usize {
         self.block_states.len()
     }

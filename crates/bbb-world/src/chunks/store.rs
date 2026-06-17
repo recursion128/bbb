@@ -8,6 +8,7 @@ use bbb_protocol::{
         SetChunkCacheRadius as ProtocolSetChunkCacheRadius,
     },
 };
+use std::collections::BTreeMap;
 
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
@@ -61,8 +62,14 @@ impl WorldStore {
 
     pub fn apply_block_update(&mut self, update: ProtocolBlockUpdate) -> bool {
         self.counters.block_updates_received += 1;
-        let applied =
-            self.set_block_state_id(protocol_block_pos(update.pos), update.block_state_id);
+        let pos = protocol_block_pos(update.pos);
+        let applied = if self.update_local_block_prediction_server_state(pos, update.block_state_id)
+        {
+            self.counters.local_block_predictions_reconciled_by_update += 1;
+            true
+        } else {
+            self.set_block_state_id(pos, update.block_state_id)
+        };
         if applied {
             self.counters.block_updates_applied += 1;
         } else {
@@ -76,10 +83,11 @@ impl WorldStore {
         self.counters.block_updates_received += received;
         let mut applied = 0;
         for block_update in update.updates {
-            if self.set_block_state_id(
-                protocol_block_pos(block_update.pos),
-                block_update.block_state_id,
-            ) {
+            let pos = protocol_block_pos(block_update.pos);
+            if self.update_local_block_prediction_server_state(pos, block_update.block_state_id) {
+                self.counters.local_block_predictions_reconciled_by_update += 1;
+                applied += 1;
+            } else if self.set_block_state_id(pos, block_update.block_state_id) {
                 applied += 1;
             }
         }
@@ -357,6 +365,48 @@ impl WorldStore {
         self.chunks.len()
     }
 
+    pub fn predict_local_destroy_block(&mut self, pos: BlockPos, sequence: i32) -> bool {
+        let Some(block) = self.probe_block(pos) else {
+            self.counters.local_block_predictions_failed += 1;
+            return false;
+        };
+        let server_block_state_id = block.block_state_id;
+        let predicted_block_state_id = self.local_destroy_legacy_block_state_id(&block);
+        if server_block_state_id == predicted_block_state_id {
+            return true;
+        }
+        if !self.set_block_state_id(pos, predicted_block_state_id) {
+            self.counters.local_block_predictions_failed += 1;
+            return false;
+        }
+        self.record_local_block_prediction(
+            sequence,
+            pos,
+            server_block_state_id,
+            predicted_block_state_id,
+        );
+        true
+    }
+
+    pub(crate) fn sync_ended_local_block_predictions(&mut self, sequence: i32) -> usize {
+        let predictions = self.take_local_block_predictions_through_sequence(sequence);
+        let ended = predictions.len();
+        for prediction in &predictions {
+            let current = self
+                .probe_block(prediction.pos)
+                .map(|block| block.block_state_id);
+            if current == Some(prediction.server_block_state_id) {
+                continue;
+            }
+            if self.set_block_state_id(prediction.pos, prediction.server_block_state_id) {
+                continue;
+            } else {
+                self.counters.local_block_predictions_failed += 1;
+            }
+        }
+        ended
+    }
+
     fn set_block_state_id(&mut self, pos: BlockPos, block_state_id: i32) -> bool {
         if block_state_id < 0 || !self.dimension.contains_y(pos.y) {
             return false;
@@ -411,6 +461,29 @@ impl WorldStore {
         );
         apply_counted_delta(&mut section.fluid_count, old_fluid, new_fluid);
         true
+    }
+
+    fn local_destroy_legacy_block_state_id(&self, block: &BlockProbe) -> i32 {
+        let Some(fluid) = block.fluid else {
+            return 0;
+        };
+        let (name, level) = match fluid.kind {
+            crate::TerrainFluidKind::Water => ("minecraft:water", fluid_legacy_level(fluid)),
+            crate::TerrainFluidKind::Lava => ("minecraft:lava", fluid_legacy_level(fluid)),
+        };
+        let mut properties = BTreeMap::new();
+        properties.insert("level".to_string(), level.to_string());
+        self.registries
+            .block_state_id_by_name_and_properties(name, &properties)
+            .unwrap_or(0)
+    }
+}
+
+fn fluid_legacy_level(fluid: crate::TerrainFluidState) -> u8 {
+    if fluid.amount >= 8 && !fluid.falling {
+        0
+    } else {
+        8_u8.saturating_sub(fluid.amount.min(8)) + u8::from(fluid.falling) * 8
     }
 }
 

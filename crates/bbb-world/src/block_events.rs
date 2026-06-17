@@ -34,12 +34,22 @@ pub struct BlockChangedAckState {
     pub sequence: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalBlockPredictionState {
+    pub sequence: i32,
+    pub pos: BlockPos,
+    pub server_block_state_id: i32,
+    pub predicted_block_state_id: i32,
+}
+
 impl WorldStore {
     pub fn apply_block_changed_ack(&mut self, ack: ProtocolBlockChangedAck) {
         self.counters.block_changed_ack_packets += 1;
         self.last_block_changed_ack = Some(BlockChangedAckState {
             sequence: ack.sequence,
         });
+        let reconciled = self.sync_ended_local_block_predictions(ack.sequence);
+        self.counters.local_block_predictions_reconciled_by_ack += reconciled;
     }
 
     pub fn apply_block_destruction(&mut self, update: ProtocolBlockDestruction) -> bool {
@@ -117,6 +127,72 @@ impl WorldStore {
 
     pub fn last_block_changed_ack(&self) -> Option<&BlockChangedAckState> {
         self.last_block_changed_ack.as_ref()
+    }
+
+    pub fn local_block_predictions(&self) -> &[LocalBlockPredictionState] {
+        &self.local_block_predictions
+    }
+
+    pub(crate) fn record_local_block_prediction(
+        &mut self,
+        sequence: i32,
+        pos: BlockPos,
+        server_block_state_id: i32,
+        predicted_block_state_id: i32,
+    ) {
+        self.local_block_predictions
+            .retain(|prediction| prediction.sequence != sequence && prediction.pos != pos);
+        self.local_block_predictions
+            .push(LocalBlockPredictionState {
+                sequence,
+                pos,
+                server_block_state_id,
+                predicted_block_state_id,
+            });
+        self.local_block_predictions
+            .sort_by_key(|prediction| prediction.sequence);
+        self.counters.local_block_predictions_created += 1;
+        self.update_local_block_prediction_count();
+    }
+
+    pub(crate) fn update_local_block_prediction_server_state(
+        &mut self,
+        pos: BlockPos,
+        server_block_state_id: i32,
+    ) -> bool {
+        if server_block_state_id < 0 {
+            return false;
+        }
+        let Some(prediction) = self
+            .local_block_predictions
+            .iter_mut()
+            .find(|prediction| prediction.pos == pos)
+        else {
+            return false;
+        };
+        prediction.server_block_state_id = server_block_state_id;
+        true
+    }
+
+    pub(crate) fn take_local_block_predictions_through_sequence(
+        &mut self,
+        sequence: i32,
+    ) -> Vec<LocalBlockPredictionState> {
+        let mut ended = Vec::new();
+        self.local_block_predictions.retain(|prediction| {
+            if prediction.sequence <= sequence {
+                ended.push(*prediction);
+                false
+            } else {
+                true
+            }
+        });
+        self.update_local_block_prediction_count();
+        ended
+    }
+
+    pub(crate) fn update_local_block_prediction_count(&mut self) {
+        self.counters.local_block_predictions_tracked = self.local_block_predictions.len();
     }
 }
 

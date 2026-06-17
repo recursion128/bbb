@@ -40,6 +40,17 @@ impl BlockStateRegistry {
         self.states.get(id)?.as_ref()
     }
 
+    pub fn find_by_name_and_properties(
+        &self,
+        name: &str,
+        properties: &BTreeMap<String, String>,
+    ) -> Option<&BlockStateInfo> {
+        self.states
+            .iter()
+            .flatten()
+            .find(|state| state.name == name && state.properties == *properties)
+    }
+
     pub fn len(&self) -> usize {
         self.states.iter().filter(|state| state.is_some()).count()
     }

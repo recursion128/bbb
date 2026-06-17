@@ -299,10 +299,12 @@ impl WorldStore {
         self.block_destructions.clear();
         self.block_events.clear();
         self.level_events.clear();
+        self.local_block_predictions.clear();
         self.entities.clear();
         self.counters.block_destructions_tracked = 0;
         self.counters.block_events_tracked = 0;
         self.counters.level_events_tracked = 0;
+        self.counters.local_block_predictions_tracked = 0;
         self.update_active_mob_effect_count();
         self.update_entity_count();
     }

@@ -1,5 +1,6 @@
 pub use crate::block_events::{
     BlockChangedAckState, BlockDestructionProgress, BlockEventRecord, LevelEventRecord,
+    LocalBlockPredictionState,
 };
 pub use crate::chunks::{
     decode_level_chunk_with_light, BlockEntityRecord, ChunkColumn, ChunkProbeSummaryState,

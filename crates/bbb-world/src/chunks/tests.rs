@@ -3,16 +3,17 @@ use super::{
     LIGHT_ARRAY_BYTES,
 };
 use crate::{
-    section_block_index, BlockPos, ChunkPos, TerrainLight, TerrainMaterialClass, WorldDimension,
-    WorldStore,
+    section_block_index, BlockPos, ChunkPos, TerrainFluidKind, TerrainFluidState, TerrainLight,
+    TerrainMaterialClass, WorldDimension, WorldStore,
 };
 
 use bbb_protocol::codec::Encoder;
 use bbb_protocol::packets::{
-    BlockEntityData as ProtocolBlockEntityData, BlockPos as ProtocolBlockPos,
-    BlockUpdate as ProtocolBlockUpdate, ChunkBiomeData as ProtocolChunkBiomeData,
-    ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ChunksBiomes as ProtocolChunksBiomes,
-    LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LightUpdate as ProtocolLightUpdate,
+    BlockChangedAck as ProtocolBlockChangedAck, BlockEntityData as ProtocolBlockEntityData,
+    BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
+    ChunkBiomeData as ProtocolChunkBiomeData, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
+    ChunksBiomes as ProtocolChunksBiomes, LevelChunkBlockEntity, LevelChunkData,
+    LevelChunkWithLight, LightUpdate as ProtocolLightUpdate,
     LightUpdateData as ProtocolLightUpdateData, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
     SetChunkCacheCenter as ProtocolSetChunkCacheCenter,
     SetChunkCacheRadius as ProtocolSetChunkCacheRadius,
@@ -384,6 +385,151 @@ fn applies_single_block_update_and_reuploads_palette() {
         .summary();
     assert_eq!(summary.empty_blocks, 1);
     assert_eq!(summary.opaque_blocks, 4095);
+}
+
+#[test]
+fn local_destroy_prediction_defers_server_block_update_until_ack() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+
+    assert!(store.predict_local_destroy_block(pos, 7));
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 0);
+    assert_eq!(store.local_block_predictions().len(), 1);
+    assert_eq!(store.counters().local_block_predictions_created, 1);
+    assert_eq!(store.counters().local_block_predictions_tracked, 1);
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 34,
+            y: 1,
+            z: -45,
+        },
+        block_state_id: 9,
+    }));
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 0);
+    assert_eq!(store.local_block_predictions()[0].server_block_state_id, 9);
+    assert_eq!(
+        store
+            .counters()
+            .local_block_predictions_reconciled_by_update,
+        1
+    );
+
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 7 });
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 9);
+    assert!(store.local_block_predictions().is_empty());
+    assert_eq!(
+        store.counters().local_block_predictions_reconciled_by_ack,
+        1
+    );
+    assert_eq!(store.counters().local_block_predictions_tracked, 0);
+}
+
+#[test]
+fn local_destroy_prediction_accepts_matching_server_update_on_ack() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+
+    assert!(store.predict_local_destroy_block(pos, 7));
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 0);
+
+    assert_eq!(
+        store.apply_section_blocks_update(ProtocolSectionBlocksUpdate {
+            section_x: 2,
+            section_y: 0,
+            section_z: -3,
+            updates: vec![ProtocolBlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 34,
+                    y: 1,
+                    z: -45,
+                },
+                block_state_id: 0,
+            }],
+        }),
+        1
+    );
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 0);
+    assert_eq!(store.local_block_predictions()[0].server_block_state_id, 0);
+
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 7 });
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 0);
+    assert!(store.local_block_predictions().is_empty());
+    assert_eq!(
+        store
+            .counters()
+            .local_block_predictions_reconciled_by_update,
+        1
+    );
+    assert_eq!(
+        store.counters().local_block_predictions_reconciled_by_ack,
+        1
+    );
+}
+
+#[test]
+fn local_destroy_prediction_uses_legacy_fluid_block_state() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 34,
+            y: 1,
+            z: -45,
+        },
+        block_state_id: 13332,
+    }));
+    assert_eq!(
+        store.probe_block(pos).unwrap().fluid,
+        Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
+    );
+
+    assert!(store.predict_local_destroy_block(pos, 7));
+    let predicted = store.probe_block(pos).unwrap();
+    assert_eq!(predicted.block_name.as_deref(), Some("minecraft:water"));
+    assert_eq!(
+        predicted.block_properties.get("level").map(String::as_str),
+        Some("0")
+    );
+    assert_eq!(predicted.material, TerrainMaterialClass::Fluid);
+    assert_eq!(
+        store.local_block_predictions()[0].server_block_state_id,
+        13332
+    );
+    assert_eq!(
+        store.local_block_predictions()[0].predicted_block_state_id,
+        predicted.block_state_id
+    );
 }
 
 #[test]

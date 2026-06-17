@@ -131,6 +131,16 @@ pub struct WorldCounters {
     #[serde(default)]
     pub block_changed_ack_packets: usize,
     #[serde(default)]
+    pub local_block_predictions_created: usize,
+    #[serde(default)]
+    pub local_block_predictions_reconciled_by_ack: usize,
+    #[serde(default)]
+    pub local_block_predictions_reconciled_by_update: usize,
+    #[serde(default)]
+    pub local_block_predictions_failed: usize,
+    #[serde(default)]
+    pub local_block_predictions_tracked: usize,
+    #[serde(default)]
     pub block_events_received: usize,
     #[serde(default)]
     pub block_events_tracked: usize,
