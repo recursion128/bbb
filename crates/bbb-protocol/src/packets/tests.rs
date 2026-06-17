@@ -970,6 +970,7 @@ fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order
     assert_eq!(ids::play::SERVERBOUND_BLOCK_ENTITY_TAG_QUERY, 2);
     assert_eq!(ids::play::SERVERBOUND_CHANGE_DIFFICULTY, 4);
     assert_eq!(ids::play::SERVERBOUND_CHANGE_GAME_MODE, 5);
+    assert_eq!(ids::play::SERVERBOUND_CHAT_ACK, 6);
     assert_eq!(ids::play::SERVERBOUND_CHAT_COMMAND, 7);
     assert_eq!(ids::play::SERVERBOUND_ENTITY_TAG_QUERY, 25);
     assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
@@ -1131,6 +1132,16 @@ fn encodes_change_game_mode_packet() {
     assert_eq!(id, ids::play::SERVERBOUND_CHANGE_GAME_MODE);
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 3);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_chat_acknowledgement_packet() {
+    let (id, payload) = encode_play_chat_acknowledgement(ChatAcknowledgement { offset: 65 });
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHAT_ACK);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 65);
     assert!(decoder.is_empty());
 }
 

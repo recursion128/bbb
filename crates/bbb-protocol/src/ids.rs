@@ -208,6 +208,7 @@ pub mod play {
     pub const SERVERBOUND_BUNDLE_ITEM_SELECTED: i32 = 3;
     pub const SERVERBOUND_CHANGE_DIFFICULTY: i32 = 4;
     pub const SERVERBOUND_CHANGE_GAME_MODE: i32 = 5;
+    pub const SERVERBOUND_CHAT_ACK: i32 = 6;
     pub const SERVERBOUND_CHAT_COMMAND: i32 = 7;
     pub const SERVERBOUND_CHUNK_BATCH_RECEIVED: i32 = 11;
     pub const SERVERBOUND_CLIENT_COMMAND: i32 = 12;

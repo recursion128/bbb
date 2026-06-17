@@ -63,6 +63,11 @@ pub struct ChangeGameModeCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatAcknowledgement {
+    pub offset: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LockDifficultyCommand {
     pub locked: bool,
 }
@@ -442,6 +447,12 @@ pub fn encode_play_change_game_mode(command: ChangeGameModeCommand) -> (i32, Vec
     let mut out = Encoder::new();
     out.write_var_i32(command.game_mode.id());
     (ids::play::SERVERBOUND_CHANGE_GAME_MODE, out.into_inner())
+}
+
+pub fn encode_play_chat_acknowledgement(command: ChatAcknowledgement) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(command.offset);
+    (ids::play::SERVERBOUND_CHAT_ACK, out.into_inner())
 }
 
 pub fn encode_play_lock_difficulty(command: LockDifficultyCommand) -> (i32, Vec<u8>) {

@@ -11,16 +11,17 @@ mod commands;
 
 pub(crate) use commands::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity,
-    send_block_entity_tag_query, send_change_difficulty, send_change_game_mode, send_chat_command,
-    send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_edit_book, send_entity_tag_query,
-    send_interact_entity, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
-    send_pick_item_from_entity, send_ping_request, send_place_recipe,
-    send_player_abilities_command, send_player_action, send_player_command,
-    send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
-    send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
-    send_set_beacon, send_set_held_slot_command, send_sign_update, send_spectate_entity,
-    send_swing_command, send_teleport_to_entity, send_use_item, send_use_item_on,
+    send_block_entity_tag_query, send_change_difficulty, send_change_game_mode,
+    send_chat_acknowledgement, send_chat_command, send_command_suggestion_request,
+    send_container_button_click, send_container_click, send_container_close,
+    send_container_slot_state_changed, send_edit_book, send_entity_tag_query, send_interact_entity,
+    send_lock_difficulty, send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity,
+    send_ping_request, send_place_recipe, send_player_abilities_command, send_player_action,
+    send_player_command, send_player_input_command, send_recipe_book_change_settings,
+    send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
+    send_select_bundle_item, send_select_trade, send_set_beacon, send_set_held_slot_command,
+    send_sign_update, send_spectate_entity, send_swing_command, send_teleport_to_entity,
+    send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -95,6 +96,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                     Some(NetCommand::PlayerInput(input)) => {
                         send_player_input_command(conn, input).await?;
+                    }
+                    Some(NetCommand::ChatAcknowledgement(command)) => {
+                        send_chat_acknowledgement(conn, command).await?;
                     }
                     Some(NetCommand::ChatCommand(command)) => {
                         send_chat_command(conn, command).await?;
@@ -224,6 +228,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::PlayerCommand(_)) => {}
                     Some(NetCommand::PlayerAbilities(_)) => {}
                     Some(NetCommand::PlayerInput(_)) => {}
+                    Some(NetCommand::ChatAcknowledgement(_)) => {}
                     Some(NetCommand::ChatCommand(_)) => {}
                     Some(NetCommand::AttackEntity(_)) => {}
                     Some(NetCommand::InteractEntity(_)) => {}
@@ -279,15 +284,15 @@ mod tests {
         ids,
         packets::{
             AttackEntity, BlockEntityTagQuery, BlockHitResult, BlockPos, ChangeDifficultyCommand,
-            ChangeGameModeCommand, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
-            ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
-            Difficulty, Direction, EditBook, EntityTagQuery, GameType, HashedStack, InteractEntity,
-            InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
-            PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
-            PlayerActionKind, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-            RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
-            SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
-            UseItemOn, Vec3d,
+            ChangeGameModeCommand, ChatAcknowledgement, ChatCommand, CommandSuggestionRequest,
+            ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
+            ContainerSlotStateChanged, Difficulty, Direction, EditBook, EntityTagQuery, GameType,
+            HashedStack, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+            PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+            PlayerAction, PlayerActionKind, RecipeBookChangeSettingsCommand,
+            RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
+            SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate,
+            SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -486,6 +491,27 @@ mod tests {
             decoder.read_string(32767).unwrap(),
             "/give @p minecraft:stone"
         );
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_chat_acknowledgement_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::ChatAcknowledgement(ChatAcknowledgement {
+            offset: 65,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "chat acknowledgement").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_ACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 65);
         assert!(decoder.is_empty());
     }
 
