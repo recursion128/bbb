@@ -65,6 +65,24 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
         if is_flat_carpet_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::CARPET));
         }
+        if is_copper_grate_block_name(block_name) {
+            return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+        }
+        if is_chain_block_name(block_name) {
+            return chain_collision_shape(&block.block_properties);
+        }
+        if is_ladder_block_name(block_name) {
+            return ladder_collision_shape(&block.block_properties);
+        }
+        if is_lantern_block_name(block_name) {
+            return lantern_collision_shape(&block.block_properties);
+        }
+        if is_rod_block_name(block_name) {
+            return rod_collision_shape(&block.block_properties);
+        }
+        if is_campfire_block_name(block_name) {
+            return Some(BlockCollisionShape::single(BlockCollisionBox::CAMPFIRE));
+        }
         if is_door_block_name(block_name) {
             return door_collision_shape(&block.block_properties);
         }
@@ -145,6 +163,40 @@ fn is_flat_carpet_block_name(block_name: &str) -> bool {
             | "black_carpet"
             | "moss_carpet"
     )
+}
+
+fn is_copper_grate_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "copper_grate" || path.ends_with("_copper_grate"))
+}
+
+fn is_chain_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_chain"))
+}
+
+fn is_ladder_block_name(block_name: &str) -> bool {
+    block_name == "minecraft:ladder"
+}
+
+fn is_lantern_block_name(block_name: &str) -> bool {
+    let Some(path) = block_name.strip_prefix("minecraft:") else {
+        return false;
+    };
+    matches!(path, "lantern" | "soul_lantern") || path.ends_with("_copper_lantern")
+}
+
+fn is_rod_block_name(block_name: &str) -> bool {
+    let Some(path) = block_name.strip_prefix("minecraft:") else {
+        return false;
+    };
+    matches!(path, "end_rod" | "lightning_rod") || path.ends_with("_lightning_rod")
+}
+
+fn is_campfire_block_name(block_name: &str) -> bool {
+    matches!(block_name, "minecraft:campfire" | "minecraft:soul_campfire")
 }
 
 fn is_door_block_name(block_name: &str) -> bool {
@@ -240,6 +292,57 @@ fn snow_layer_collision_shape(
     Some(BlockCollisionShape::single(BlockCollisionBox::column(
         0.0, 0.0, 1.0, height, 1.0,
     )))
+}
+
+fn chain_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let axis = ShapeAxis::parse(properties.get("axis")?)?;
+    Some(BlockCollisionShape::single(
+        BlockCollisionBox::centered_axis(axis, 3.0),
+    ))
+}
+
+fn ladder_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    Some(
+        BlockCollisionShape::single(BlockCollisionBox::NORTH_VERTICAL_THIN)
+            .rotate_to_direction(facing),
+    )
+}
+
+fn lantern_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let y_offset = if bool_property(properties, "hanging")? {
+        PX
+    } else {
+        0.0
+    };
+    Some(BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::cuboid(
+            5.0 * PX,
+            y_offset,
+            5.0 * PX,
+            11.0 * PX,
+            y_offset + 7.0 * PX,
+            11.0 * PX,
+        )),
+        Some(BlockCollisionBox::cuboid(
+            6.0 * PX,
+            y_offset + 7.0 * PX,
+            6.0 * PX,
+            10.0 * PX,
+            y_offset + 9.0 * PX,
+            10.0 * PX,
+        )),
+        None,
+        None,
+        None,
+    ]))
+}
+
+fn rod_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let axis = ShapeAxis::parse_direction(properties.get("facing")?)?;
+    Some(BlockCollisionShape::single(
+        BlockCollisionBox::centered_axis(axis, 4.0),
+    ))
 }
 
 fn door_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
@@ -480,6 +583,33 @@ enum HorizontalAxis {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShapeAxis {
+    X,
+    Y,
+    Z,
+}
+
+impl ShapeAxis {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "x" => Some(Self::X),
+            "y" => Some(Self::Y),
+            "z" => Some(Self::Z),
+            _ => None,
+        }
+    }
+
+    fn parse_direction(value: &str) -> Option<Self> {
+        match value {
+            "east" | "west" => Some(Self::X),
+            "up" | "down" => Some(Self::Y),
+            "north" | "south" => Some(Self::Z),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StairShapeKind {
     Straight,
     Outer,
@@ -654,6 +784,14 @@ impl BlockCollisionBox {
         min_z: 0.0,
         max_x: 1.0,
         max_y: PX,
+        max_z: 1.0,
+    };
+    const CAMPFIRE: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: 7.0 * PX,
         max_z: 1.0,
     };
     const BOTTOM_TRAPDOOR: Self = Self {
@@ -841,6 +979,17 @@ impl BlockCollisionBox {
         max_z: 11.0 * PX,
     };
 
+    fn cuboid(min_x: f64, min_y: f64, min_z: f64, max_x: f64, max_y: f64, max_z: f64) -> Self {
+        Self {
+            min_x,
+            min_y,
+            min_z,
+            max_x,
+            max_y,
+            max_z,
+        }
+    }
+
     fn column(min_x: f64, min_z: f64, max_x: f64, max_y: f64, max_z: f64) -> Self {
         Self {
             min_x,
@@ -849,6 +998,16 @@ impl BlockCollisionBox {
             max_x,
             max_y,
             max_z,
+        }
+    }
+
+    fn centered_axis(axis: ShapeAxis, width_px: f64) -> Self {
+        let min = ((16.0 - width_px) / 2.0) * PX;
+        let max = ((16.0 + width_px) / 2.0) * PX;
+        match axis {
+            ShapeAxis::X => Self::cuboid(0.0, min, min, 1.0, max, max),
+            ShapeAxis::Y => Self::cuboid(min, 0.0, min, max, 1.0, max),
+            ShapeAxis::Z => Self::cuboid(min, min, 0.0, max, max, 1.0),
         }
     }
 

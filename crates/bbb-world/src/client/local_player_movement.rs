@@ -294,6 +294,14 @@ mod tests {
     const GLASS_NORTH_PANE_BLOCK_STATE_ID: i32 = 8323;
     const WHITE_CARPET_BLOCK_STATE_ID: i32 = 12896;
     const COBBLESTONE_NORTH_EAST_WALL_BLOCK_STATE_ID: i32 = 10236;
+    const IRON_CHAIN_Y_AXIS_BLOCK_STATE_ID: i32 = 8249;
+    const LADDER_SOUTH_BLOCK_STATE_ID: i32 = 5722;
+    const END_ROD_NORTH_BLOCK_STATE_ID: i32 = 14636;
+    const LANTERN_STANDING_BLOCK_STATE_ID: i32 = 20840;
+    const CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID: i32 = 20880;
+    const COPPER_GRATE_BLOCK_STATE_ID: i32 = 27048;
+    const WAXED_COPPER_GRATE_BLOCK_STATE_ID: i32 = 27056;
+    const LIGHTNING_ROD_UP_UNPOWERED_BLOCK_STATE_ID: i32 = 27562;
 
     #[test]
     fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
@@ -471,6 +479,29 @@ mod tests {
     }
 
     #[test]
+    fn local_player_steps_onto_low_campfire_and_lantern_shapes() {
+        let cases = [
+            ("campfire", CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID, 1.4375),
+            ("standing lantern", LANTERN_STANDING_BLOCK_STATE_ID, 1.5625),
+        ];
+
+        for (name, block_state_id, expected_y) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, expected_y, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
     fn local_player_does_not_collide_with_pressure_plate_outline() {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 1, STONE_PRESSURE_PLATE_BLOCK_STATE_ID);
@@ -479,6 +510,79 @@ mod tests {
         assert_f64_near(pose.position.y, 1.0, 0.0005);
         assert!(pose.position.z > 1.0, "position was {:?}", pose.position);
         assert!(!pose.horizontal_collision);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_copper_grates() {
+        let cases = [
+            ("copper grate", COPPER_GRATE_BLOCK_STATE_ID),
+            ("waxed copper grate", WAXED_COPPER_GRATE_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z <= 0.7005,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_chain_or_rod_shapes() {
+        let cases = [
+            (
+                "vertical chain",
+                IRON_CHAIN_Y_AXIS_BLOCK_STATE_ID,
+                0.9,
+                1.107,
+            ),
+            (
+                "vertical lightning rod",
+                LIGHTNING_ROD_UP_UNPOWERED_BLOCK_STATE_ID,
+                0.9,
+                1.076,
+            ),
+            ("north end rod", END_ROD_NORTH_BLOCK_STATE_ID, 0.0, 0.7005),
+        ];
+
+        for (name, block_state_id, min_z, max_z) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z > min_z && pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_ladder_sheet_on_approached_side() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, LADDER_SOUTH_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+        assert!(
+            pose.position.z <= 0.7005,
+            "position was {:?}",
+            pose.position
+        );
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.horizontal_collision);
         assert!(pose.on_ground);
     }
 
