@@ -95,6 +95,12 @@ pub enum NetControlRequest {
         transaction_id: i32,
         entity_id: i32,
     },
+    SpectateEntity {
+        entity_id: i32,
+    },
+    TeleportToEntity {
+        uuid: uuid::Uuid,
+    },
     ContainerButtonClick {
         container_id: i32,
         button_id: i32,

@@ -8,7 +8,7 @@ use bbb_protocol::packets::{
     PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand,
     PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
     RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate,
-    UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -226,6 +226,30 @@ pub(crate) fn queue_entity_tag_query_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::EntityTagQuery(command)).is_ok() {
             counters.entity_tag_query_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_spectate_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SpectateEntity,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SpectateEntity(command)).is_ok() {
+            counters.spectate_entity_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_teleport_to_entity_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: TeleportToEntity,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::TeleportToEntity(command)).is_ok() {
+            counters.teleport_to_entity_commands_queued += 1;
         }
     }
 }
@@ -645,6 +669,7 @@ mod tests {
     use bbb_world::BlockPos;
 
     use crate::crosshair::CrosshairBlockHit;
+    use uuid::Uuid;
 
     #[test]
     fn hotbar_slot_for_scroll_matches_vanilla_direction_and_wrap() {
@@ -886,6 +911,27 @@ mod tests {
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::EntityTagQuery(entity_query)
+        );
+    }
+
+    #[test]
+    fn queues_spectator_entity_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
+        let spectate = SpectateEntity { entity_id: 1234 };
+        let teleport = TeleportToEntity { uuid };
+
+        queue_spectate_entity_command(&mut counters, &commands, spectate);
+        queue_teleport_to_entity_command(&mut counters, &commands, teleport);
+
+        assert_eq!(counters.spectate_entity_commands_queued, 1);
+        assert_eq!(counters.teleport_to_entity_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SpectateEntity(spectate));
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::TeleportToEntity(teleport)
         );
     }
 

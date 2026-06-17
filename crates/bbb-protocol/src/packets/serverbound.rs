@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{codec::Encoder, ids};
 
@@ -208,6 +209,16 @@ pub struct SignUpdate {
     pub pos: BlockPos,
     pub is_front_text: bool,
     pub lines: [String; 4],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpectateEntity {
+    pub entity_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TeleportToEntity {
+    pub uuid: Uuid,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -690,6 +701,18 @@ pub fn encode_play_sign_update(packet: &SignUpdate) -> (i32, Vec<u8>) {
         out.write_string(line);
     }
     (ids::play::SERVERBOUND_SIGN_UPDATE, out.into_inner())
+}
+
+pub fn encode_play_spectate_entity(packet: SpectateEntity) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.entity_id);
+    (ids::play::SERVERBOUND_SPECTATE_ENTITY, out.into_inner())
+}
+
+pub fn encode_play_teleport_to_entity(packet: TeleportToEntity) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_uuid(packet.uuid);
+    (ids::play::SERVERBOUND_TELEPORT_TO_ENTITY, out.into_inner())
 }
 
 pub fn encode_play_container_button_click(packet: ContainerButtonClick) -> (i32, Vec<u8>) {

@@ -9,7 +9,8 @@ use super::{
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
     send_select_bundle_item, send_select_trade, send_set_beacon, send_set_held_slot_command,
-    send_sign_update, send_swing_command, send_use_item, send_use_item_on,
+    send_sign_update, send_spectate_entity, send_swing_command, send_teleport_to_entity,
+    send_use_item, send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -27,7 +28,7 @@ use bbb_protocol::{
         PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
         PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
         RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
-        SelectTradeCommand, SetBeacon, SignUpdate, Vec3d,
+        SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -36,6 +37,7 @@ use std::{
     time::Duration,
 };
 use tokio::time::timeout;
+use uuid::Uuid;
 
 #[test]
 fn player_move_command_encodes_pos_rot_packet() {
@@ -1052,6 +1054,50 @@ async fn send_tag_query_commands_encode_packets() {
     )
     .await
     .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_spectator_entity_commands_encode_packets() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("spectate entity should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SPECTATE_ENTITY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1234);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("teleport to entity should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_TELEPORT_TO_ENTITY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_uuid().unwrap(), uuid);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_spectate_entity(&mut conn, SpectateEntity { entity_id: 1234 })
+        .await
+        .unwrap();
+    send_teleport_to_entity(&mut conn, TeleportToEntity { uuid })
+        .await
+        .unwrap();
 
     server.await.unwrap();
 }

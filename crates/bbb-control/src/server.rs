@@ -292,6 +292,62 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.spectate_entity" {
+        let Some(entity_id) = i32_param(&request.params, "entity_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.spectate_entity requires integer param entity_id".to_string()),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::SpectateEntity { entity_id });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.teleport_to_entity" {
+        let Some(uuid) = string_param(&request.params, "uuid") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.teleport_to_entity requires string param uuid".to_string()),
+            };
+        };
+        let uuid = match uuid::Uuid::parse_str(uuid) {
+            Ok(uuid) => uuid,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(format!(
+                        "net.teleport_to_entity requires valid UUID param uuid: {err}"
+                    )),
+                };
+            }
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::TeleportToEntity { uuid });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.change_difficulty" {
         let change_difficulty = match change_difficulty_request_param(&request.params) {
             Ok(change_difficulty) => change_difficulty,
@@ -1896,6 +1952,135 @@ mod tests {
 
         assert_eq!(counters.block_entity_tag_query_commands_queued, 0);
         assert_eq!(counters.entity_tag_query_commands_queued, 0);
+    }
+
+    #[test]
+    fn net_spectate_entity_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.spectate_entity".to_string(),
+                params: json!({"entity_id": 99}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let result = response.result.unwrap();
+        assert_eq!(result["queued"], true);
+        assert_eq!(result["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SpectateEntity { entity_id: 99 }]
+        );
+    }
+
+    #[test]
+    fn net_spectate_entity_rejects_missing_or_non_integer_entity_id() {
+        let snapshot = shared_snapshot("test");
+        let missing_entity_id = dispatch(
+            ControlRequest {
+                method: "net.spectate_entity".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        let non_integer_entity_id = dispatch(
+            ControlRequest {
+                method: "net.spectate_entity".to_string(),
+                params: json!({"entity_id": "99"}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_entity_id.ok);
+        assert_eq!(
+            missing_entity_id.error.as_deref(),
+            Some("net.spectate_entity requires integer param entity_id")
+        );
+        assert!(!non_integer_entity_id.ok);
+        assert_eq!(
+            non_integer_entity_id.error.as_deref(),
+            Some("net.spectate_entity requires integer param entity_id")
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_teleport_to_entity_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let uuid = Uuid::from_u128(0x00112233445566778899aabbccddeeff);
+        let response = dispatch(
+            ControlRequest {
+                method: "net.teleport_to_entity".to_string(),
+                params: json!({"uuid": uuid.to_string()}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let result = response.result.unwrap();
+        assert_eq!(result["queued"], true);
+        assert_eq!(result["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::TeleportToEntity { uuid }]
+        );
+    }
+
+    #[test]
+    fn net_teleport_to_entity_rejects_missing_non_string_or_invalid_uuid() {
+        let snapshot = shared_snapshot("test");
+        let missing_uuid = dispatch(
+            ControlRequest {
+                method: "net.teleport_to_entity".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        let non_string_uuid = dispatch(
+            ControlRequest {
+                method: "net.teleport_to_entity".to_string(),
+                params: json!({"uuid": 42}),
+            },
+            &snapshot,
+        );
+        let invalid_uuid = dispatch(
+            ControlRequest {
+                method: "net.teleport_to_entity".to_string(),
+                params: json!({"uuid": "not-a-uuid"}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_uuid.ok);
+        assert_eq!(
+            missing_uuid.error.as_deref(),
+            Some("net.teleport_to_entity requires string param uuid")
+        );
+        assert!(!non_string_uuid.ok);
+        assert_eq!(
+            non_string_uuid.error.as_deref(),
+            Some("net.teleport_to_entity requires string param uuid")
+        );
+        assert!(!invalid_uuid.ok);
+        assert!(invalid_uuid.error.as_deref().is_some_and(
+            |err| err.starts_with("net.teleport_to_entity requires valid UUID param uuid:")
+        ));
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_spectate_and_teleport_to_entity_counters_deserialize_with_defaults() {
+        let mut value = serde_json::to_value(NetCounters::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("spectate_entity_commands_queued");
+        object.remove("teleport_to_entity_commands_queued");
+
+        let counters: NetCounters = serde_json::from_value(value).unwrap();
+
+        assert_eq!(counters.spectate_entity_commands_queued, 0);
+        assert_eq!(counters.teleport_to_entity_commands_queued, 0);
     }
 
     #[test]

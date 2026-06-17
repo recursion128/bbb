@@ -8,6 +8,7 @@ use bbb_protocol::packets::{
     BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeDifficultyCommand, ContainerClick,
     ContainerInput, Difficulty, EditBook, EntityTagQuery, HashedComponentPatch, HashedItemStack,
     HashedStack, LockDifficultyCommand, RecipeBookType, RenameItem, SeenAdvancements, SetBeacon,
+    SpectateEntity, TeleportToEntity,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -23,7 +24,8 @@ use crate::{
         queue_player_abilities_command, queue_recipe_book_change_settings_command,
         queue_recipe_book_seen_recipe_command, queue_rename_item_command,
         queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
-        queue_sign_update_command, select_bundle_item, select_hotbar_slot,
+        queue_sign_update_command, queue_spectate_entity_command, queue_teleport_to_entity_command,
+        select_bundle_item, select_hotbar_slot,
     },
 };
 
@@ -274,6 +276,12 @@ pub(crate) fn pump_control_net_requests(
                     },
                 );
             }
+            NetControlRequest::SpectateEntity { entity_id } => {
+                queue_spectate_entity_command(counters, net_commands, SpectateEntity { entity_id });
+            }
+            NetControlRequest::TeleportToEntity { uuid } => {
+                queue_teleport_to_entity_command(counters, net_commands, TeleportToEntity { uuid });
+            }
             NetControlRequest::ContainerButtonClick {
                 container_id,
                 button_id,
@@ -365,6 +373,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
+    use uuid::Uuid;
 
     #[test]
     fn pump_control_net_requests_queues_chat_command() {
@@ -458,6 +467,33 @@ mod tests {
                 transaction_id: 12,
                 entity_id: 123,
             })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_spectator_entity_commands() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
+        snapshot.write().unwrap().net_requests.extend([
+            bbb_control::NetControlRequest::SpectateEntity { entity_id: 1234 },
+            bbb_control::NetControlRequest::TeleportToEntity { uuid },
+        ]);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.spectate_entity_commands_queued, 1);
+        assert_eq!(counters.teleport_to_entity_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SpectateEntity(SpectateEntity { entity_id: 1234 })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::TeleportToEntity(TeleportToEntity { uuid })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }

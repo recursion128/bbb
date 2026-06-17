@@ -19,8 +19,8 @@ pub(crate) use commands::{
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
-    send_set_beacon, send_set_held_slot_command, send_sign_update, send_swing_command,
-    send_use_item, send_use_item_on,
+    send_set_beacon, send_set_held_slot_command, send_sign_update, send_spectate_entity,
+    send_swing_command, send_teleport_to_entity, send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -168,6 +168,12 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::SignUpdate(packet)) => {
                         send_sign_update(conn, packet).await?;
                     }
+                    Some(NetCommand::SpectateEntity(packet)) => {
+                        send_spectate_entity(conn, packet).await?;
+                    }
+                    Some(NetCommand::TeleportToEntity(packet)) => {
+                        send_teleport_to_entity(conn, packet).await?;
+                    }
                     Some(NetCommand::SelectBundleItem(packet)) => {
                         send_select_bundle_item(conn, packet).await?;
                     }
@@ -239,6 +245,8 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::SelectTrade(_)) => {}
                     Some(NetCommand::SetBeacon(_)) => {}
                     Some(NetCommand::SignUpdate(_)) => {}
+                    Some(NetCommand::SpectateEntity(_)) => {}
+                    Some(NetCommand::TeleportToEntity(_)) => {}
                     Some(NetCommand::SelectBundleItem(_)) => {}
                     Some(NetCommand::ContainerButtonClick(_)) => {}
                     Some(NetCommand::ContainerClick(_)) => {}
@@ -274,7 +282,7 @@ mod tests {
             PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
             RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
             RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-            SetBeacon, SignUpdate, UseItem, UseItemOn, Vec3d,
+            SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -283,6 +291,7 @@ mod tests {
         sync::mpsc,
         time::{interval_at, timeout, Instant as TokioInstant},
     };
+    use uuid::Uuid;
 
     use crate::types::{PlayerMoveCommand, VehicleMoveCommand};
 
@@ -736,6 +745,37 @@ mod tests {
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 8);
         assert_eq!(decoder.read_var_i32().unwrap(), 1234);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_spectator_entity_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
+        tx.send(NetCommand::SpectateEntity(SpectateEntity {
+            entity_id: 1234,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::TeleportToEntity(TeleportToEntity { uuid }))
+            .await
+            .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "spectate entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SPECTATE_ENTITY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1234);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "teleport to entity").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_TELEPORT_TO_ENTITY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_uuid().unwrap(), uuid);
         assert!(decoder.is_empty());
     }
 

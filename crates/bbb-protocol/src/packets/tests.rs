@@ -976,6 +976,8 @@ fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order
     assert_eq!(ids::play::SERVERBOUND_PADDLE_BOAT, 35);
     assert_eq!(ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY, 37);
     assert_eq!(ids::play::SERVERBOUND_PING_REQUEST, 38);
+    assert_eq!(ids::play::SERVERBOUND_SPECTATE_ENTITY, 62);
+    assert_eq!(ids::play::SERVERBOUND_TELEPORT_TO_ENTITY, 64);
 }
 
 #[test]
@@ -1585,6 +1587,22 @@ fn encodes_sign_update_packet() {
     assert_eq!(decoder.read_string(384).unwrap(), "line 1");
     assert_eq!(decoder.read_string(384).unwrap(), "line 2");
     assert_eq!(decoder.read_string(384).unwrap(), "line 3");
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_spectator_entity_packets() {
+    let (id, payload) = encode_play_spectate_entity(SpectateEntity { entity_id: 1234 });
+    assert_eq!(id, ids::play::SERVERBOUND_SPECTATE_ENTITY);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1234);
+    assert!(decoder.is_empty());
+
+    let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
+    let (id, payload) = encode_play_teleport_to_entity(TeleportToEntity { uuid });
+    assert_eq!(id, ids::play::SERVERBOUND_TELEPORT_TO_ENTITY);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_uuid().unwrap(), uuid);
     assert!(decoder.is_empty());
 }
 

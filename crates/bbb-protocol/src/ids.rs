@@ -249,7 +249,9 @@ pub mod play {
     pub const SERVERBOUND_SET_BEACON: i32 = 52;
     pub const SERVERBOUND_SET_CARRIED_ITEM: i32 = 53;
     pub const SERVERBOUND_SIGN_UPDATE: i32 = 61;
+    pub const SERVERBOUND_SPECTATE_ENTITY: i32 = 62;
     pub const SERVERBOUND_SWING: i32 = 63;
+    pub const SERVERBOUND_TELEPORT_TO_ENTITY: i32 = 64;
     pub const SERVERBOUND_USE_ITEM_ON: i32 = 66;
     pub const SERVERBOUND_USE_ITEM: i32 = 67;
 }

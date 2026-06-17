@@ -6,8 +6,8 @@ use bbb_protocol::packets::{
     LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
     PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem,
-    UseItemOn,
+    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity,
+    TeleportToEntity, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -225,6 +225,22 @@ pub(crate) async fn send_seen_advancements(
 
 pub(crate) async fn send_sign_update(conn: &mut RawConnection, packet: SignUpdate) -> Result<()> {
     let (id, payload) = packets::encode_play_sign_update(&packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_spectate_entity(
+    conn: &mut RawConnection,
+    packet: SpectateEntity,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_spectate_entity(packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_teleport_to_entity(
+    conn: &mut RawConnection,
+    packet: TeleportToEntity,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_teleport_to_entity(packet);
     conn.send_packet(id, &payload).await
 }
 
