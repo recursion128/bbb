@@ -1,3 +1,10 @@
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+    sync::atomic::{AtomicU64, Ordering},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use bbb_control::NetCounters;
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
@@ -18,6 +25,27 @@ use winit::keyboard::KeyCode;
 use crate::crosshair::{
     protocol_block_hit_result_from_crosshair_hit, protocol_block_pos_from_world, CrosshairBlockHit,
 };
+
+static CHAT_SALT_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+fn unsigned_chat_clock_fields(message: &str) -> (i64, i64) {
+    let timestamp_millis = current_epoch_millis();
+    let salt_sequence = CHAT_SALT_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let mut hasher = DefaultHasher::new();
+    timestamp_millis.hash(&mut hasher);
+    salt_sequence.hash(&mut hasher);
+    message.hash(&mut hasher);
+    let salt = (hasher.finish() | 1) as i64;
+    (timestamp_millis, salt)
+}
+
+fn current_epoch_millis() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| i64::try_from(duration.as_millis()).unwrap_or(i64::MAX))
+        .unwrap_or(0)
+}
+
 pub(super) fn queue_player_input_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -404,7 +432,9 @@ pub(crate) fn queue_chat_message_command(
     message: impl Into<String>,
 ) {
     if let Some(tx) = net_commands {
-        let packet = ChatMessage::unsigned(message, 0, 0);
+        let message = message.into();
+        let (timestamp_millis, salt) = unsigned_chat_clock_fields(&message);
+        let packet = ChatMessage::unsigned(message, timestamp_millis, salt);
         if tx.try_send(NetCommand::ChatMessage(packet)).is_ok() {
             counters.chat_message_commands_queued += 1;
         }
@@ -701,9 +731,9 @@ mod tests {
     use bbb_protocol::packets::{
         AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
         ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerSlotStateChanged,
-        Direction as ProtocolDirection, InteractEntity, InteractionHand, PickItemFromBlock,
-        PickItemFromEntity, PlayerAction, PlayerActionKind, RecipeBookType, RecipeDisplayId,
-        UseItemOn,
+        Direction as ProtocolDirection, InteractEntity, InteractionHand, LastSeenMessagesUpdate,
+        PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind, RecipeBookType,
+        RecipeDisplayId, UseItemOn,
     };
     use bbb_protocol::packets::{
         ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
@@ -766,10 +796,15 @@ mod tests {
         queue_chat_message_command(&mut counters, &commands, "hello world");
 
         assert_eq!(counters.chat_message_commands_queued, 1);
-        assert_eq!(
-            rx.try_recv().unwrap(),
-            NetCommand::ChatMessage(ChatMessage::unsigned("hello world", 0, 0))
-        );
+        match rx.try_recv().unwrap() {
+            NetCommand::ChatMessage(packet) => {
+                assert_eq!(packet.message, "hello world");
+                assert!(packet.timestamp_millis > 0);
+                assert_ne!(packet.salt, 0);
+                assert_eq!(packet.last_seen_messages, LastSeenMessagesUpdate::default());
+            }
+            command => panic!("expected chat message command, got {command:?}"),
+        }
     }
 
     #[test]

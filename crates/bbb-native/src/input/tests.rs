@@ -1,8 +1,9 @@
 use super::*;
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, ChatMessage, CommandSuggestionRequest,
-    CommonPlayerSpawnInfo, ContainerCloseRequest, OpenScreen as ProtocolOpenScreen, PaddleBoat,
-    PlayLogin, PlayerAction, PlayerCommand, SetPassengers, Vec3d as ProtocolVec3d,
+    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestionRequest,
+    CommonPlayerSpawnInfo, ContainerCloseRequest, LastSeenMessagesUpdate,
+    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerCommand,
+    SetPassengers, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use uuid::Uuid;
@@ -303,10 +304,15 @@ fn chat_key_opens_chat_entry_and_submits_unsigned_message() {
         rx.try_recv().unwrap(),
         NetCommand::PlayerInput(PlayerInput::default())
     );
-    assert_eq!(
-        rx.try_recv().unwrap(),
-        NetCommand::ChatMessage(ChatMessage::unsigned("hello world", 0, 0))
-    );
+    match rx.try_recv().unwrap() {
+        NetCommand::ChatMessage(packet) => {
+            assert_eq!(packet.message, "hello world");
+            assert!(packet.timestamp_millis > 0);
+            assert_ne!(packet.salt, 0);
+            assert_eq!(packet.last_seen_messages, LastSeenMessagesUpdate::default());
+        }
+        command => panic!("expected chat message command, got {command:?}"),
+    }
     assert!(rx.try_recv().is_err());
 }
 
