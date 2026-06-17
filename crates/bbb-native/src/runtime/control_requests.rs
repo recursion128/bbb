@@ -16,8 +16,8 @@ use crate::{
         queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
         queue_container_click_command, queue_container_close_request_command,
         queue_container_slot_state_changed_command, queue_place_recipe_command,
-        queue_player_abilities_command, queue_select_bundle_item_command,
-        queue_select_trade_command, select_hotbar_slot,
+        queue_player_abilities_command, queue_select_trade_command, select_bundle_item,
+        select_hotbar_slot,
     },
 };
 
@@ -122,14 +122,7 @@ pub(crate) fn pump_control_net_requests(
                 slot_id,
                 selected_item_index,
             } => {
-                if world.apply_local_select_bundle_item(slot_id, selected_item_index) {
-                    queue_select_bundle_item_command(
-                        counters,
-                        net_commands,
-                        slot_id,
-                        selected_item_index,
-                    );
-                }
+                select_bundle_item(counters, world, net_commands, slot_id, selected_item_index);
             }
             NetControlRequest::ChatCommand { command } => {
                 queue_chat_command(counters, net_commands, command);

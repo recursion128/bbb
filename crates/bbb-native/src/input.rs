@@ -12,17 +12,19 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
 };
 
+mod bundle;
 mod commands;
 mod mouse;
 mod movement;
 
+pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{
     queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
     queue_container_click_command, queue_container_close_request_command,
     queue_container_slot_state_changed_command, queue_place_recipe_command,
-    queue_player_abilities_command, queue_select_bundle_item_command, queue_select_trade_command,
-    queue_vehicle_move_command, select_hotbar_slot,
+    queue_player_abilities_command, queue_select_trade_command, queue_vehicle_move_command,
+    select_hotbar_slot,
 };
 pub(crate) use mouse::{
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
@@ -43,6 +45,8 @@ pub(crate) struct ClientInputState {
     mouse_delta_y: f64,
     scroll_accumulated_x: f64,
     scroll_accumulated_y: f64,
+    bundle_scroll_accumulated_x: f64,
+    bundle_scroll_accumulated_y: f64,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
     last_move_command_pose: Option<LocalPlayerPoseState>,
@@ -68,6 +72,8 @@ impl ClientInputState {
         self.mouse_delta_y = 0.0;
         self.scroll_accumulated_x = 0.0;
         self.scroll_accumulated_y = 0.0;
+        self.bundle_scroll_accumulated_x = 0.0;
+        self.bundle_scroll_accumulated_y = 0.0;
     }
 }
 
