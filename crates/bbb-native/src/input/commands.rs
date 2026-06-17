@@ -6,7 +6,8 @@ use bbb_protocol::packets::{
     InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
     PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    SelectBundleItem, SelectTradeCommand, SignUpdate, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SignUpdate, UseItem, UseItemOn,
+    Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -113,6 +114,18 @@ pub(crate) fn queue_rename_item_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::RenameItem(command)).is_ok() {
             counters.rename_item_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_seen_advancements_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SeenAdvancements,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SeenAdvancements(command)).is_ok() {
+            counters.advancements_seen_commands_queued += 1;
         }
     }
 }
@@ -655,6 +668,24 @@ mod tests {
 
         assert_eq!(counters.rename_item_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::RenameItem(command));
+    }
+
+    #[test]
+    fn queues_seen_advancements_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = SeenAdvancements::OpenedTab {
+            tab: "minecraft:story/root".to_string(),
+        };
+
+        queue_seen_advancements_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.advancements_seen_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SeenAdvancements(command)
+        );
     }
 
     #[test]

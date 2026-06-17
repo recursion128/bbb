@@ -52,6 +52,10 @@ pub enum NetControlRequest {
         is_front_text: bool,
         lines: [String; 4],
     },
+    OpenAdvancementsTab {
+        tab: String,
+    },
+    CloseAdvancementsScreen,
     SelectTrade {
         item: i32,
     },

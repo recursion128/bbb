@@ -159,6 +159,21 @@ pub struct RenameItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SeenAdvancements {
+    OpenedTab { tab: String },
+    ClosedScreen,
+}
+
+impl SeenAdvancements {
+    fn action_id(&self) -> i32 {
+        match self {
+            Self::OpenedTab { .. } => 0,
+            Self::ClosedScreen => 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignUpdate {
     pub pos: BlockPos,
     pub is_front_text: bool,
@@ -440,6 +455,15 @@ pub fn encode_play_rename_item(packet: &RenameItem) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_string(&packet.name);
     (ids::play::SERVERBOUND_RENAME_ITEM, out.into_inner())
+}
+
+pub fn encode_play_seen_advancements(packet: &SeenAdvancements) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.action_id());
+    if let SeenAdvancements::OpenedTab { tab } = packet {
+        out.write_string(tab);
+    }
+    (ids::play::SERVERBOUND_SEEN_ADVANCEMENTS, out.into_inner())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

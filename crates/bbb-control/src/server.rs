@@ -458,6 +458,55 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.open_advancements_tab" {
+        let Some(tab) = string_param(&request.params, "tab") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.open_advancements_tab requires string param tab".to_string()),
+            };
+        };
+        if !is_resource_location(tab) {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.open_advancements_tab requires vanilla-style resource location param tab"
+                        .to_string(),
+                ),
+            };
+        }
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::OpenAdvancementsTab {
+                tab: tab.to_string(),
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.close_advancements_screen" {
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::CloseAdvancementsScreen);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.select_trade" {
         let Some(item) = i32_param(&request.params, "item") else {
             return ControlResponse {
@@ -899,6 +948,40 @@ fn non_empty_string_param<'a>(params: &'a serde_json::Value, key: &str) -> Optio
     } else {
         Some(value)
     }
+}
+
+fn is_resource_location(value: &str) -> bool {
+    if value.is_empty() {
+        return false;
+    }
+
+    let mut parts = value.split(':');
+    let first = parts.next().expect("split yields at least one part");
+    let second = parts.next();
+    if parts.next().is_some() {
+        return false;
+    }
+
+    match second {
+        Some(path) => is_resource_namespace(first) && is_resource_path(path),
+        None => is_resource_path(first),
+    }
+}
+
+fn is_resource_namespace(value: &str) -> bool {
+    !value.is_empty()
+        && value.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-' | b'.')
+        })
+}
+
+fn is_resource_path(value: &str) -> bool {
+    !value.is_empty()
+        && value.bytes().all(|byte| {
+            byte.is_ascii_lowercase()
+                || byte.is_ascii_digit()
+                || matches!(byte, b'_' | b'-' | b'.' | b'/')
+        })
 }
 
 fn recipe_book_type_param(params: &serde_json::Value, key: &str) -> Option<RecipeBookTypeControl> {
@@ -1668,6 +1751,116 @@ mod tests {
             &snapshot,
         );
         assert!(!oversized_line.ok);
+    }
+
+    #[test]
+    fn net_advancements_open_tab_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.open_advancements_tab".to_string(),
+                params: json!({"tab": "minecraft:story/root"}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::OpenAdvancementsTab {
+                tab: "minecraft:story/root".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn net_advancements_open_tab_accepts_default_namespace_path() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.open_advancements_tab".to_string(),
+                params: json!({"tab": "story/root"}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["queued"], true);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::OpenAdvancementsTab {
+                tab: "story/root".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn net_advancements_close_screen_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.close_advancements_screen".to_string(),
+                params: serde_json::Value::Null,
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::CloseAdvancementsScreen]
+        );
+    }
+
+    #[test]
+    fn net_advancements_open_tab_rejects_invalid_tab() {
+        let snapshot = shared_snapshot("test");
+        for tab in [
+            "",
+            "minecraft:",
+            ":story/root",
+            "Minecraft:story/root",
+            "minecraft:Story/root",
+            "minecraft:story root",
+            "mine/craft:story/root",
+            "minecraft:story:root",
+        ] {
+            let response = dispatch(
+                ControlRequest {
+                    method: "net.open_advancements_tab".to_string(),
+                    params: json!({"tab": tab}),
+                },
+                &snapshot,
+            );
+            assert!(!response.ok, "{tab:?} should be rejected");
+        }
+
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_advancements_open_tab_requires_tab() {
+        let snapshot = shared_snapshot("test");
+        let missing_tab = dispatch(
+            ControlRequest {
+                method: "net.open_advancements_tab".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        let non_string_tab = dispatch(
+            ControlRequest {
+                method: "net.open_advancements_tab".to_string(),
+                params: json!({"tab": 7}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_tab.ok);
+        assert!(!non_string_tab.ok);
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 
     #[test]
