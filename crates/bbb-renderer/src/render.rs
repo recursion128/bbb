@@ -28,6 +28,7 @@ impl Renderer {
         let mut opaque_draw_calls = 0;
         let mut cutout_draw_calls = 0;
         let mut translucent_draw_calls = 0;
+        let mut block_destroy_overlay_draw_calls = 0;
         let mut selection_draw_calls = 0;
         let mut hud_draw_calls = 0;
         let mut pipeline_switches = 0;
@@ -133,6 +134,37 @@ impl Renderer {
             }
         }
 
+        if let Some(overlay) = &self.block_destroy_overlay {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("bbb-native-block-destroy-overlay-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.block_destroy_pipeline);
+            pipeline_switches += 1;
+            pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+            pass.set_vertex_buffer(0, overlay.vertex_buffer.slice(..));
+            pass.set_index_buffer(overlay.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..overlay.index_count, 0, 0..1);
+            block_destroy_overlay_draw_calls += 1;
+        }
+
         if let Some(outline) = &self.selection_outline {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-selection-outline-pass"),
@@ -216,11 +248,13 @@ impl Renderer {
         self.counters.opaque_draw_calls = opaque_draw_calls;
         self.counters.cutout_draw_calls = cutout_draw_calls;
         self.counters.translucent_draw_calls = translucent_draw_calls;
+        self.counters.block_destroy_overlay_draw_calls = block_destroy_overlay_draw_calls;
         self.counters.selection_draw_calls = selection_draw_calls;
         self.counters.hud_draw_calls = hud_draw_calls;
         self.counters.draw_calls = opaque_draw_calls
             + cutout_draw_calls
             + translucent_draw_calls
+            + block_destroy_overlay_draw_calls
             + selection_draw_calls
             + hud_draw_calls;
         self.counters.pipeline_switches = pipeline_switches;

@@ -7,7 +7,8 @@ use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPosition
 use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{
-    CameraPose, ClearColor, HudIconLayer, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudItemIcon, HudUvRect,
+    HUD_HOTBAR_SLOTS,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -140,6 +141,7 @@ pub(crate) fn pump_network_and_terrain(
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));
+    renderer.set_block_destroy_overlay(block_destroy_overlay_from_world(world, terrain_textures));
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     if let Some(audio_events) = audio_events.as_mut() {
@@ -156,6 +158,19 @@ pub(crate) fn pump_network_and_terrain(
         &audio_counters,
         world,
     )
+}
+
+fn block_destroy_overlay_from_world(
+    world: &WorldStore,
+    textures: &TerrainTextureState,
+) -> Option<BlockDestroyOverlay> {
+    let interaction = &world.local_player().interaction;
+    let pos = interaction.destroying_block?;
+    let stage = interaction.destroying_block_stage?;
+    Some(BlockDestroyOverlay {
+        pos: [pos.x, pos.y, pos.z],
+        uv: textures.destroy_stage_uv_rect(stage)?,
+    })
 }
 
 fn hotbar_item_icons(

@@ -9,6 +9,8 @@ pub struct RendererCounters {
     pub opaque_draw_calls: u64,
     pub cutout_draw_calls: u64,
     pub translucent_draw_calls: u64,
+    #[serde(default)]
+    pub block_destroy_overlay_draw_calls: u64,
     pub selection_draw_calls: u64,
     pub hud_draw_calls: u64,
     pub pipeline_switches: u64,

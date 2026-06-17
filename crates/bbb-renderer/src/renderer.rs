@@ -4,6 +4,10 @@ use wgpu::util::DeviceExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{
+    block_destroy::{
+        create_block_destroy_overlay_gpu, create_block_destroy_pipeline, BlockDestroyOverlay,
+        BlockDestroyOverlayGpu,
+    },
     camera::{CameraPose, CameraUniform, ClearColor, TerrainBounds},
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
@@ -34,6 +38,7 @@ pub struct Renderer {
     pub(super) depth: DepthTarget,
     pub(super) terrain_pipeline: wgpu::RenderPipeline,
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
+    pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
@@ -47,6 +52,7 @@ pub struct Renderer {
     pub(super) terrain_source_sections: usize,
     pub(super) terrain_bounds: Option<TerrainBounds>,
     pub(super) camera_pose: Option<CameraPose>,
+    pub(super) block_destroy_overlay: Option<BlockDestroyOverlayGpu>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
@@ -153,6 +159,8 @@ impl Renderer {
         let terrain_pipeline = create_terrain_pipeline(&device, format, &terrain_bind_group_layout);
         let terrain_translucent_pipeline =
             create_terrain_translucent_pipeline(&device, format, &terrain_bind_group_layout);
+        let block_destroy_pipeline =
+            create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
@@ -172,6 +180,7 @@ impl Renderer {
             depth,
             terrain_pipeline,
             terrain_translucent_pipeline,
+            block_destroy_pipeline,
             selection_pipeline,
             hud_pipeline,
             hud_bind_group_layout,
@@ -185,6 +194,7 @@ impl Renderer {
             terrain_source_sections: 0,
             terrain_bounds: None,
             camera_pose: None,
+            block_destroy_overlay: None,
             selection_outline: None,
             hud_crosshair: None,
             hud_hotbar: None,
@@ -249,6 +259,19 @@ impl Renderer {
         }
         self.selection_outline =
             outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
+    }
+
+    pub fn set_block_destroy_overlay(&mut self, overlay: Option<BlockDestroyOverlay>) {
+        if self
+            .block_destroy_overlay
+            .as_ref()
+            .map(|resident| resident.overlay)
+            == overlay
+        {
+            return;
+        }
+        self.block_destroy_overlay =
+            overlay.map(|overlay| create_block_destroy_overlay_gpu(&self.device, overlay));
     }
 
     pub fn upload_terrain_meshes(&mut self, meshes: Vec<terrain::TerrainMesh>) {

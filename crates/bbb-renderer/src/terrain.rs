@@ -174,7 +174,7 @@ impl TerrainTint {
         Self { r, g, b }
     }
 
-    fn as_shader_tint(self) -> [f32; 3] {
+    pub(crate) fn as_shader_tint(self) -> [f32; 3] {
         [
             self.r as f32 / 255.0,
             self.g as f32 / 255.0,
@@ -422,7 +422,7 @@ impl TerrainUvRect {
         max: [1.0, 1.0],
     };
 
-    fn map(self, uv: [f32; 2]) -> [f32; 2] {
+    pub(crate) fn map(self, uv: [f32; 2]) -> [f32; 2] {
         [
             self.min[0] + (self.max[0] - self.min[0]) * uv[0],
             self.min[1] + (self.max[1] - self.min[1]) * uv[1],

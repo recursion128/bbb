@@ -1,3 +1,4 @@
+mod block_destroy;
 mod camera;
 mod exports;
 mod gpu;

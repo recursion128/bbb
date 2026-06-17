@@ -90,6 +90,30 @@ fn fluid_render_data_uses_still_top_and_flowing_sides() {
 }
 
 #[test]
+fn destroy_stage_uv_rect_uses_block_atlas_stage_sprite() {
+    let images = vec![
+        sprite("minecraft:block/stone"),
+        sprite("minecraft:block/destroy_stage_3"),
+    ];
+    let atlas = bbb_pack::AtlasPacker::new(16, 1)
+        .unwrap()
+        .stitch(&images)
+        .unwrap();
+    let textures = TerrainTextureState::from_layout(&atlas.layout, None, None, None);
+    let destroy_stage_index = textures.texture_index("minecraft:block/destroy_stage_3");
+
+    assert_eq!(
+        textures.destroy_stage_uv_rect(3),
+        textures
+            .atlas
+            .rects
+            .get(destroy_stage_index as usize)
+            .copied()
+    );
+    assert_eq!(textures.destroy_stage_uv_rect(4), None);
+}
+
+#[test]
 fn block_model_seed_matches_vanilla_position_seed() {
     assert_eq!(
         block_model_seed(BlockRenderPosition { x: 0, y: 0, z: 0 }),

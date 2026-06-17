@@ -223,6 +223,12 @@ impl TerrainTextureState {
             .unwrap_or(self.fallback_index)
     }
 
+    pub(crate) fn destroy_stage_uv_rect(&self, stage: u8) -> Option<TerrainUvRect> {
+        let texture_id = format!("minecraft:block/destroy_stage_{}", stage.min(9));
+        let index = *self.indices.get(&texture_id)?;
+        self.atlas.rects.get(index as usize).copied()
+    }
+
     fn texture_transparency(&self, texture_id: &str) -> TerrainTransparency {
         self.texture_index_transparency(self.texture_index(texture_id))
     }
