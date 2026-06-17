@@ -235,6 +235,12 @@ pub struct ItemModelProperty {
     raw: Value,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ItemModelPropertyKind {
+    Broken,
+    Other,
+}
+
 impl ItemModelProperty {
     pub fn raw(&self) -> &Value {
         &self.raw
@@ -242,6 +248,13 @@ impl ItemModelProperty {
 
     pub fn into_raw(self) -> Value {
         self.raw
+    }
+
+    pub fn kind(&self) -> ItemModelPropertyKind {
+        match self.property_type.as_str() {
+            "minecraft:broken" => ItemModelPropertyKind::Broken,
+            _ => ItemModelPropertyKind::Other,
+        }
     }
 }
 
@@ -1437,6 +1450,7 @@ mod tests {
             panic!("root should parse as a condition item model");
         };
         assert_eq!(property.property_type, "minecraft:has_component");
+        assert_eq!(property.kind(), ItemModelPropertyKind::Other);
         assert_eq!(
             property.raw()["component"],
             serde_json::json!("minecraft:lodestone_tracker")
@@ -1450,6 +1464,7 @@ mod tests {
             panic!("true branch should parse as a range dispatch item model");
         };
         assert_eq!(property.property_type, "minecraft:compass");
+        assert_eq!(property.kind(), ItemModelPropertyKind::Other);
         assert_eq!(property.raw()["target"], serde_json::json!("lodestone"));
         assert!(property.raw().get("entries").is_none());
         assert_eq!(entries.len(), 1);
@@ -1461,10 +1476,63 @@ mod tests {
             panic!("false branch should parse as a select item model");
         };
         assert_eq!(property.property_type, "minecraft:local_time");
+        assert_eq!(property.kind(), ItemModelPropertyKind::Other);
         assert_eq!(property.raw()["pattern"], serde_json::json!("MM-dd"));
         assert_eq!(property.raw()["time_zone"], serde_json::json!("GMT"));
         assert!(property.raw().get("cases").is_none());
         assert_eq!(cases.len(), 1);
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_broken_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:broken",
+                "on_false": {
+                  "type": "minecraft:model",
+                  "model": "minecraft:item/elytra"
+                },
+                "on_true": {
+                  "type": "minecraft:model",
+                  "model": "minecraft:item/elytra_broken"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a broken condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:broken");
+        assert_eq!(property.kind(), ItemModelPropertyKind::Broken);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:broken"})
+        );
+        assert!(matches!(
+            on_true.as_ref(),
+            ItemModelDefinition::Model { model, .. } if model == "minecraft:item/elytra_broken"
+        ));
+        assert!(matches!(
+            on_false.as_ref(),
+            ItemModelDefinition::Model { model, .. } if model == "minecraft:item/elytra"
+        ));
+        assert_eq!(
+            definition.model_references(),
+            vec![
+                "minecraft:item/elytra".to_string(),
+                "minecraft:item/elytra_broken".to_string(),
+            ]
+        );
     }
 
     #[test]
