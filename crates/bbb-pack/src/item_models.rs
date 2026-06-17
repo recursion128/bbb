@@ -41,6 +41,14 @@ impl ItemModelCatalog {
         Some(self.definition(item_id)?.model_references())
     }
 
+    pub fn special_texture_references(&self, item_id: &str) -> Option<Vec<String>> {
+        let mut references = BTreeSet::new();
+        self.definition(item_id)?
+            .model
+            .collect_special_texture_references(&mut references);
+        Some(references.into_iter().collect())
+    }
+
     pub fn root_type_counts(&self) -> BTreeMap<String, usize> {
         let mut counts = BTreeMap::new();
         for definition in self.definitions.values() {
@@ -267,6 +275,8 @@ impl ItemModelProperty {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ItemSpecialModel {
     pub model_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copper_golem_statue: Option<CopperGolemStatueSpecialModel>,
     raw: Value,
 }
 
@@ -277,6 +287,39 @@ impl ItemSpecialModel {
 
     pub fn into_raw(self) -> Value {
         self.raw
+    }
+
+    fn collect_texture_references(&self, references: &mut BTreeSet<String>) {
+        if let Some(model) = &self.copper_golem_statue {
+            references.insert(model.texture.clone());
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CopperGolemStatueSpecialModel {
+    pub pose: CopperGolemStatuePose,
+    pub texture: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CopperGolemStatuePose {
+    Standing,
+    Sitting,
+    Running,
+    Star,
+}
+
+impl CopperGolemStatuePose {
+    fn parse(value: &str) -> Result<Self> {
+        match value {
+            "standing" => Ok(Self::Standing),
+            "sitting" => Ok(Self::Sitting),
+            "running" => Ok(Self::Running),
+            "star" => Ok(Self::Star),
+            other => bail!("unsupported copper golem statue pose {other:?}"),
+        }
     }
 }
 
@@ -507,6 +550,46 @@ impl ItemModelDefinition {
         }
     }
 
+    fn collect_special_texture_references(&self, references: &mut BTreeSet<String>) {
+        match self {
+            Self::Empty | Self::BundleSelectedItem | Self::Model { .. } => {}
+            Self::Special { special, .. } => {
+                special.collect_texture_references(references);
+            }
+            Self::Condition {
+                on_true, on_false, ..
+            } => {
+                on_true.collect_special_texture_references(references);
+                on_false.collect_special_texture_references(references);
+            }
+            Self::RangeDispatch {
+                entries, fallback, ..
+            } => {
+                for entry in entries {
+                    entry.model.collect_special_texture_references(references);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_special_texture_references(references);
+                }
+            }
+            Self::Select {
+                cases, fallback, ..
+            } => {
+                for case in cases {
+                    case.model.collect_special_texture_references(references);
+                }
+                if let Some(fallback) = fallback {
+                    fallback.collect_special_texture_references(references);
+                }
+            }
+            Self::Composite { models, .. } => {
+                for model in models {
+                    model.collect_special_texture_references(references);
+                }
+            }
+        }
+    }
+
     fn collect_property_type_counts(&self, counts: &mut BTreeMap<String, usize>) {
         match self {
             Self::Empty | Self::BundleSelectedItem | Self::Model { .. } | Self::Special { .. } => {}
@@ -701,9 +784,25 @@ fn parse_item_special_model(value: &Value) -> Result<ItemSpecialModel> {
     let object = value
         .as_object()
         .ok_or_else(|| anyhow::anyhow!("item special model must be a JSON object"))?;
+    let model_type = resource_id(required_str(object, "type")?)?;
+    let copper_golem_statue = if model_type == "minecraft:copper_golem_statue" {
+        Some(parse_copper_golem_statue_special_model(object)?)
+    } else {
+        None
+    };
     Ok(ItemSpecialModel {
-        model_type: resource_id(required_str(object, "type")?)?,
+        model_type,
+        copper_golem_statue,
         raw: value.clone(),
+    })
+}
+
+fn parse_copper_golem_statue_special_model(
+    object: &Map<String, Value>,
+) -> Result<CopperGolemStatueSpecialModel> {
+    Ok(CopperGolemStatueSpecialModel {
+        pose: CopperGolemStatuePose::parse(required_str(object, "pose")?)?,
+        texture: resource_id(required_str(object, "texture")?)?,
     })
 }
 
@@ -1898,6 +1997,7 @@ mod tests {
             panic!("white banner should parse as a special item model");
         };
         assert_eq!(special.model_type, "minecraft:banner");
+        assert_eq!(special.copper_golem_statue, None);
         assert_eq!(special.raw()["color"], serde_json::json!("white"));
         assert_eq!(
             catalog.model_references("white_banner").unwrap(),
@@ -1922,6 +2022,176 @@ mod tests {
         );
 
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn item_model_catalog_structures_copper_golem_statue_special_models() {
+        let root = unique_temp_dir("item-model-copper-golem-statue");
+        let items = item_dir(&root);
+        write_json(
+            &items.join("copper_golem_statue.json"),
+            r#"{
+              "model": {
+                "type": "minecraft:select",
+                "property": "minecraft:block_state",
+                "block_state_property": "copper_golem_pose",
+                "cases": [
+                  {
+                    "when": "sitting",
+                    "model": {
+                      "type": "minecraft:special",
+                      "base": "minecraft:item/template_copper_golem_statue",
+                      "model": {
+                        "type": "minecraft:copper_golem_statue",
+                        "pose": "sitting",
+                        "texture": "minecraft:textures/entity/copper_golem/copper_golem.png"
+                      }
+                    }
+                  },
+                  {
+                    "when": "running",
+                    "model": {
+                      "type": "minecraft:special",
+                      "base": "minecraft:item/template_copper_golem_statue",
+                      "model": {
+                        "type": "minecraft:copper_golem_statue",
+                        "pose": "running",
+                        "texture": "minecraft:textures/entity/copper_golem/copper_golem.png"
+                      }
+                    }
+                  },
+                  {
+                    "when": "star",
+                    "model": {
+                      "type": "minecraft:special",
+                      "base": "minecraft:item/template_copper_golem_statue",
+                      "model": {
+                        "type": "minecraft:copper_golem_statue",
+                        "pose": "star",
+                        "texture": "minecraft:textures/entity/copper_golem/copper_golem.png"
+                      }
+                    }
+                  }
+                ],
+                "fallback": {
+                  "type": "minecraft:special",
+                  "base": "minecraft:item/template_copper_golem_statue",
+                  "model": {
+                    "type": "minecraft:copper_golem_statue",
+                    "pose": "standing",
+                    "texture": "minecraft:textures/entity/copper_golem/copper_golem.png"
+                  }
+                }
+              }
+            }"#,
+        );
+
+        let catalog = PackRoots::from_root(&root)
+            .unwrap()
+            .load_item_model_catalog()
+            .unwrap();
+
+        let ItemModelDefinition::Select {
+            property,
+            block_state_property,
+            cases,
+            fallback,
+            ..
+        } = &catalog.definition("copper_golem_statue").unwrap().model
+        else {
+            panic!("copper golem statue should parse as a select item model");
+        };
+        assert_eq!(property.property_type, "minecraft:block_state");
+        assert_eq!(block_state_property.as_deref(), Some("copper_golem_pose"));
+
+        let mut poses = BTreeSet::new();
+        let mut textures = BTreeSet::new();
+        let models = cases
+            .iter()
+            .map(|case| case.model.as_ref())
+            .chain(fallback.as_ref().map(|model| model.as_ref()));
+        for model in models {
+            let ItemModelDefinition::Special { base, special, .. } = model else {
+                panic!("copper golem pose arm should be a special model");
+            };
+            assert_eq!(base, "minecraft:item/template_copper_golem_statue");
+            assert_eq!(special.model_type, "minecraft:copper_golem_statue");
+            let copper = special
+                .copper_golem_statue
+                .as_ref()
+                .expect("copper golem special should be structured");
+            poses.insert(copper.pose);
+            textures.insert(copper.texture.clone());
+        }
+
+        assert_eq!(
+            poses,
+            BTreeSet::from([
+                CopperGolemStatuePose::Running,
+                CopperGolemStatuePose::Sitting,
+                CopperGolemStatuePose::Standing,
+                CopperGolemStatuePose::Star,
+            ])
+        );
+        assert_eq!(
+            textures,
+            BTreeSet::from(["minecraft:textures/entity/copper_golem/copper_golem.png".to_string()])
+        );
+        assert_eq!(
+            catalog.model_references("copper_golem_statue").unwrap(),
+            vec!["minecraft:item/template_copper_golem_statue".to_string()]
+        );
+        assert_eq!(
+            catalog
+                .special_texture_references("copper_golem_statue")
+                .unwrap(),
+            vec!["minecraft:textures/entity/copper_golem/copper_golem.png".to_string()]
+        );
+        assert_eq!(
+            catalog.special_model_type_counts(),
+            BTreeMap::from([("minecraft:copper_golem_statue".to_string(), 4)])
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn item_model_catalog_rejects_invalid_copper_golem_statue_special_models() {
+        let err = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:special",
+                "base": "minecraft:item/template_copper_golem_statue",
+                "model": {
+                  "type": "minecraft:copper_golem_statue",
+                  "pose": "sleeping",
+                  "texture": "minecraft:textures/entity/copper_golem/copper_golem.png"
+                }
+              }
+            }"#,
+        )
+        .unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("unsupported copper golem statue pose"));
+
+        let err = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:special",
+                "base": "minecraft:item/template_copper_golem_statue",
+                "model": {
+                  "type": "minecraft:copper_golem_statue",
+                  "pose": "standing",
+                  "texture": 42
+                }
+              }
+            }"#,
+        )
+        .unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("field \"texture\" must be a string"));
     }
 
     #[test]
