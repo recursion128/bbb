@@ -1391,6 +1391,17 @@ fn encodes_player_command_actions() {
     assert_eq!(decoder.read_var_i32().unwrap(), 3);
     assert_eq!(decoder.read_var_i32().unwrap(), 20);
     assert!(decoder.is_empty());
+
+    let (_, payload) = encode_play_player_command(PlayerCommand {
+        entity_id: 42,
+        action: PlayerCommandAction::StartFallFlying,
+        data: 0,
+    });
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_var_i32().unwrap(), 6);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(decoder.is_empty());
 }
 
 #[test]

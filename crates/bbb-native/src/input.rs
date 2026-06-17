@@ -275,8 +275,31 @@ pub(crate) fn handle_key_input(
             if before.sprint != after.sprint {
                 queue_sprint_command(counters, world, net_commands, after.sprint);
             }
+            if should_queue_start_fall_flying(world, before, after) {
+                queue_player_command_action(
+                    counters,
+                    world,
+                    net_commands,
+                    PlayerCommandAction::StartFallFlying,
+                    0,
+                );
+            }
         }
     }
+}
+
+fn should_queue_start_fall_flying(
+    world: &WorldStore,
+    before: PlayerInput,
+    after: PlayerInput,
+) -> bool {
+    after.jump
+        && !before.jump
+        && world.local_player_root_vehicle_id().is_none()
+        && world
+            .local_player_pose()
+            .is_some_and(|pose| !pose.on_ground)
+        && world.local_player_has_equipped_elytra()
 }
 
 pub(crate) fn handle_text_input(

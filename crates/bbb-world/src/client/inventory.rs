@@ -17,11 +17,13 @@ use crate::WorldStore;
 
 const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
 const PLAYER_HOTBAR_SIZE: usize = 9;
+const PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 const PLAYER_OFFHAND_SLOT: i32 = 40;
 const INVENTORY_MENU_CONTAINER_ID: i32 = 0;
 const INVENTORY_MENU_HOTBAR_START: i16 = 36;
 const INVENTORY_MENU_OFFHAND_SLOT: i16 = 45;
 const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
+const VANILLA_ELYTRA_ITEM_ID: i32 = 14;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InventorySlot {
@@ -395,6 +397,17 @@ impl WorldStore {
             && self
                 .local_offhand_item()
                 .is_some_and(item_stack_is_non_empty)
+    }
+
+    pub fn local_player_has_equipped_elytra(&self) -> bool {
+        self.inventory
+            .player_slots
+            .iter()
+            .find(|slot| slot.slot == PLAYER_CHEST_EQUIPMENT_SLOT)
+            .is_some_and(|slot| {
+                slot.item.item_id == Some(VANILLA_ELYTRA_ITEM_ID)
+                    && item_stack_is_non_empty(&slot.item)
+            })
     }
 
     pub fn build_container_click_slot(
@@ -809,6 +822,54 @@ mod tests {
             item: ProtocolItemStackSummary::empty(),
         });
         assert!(!store.local_item_use_prefers_offhand());
+    }
+
+    #[test]
+    fn local_player_has_equipped_elytra_true_for_non_empty_elytra_in_chest_slot() {
+        let mut store = WorldStore::new();
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+            item: item_stack(VANILLA_ELYTRA_ITEM_ID, 1),
+        });
+
+        assert!(store.local_player_has_equipped_elytra());
+    }
+
+    #[test]
+    fn local_player_has_equipped_elytra_false_when_chest_slot_is_missing() {
+        let store = WorldStore::new();
+
+        assert!(!store.local_player_has_equipped_elytra());
+    }
+
+    #[test]
+    fn local_player_has_equipped_elytra_false_when_elytra_is_in_wrong_slot() {
+        let mut store = WorldStore::new();
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_CHEST_EQUIPMENT_SLOT - 1,
+            item: item_stack(VANILLA_ELYTRA_ITEM_ID, 1),
+        });
+
+        assert!(!store.local_player_has_equipped_elytra());
+    }
+
+    #[test]
+    fn local_player_has_equipped_elytra_false_for_empty_or_count_zero_stack() {
+        let mut store = WorldStore::new();
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+            item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(!store.local_player_has_equipped_elytra());
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+            item: item_stack(VANILLA_ELYTRA_ITEM_ID, 0),
+        });
+        assert!(!store.local_player_has_equipped_elytra());
     }
 
     #[test]

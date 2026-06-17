@@ -2,13 +2,17 @@ use super::*;
 use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestion,
     CommandSuggestionRequest, CommandSuggestions, CommonPlayerSpawnInfo, ContainerCloseRequest,
-    LastSeenMessagesUpdate, OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction,
-    PlayerCommand, PlayerHealth, SetPassengers, Vec3d as ProtocolVec3d,
+    ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate,
+    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerCommand,
+    PlayerHealth, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+    Vec3d as ProtocolVec3d,
 };
-use bbb_world::{BlockPos, WorldStore};
+use bbb_world::{BlockPos, LocalPlayerPoseState, WorldStore};
 use uuid::Uuid;
 
+const VANILLA_26_1_ELYTRA_ITEM_ID: i32 = 14;
 const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
+const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 
 fn handle_key_input_without_world(
     input: &mut ClientInputState,
@@ -89,6 +93,24 @@ fn world_with_local_boat(player_id: i32) -> WorldStore {
         passenger_ids: vec![player_id],
     }));
     world
+}
+
+fn set_local_player_on_ground(world: &mut WorldStore, on_ground: bool) {
+    world.set_local_player_pose(LocalPlayerPoseState {
+        on_ground,
+        ..LocalPlayerPoseState::default()
+    });
+}
+
+fn equip_player_slot(world: &mut WorldStore, slot: i32, item_id: i32, count: i32) {
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot,
+        item: ProtocolItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        },
+    });
 }
 
 #[test]
@@ -1056,6 +1078,116 @@ fn sprint_key_without_local_player_id_only_queues_input() {
         rx.try_recv().unwrap(),
         NetCommand::PlayerInput(PlayerInput {
             sprint: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn jump_key_queues_start_fall_flying_when_airborne_with_elytra() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_local_player_on_ground(&mut world, false);
+    equip_player_slot(
+        &mut world,
+        VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
+        VANILLA_26_1_ELYTRA_ITEM_ID,
+        1,
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            jump: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::StartFallFlying,
+            data: 0,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn jump_key_on_ground_with_elytra_only_queues_player_input() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_local_player_on_ground(&mut world, true);
+    equip_player_slot(
+        &mut world,
+        VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
+        VANILLA_26_1_ELYTRA_ITEM_ID,
+        1,
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            jump: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn jump_key_airborne_without_elytra_only_queues_player_input() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_local_player_on_ground(&mut world, false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            jump: true,
             ..PlayerInput::default()
         })
     );
