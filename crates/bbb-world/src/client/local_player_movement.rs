@@ -13,6 +13,7 @@ const LOCAL_JUMP_VELOCITY_PER_TICK: f64 = 0.42;
 const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const LOCAL_PLAYER_HEIGHT: f64 = 1.8;
+const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const COLLISION_EPSILON: f64 = 1.0e-7;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
 const COLLISION_CLIP_STEPS: usize = 12;
@@ -82,8 +83,14 @@ fn advance_local_player_physics_step(
     let requested_x = move_x * speed * step_seconds;
     let requested_y = pose.delta_movement.y * step_ticks;
     let requested_z = move_z * speed * step_seconds;
-    let movement =
-        clip_local_player_movement(world, pose.position, requested_x, requested_y, requested_z);
+    let movement = clip_local_player_movement(
+        world,
+        pose.position,
+        requested_x,
+        requested_y,
+        requested_z,
+        pose.on_ground,
+    );
     pose.position.x += movement.x;
     pose.position.y += movement.y;
     pose.position.z += movement.z;
@@ -125,6 +132,41 @@ fn clip_local_player_movement(
     requested_x: f64,
     requested_y: f64,
     requested_z: f64,
+    on_ground: bool,
+) -> ProtocolVec3d {
+    let clipped = clip_local_player_movement_without_step(
+        world,
+        position,
+        requested_x,
+        requested_y,
+        requested_z,
+    );
+    if !on_ground
+        || requested_y.abs() > COLLISION_EPSILON
+        || ((clipped.x - requested_x).abs() <= COLLISION_EPSILON
+            && (clipped.z - requested_z).abs() <= COLLISION_EPSILON)
+    {
+        return clipped;
+    }
+
+    let Some(stepped) =
+        clip_local_player_step_up_movement(world, position, requested_x, requested_z)
+    else {
+        return clipped;
+    };
+    if horizontal_distance_sqr(stepped) > horizontal_distance_sqr(clipped) + COLLISION_EPSILON {
+        stepped
+    } else {
+        clipped
+    }
+}
+
+fn clip_local_player_movement_without_step(
+    world: &WorldStore,
+    position: ProtocolVec3d,
+    requested_x: f64,
+    requested_y: f64,
+    requested_z: f64,
 ) -> ProtocolVec3d {
     let mut bounds = LocalPlayerBounds::at(position);
     let clipped_y = clip_axis_delta(world, bounds, Axis::Y, requested_y);
@@ -138,6 +180,35 @@ fn clip_local_player_movement(
         y: clipped_y,
         z: clipped_z,
     }
+}
+
+fn clip_local_player_step_up_movement(
+    world: &WorldStore,
+    position: ProtocolVec3d,
+    requested_x: f64,
+    requested_z: f64,
+) -> Option<ProtocolVec3d> {
+    let mut bounds = LocalPlayerBounds::at(position);
+    let clipped_up = clip_axis_delta(world, bounds, Axis::Y, LOCAL_PLAYER_STEP_HEIGHT);
+    if clipped_up <= COLLISION_EPSILON {
+        return None;
+    }
+    bounds = bounds.moved(0.0, clipped_up, 0.0);
+    let clipped_x = clip_axis_delta(world, bounds, Axis::X, requested_x);
+    bounds = bounds.moved(clipped_x, 0.0, 0.0);
+    let clipped_z = clip_axis_delta(world, bounds, Axis::Z, requested_z);
+    bounds = bounds.moved(0.0, 0.0, clipped_z);
+    let clipped_down = clip_axis_delta(world, bounds, Axis::Y, -clipped_up);
+
+    Some(ProtocolVec3d {
+        x: clipped_x,
+        y: clipped_up + clipped_down,
+        z: clipped_z,
+    })
+}
+
+fn horizontal_distance_sqr(movement: ProtocolVec3d) -> f64 {
+    movement.x * movement.x + movement.z * movement.z
 }
 
 fn clip_axis_delta(
@@ -191,7 +262,7 @@ fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBounds) -> bool 
                 let Some(block) = world.probe_block(BlockPos { x, y, z }) else {
                     continue;
                 };
-                if block_has_full_collision(&block) {
+                if block_collides_with_local_player_bounds(&block, BlockPos { x, y, z }, bounds) {
                     return true;
                 }
             }
@@ -200,16 +271,74 @@ fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBounds) -> bool 
     false
 }
 
-fn block_has_full_collision(block: &BlockProbe) -> bool {
+fn block_collides_with_local_player_bounds(
+    block: &BlockProbe,
+    pos: BlockPos,
+    bounds: LocalPlayerBounds,
+) -> bool {
+    if let Some(shape) = block_collision_shape(block) {
+        return bounds_intersects_block_shape(bounds, pos, shape);
+    }
+    false
+}
+
+fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
+    if is_slab_block(block) {
+        return match block.block_properties.get("type").map(String::as_str) {
+            Some("bottom") => Some(BlockCollisionShape {
+                min_y: 0.0,
+                max_y: 0.5,
+            }),
+            Some("top") => Some(BlockCollisionShape {
+                min_y: 0.5,
+                max_y: 1.0,
+            }),
+            Some("double") => Some(BlockCollisionShape::FULL),
+            _ => None,
+        };
+    }
     match block.material {
-        TerrainMaterialClass::Opaque | TerrainMaterialClass::Translucent => true,
+        TerrainMaterialClass::Opaque | TerrainMaterialClass::Translucent => {
+            Some(BlockCollisionShape::FULL)
+        }
         TerrainMaterialClass::Invisible => {
-            matches!(block.block_name.as_deref(), Some("minecraft:barrier"))
+            if matches!(block.block_name.as_deref(), Some("minecraft:barrier")) {
+                Some(BlockCollisionShape::FULL)
+            } else {
+                None
+            }
         }
         TerrainMaterialClass::Empty
         | TerrainMaterialClass::Cutout
-        | TerrainMaterialClass::Fluid => false,
+        | TerrainMaterialClass::Fluid => None,
     }
+}
+
+fn is_slab_block(block: &BlockProbe) -> bool {
+    block
+        .block_name
+        .as_deref()
+        .is_some_and(|name| name.ends_with("_slab"))
+}
+
+fn bounds_intersects_block_shape(
+    bounds: LocalPlayerBounds,
+    pos: BlockPos,
+    shape: BlockCollisionShape,
+) -> bool {
+    let min_x = f64::from(pos.x);
+    let max_x = min_x + 1.0;
+    let min_y = f64::from(pos.y) + shape.min_y;
+    let max_y = f64::from(pos.y) + shape.max_y;
+    let min_z = f64::from(pos.z);
+    let max_z = min_z + 1.0;
+
+    bounds.max_x > min_x + COLLISION_EPSILON
+        && bounds.min_x < max_x - COLLISION_EPSILON
+        && bounds.max_y > min_y + COLLISION_EPSILON
+        && bounds.min_y < max_y - COLLISION_EPSILON
+        && bounds.max_z > min_z + COLLISION_EPSILON
+        && bounds.min_z < max_z - COLLISION_EPSILON
 }
 
 fn block_floor(value: f64) -> i32 {
@@ -250,6 +379,19 @@ struct LocalPlayerBounds {
     max_x: f64,
     max_y: f64,
     max_z: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct BlockCollisionShape {
+    min_y: f64,
+    max_y: f64,
+}
+
+impl BlockCollisionShape {
+    const FULL: Self = Self {
+        min_y: 0.0,
+        max_y: 1.0,
+    };
 }
 
 impl LocalPlayerBounds {
@@ -315,6 +457,8 @@ mod tests {
 
     const AIR_BLOCK_STATE_ID: i32 = 0;
     const GRASS_BLOCK_STATE_ID: i32 = 9;
+    const OAK_TOP_SLAB_BLOCK_STATE_ID: i32 = 13331;
+    const OAK_BOTTOM_SLAB_BLOCK_STATE_ID: i32 = 13333;
 
     #[test]
     fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
@@ -376,6 +520,66 @@ mod tests {
         assert!(pose.on_ground);
         assert!(!pose.horizontal_collision);
         assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_steps_onto_bottom_slab() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 2, OAK_BOTTOM_SLAB_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                0.35,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.5, 0.0005);
+        assert!(pose.position.z > 1.7, "position was {:?}", pose.position);
+        assert!(pose.on_ground);
+        assert!(!pose.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_does_not_step_through_top_slab() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 2, OAK_TOP_SLAB_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                1.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(
+            pose.position.z <= 1.7005,
+            "position was {:?}",
+            pose.position
+        );
+        assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
     }
 
     #[test]
