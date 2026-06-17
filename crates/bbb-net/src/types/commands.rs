@@ -4,7 +4,7 @@ use bbb_protocol::packets::{
     InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
     RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, SignUpdate, UseItem, UseItemOn, Vec3d,
+    SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem, UseItemOn, Vec3d,
 };
 use serde::{Deserialize, Serialize};
 
@@ -101,6 +101,7 @@ pub enum NetCommand {
     RenameItem(RenameItem),
     SeenAdvancements(SeenAdvancements),
     SelectTrade(SelectTradeCommand),
+    SetBeacon(SetBeacon),
     SignUpdate(SignUpdate),
     SelectBundleItem(SelectBundleItem),
     ContainerButtonClick(ContainerButtonClick),

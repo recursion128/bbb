@@ -495,10 +495,23 @@ pub struct SelectTradeCommand {
     pub item: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetBeacon {
+    pub primary_effect: Option<i32>,
+    pub secondary_effect: Option<i32>,
+}
+
 pub fn encode_play_select_trade(command: SelectTradeCommand) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(command.item);
     (ids::play::SERVERBOUND_SELECT_TRADE, out.into_inner())
+}
+
+pub fn encode_play_set_beacon(packet: SetBeacon) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    encode_optional_mob_effect(&mut out, packet.primary_effect);
+    encode_optional_mob_effect(&mut out, packet.secondary_effect);
+    (ids::play::SERVERBOUND_SET_BEACON, out.into_inner())
 }
 
 pub fn encode_play_select_bundle_item(packet: SelectBundleItem) -> (i32, Vec<u8>) {
@@ -509,6 +522,16 @@ pub fn encode_play_select_bundle_item(packet: SelectBundleItem) -> (i32, Vec<u8>
         ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED,
         out.into_inner(),
     )
+}
+
+fn encode_optional_mob_effect(out: &mut Encoder, effect_id: Option<i32>) {
+    match effect_id {
+        Some(effect_id) => {
+            out.write_bool(true);
+            out.write_var_i32(effect_id);
+        }
+        None => out.write_bool(false),
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

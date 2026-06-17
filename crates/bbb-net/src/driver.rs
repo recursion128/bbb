@@ -17,8 +17,8 @@ pub(crate) use commands::{
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
-    send_set_held_slot_command, send_sign_update, send_swing_command, send_use_item,
-    send_use_item_on,
+    send_set_beacon, send_set_held_slot_command, send_sign_update, send_swing_command,
+    send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -148,6 +148,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::SelectTrade(command)) => {
                         send_select_trade(conn, command).await?;
                     }
+                    Some(NetCommand::SetBeacon(packet)) => {
+                        send_set_beacon(conn, packet).await?;
+                    }
                     Some(NetCommand::SignUpdate(packet)) => {
                         send_sign_update(conn, packet).await?;
                     }
@@ -216,6 +219,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::RenameItem(_)) => {}
                     Some(NetCommand::SeenAdvancements(_)) => {}
                     Some(NetCommand::SelectTrade(_)) => {}
+                    Some(NetCommand::SetBeacon(_)) => {}
                     Some(NetCommand::SignUpdate(_)) => {}
                     Some(NetCommand::SelectBundleItem(_)) => {}
                     Some(NetCommand::ContainerButtonClick(_)) => {}
@@ -251,7 +255,7 @@ mod tests {
             PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
             RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
             RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-            SignUpdate, UseItem, UseItemOn, Vec3d,
+            SetBeacon, SignUpdate, UseItem, UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -685,6 +689,31 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_SELECT_TRADE);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_set_beacon_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SetBeacon(SetBeacon {
+            primary_effect: Some(1),
+            secondary_effect: Some(10),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "set beacon").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_BEACON);
+        let mut decoder = Decoder::new(&payload);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 10);
         assert!(decoder.is_empty());
     }
 

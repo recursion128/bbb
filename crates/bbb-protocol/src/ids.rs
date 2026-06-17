@@ -242,6 +242,7 @@ pub mod play {
     pub const SERVERBOUND_RESOURCE_PACK: i32 = 49;
     pub const SERVERBOUND_SEEN_ADVANCEMENTS: i32 = 50;
     pub const SERVERBOUND_SELECT_TRADE: i32 = 51;
+    pub const SERVERBOUND_SET_BEACON: i32 = 52;
     pub const SERVERBOUND_SET_CARRIED_ITEM: i32 = 53;
     pub const SERVERBOUND_SIGN_UPDATE: i32 = 61;
     pub const SERVERBOUND_SWING: i32 = 63;

@@ -64,6 +64,10 @@ pub enum NetControlRequest {
     SelectTrade {
         item: i32,
     },
+    SetBeacon {
+        primary_effect: Option<i32>,
+        secondary_effect: Option<i32>,
+    },
     SelectBundleItem {
         slot_id: i32,
         selected_item_index: i32,

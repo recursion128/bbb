@@ -6,8 +6,8 @@ use bbb_protocol::packets::{
     InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
     PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SignUpdate, UseItem, UseItemOn,
-    Vec3d as ProtocolVec3d,
+    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem,
+    UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -150,6 +150,18 @@ pub(crate) fn queue_select_trade_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SelectTrade(command)).is_ok() {
             counters.select_trade_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_beacon_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetBeacon,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SetBeacon(command)).is_ok() {
+            counters.set_beacon_commands_queued += 1;
         }
     }
 }
@@ -715,6 +727,22 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::SeenAdvancements(command)
         );
+    }
+
+    #[test]
+    fn queues_set_beacon_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = SetBeacon {
+            primary_effect: Some(1),
+            secondary_effect: None,
+        };
+
+        queue_set_beacon_command(&mut counters, &commands, command);
+
+        assert_eq!(counters.set_beacon_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SetBeacon(command));
     }
 
     #[test]

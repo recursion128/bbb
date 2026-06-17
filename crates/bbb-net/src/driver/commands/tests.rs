@@ -6,8 +6,8 @@ use super::{
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
-    send_select_bundle_item, send_select_trade, send_set_held_slot_command, send_sign_update,
-    send_swing_command, send_use_item, send_use_item_on,
+    send_select_bundle_item, send_select_trade, send_set_beacon, send_set_held_slot_command,
+    send_sign_update, send_swing_command, send_use_item, send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -24,7 +24,7 @@ use bbb_protocol::{
         PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
         RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
         RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-        SignUpdate, Vec3d,
+        SetBeacon, SignUpdate, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -1081,6 +1081,45 @@ async fn send_edit_book_encodes_edit_book_packet() {
             slot: 5,
             pages: vec!["first page".to_string(), "second page".to_string()],
             title: Some("Field Notes".to_string()),
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_set_beacon_encodes_set_beacon_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("set beacon command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_BEACON);
+        let mut decoder = Decoder::new(&payload);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_set_beacon(
+        &mut conn,
+        SetBeacon {
+            primary_effect: Some(1),
+            secondary_effect: None,
         },
     )
     .await

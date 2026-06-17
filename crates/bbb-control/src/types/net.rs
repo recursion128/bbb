@@ -47,6 +47,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub select_trade_commands_queued: usize,
     #[serde(default)]
+    pub set_beacon_commands_queued: usize,
+    #[serde(default)]
     pub sign_update_commands_queued: usize,
     #[serde(default)]
     pub select_bundle_item_commands_queued: usize,

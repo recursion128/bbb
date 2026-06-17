@@ -581,6 +581,44 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.set_beacon" {
+        let primary_effect = match optional_i32_param(&request.params, "primary_effect") {
+            Ok(effect) => effect,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(err),
+                };
+            }
+        };
+        let secondary_effect = match optional_i32_param(&request.params, "secondary_effect") {
+            Ok(effect) => effect,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(err),
+                };
+            }
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::SetBeacon {
+                primary_effect,
+                secondary_effect,
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.select_bundle_item" {
         let Some(slot_id) = i32_param(&request.params, "slot_id") else {
             return ControlResponse {
@@ -974,6 +1012,24 @@ fn i32_param(params: &serde_json::Value, key: &str) -> Option<i32> {
     params.get(key)?.as_i64()?.try_into().ok()
 }
 
+fn optional_i32_param(params: &serde_json::Value, key: &str) -> Result<Option<i32>, String> {
+    let Some(value) = params.get(key) else {
+        return Ok(None);
+    };
+    if value.is_null() {
+        return Ok(None);
+    }
+    let Some(value) = value.as_i64() else {
+        return Err(format!(
+            "net.set_beacon requires integer or null param {key}"
+        ));
+    };
+    value
+        .try_into()
+        .map(Some)
+        .map_err(|_| format!("net.set_beacon requires integer or null param {key}"))
+}
+
 fn f32_param(params: &serde_json::Value, key: &str) -> Option<f32> {
     params
         .get(key)?
@@ -1125,7 +1181,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
-    use crate::types::AudioCounters;
+    use crate::types::{AudioCounters, NetCounters};
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
         BlockDestruction, BlockEvent, BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound,
@@ -2137,6 +2193,81 @@ mod tests {
             &snapshot,
         );
         assert!(!invalid_item.ok);
+    }
+
+    #[test]
+    fn net_set_beacon_queues_both_effects() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.set_beacon".to_string(),
+                params: json!({"primary_effect": 1, "secondary_effect": 5}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SetBeacon {
+                primary_effect: Some(1),
+                secondary_effect: Some(5),
+            }]
+        );
+    }
+
+    #[test]
+    fn net_set_beacon_queues_null_and_missing_effects_as_none() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.set_beacon".to_string(),
+                params: json!({"primary_effect": null}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SetBeacon {
+                primary_effect: None,
+                secondary_effect: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn net_set_beacon_rejects_non_integer_effects() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.set_beacon".to_string(),
+                params: json!({"primary_effect": "speed"}),
+            },
+            &snapshot,
+        );
+
+        assert!(!response.ok);
+        assert_eq!(
+            response.error.as_deref(),
+            Some("net.set_beacon requires integer or null param primary_effect")
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_set_beacon_counter_deserializes_with_default() {
+        let mut value = serde_json::to_value(NetCounters::default()).unwrap();
+        value
+            .as_object_mut()
+            .unwrap()
+            .remove("set_beacon_commands_queued");
+
+        let counters: NetCounters = serde_json::from_value(value).unwrap();
+
+        assert_eq!(counters.set_beacon_commands_queued, 0);
     }
 
     #[test]

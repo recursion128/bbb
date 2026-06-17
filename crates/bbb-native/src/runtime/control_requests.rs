@@ -6,7 +6,7 @@ use bbb_control::{
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, ContainerClick, ContainerInput, EditBook, HashedComponentPatch,
-    HashedItemStack, HashedStack, RecipeBookType, RenameItem, SeenAdvancements,
+    HashedItemStack, HashedStack, RecipeBookType, RenameItem, SeenAdvancements, SetBeacon,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -20,7 +20,8 @@ use crate::{
         queue_place_recipe_command, queue_player_abilities_command,
         queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
         queue_rename_item_command, queue_seen_advancements_command, queue_select_trade_command,
-        queue_sign_update_command, select_bundle_item, select_hotbar_slot,
+        queue_set_beacon_command, queue_sign_update_command, select_bundle_item,
+        select_hotbar_slot,
     },
 };
 
@@ -174,6 +175,19 @@ pub(crate) fn pump_control_net_requests(
                     counters,
                     net_commands,
                     bbb_protocol::packets::SelectTradeCommand { item },
+                );
+            }
+            NetControlRequest::SetBeacon {
+                primary_effect,
+                secondary_effect,
+            } => {
+                queue_set_beacon_command(
+                    counters,
+                    net_commands,
+                    SetBeacon {
+                        primary_effect,
+                        secondary_effect,
+                    },
                 );
             }
             NetControlRequest::SignUpdate {
@@ -716,6 +730,34 @@ mod tests {
             -1
         );
         assert!(rx.try_recv().is_err());
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_set_beacon() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::SetBeacon {
+                primary_effect: Some(1),
+                secondary_effect: None,
+            });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.set_beacon_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetBeacon(SetBeacon {
+                primary_effect: Some(1),
+                secondary_effect: None,
+            })
+        );
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 
