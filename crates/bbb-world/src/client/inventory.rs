@@ -624,6 +624,15 @@ impl WorldStore {
                     &self.default_item_max_stack_sizes,
                 )
             }
+            ProtocolContainerInput::PickupAll if container_id == INVENTORY_MENU_CONTAINER_ID => {
+                apply_pickup_all_to_slots(
+                    &mut slots_after,
+                    &mut cursor_after,
+                    request.slot_num,
+                    request.button_num,
+                    &self.default_item_max_stack_sizes,
+                )
+            }
             input => {
                 return Err(ContainerClickBuildError::UnsupportedLocalClickInput(input));
             }
@@ -951,6 +960,61 @@ fn apply_throw_click_to_slots(
         slot.item = ProtocolItemStackSummary::empty();
     }
     normalize_container_slot_selection(slot);
+}
+
+fn apply_pickup_all_to_slots(
+    slots: &mut [ContainerSlot],
+    cursor: &mut ProtocolItemStackSummary,
+    slot_num: i16,
+    button_num: i8,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if slot_num < 0 || item_stack_is_empty(cursor) {
+        return;
+    }
+    let Some(clicked_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if !item_stack_is_empty(&slots[clicked_index].item) {
+        return;
+    }
+
+    let max_stack_size = item_stack_max_stack_size(cursor, default_item_max_stack_sizes);
+    if cursor.count >= max_stack_size {
+        return;
+    }
+
+    let mut indices = (0..slots.len()).collect::<Vec<_>>();
+    if button_num != 0 {
+        indices.reverse();
+    }
+
+    for pass in 0..2 {
+        for index in indices.iter().copied() {
+            if cursor.count >= max_stack_size {
+                return;
+            }
+            let slot = &mut slots[index];
+            if item_stack_is_empty(&slot.item) || !same_item_same_components(&slot.item, cursor) {
+                continue;
+            }
+            if pass == 0
+                && slot.item.count
+                    == item_stack_max_stack_size(&slot.item, default_item_max_stack_sizes)
+            {
+                continue;
+            }
+
+            let moved = slot.item.count.min(max_stack_size - cursor.count);
+            if moved <= 0 {
+                continue;
+            }
+            slot.item.count -= moved;
+            cursor.count += moved;
+            normalize_item_stack(&mut slot.item);
+            normalize_container_slot_selection(slot);
+        }
+    }
 }
 
 fn apply_swap_click_to_slots(
@@ -2511,6 +2575,210 @@ mod tests {
         );
         assert_eq!(inventory_menu_slot_item(&store, 5), item_stack(43, 1));
         assert_eq!(store.inventory().cursor_item, item_stack(43, 2));
+    }
+
+    #[test]
+    fn apply_local_container_pickup_all_collects_matching_stacks() {
+        let mut store = WorldStore::new();
+        store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 16), (43, 16)]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(42, 3),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 10,
+            item: item_stack(42, 4),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 11,
+            item: item_stack(42, 16),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 12,
+            item: item_stack(43, 5),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 14,
+            item: item_stack_with_component_summary(42, 6, 7),
+        });
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(42, 8),
+        });
+        assert!(store.open_local_inventory());
+
+        let pickup_all = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 13,
+                button_num: 0,
+                input: ProtocolContainerInput::PickupAll,
+            })
+            .unwrap();
+
+        assert_eq!(pickup_all.container_id, INVENTORY_MENU_CONTAINER_ID);
+        assert_eq!(pickup_all.input, ProtocolContainerInput::PickupAll);
+        assert_eq!(
+            pickup_all.changed_slots,
+            BTreeMap::from([
+                (INVENTORY_MENU_MAIN_START, ProtocolHashedStack::Empty),
+                (INVENTORY_MENU_MAIN_START + 1, ProtocolHashedStack::Empty),
+                (INVENTORY_MENU_MAIN_START + 2, hashed_item_stack(42, 15)),
+            ])
+        );
+        assert_eq!(pickup_all.carried_item, hashed_item_stack(42, 16));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START + 1),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START + 2),
+            item_stack(42, 15)
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START + 3),
+            item_stack(43, 5)
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START + 5),
+            item_stack_with_component_summary(42, 6, 7)
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(42, 16));
+    }
+
+    #[test]
+    fn apply_local_container_pickup_all_button_one_collects_in_reverse_order() {
+        let mut store = WorldStore::new();
+        store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 16)]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(42, 4),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 8,
+            item: item_stack(42, 4),
+        });
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(42, 14),
+        });
+        assert!(store.open_local_inventory());
+
+        let pickup_all = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START + 1,
+                button_num: 1,
+                input: ProtocolContainerInput::PickupAll,
+            })
+            .unwrap();
+
+        assert_eq!(
+            pickup_all.changed_slots,
+            BTreeMap::from([(INVENTORY_MENU_HOTBAR_END - 1, hashed_item_stack(42, 2))])
+        );
+        assert_eq!(pickup_all.carried_item, hashed_item_stack(42, 16));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            item_stack(42, 4)
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_END - 1),
+            item_stack(42, 2)
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(42, 16));
+    }
+
+    #[test]
+    fn apply_local_container_pickup_all_noops_without_eligible_click() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(42, 3),
+        });
+        assert!(store.open_local_inventory());
+
+        let empty_cursor = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START + 1,
+                button_num: 0,
+                input: ProtocolContainerInput::PickupAll,
+            })
+            .unwrap();
+        assert!(empty_cursor.changed_slots.is_empty());
+        assert_eq!(empty_cursor.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            item_stack(42, 3)
+        );
+
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(42, 5),
+        });
+        let clicked_item = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::PickupAll,
+            })
+            .unwrap();
+        assert!(clicked_item.changed_slots.is_empty());
+        assert_eq!(clicked_item.carried_item, hashed_item_stack(42, 5));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            item_stack(42, 3)
+        );
+
+        for slot_num in [-999, -1] {
+            let outside = store
+                .apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num,
+                    button_num: 0,
+                    input: ProtocolContainerInput::PickupAll,
+                })
+                .unwrap();
+            assert!(outside.changed_slots.is_empty());
+            assert_eq!(outside.carried_item, hashed_item_stack(42, 5));
+            assert_eq!(
+                inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+                item_stack(42, 3)
+            );
+        }
+    }
+
+    #[test]
+    fn apply_local_container_pickup_all_rejects_non_inventory_menu() {
+        let mut store = WorldStore::new();
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(42, 5),
+        });
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 1,
+            title: "Chest".to_string(),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 3,
+            items: vec![ProtocolItemStackSummary::empty(), item_stack(42, 3)],
+            carried_item: item_stack(42, 5),
+        });
+
+        assert_eq!(
+            store
+                .apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: 0,
+                    button_num: 0,
+                    input: ProtocolContainerInput::PickupAll,
+                })
+                .unwrap_err(),
+            ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::PickupAll)
+        );
+        assert_eq!(
+            store.inventory().open_container.as_ref().unwrap().slots[1].item,
+            item_stack(42, 3)
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(42, 5));
     }
 
     #[test]

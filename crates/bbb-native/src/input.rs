@@ -67,6 +67,9 @@ pub(crate) struct ClientInputState {
     bundle_scroll_accumulated_x: f64,
     bundle_scroll_accumulated_y: f64,
     inventory_hovered_slot: Option<i16>,
+    inventory_last_click_slot: Option<i16>,
+    inventory_last_click_button_num: Option<i8>,
+    inventory_last_click_at: Option<Instant>,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
@@ -108,6 +111,9 @@ impl ClientInputState {
         self.bundle_scroll_accumulated_x = 0.0;
         self.bundle_scroll_accumulated_y = 0.0;
         self.inventory_hovered_slot = None;
+        self.inventory_last_click_slot = None;
+        self.inventory_last_click_button_num = None;
+        self.inventory_last_click_at = None;
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;

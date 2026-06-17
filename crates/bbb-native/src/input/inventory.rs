@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::ContainerInput;
@@ -19,6 +21,7 @@ const INVENTORY_SCREEN_WIDTH: f64 = 176.0;
 const INVENTORY_SCREEN_HEIGHT: f64 = 166.0;
 const SLOT_SIZE: f64 = 16.0;
 const SLOT_HOVER_MARGIN: f64 = 1.0;
+const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct LocalInventorySlotLayout {
@@ -124,10 +127,32 @@ pub(crate) fn handle_inventory_mouse_input(
     };
 
     let click_target = local_inventory_click_target(cursor_position, surface_size);
+    let now = Instant::now();
+    let double_click_slot = match click_target {
+        Some(InventoryClickTarget::Slot(slot)) => {
+            let is_double_click = local_inventory_is_double_click(input, slot, button_num, now);
+            input.inventory_last_click_slot = Some(slot);
+            input.inventory_last_click_button_num = Some(button_num);
+            input.inventory_last_click_at = Some(now);
+            is_double_click.then_some(slot)
+        }
+        _ => {
+            input.inventory_last_click_slot = None;
+            input.inventory_last_click_button_num = None;
+            input.inventory_last_click_at = None;
+            None
+        }
+    };
     let (slot_num, click_input) = match click_target {
         Some(InventoryClickTarget::Slot(slot)) => (
             slot,
-            if input.shift_down() {
+            if double_click_slot == Some(slot)
+                && button_num == 0
+                && !input.shift_down()
+                && !inventory_cursor_is_empty(world)
+            {
+                ContainerInput::PickupAll
+            } else if input.shift_down() {
                 ContainerInput::QuickMove
             } else {
                 ContainerInput::Pickup
@@ -152,6 +177,20 @@ pub(crate) fn handle_inventory_mouse_input(
     };
     queue_container_click_command(counters, net_commands, click);
     true
+}
+
+fn local_inventory_is_double_click(
+    input: &ClientInputState,
+    slot: i16,
+    button_num: i8,
+    now: Instant,
+) -> bool {
+    input.inventory_last_click_slot == Some(slot)
+        && input.inventory_last_click_button_num == Some(button_num)
+        && input
+            .inventory_last_click_at
+            .and_then(|last| now.checked_duration_since(last))
+            .is_some_and(|elapsed| elapsed < VANILLA_DOUBLE_CLICK_THRESHOLD)
 }
 
 pub(crate) fn handle_inventory_key_input(
@@ -436,6 +475,138 @@ mod tests {
     }
 
     #[test]
+    fn inventory_double_left_click_queues_container_zero_pickup_all() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.inventory_last_click_slot = Some(36);
+        input.inventory_last_click_button_num = Some(0);
+        input.inventory_last_click_at = Some(Instant::now() - Duration::from_millis(1));
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_set_cursor_item(SetCursorItem {
+            item: item_stack(42, 4),
+        });
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 1,
+            item: item_stack(42, 3),
+        });
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 9,
+            item: item_stack(42, 5),
+        });
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 2,
+            item: item_stack(43, 7),
+        });
+        assert!(world.open_local_inventory());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 419.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(input.inventory_last_click_slot, Some(36));
+        assert_eq!(input.inventory_last_click_button_num, Some(0));
+        match rx.try_recv().unwrap() {
+            NetCommand::ContainerClick(click) => {
+                assert_eq!(click.container_id, 0);
+                assert_eq!(click.state_id, 0);
+                assert_eq!(click.slot_num, 36);
+                assert_eq!(click.button_num, 0);
+                assert_eq!(click.input, ContainerInput::PickupAll);
+                assert_eq!(
+                    click.changed_slots,
+                    [(9, HashedStack::Empty), (37, HashedStack::Empty)].into()
+                );
+                assert_eq!(
+                    click.carried_item,
+                    HashedStack::Item(HashedItemStack {
+                        item_id: 42,
+                        count: 12,
+                        components: HashedComponentPatch::default(),
+                    })
+                );
+            }
+            command => panic!("expected container click command, got {command:?}"),
+        }
+        assert_eq!(world.inventory().cursor_item, item_stack(42, 12));
+        assert_eq!(player_slot_item(&world, 1), ItemStackSummary::empty());
+        assert_eq!(player_slot_item(&world, 9), ItemStackSummary::empty());
+        assert_eq!(player_slot_item(&world, 2), item_stack(43, 7));
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn inventory_double_click_requires_left_button_and_vanilla_threshold() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.inventory_last_click_slot = Some(36);
+        input.inventory_last_click_button_num = Some(1);
+        input.inventory_last_click_at = Some(Instant::now() - Duration::from_millis(1));
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_set_cursor_item(SetCursorItem {
+            item: item_stack(42, 4),
+        });
+        assert!(world.open_local_inventory());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 419.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        match rx.try_recv().unwrap() {
+            NetCommand::ContainerClick(click) => {
+                assert_eq!(click.slot_num, 36);
+                assert_eq!(click.button_num, 1);
+                assert_eq!(click.input, ContainerInput::Pickup);
+            }
+            command => panic!("expected container click command, got {command:?}"),
+        }
+
+        input.inventory_last_click_slot = Some(37);
+        input.inventory_last_click_button_num = Some(0);
+        input.inventory_last_click_at = Some(Instant::now() - VANILLA_DOUBLE_CLICK_THRESHOLD);
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(580.0, 419.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        match rx.try_recv().unwrap() {
+            NetCommand::ContainerClick(click) => {
+                assert_eq!(click.slot_num, 37);
+                assert_eq!(click.button_num, 0);
+                assert_eq!(click.input, ContainerInput::Pickup);
+            }
+            command => panic!("expected container click command, got {command:?}"),
+        }
+        assert_eq!(counters.container_click_commands_queued, 2);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn shift_inventory_slot_click_queues_container_zero_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -581,5 +752,15 @@ mod tests {
         let mut stack = item_stack(item_id, count);
         stack.component_patch.bundle_contents_item_count = Some(item_count);
         stack
+    }
+
+    fn player_slot_item(world: &WorldStore, slot: i32) -> ItemStackSummary {
+        world
+            .inventory()
+            .player_slots
+            .iter()
+            .find(|state| state.slot == slot)
+            .map(|state| state.item.clone())
+            .unwrap_or_else(ItemStackSummary::empty)
     }
 }
