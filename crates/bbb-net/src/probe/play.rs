@@ -2,10 +2,7 @@ use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, PlayClientbound};
 use bbb_world::ChunkPos;
 
-use crate::{
-    driver::maybe_send_perform_respawn, probe::ProbeContext,
-    resource_pack::response_action_for_push, types::ConnectionState,
-};
+use crate::{probe::ProbeContext, resource_pack::response_action_for_push, types::ConnectionState};
 
 impl ProbeContext {
     pub(super) async fn handle_play_packet(
@@ -182,12 +179,9 @@ impl ProbeContext {
                 self.world.apply_login(&login);
             }
             PlayClientbound::Respawn(respawn) => {
-                self.player_was_dead = false;
                 self.world.apply_respawn(&respawn);
             }
             PlayClientbound::SetHealth(health) => {
-                maybe_send_perform_respawn(&mut self.conn, health, &mut self.player_was_dead)
-                    .await?;
                 self.world.apply_player_health(health);
             }
             PlayClientbound::EntityPositionSync(update) => {
@@ -2249,7 +2243,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn probe_set_health_sends_respawn_before_recording_dead_health() {
+    async fn probe_set_health_records_dead_health_without_auto_respawn() {
         let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
 
@@ -2262,14 +2256,12 @@ mod tests {
             .await
             .unwrap();
 
-        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
-            .await
-            .expect("probe should send perform respawn for dead health")
-            .unwrap();
-        assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_COMMAND);
-        let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_var_i32().unwrap(), 0);
-        assert!(decoder.is_empty());
+        assert!(
+            timeout(Duration::from_millis(100), server.read_packet())
+                .await
+                .is_err(),
+            "dead health alone must not send perform respawn"
+        );
 
         assert_eq!(
             probe.world.local_player().health,
@@ -2279,7 +2271,7 @@ mod tests {
                 saturation: 0.5,
             })
         );
-        assert!(probe.player_was_dead);
+        assert!(probe.world.local_player_is_dead());
         assert_eq!(probe.world.counters().player_health_packets, 1);
     }
 

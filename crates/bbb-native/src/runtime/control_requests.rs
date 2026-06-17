@@ -21,7 +21,7 @@ use crate::{
         queue_container_button_click_command, queue_container_click_command,
         queue_container_close_request_command, queue_container_slot_state_changed_command,
         queue_edit_book_command, queue_entity_tag_query_command, queue_lock_difficulty_command,
-        queue_place_recipe_command, queue_player_abilities_command,
+        queue_perform_respawn_command, queue_place_recipe_command, queue_player_abilities_command,
         queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
         queue_rename_item_command, queue_seen_advancements_command, queue_select_trade_command,
         queue_set_beacon_command, queue_sign_update_command, queue_spectate_entity_command,
@@ -165,6 +165,9 @@ pub(crate) fn pump_control_net_requests(
             }
             NetControlRequest::SetFlying { flying } => {
                 queue_player_abilities_command(counters, world, net_commands, flying);
+            }
+            NetControlRequest::PerformRespawn => {
+                queue_perform_respawn_command(counters, net_commands);
             }
             NetControlRequest::PlaceRecipe {
                 container_id,
@@ -613,6 +616,25 @@ mod tests {
         assert!(!world.local_player().abilities.unwrap().flying);
         assert_eq!(counters.player_abilities_commands_queued, 0);
         assert!(rx.try_recv().is_err());
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_perform_respawn() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::PerformRespawn);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.perform_respawn_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::PerformRespawn);
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 

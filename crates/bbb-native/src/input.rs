@@ -25,12 +25,12 @@ pub(crate) use commands::{
     queue_command_suggestion_request, queue_container_button_click_command,
     queue_container_click_command, queue_container_close_request_command,
     queue_container_slot_state_changed_command, queue_edit_book_command,
-    queue_entity_tag_query_command, queue_lock_difficulty_command, queue_place_recipe_command,
-    queue_player_abilities_command, queue_recipe_book_change_settings_command,
-    queue_recipe_book_seen_recipe_command, queue_rename_item_command,
-    queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
-    queue_sign_update_command, queue_spectate_entity_command, queue_teleport_to_entity_command,
-    queue_vehicle_move_command, select_hotbar_slot,
+    queue_entity_tag_query_command, queue_lock_difficulty_command, queue_perform_respawn_command,
+    queue_place_recipe_command, queue_player_abilities_command,
+    queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
+    queue_rename_item_command, queue_seen_advancements_command, queue_select_trade_command,
+    queue_set_beacon_command, queue_sign_update_command, queue_spectate_entity_command,
+    queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -178,6 +178,13 @@ pub(crate) fn handle_key_input(
 
     if input.command_entry_is_active() {
         handle_chat_entry_key(input, counters, world, net_commands, code, pressed);
+        return;
+    }
+
+    if world.local_player_is_dead() {
+        if pressed && matches!(code, KeyCode::Enter | KeyCode::Space) {
+            queue_perform_respawn_command(counters, net_commands);
+        }
         return;
     }
 

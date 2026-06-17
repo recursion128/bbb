@@ -115,6 +115,7 @@ pub enum NetCommand {
     SpectateEntity(SpectateEntity),
     TeleportToEntity(TeleportToEntity),
     SelectBundleItem(SelectBundleItem),
+    PerformRespawn,
     ContainerButtonClick(ContainerButtonClick),
     ContainerClick(ContainerClick),
     ContainerClose(ContainerCloseRequest),

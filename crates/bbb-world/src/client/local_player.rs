@@ -233,6 +233,12 @@ impl WorldStore {
         });
     }
 
+    pub fn local_player_is_dead(&self) -> bool {
+        self.local_player
+            .health
+            .is_some_and(|health| health.health <= 0.0)
+    }
+
     pub fn apply_player_experience(&mut self, packet: ProtocolPlayerExperience) {
         self.counters.player_experience_packets += 1;
         self.local_player.experience = Some(LocalPlayerExperienceState {
@@ -616,6 +622,34 @@ mod tests {
         assert_eq!(counters.held_slot_updates_ignored, 1);
         assert_eq!(counters.default_spawn_position_packets, 1);
         assert_eq!(counters.simulation_distance_packets, 1);
+    }
+
+    #[test]
+    fn local_player_is_dead_tracks_canonical_health() {
+        let mut store = WorldStore::new();
+
+        assert!(!store.local_player_is_dead());
+
+        store.apply_player_health(ProtocolPlayerHealth {
+            health: 7.5,
+            food: 16,
+            saturation: 2.0,
+        });
+        assert!(!store.local_player_is_dead());
+
+        store.apply_player_health(ProtocolPlayerHealth {
+            health: 0.0,
+            food: 16,
+            saturation: 2.0,
+        });
+        assert!(store.local_player_is_dead());
+
+        store.apply_player_health(ProtocolPlayerHealth {
+            health: 1.0,
+            food: 16,
+            saturation: 2.0,
+        });
+        assert!(!store.local_player_is_dead());
     }
 
     #[test]

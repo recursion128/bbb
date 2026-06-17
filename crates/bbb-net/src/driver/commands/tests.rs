@@ -1,11 +1,10 @@
 use super::{
-    maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity,
-    send_block_entity_tag_query, send_change_difficulty, send_change_game_mode,
-    send_chat_acknowledgement, send_chat_command, send_chat_message,
-    send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_edit_book, send_entity_tag_query,
-    send_interact_entity, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
-    send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
+    send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
+    send_chat_message, send_command_suggestion_request, send_container_button_click,
+    send_container_click, send_container_close, send_container_slot_state_changed, send_edit_book,
+    send_entity_tag_query, send_interact_entity, send_lock_difficulty, send_paddle_boat,
+    send_pick_item_from_block, send_pick_item_from_entity, send_ping_request, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
@@ -27,10 +26,10 @@ use bbb_protocol::{
         ContainerInput, ContainerSlotStateChanged, Difficulty, EditBook, EntityTagQuery, GameType,
         HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
         LockDifficultyCommand, PaddleBoat, PickItemFromEntity, PlaceRecipeCommand,
-        PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
-        PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-        RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
-        SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
+        PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
+        RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
+        RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+        SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -1700,79 +1699,6 @@ async fn send_command_suggestion_request_encodes_command_suggestion_packet() {
             id: 44,
             command: "/give @p minecraft:stone".to_string(),
         },
-    )
-    .await
-    .unwrap();
-
-    server.await.unwrap();
-}
-
-#[tokio::test]
-async fn death_health_sends_respawn_command_once_until_alive() {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    let server = tokio::spawn(async move {
-        let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
-        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
-            .await
-            .expect("respawn command should be sent")
-            .unwrap();
-        assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_COMMAND);
-        let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_var_i32().unwrap(), 0);
-        assert!(decoder.is_empty());
-
-        assert!(
-            timeout(Duration::from_millis(100), conn.read_packet())
-                .await
-                .is_err(),
-            "second dead health packet must not send another respawn"
-        );
-    });
-    let mut conn = RawConnection::connect(&addr.to_string(), None)
-        .await
-        .unwrap();
-    let mut player_was_dead = false;
-
-    maybe_send_perform_respawn(
-        &mut conn,
-        PlayerHealth {
-            health: 20.0,
-            food: 20,
-            saturation: 5.0,
-        },
-        &mut player_was_dead,
-    )
-    .await
-    .unwrap();
-    assert!(!player_was_dead);
-
-    maybe_send_perform_respawn(
-        &mut conn,
-        PlayerHealth {
-            health: 0.0,
-            food: 18,
-            saturation: 0.0,
-        },
-        &mut player_was_dead,
-    )
-    .await
-    .unwrap();
-    assert!(player_was_dead);
-
-    maybe_send_perform_respawn(
-        &mut conn,
-        PlayerHealth {
-            health: 0.0,
-            food: 18,
-            saturation: 0.0,
-        },
-        &mut player_was_dead,
     )
     .await
     .unwrap();

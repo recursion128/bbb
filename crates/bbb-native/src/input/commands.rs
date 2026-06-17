@@ -94,6 +94,17 @@ pub(crate) fn queue_player_abilities_command(
     true
 }
 
+pub(crate) fn queue_perform_respawn_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::PerformRespawn).is_ok() {
+            counters.perform_respawn_commands_queued += 1;
+        }
+    }
+}
+
 pub(crate) fn queue_place_recipe_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -847,6 +858,18 @@ mod tests {
                 recipe: RecipeDisplayId { index: 321 },
             })
         );
+    }
+
+    #[test]
+    fn queues_perform_respawn_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_perform_respawn_command(&mut counters, &commands);
+
+        assert_eq!(counters.perform_respawn_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::PerformRespawn);
     }
 
     #[test]

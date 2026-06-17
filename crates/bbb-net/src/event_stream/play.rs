@@ -2,7 +2,6 @@ use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, PlayClientbound};
 
 use crate::{
-    driver::maybe_send_perform_respawn,
     event_stream::{emit, EventStreamContext},
     resource_pack::response_action_for_push,
     types::{ConnectionState, NetEvent},
@@ -186,7 +185,6 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::Login(login)).await?;
             }
             PlayClientbound::Respawn(respawn) => {
-                self.player_was_dead = false;
                 emit(&self.events, NetEvent::Respawn(respawn)).await?;
             }
             PlayClientbound::PlayerCombatEnd(update) => {
@@ -202,8 +200,6 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::PlayerChat(update)).await?;
             }
             PlayClientbound::SetHealth(health) => {
-                maybe_send_perform_respawn(&mut self.conn, health, &mut self.player_was_dead)
-                    .await?;
                 emit(&self.events, NetEvent::PlayerHealth(health)).await?;
             }
             PlayClientbound::SetExperience(experience) => {

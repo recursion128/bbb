@@ -469,6 +469,21 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.perform_respawn" {
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::PerformRespawn);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.place_recipe" {
         let Some(container_id) = i32_param(&request.params, "container_id") else {
             return ControlResponse {
@@ -2414,6 +2429,25 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_flying.ok);
+    }
+
+    #[test]
+    fn net_perform_respawn_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.perform_respawn".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::PerformRespawn]
+        );
     }
 
     #[test]

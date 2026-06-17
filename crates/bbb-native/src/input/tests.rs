@@ -3,7 +3,7 @@ use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestion,
     CommandSuggestionRequest, CommandSuggestions, CommonPlayerSpawnInfo, ContainerCloseRequest,
     LastSeenMessagesUpdate, OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction,
-    PlayerCommand, SetPassengers, Vec3d as ProtocolVec3d,
+    PlayerCommand, PlayerHealth, SetPassengers, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use uuid::Uuid;
@@ -760,6 +760,59 @@ fn swap_offhand_key_queues_swap_action() {
             sequence: 0,
         })
     );
+}
+
+#[test]
+fn death_respawn_key_queues_perform_respawn() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_player_health(PlayerHealth {
+        health: 0.0,
+        food: 0,
+        saturation: 0.0,
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.perform_respawn_commands_queued, 1);
+    assert_eq!(rx.try_recv().unwrap(), NetCommand::PerformRespawn);
+}
+
+#[test]
+fn death_state_consumes_gameplay_keys_without_queueing_actions() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_player_health(PlayerHealth {
+        health: 0.0,
+        food: 0,
+        saturation: 0.0,
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyQ),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert_eq!(counters.perform_respawn_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

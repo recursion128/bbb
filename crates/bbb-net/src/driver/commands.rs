@@ -5,10 +5,9 @@ use bbb_protocol::packets::{
     ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery,
     InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
     PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
-    PlayerHealth, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
-    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
-    SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
-    UseItemOn,
+    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate,
+    SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -314,23 +313,14 @@ pub(crate) async fn send_command_suggestion_request(
     conn.send_packet(id, &payload).await
 }
 
-pub(crate) async fn send_accept_code_of_conduct(conn: &mut RawConnection) -> Result<()> {
-    let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
+pub(crate) async fn send_perform_respawn(conn: &mut RawConnection) -> Result<()> {
+    let (id, payload) = packets::encode_play_perform_respawn();
     conn.send_packet(id, &payload).await
 }
 
-pub(crate) async fn maybe_send_perform_respawn(
-    conn: &mut RawConnection,
-    health: PlayerHealth,
-    player_was_dead: &mut bool,
-) -> Result<()> {
-    let is_dead = health.health <= 0.0;
-    if is_dead && !*player_was_dead {
-        let (id, payload) = packets::encode_play_perform_respawn();
-        conn.send_packet(id, &payload).await?;
-    }
-    *player_was_dead = is_dead;
-    Ok(())
+pub(crate) async fn send_accept_code_of_conduct(conn: &mut RawConnection) -> Result<()> {
+    let (id, payload) = packets::encode_configuration_accept_code_of_conduct();
+    conn.send_packet(id, &payload).await
 }
 
 #[cfg(test)]
