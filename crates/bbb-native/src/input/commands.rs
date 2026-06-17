@@ -457,12 +457,7 @@ pub(super) fn queue_container_close_command(
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) -> bool {
-    let Some(container_id) = world
-        .inventory()
-        .open_container
-        .as_ref()
-        .map(|container| container.container_id)
-    else {
+    let Some(container_id) = world.open_container_id() else {
         return false;
     };
     if !world.close_local_container(container_id) {

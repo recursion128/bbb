@@ -916,7 +916,7 @@ fn sleeping_state_consumes_gameplay_keys_without_queueing_actions() {
 }
 
 #[test]
-fn inventory_key_queues_open_inventory_command() {
+fn inventory_key_opens_local_inventory_without_player_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
@@ -932,14 +932,63 @@ fn inventory_key_queues_open_inventory_command() {
         ElementState::Pressed,
     );
 
-    assert_eq!(counters.player_command_commands_queued, 1);
+    assert!(world.local_inventory_is_open());
+    assert_eq!(world.open_container_id(), Some(0));
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn escape_key_closes_local_inventory_and_queues_container_zero() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_local_inventory());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(!world.local_inventory_is_open());
+    assert_eq!(world.open_container_id(), None);
+    assert_eq!(counters.container_close_commands_queued, 1);
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::PlayerCommand(PlayerCommand {
-            entity_id: 77,
-            action: PlayerCommandAction::OpenInventory,
-            data: 0,
-        })
+        NetCommand::ContainerClose(ContainerCloseRequest { container_id: 0 })
+    );
+}
+
+#[test]
+fn inventory_key_closes_local_inventory_and_queues_container_zero() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.open_local_inventory());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyE),
+        ElementState::Pressed,
+    );
+
+    assert!(!world.local_inventory_is_open());
+    assert_eq!(world.open_container_id(), None);
+    assert_eq!(counters.container_close_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClose(ContainerCloseRequest { container_id: 0 })
     );
 }
 

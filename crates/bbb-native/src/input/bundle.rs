@@ -97,7 +97,11 @@ fn bundle_slot_shown_item_count(world: &WorldStore, slot_id: i32) -> Option<usiz
 }
 
 fn bundle_slot_selection(world: &WorldStore, slot_id: i32) -> Option<(i32, usize)> {
-    if let Some(container) = world.inventory().open_container.as_ref() {
+    if let Some(container) = world.inventory().open_container.as_ref().or_else(|| {
+        world
+            .local_inventory_is_open()
+            .then_some(&world.inventory().inventory_menu)
+    }) {
         let slot_id = i16::try_from(slot_id).ok()?;
         let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
         return bundle_item_selection(

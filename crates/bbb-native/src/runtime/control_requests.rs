@@ -1142,6 +1142,62 @@ mod tests {
     }
 
     #[test]
+    fn pump_control_net_requests_builds_container_zero_click_when_local_inventory_is_open() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.push(
+            bbb_control::NetControlRequest::ContainerClickSlot(
+                bbb_control::ContainerClickSlotControlRequest {
+                    slot_num: 36,
+                    button_num: 0,
+                    input: bbb_control::ContainerInputControl::Pickup,
+                },
+            ),
+        );
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: bbb_protocol::packets::ItemStackSummary {
+                item_id: Some(42),
+                count: 3,
+                component_patch: Default::default(),
+            },
+        });
+        world.apply_set_cursor_item(bbb_protocol::packets::SetCursorItem {
+            item: bbb_protocol::packets::ItemStackSummary {
+                item_id: Some(99),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        });
+        assert!(world.open_local_inventory());
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(bbb_protocol::packets::ContainerClick {
+                container_id: 0,
+                state_id: 0,
+                slot_num: 36,
+                button_num: 0,
+                input: bbb_protocol::packets::ContainerInput::Pickup,
+                changed_slots: BTreeMap::new(),
+                carried_item: bbb_protocol::packets::HashedStack::Item(
+                    bbb_protocol::packets::HashedItemStack {
+                        item_id: 99,
+                        count: 1,
+                        components: bbb_protocol::packets::HashedComponentPatch::default(),
+                    }
+                ),
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
     fn pump_control_net_requests_skips_container_click_slot_without_open_container() {
         let snapshot = bbb_control::shared_snapshot("test");
         snapshot.write().unwrap().net_requests.push(

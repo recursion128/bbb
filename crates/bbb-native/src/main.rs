@@ -198,7 +198,7 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    let container_open = world.inventory().open_container.is_some();
+                    let container_open = world.open_container_id().is_some();
                     if matches!(event.state, ElementState::Pressed)
                         && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
                         && cursor_captured
@@ -507,5 +507,5 @@ fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
 }
 
 fn world_wants_cursor(world: &WorldStore) -> bool {
-    world.inventory().open_container.is_some() || world.current_dialog().is_some()
+    world.open_container_id().is_some() || world.current_dialog().is_some()
 }

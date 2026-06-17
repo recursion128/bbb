@@ -84,6 +84,10 @@ pub struct ContainerState {
 pub struct InventoryState {
     pub player_slots: Vec<InventorySlot>,
     pub cursor_item: ProtocolItemStackSummary,
+    #[serde(default = "default_inventory_menu")]
+    pub inventory_menu: ContainerState,
+    #[serde(default)]
+    pub local_inventory_open: bool,
     pub open_container: Option<ContainerState>,
 }
 
@@ -130,6 +134,8 @@ impl Default for InventoryState {
         Self {
             player_slots: Vec::new(),
             cursor_item: ProtocolItemStackSummary::empty(),
+            inventory_menu: default_inventory_menu(),
+            local_inventory_open: false,
             open_container: None,
         }
     }
@@ -154,24 +160,18 @@ impl InventoryState {
             }
         }
 
-        if let Some(container) = self
-            .open_container
-            .as_ref()
-            .filter(|container| container.container_id == INVENTORY_MENU_CONTAINER_ID)
-        {
-            for slot in &container.slots {
-                let Some(index) = slot.slot.checked_sub(INVENTORY_MENU_HOTBAR_START) else {
-                    continue;
+        for slot in &self.inventory_menu.slots {
+            let Some(index) = slot.slot.checked_sub(INVENTORY_MENU_HOTBAR_START) else {
+                continue;
+            };
+            let Ok(slot_index) = usize::try_from(index) else {
+                continue;
+            };
+            if slot_index < PLAYER_HOTBAR_SIZE {
+                items[slot_index] = HotbarItemState {
+                    item: slot.item.clone(),
+                    local_selected_bundle_item_index: slot.local_selected_bundle_item_index,
                 };
-                let Ok(slot_index) = usize::try_from(index) else {
-                    continue;
-                };
-                if slot_index < PLAYER_HOTBAR_SIZE {
-                    items[slot_index] = HotbarItemState {
-                        item: slot.item.clone(),
-                        local_selected_bundle_item_index: slot.local_selected_bundle_item_index,
-                    };
-                }
             }
         }
 
@@ -182,14 +182,27 @@ impl InventoryState {
 impl WorldStore {
     pub fn apply_set_player_inventory(&mut self, packet: ProtocolSetPlayerInventory) {
         self.counters.inventory_slot_updates_received += 1;
+        let slot_id = packet.slot;
+        let menu_slot = inventory_slot_to_inventory_menu_slot(slot_id);
+        let item = packet.item;
         set_inventory_slot(
             &mut self.inventory.player_slots,
             InventorySlot {
-                slot: packet.slot,
-                item: packet.item,
+                slot: slot_id,
+                item: item.clone(),
                 local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
             },
         );
+        if let Some(menu_slot) = menu_slot {
+            set_container_slot(
+                &mut self.inventory.inventory_menu.slots,
+                ContainerSlot {
+                    slot: menu_slot,
+                    item,
+                    local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+                },
+            );
+        }
         self.update_inventory_slot_count();
     }
 
@@ -200,6 +213,7 @@ impl WorldStore {
 
     pub fn apply_open_screen(&mut self, packet: ProtocolOpenScreen) {
         self.counters.container_open_updates_received += 1;
+        self.inventory.local_inventory_open = false;
         let existing = self
             .inventory
             .open_container
@@ -223,17 +237,14 @@ impl WorldStore {
 
     pub fn apply_container_set_content(&mut self, packet: ProtocolContainerSetContent) {
         self.counters.container_content_updates_received += 1;
-        self.inventory.cursor_item = packet.carried_item;
-        let existing = self
-            .inventory
-            .open_container
-            .take()
-            .filter(|container| container.container_id == packet.container_id);
-        let merchant_offers = existing
-            .as_ref()
-            .and_then(|container| container.merchant_offers.clone());
-        let slots = packet
-            .items
+        let ProtocolContainerSetContent {
+            container_id,
+            state_id,
+            items,
+            carried_item,
+        } = packet;
+        self.inventory.cursor_item = carried_item;
+        let slots = items
             .into_iter()
             .enumerate()
             .map(|(slot, item)| ContainerSlot {
@@ -242,15 +253,39 @@ impl WorldStore {
                 item,
             })
             .collect();
+
+        if container_id == INVENTORY_MENU_CONTAINER_ID {
+            let existing =
+                std::mem::replace(&mut self.inventory.inventory_menu, default_inventory_menu());
+            self.inventory.inventory_menu = ContainerState {
+                container_id,
+                menu_type_id: existing.menu_type_id,
+                title: existing.title,
+                state_id,
+                slots,
+                data_values: existing.data_values,
+                merchant_offers: existing.merchant_offers,
+            };
+            return;
+        }
+
+        let existing = self
+            .inventory
+            .open_container
+            .take()
+            .filter(|container| container.container_id == container_id);
+        let merchant_offers = existing
+            .as_ref()
+            .and_then(|container| container.merchant_offers.clone());
         self.inventory.open_container = Some(ContainerState {
-            container_id: packet.container_id,
+            container_id,
             menu_type_id: existing
                 .as_ref()
                 .and_then(|container| container.menu_type_id),
             title: existing
                 .as_ref()
                 .and_then(|container| container.title.clone()),
-            state_id: packet.state_id,
+            state_id,
             slots,
             data_values: existing
                 .as_ref()
@@ -280,7 +315,11 @@ impl WorldStore {
 
     pub fn apply_container_set_slot(&mut self, packet: ProtocolContainerSetSlot) {
         self.counters.container_slot_updates_received += 1;
-        let container = self.ensure_container(packet.container_id);
+        let container = if packet.container_id == INVENTORY_MENU_CONTAINER_ID {
+            &mut self.inventory.inventory_menu
+        } else {
+            self.ensure_container(packet.container_id)
+        };
         container.state_id = packet.state_id;
         set_container_slot(
             &mut container.slots,
@@ -317,6 +356,16 @@ impl WorldStore {
 
     pub fn apply_container_close(&mut self, packet: ProtocolContainerClose) -> bool {
         self.counters.container_close_updates_received += 1;
+        if packet.container_id == INVENTORY_MENU_CONTAINER_ID {
+            if self.inventory.local_inventory_open {
+                self.inventory.local_inventory_open = false;
+                self.counters.container_close_updates_applied += 1;
+                return true;
+            }
+            self.counters.container_close_updates_ignored += 1;
+            return false;
+        }
+
         if self
             .inventory
             .open_container
@@ -334,6 +383,14 @@ impl WorldStore {
     }
 
     pub fn close_local_container(&mut self, container_id: i32) -> bool {
+        if container_id == INVENTORY_MENU_CONTAINER_ID {
+            if self.inventory.local_inventory_open {
+                self.inventory.local_inventory_open = false;
+                return true;
+            }
+            return false;
+        }
+
         if self
             .inventory
             .open_container
@@ -346,6 +403,33 @@ impl WorldStore {
         } else {
             false
         }
+    }
+
+    pub fn open_local_inventory(&mut self) -> bool {
+        if self.inventory.open_container.is_some() {
+            return false;
+        }
+        self.sync_inventory_menu_slots_from_player_inventory();
+        self.ensure_inventory_menu_slot_shape();
+        let was_open = self.inventory.local_inventory_open;
+        self.inventory.local_inventory_open = true;
+        !was_open
+    }
+
+    pub fn local_inventory_is_open(&self) -> bool {
+        self.inventory.local_inventory_open
+    }
+
+    pub fn open_container_id(&self) -> Option<i32> {
+        self.inventory
+            .open_container
+            .as_ref()
+            .map(|container| container.container_id)
+            .or_else(|| {
+                self.inventory
+                    .local_inventory_open
+                    .then_some(INVENTORY_MENU_CONTAINER_ID)
+            })
     }
 
     pub fn apply_local_select_bundle_item(
@@ -370,20 +454,56 @@ impl WorldStore {
                 selected_item_index,
             );
         }
+        if self.inventory.local_inventory_open {
+            let Ok(slot_id) = i16::try_from(slot_id) else {
+                return false;
+            };
+            let Some(slot) = self
+                .inventory
+                .inventory_menu
+                .slots
+                .iter_mut()
+                .find(|slot| slot.slot == slot_id)
+            else {
+                return false;
+            };
+            return apply_local_selected_bundle_item_index(
+                &slot.item,
+                &mut slot.local_selected_bundle_item_index,
+                selected_item_index,
+            );
+        }
 
-        let Some(slot) = self
+        let Some((applied, local_selected_bundle_item_index)) = self
             .inventory
             .player_slots
             .iter_mut()
             .find(|slot| slot.slot == slot_id)
+            .map(|slot| {
+                let applied = apply_local_selected_bundle_item_index(
+                    &slot.item,
+                    &mut slot.local_selected_bundle_item_index,
+                    selected_item_index,
+                );
+                (applied, slot.local_selected_bundle_item_index)
+            })
         else {
             return false;
         };
-        apply_local_selected_bundle_item_index(
-            &slot.item,
-            &mut slot.local_selected_bundle_item_index,
-            selected_item_index,
-        )
+        if applied {
+            if let Some(menu_slot_id) = inventory_slot_to_inventory_menu_slot(slot_id) {
+                if let Some(menu_slot) = self
+                    .inventory
+                    .inventory_menu
+                    .slots
+                    .iter_mut()
+                    .find(|slot| slot.slot == menu_slot_id)
+                {
+                    menu_slot.local_selected_bundle_item_index = local_selected_bundle_item_index;
+                }
+            }
+        }
+        applied
     }
 
     pub fn inventory(&self) -> &InventoryState {
@@ -414,7 +534,7 @@ impl WorldStore {
         &self,
         request: ContainerClickSlotRequest,
     ) -> Result<ProtocolContainerClick, ContainerClickBuildError> {
-        let Some(container) = self.inventory.open_container.as_ref() else {
+        let Some(container) = self.active_container() else {
             return Err(ContainerClickBuildError::NoOpenContainer);
         };
         if !container_click_slot_is_valid(container, request.slot_num) {
@@ -445,17 +565,78 @@ impl WorldStore {
         }
 
         self.inventory
-            .open_container
-            .as_ref()
-            .filter(|container| container.container_id == INVENTORY_MENU_CONTAINER_ID)
-            .and_then(|container| {
-                container.slots.iter().find_map(|slot| {
-                    (slot.slot == INVENTORY_MENU_OFFHAND_SLOT).then_some(&slot.item)
-                })
-            })
+            .inventory_menu
+            .slots
+            .iter()
+            .find_map(|slot| (slot.slot == INVENTORY_MENU_OFFHAND_SLOT).then_some(&slot.item))
+    }
+
+    fn active_container(&self) -> Option<&ContainerState> {
+        self.inventory.open_container.as_ref().or_else(|| {
+            self.inventory
+                .local_inventory_open
+                .then_some(&self.inventory.inventory_menu)
+        })
+    }
+
+    fn ensure_inventory_menu_slot_shape(&mut self) {
+        for slot in 0..=INVENTORY_MENU_OFFHAND_SLOT {
+            if self
+                .inventory
+                .inventory_menu
+                .slots
+                .iter()
+                .all(|existing| existing.slot != slot)
+            {
+                set_container_slot(
+                    &mut self.inventory.inventory_menu.slots,
+                    ContainerSlot {
+                        slot,
+                        item: ProtocolItemStackSummary::empty(),
+                        local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+                    },
+                );
+            }
+        }
+    }
+
+    fn sync_inventory_menu_slots_from_player_inventory(&mut self) {
+        for slot in self.inventory.player_slots.clone() {
+            let Some(menu_slot) = inventory_slot_to_inventory_menu_slot(slot.slot) else {
+                continue;
+            };
+            if self
+                .inventory
+                .inventory_menu
+                .slots
+                .iter()
+                .any(|slot| slot.slot == menu_slot)
+            {
+                continue;
+            }
+            set_container_slot(
+                &mut self.inventory.inventory_menu.slots,
+                ContainerSlot {
+                    slot: menu_slot,
+                    item: slot.item,
+                    local_selected_bundle_item_index: slot.local_selected_bundle_item_index,
+                },
+            );
+        }
+    }
+
+    fn inventory_menu_container(&mut self) -> &mut ContainerState {
+        if self.inventory.inventory_menu.container_id != INVENTORY_MENU_CONTAINER_ID {
+            self.inventory.inventory_menu = default_inventory_menu();
+        }
+        &mut self.inventory.inventory_menu
     }
 
     fn ensure_container(&mut self, container_id: i32) -> &mut ContainerState {
+        if container_id == INVENTORY_MENU_CONTAINER_ID {
+            return self.inventory_menu_container();
+        }
+
         if self
             .inventory
             .open_container
@@ -465,7 +646,7 @@ impl WorldStore {
             self.inventory.open_container = Some(ContainerState {
                 container_id,
                 ..ContainerState::default()
-            });
+            })
         }
         self.inventory
             .open_container
@@ -542,6 +723,23 @@ fn set_container_slot(slots: &mut Vec<ContainerSlot>, mut update: ContainerSlot)
 
 fn default_local_selected_bundle_item_index() -> i32 {
     NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+}
+
+fn default_inventory_menu() -> ContainerState {
+    ContainerState {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        ..ContainerState::default()
+    }
+}
+
+fn inventory_slot_to_inventory_menu_slot(slot: i32) -> Option<i16> {
+    match slot {
+        0..=8 => Some(INVENTORY_MENU_HOTBAR_START + slot as i16),
+        9..=35 => Some(slot as i16),
+        36..=39 => Some((44 - slot) as i16),
+        PLAYER_OFFHAND_SLOT => Some(INVENTORY_MENU_OFFHAND_SLOT),
+        _ => None,
+    }
 }
 
 fn apply_local_selected_bundle_item_index(
@@ -767,6 +965,90 @@ mod tests {
     }
 
     #[test]
+    fn container_zero_content_updates_inventory_menu_without_opening_local_screen() {
+        let mut store = WorldStore::new();
+
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: INVENTORY_MENU_CONTAINER_ID,
+            state_id: 7,
+            items: vec![ProtocolItemStackSummary::empty(), item_stack(42, 3)],
+            carried_item: item_stack(99, 1),
+        });
+
+        assert!(!store.local_inventory_is_open());
+        assert_eq!(store.open_container_id(), None);
+        assert!(store.inventory().open_container.is_none());
+        assert_eq!(store.inventory().inventory_menu.container_id, 0);
+        assert_eq!(store.inventory().inventory_menu.state_id, 7);
+        assert_eq!(
+            store.inventory().inventory_menu.slots[1].item,
+            item_stack(42, 3)
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(99, 1));
+    }
+
+    #[test]
+    fn open_local_inventory_builds_container_zero_view_from_player_inventory() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(10, 1),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+            item: item_stack(VANILLA_ELYTRA_ITEM_ID, 1),
+        });
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(99, 1),
+        });
+
+        assert!(store.open_local_inventory());
+        assert!(!store.open_local_inventory());
+        assert!(store.local_inventory_is_open());
+        assert_eq!(store.open_container_id(), Some(INVENTORY_MENU_CONTAINER_ID));
+
+        let inventory_menu = &store.inventory().inventory_menu;
+        assert_eq!(inventory_menu.container_id, INVENTORY_MENU_CONTAINER_ID);
+        assert_eq!(inventory_menu.slots.len(), 46);
+        assert_eq!(
+            inventory_menu
+                .slots
+                .iter()
+                .find(|slot| slot.slot == INVENTORY_MENU_HOTBAR_START)
+                .unwrap()
+                .item,
+            item_stack(10, 1)
+        );
+        assert_eq!(
+            inventory_menu
+                .slots
+                .iter()
+                .find(|slot| slot.slot == 6)
+                .unwrap()
+                .item,
+            item_stack(VANILLA_ELYTRA_ITEM_ID, 1)
+        );
+
+        let click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_HOTBAR_START,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+        assert_eq!(click.container_id, INVENTORY_MENU_CONTAINER_ID);
+        assert_eq!(click.slot_num, INVENTORY_MENU_HOTBAR_START);
+        assert_eq!(
+            click.carried_item,
+            ProtocolHashedStack::Item(ProtocolHashedItemStack {
+                item_id: 99,
+                count: 1,
+                components: ProtocolHashedComponentPatch::default(),
+            })
+        );
+    }
+
+    #[test]
     fn local_item_use_prefers_offhand_only_when_selected_hotbar_slot_is_empty() {
         let mut store = WorldStore::new();
 
@@ -900,6 +1182,7 @@ mod tests {
                 .collect(),
             carried_item: ProtocolItemStackSummary::empty(),
         });
+        assert!(store.open_local_inventory());
         assert!(store.apply_local_select_bundle_item(40, 0));
 
         let hotbar = store.inventory().hotbar_item_states();
@@ -1090,6 +1373,13 @@ mod tests {
     fn local_container_close_does_not_count_clientbound_close_packet() {
         let mut store = WorldStore::new();
 
+        assert!(store.open_local_inventory());
+        assert!(store.close_local_container(INVENTORY_MENU_CONTAINER_ID));
+        assert!(!store.local_inventory_is_open());
+        assert_eq!(store.open_container_id(), None);
+        assert_eq!(store.counters().container_close_updates_received, 0);
+        assert!(!store.close_local_container(INVENTORY_MENU_CONTAINER_ID));
+
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: 2,
@@ -1212,6 +1502,7 @@ mod tests {
             items: vec![item_stack(42, 1)],
             carried_item: ProtocolItemStackSummary::empty(),
         });
+        assert!(store.open_local_inventory());
 
         let outside_click = store
             .build_container_click_slot(ContainerClickSlotRequest {
