@@ -10,6 +10,9 @@ or another client stack. Old files and code may be replaced when that moves the 
 rewrite forward. Git history must not be cleaned or rewritten unless the user asks for
 that explicitly.
 
+Configuration is supplied at command-line startup. Do not implement in-game
+configuration UI.
+
 ## Authoritative References
 
 - Use local vanilla 26.1 sources first:

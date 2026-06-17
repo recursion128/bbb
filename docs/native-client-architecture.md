@@ -29,7 +29,7 @@ reference; this repo owns the implementation architecture.
 - Do not implement Microsoft/Mojang online account authentication; the playable
   networking target is offline-mode Java 26.1 servers.
 - Do not add in-game configuration UI; runtime configuration is supplied at
-  process startup through command-line options.
+  command-line startup.
 - Do not put GPU buffers, audio handles, threads, windows, or platform objects in
   `bbb-world`.
 - Do not put every state category into `hecs`. Use ECS for entity domain state,

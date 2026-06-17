@@ -2,6 +2,9 @@
 
 This repo is advanced by small, verified native-client slices.
 
+Configuration is supplied at command-line startup. Slices must not add in-game
+configuration UI.
+
 ## Roles
 
 - Main agent: owns scope selection, plan, vanilla-source checks, task split, integration, final tests, review, and commit.

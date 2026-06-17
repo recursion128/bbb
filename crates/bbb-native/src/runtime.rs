@@ -17,7 +17,7 @@ use crate::{
     camera_pose::camera_pose_from_world,
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::selection_outline_from_camera,
-    input::{advance_player_input, ClientInputState},
+    input::{advance_destroying_block_at_partial_tick, advance_player_input, ClientInputState},
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
@@ -119,6 +119,13 @@ pub(crate) fn pump_network_and_terrain(
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
+    advance_destroying_block_at_partial_tick(
+        input,
+        world,
+        net_counters,
+        net_commands,
+        client_animation_ticks.entity_partial_tick(now),
+    );
     let local_player = world.local_player();
     renderer.set_hud_health(local_player.health.map(|health| health.health));
     renderer.set_hud_food(local_player.health.map(|health| health.food));

@@ -1,5 +1,5 @@
 use bbb_protocol::packets::{
-    EntityAnchor, PlayerAbilities as ProtocolPlayerAbilities,
+    Direction as ProtocolDirection, EntityAnchor, PlayerAbilities as ProtocolPlayerAbilities,
     PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
     PlayerLookAt as ProtocolPlayerLookAt, PlayerPositionState as ProtocolPlayerPositionState,
     PlayerPositionUpdate as ProtocolPlayerPositionUpdate,
@@ -83,6 +83,8 @@ pub struct LocalPlayerExperienceState {
 pub struct LocalPlayerInteractionState {
     #[serde(default)]
     pub destroying_block: Option<BlockPos>,
+    #[serde(default)]
+    pub destroying_block_face: Option<ProtocolDirection>,
     #[serde(default)]
     pub using_item: bool,
     #[serde(default)]
@@ -358,10 +360,28 @@ impl WorldStore {
 
     pub fn set_local_destroying_block(&mut self, pos: BlockPos) {
         self.local_player.interaction.destroying_block = Some(pos);
+        self.local_player.interaction.destroying_block_face = None;
+    }
+
+    pub fn set_local_destroying_block_hit(&mut self, pos: BlockPos, face: ProtocolDirection) {
+        self.local_player.interaction.destroying_block = Some(pos);
+        self.local_player.interaction.destroying_block_face = Some(face);
     }
 
     pub fn take_local_destroying_block(&mut self) -> Option<BlockPos> {
+        self.local_player.interaction.destroying_block_face = None;
         self.local_player.interaction.destroying_block.take()
+    }
+
+    pub fn take_local_destroying_block_hit(&mut self) -> Option<(BlockPos, ProtocolDirection)> {
+        let pos = self.local_player.interaction.destroying_block.take()?;
+        let face = self
+            .local_player
+            .interaction
+            .destroying_block_face
+            .take()
+            .unwrap_or(ProtocolDirection::Down);
+        Some((pos, face))
     }
 
     pub fn set_local_using_item(&mut self, using_item: bool) {
@@ -665,8 +685,22 @@ mod tests {
         let pos = BlockPos { x: 4, y: 70, z: -6 };
         store.set_local_destroying_block(pos);
         assert_eq!(store.local_player().interaction.destroying_block, Some(pos));
+        assert_eq!(store.local_player().interaction.destroying_block_face, None);
+        assert_eq!(
+            store.take_local_destroying_block_hit(),
+            Some((pos, ProtocolDirection::Down))
+        );
+        assert_eq!(store.take_local_destroying_block_hit(), None);
+
+        store.set_local_destroying_block_hit(pos, ProtocolDirection::North);
+        assert_eq!(store.local_player().interaction.destroying_block, Some(pos));
+        assert_eq!(
+            store.local_player().interaction.destroying_block_face,
+            Some(ProtocolDirection::North)
+        );
         assert_eq!(store.take_local_destroying_block(), Some(pos));
         assert_eq!(store.take_local_destroying_block(), None);
+        assert_eq!(store.local_player().interaction.destroying_block_face, None);
 
         store.set_local_using_item(true);
         assert!(store.take_local_using_item());
@@ -687,6 +721,7 @@ mod tests {
             restored.local_player().interaction,
             LocalPlayerInteractionState {
                 destroying_block: Some(BlockPos { x: 1, y: 2, z: 3 }),
+                destroying_block_face: None,
                 using_item: true,
                 prediction_sequence: 1,
             }

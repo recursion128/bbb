@@ -17,8 +17,8 @@ with clear semantic boundaries.
 Networking is scoped to offline-mode Java 26.1 servers. Microsoft/Mojang online
 account authentication is not a project goal.
 
-Runtime configuration is startup-only through command-line options. The native
-client should not grow an in-game configuration UI.
+Runtime configuration is supplied at command-line startup. The native client
+must not implement in-game configuration UI.
 
 The target state is:
 
