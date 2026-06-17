@@ -299,6 +299,17 @@ mod tests {
     const END_ROD_NORTH_BLOCK_STATE_ID: i32 = 14636;
     const LANTERN_STANDING_BLOCK_STATE_ID: i32 = 20840;
     const CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID: i32 = 20880;
+    const CHEST_SINGLE_NORTH_BLOCK_STATE_ID: i32 = 3988;
+    const CHEST_LEFT_NORTH_BLOCK_STATE_ID: i32 = 3990;
+    const TRAPPED_CHEST_RIGHT_NORTH_BLOCK_STATE_ID: i32 = 11212;
+    const ENDER_CHEST_NORTH_BLOCK_STATE_ID: i32 = 9576;
+    const WHITE_BED_NORTH_FOOT_BLOCK_STATE_ID: i32 = 1934;
+    const WATER_CAULDRON_LEVEL_3_BLOCK_STATE_ID: i32 = 9463;
+    const HOPPER_NORTH_ENABLED_BLOCK_STATE_ID: i32 = 11314;
+    const ENCHANTING_TABLE_BLOCK_STATE_ID: i32 = 9451;
+    const STONECUTTER_NORTH_BLOCK_STATE_ID: i32 = 20801;
+    const ANVIL_NORTH_BLOCK_STATE_ID: i32 = 11195;
+    const COMPOSTER_LEVEL_7_BLOCK_STATE_ID: i32 = 21750;
     const COPPER_GRATE_BLOCK_STATE_ID: i32 = 27048;
     const WAXED_COPPER_GRATE_BLOCK_STATE_ID: i32 = 27056;
     const LIGHTNING_ROD_UP_UNPOWERED_BLOCK_STATE_ID: i32 = 27562;
@@ -691,6 +702,91 @@ mod tests {
         );
         assert!(!open_pose.horizontal_collision);
         assert!(open_pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_common_object_shapes() {
+        let cases = [
+            ("single chest", CHEST_SINGLE_NORTH_BLOCK_STATE_ID, 0.763),
+            ("double chest left", CHEST_LEFT_NORTH_BLOCK_STATE_ID, 0.763),
+            (
+                "trapped double chest right",
+                TRAPPED_CHEST_RIGHT_NORTH_BLOCK_STATE_ID,
+                0.763,
+            ),
+            ("ender chest", ENDER_CHEST_NORTH_BLOCK_STATE_ID, 0.763),
+            (
+                "water cauldron",
+                WATER_CAULDRON_LEVEL_3_BLOCK_STATE_ID,
+                0.7005,
+            ),
+            ("north hopper", HOPPER_NORTH_ENABLED_BLOCK_STATE_ID, 0.7005),
+            ("enchanting table", ENCHANTING_TABLE_BLOCK_STATE_ID, 0.7005),
+            ("anvil", ANVIL_NORTH_BLOCK_STATE_ID, 0.7005),
+        ];
+
+        for (name, block_state_id, max_z) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_steps_onto_common_low_object_shapes() {
+        let cases = [
+            ("north foot bed", WHITE_BED_NORTH_FOOT_BLOCK_STATE_ID),
+            ("north stonecutter", STONECUTTER_NORTH_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, 1.5625, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_composter_collision_uses_level_zero_shape_for_every_level() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, COMPOSTER_LEVEL_7_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 1.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                2.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.125, 0.0005);
+        assert!(pose.on_ground);
+        assert!(!pose.horizontal_collision);
     }
 
     #[test]

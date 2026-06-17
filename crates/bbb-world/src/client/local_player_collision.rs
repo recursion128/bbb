@@ -6,7 +6,7 @@ pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
 
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const LOCAL_PLAYER_HEIGHT: f64 = 1.8;
-const MAX_COLLISION_BOXES: usize = 5;
+const MAX_COLLISION_BOXES: usize = 16;
 const PX: f64 = 1.0 / 16.0;
 
 pub(super) fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBounds) -> bool {
@@ -82,6 +82,37 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
         }
         if is_campfire_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::CAMPFIRE));
+        }
+        if is_cauldron_block_name(block_name) {
+            return Some(cauldron_collision_shape());
+        }
+        if block_name == "minecraft:hopper" {
+            return hopper_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:composter" {
+            return Some(composter_collision_shape());
+        }
+        if block_name == "minecraft:ender_chest" {
+            return Some(BlockCollisionShape::single(BlockCollisionBox::CHEST_SINGLE));
+        }
+        if is_standard_chest_block_name(block_name) {
+            return chest_collision_shape(&block.block_properties);
+        }
+        if is_bed_block_name(block_name) {
+            return bed_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:enchanting_table" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 12.0),
+            ));
+        }
+        if block_name == "minecraft:stonecutter" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 9.0),
+            ));
+        }
+        if is_anvil_block_name(block_name) {
+            return anvil_collision_shape(&block.block_properties);
         }
         if is_door_block_name(block_name) {
             return door_collision_shape(&block.block_properties);
@@ -234,6 +265,33 @@ fn is_wall_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_wall"))
+}
+
+fn is_cauldron_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:cauldron"
+            | "minecraft:water_cauldron"
+            | "minecraft:lava_cauldron"
+            | "minecraft:powder_snow_cauldron"
+    )
+}
+
+fn is_standard_chest_block_name(block_name: &str) -> bool {
+    matches!(block_name, "minecraft:chest" | "minecraft:trapped_chest")
+}
+
+fn is_bed_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_bed"))
+}
+
+fn is_anvil_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:anvil" | "minecraft:chipped_anvil" | "minecraft:damaged_anvil"
+    )
 }
 
 fn stair_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
@@ -438,6 +496,210 @@ fn wall_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCo
     Some(builder.build())
 }
 
+fn cauldron_collision_shape() -> BlockCollisionShape {
+    let mut builder = BlockCollisionShapeBuilder::new();
+    builder.push(BlockCollisionBox::from_pixels(
+        [0.0, 0.0, 0.0],
+        [2.0, 3.0, 4.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [0.0, 0.0, 12.0],
+        [2.0, 3.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [14.0, 0.0, 0.0],
+        [16.0, 3.0, 4.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [14.0, 0.0, 12.0],
+        [16.0, 3.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [2.0, 0.0, 0.0],
+        [4.0, 3.0, 2.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [2.0, 0.0, 14.0],
+        [4.0, 3.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [12.0, 0.0, 0.0],
+        [14.0, 3.0, 2.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [12.0, 0.0, 14.0],
+        [14.0, 3.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [0.0, 3.0, 0.0],
+        [16.0, 4.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [0.0, 4.0, 0.0],
+        [2.0, 16.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [14.0, 4.0, 0.0],
+        [16.0, 16.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [2.0, 4.0, 0.0],
+        [14.0, 16.0, 2.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [2.0, 4.0, 14.0],
+        [14.0, 16.0, 16.0],
+    ));
+    builder.build()
+}
+
+fn hopper_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let spout = match properties.get("facing").map(String::as_str)? {
+        "down" => BlockCollisionBox::from_pixels([6.0, 0.0, 6.0], [10.0, 6.0, 10.0]),
+        "north" => BlockCollisionBox::from_pixels([6.0, 4.0, 0.0], [10.0, 8.0, 8.0]),
+        "east" => BlockCollisionBox::from_pixels([8.0, 4.0, 6.0], [16.0, 8.0, 10.0]),
+        "south" => BlockCollisionBox::from_pixels([6.0, 4.0, 8.0], [10.0, 8.0, 16.0]),
+        "west" => BlockCollisionBox::from_pixels([0.0, 4.0, 6.0], [8.0, 8.0, 10.0]),
+        _ => return None,
+    };
+
+    let mut builder = BlockCollisionShapeBuilder::new();
+    push_spoutless_hopper_boxes(&mut builder);
+    builder.push(spout);
+    Some(builder.build())
+}
+
+fn push_spoutless_hopper_boxes(builder: &mut BlockCollisionShapeBuilder) {
+    builder.push(BlockCollisionBox::from_pixels(
+        [0.0, 10.0, 0.0],
+        [16.0, 11.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [0.0, 11.0, 0.0],
+        [16.0, 16.0, 2.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [0.0, 11.0, 14.0],
+        [16.0, 16.0, 16.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [0.0, 11.0, 2.0],
+        [2.0, 16.0, 14.0],
+    ));
+    builder.push(BlockCollisionBox::from_pixels(
+        [14.0, 11.0, 2.0],
+        [16.0, 16.0, 14.0],
+    ));
+    builder.push(BlockCollisionBox::centered_column(8.0, 8.0, 4.0, 10.0));
+}
+
+fn composter_collision_shape() -> BlockCollisionShape {
+    let hole_y = 2.0;
+    BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::from_pixels(
+            [0.0, 0.0, 0.0],
+            [16.0, hole_y, 16.0],
+        )),
+        Some(BlockCollisionBox::from_pixels(
+            [0.0, hole_y, 0.0],
+            [16.0, 16.0, 2.0],
+        )),
+        Some(BlockCollisionBox::from_pixels(
+            [0.0, hole_y, 14.0],
+            [16.0, 16.0, 16.0],
+        )),
+        Some(BlockCollisionBox::from_pixels(
+            [0.0, hole_y, 2.0],
+            [2.0, 16.0, 14.0],
+        )),
+        Some(BlockCollisionBox::from_pixels(
+            [14.0, hole_y, 2.0],
+            [16.0, 16.0, 14.0],
+        )),
+    ])
+}
+
+fn chest_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let shape_box = match properties.get("type").map(String::as_str)? {
+        "single" => BlockCollisionBox::CHEST_SINGLE,
+        "left" => {
+            let connected = HorizontalDirection::parse(properties.get("facing")?)?.clockwise();
+            chest_connected_collision_box(connected)
+        }
+        "right" => {
+            let connected =
+                HorizontalDirection::parse(properties.get("facing")?)?.counter_clockwise();
+            chest_connected_collision_box(connected)
+        }
+        _ => return None,
+    };
+    Some(BlockCollisionShape::single(shape_box))
+}
+
+fn chest_connected_collision_box(connected: HorizontalDirection) -> BlockCollisionBox {
+    match connected {
+        HorizontalDirection::North => BlockCollisionBox::CHEST_CONNECTED_NORTH,
+        HorizontalDirection::East => BlockCollisionBox::CHEST_CONNECTED_EAST,
+        HorizontalDirection::South => BlockCollisionBox::CHEST_CONNECTED_SOUTH,
+        HorizontalDirection::West => BlockCollisionBox::CHEST_CONNECTED_WEST,
+    }
+}
+
+fn bed_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let connected = match properties.get("part").map(String::as_str)? {
+        "head" => facing.opposite(),
+        "foot" => facing,
+        _ => return None,
+    };
+    Some(bed_collision_shape_for_direction(connected.opposite()))
+}
+
+fn bed_collision_shape_for_direction(direction: HorizontalDirection) -> BlockCollisionShape {
+    let (left_leg, right_leg) = match direction {
+        HorizontalDirection::North => (
+            BlockCollisionBox::from_pixels([0.0, 0.0, 0.0], [3.0, 3.0, 3.0]),
+            BlockCollisionBox::from_pixels([13.0, 0.0, 0.0], [16.0, 3.0, 3.0]),
+        ),
+        HorizontalDirection::East => (
+            BlockCollisionBox::from_pixels([13.0, 0.0, 0.0], [16.0, 3.0, 3.0]),
+            BlockCollisionBox::from_pixels([13.0, 0.0, 13.0], [16.0, 3.0, 16.0]),
+        ),
+        HorizontalDirection::South => (
+            BlockCollisionBox::from_pixels([13.0, 0.0, 13.0], [16.0, 3.0, 16.0]),
+            BlockCollisionBox::from_pixels([0.0, 0.0, 13.0], [3.0, 3.0, 16.0]),
+        ),
+        HorizontalDirection::West => (
+            BlockCollisionBox::from_pixels([0.0, 0.0, 13.0], [3.0, 3.0, 16.0]),
+            BlockCollisionBox::from_pixels([0.0, 0.0, 0.0], [3.0, 3.0, 3.0]),
+        ),
+    };
+    BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::BED_PLATFORM),
+        Some(left_leg),
+        Some(right_leg),
+    ])
+}
+
+fn anvil_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let boxes = match facing.axis() {
+        HorizontalAxis::X => [
+            Some(BlockCollisionBox::centered_column(12.0, 12.0, 0.0, 4.0)),
+            Some(BlockCollisionBox::centered_column(10.0, 8.0, 4.0, 5.0)),
+            Some(BlockCollisionBox::centered_column(8.0, 4.0, 5.0, 10.0)),
+            Some(BlockCollisionBox::centered_column(16.0, 10.0, 10.0, 16.0)),
+        ],
+        HorizontalAxis::Z => [
+            Some(BlockCollisionBox::centered_column(12.0, 12.0, 0.0, 4.0)),
+            Some(BlockCollisionBox::centered_column(8.0, 10.0, 4.0, 5.0)),
+            Some(BlockCollisionBox::centered_column(4.0, 8.0, 5.0, 10.0)),
+            Some(BlockCollisionBox::centered_column(10.0, 16.0, 10.0, 16.0)),
+        ],
+    };
+    Some(BlockCollisionShape::from_boxes(boxes))
+}
+
 fn cross_collision_shape(
     properties: &BTreeMap<String, String>,
     post: BlockCollisionBox,
@@ -556,6 +818,15 @@ impl HorizontalDirection {
             Self::East => Self::North,
             Self::South => Self::East,
             Self::West => Self::South,
+        }
+    }
+
+    fn opposite(self) -> Self {
+        match self {
+            Self::North => Self::South,
+            Self::East => Self::West,
+            Self::South => Self::North,
+            Self::West => Self::East,
         }
     }
 
@@ -686,11 +957,22 @@ struct BlockCollisionShape {
 
 impl BlockCollisionShape {
     fn single(shape_box: BlockCollisionBox) -> Self {
-        Self::from_boxes([Some(shape_box), None, None, None, None])
+        let mut boxes = [None; MAX_COLLISION_BOXES];
+        boxes[0] = Some(shape_box);
+        Self { boxes }
     }
 
-    fn from_boxes(boxes: [Option<BlockCollisionBox>; MAX_COLLISION_BOXES]) -> Self {
-        Self { boxes }
+    fn from_boxes<const N: usize>(boxes: [Option<BlockCollisionBox>; N]) -> Self {
+        let mut out = [None; MAX_COLLISION_BOXES];
+        let mut next_index = 0;
+        for shape_box in boxes.into_iter().flatten() {
+            if next_index >= MAX_COLLISION_BOXES {
+                break;
+            }
+            out[next_index] = Some(shape_box);
+            next_index += 1;
+        }
+        Self { boxes: out }
     }
 
     fn boxes(self) -> impl Iterator<Item = BlockCollisionBox> {
@@ -792,6 +1074,54 @@ impl BlockCollisionBox {
         min_z: 0.0,
         max_x: 1.0,
         max_y: 7.0 * PX,
+        max_z: 1.0,
+    };
+    const CHEST_SINGLE: Self = Self {
+        min_x: PX,
+        min_y: 0.0,
+        min_z: PX,
+        max_x: 15.0 * PX,
+        max_y: 14.0 * PX,
+        max_z: 15.0 * PX,
+    };
+    const CHEST_CONNECTED_NORTH: Self = Self {
+        min_x: PX,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 15.0 * PX,
+        max_y: 14.0 * PX,
+        max_z: 15.0 * PX,
+    };
+    const CHEST_CONNECTED_EAST: Self = Self {
+        min_x: PX,
+        min_y: 0.0,
+        min_z: PX,
+        max_x: 1.0,
+        max_y: 14.0 * PX,
+        max_z: 15.0 * PX,
+    };
+    const CHEST_CONNECTED_SOUTH: Self = Self {
+        min_x: PX,
+        min_y: 0.0,
+        min_z: PX,
+        max_x: 15.0 * PX,
+        max_y: 14.0 * PX,
+        max_z: 1.0,
+    };
+    const CHEST_CONNECTED_WEST: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: PX,
+        max_x: 15.0 * PX,
+        max_y: 14.0 * PX,
+        max_z: 15.0 * PX,
+    };
+    const BED_PLATFORM: Self = Self {
+        min_x: 0.0,
+        min_y: 3.0 * PX,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: 9.0 * PX,
         max_z: 1.0,
     };
     const BOTTOM_TRAPDOOR: Self = Self {
@@ -990,6 +1320,17 @@ impl BlockCollisionBox {
         }
     }
 
+    fn from_pixels(min: [f64; 3], max: [f64; 3]) -> Self {
+        Self::cuboid(
+            min[0] * PX,
+            min[1] * PX,
+            min[2] * PX,
+            max[0] * PX,
+            max[1] * PX,
+            max[2] * PX,
+        )
+    }
+
     fn column(min_x: f64, min_z: f64, max_x: f64, max_y: f64, max_z: f64) -> Self {
         Self {
             min_x,
@@ -999,6 +1340,21 @@ impl BlockCollisionBox {
             max_y,
             max_z,
         }
+    }
+
+    fn centered_column(width_x_px: f64, width_z_px: f64, min_y_px: f64, max_y_px: f64) -> Self {
+        Self::from_pixels(
+            [
+                (16.0 - width_x_px) * 0.5,
+                min_y_px,
+                (16.0 - width_z_px) * 0.5,
+            ],
+            [
+                (16.0 + width_x_px) * 0.5,
+                max_y_px,
+                (16.0 + width_z_px) * 0.5,
+            ],
+        )
     }
 
     fn centered_axis(axis: ShapeAxis, width_px: f64) -> Self {
