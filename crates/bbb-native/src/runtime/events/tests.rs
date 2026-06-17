@@ -25,19 +25,20 @@ use bbb_protocol::packets::{
     MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen, MoveMinecartAlongTrack,
     OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature, ParticlePayload,
     PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill, PlayerLookAt,
-    PlayerLookAtTarget, PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry,
-    RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry,
-    RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary,
-    RegistryData, RegistryDataEntry, RegistryTags, RemoteDebugSampleType, RemoveEntities, Respawn,
-    RotateHead, SectionBlocksUpdate, SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType,
-    ServerLinkType, ServerLinks, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
-    SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetPassengers, SetPlayerInventory,
-    ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
-    SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
-    TagNetworkPayload, TagQuery, TeleportEntity, TestInstanceBlockStatus, TrackedWaypoint,
-    TrackedWaypointPacket, UpdateAdvancements, UpdateAttributes, UpdateRecipes, UpdateTags,
-    Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier,
-    WaypointOperation, WaypointVec3i,
+    PlayerLookAtTarget, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
+    RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
+    RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
+    RecipeDisplayType, RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags,
+    RemoteDebugSampleType, RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate,
+    SelectAdvancementsTab, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+    SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem, SetEntityData, SetEntityLink,
+    SetEntityMotion, SetEquipment, SetPassengers, SetPlayerInventory, ShowDialog,
+    SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder,
+    SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound, TagNetworkPayload,
+    TagQuery, TeleportEntity, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
+    UpdateAdvancements, UpdateAttributes, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d,
+    Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+    WaypointVec3i,
 };
 use bbb_world::{BlockPos, ChunkPos, RegistryPacketEntry, WorldStore};
 use std::collections::BTreeMap;
@@ -3828,6 +3829,68 @@ fn login_tracks_local_player_id_in_world() {
     assert_eq!(world.local_player_id(), Some(9));
     assert_eq!(world.counters().play_logins_received, 1);
     assert_eq!(world.counters().respawns_received, 1);
+}
+
+#[test]
+fn player_position_and_rotation_events_update_world_pose() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::PlayerPosition(PlayerPositionUpdate {
+        id: 23,
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 64.0,
+            z: -5.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.125,
+            y: 0.0,
+            z: 0.25,
+        },
+        y_rot: 90.0,
+        x_rot: 15.0,
+        relatives_mask: 0,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::PlayerRotation(PlayerRotationUpdate {
+        y_rot: 10.0,
+        relative_y: true,
+        x_rot: -5.0,
+        relative_x: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    let pose = world.local_player_pose().unwrap();
+    assert_eq!(
+        pose.position,
+        ProtocolVec3d {
+            x: 10.0,
+            y: 64.0,
+            z: -5.0,
+        }
+    );
+    assert_eq!(
+        pose.delta_movement,
+        ProtocolVec3d {
+            x: 0.125,
+            y: 0.0,
+            z: 0.25,
+        }
+    );
+    assert_eq!(pose.y_rot, 100.0);
+    assert_eq!(pose.x_rot, -5.0);
+    assert_eq!(pose.last_teleport_id, 23);
+
+    let world_counters = world.counters();
+    assert_eq!(world_counters.player_position_packets, 1);
+    assert_eq!(world_counters.player_rotation_packets, 1);
 }
 
 #[test]
