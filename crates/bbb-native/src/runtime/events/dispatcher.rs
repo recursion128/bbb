@@ -109,27 +109,20 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 world.apply_custom_chat_completions(update);
             }
             NetEvent::Sound(update) => {
-                world.apply_sound_event(update);
-                if let Some(state) = world.last_sound() {
-                    emit_positioned_sound(&mut audio_events, state);
-                }
+                let state = world.apply_sound_event(update);
+                emit_positioned_sound(&mut audio_events, &state);
             }
             NetEvent::SoundEntity(update) => {
-                let applied = world.apply_sound_entity_event(update);
-                if applied {
-                    if let Some(state) = world.last_sound_entity() {
-                        let position = world
-                            .probe_entity_transform(state.entity_id)
-                            .map(|entity| audio_position(entity.position));
-                        emit_entity_sound(&mut audio_events, state, position);
-                    }
+                if let Some(state) = world.apply_sound_entity_event(update) {
+                    let position = world
+                        .probe_entity_transform(state.entity_id)
+                        .map(|entity| audio_position(entity.position));
+                    emit_entity_sound(&mut audio_events, &state, position);
                 }
             }
             NetEvent::StopSound(update) => {
-                world.apply_stop_sound(update);
-                if let Some(state) = world.last_stop_sound() {
-                    emit_stop_sound(&mut audio_events, state);
-                }
+                let state = world.apply_stop_sound(update);
+                emit_stop_sound(&mut audio_events, &state);
             }
             NetEvent::AwardStats(update) => {
                 world.apply_award_stats(update);

@@ -52,46 +52,54 @@ pub struct SoundHolderState {
 }
 
 impl WorldStore {
-    pub fn apply_sound_event(&mut self, packet: ProtocolSoundEvent) {
+    pub fn apply_sound_event(&mut self, packet: ProtocolSoundEvent) -> SoundEventState {
         self.counters.sound_packets += 1;
-        self.client_audio.last_sound = Some(SoundEventState {
+        let state = SoundEventState {
             sound: sound_holder_state(packet.sound),
             source: packet.source.as_str().to_string(),
             position: packet.position,
             volume: packet.volume,
             pitch: packet.pitch,
             seed: packet.seed,
-        });
+        };
+        self.client_audio.last_sound = Some(state.clone());
+        state
     }
 
-    pub fn apply_sound_entity_event(&mut self, packet: ProtocolSoundEntityEvent) -> bool {
+    pub fn apply_sound_entity_event(
+        &mut self,
+        packet: ProtocolSoundEntityEvent,
+    ) -> Option<SoundEntityEventState> {
         self.counters.sound_entity_packets += 1;
         let Some(is_silent) = self.entities.is_silent(packet.entity_id) else {
             self.counters.sound_entity_events_ignored += 1;
-            return false;
+            return None;
         };
         if is_silent {
             self.counters.sound_entity_events_ignored += 1;
-            return false;
+            return None;
         }
-        self.client_audio.last_sound_entity = Some(SoundEntityEventState {
+        let state = SoundEntityEventState {
             sound: sound_holder_state(packet.sound),
             source: packet.source.as_str().to_string(),
             entity_id: packet.entity_id,
             volume: packet.volume,
             pitch: packet.pitch,
             seed: packet.seed,
-        });
+        };
+        self.client_audio.last_sound_entity = Some(state.clone());
         self.counters.sound_entity_events_applied += 1;
-        true
+        Some(state)
     }
 
-    pub fn apply_stop_sound(&mut self, packet: ProtocolStopSound) {
+    pub fn apply_stop_sound(&mut self, packet: ProtocolStopSound) -> StopSoundEventState {
         self.counters.stop_sound_packets += 1;
-        self.client_audio.last_stop_sound = Some(StopSoundEventState {
+        let state = StopSoundEventState {
             source: packet.source.map(|source| source.as_str().to_string()),
             name: packet.name,
-        });
+        };
+        self.client_audio.last_stop_sound = Some(state.clone());
+        state
     }
 
     pub fn client_audio(&self) -> &ClientAudioState {
@@ -141,7 +149,7 @@ mod tests {
     fn tracks_last_sound_events_and_counters() {
         let mut store = WorldStore::new();
 
-        store.apply_sound_event(ProtocolSoundEvent {
+        let sound = store.apply_sound_event(ProtocolSoundEvent {
             sound: ProtocolSoundEventHolder::Reference { registry_id: 41 },
             source: SoundSource::Blocks,
             position: ProtocolVec3d {
@@ -153,64 +161,66 @@ mod tests {
             pitch: 1.25,
             seed: 123456789,
         });
-        assert_eq!(
-            store.last_sound(),
-            Some(&SoundEventState {
-                sound: SoundHolderState {
-                    kind: "reference".to_string(),
-                    registry_id: Some(41),
-                    location: None,
-                    fixed_range: None,
-                },
-                source: "block".to_string(),
-                position: ProtocolVec3d {
-                    x: 2.5,
-                    y: -1.0,
-                    z: 0.0,
-                },
-                volume: 0.75,
-                pitch: 1.25,
-                seed: 123456789,
-            })
-        );
+        let expected_sound = SoundEventState {
+            sound: SoundHolderState {
+                kind: "reference".to_string(),
+                registry_id: Some(41),
+                location: None,
+                fixed_range: None,
+            },
+            source: "block".to_string(),
+            position: ProtocolVec3d {
+                x: 2.5,
+                y: -1.0,
+                z: 0.0,
+            },
+            volume: 0.75,
+            pitch: 1.25,
+            seed: 123456789,
+        };
+        assert_eq!(sound, expected_sound);
+        assert_eq!(store.last_sound(), Some(&expected_sound));
 
         store.apply_add_entity(protocol_add_entity(123));
-        assert!(store.apply_sound_entity_event(ProtocolSoundEntityEvent {
-            sound: ProtocolSoundEventHolder::Direct {
-                location: "minecraft:entity.cat.ambient".to_string(),
-                fixed_range: Some(32.0),
-            },
-            source: SoundSource::Neutral,
-            entity_id: 123,
-            volume: 1.0,
-            pitch: 0.5,
-            seed: -9,
-        }));
-        assert_eq!(
-            store.last_sound_entity(),
-            Some(&SoundEntityEventState {
-                sound: SoundHolderState {
-                    kind: "direct".to_string(),
-                    registry_id: None,
-                    location: Some("minecraft:entity.cat.ambient".to_string()),
+        let entity_sound = store
+            .apply_sound_entity_event(ProtocolSoundEntityEvent {
+                sound: ProtocolSoundEventHolder::Direct {
+                    location: "minecraft:entity.cat.ambient".to_string(),
                     fixed_range: Some(32.0),
                 },
-                source: "neutral".to_string(),
+                source: SoundSource::Neutral,
                 entity_id: 123,
                 volume: 1.0,
                 pitch: 0.5,
                 seed: -9,
             })
-        );
+            .unwrap();
+        let expected_entity_sound = SoundEntityEventState {
+            sound: SoundHolderState {
+                kind: "direct".to_string(),
+                registry_id: None,
+                location: Some("minecraft:entity.cat.ambient".to_string()),
+                fixed_range: Some(32.0),
+            },
+            source: "neutral".to_string(),
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
+        };
+        assert_eq!(entity_sound, expected_entity_sound);
+        assert_eq!(store.last_sound_entity(), Some(&expected_entity_sound));
 
-        assert!(!store.apply_sound_entity_event(ProtocolSoundEntityEvent {
-            sound: ProtocolSoundEventHolder::Reference { registry_id: 99 },
-            source: SoundSource::Hostile,
-            entity_id: 404,
-            volume: 0.2,
-            pitch: 1.8,
-            seed: 7,
-        }));
+        assert!(store
+            .apply_sound_entity_event(ProtocolSoundEntityEvent {
+                sound: ProtocolSoundEventHolder::Reference { registry_id: 99 },
+                source: SoundSource::Hostile,
+                entity_id: 404,
+                volume: 0.2,
+                pitch: 1.8,
+                seed: 7,
+            })
+            .is_none());
         assert_eq!(
             store.last_sound_entity().map(|state| state.entity_id),
             Some(123)
@@ -226,37 +236,39 @@ mod tests {
                 }],
             })
         );
-        assert!(!store.apply_sound_entity_event(ProtocolSoundEntityEvent {
-            sound: ProtocolSoundEventHolder::Direct {
-                location: "minecraft:entity.cat.ambient".to_string(),
-                fixed_range: None,
-            },
-            source: SoundSource::Neutral,
-            entity_id: 123,
-            volume: 0.8,
-            pitch: 1.1,
-            seed: 8,
-        }));
-        assert_eq!(store.last_sound_entity().map(|state| state.seed), Some(-9));
+        assert!(store
+            .apply_sound_entity_event(ProtocolSoundEntityEvent {
+                sound: ProtocolSoundEventHolder::Direct {
+                    location: "minecraft:entity.sheep.ambient".to_string(),
+                    fixed_range: None,
+                },
+                source: SoundSource::Neutral,
+                entity_id: 123,
+                volume: 1.0,
+                pitch: 1.0,
+                seed: 3,
+            })
+            .is_none());
+        assert_eq!(
+            store.last_sound_entity().map(|state| state.entity_id),
+            Some(123)
+        );
 
-        store.apply_stop_sound(StopSound {
+        let stop_sound = store.apply_stop_sound(StopSound {
             source: Some(SoundSource::Music),
             name: Some("minecraft:music.menu".to_string()),
         });
-        assert_eq!(
-            store.last_stop_sound(),
-            Some(&StopSoundEventState {
-                source: Some("music".to_string()),
-                name: Some("minecraft:music.menu".to_string()),
-            })
-        );
-
-        let counters = store.counters();
-        assert_eq!(counters.sound_packets, 1);
-        assert_eq!(counters.sound_entity_packets, 3);
-        assert_eq!(counters.sound_entity_events_applied, 1);
-        assert_eq!(counters.sound_entity_events_ignored, 2);
-        assert_eq!(counters.stop_sound_packets, 1);
+        let expected_stop_sound = StopSoundEventState {
+            source: Some("music".to_string()),
+            name: Some("minecraft:music.menu".to_string()),
+        };
+        assert_eq!(stop_sound, expected_stop_sound);
+        assert_eq!(store.last_stop_sound(), Some(&expected_stop_sound));
+        assert_eq!(store.counters().sound_packets, 1);
+        assert_eq!(store.counters().sound_entity_packets, 3);
+        assert_eq!(store.counters().sound_entity_events_applied, 1);
+        assert_eq!(store.counters().sound_entity_events_ignored, 2);
+        assert_eq!(store.counters().stop_sound_packets, 1);
     }
 
     fn protocol_add_entity(id: i32) -> AddEntity {
