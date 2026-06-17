@@ -20,6 +20,7 @@ use crate::{
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     entity_scene::entity_scene_outline_from_world_at_partial_tick,
     input::{advance_destroying_block_at_partial_tick, advance_player_input, ClientInputState},
+    item_entities::item_entity_billboards_from_world,
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
     terrain_runtime::{
@@ -141,6 +142,7 @@ pub(crate) fn pump_network_and_terrain(
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
     renderer.set_hud_hotbar_item_icons(hotbar_item_icons(world, item_runtime));
+    renderer.set_item_entity_billboards(item_entity_billboards_from_world(world, item_runtime));
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));

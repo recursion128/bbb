@@ -19,6 +19,7 @@ use crate::{
         create_hud_bind_group_layout, create_hud_pipeline, HudItemIcon, HudSpriteGpu,
         HUD_HOTBAR_SLOTS,
     },
+    item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     particles::{create_particle_pipeline, ParticleAtlasGpu, ParticleRuntimeState},
     selection::{
         create_selection_outline_gpu, create_selection_pipeline, SelectionOutline,
@@ -40,6 +41,7 @@ pub struct Renderer {
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
     pub(super) particle_pipeline: wgpu::RenderPipeline,
+    pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
@@ -55,6 +57,8 @@ pub struct Renderer {
     pub(super) camera_pose: Option<CameraPose>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) particle_atlas: Option<ParticleAtlasGpu>,
+    pub(super) item_entity_atlas: Option<ItemEntityAtlasGpu>,
+    pub(super) item_entity_billboards: Vec<ItemEntityBillboard>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
@@ -167,6 +171,8 @@ impl Renderer {
             create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
         let particle_pipeline =
             create_particle_pipeline(&device, format, &terrain_bind_group_layout);
+        let item_entity_pipeline =
+            create_item_entity_pipeline(&device, format, &terrain_bind_group_layout);
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
@@ -188,6 +194,7 @@ impl Renderer {
             terrain_translucent_pipeline,
             block_destroy_pipeline,
             particle_pipeline,
+            item_entity_pipeline,
             selection_pipeline,
             hud_pipeline,
             hud_bind_group_layout,
@@ -203,6 +210,8 @@ impl Renderer {
             camera_pose: None,
             block_destroy_overlays: None,
             particle_atlas: None,
+            item_entity_atlas: None,
+            item_entity_billboards: Vec::new(),
             selection_outline: None,
             entity_scene_outline: None,
             entity_target_outline: None,

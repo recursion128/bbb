@@ -320,9 +320,13 @@ Renderer-facing entity extraction should read canonical `WorldStore`
 projections instead of exposing `hecs` handles. The current basic visibility
 path lets `bbb-native` convert `WorldStore::entity_pick_targets_at_partial_tick`
 into a renderer-owned bounds outline, skipping the local player and current
-camera entity. That outline is a temporary scene proxy; full entity models,
-equipment, skins, item stacks, lighting, animation, culling, and draw ordering
-remain renderer-owned follow-up work.
+camera entity. Dropped item visibility uses
+`WorldStore::item_entity_stacks()` to expose only canonical item entity stack
+metadata and position; `bbb-native` resolves those stacks through
+`NativeItemRuntime`, then `bbb-renderer` draws camera-facing icon billboards
+from the item atlas. These are temporary scene proxies; full entity models,
+ground-context dropped item rendering, equipment, skins, lighting, animation,
+culling, and draw ordering remain renderer-owned follow-up work.
 
 Avoid:
 

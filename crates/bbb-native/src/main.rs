@@ -18,6 +18,7 @@ mod crosshair;
 mod entity_scene;
 mod hud_assets;
 mod input;
+mod item_entities;
 mod item_runtime;
 mod particle_registry;
 mod particle_runtime;
@@ -153,6 +154,11 @@ fn main() -> Result<()> {
             renderer.upload_hud_item_atlas(atlas_width, atlas_height, items.atlas_rgba())
         {
             tracing::warn!(?err, "continuing without native item HUD atlas");
+        }
+        if let Err(err) =
+            renderer.upload_item_entity_atlas(atlas_width, atlas_height, items.atlas_rgba())
+        {
+            tracing::warn!(?err, "continuing without native item entity atlas");
         }
     }
     let mut screenshot = args.screenshot;

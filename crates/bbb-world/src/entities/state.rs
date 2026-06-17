@@ -4,5 +4,6 @@ pub use crate::entities::{
     DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState,
     EntityCameraPoseState, EntityClientAnimationState, EntityPickTargetState, EntityState,
     EntityStatusProbeState, EntityTransformState, EntityVec3, HurtingProjectileState,
-    PolarBearStandingAnimationState, ProjectilePowerUpdateState, VehicleMoveReport,
+    ItemEntityStackState, PolarBearStandingAnimationState, ProjectilePowerUpdateState,
+    VehicleMoveReport,
 };

@@ -10,7 +10,8 @@ use super::{
     EntityAttributes, EntityCameraPoseState, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
     EntityMobEffects, EntityMount, EntityState, EntityTransform, EntityTransformState,
-    EntityTransientEvents, VANILLA_ENTITY_SILENT_DATA_ID,
+    EntityTransientEvents, ItemEntityStackState, VANILLA_ENTITY_SILENT_DATA_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
 };
 use crate::entities::dimensions::{
     vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
@@ -289,6 +290,36 @@ impl EntityStore {
             }
         }
         transforms
+    }
+
+    pub(crate) fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {
+        let mut items = Vec::new();
+        for id in &self.order {
+            let Some(entity) = self.by_protocol_id.get(id).copied() else {
+                continue;
+            };
+            let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
+                continue;
+            };
+            if identity.entity_type_id != VANILLA_ENTITY_TYPE_ITEM_ID {
+                continue;
+            }
+            let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
+                continue;
+            };
+            let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
+                continue;
+            };
+            let Some(stack) = item_entity_render_stack(&metadata.data_values) else {
+                continue;
+            };
+            items.push(ItemEntityStackState {
+                entity_id: identity.id,
+                position: transform.position,
+                stack: stack.clone(),
+            });
+        }
+        items
     }
 
     #[cfg(test)]
@@ -711,6 +742,24 @@ fn vanilla_attribute_value(attribute: &ProtocolAttributeSnapshot) -> f64 {
         }
     }
     result
+}
+
+fn item_entity_render_stack(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+) -> Option<&bbb_protocol::packets::ItemStackSummary> {
+    data_values.iter().find_map(|value| {
+        if value.data_id != VANILLA_ITEM_ENTITY_STACK_DATA_ID {
+            return None;
+        }
+        let EntityDataValueKind::ItemStack(stack) = &value.value else {
+            return None;
+        };
+        if stack.item_id.is_some() && stack.count > 0 {
+            Some(stack)
+        } else {
+            None
+        }
+    })
 }
 
 impl Serialize for EntityStore {

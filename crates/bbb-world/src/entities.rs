@@ -66,6 +66,13 @@ pub struct EntityVec3 {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ItemEntityStackState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub stack: ProtocolItemStackSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityState {
     pub id: i32,
     pub uuid: Uuid,
@@ -367,6 +374,10 @@ impl WorldStore {
 
     pub fn entity_transforms(&self) -> Vec<EntityTransformState> {
         self.entities.transform_states()
+    }
+
+    pub fn item_entity_stacks(&self) -> Vec<ItemEntityStackState> {
+        self.entities.item_entity_stacks()
     }
 
     pub fn local_player_id(&self) -> Option<i32> {

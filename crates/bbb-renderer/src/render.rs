@@ -30,6 +30,7 @@ impl Renderer {
         let mut translucent_draw_calls = 0;
         let mut block_destroy_overlay_draw_calls = 0;
         let mut particle_draw_calls = 0;
+        let mut item_entity_draw_calls = 0;
         let mut selection_draw_calls = 0;
         let mut entity_scene_draw_calls = 0;
         let mut entity_target_draw_calls = 0;
@@ -166,6 +167,46 @@ impl Renderer {
             pass.set_index_buffer(overlays.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..overlays.index_count, 0, 0..1);
             block_destroy_overlay_draw_calls += 1;
+        }
+
+        let item_entity_vertices = self.collect_item_entity_vertices();
+        if let Some(atlas) = &self.item_entity_atlas {
+            if !item_entity_vertices.is_empty() {
+                let item_entity_vertex_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("bbb-item-entity-frame-vertices"),
+                            contents: bytemuck::cast_slice(&item_entity_vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("bbb-native-item-entity-pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.item_entity_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_vertex_buffer(0, item_entity_vertex_buffer.slice(..));
+                pass.draw(0..item_entity_vertices.len() as u32, 0..1);
+                item_entity_draw_calls += 1;
+            }
         }
 
         let particle_vertices = self.collect_particle_vertices();
@@ -308,6 +349,7 @@ impl Renderer {
         self.counters.translucent_draw_calls = translucent_draw_calls;
         self.counters.block_destroy_overlay_draw_calls = block_destroy_overlay_draw_calls;
         self.counters.particle_draw_calls = particle_draw_calls;
+        self.counters.item_entity_draw_calls = item_entity_draw_calls;
         self.counters.selection_draw_calls = selection_draw_calls;
         self.counters.entity_scene_draw_calls = entity_scene_draw_calls;
         self.counters.entity_target_draw_calls = entity_target_draw_calls;
@@ -317,6 +359,7 @@ impl Renderer {
             + translucent_draw_calls
             + block_destroy_overlay_draw_calls
             + particle_draw_calls
+            + item_entity_draw_calls
             + selection_draw_calls
             + entity_scene_draw_calls
             + entity_target_draw_calls

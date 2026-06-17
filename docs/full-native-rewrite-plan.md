@@ -286,8 +286,11 @@ Deliverables:
   light, and atlas metadata.
 - Entity rendering extraction from `hecs` components. The first renderer-visible
   slice projects canonical entity bounds into a native/renderer outline pass for
-  basic scene visibility; full model, item, equipment, skin, lighting,
-  animation, culling, and ordering parity remain open.
+  basic scene visibility. Dropped item entities now project canonical
+  `WorldStore` item stack metadata through the native item runtime and render as
+  camera-facing item-icon billboards using the item atlas. Full model,
+  ground-context dropped item rendering, equipment, skin, lighting, animation,
+  culling, and ordering parity remain open.
 - Particle runtime for visual effects and particle packets.
 - Level-particle packets resolve through vanilla 26.1 particle type order and
   `bbb-pack` particle definitions/atlas sprites into renderer-owned spawn

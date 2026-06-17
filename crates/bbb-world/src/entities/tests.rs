@@ -3214,6 +3214,77 @@ fn minecart_along_track_updates_entity_from_latest_step() {
 }
 
 #[test]
+fn item_entity_stacks_filters_and_preserves_protocol_order() {
+    let mut store = WorldStore::new();
+
+    let mut first = protocol_add_entity_with_type(30, VANILLA_ENTITY_TYPE_ITEM_ID);
+    first.position = ProtocolVec3d {
+        x: 3.25,
+        y: 65.5,
+        z: -7.75,
+    };
+    store.apply_add_entity(first);
+    store.apply_add_entity(protocol_add_entity_with_type(20, 7));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        40,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        50,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 30,
+        values: vec![item_stack_entity_data(item_stack(42, 3))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![item_stack_entity_data(item_stack(99, 1))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![item_stack_entity_data(item_stack(51, 2))],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 40,
+        values: vec![item_stack_entity_data(ProtocolItemStackSummary::empty())],
+    }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 50,
+        values: vec![item_stack_entity_data(item_stack(77, 0))],
+    }));
+
+    let items = store.item_entity_stacks();
+    assert_eq!(
+        items.iter().map(|item| item.entity_id).collect::<Vec<_>>(),
+        vec![30, 10]
+    );
+    assert_eq!(
+        items[0].position,
+        EntityVec3 {
+            x: 3.25,
+            y: 65.5,
+            z: -7.75,
+        }
+    );
+    assert_eq!(items[0].stack, item_stack(42, 3));
+    assert_eq!(
+        items[1].position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert_eq!(items[1].stack, item_stack(51, 2));
+}
+
+#[test]
 fn take_item_entity_shrinks_item_stacks_and_removes_entities() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
