@@ -67,7 +67,7 @@ const VANILLA_ENTITY_TYPE_ZOMBIE_ID: i32 = 150;
 const VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID: i32 = 151;
 const VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID: i32 = 153;
 const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
-const ENTITY_DATA_POSE_ID: u8 = 6;
+pub(crate) const ENTITY_DATA_POSE_ID: u8 = 6;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
@@ -101,7 +101,7 @@ const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
 const VANILLA_SCALE_MAX: f64 = 16.0;
 const VANILLA_POSE_FALL_FLYING_ID: i32 = 1;
-const VANILLA_POSE_SLEEPING_ID: i32 = 2;
+pub(crate) const VANILLA_POSE_SLEEPING_ID: i32 = 2;
 const VANILLA_POSE_SWIMMING_ID: i32 = 3;
 const VANILLA_POSE_SPIN_ATTACK_ID: i32 = 4;
 const VANILLA_POSE_CROUCHING_ID: i32 = 5;
@@ -709,7 +709,7 @@ fn is_warden_fixed_pose(entity_type_id: i32, data_values: &[EntityDataValue]) ->
         )
 }
 
-fn entity_data_pose(data_values: &[EntityDataValue]) -> i32 {
+pub(crate) fn entity_data_pose(data_values: &[EntityDataValue]) -> i32 {
     data_values
         .iter()
         .find(|value| value.data_id == ENTITY_DATA_POSE_ID)

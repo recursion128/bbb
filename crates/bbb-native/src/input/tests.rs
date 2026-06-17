@@ -2,16 +2,20 @@ use super::*;
 use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestion,
     CommandSuggestionRequest, CommandSuggestions, CommonPlayerSpawnInfo, ContainerCloseRequest,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate,
     OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerCommand,
-    PlayerHealth, SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
-    Vec3d as ProtocolVec3d,
+    PlayerHealth, SetEntityData as ProtocolSetEntityData, SetPassengers,
+    SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, LocalPlayerPoseState, WorldStore};
 use uuid::Uuid;
 
 const VANILLA_26_1_ELYTRA_ITEM_ID: i32 = 14;
 const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
+const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
+const VANILLA_ENTITY_DATA_POSE_ID: u8 = 6;
+const VANILLA_POSE_SLEEPING_ID: i32 = 2;
 const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 
 fn handle_key_input_without_world(
@@ -111,6 +115,30 @@ fn equip_player_slot(world: &mut WorldStore, slot: i32, item_id: i32, count: i32
             component_patch: Default::default(),
         },
     });
+}
+
+fn world_with_sleeping_local_player(player_id: i32) -> WorldStore {
+    let mut world = world_with_local_player_id(player_id);
+    world.apply_add_entity(AddEntity {
+        id: player_id,
+        uuid: Uuid::from_u128(player_id as u128),
+        entity_type_id: VANILLA_26_1_PLAYER_ENTITY_TYPE_ID,
+        position: ProtocolVec3d::default(),
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: player_id,
+        values: vec![ProtocolEntityDataValue {
+            data_id: VANILLA_ENTITY_DATA_POSE_ID,
+            serializer_id: 20,
+            value: EntityDataValueKind::Pose(VANILLA_POSE_SLEEPING_ID),
+        }],
+    }));
+    world
 }
 
 #[test]
@@ -834,6 +862,56 @@ fn death_state_consumes_gameplay_keys_without_queueing_actions() {
 
     assert_eq!(counters.player_action_commands_queued, 0);
     assert_eq!(counters.perform_respawn_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sleeping_escape_key_queues_stop_sleeping_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_sleeping_local_player(77);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::StopSleeping,
+            data: 0,
+        })
+    );
+}
+
+#[test]
+fn sleeping_state_consumes_gameplay_keys_without_queueing_actions() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_sleeping_local_player(77);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyQ),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert_eq!(counters.player_command_commands_queued, 0);
     assert!(rx.try_recv().is_err());
 }
 

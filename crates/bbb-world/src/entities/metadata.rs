@@ -5,7 +5,7 @@ use bbb_protocol::packets::{
 
 use crate::WorldStore;
 
-use super::dimensions::vanilla_living_entity_type;
+use super::dimensions::{vanilla_living_entity_type, VANILLA_POSE_SLEEPING_ID};
 
 impl WorldStore {
     pub fn apply_set_entity_data(&mut self, packet: ProtocolSetEntityData) -> bool {
@@ -35,6 +35,12 @@ impl WorldStore {
         let _ = self.entities.refresh_client_position_from_entity_data(id);
         self.counters.entity_data_updates_applied += 1;
         true
+    }
+
+    pub fn local_player_is_sleeping(&self) -> bool {
+        self.local_player_id
+            .and_then(|id| self.entities.pose(id))
+            .is_some_and(|pose| pose == VANILLA_POSE_SLEEPING_ID)
     }
 
     pub fn apply_set_equipment(&mut self, packet: ProtocolSetEquipment) -> bool {

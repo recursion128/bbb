@@ -1359,6 +1359,18 @@ fn encodes_player_abilities_flying_bit() {
 #[test]
 fn encodes_player_command_actions() {
     let (id, payload) = encode_play_player_command(PlayerCommand {
+        entity_id: 5,
+        action: PlayerCommandAction::StopSleeping,
+        data: 0,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_PLAYER_COMMAND);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 5);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(decoder.is_empty());
+
+    let (id, payload) = encode_play_player_command(PlayerCommand {
         entity_id: 1234,
         action: PlayerCommandAction::StartSprinting,
         data: 0,

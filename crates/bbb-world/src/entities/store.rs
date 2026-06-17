@@ -14,7 +14,7 @@ use super::{
     VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
 };
 use crate::entities::dimensions::{
-    vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
+    entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
     vanilla_pick_bounds_for_entity_data,
 };
 use crate::entities::dragon::{
@@ -109,6 +109,12 @@ impl EntityStore {
                 })
                 .unwrap_or(false),
         )
+    }
+
+    pub(crate) fn pose(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(entity_data_pose(&metadata.data_values))
     }
 
     pub(crate) fn pick_bounds(&self, id: i32) -> Option<super::EntityPickBoundsState> {

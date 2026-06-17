@@ -1617,6 +1617,68 @@ fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
 }
 
 #[test]
+fn local_player_is_sleeping_true_for_sleeping_local_entity() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(32));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        32,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 32,
+        values: vec![protocol_pose_data(
+            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::dimensions::VANILLA_POSE_SLEEPING_ID,
+        )],
+    }));
+
+    assert!(store.local_player_is_sleeping());
+}
+
+#[test]
+fn local_player_is_sleeping_false_without_local_id_or_entity() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        32,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 32,
+        values: vec![protocol_pose_data(
+            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::dimensions::VANILLA_POSE_SLEEPING_ID,
+        )],
+    }));
+    assert!(!store.local_player_is_sleeping());
+
+    store.apply_login(&protocol_play_login(33));
+    assert!(!store.local_player_is_sleeping());
+}
+
+#[test]
+fn local_player_is_sleeping_false_for_non_sleeping_pose() {
+    const POSE_STANDING: i32 = 0;
+
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(32));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        32,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 32,
+        values: vec![protocol_pose_data(
+            super::dimensions::ENTITY_DATA_POSE_ID,
+            POSE_STANDING,
+        )],
+    }));
+
+    assert!(!store.local_player_is_sleeping());
+}
+
+#[test]
 fn warden_pick_bounds_follow_vanilla_pose_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const ENTITY_DATA_POSE_ID: u8 = 6;

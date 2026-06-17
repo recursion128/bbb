@@ -190,6 +190,19 @@ pub(crate) fn handle_key_input(
         return;
     }
 
+    if world.local_player_is_sleeping() {
+        if pressed && matches!(code, KeyCode::Escape | KeyCode::Enter | KeyCode::Space) {
+            queue_player_command_action(
+                counters,
+                world,
+                net_commands,
+                PlayerCommandAction::StopSleeping,
+                0,
+            );
+        }
+        return;
+    }
+
     if pressed {
         if matches!(code, KeyCode::Escape | KeyCode::KeyE)
             && queue_container_close_command(counters, world, net_commands)
