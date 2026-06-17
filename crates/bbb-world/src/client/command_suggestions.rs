@@ -14,6 +14,10 @@ pub struct CommandSuggestionsState {
     pub by_id: BTreeMap<i32, CommandSuggestionsResultState>,
     pub last_id: Option<i32>,
     #[serde(default)]
+    pub next_request_id: i32,
+    #[serde(default)]
+    pub last_request: Option<CommandSuggestionRequestState>,
+    #[serde(default)]
     pub custom_completions: BTreeSet<String>,
     #[serde(default)]
     pub last_custom_completion_update: Option<CustomChatCompletionUpdateState>,
@@ -31,6 +35,12 @@ pub struct CommandSuggestionsResultState {
 pub struct CommandSuggestionState {
     pub text: String,
     pub tooltip: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommandSuggestionRequestState {
+    pub id: i32,
+    pub command: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,6 +68,24 @@ impl From<ProtocolCommandSuggestions> for CommandSuggestionsResultState {
 }
 
 impl WorldStore {
+    pub fn next_command_suggestion_request(
+        &mut self,
+        command: impl Into<String>,
+    ) -> CommandSuggestionRequestState {
+        let request = CommandSuggestionRequestState {
+            id: self.command_suggestions.next_request_id,
+            command: command.into(),
+        };
+        self.command_suggestions.next_request_id =
+            if self.command_suggestions.next_request_id == i32::MAX {
+                0
+            } else {
+                self.command_suggestions.next_request_id + 1
+            };
+        self.command_suggestions.last_request = Some(request.clone());
+        request
+    }
+
     pub fn apply_custom_chat_completions(&mut self, packet: ProtocolCustomChatCompletions) {
         self.counters.custom_chat_completion_packets += 1;
         let action = packet.action;
@@ -151,6 +179,49 @@ mod tests {
     use bbb_protocol::packets::{
         CommandSuggestion, CommandSuggestions, CustomChatCompletions, CustomChatCompletionsAction,
     };
+
+    #[test]
+    fn command_suggestion_requests_start_at_zero_increment_and_wrap() {
+        let mut store = WorldStore::new();
+
+        let first = store.next_command_suggestion_request("/");
+        let second = store.next_command_suggestion_request("/give");
+
+        assert_eq!(
+            first,
+            CommandSuggestionRequestState {
+                id: 0,
+                command: "/".to_string(),
+            }
+        );
+        assert_eq!(
+            second,
+            CommandSuggestionRequestState {
+                id: 1,
+                command: "/give".to_string(),
+            }
+        );
+        assert_eq!(store.command_suggestions().next_request_id, 2);
+        assert_eq!(
+            store.command_suggestions().last_request.as_ref(),
+            Some(&second)
+        );
+
+        store.command_suggestions.next_request_id = i32::MAX;
+        let max = store.next_command_suggestion_request("/seed");
+        let wrapped = store.next_command_suggestion_request("/time");
+
+        assert_eq!(max.id, i32::MAX);
+        assert_eq!(wrapped.id, 0);
+        assert_eq!(store.command_suggestions().next_request_id, 1);
+        assert_eq!(
+            store.command_suggestions().last_request.as_ref(),
+            Some(&CommandSuggestionRequestState {
+                id: 0,
+                command: "/time".to_string(),
+            })
+        );
+    }
 
     #[test]
     fn custom_chat_completions_apply_set_add_and_remove_as_suggestions_set() {

@@ -7,8 +7,8 @@ pub use crate::client::chat::{
 };
 pub use crate::client::combat::{ClientCombatState, PlayerCombatEventState};
 pub use crate::client::command_suggestions::{
-    CommandSuggestionState, CommandSuggestionsResultState, CommandSuggestionsState,
-    CustomChatCompletionUpdateState,
+    CommandSuggestionRequestState, CommandSuggestionState, CommandSuggestionsResultState,
+    CommandSuggestionsState, CustomChatCompletionUpdateState,
 };
 pub use crate::client::debug_game::{
     ClientDebugGameState, DebugBlockValueState, DebugChunkValueState, DebugEntityValueState,

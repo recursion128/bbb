@@ -64,6 +64,7 @@ pub(crate) struct ClientInputState {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct CommandEntryState {
     text: String,
+    last_suggestion_request_text: Option<String>,
 }
 
 impl ClientInputState {
@@ -166,7 +167,7 @@ pub(crate) fn handle_key_input(
     };
 
     if input.command_entry_is_active() {
-        handle_command_entry_key(input, counters, net_commands, code, pressed);
+        handle_command_entry_key(input, counters, world, net_commands, code, pressed);
         return;
     }
 
@@ -273,6 +274,7 @@ pub(crate) fn handle_text_input(
         release_active_input(input, world, counters, net_commands);
         input.command_entry = Some(CommandEntryState {
             text: String::new(),
+            last_suggestion_request_text: None,
         });
     }
 
@@ -284,12 +286,16 @@ pub(crate) fn handle_text_input(
     }
     if entry.text.is_empty() || !entry.text.starts_with('/') {
         input.command_entry = None;
+        return;
     }
+
+    maybe_queue_command_suggestion_request(input, counters, world, net_commands);
 }
 
 fn handle_command_entry_key(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     code: KeyCode,
     pressed: bool,
@@ -308,6 +314,8 @@ fn handle_command_entry_key(
                 entry.text.pop();
                 if entry.text.is_empty() {
                     input.command_entry = None;
+                } else {
+                    maybe_queue_command_suggestion_request(input, counters, world, net_commands);
                 }
             }
         }
@@ -336,6 +344,24 @@ fn normalize_command_entry(text: &str) -> Option<String> {
         return None;
     }
     Some(command.to_string())
+}
+
+fn maybe_queue_command_suggestion_request(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    let Some(entry) = &mut input.command_entry else {
+        return;
+    };
+    if entry.last_suggestion_request_text.as_deref() == Some(entry.text.as_str()) {
+        return;
+    }
+    let text = entry.text.clone();
+    entry.last_suggestion_request_text = Some(text.clone());
+    let request = world.next_command_suggestion_request(text);
+    queue_command_suggestion_request(counters, net_commands, request.id, request.command);
 }
 
 fn is_command_text_char(ch: char) -> bool {

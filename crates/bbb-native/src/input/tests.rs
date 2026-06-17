@@ -1,8 +1,8 @@
 use super::*;
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommonPlayerSpawnInfo,
-    ContainerCloseRequest, OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction,
-    PlayerCommand, SetPassengers, Vec3d as ProtocolVec3d,
+    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestionRequest,
+    CommonPlayerSpawnInfo, ContainerCloseRequest, OpenScreen as ProtocolOpenScreen, PaddleBoat,
+    PlayLogin, PlayerAction, PlayerCommand, SetPassengers, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use uuid::Uuid;
@@ -177,7 +177,7 @@ fn unfocused_hotbar_or_drop_key_does_not_queue_command() {
 
 #[test]
 fn slash_text_opens_command_entry_and_releases_pressed_input() {
-    let (tx, mut rx) = mpsc::channel(1);
+    let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     input.forward = true;
@@ -199,26 +199,57 @@ fn slash_text_opens_command_entry_and_releases_pressed_input() {
         rx.try_recv().unwrap(),
         NetCommand::PlayerInput(PlayerInput::default())
     );
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/".to_string(),
+        })
+    );
+    assert_eq!(
+        world.command_suggestions().last_request.as_ref(),
+        Some(&bbb_world::CommandSuggestionRequestState {
+            id: 0,
+            command: "/".to_string(),
+        })
+    );
 }
 
 #[test]
 fn command_entry_submits_slash_command_without_leading_slash() {
-    let (tx, mut rx) = mpsc::channel(1);
+    let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
-    handle_text_input_without_world(&mut input, &mut counters, &commands, "/time set day");
-    handle_key_input_without_world(
+    handle_text_input(
         &mut input,
         &mut counters,
+        &mut world,
+        &commands,
+        "/time set day",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
         &commands,
         PhysicalKey::Code(KeyCode::Enter),
         ElementState::Pressed,
     );
 
     assert!(!input.command_entry_is_active());
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
     assert_eq!(counters.chat_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/time set day".to_string(),
+        })
+    );
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::ChatCommand(ChatCommand {
@@ -229,23 +260,26 @@ fn command_entry_submits_slash_command_without_leading_slash() {
 
 #[test]
 fn command_entry_blocks_movement_keys_and_backspace_edits_text() {
-    let (tx, mut rx) = mpsc::channel(1);
+    let (tx, mut rx) = mpsc::channel(3);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
-    handle_text_input_without_world(&mut input, &mut counters, &commands, "/givw");
-    handle_key_input_without_world(
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/givw");
+    handle_key_input(
         &mut input,
         &mut counters,
+        &mut world,
         &commands,
         PhysicalKey::Code(KeyCode::Backspace),
         ElementState::Pressed,
     );
-    handle_text_input_without_world(&mut input, &mut counters, &commands, "e");
-    handle_key_input_without_world(
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "e");
+    handle_key_input(
         &mut input,
         &mut counters,
+        &mut world,
         &commands,
         PhysicalKey::Code(KeyCode::KeyW),
         ElementState::Pressed,
@@ -260,6 +294,28 @@ fn command_entry_blocks_movement_keys_and_backspace_edits_text() {
     );
     assert!(!input.forward);
     assert_eq!(counters.player_input_commands_queued, 0);
+    assert_eq!(counters.command_suggestion_commands_queued, 3);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/givw".to_string(),
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 1,
+            command: "/giv".to_string(),
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 2,
+            command: "/give".to_string(),
+        })
+    );
     assert!(rx.try_recv().is_err());
 }
 
@@ -269,18 +325,87 @@ fn command_entry_escape_cancels_without_queuing_command() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
 
-    handle_text_input_without_world(&mut input, &mut counters, &commands, "/seed");
-    handle_key_input_without_world(
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/seed");
+    handle_key_input(
         &mut input,
         &mut counters,
+        &mut world,
         &commands,
         PhysicalKey::Code(KeyCode::Escape),
         ElementState::Pressed,
     );
 
     assert!(!input.command_entry_is_active());
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
     assert_eq!(counters.chat_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/seed".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn slash_only_enter_requests_suggestions_but_does_not_submit_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.command_entry_is_active());
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
+    assert_eq!(counters.chat_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn command_entry_multi_character_commit_requests_suggestions_once() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/seed");
+
+    assert_eq!(
+        input
+            .command_entry
+            .as_ref()
+            .map(|entry| entry.text.as_str()),
+        Some("/seed")
+    );
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/seed".to_string(),
+        })
+    );
     assert!(rx.try_recv().is_err());
 }
 
