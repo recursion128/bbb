@@ -507,18 +507,19 @@ mod tests {
         BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
         BossEventOperation, ChangeDifficulty, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
         ClockUpdate, CommandSuggestion, CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest,
-        CustomChatCompletions, CustomChatCompletionsAction, DebugBlockValue, DebugChunkValue,
-        DebugEntityValue, DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor,
-        Explosion, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
-        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
-        LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MountScreenOpen, MoveVehicle,
-        OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime,
-        PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAt, PlayerPositionUpdate,
-        PlayerRotationUpdate, PongResponse, ProjectilePower, RecipeDisplayType,
-        RemoteDebugSampleType, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
-        ServerData, SetCamera, SetDefaultSpawnPosition, SetHeldSlot, SetPassengers,
-        SetSimulationDistance, ShowDialog, SoundEntityEvent, SoundEvent, SoundEventHolder,
-        SoundSource, StatUpdate, StopSound, StoreCookie, TabList, TagQuery,
+        CustomChatCompletions, CustomChatCompletionsAction, CustomReportDetails, DebugBlockValue,
+        DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder, Difficulty,
+        EntityAnchor, Explosion, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
+        InteractionHand, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent,
+        LevelParticles, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
+        MountScreenOpen, MoveVehicle, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
+        PlayLogin, PlayTime, PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAt,
+        PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
+        RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
+        ResourcePackResponseAction, ServerData, ServerLinkEntry, ServerLinkKnownType,
+        ServerLinkType, ServerLinks, SetCamera, SetDefaultSpawnPosition, SetHeldSlot,
+        SetPassengers, SetSimulationDistance, ShowDialog, SoundEntityEvent, SoundEvent,
+        SoundEventHolder, SoundSource, StatUpdate, StopSound, StoreCookie, TabList, TagQuery,
         TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
         Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
         WaypointIdentifier, WaypointOperation, WaypointVec3i,
@@ -529,7 +530,7 @@ mod tests {
     };
     use bbb_world::{BlockPos, ChunkPos};
     use bytes::BytesMut;
-    use std::time::Duration;
+    use std::{collections::BTreeMap, time::Duration};
     use tokio::net::TcpListener;
     use tokio::time::timeout;
     use uuid::Uuid;
@@ -1281,6 +1282,71 @@ mod tests {
         assert_eq!(report.world_counters.resource_pack_pop_updates_applied, 1);
         assert_eq!(report.world_counters.resource_pack_pop_updates_ignored, 1);
         assert_eq!(report.world_counters.resource_packs_tracked, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_play_common_server_presentation_packets_update_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let details = BTreeMap::from([
+            ("Region".to_string(), "local".to_string()),
+            ("Server".to_string(), "probe-play".to_string()),
+        ]);
+
+        probe
+            .handle_play_packet(PlayClientbound::CustomReportDetails(CustomReportDetails {
+                details: details.clone(),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ServerLinks(ServerLinks {
+                links: vec![
+                    ServerLinkEntry {
+                        link_type: ServerLinkType::Known(ServerLinkKnownType::Support),
+                        url: "https://example.invalid/support".to_string(),
+                    },
+                    ServerLinkEntry {
+                        link_type: ServerLinkType::Custom {
+                            label: "Rules".to_string(),
+                        },
+                        url: "http://example.invalid/rules".to_string(),
+                    },
+                    ServerLinkEntry {
+                        link_type: ServerLinkType::Known(ServerLinkKnownType::Website),
+                        url: "ftp://example.invalid/file".to_string(),
+                    },
+                ],
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+        assert_eq!(report.world.custom_report_details(), &details);
+        assert_eq!(report.world.server_links().len(), 2);
+        assert_eq!(
+            report.world.server_links()[0].label,
+            "known_server_link.support"
+        );
+        assert_eq!(
+            report.world.server_links()[0].known_type.as_deref(),
+            Some("support")
+        );
+        assert_eq!(
+            report.world.server_links()[0].url,
+            "https://example.invalid/support"
+        );
+        assert_eq!(report.world.server_links()[1].label, "Rules");
+        assert_eq!(report.world.server_links()[1].known_type, None);
+        assert_eq!(
+            report.world.server_links()[1].url,
+            "http://example.invalid/rules"
+        );
+        assert_eq!(report.world_counters.custom_report_detail_packets, 1);
+        assert_eq!(report.world_counters.custom_report_details_tracked, 2);
+        assert_eq!(report.world_counters.server_link_packets, 1);
+        assert_eq!(report.world_counters.server_links_tracked, 2);
+        assert_eq!(report.world_counters.server_link_invalid_entries, 1);
     }
 
     #[tokio::test]

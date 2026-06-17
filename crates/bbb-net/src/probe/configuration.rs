@@ -123,16 +123,18 @@ mod tests {
         ids,
         packets::{
             ChatTypeBound, ChatTypeHolder, CookieRequest, CustomPayload, CustomPayloadBody,
-            DialogHolder, DisguisedChat, KnownPack, RegistryData, RegistryDataEntry, RegistryTags,
-            ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, ShowDialog, StoreCookie,
-            TagNetworkPayload, Transfer, UpdateEnabledFeatures, UpdateTags,
+            CustomReportDetails, DialogHolder, DisguisedChat, KnownPack, RegistryData,
+            RegistryDataEntry, RegistryTags, ResourcePackPop, ResourcePackPush,
+            ResourcePackResponseAction, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
+            ServerLinks, ShowDialog, StoreCookie, TagNetworkPayload, Transfer,
+            UpdateEnabledFeatures, UpdateTags,
         },
     };
     use bbb_world::{
         code_of_conduct_text_hash, ChunkPos, DialogState, RegistryPacketEntry, TransferTargetState,
     };
     use bytes::BytesMut;
-    use std::time::Duration;
+    use std::{collections::BTreeMap, time::Duration};
     use tokio::net::TcpListener;
     use tokio::time::timeout;
     use uuid::Uuid;
@@ -142,6 +144,10 @@ mod tests {
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
         let pack_id = Uuid::from_u128(0x12345678123456781234567812345678);
+        let report_details = BTreeMap::from([
+            ("Region".to_string(), "local".to_string()),
+            ("Server".to_string(), "configuration-probe".to_string()),
+        ]);
 
         probe
             .handle_configuration_packet(ConfigurationClientbound::CustomPayload(CustomPayload {
@@ -218,6 +224,31 @@ mod tests {
             .handle_configuration_packet(ConfigurationClientbound::Transfer(Transfer {
                 host: "next.example.invalid".to_string(),
                 port: 25566,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::CustomReportDetails(
+                CustomReportDetails {
+                    details: report_details.clone(),
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::ServerLinks(ServerLinks {
+                links: vec![
+                    ServerLinkEntry {
+                        link_type: ServerLinkType::Known(ServerLinkKnownType::Support),
+                        url: "https://example.invalid/support".to_string(),
+                    },
+                    ServerLinkEntry {
+                        link_type: ServerLinkType::Custom {
+                            label: "Rules".to_string(),
+                        },
+                        url: "ftp://example.invalid/rules".to_string(),
+                    },
+                ],
             }))
             .await
             .unwrap();
@@ -316,6 +347,16 @@ mod tests {
                 port: 25566,
             })
         );
+        assert_eq!(probe.world.custom_report_details(), &report_details);
+        assert_eq!(probe.world.server_links().len(), 1);
+        assert_eq!(
+            probe.world.server_links()[0].known_type.as_deref(),
+            Some("support")
+        );
+        assert_eq!(
+            probe.world.server_links()[0].url,
+            "https://example.invalid/support"
+        );
         assert_eq!(
             probe.world.current_dialog(),
             Some(&DialogState {
@@ -348,10 +389,10 @@ mod tests {
             .await
             .unwrap();
 
-        let report = probe.finish(16, ChunkPos { x: 0, z: 0 });
+        let report = probe.finish(18, ChunkPos { x: 0, z: 0 });
         assert!(report.world.resource_packs().is_empty());
         assert!(report.world.current_dialog().is_none());
-        assert_eq!(report.packets_seen, 16);
+        assert_eq!(report.packets_seen, 18);
         assert_eq!(report.registries_seen, 1);
         assert_eq!(report.registry_entries_seen, 2);
         assert_eq!(report.registry_entries_with_data, 1);
@@ -389,6 +430,11 @@ mod tests {
         assert_eq!(report.world_counters.known_packs_offered, 1);
         assert_eq!(report.world_counters.known_packs_selected, 0);
         assert_eq!(report.world_counters.transfer_packets, 1);
+        assert_eq!(report.world_counters.custom_report_detail_packets, 1);
+        assert_eq!(report.world_counters.custom_report_details_tracked, 2);
+        assert_eq!(report.world_counters.server_link_packets, 1);
+        assert_eq!(report.world_counters.server_links_tracked, 1);
+        assert_eq!(report.world_counters.server_link_invalid_entries, 1);
         assert_eq!(report.world_counters.show_dialog_packets, 1);
         assert_eq!(report.world_counters.clear_dialog_packets, 1);
         assert_eq!(report.world_counters.code_of_conduct_packets, 1);
