@@ -153,6 +153,13 @@ pub struct RecipeBookSeenRecipeCommand {
     pub recipe: RecipeDisplayId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignUpdate {
+    pub pos: BlockPos,
+    pub is_front_text: bool,
+    pub lines: [String; 4],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContainerInput {
     Pickup,
@@ -539,6 +546,16 @@ pub fn encode_play_pick_item_from_entity(packet: PickItemFromEntity) -> (i32, Ve
         ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY,
         out.into_inner(),
     )
+}
+
+pub fn encode_play_sign_update(packet: &SignUpdate) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_i64(chunks::encode_block_pos(packet.pos));
+    out.write_bool(packet.is_front_text);
+    for line in &packet.lines {
+        out.write_string(line);
+    }
+    (ids::play::SERVERBOUND_SIGN_UPDATE, out.into_inner())
 }
 
 pub fn encode_play_container_button_click(packet: ContainerButtonClick) -> (i32, Vec<u8>) {

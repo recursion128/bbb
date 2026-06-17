@@ -15,6 +15,9 @@ use crate::types::{
     ControlResponse, ControlSnapshot, NetControlRequest, RecipeBookTypeControl, SharedSnapshot,
 };
 
+const SIGN_UPDATE_LINE_COUNT: usize = 4;
+const SIGN_UPDATE_MAX_LINE_CHARS: usize = 384;
+
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
     Arc::new(RwLock::new(ControlSnapshot {
         app: AppStatus {
@@ -352,6 +355,65 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         snapshot_guard
             .net_requests
             .push(NetControlRequest::MarkRecipeSeen { recipe_index });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.update_sign" {
+        let Some(x) = i32_param(&request.params, "x") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.update_sign requires integer param x".to_string()),
+            };
+        };
+        let Some(y) = i32_param(&request.params, "y") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.update_sign requires integer param y".to_string()),
+            };
+        };
+        let Some(z) = i32_param(&request.params, "z") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.update_sign requires integer param z".to_string()),
+            };
+        };
+        let Some(is_front_text) = bool_param(&request.params, "is_front_text") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.update_sign requires boolean param is_front_text".to_string()),
+            };
+        };
+        let lines = match sign_lines_param(&request.params, "lines") {
+            Ok(lines) => lines,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(err),
+                };
+            }
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::SignUpdate {
+                x,
+                y,
+                z,
+                is_front_text,
+                lines,
+            });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -813,6 +875,38 @@ fn recipe_book_type_param(params: &serde_json::Value, key: &str) -> Option<Recip
         "smoker" => Some(RecipeBookTypeControl::Smoker),
         _ => None,
     }
+}
+
+fn sign_lines_param(
+    params: &serde_json::Value,
+    key: &str,
+) -> Result<[String; SIGN_UPDATE_LINE_COUNT], String> {
+    let lines = params
+        .get(key)
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| "net.update_sign requires array param lines".to_string())?;
+    if lines.len() != SIGN_UPDATE_LINE_COUNT {
+        return Err(format!(
+            "net.update_sign requires exactly {SIGN_UPDATE_LINE_COUNT} lines"
+        ));
+    }
+
+    let mut parsed = Vec::with_capacity(SIGN_UPDATE_LINE_COUNT);
+    for (index, line) in lines.iter().enumerate() {
+        let line = line
+            .as_str()
+            .ok_or_else(|| format!("net.update_sign line {index} must be a string"))?;
+        if line.chars().count() > SIGN_UPDATE_MAX_LINE_CHARS {
+            return Err(format!(
+                "net.update_sign line {index} exceeds {SIGN_UPDATE_MAX_LINE_CHARS} characters"
+            ));
+        }
+        parsed.push(line.to_string());
+    }
+
+    parsed
+        .try_into()
+        .map_err(|_| "net.update_sign requires exactly 4 lines".to_string())
 }
 
 fn bool_param(params: &serde_json::Value, key: &str) -> Option<bool> {
@@ -1434,6 +1528,72 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_recipe.ok);
+    }
+
+    #[test]
+    fn net_update_sign_queues_request_and_validates_lines() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.update_sign".to_string(),
+                params: json!({
+                    "x": -5,
+                    "y": 70,
+                    "z": 12,
+                    "is_front_text": false,
+                    "lines": ["line 0", "line 1", "line 2", "line 3"]
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SignUpdate {
+                x: -5,
+                y: 70,
+                z: 12,
+                is_front_text: false,
+                lines: [
+                    "line 0".to_string(),
+                    "line 1".to_string(),
+                    "line 2".to_string(),
+                    "line 3".to_string(),
+                ],
+            }]
+        );
+
+        let wrong_line_count = dispatch(
+            ControlRequest {
+                method: "net.update_sign".to_string(),
+                params: json!({
+                    "x": -5,
+                    "y": 70,
+                    "z": 12,
+                    "is_front_text": false,
+                    "lines": ["line 0", "line 1", "line 2"]
+                }),
+            },
+            &snapshot,
+        );
+        assert!(!wrong_line_count.ok);
+
+        let oversized_line = dispatch(
+            ControlRequest {
+                method: "net.update_sign".to_string(),
+                params: json!({
+                    "x": -5,
+                    "y": 70,
+                    "z": 12,
+                    "is_front_text": false,
+                    "lines": ["a".repeat(385), "line 1", "line 2", "line 3"]
+                }),
+            },
+            &snapshot,
+        );
+        assert!(!oversized_line.ok);
     }
 
     #[test]

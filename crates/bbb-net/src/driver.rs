@@ -16,8 +16,8 @@ pub(crate) use commands::{
     send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
-    send_select_bundle_item, send_select_trade, send_set_held_slot_command, send_swing_command,
-    send_use_item, send_use_item_on,
+    send_select_bundle_item, send_select_trade, send_set_held_slot_command, send_sign_update,
+    send_swing_command, send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -138,6 +138,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::SelectTrade(command)) => {
                         send_select_trade(conn, command).await?;
                     }
+                    Some(NetCommand::SignUpdate(packet)) => {
+                        send_sign_update(conn, packet).await?;
+                    }
                     Some(NetCommand::SelectBundleItem(packet)) => {
                         send_select_bundle_item(conn, packet).await?;
                     }
@@ -200,6 +203,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::RecipeBookChangeSettings(_)) => {}
                     Some(NetCommand::RecipeBookSeenRecipe(_)) => {}
                     Some(NetCommand::SelectTrade(_)) => {}
+                    Some(NetCommand::SignUpdate(_)) => {}
                     Some(NetCommand::SelectBundleItem(_)) => {}
                     Some(NetCommand::ContainerButtonClick(_)) => {}
                     Some(NetCommand::ContainerClick(_)) => {}
@@ -233,7 +237,8 @@ mod tests {
             PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
             PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
             RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
-            RecipeDisplayId, SelectBundleItem, SelectTradeCommand, UseItem, UseItemOn, Vec3d,
+            RecipeDisplayId, SelectBundleItem, SelectTradeCommand, SignUpdate, UseItem, UseItemOn,
+            Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -521,6 +526,50 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 321);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_sign_update_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::SignUpdate(SignUpdate {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+            lines: [
+                "line 0".to_string(),
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "sign update").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SIGN_UPDATE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            }
+        );
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_string(384).unwrap(), "line 0");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 1");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 2");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 3");
         assert!(decoder.is_empty());
     }
 

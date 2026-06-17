@@ -5,8 +5,8 @@ use bbb_control::{
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
-    ContainerClick, ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
-    RecipeBookType,
+    BlockPos as ProtocolBlockPos, ContainerClick, ContainerInput, HashedComponentPatch,
+    HashedItemStack, HashedStack, RecipeBookType,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -18,8 +18,8 @@ use crate::{
         queue_container_click_command, queue_container_close_request_command,
         queue_container_slot_state_changed_command, queue_place_recipe_command,
         queue_player_abilities_command, queue_recipe_book_change_settings_command,
-        queue_recipe_book_seen_recipe_command, queue_select_trade_command, select_bundle_item,
-        select_hotbar_slot,
+        queue_recipe_book_seen_recipe_command, queue_select_trade_command,
+        queue_sign_update_command, select_bundle_item, select_hotbar_slot,
     },
 };
 
@@ -153,6 +153,23 @@ pub(crate) fn pump_control_net_requests(
                     counters,
                     net_commands,
                     bbb_protocol::packets::SelectTradeCommand { item },
+                );
+            }
+            NetControlRequest::SignUpdate {
+                x,
+                y,
+                z,
+                is_front_text,
+                lines,
+            } => {
+                queue_sign_update_command(
+                    counters,
+                    net_commands,
+                    bbb_protocol::packets::SignUpdate {
+                        pos: ProtocolBlockPos { x, y, z },
+                        is_front_text,
+                        lines,
+                    },
                 );
             }
             NetControlRequest::SelectBundleItem {
@@ -457,6 +474,52 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::RecipeBookSeenRecipe(bbb_protocol::packets::RecipeBookSeenRecipeCommand {
                 recipe: bbb_protocol::packets::RecipeDisplayId { index: 321 },
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_sign_update() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::SignUpdate {
+                x: -5,
+                y: 70,
+                z: 12,
+                is_front_text: false,
+                lines: [
+                    "line 0".to_string(),
+                    "line 1".to_string(),
+                    "line 2".to_string(),
+                    "line 3".to_string(),
+                ],
+            });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.sign_update_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SignUpdate(bbb_protocol::packets::SignUpdate {
+                pos: bbb_protocol::packets::BlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+                is_front_text: false,
+                lines: [
+                    "line 0".to_string(),
+                    "line 1".to_string(),
+                    "line 2".to_string(),
+                    "line 3".to_string(),
+                ],
             })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());

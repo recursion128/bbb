@@ -6,7 +6,8 @@ use super::{
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
     send_recipe_book_seen_recipe, send_select_bundle_item, send_select_trade,
-    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
+    send_set_held_slot_command, send_sign_update, send_swing_command, send_use_item,
+    send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -16,13 +17,13 @@ use bbb_protocol::{
     codec::Decoder,
     ids,
     packets::{
-        AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-        ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedComponentPatch,
-        HashedItemStack, HashedStack, InteractEntity, InteractionHand, PaddleBoat,
-        PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
+        AttackEntity, BlockPos, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
+        ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
+        HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
+        PaddleBoat, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
         PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
         RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
-        RecipeDisplayId, SelectBundleItem, SelectTradeCommand, Vec3d,
+        RecipeDisplayId, SelectBundleItem, SelectTradeCommand, SignUpdate, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -212,6 +213,14 @@ async fn send_player_move_command_selects_variant_and_updates_position_state() {
 
     assert_eq!(player_position_state, next);
     server.await.unwrap();
+}
+
+fn decode_packed_block_pos(packed: i64) -> BlockPos {
+    BlockPos {
+        x: (packed >> 38) as i32,
+        y: (packed << 52 >> 52) as i32,
+        z: (packed << 26 >> 38) as i32,
+    }
 }
 
 #[test]
@@ -1028,6 +1037,65 @@ async fn send_recipe_book_commands_encode_packets() {
         &mut conn,
         RecipeBookSeenRecipeCommand {
             recipe: RecipeDisplayId { index: 321 },
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_sign_update_encodes_sign_update_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("sign update command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SIGN_UPDATE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            }
+        );
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_string(384).unwrap(), "line 0");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 1");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 2");
+        assert_eq!(decoder.read_string(384).unwrap(), "line 3");
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_sign_update(
+        &mut conn,
+        SignUpdate {
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+            lines: [
+                "line 0".to_string(),
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
         },
     )
     .await

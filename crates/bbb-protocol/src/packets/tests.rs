@@ -957,6 +957,7 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLOSE, 19);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED, 20);
     assert_eq!(ids::play::SERVERBOUND_SELECT_TRADE, 51);
+    assert_eq!(ids::play::SERVERBOUND_SIGN_UPDATE, 61);
 }
 
 #[test]
@@ -1381,6 +1382,41 @@ fn encodes_pick_item_from_entity_packet() {
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 123);
     assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_sign_update_packet() {
+    let (id, payload) = encode_play_sign_update(&SignUpdate {
+        pos: BlockPos {
+            x: -5,
+            y: 70,
+            z: 12,
+        },
+        is_front_text: false,
+        lines: [
+            "line 0".to_string(),
+            "line 1".to_string(),
+            "line 2".to_string(),
+            "line 3".to_string(),
+        ],
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_SIGN_UPDATE);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(
+        chunks::decode_block_pos(decoder.read_i64().unwrap()),
+        BlockPos {
+            x: -5,
+            y: 70,
+            z: 12,
+        }
+    );
+    assert!(!decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_string(384).unwrap(), "line 0");
+    assert_eq!(decoder.read_string(384).unwrap(), "line 1");
+    assert_eq!(decoder.read_string(384).unwrap(), "line 2");
+    assert_eq!(decoder.read_string(384).unwrap(), "line 3");
     assert!(decoder.is_empty());
 }
 

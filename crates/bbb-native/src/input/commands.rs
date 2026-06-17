@@ -6,7 +6,7 @@ use bbb_protocol::packets::{
     InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
     PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, SelectBundleItem,
-    SelectTradeCommand, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    SelectTradeCommand, SignUpdate, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -113,6 +113,18 @@ pub(crate) fn queue_select_trade_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SelectTrade(command)).is_ok() {
             counters.select_trade_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_sign_update_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SignUpdate,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::SignUpdate(command)).is_ok() {
+            counters.sign_update_commands_queued += 1;
         }
     }
 }
@@ -616,6 +628,32 @@ mod tests {
                 recipe: RecipeDisplayId { index: 321 },
             })
         );
+    }
+
+    #[test]
+    fn queues_sign_update_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = SignUpdate {
+            pos: ProtocolBlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+            lines: [
+                "line 0".to_string(),
+                "line 1".to_string(),
+                "line 2".to_string(),
+                "line 3".to_string(),
+            ],
+        };
+
+        queue_sign_update_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.sign_update_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::SignUpdate(command));
     }
 
     #[test]

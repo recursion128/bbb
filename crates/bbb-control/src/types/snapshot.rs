@@ -42,6 +42,13 @@ pub enum NetControlRequest {
     MarkRecipeSeen {
         recipe_index: i32,
     },
+    SignUpdate {
+        x: i32,
+        y: i32,
+        z: i32,
+        is_front_text: bool,
+        lines: [String; 4],
+    },
     SelectTrade {
         item: i32,
     },
