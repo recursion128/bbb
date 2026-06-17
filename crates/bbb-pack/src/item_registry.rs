@@ -10,6 +10,8 @@ use crate::{resources::ResourceLocation, PackRoots};
 pub struct ItemRegistryCatalog {
     resource_ids: Vec<String>,
     protocol_ids: BTreeMap<String, i32>,
+    #[serde(default)]
+    max_damage: BTreeMap<String, i32>,
 }
 
 impl ItemRegistryCatalog {
@@ -56,16 +58,18 @@ impl ItemRegistryCatalog {
             r#"(?s)public\s+static\s+final\s+(Item|WeatheringCopperItems)\s+([A-Z0-9_]+)\s*=\s*(.*?);"#,
         )?;
         let mut resource_ids = Vec::new();
+        let mut max_damage = BTreeMap::new();
         for capture in declaration.captures_iter(source) {
             let kind = capture.get(1).unwrap().as_str();
             let field = capture.get(2).unwrap().as_str();
             let expression = capture.get(3).unwrap().as_str();
-            resource_ids.extend(resource_ids_for_declaration(
-                kind,
-                field,
-                expression,
-                item_id_constants,
-            )?);
+            let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
+            if let Some(durability) = durability_for_declaration(expression)? {
+                for resource_id in &ids {
+                    max_damage.insert(resource_id.clone(), durability);
+                }
+            }
+            resource_ids.extend(ids);
         }
 
         if resource_ids.is_empty() {
@@ -85,6 +89,7 @@ impl ItemRegistryCatalog {
         Ok(Self {
             resource_ids,
             protocol_ids,
+            max_damage,
         })
     }
 
@@ -102,6 +107,11 @@ impl ItemRegistryCatalog {
 
     pub fn resource_ids(&self) -> &[String] {
         &self.resource_ids
+    }
+
+    pub fn max_damage(&self, resource_id: &str) -> Option<i32> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.max_damage.get(&resource_id).copied()
     }
 
     pub fn len(&self) -> usize {
@@ -201,6 +211,12 @@ fn parse_item_id_constants(source: &str) -> Result<BTreeMap<String, String>> {
     Ok(constants)
 }
 
+fn durability_for_declaration(expression: &str) -> Result<Option<i32>> {
+    optional_capture(r#"\.durability\(\s*([0-9]+)\s*\)"#, expression)?
+        .map(|value| value.parse().map_err(Into::into))
+        .transpose()
+}
+
 fn required_capture(pattern: &str, expression: &str, field: &str) -> Result<String> {
     optional_capture(pattern, expression)?
         .ok_or_else(|| anyhow::anyhow!("unsupported item registry declaration {field}"))
@@ -246,12 +262,13 @@ mod tests {
                public static final Item PUMPKIN_SEEDS = registerItem(ItemIds.PUMPKIN_SEEDS, createBlockItemWithCustomItemName(Blocks.PUMPKIN_STEM));
                public static final Item CREEPER_SPAWN_EGG = registerSpawnEgg(EntityType.CREEPER);
                public static final WeatheringCopperItems COPPER_BARS = WeatheringCopperItems.create(Blocks.COPPER_BARS, Items::registerBlock);
+               public static final Item ELYTRA = registerItem("elytra", Item::new, new Item.Properties().durability(432));
             }
         "#;
 
         let catalog = ItemRegistryCatalog::from_items_java_source(source, &constants).unwrap();
 
-        assert_eq!(catalog.len(), 14);
+        assert_eq!(catalog.len(), 15);
         assert_eq!(catalog.resource_id(0), Some("minecraft:air"));
         assert_eq!(catalog.resource_id(1), Some("minecraft:short_dry_grass"));
         assert_eq!(catalog.resource_id(2), Some("minecraft:trial_key"));
@@ -263,10 +280,13 @@ mod tests {
             catalog.resource_id(13),
             Some("minecraft:waxed_oxidized_copper_bars")
         );
+        assert_eq!(catalog.resource_id(14), Some("minecraft:elytra"));
         assert_eq!(catalog.protocol_id("trial_key"), Some(2));
         assert_eq!(catalog.protocol_id("minecraft:ominous_bottle"), Some(3));
         assert_eq!(catalog.protocol_id("minecraft:pumpkin_seeds"), Some(4));
         assert_eq!(catalog.protocol_id("minecraft:missing_item"), None);
+        assert_eq!(catalog.max_damage("minecraft:elytra"), Some(432));
+        assert_eq!(catalog.max_damage("minecraft:trial_key"), None);
         assert_eq!(catalog.resource_id(-1), None);
     }
 
@@ -326,6 +346,8 @@ mod tests {
         assert_eq!(catalog.protocol_id("ominous_bottle"), Some(1505));
         assert_eq!(catalog.protocol_id("minecraft:short_dry_grass"), Some(209));
         assert_eq!(catalog.protocol_id("minecraft:dry_short_grass"), None);
+        assert_eq!(catalog.max_damage("minecraft:elytra"), Some(432));
+        assert_eq!(catalog.max_damage("minecraft:stone"), None);
     }
 
     fn write_file(path: &Path, contents: &str) {

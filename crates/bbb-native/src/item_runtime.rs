@@ -8,6 +8,12 @@ use bbb_pack::{
 };
 use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
 
+mod icon_model;
+
+use icon_model::{
+    contains_broken_condition, item_icon_model_ref_for_definition, ItemIconModel, ItemIconModelRef,
+};
+
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
 const ITEM_GENERATED_MAX_LAYERS: usize = 5;
 const MISSING_TEXTURE_ID: &str = "minecraft:missingno";
@@ -20,7 +26,7 @@ pub(crate) struct NativeItemRuntime {
     resolved_model_count: usize,
     missing_model_ids: BTreeSet<String>,
     missing_texture_ids: BTreeSet<String>,
-    item_icon_layers: HashMap<String, Vec<ItemIconTextureLayer>>,
+    item_icon_models: HashMap<String, ItemIconModel>,
     registry: Option<ItemRegistryCatalog>,
     textures: ItemTextureState,
 }
@@ -68,7 +74,7 @@ impl NativeItemRuntime {
         colormaps: Option<TerrainColorMaps>,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
-        let mut item_icon_texture_refs = HashMap::new();
+        let mut item_icon_model_refs = HashMap::new();
         let mut missing_model_ids = BTreeSet::new();
         let mut missing_texture_ids = BTreeSet::new();
         let mut resolved_model_count = 0usize;
@@ -78,9 +84,22 @@ impl NativeItemRuntime {
             resolved_model_count += models.models.len();
             texture_ids.extend(models.texture_ids());
             let model_tints = model_tints_for_definition(&definition.model);
-            let icon_layers = item_icon_texture_layers(&models, &model_tints, colormaps.as_ref());
-            if !icon_layers.is_empty() {
-                item_icon_texture_refs.insert(item_id.clone(), icon_layers);
+            let icon_model = if contains_broken_condition(&definition.model) {
+                item_icon_model_ref_for_definition(
+                    &definition.model,
+                    &cuboid_models,
+                    &model_tints,
+                    colormaps.as_ref(),
+                )
+            } else {
+                ItemIconModelRef::Layers(item_icon_texture_layers(
+                    &models,
+                    &model_tints,
+                    colormaps.as_ref(),
+                ))
+            };
+            if !icon_model.is_empty() {
+                item_icon_model_refs.insert(item_id.clone(), icon_model);
             }
             missing_model_ids.extend(models.missing_model_ids);
         }
@@ -104,18 +123,9 @@ impl NativeItemRuntime {
         }
 
         let textures = ItemTextureState::from_images(images)?;
-        let item_icon_layers = item_icon_texture_refs
+        let item_icon_models = item_icon_model_refs
             .into_iter()
-            .map(|(item_id, layers)| {
-                let layers = layers
-                    .into_iter()
-                    .map(|layer| ItemIconTextureLayer {
-                        texture_index: textures.texture_index(&layer.texture_id),
-                        tint: layer.tint,
-                    })
-                    .collect();
-                (item_id, layers)
-            })
+            .map(|(item_id, model)| (item_id, model.into_indexed(&textures)))
             .collect();
 
         Ok(Self {
@@ -124,7 +134,7 @@ impl NativeItemRuntime {
             resolved_model_count,
             missing_model_ids,
             missing_texture_ids,
-            item_icon_layers,
+            item_icon_models,
             registry,
             textures,
         })
@@ -155,7 +165,7 @@ impl NativeItemRuntime {
     }
 
     pub(crate) fn icon_texture_count(&self) -> usize {
-        self.item_icon_layers.len()
+        self.item_icon_models.len()
     }
 
     pub(crate) fn atlas_size(&self) -> (u32, u32) {
@@ -174,9 +184,9 @@ impl NativeItemRuntime {
     pub(crate) fn icon_texture_index_for_protocol_id(&self, protocol_id: i32) -> Option<u32> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
         Some(
-            self.item_icon_layers
+            self.item_icon_models
                 .get(item_id)
-                .and_then(|layers| layers.first())
+                .and_then(|model| model.icon_layers(None, None).into_iter().next())
                 .map(|layer| layer.texture_index)
                 .unwrap_or(self.textures.fallback_index()),
         )
@@ -204,10 +214,14 @@ impl NativeItemRuntime {
         item_id: &str,
         component_patch: Option<&DataComponentPatchSummary>,
     ) -> Option<ItemAtlasIcon> {
+        let default_max_damage = self
+            .registry
+            .as_ref()
+            .and_then(|registry| registry.max_damage(item_id));
         let layers = self
-            .item_icon_layers
+            .item_icon_models
             .get(item_id)
-            .cloned()
+            .map(|model| model.icon_layers(component_patch, default_max_damage))
             .unwrap_or_else(|| {
                 vec![ItemIconTextureLayer {
                     texture_index: self.textures.fallback_index(),
@@ -787,6 +801,168 @@ mod tests {
             .unwrap();
         assert_eq!(stack_icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
         assert_eq!(stack_icon.layers[1].tint, rgb_i32_tint(0x12_34_56));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_item_runtime_selects_broken_condition_icon_from_stack_damage() {
+        let root = unique_temp_dir("item-runtime-broken");
+        let assets = assets_dir(&root);
+        write_item_atlases(&assets);
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item ELYTRA = registerItem(
+                    "elytra",
+                    Item::new,
+                    new Item.Properties().durability(432)
+                );
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("elytra.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:broken",
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/elytra"
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/elytra_broken"
+                    }
+                }
+            }"#,
+        );
+        write_json(
+            &assets.join("models").join("item").join("elytra.json"),
+            r#"{
+                "textures": {
+                    "layer0": "minecraft:item/elytra"
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("models")
+                .join("item")
+                .join("elytra_broken.json"),
+            r#"{
+                "textures": {
+                    "layer0": "minecraft:item/elytra_broken"
+                }
+            }"#,
+        );
+        write_test_rgba_png(
+            &assets.join("textures").join("item").join("elytra.png"),
+            1,
+            1,
+            &[40, 80, 120, 255],
+        );
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("item")
+                .join("elytra_broken.png"),
+            1,
+            1,
+            &[120, 80, 40, 255],
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        assert_eq!(
+            runtime
+                .registry
+                .as_ref()
+                .and_then(|registry| registry.max_damage("minecraft:elytra")),
+            Some(432)
+        );
+        let normal_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/elytra"))
+            .unwrap();
+        let broken_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/elytra_broken"))
+            .unwrap();
+
+        assert_eq!(runtime.icon_texture_count(), 1);
+        assert_eq!(
+            runtime.icon_texture_index_for_protocol_id(0),
+            Some(runtime.texture_index("minecraft:item/elytra"))
+        );
+
+        let normal_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    damage: Some(430),
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(normal_icon.layers[0].uv, normal_uv);
+
+        let broken_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    damage: Some(431),
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(broken_icon.layers[0].uv, broken_uv);
+
+        let unbreakable_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    damage: Some(431),
+                    unbreakable: true,
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(unbreakable_icon.layers[0].uv, normal_uv);
+
+        let removed_max_damage_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    damage: Some(431),
+                    removed_type_ids: vec![2],
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(removed_max_damage_icon.layers[0].uv, normal_uv);
+
+        let removed_damage_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    removed_type_ids: vec![3],
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(removed_damage_icon.layers[0].uv, normal_uv);
 
         std::fs::remove_dir_all(root).unwrap();
     }

@@ -32,6 +32,12 @@ pub struct DataComponentPatchSummary {
     pub added_type_ids: Vec<i32>,
     pub removed_type_ids: Vec<i32>,
     #[serde(default)]
+    pub max_damage: Option<i32>,
+    #[serde(default)]
+    pub damage: Option<i32>,
+    #[serde(default)]
+    pub unbreakable: bool,
+    #[serde(default)]
     pub custom_model_data_colors: Vec<i32>,
     #[serde(default)]
     pub dyed_color: Option<i32>,
@@ -100,6 +106,15 @@ fn decode_typed_data_component_patch_summary(
     for _ in 0..count {
         let type_id = decoder.read_var_i32()?;
         match type_id {
+            2 => {
+                summary.max_damage = Some(decoder.read_var_i32()?);
+            }
+            3 => {
+                summary.damage = Some(decoder.read_var_i32()?);
+            }
+            4 => {
+                summary.unbreakable = true;
+            }
             17 => {
                 summary.custom_model_data_colors = decode_custom_model_data(decoder)?;
             }
@@ -1024,10 +1039,14 @@ mod tests {
     #[test]
     fn decodes_supported_data_component_patch_values() {
         let mut payload = Encoder::new();
-        payload.write_var_i32(5);
+        payload.write_var_i32(7);
         payload.write_var_i32(2);
         payload.write_var_i32(1);
         payload.write_var_i32(64);
+        payload.write_var_i32(2);
+        payload.write_var_i32(432);
+        payload.write_var_i32(3);
+        payload.write_var_i32(431);
         payload.write_var_i32(4);
         payload.write_var_i32(6);
         payload.write_bytes(&nbt_string_root("Named"));
@@ -1044,9 +1063,12 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: 5,
-                added_type_ids: vec![1, 4, 6, 10, 21],
+                added: 7,
+                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21],
                 removed_type_ids: vec![3, 12],
+                max_damage: Some(432),
+                damage: Some(431),
+                unbreakable: true,
                 ..DataComponentPatchSummary::default()
             }
         );

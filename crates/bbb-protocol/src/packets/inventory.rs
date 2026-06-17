@@ -212,8 +212,16 @@ mod tests {
         payload.write_i16(5);
         payload.write_var_i32(1);
         payload.write_var_i32(99);
-        payload.write_var_i32(5);
+        payload.write_var_i32(8);
         payload.write_var_i32(0);
+
+        payload.write_var_i32(2);
+        payload.write_var_i32(432);
+
+        payload.write_var_i32(3);
+        payload.write_var_i32(431);
+
+        payload.write_var_i32(4);
 
         payload.write_var_i32(17);
         payload.write_var_i32(0);
@@ -256,8 +264,11 @@ mod tests {
         };
         assert_eq!(
             update.item.component_patch.added_type_ids,
-            vec![17, 44, 45, 51, 68]
+            vec![2, 3, 4, 17, 44, 45, 51, 68]
         );
+        assert_eq!(update.item.component_patch.max_damage, Some(432));
+        assert_eq!(update.item.component_patch.damage, Some(431));
+        assert!(update.item.component_patch.unbreakable);
         assert_eq!(
             update.item.component_patch.custom_model_data_colors,
             vec![0x112233, 0x445566]

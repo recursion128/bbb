@@ -15,8 +15,8 @@ pub use crate::item_cuboid_models::{
 };
 pub use crate::item_models::{
     ClientItemDefinition, ClientItemProperties, ItemModelCatalog, ItemModelDefinition,
-    ItemModelProperty, ItemModelTransformation, ItemSpecialModel, ItemTintSource,
-    RangeDispatchEntry, SelectCase,
+    ItemModelProperty, ItemModelPropertyKind, ItemModelTransformation, ItemSpecialModel,
+    ItemTintSource, RangeDispatchEntry, SelectCase,
 };
 pub use crate::item_registry::ItemRegistryCatalog;
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
