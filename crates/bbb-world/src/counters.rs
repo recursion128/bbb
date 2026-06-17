@@ -127,6 +127,8 @@ pub struct WorldCounters {
     #[serde(default)]
     pub block_destructions_removed: usize,
     #[serde(default)]
+    pub block_destructions_expired: usize,
+    #[serde(default)]
     pub block_destructions_ignored: usize,
     #[serde(default)]
     pub block_changed_ack_packets: usize,

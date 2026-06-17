@@ -227,6 +227,23 @@ impl WorldStore {
         self.ticking
     }
 
+    pub fn consume_running_render_ticks(&mut self, ticks: u32) -> u32 {
+        if ticks == 0 {
+            return 0;
+        }
+
+        let step_ticks = positive_tick_steps(self.ticking.frozen_ticks_to_run).min(ticks);
+        self.ticking.frozen_ticks_to_run = self
+            .ticking
+            .frozen_ticks_to_run
+            .saturating_sub(step_ticks as i32);
+        if self.ticking.frozen {
+            step_ticks
+        } else {
+            ticks
+        }
+    }
+
     pub fn clear_client_level(&mut self) {
         self.dimension = WorldDimension::default();
         self.level = None;
@@ -390,6 +407,10 @@ fn canonical_game_type_id(id: i32) -> i32 {
     } else {
         0
     }
+}
+
+fn positive_tick_steps(tick_steps: i32) -> u32 {
+    u32::try_from(tick_steps).unwrap_or(0)
 }
 
 fn game_type_name(id: i32) -> &'static str {
@@ -700,6 +721,37 @@ mod tests {
         assert_eq!(counters.game_event_packets, 2);
         assert_eq!(counters.ticking_state_packets, 1);
         assert_eq!(counters.ticking_step_packets, 1);
+    }
+
+    #[test]
+    fn consume_running_render_ticks_respects_frozen_tick_steps() {
+        let mut store = WorldStore::new();
+        assert_eq!(store.consume_running_render_ticks(3), 3);
+
+        store.apply_ticking_state(ProtocolTickingState {
+            tick_rate: 20.0,
+            frozen: true,
+        });
+        assert_eq!(store.consume_running_render_ticks(3), 0);
+
+        store.apply_ticking_step(ProtocolTickingStep { tick_steps: 2 });
+        assert_eq!(store.consume_running_render_ticks(3), 2);
+        assert_eq!(
+            store.ticking(),
+            WorldTickingState {
+                tick_rate: 20.0,
+                frozen: true,
+                frozen_ticks_to_run: 0,
+            }
+        );
+
+        store.apply_ticking_state(ProtocolTickingState {
+            tick_rate: 20.0,
+            frozen: false,
+        });
+        store.apply_ticking_step(ProtocolTickingStep { tick_steps: 2 });
+        assert_eq!(store.consume_running_render_ticks(3), 3);
+        assert_eq!(store.ticking().frozen_ticks_to_run, 0);
     }
 
     #[test]

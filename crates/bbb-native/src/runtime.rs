@@ -118,6 +118,7 @@ pub(crate) fn pump_network_and_terrain(
     pump_control_net_requests(snapshot, net_commands, net_counters, world, code_of_conduct);
     let now = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
+    advance_block_destruction_render_ticks(world, advanced_ticks);
     renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     advance_destroying_block_at_partial_tick(
@@ -158,6 +159,11 @@ pub(crate) fn pump_network_and_terrain(
         &audio_counters,
         world,
     )
+}
+
+fn advance_block_destruction_render_ticks(world: &mut WorldStore, advanced_ticks: u32) -> usize {
+    let running_ticks = world.consume_running_render_ticks(advanced_ticks);
+    world.advance_block_destruction_render_ticks(running_ticks)
 }
 
 fn block_destroy_overlays_from_world(
@@ -581,6 +587,30 @@ mod tests {
         );
 
         assert!(block_destroy_overlays_from_world(&world, &textures).is_empty());
+    }
+
+    #[test]
+    fn block_destroy_render_ticks_respect_frozen_world_ticking_state() {
+        let mut world = WorldStore::new();
+        assert!(
+            world.apply_block_destruction(bbb_protocol::packets::BlockDestruction {
+                id: 10,
+                pos: bbb_protocol::packets::BlockPos { x: 2, y: 3, z: 4 },
+                progress: 2,
+            })
+        );
+        world.apply_ticking_state(bbb_protocol::packets::TickingState {
+            tick_rate: 20.0,
+            frozen: true,
+        });
+
+        assert_eq!(advance_block_destruction_render_ticks(&mut world, 420), 0);
+        assert_eq!(world.block_destructions().len(), 1);
+
+        world.apply_ticking_step(bbb_protocol::packets::TickingStep { tick_steps: 420 });
+        assert_eq!(advance_block_destruction_render_ticks(&mut world, 420), 1);
+        assert!(world.block_destructions().is_empty());
+        assert_eq!(world.ticking().frozen_ticks_to_run, 0);
     }
 
     #[test]

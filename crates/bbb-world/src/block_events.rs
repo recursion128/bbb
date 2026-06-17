@@ -6,11 +6,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::{protocol_block_pos, BlockPos, WorldStore};
 
+const BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS: u32 = 20;
+const BLOCK_DESTRUCTION_EXPIRY_TICKS: u32 = 400;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockDestructionProgress {
     pub id: i32,
     pub pos: BlockPos,
     pub progress: u8,
+    #[serde(default)]
+    pub updated_render_tick: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -59,6 +64,7 @@ impl WorldStore {
                 id: update.id,
                 pos: protocol_block_pos(update.pos),
                 progress: update.progress,
+                updated_render_tick: self.block_destruction_render_tick,
             };
             if let Some(existing) = self
                 .block_destructions
@@ -83,6 +89,30 @@ impl WorldStore {
         }
         self.counters.block_destructions_tracked = self.block_destructions.len();
         removed > 0
+    }
+
+    pub fn advance_block_destruction_render_ticks(&mut self, ticks: u32) -> usize {
+        if ticks == 0 {
+            return 0;
+        }
+
+        let previous_tick = self.block_destruction_render_tick;
+        self.block_destruction_render_tick =
+            self.block_destruction_render_tick.saturating_add(ticks);
+        if !crossed_block_destruction_expiry_scan(previous_tick, self.block_destruction_render_tick)
+        {
+            return 0;
+        }
+
+        let before = self.block_destructions.len();
+        let scan_tick = block_destruction_expiry_scan_tick(self.block_destruction_render_tick);
+        self.block_destructions.retain(|progress| {
+            scan_tick.saturating_sub(progress.updated_render_tick) <= BLOCK_DESTRUCTION_EXPIRY_TICKS
+        });
+        let expired = before - self.block_destructions.len();
+        self.counters.block_destructions_expired += expired;
+        self.counters.block_destructions_tracked = self.block_destructions.len();
+        expired
     }
 
     pub fn apply_block_event(&mut self, event: ProtocolBlockEvent) {
@@ -196,6 +226,16 @@ impl WorldStore {
     }
 }
 
+fn crossed_block_destruction_expiry_scan(previous_tick: u32, current_tick: u32) -> bool {
+    previous_tick / BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS
+        != current_tick / BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS
+}
+
+fn block_destruction_expiry_scan_tick(current_tick: u32) -> u32 {
+    (current_tick / BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS)
+        * BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,6 +288,7 @@ mod tests {
                     z: -5,
                 },
                 progress: 3,
+                updated_render_tick: 0,
             })
         );
         assert_eq!(store.counters().block_destructions_received, 1);
@@ -274,6 +315,7 @@ mod tests {
                     z: -6,
                 },
                 progress: 9,
+                updated_render_tick: 0,
             })
         );
 
@@ -299,6 +341,75 @@ mod tests {
         assert_eq!(store.counters().block_destructions_received, 4);
         assert_eq!(store.counters().block_destructions_removed, 1);
         assert_eq!(store.counters().block_destructions_ignored, 1);
+    }
+
+    #[test]
+    fn block_destruction_progress_expires_after_vanilla_render_tick_window() {
+        let mut store = WorldStore::new();
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 3,
+        }));
+
+        assert_eq!(store.advance_block_destruction_render_ticks(399), 0);
+        assert_eq!(store.block_destructions().len(), 1);
+        assert_eq!(store.advance_block_destruction_render_ticks(1), 0);
+        assert_eq!(store.block_destructions().len(), 1);
+        assert_eq!(store.advance_block_destruction_render_ticks(20), 1);
+
+        assert!(store.block_destructions().is_empty());
+        assert_eq!(store.counters().block_destructions_expired, 1);
+        assert_eq!(store.counters().block_destructions_tracked, 0);
+        assert_eq!(store.counters().block_destructions_removed, 0);
+    }
+
+    #[test]
+    fn block_destruction_batched_tick_advance_expires_at_scan_tick() {
+        let mut store = WorldStore::new();
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 3,
+        }));
+
+        assert_eq!(store.advance_block_destruction_render_ticks(401), 0);
+        assert_eq!(store.block_destructions().len(), 1);
+        assert_eq!(store.advance_block_destruction_render_ticks(19), 1);
+
+        assert!(store.block_destructions().is_empty());
+        assert_eq!(store.counters().block_destructions_expired, 1);
+    }
+
+    #[test]
+    fn block_destruction_update_refreshes_expiry_tick() {
+        let mut store = WorldStore::new();
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 3,
+        }));
+        assert_eq!(store.advance_block_destruction_render_ticks(399), 0);
+
+        assert!(store.apply_block_destruction(ProtocolBlockDestruction {
+            id: 7,
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            progress: 6,
+        }));
+        assert_eq!(
+            store
+                .block_destruction(7)
+                .map(|progress| progress.updated_render_tick),
+            Some(399)
+        );
+
+        assert_eq!(store.advance_block_destruction_render_ticks(20), 0);
+        assert_eq!(
+            store.block_destruction(7).map(|progress| progress.progress),
+            Some(6)
+        );
+        assert_eq!(store.advance_block_destruction_render_ticks(400), 1);
+        assert!(store.block_destructions().is_empty());
     }
 
     #[test]

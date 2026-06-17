@@ -37,6 +37,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) block_destructions: Vec<BlockDestructionProgress>,
     #[serde(default)]
+    pub(crate) block_destruction_render_tick: u32,
+    #[serde(default)]
     pub(crate) block_events: Vec<BlockEventRecord>,
     #[serde(default)]
     pub(crate) level_events: Vec<LevelEventRecord>,
