@@ -7,9 +7,14 @@ pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
 pub(super) const LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 
+const LOCAL_PHYSICS_TICK_SECONDS: f64 = 0.05;
+const LOCAL_GRAVITY_PER_TICK: f64 = 0.08;
+const LOCAL_JUMP_VELOCITY_PER_TICK: f64 = 0.42;
+const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const LOCAL_PLAYER_HEIGHT: f64 = 1.8;
 const COLLISION_EPSILON: f64 = 1.0e-7;
+const SUPPORT_EPSILON: f64 = 1.0e-3;
 const COLLISION_CLIP_STEPS: usize = 12;
 
 pub(super) fn integrate_local_player_input_pose(
@@ -27,9 +32,32 @@ pub(super) fn integrate_local_player_input_pose(
             .clamp(-90.0, 90.0);
     }
 
-    let forward_input = axis(input.forward, input.backward);
-    let strafe_input = axis(input.right, input.left);
-    let vertical_input = axis(input.jump, input.sneak);
+    let mut remaining_seconds = dt_seconds.max(0.0);
+    while remaining_seconds > COLLISION_EPSILON {
+        let step_seconds = remaining_seconds.min(LOCAL_PHYSICS_TICK_SECONDS);
+        pose = advance_local_player_physics_step(world, pose, input, step_seconds);
+        remaining_seconds -= step_seconds;
+    }
+
+    pose
+}
+
+fn advance_local_player_physics_step(
+    world: &WorldStore,
+    mut pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+    step_seconds: f64,
+) -> LocalPlayerPoseState {
+    let forward_input = if input.focused {
+        axis(input.forward, input.backward)
+    } else {
+        0.0
+    };
+    let strafe_input = if input.focused {
+        axis(input.right, input.left)
+    } else {
+        0.0
+    };
     let speed = if input.sprint {
         LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND
     } else {
@@ -46,25 +74,48 @@ pub(super) fn integrate_local_player_input_pose(
         move_z /= horizontal_len;
     }
 
-    let requested_x = move_x * speed * dt_seconds;
-    let requested_y = vertical_input * speed * dt_seconds;
-    let requested_z = move_z * speed * dt_seconds;
+    if input.focused && input.jump && pose.on_ground {
+        pose.delta_movement.y = pose.delta_movement.y.max(LOCAL_JUMP_VELOCITY_PER_TICK);
+    }
+
+    let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
+    let requested_x = move_x * speed * step_seconds;
+    let requested_y = pose.delta_movement.y * step_ticks;
+    let requested_z = move_z * speed * step_seconds;
     let movement =
         clip_local_player_movement(world, pose.position, requested_x, requested_y, requested_z);
     pose.position.x += movement.x;
     pose.position.y += movement.y;
     pose.position.z += movement.z;
 
-    let tick_span = (dt_seconds * 20.0).max(f64::EPSILON);
+    let tick_span = step_ticks.max(f64::EPSILON);
+    let horizontal_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON
+        || (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
+    let on_ground =
+        vertical_collision && requested_y < 0.0 || local_player_supported(world, pose.position);
+
     pose.delta_movement = ProtocolVec3d {
         x: movement.x / tick_span,
         y: movement.y / tick_span,
         z: movement.z / tick_span,
     };
-    pose.on_ground = (movement.y - requested_y).abs() > COLLISION_EPSILON && requested_y < 0.0
-        || local_player_supported(world, pose.position);
-    pose.horizontal_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON
-        || (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    if horizontal_collision {
+        if (movement.x - requested_x).abs() > COLLISION_EPSILON {
+            pose.delta_movement.x = 0.0;
+        }
+        if (movement.z - requested_z).abs() > COLLISION_EPSILON {
+            pose.delta_movement.z = 0.0;
+        }
+    }
+    if on_ground || vertical_collision {
+        pose.delta_movement.y = 0.0;
+    } else {
+        pose.delta_movement.y = (pose.delta_movement.y - LOCAL_GRAVITY_PER_TICK * step_ticks)
+            * LOCAL_VERTICAL_FRICTION.powf(step_ticks);
+    }
+    pose.on_ground = on_ground;
+    pose.horizontal_collision = horizontal_collision;
     pose
 }
 
@@ -122,7 +173,7 @@ fn clip_axis_delta(
 fn local_player_supported(world: &WorldStore, position: ProtocolVec3d) -> bool {
     local_player_collides(
         world,
-        LocalPlayerBounds::at(position).moved(0.0, -COLLISION_EPSILON * 2.0, 0.0),
+        LocalPlayerBounds::at(position).moved(0.0, -SUPPORT_EPSILON, 0.0),
     )
 }
 
@@ -299,7 +350,7 @@ mod tests {
     }
 
     #[test]
-    fn local_player_vertical_input_stops_at_floor_and_reports_grounded() {
+    fn local_player_gravity_lands_on_floor_and_reports_grounded() {
         let mut world = flat_collision_world();
         world.set_local_player_pose(LocalPlayerPoseState {
             position: vec3(0.5, 1.2, 0.5),
@@ -311,7 +362,6 @@ mod tests {
             .advance_local_player_input(
                 LocalPlayerInputState {
                     focused: true,
-                    sneak: true,
                     ..LocalPlayerInputState::default()
                 },
                 1.0,
@@ -325,6 +375,59 @@ mod tests {
         );
         assert!(pose.on_ground);
         assert!(!pose.horizontal_collision);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_jump_starts_only_from_ground() {
+        let mut world = flat_collision_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let jump_pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                0.05,
+            )
+            .unwrap();
+
+        assert!(
+            jump_pose.position.y > 1.0,
+            "position was {:?}",
+            jump_pose.position
+        );
+        assert!(!jump_pose.on_ground);
+        assert!(jump_pose.delta_movement.y > 0.0);
+
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+        let airborne_pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                0.1,
+            )
+            .unwrap();
+
+        assert!(
+            airborne_pose.position.y < 3.0,
+            "position was {:?}",
+            airborne_pose.position
+        );
+        assert!(!airborne_pose.on_ground);
     }
 
     fn flat_collision_world() -> WorldStore {

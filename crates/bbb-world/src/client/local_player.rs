@@ -597,7 +597,7 @@ mod tests {
                     forward: true,
                     ..LocalPlayerInputState::default()
                 },
-                1.0,
+                0.05,
             )
             .unwrap();
 
@@ -605,7 +605,7 @@ mod tests {
         assert_f64_near(pose.position.y, 64.0, 0.000001);
         assert_f64_near(
             pose.position.z,
-            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND,
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.05,
             0.000001,
         );
         assert_f64_near(
