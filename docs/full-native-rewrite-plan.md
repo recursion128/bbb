@@ -14,6 +14,12 @@ Build a native Minecraft Java 26.1 client whose protocol handling, world state,
 assets, rendering, audio, input, and control snapshots are owned by Rust modules
 with clear semantic boundaries.
 
+Networking is scoped to offline-mode Java 26.1 servers. Microsoft/Mojang online
+account authentication is not a project goal.
+
+Runtime configuration is startup-only through command-line options. The native
+client should not grow an in-game configuration UI.
+
 The target state is:
 
 - `bbb-protocol` decodes and encodes vanilla 26.1 packets accurately.

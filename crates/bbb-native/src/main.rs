@@ -2,8 +2,10 @@ use anyhow::Result;
 use bbb_control::{shared_snapshot, AudioCounters, NetCounters};
 use bbb_world::WorldStore;
 use winit::{
-    event::{DeviceEvent, Event, WindowEvent},
+    event::{DeviceEvent, ElementState, Event, WindowEvent},
     event_loop::ControlFlow,
+    keyboard::{KeyCode, PhysicalKey},
+    window::{CursorGrabMode, Window},
 };
 
 mod audio_runtime;
@@ -155,6 +157,7 @@ fn main() -> Result<()> {
     let mut net_disconnect_requested = false;
     let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();
     let mut cursor_position = None;
+    let mut cursor_captured = false;
 
     event_loop.run(move |event, target| {
         target.set_control_flow(ControlFlow::Poll);
@@ -165,15 +168,39 @@ fn main() -> Result<()> {
                 WindowEvent::CursorMoved { position, .. } => {
                     cursor_position = Some(position);
                 }
-                WindowEvent::Focused(focused) => handle_focus_change(
-                    &mut input,
-                    &mut world,
-                    &mut net_counters,
-                    &net_commands,
-                    focused,
-                ),
+                WindowEvent::Focused(focused) => {
+                    if !focused {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                    }
+                    handle_focus_change(
+                        &mut input,
+                        &mut world,
+                        &mut net_counters,
+                        &net_commands,
+                        focused,
+                    );
+                }
                 WindowEvent::KeyboardInput { event, .. } => {
                     if code_of_conduct_overlay.is_visible(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    let container_open = world.inventory().open_container.is_some();
+                    if matches!(event.state, ElementState::Pressed)
+                        && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
+                        && cursor_captured
+                        && !world_wants_cursor(&world)
+                    {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        release_active_input(
+                            &mut input,
+                            &mut world,
+                            &mut net_counters,
+                            &net_commands,
+                        );
+                        return;
+                    }
+                    if !cursor_captured && !container_open {
                         return;
                     }
                     handle_key_input(
@@ -186,19 +213,33 @@ fn main() -> Result<()> {
                     );
                 }
                 WindowEvent::MouseInput { state, button, .. } => {
-                    if code_of_conduct_overlay.handle_mouse_input(
-                        &world,
-                        &snapshot,
-                        button,
-                        state,
-                        cursor_position,
-                        window.inner_size(),
-                    ) {
-                        code_of_conduct_overlay.update_renderer(
-                            &mut renderer,
+                    if code_of_conduct_overlay.is_visible(&world) {
+                        if code_of_conduct_overlay.handle_mouse_input(
                             &world,
-                            code_of_conduct_acceptance.current_world_acceptance_matches(&world),
-                        );
+                            &snapshot,
+                            button,
+                            state,
+                            cursor_position,
+                            window.inner_size(),
+                        ) {
+                            code_of_conduct_overlay.update_renderer(
+                                &mut renderer,
+                                &world,
+                                code_of_conduct_acceptance.current_world_acceptance_matches(&world),
+                            );
+                        }
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if matches!(state, ElementState::Pressed) && !cursor_captured {
+                        if world_wants_cursor(&world) {
+                            set_cursor_capture(&window, &mut cursor_captured, false);
+                            return;
+                        }
+                        set_cursor_capture(&window, &mut cursor_captured, true);
+                        return;
+                    }
+                    if !cursor_captured {
                         return;
                     }
                     handle_mouse_input_at_partial_tick(
@@ -213,6 +254,14 @@ fn main() -> Result<()> {
                 }
                 WindowEvent::MouseWheel { delta, .. } => {
                     if code_of_conduct_overlay.is_visible(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if world_wants_cursor(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if !cursor_captured {
                         return;
                     }
                     handle_mouse_wheel(
@@ -224,7 +273,8 @@ fn main() -> Result<()> {
                     );
                 }
                 WindowEvent::RedrawRequested => {
-                    if code_of_conduct_overlay.is_visible(&world) {
+                    if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
                         release_active_input(
                             &mut input,
                             &mut world,
@@ -262,7 +312,8 @@ fn main() -> Result<()> {
                         &world,
                         code_of_conduct_acceptance.current_world_acceptance_matches(&world),
                     );
-                    if code_of_conduct_overlay.is_visible(&world) {
+                    if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
                         release_active_input(
                             &mut input,
                             &mut world,
@@ -317,7 +368,11 @@ fn main() -> Result<()> {
                 event: DeviceEvent::MouseMotion { delta },
                 ..
             } => {
-                if code_of_conduct_overlay.is_visible(&world) {
+                if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                    set_cursor_capture(&window, &mut cursor_captured, false);
+                    return;
+                }
+                if !cursor_captured {
                     return;
                 }
                 handle_mouse_motion(&mut input, delta);
@@ -336,7 +391,8 @@ fn main() -> Result<()> {
                     target.exit();
                     return;
                 }
-                if code_of_conduct_overlay.is_visible(&world) {
+                if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                    set_cursor_capture(&window, &mut cursor_captured, false);
                     release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
                 }
                 if !pump_network_and_terrain(
@@ -368,12 +424,14 @@ fn main() -> Result<()> {
                     &world,
                     code_of_conduct_acceptance.current_world_acceptance_matches(&world),
                 );
-                if code_of_conduct_overlay.is_visible(&world) {
+                if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                    set_cursor_capture(&window, &mut cursor_captured, false);
                     release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
                 }
                 window.request_redraw();
             }
             Event::LoopExiting => {
+                set_cursor_capture(&window, &mut cursor_captured, false);
                 request_net_disconnect(&net_commands, &mut net_disconnect_requested);
                 if let Ok(mut guard) = snapshot.write() {
                     guard.app.running = false;
@@ -385,4 +443,35 @@ fn main() -> Result<()> {
     })?;
 
     Ok(())
+}
+
+fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
+    if *captured == capture {
+        return;
+    }
+
+    if capture {
+        match window
+            .set_cursor_grab(CursorGrabMode::Locked)
+            .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined))
+        {
+            Ok(()) => {
+                window.set_cursor_visible(false);
+                *captured = true;
+            }
+            Err(err) => {
+                tracing::warn!(?err, "unable to capture cursor for first-person input");
+            }
+        }
+    } else {
+        if let Err(err) = window.set_cursor_grab(CursorGrabMode::None) {
+            tracing::warn!(?err, "unable to release cursor capture");
+        }
+        window.set_cursor_visible(true);
+        *captured = false;
+    }
+}
+
+fn world_wants_cursor(world: &WorldStore) -> bool {
+    world.inventory().open_container.is_some() || world.current_dialog().is_some()
 }
