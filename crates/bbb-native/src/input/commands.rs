@@ -4,11 +4,12 @@ use bbb_protocol::packets::{
     AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand, ChatCommand,
     CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
     ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook, EntityTagQuery,
-    InteractEntity, InteractionHand, LockDifficultyCommand, PickItemFromBlock, PickItemFromEntity,
-    PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand,
-    PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate,
-    SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
+    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
+    PlayerCommand, PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
+    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
+    SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
+    UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -659,6 +660,22 @@ pub(crate) fn queue_vehicle_move_command(
         };
         if tx.try_send(NetCommand::MoveVehicle(command)).is_ok() {
             counters.move_vehicle_commands_queued += 1;
+        }
+    }
+}
+
+pub(super) fn queue_paddle_boat_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    left: bool,
+    right: bool,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::PaddleBoat(PaddleBoat { left, right }))
+            .is_ok()
+        {
+            counters.paddle_boat_commands_queued += 1;
         }
     }
 }

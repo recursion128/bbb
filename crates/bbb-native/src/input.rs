@@ -57,6 +57,7 @@ pub(crate) struct ClientInputState {
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
     last_move_command_pose: Option<LocalPlayerPoseState>,
+    last_paddle_boat_command_at: Option<Instant>,
 }
 
 impl ClientInputState {
@@ -82,6 +83,7 @@ impl ClientInputState {
         self.scroll_accumulated_y = 0.0;
         self.bundle_scroll_accumulated_x = 0.0;
         self.bundle_scroll_accumulated_y = 0.0;
+        self.last_paddle_boat_command_at = None;
     }
 }
 
@@ -116,6 +118,9 @@ pub(crate) fn release_active_input(
             net_commands,
             PlayerActionKind::ReleaseUseItem,
         );
+    }
+    if world.local_player_root_boat_vehicle_id().is_some() {
+        queue_paddle_boat_command(counters, net_commands, false, false);
     }
 }
 

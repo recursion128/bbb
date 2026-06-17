@@ -5,6 +5,7 @@ use bbb_protocol::packets::{
 use crate::WorldStore;
 
 use super::{
+    is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
     VehicleMoveReport,
 };
@@ -120,6 +121,14 @@ impl WorldStore {
 
     pub fn local_player_root_vehicle_id(&self) -> Option<i32> {
         self.resolve_root_vehicle_id(self.local_player_vehicle_id?)
+    }
+
+    pub fn local_player_root_boat_vehicle_id(&self) -> Option<i32> {
+        let vehicle_id = self.local_player_root_vehicle_id()?;
+        self.entities
+            .entity_type_id(vehicle_id)
+            .filter(|entity_type_id| is_vanilla_boat_type(*entity_type_id))
+            .map(|_| vehicle_id)
     }
 
     pub(crate) fn clear_local_player_mount(&mut self, local_player_id: i32) {

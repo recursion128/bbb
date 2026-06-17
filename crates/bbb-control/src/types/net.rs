@@ -78,6 +78,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub container_slot_state_changed_commands_queued: usize,
     pub player_move_commands_queued: usize,
+    #[serde(default)]
+    pub paddle_boat_commands_queued: usize,
     pub move_vehicle_commands_queued: usize,
     pub last_error: Option<String>,
 }

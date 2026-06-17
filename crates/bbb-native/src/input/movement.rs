@@ -5,7 +5,7 @@ use bbb_net::{NetCommand, PlayerMoveCommand};
 use bbb_world::{LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
 
-use super::ClientInputState;
+use super::{commands::queue_paddle_boat_command, ClientInputState};
 
 const MOVE_COMMAND_INTERVAL: Duration = Duration::from_millis(50);
 const MOVE_COMMAND_POSITION_REMINDER_INTERVAL: Duration = Duration::from_secs(1);
@@ -45,6 +45,14 @@ pub(crate) fn advance_player_input(
         .min(0.25);
     input.last_step = Some(now);
 
+    if world.local_player_root_vehicle_id().is_some() {
+        maybe_queue_paddle_boat_command(input, world, counters, net_commands, now);
+        input.mouse_delta_x = 0.0;
+        input.mouse_delta_y = 0.0;
+        return;
+    }
+    input.last_paddle_boat_command_at = None;
+
     let Some(pose) = world.advance_local_player_input(input.local_player_input(), dt_seconds)
     else {
         input.mouse_delta_x = 0.0;
@@ -55,6 +63,36 @@ pub(crate) fn advance_player_input(
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
+}
+
+fn maybe_queue_paddle_boat_command(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    now: Instant,
+) {
+    if world.local_player_root_boat_vehicle_id().is_none() {
+        input.last_paddle_boat_command_at = None;
+        return;
+    }
+    let elapsed_since_last = input
+        .last_paddle_boat_command_at
+        .and_then(|last| now.checked_duration_since(last));
+    let command_due = elapsed_since_last.map_or(true, |elapsed| elapsed >= MOVE_COMMAND_INTERVAL);
+    if !command_due {
+        return;
+    }
+
+    let (left, right) = paddle_boat_state_from_input(input);
+    queue_paddle_boat_command(counters, net_commands, left, right);
+    input.last_paddle_boat_command_at = Some(now);
+}
+
+fn paddle_boat_state_from_input(input: &ClientInputState) -> (bool, bool) {
+    let left = (input.right && !input.left) || input.forward;
+    let right = (input.left && !input.right) || input.forward;
+    (left, right)
 }
 
 fn maybe_queue_player_move_command(
@@ -147,7 +185,14 @@ fn position_delta_squared(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::Vec3d as ProtocolVec3d;
+    use bbb_protocol::packets::{
+        AddEntity, CommonPlayerSpawnInfo, PaddleBoat, PlayLogin, SetPassengers,
+        Vec3d as ProtocolVec3d,
+    };
+    use uuid::Uuid;
+
+    const VANILLA_26_1_MINECART_ENTITY_TYPE_ID: i32 = 85;
+    const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
 
     #[test]
     fn local_input_projection_includes_focus_keys_and_mouse_delta() {
@@ -428,8 +473,135 @@ mod tests {
         assert_eq!(counters.player_move_commands_queued, 1);
     }
 
+    #[test]
+    fn mounted_boat_input_queues_paddle_boat_instead_of_player_move() {
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.left = true;
+        let mut world = world_with_local_vehicle(VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID);
+        let initial_pose = world.local_player_pose().unwrap();
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PaddleBoat(PaddleBoat {
+                left: false,
+                right: true,
+            })
+        );
+        assert_eq!(world.local_player_pose(), Some(initial_pose));
+        assert_eq!(counters.paddle_boat_commands_queued, 1);
+        assert_eq!(counters.player_move_commands_queued, 0);
+
+        input.left = false;
+        input.forward = true;
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + Duration::from_millis(25),
+        );
+        assert!(rx.try_recv().is_err());
+
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + Duration::from_millis(50),
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PaddleBoat(PaddleBoat {
+                left: true,
+                right: true,
+            })
+        );
+        assert_eq!(counters.paddle_boat_commands_queued, 2);
+        assert_eq!(counters.player_move_commands_queued, 0);
+    }
+
+    #[test]
+    fn mounted_non_boat_input_does_not_queue_paddle_or_player_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.forward = true;
+        let mut world = world_with_local_vehicle(VANILLA_26_1_MINECART_ENTITY_TYPE_ID);
+        let initial_pose = world.local_player_pose().unwrap();
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+
+        assert!(rx.try_recv().is_err());
+        assert_eq!(world.local_player_pose(), Some(initial_pose));
+        assert_eq!(counters.paddle_boat_commands_queued, 0);
+        assert_eq!(counters.player_move_commands_queued, 0);
+    }
+
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
         ProtocolVec3d { x, y, z }
+    }
+
+    fn world_with_local_vehicle(entity_type_id: i32) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(99));
+        world.apply_add_entity(protocol_add_entity_with_type(10, entity_type_id));
+        assert!(world.apply_set_passengers(SetPassengers {
+            vehicle_id: 10,
+            passenger_ids: vec![99],
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        });
+        world
+    }
+
+    fn protocol_play_login(player_id: i32) -> PlayLogin {
+        PlayLogin {
+            player_id,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        }
+    }
+
+    fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
+        AddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id,
+            position: vec3(1.0, 64.0, -2.0),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        }
     }
 
     fn assert_f64_near(actual: f64, expected: f64, epsilon: f64) {

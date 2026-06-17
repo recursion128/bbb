@@ -1,9 +1,13 @@
 use super::*;
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, ContainerCloseRequest,
-    OpenScreen as ProtocolOpenScreen, PlayLogin, PlayerAction, PlayerCommand,
+    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, ContainerCloseRequest,
+    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerCommand,
+    SetPassengers, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
+use uuid::Uuid;
+
+const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
 
 fn handle_key_input_without_world(
     input: &mut ClientInputState,
@@ -49,6 +53,30 @@ fn world_with_local_player_id(player_id: i32) -> WorldStore {
         },
         enforces_secure_chat: false,
     });
+    world
+}
+
+fn world_with_local_boat(player_id: i32) -> WorldStore {
+    let mut world = world_with_local_player_id(player_id);
+    world.apply_add_entity(AddEntity {
+        id: 10,
+        uuid: Uuid::from_u128(10),
+        entity_type_id: VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 64.0,
+            z: 0.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    assert!(world.apply_set_passengers(SetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![player_id],
+    }));
     world
 }
 
@@ -514,6 +542,35 @@ fn focus_loss_stops_active_sprinting() {
             entity_id: 77,
             action: PlayerCommandAction::StopSprinting,
             data: 0,
+        })
+    );
+}
+
+#[test]
+fn focus_loss_stops_boat_paddles() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.left = true;
+    input.forward = true;
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_boat(77);
+
+    handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
+
+    assert!(!input.focused);
+    assert_eq!(player_input_from_state(&input), PlayerInput::default());
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.paddle_boat_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PaddleBoat(PaddleBoat {
+            left: false,
+            right: false,
         })
     );
 }
