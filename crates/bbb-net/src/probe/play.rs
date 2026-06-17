@@ -507,20 +507,22 @@ mod tests {
         CommonPlayerSpawnInfo, CookieRequest, CustomChatCompletions, CustomChatCompletionsAction,
         CustomReportDetails, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent,
         DebugSample, DialogHolder, Difficulty, EntityAnchor, Explosion, FilterMask, FilterMaskKind,
-        GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
-        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
-        LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MessageSignature,
-        MountScreenOpen, MoveVehicle, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
-        PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth,
-        PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
-        RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
-        ResourcePackResponseAction, ServerData, ServerLinkEntry, ServerLinkKnownType,
-        ServerLinkType, ServerLinks, SetCamera, SetDefaultSpawnPosition, SetHeldSlot,
-        SetPassengers, SetSimulationDistance, ShowDialog, SignedMessageBody, SoundEntityEvent,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, StoreCookie, TabList,
-        TagQuery, TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint,
-        TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
-        WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues,
+        GameTestHighlightPos, GameType, InteractionHand, LevelChunkBlockEntity, LevelChunkData,
+        LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdateData, MapColorPatch,
+        MapDecoration, MapItemData, MessageSignature, MountScreenOpen, MoveVehicle, OpenBook,
+        OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities,
+        PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoChatSession,
+        PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate,
+        PlayerRotationUpdate, PongResponse, ProjectilePower, RecipeDisplayType,
+        RemoteDebugSampleType, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
+        ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera,
+        SetDefaultSpawnPosition, SetHeldSlot, SetPassengers, SetSimulationDistance, ShowDialog,
+        SignedMessageBody, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        StopSound, StoreCookie, TabList, TagQuery, TestInstanceBlockStatus, TickingState,
+        TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d,
+        Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -2207,6 +2209,98 @@ mod tests {
         assert_eq!(report.world_counters.held_slot_updates_ignored, 1);
         assert_eq!(report.world_counters.default_spawn_position_packets, 1);
         assert_eq!(report.world_counters.simulation_distance_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_player_info_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let profile_id = Uuid::from_u128(1);
+        let removed_profile_id = Uuid::from_u128(2);
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerInfoUpdate(PlayerInfoUpdate {
+                actions: vec![
+                    PlayerInfoAction::AddPlayer,
+                    PlayerInfoAction::InitializeChat,
+                    PlayerInfoAction::UpdateGameMode,
+                    PlayerInfoAction::UpdateListed,
+                    PlayerInfoAction::UpdateLatency,
+                    PlayerInfoAction::UpdateDisplayName,
+                    PlayerInfoAction::UpdateListOrder,
+                    PlayerInfoAction::UpdateHat,
+                ],
+                entries: vec![
+                    PlayerInfoEntry {
+                        profile_id,
+                        profile: Some(GameProfile {
+                            uuid: profile_id,
+                            name: "Ada".to_string(),
+                            properties: vec![GameProfileProperty {
+                                name: "textures".to_string(),
+                                value: "skin".to_string(),
+                                signature: Some("signature".to_string()),
+                            }],
+                        }),
+                        listed: true,
+                        latency: 42,
+                        game_mode: GameType::Creative,
+                        display_name: Some("Ada Lovelace".to_string()),
+                        show_hat: true,
+                        list_order: 3,
+                        chat_session: Some(PlayerInfoChatSession {
+                            session_id: Uuid::from_u128(3),
+                            expires_at_epoch_millis: 99,
+                            public_key: vec![1, 2],
+                            key_signature: vec![3, 4],
+                        }),
+                    },
+                    PlayerInfoEntry {
+                        profile_id: removed_profile_id,
+                        profile: Some(GameProfile {
+                            uuid: removed_profile_id,
+                            name: "Removed".to_string(),
+                            properties: Vec::new(),
+                        }),
+                        listed: true,
+                        latency: 7,
+                        game_mode: GameType::Survival,
+                        display_name: None,
+                        show_hat: false,
+                        list_order: 0,
+                        chat_session: None,
+                    },
+                ],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::PlayerInfoRemove(PlayerInfoRemove {
+                profile_ids: vec![removed_profile_id],
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+        let entry = report.world.player_info_entry(profile_id).unwrap();
+        assert_eq!(entry.profile.uuid, profile_id);
+        assert_eq!(entry.profile.name, "Ada");
+        assert_eq!(entry.profile.properties.len(), 1);
+        assert!(entry.listed);
+        assert_eq!(entry.latency, 42);
+        assert_eq!(entry.game_mode, "creative");
+        assert_eq!(entry.display_name.as_deref(), Some("Ada Lovelace"));
+        assert!(entry.show_hat);
+        assert_eq!(entry.list_order, 3);
+        assert!(entry.chat_session_present);
+        assert!(report.world.listed_players().contains(&profile_id));
+        assert!(report.world.player_info_entry(removed_profile_id).is_none());
+        assert!(!report.world.listed_players().contains(&removed_profile_id));
+
+        assert_eq!(report.world_counters.player_info_update_packets, 1);
+        assert_eq!(report.world_counters.player_info_remove_packets, 1);
+        assert_eq!(report.world_counters.player_info_entries_tracked, 1);
+        assert_eq!(report.world_counters.listed_players_tracked, 1);
     }
 
     #[tokio::test]
