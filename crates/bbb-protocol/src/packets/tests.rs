@@ -972,6 +972,8 @@ fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order
     assert_eq!(ids::play::SERVERBOUND_CHANGE_GAME_MODE, 5);
     assert_eq!(ids::play::SERVERBOUND_CHAT_ACK, 6);
     assert_eq!(ids::play::SERVERBOUND_CHAT_COMMAND, 7);
+    assert_eq!(ids::play::SERVERBOUND_CHAT_COMMAND_SIGNED, 8);
+    assert_eq!(ids::play::SERVERBOUND_CHAT, 9);
     assert_eq!(ids::play::SERVERBOUND_ENTITY_TAG_QUERY, 25);
     assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
     assert_eq!(ids::play::SERVERBOUND_LOCK_DIFFICULTY, 29);
@@ -1421,6 +1423,37 @@ fn encodes_chat_command_packet() {
         decoder.read_string(32767).unwrap(),
         "give @p minecraft:stone"
     );
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_unsigned_chat_message_packet() {
+    let (id, payload) = encode_play_chat_message(&ChatMessage::unsigned(
+        "hello",
+        1_717_986_918_300,
+        0x0102_0304_0506_0708,
+    ));
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHAT);
+    assert_eq!(
+        payload,
+        vec![
+            0x05, b'h', b'e', b'l', b'l', b'o', 0x00, 0x00, 0x01, 0x8f, 0xff, 0xff, 0xff, 0x9c,
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        ]
+    );
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(256).unwrap(), "hello");
+    assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
+    assert_eq!(decoder.read_i64().unwrap(), 0x0102_0304_0506_0708);
+    assert!(!decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(
+        decoder.read_exact(3, "last seen bitset").unwrap(),
+        &[0, 0, 0]
+    );
+    assert_eq!(decoder.read_u8().unwrap(), 1);
     assert!(decoder.is_empty());
 }
 

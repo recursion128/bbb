@@ -2,14 +2,14 @@ use bbb_control::NetCounters;
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
     AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand, ChatCommand,
-    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-    ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook, EntityTagQuery,
-    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
-    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
-    PlayerCommand, PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
-    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
-    SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
-    UseItemOn, Vec3d as ProtocolVec3d,
+    ChatMessage, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+    ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook,
+    EntityTagQuery, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
+    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
+    SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity,
+    UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -398,6 +398,19 @@ pub(crate) fn queue_chat_command(
     }
 }
 
+pub(crate) fn queue_chat_message_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    message: impl Into<String>,
+) {
+    if let Some(tx) = net_commands {
+        let packet = ChatMessage::unsigned(message, 0, 0);
+        if tx.try_send(NetCommand::ChatMessage(packet)).is_ok() {
+            counters.chat_message_commands_queued += 1;
+        }
+    }
+}
+
 pub(super) fn queue_container_close_command(
     counters: &mut NetCounters,
     world: &mut WorldStore,
@@ -741,6 +754,21 @@ mod tests {
             NetCommand::ChatCommand(ChatCommand {
                 command: "give @p minecraft:stone".to_string(),
             })
+        );
+    }
+
+    #[test]
+    fn queues_unsigned_chat_message() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_chat_message_command(&mut counters, &commands, "hello world");
+
+        assert_eq!(counters.chat_message_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatMessage(ChatMessage::unsigned("hello world", 0, 0))
         );
     }
 

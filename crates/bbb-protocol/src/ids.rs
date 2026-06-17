@@ -210,6 +210,8 @@ pub mod play {
     pub const SERVERBOUND_CHANGE_GAME_MODE: i32 = 5;
     pub const SERVERBOUND_CHAT_ACK: i32 = 6;
     pub const SERVERBOUND_CHAT_COMMAND: i32 = 7;
+    pub const SERVERBOUND_CHAT_COMMAND_SIGNED: i32 = 8;
+    pub const SERVERBOUND_CHAT: i32 = 9;
     pub const SERVERBOUND_CHUNK_BATCH_RECEIVED: i32 = 11;
     pub const SERVERBOUND_CLIENT_COMMAND: i32 = 12;
     pub const SERVERBOUND_CLIENT_TICK_END: i32 = 13;

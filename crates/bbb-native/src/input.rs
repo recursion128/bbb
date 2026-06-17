@@ -21,15 +21,16 @@ pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{
     queue_block_entity_tag_query_command, queue_change_difficulty_command,
-    queue_change_game_mode_command, queue_chat_command, queue_command_suggestion_request,
-    queue_container_button_click_command, queue_container_click_command,
-    queue_container_close_request_command, queue_container_slot_state_changed_command,
-    queue_edit_book_command, queue_entity_tag_query_command, queue_lock_difficulty_command,
-    queue_place_recipe_command, queue_player_abilities_command,
-    queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
-    queue_rename_item_command, queue_seen_advancements_command, queue_select_trade_command,
-    queue_set_beacon_command, queue_sign_update_command, queue_spectate_entity_command,
-    queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
+    queue_change_game_mode_command, queue_chat_command, queue_chat_message_command,
+    queue_command_suggestion_request, queue_container_button_click_command,
+    queue_container_click_command, queue_container_close_request_command,
+    queue_container_slot_state_changed_command, queue_edit_book_command,
+    queue_entity_tag_query_command, queue_lock_difficulty_command, queue_place_recipe_command,
+    queue_player_abilities_command, queue_recipe_book_change_settings_command,
+    queue_recipe_book_seen_recipe_command, queue_rename_item_command,
+    queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
+    queue_sign_update_command, queue_spectate_entity_command, queue_teleport_to_entity_command,
+    queue_vehicle_move_command, select_hotbar_slot,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, handle_mouse_input_at_partial_tick,
@@ -54,7 +55,7 @@ pub(crate) struct ClientInputState {
     scroll_accumulated_y: f64,
     bundle_scroll_accumulated_x: f64,
     bundle_scroll_accumulated_y: f64,
-    command_entry: Option<CommandEntryState>,
+    chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
     last_move_command_pose: Option<LocalPlayerPoseState>,
@@ -62,9 +63,10 @@ pub(crate) struct ClientInputState {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct CommandEntryState {
+struct ChatEntryState {
     text: String,
     last_suggestion_request_text: Option<String>,
+    suppress_open_key_commit: bool,
 }
 
 impl ClientInputState {
@@ -90,12 +92,16 @@ impl ClientInputState {
         self.scroll_accumulated_y = 0.0;
         self.bundle_scroll_accumulated_x = 0.0;
         self.bundle_scroll_accumulated_y = 0.0;
-        self.command_entry = None;
+        self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
     }
 
     pub(crate) fn command_entry_is_active(&self) -> bool {
-        self.command_entry.is_some()
+        self.chat_entry_is_active()
+    }
+
+    pub(crate) fn chat_entry_is_active(&self) -> bool {
+        self.chat_entry.is_some()
     }
 }
 
@@ -167,7 +173,7 @@ pub(crate) fn handle_key_input(
     };
 
     if input.command_entry_is_active() {
-        handle_command_entry_key(input, counters, world, net_commands, code, pressed);
+        handle_chat_entry_key(input, counters, world, net_commands, code, pressed);
         return;
     }
 
@@ -207,6 +213,10 @@ pub(crate) fn handle_key_input(
                     PlayerCommandAction::OpenInventory,
                     0,
                 );
+                return;
+            }
+            KeyCode::KeyT => {
+                open_chat_entry(input, world, counters, net_commands, true);
                 return;
             }
             _ => {}
@@ -267,32 +277,51 @@ pub(crate) fn handle_text_input(
         return;
     }
 
-    if input.command_entry.is_none() {
+    if input.chat_entry.is_none() {
         if !text.starts_with('/') {
             return;
         }
-        release_active_input(input, world, counters, net_commands);
-        input.command_entry = Some(CommandEntryState {
-            text: String::new(),
-            last_suggestion_request_text: None,
-        });
+        open_chat_entry(input, world, counters, net_commands, false);
     }
 
-    let Some(entry) = &mut input.command_entry else {
+    let Some(entry) = &mut input.chat_entry else {
         return;
     };
-    for ch in text.chars().filter(|ch| is_command_text_char(*ch)) {
+    if entry.suppress_open_key_commit {
+        entry.suppress_open_key_commit = false;
+        if matches!(text, "t" | "T") {
+            return;
+        }
+    }
+    for ch in text.chars().filter(|ch| is_chat_text_char(*ch)) {
         entry.text.push(ch);
     }
-    if entry.text.is_empty() || !entry.text.starts_with('/') {
-        input.command_entry = None;
+    if entry.text.is_empty() {
+        input.chat_entry = None;
         return;
     }
 
-    maybe_queue_command_suggestion_request(input, counters, world, net_commands);
+    if entry.text.starts_with('/') {
+        maybe_queue_command_suggestion_request(input, counters, world, net_commands);
+    }
 }
 
-fn handle_command_entry_key(
+fn open_chat_entry(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    suppress_open_key_commit: bool,
+) {
+    release_active_input(input, world, counters, net_commands);
+    input.chat_entry = Some(ChatEntryState {
+        text: String::new(),
+        last_suggestion_request_text: None,
+        suppress_open_key_commit,
+    });
+}
+
+fn handle_chat_entry_key(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
     world: &mut WorldStore,
@@ -305,16 +334,14 @@ fn handle_command_entry_key(
     }
 
     match code {
-        KeyCode::Enter | KeyCode::NumpadEnter => {
-            submit_command_entry(input, counters, net_commands)
-        }
-        KeyCode::Escape => input.command_entry = None,
+        KeyCode::Enter | KeyCode::NumpadEnter => submit_chat_entry(input, counters, net_commands),
+        KeyCode::Escape => input.chat_entry = None,
         KeyCode::Backspace => {
-            if let Some(entry) = &mut input.command_entry {
+            if let Some(entry) = &mut input.chat_entry {
                 entry.text.pop();
                 if entry.text.is_empty() {
-                    input.command_entry = None;
-                } else {
+                    input.chat_entry = None;
+                } else if entry.text.starts_with('/') {
                     maybe_queue_command_suggestion_request(input, counters, world, net_commands);
                 }
             }
@@ -323,15 +350,19 @@ fn handle_command_entry_key(
     }
 }
 
-fn submit_command_entry(
+fn submit_chat_entry(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
-    let Some(entry) = input.command_entry.take() else {
+    let Some(entry) = input.chat_entry.take() else {
         return;
     };
     let Some(command) = normalize_command_entry(&entry.text) else {
+        let Some(message) = normalize_chat_entry(&entry.text) else {
+            return;
+        };
+        queue_chat_message_command(counters, net_commands, message);
         return;
     };
     queue_chat_command(counters, net_commands, command);
@@ -346,13 +377,21 @@ fn normalize_command_entry(text: &str) -> Option<String> {
     Some(command.to_string())
 }
 
+fn normalize_chat_entry(text: &str) -> Option<String> {
+    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if normalized.is_empty() || normalized.starts_with('/') {
+        return None;
+    }
+    Some(normalized)
+}
+
 fn maybe_queue_command_suggestion_request(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
-    let Some(entry) = &mut input.command_entry else {
+    let Some(entry) = &mut input.chat_entry else {
         return;
     };
     if entry.last_suggestion_request_text.as_deref() == Some(entry.text.as_str()) {
@@ -364,7 +403,7 @@ fn maybe_queue_command_suggestion_request(
     queue_command_suggestion_request(counters, net_commands, request.id, request.command);
 }
 
-fn is_command_text_char(ch: char) -> bool {
+fn is_chat_text_char(ch: char) -> bool {
     !ch.is_control() && ch != '\u{7f}'
 }
 

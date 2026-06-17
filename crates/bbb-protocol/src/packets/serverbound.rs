@@ -17,6 +17,9 @@ const PLAYER_INPUT_RIGHT: u8 = 8;
 const PLAYER_INPUT_JUMP: u8 = 16;
 const PLAYER_INPUT_SHIFT: u8 = 32;
 const PLAYER_INPUT_SPRINT: u8 = 64;
+const LAST_SEEN_MESSAGES_BITSET_BITS: u32 = 20;
+const LAST_SEEN_MESSAGES_BITSET_BYTES: usize = 3;
+const EMPTY_LAST_SEEN_MESSAGES_CHECKSUM: u8 = 1;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
 const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
 const LP_VEC3_MAX_QUANTIZED_VALUE: f64 = 32766.0;
@@ -50,6 +53,42 @@ pub struct PlayerAction {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChatCommand {
     pub command: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub message: String,
+    pub timestamp_millis: i64,
+    pub salt: i64,
+    pub last_seen_messages: LastSeenMessagesUpdate,
+}
+
+impl ChatMessage {
+    pub fn unsigned(message: impl Into<String>, timestamp_millis: i64, salt: i64) -> Self {
+        Self {
+            message: message.into(),
+            timestamp_millis,
+            salt,
+            last_seen_messages: LastSeenMessagesUpdate::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LastSeenMessagesUpdate {
+    pub offset: i32,
+    pub acknowledged: u32,
+    pub checksum: u8,
+}
+
+impl Default for LastSeenMessagesUpdate {
+    fn default() -> Self {
+        Self {
+            offset: 0,
+            acknowledged: 0,
+            checksum: EMPTY_LAST_SEEN_MESSAGES_CHECKSUM,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -656,6 +695,27 @@ pub fn encode_play_chat_command(packet: &ChatCommand) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_string(&packet.command);
     (ids::play::SERVERBOUND_CHAT_COMMAND, out.into_inner())
+}
+
+pub fn encode_play_chat_message(packet: &ChatMessage) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_string(&packet.message);
+    out.write_i64(packet.timestamp_millis);
+    out.write_i64(packet.salt);
+    out.write_bool(false);
+    encode_last_seen_messages_update(&mut out, packet.last_seen_messages);
+    (ids::play::SERVERBOUND_CHAT, out.into_inner())
+}
+
+fn encode_last_seen_messages_update(out: &mut Encoder, update: LastSeenMessagesUpdate) {
+    assert!(
+        update.acknowledged < (1 << LAST_SEEN_MESSAGES_BITSET_BITS),
+        "last seen acknowledgement bitset exceeds 20 bits"
+    );
+
+    out.write_var_i32(update.offset);
+    out.write_bytes(&update.acknowledged.to_le_bytes()[..LAST_SEEN_MESSAGES_BITSET_BYTES]);
+    out.write_u8(update.checksum);
 }
 
 pub fn encode_play_attack_entity(packet: AttackEntity) -> (i32, Vec<u8>) {

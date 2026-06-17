@@ -1,6 +1,6 @@
 use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
+    ChatAcknowledgement, ChatCommand, ChatMessage, CommandSuggestionRequest, ContainerButtonClick,
     ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery,
     InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
     PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
@@ -87,6 +87,7 @@ pub enum NetCommand {
     PlayerInput(PlayerInput),
     ChatAcknowledgement(ChatAcknowledgement),
     ChatCommand(ChatCommand),
+    ChatMessage(ChatMessage),
     AttackEntity(AttackEntity),
     InteractEntity(InteractEntity),
     SetHeldSlot(u8),
