@@ -1125,6 +1125,39 @@ fn movement_key_changes_queue_player_input_commands() {
 }
 
 #[test]
+fn release_active_input_keeps_shift_modifier_for_inventory_clicks() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Pressed,
+    );
+    assert!(input.shift_down());
+    assert!(input.sneak);
+
+    release_active_input(&mut input, &mut world, &mut counters, &None);
+
+    assert!(input.shift_down());
+    assert!(!input.sneak);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::ShiftLeft),
+        ElementState::Released,
+    );
+    assert!(!input.shift_down());
+}
+
+#[test]
 fn sprint_key_queues_player_input_and_sprint_commands() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);

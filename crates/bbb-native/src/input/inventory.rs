@@ -122,21 +122,31 @@ pub(crate) fn handle_inventory_mouse_input(
         _ => return true,
     };
 
-    let slot_num = match local_inventory_click_target(cursor_position, surface_size) {
-        Some(InventoryClickTarget::Slot(slot)) => slot,
+    let click_target = local_inventory_click_target(cursor_position, surface_size);
+    let (slot_num, click_input) = match click_target {
+        Some(InventoryClickTarget::Slot(slot)) => (
+            slot,
+            if input.shift_down() {
+                ContainerInput::QuickMove
+            } else {
+                ContainerInput::Pickup
+            },
+        ),
         Some(InventoryClickTarget::Outside) => {
             if inventory_cursor_is_empty(world) {
                 return true;
             }
-            -999
+            (-999, ContainerInput::Pickup)
         }
         Some(InventoryClickTarget::EmptyPanel) | None => return true,
     };
-    let Ok(click) = world.apply_local_container_click_slot(ContainerClickSlotRequest {
+    let request = ContainerClickSlotRequest {
         slot_num,
         button_num,
-        input: ContainerInput::Pickup,
-    }) else {
+        input: click_input,
+    };
+    let click = world.apply_local_container_click_slot(request);
+    let Ok(click) = click else {
         return true;
     };
     queue_container_click_command(counters, net_commands, click);
@@ -218,7 +228,7 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         ContainerClick, HashedComponentPatch, HashedItemStack, HashedStack, ItemStackSummary,
-        SelectBundleItem, SetPlayerInventory,
+        SelectBundleItem, SetCursorItem, SetPlayerInventory,
     };
 
     #[test]
@@ -335,6 +345,83 @@ mod tests {
                     count: 3,
                     components: HashedComponentPatch::default(),
                 }),
+            })
+        );
+    }
+
+    #[test]
+    fn shift_inventory_slot_click_queues_container_zero_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 3),
+        });
+        assert!(world.open_local_inventory());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 419.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        match rx.try_recv().unwrap() {
+            NetCommand::ContainerClick(click) => {
+                assert_eq!(click.container_id, 0);
+                assert_eq!(click.state_id, 0);
+                assert_eq!(click.slot_num, 36);
+                assert_eq!(click.button_num, 0);
+                assert_eq!(click.input, ContainerInput::QuickMove);
+            }
+            command => panic!("expected container click command, got {command:?}"),
+        }
+    }
+
+    #[test]
+    fn shift_inventory_outside_click_queues_pickup_not_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_set_cursor_item(SetCursorItem {
+            item: item_stack(42, 3),
+        });
+        assert!(world.open_local_inventory());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(551.0, 277.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 0,
+                state_id: 0,
+                slot_num: -999,
+                button_num: 0,
+                input: ContainerInput::Pickup,
+                changed_slots: [].into(),
+                carried_item: HashedStack::Empty,
             })
         );
     }

@@ -55,6 +55,8 @@ pub(crate) struct ClientInputState {
     sprint: bool,
     destroy_block_held: bool,
     use_item_held: bool,
+    shift_left_down: bool,
+    shift_right_down: bool,
     use_item_repeat_delay_ticks: u8,
     mouse_delta_x: f64,
     mouse_delta_y: f64,
@@ -107,6 +109,23 @@ impl ClientInputState {
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
+    }
+
+    fn clear_modifiers(&mut self) {
+        self.shift_left_down = false;
+        self.shift_right_down = false;
+    }
+
+    fn set_shift_key(&mut self, code: KeyCode, pressed: bool) {
+        match code {
+            KeyCode::ShiftLeft => self.shift_left_down = pressed,
+            KeyCode::ShiftRight => self.shift_right_down = pressed,
+            _ => {}
+        }
+    }
+
+    fn shift_down(&self) -> bool {
+        self.shift_left_down || self.shift_right_down
     }
 
     pub(crate) fn command_entry_is_active(&self) -> bool {
@@ -169,6 +188,7 @@ pub(crate) fn handle_focus_change(
     input.focused = focused;
     if !focused {
         release_active_input(input, world, counters, net_commands);
+        input.clear_modifiers();
     }
 }
 
@@ -188,6 +208,9 @@ pub(crate) fn handle_key_input(
     let PhysicalKey::Code(code) = physical_key else {
         return;
     };
+    if matches!(code, KeyCode::ShiftLeft | KeyCode::ShiftRight) {
+        input.set_shift_key(code, pressed);
+    }
 
     if input.command_entry_is_active() {
         handle_chat_entry_key(input, counters, world, net_commands, code, pressed);
@@ -277,7 +300,7 @@ pub(crate) fn handle_key_input(
             true
         }
         KeyCode::ShiftLeft | KeyCode::ShiftRight => {
-            input.sneak = pressed;
+            input.sneak = input.shift_down();
             true
         }
         KeyCode::ControlLeft | KeyCode::ControlRight => {
