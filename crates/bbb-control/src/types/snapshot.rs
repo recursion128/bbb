@@ -108,6 +108,7 @@ pub enum NetControlRequest {
         container_id: i32,
         button_id: i32,
     },
+    ContainerClickSlot(ContainerClickSlotControlRequest),
     ContainerClick(ContainerClickControlRequest),
     ContainerClose {
         container_id: i32,
@@ -181,6 +182,13 @@ pub struct ContainerClickControlRequest {
     pub changed_slots: Vec<ContainerChangedSlotControl>,
     #[serde(default)]
     pub carried_item: HashedStackControl,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerClickSlotControlRequest {
+    pub slot_num: i16,
+    pub button_num: i8,
+    pub input: ContainerInputControl,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

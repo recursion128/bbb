@@ -10,7 +10,7 @@ use bbb_protocol::packets::{
     GameType, HashedComponentPatch, HashedItemStack, HashedStack, LockDifficultyCommand,
     RecipeBookType, RenameItem, SeenAdvancements, SetBeacon, SpectateEntity, TeleportToEntity,
 };
-use bbb_world::WorldStore;
+use bbb_world::{ContainerClickSlotRequest, WorldStore};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -42,6 +42,16 @@ fn protocol_container_click(click: ContainerClickControlRequest) -> ContainerCli
             .map(|changed| (changed.slot, protocol_hashed_stack(changed.stack)))
             .collect(),
         carried_item: protocol_hashed_stack(click.carried_item),
+    }
+}
+
+fn world_container_click_slot(
+    click: bbb_control::ContainerClickSlotControlRequest,
+) -> ContainerClickSlotRequest {
+    ContainerClickSlotRequest {
+        slot_num: click.slot_num,
+        button_num: click.button_num,
+        input: protocol_container_input(click.input),
     }
 }
 
@@ -317,6 +327,13 @@ pub(crate) fn pump_control_net_requests(
                     net_commands,
                     protocol_container_click(click),
                 );
+            }
+            NetControlRequest::ContainerClickSlot(click) => {
+                if let Ok(packet) =
+                    world.build_container_click_slot(world_container_click_slot(click))
+                {
+                    queue_container_click_command(counters, net_commands, packet);
+                }
             }
             NetControlRequest::ContainerClose { container_id } => {
                 world.close_local_container(container_id);
@@ -1037,6 +1054,91 @@ mod tests {
                 carried_item: bbb_protocol::packets::HashedStack::empty(),
             })
         );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_builds_container_click_from_world_inventory() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.push(
+            bbb_control::NetControlRequest::ContainerClickSlot(
+                bbb_control::ContainerClickSlotControlRequest {
+                    slot_num: 1,
+                    button_num: 0,
+                    input: bbb_control::ContainerInputControl::Pickup,
+                },
+            ),
+        );
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 2,
+            title: "Chest".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items: vec![
+                bbb_protocol::packets::ItemStackSummary::empty(),
+                bbb_protocol::packets::ItemStackSummary {
+                    item_id: Some(42),
+                    count: 3,
+                    component_patch: Default::default(),
+                },
+            ],
+            carried_item: bbb_protocol::packets::ItemStackSummary {
+                item_id: Some(99),
+                count: 1,
+                component_patch: Default::default(),
+            },
+        });
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(bbb_protocol::packets::ContainerClick {
+                container_id: 7,
+                state_id: 13,
+                slot_num: 1,
+                button_num: 0,
+                input: bbb_protocol::packets::ContainerInput::Pickup,
+                changed_slots: BTreeMap::new(),
+                carried_item: bbb_protocol::packets::HashedStack::Item(
+                    bbb_protocol::packets::HashedItemStack {
+                        item_id: 99,
+                        count: 1,
+                        components: bbb_protocol::packets::HashedComponentPatch::default(),
+                    }
+                ),
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_skips_container_click_slot_without_open_container() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.push(
+            bbb_control::NetControlRequest::ContainerClickSlot(
+                bbb_control::ContainerClickSlotControlRequest {
+                    slot_num: 1,
+                    button_num: 0,
+                    input: bbb_control::ContainerInputControl::Pickup,
+                },
+            ),
+        );
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 

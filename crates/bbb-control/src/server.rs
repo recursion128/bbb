@@ -11,8 +11,9 @@ use tokio::{
 };
 
 use crate::types::{
-    AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest, ControlRequest,
-    ControlResponse, ControlSnapshot, NetControlRequest, RecipeBookTypeControl, SharedSnapshot,
+    AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest,
+    ContainerClickSlotControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
+    NetControlRequest, RecipeBookTypeControl, SharedSnapshot,
 };
 
 const SIGN_UPDATE_LINE_COUNT: usize = 4;
@@ -922,6 +923,33 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         snapshot_guard
             .net_requests
             .push(NetControlRequest::ContainerClick(click));
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.container_click_slot" {
+        let click = match serde_json::from_value::<ContainerClickSlotControlRequest>(
+            request.params.clone(),
+        ) {
+            Ok(click) => click,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(format!("net.container_click_slot invalid params: {err}")),
+                };
+            }
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::ContainerClickSlot(click));
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -3120,6 +3148,47 @@ mod tests {
                 params: json!({
                     "container_id": 7,
                     "state_id": 33,
+                    "slot_num": 5,
+                    "button_num": 1
+                }),
+            },
+            &snapshot,
+        );
+        assert!(!missing_input.ok);
+    }
+
+    #[test]
+    fn net_container_click_slot_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.container_click_slot".to_string(),
+                params: json!({
+                    "slot_num": 5,
+                    "button_num": 1,
+                    "input": "pickup"
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok, "{response:?}");
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::ContainerClickSlot(
+                crate::types::ContainerClickSlotControlRequest {
+                    slot_num: 5,
+                    button_num: 1,
+                    input: crate::types::ContainerInputControl::Pickup,
+                }
+            )]
+        );
+
+        let missing_input = dispatch(
+            ControlRequest {
+                method: "net.container_click_slot".to_string(),
+                params: json!({
                     "slot_num": 5,
                     "button_num": 1
                 }),

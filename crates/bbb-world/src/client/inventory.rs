@@ -1,12 +1,17 @@
 use bbb_protocol::packets::{
-    ContainerClose as ProtocolContainerClose, ContainerSetContent as ProtocolContainerSetContent,
+    ContainerClick as ProtocolContainerClick, ContainerClose as ProtocolContainerClose,
+    ContainerInput as ProtocolContainerInput, ContainerSetContent as ProtocolContainerSetContent,
     ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
+    DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
+    HashedComponentPatch as ProtocolHashedComponentPatch,
+    HashedItemStack as ProtocolHashedItemStack, HashedStack as ProtocolHashedStack,
     ItemCostSummary as ProtocolItemCostSummary, ItemStackSummary as ProtocolItemStackSummary,
     MerchantOffer as ProtocolMerchantOffer, MerchantOffers as ProtocolMerchantOffers,
     OpenScreen as ProtocolOpenScreen, SetCursorItem as ProtocolSetCursorItem,
     SetPlayerInventory as ProtocolSetPlayerInventory,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use crate::WorldStore;
 
@@ -100,6 +105,20 @@ pub struct MerchantOfferState {
     pub special_price_diff: i32,
     pub price_multiplier: f32,
     pub demand: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContainerClickSlotRequest {
+    pub slot_num: i16,
+    pub button_num: i8,
+    pub input: ProtocolContainerInput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ContainerClickBuildError {
+    NoOpenContainer,
+    InvalidSlot(i16),
+    UnhashableCarriedItem,
 }
 
 impl Default for InventoryState {
@@ -367,6 +386,30 @@ impl WorldStore {
         &self.inventory
     }
 
+    pub fn build_container_click_slot(
+        &self,
+        request: ContainerClickSlotRequest,
+    ) -> Result<ProtocolContainerClick, ContainerClickBuildError> {
+        let Some(container) = self.inventory.open_container.as_ref() else {
+            return Err(ContainerClickBuildError::NoOpenContainer);
+        };
+        if !container_click_slot_is_valid(container, request.slot_num) {
+            return Err(ContainerClickBuildError::InvalidSlot(request.slot_num));
+        }
+
+        let carried_item = hashed_stack_from_summary(&self.inventory.cursor_item)
+            .ok_or(ContainerClickBuildError::UnhashableCarriedItem)?;
+        Ok(ProtocolContainerClick {
+            container_id: container.container_id,
+            state_id: container.state_id,
+            slot_num: request.slot_num,
+            button_num: request.button_num,
+            input: request.input,
+            changed_slots: BTreeMap::new(),
+            carried_item,
+        })
+    }
+
     fn ensure_container(&mut self, container_id: i32) -> &mut ContainerState {
         if self
             .inventory
@@ -398,6 +441,28 @@ impl WorldStore {
             .map(|offers| offers.offers.len())
             .unwrap_or(0);
     }
+}
+
+fn container_click_slot_is_valid(container: &ContainerState, slot_num: i16) -> bool {
+    matches!(slot_num, -1 | -999) || container.slots.iter().any(|slot| slot.slot == slot_num)
+}
+
+fn hashed_stack_from_summary(stack: &ProtocolItemStackSummary) -> Option<ProtocolHashedStack> {
+    let (Some(item_id), true) = (stack.item_id, stack.count > 0) else {
+        return Some(ProtocolHashedStack::Empty);
+    };
+    if !component_patch_can_be_hashed_from_summary(&stack.component_patch) {
+        return None;
+    }
+    Some(ProtocolHashedStack::Item(ProtocolHashedItemStack {
+        item_id,
+        count: stack.count,
+        components: ProtocolHashedComponentPatch::default(),
+    }))
+}
+
+fn component_patch_can_be_hashed_from_summary(patch: &ProtocolDataComponentPatchSummary) -> bool {
+    patch == &ProtocolDataComponentPatchSummary::default()
 }
 
 fn set_inventory_slot(slots: &mut Vec<InventorySlot>, mut update: InventorySlot) {
@@ -944,12 +1009,138 @@ mod tests {
         assert_eq!(store.counters().merchant_offers_tracked, 0);
     }
 
+    #[test]
+    fn build_container_click_slot_uses_open_container_state_and_cursor_item() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 2,
+            title: "Chest".to_string(),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items: vec![ProtocolItemStackSummary::empty(), item_stack(42, 3)],
+            carried_item: item_stack(99, 1),
+        });
+
+        let click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 1,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+
+        assert_eq!(click.container_id, 7);
+        assert_eq!(click.state_id, 13);
+        assert_eq!(click.slot_num, 1);
+        assert_eq!(click.button_num, 0);
+        assert_eq!(click.input, ProtocolContainerInput::Pickup);
+        assert!(click.changed_slots.is_empty());
+        assert_eq!(
+            click.carried_item,
+            ProtocolHashedStack::Item(ProtocolHashedItemStack {
+                item_id: 99,
+                count: 1,
+                components: ProtocolHashedComponentPatch::default(),
+            })
+        );
+    }
+
+    #[test]
+    fn build_container_click_slot_allows_vanilla_outside_slots() {
+        let mut store = WorldStore::new();
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 0,
+            state_id: 4,
+            items: vec![item_stack(42, 1)],
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let outside_click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: -999,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+        let carried_click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: -1,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+
+        assert_eq!(outside_click.slot_num, -999);
+        assert_eq!(carried_click.slot_num, -1);
+    }
+
+    #[test]
+    fn build_container_click_slot_rejects_missing_container_invalid_slot_and_unhashable_carried_item(
+    ) {
+        let mut store = WorldStore::new();
+        assert_eq!(
+            store
+                .build_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: 0,
+                    button_num: 0,
+                    input: ProtocolContainerInput::Pickup,
+                })
+                .unwrap_err(),
+            ContainerClickBuildError::NoOpenContainer
+        );
+
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items: vec![item_stack(42, 3)],
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert_eq!(
+            store
+                .build_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: 5,
+                    button_num: 0,
+                    input: ProtocolContainerInput::Pickup,
+                })
+                .unwrap_err(),
+            ContainerClickBuildError::InvalidSlot(5)
+        );
+
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack_with_component_summary(99, 1, 10),
+        });
+        assert_eq!(
+            store
+                .build_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: 0,
+                    button_num: 0,
+                    input: ProtocolContainerInput::Pickup,
+                })
+                .unwrap_err(),
+            ContainerClickBuildError::UnhashableCarriedItem
+        );
+    }
+
     fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
         ProtocolItemStackSummary {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn item_stack_with_component_summary(
+        item_id: i32,
+        count: i32,
+        component_type_id: i32,
+    ) -> ProtocolItemStackSummary {
+        let mut stack = item_stack(item_id, count);
+        stack.component_patch.added = 1;
+        stack.component_patch.added_type_ids = vec![component_type_id];
+        stack
     }
 
     fn bundle_item_stack(
