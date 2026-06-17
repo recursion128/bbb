@@ -30,6 +30,12 @@ const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
 const VANILLA_ELYTRA_ITEM_ID: i32 = 14;
+const QUICKCRAFT_TYPE_CHARITABLE: i8 = 0;
+const QUICKCRAFT_TYPE_GREEDY: i8 = 1;
+const QUICKCRAFT_TYPE_CLONE: i8 = 2;
+const QUICKCRAFT_HEADER_START: i8 = 0;
+const QUICKCRAFT_HEADER_CONTINUE: i8 = 1;
+const QUICKCRAFT_HEADER_END: i8 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InventorySlot {
@@ -95,6 +101,8 @@ pub struct InventoryState {
     #[serde(default)]
     pub local_inventory_open: bool,
     pub open_container: Option<ContainerState>,
+    #[serde(default, skip_serializing)]
+    local_quick_craft: LocalQuickCraftState,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -121,6 +129,35 @@ pub struct MerchantOfferState {
     pub demand: i32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct LocalQuickCraftState {
+    status: i8,
+    quickcraft_type: i8,
+    slots: Vec<i16>,
+}
+
+impl Default for LocalQuickCraftState {
+    fn default() -> Self {
+        Self {
+            status: QUICKCRAFT_HEADER_START,
+            quickcraft_type: -1,
+            slots: Vec::new(),
+        }
+    }
+}
+
+impl LocalQuickCraftState {
+    fn reset(&mut self) {
+        self.status = QUICKCRAFT_HEADER_START;
+        self.quickcraft_type = -1;
+        self.slots.clear();
+    }
+
+    fn is_active(&self) -> bool {
+        self.status != QUICKCRAFT_HEADER_START || !self.slots.is_empty()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContainerClickSlotRequest {
     pub slot_num: i16,
@@ -145,6 +182,7 @@ impl Default for InventoryState {
             inventory_menu: default_inventory_menu(),
             local_inventory_open: false,
             open_container: None,
+            local_quick_craft: LocalQuickCraftState::default(),
         }
     }
 }
@@ -222,6 +260,7 @@ impl WorldStore {
     pub fn apply_open_screen(&mut self, packet: ProtocolOpenScreen) {
         self.counters.container_open_updates_received += 1;
         self.inventory.local_inventory_open = false;
+        self.inventory.local_quick_craft.reset();
         let existing = self
             .inventory
             .open_container
@@ -252,6 +291,7 @@ impl WorldStore {
             carried_item,
         } = packet;
         self.inventory.cursor_item = carried_item;
+        self.inventory.local_quick_craft.reset();
         let slots = items
             .into_iter()
             .enumerate()
@@ -367,6 +407,7 @@ impl WorldStore {
         if packet.container_id == INVENTORY_MENU_CONTAINER_ID {
             if self.inventory.local_inventory_open {
                 self.inventory.local_inventory_open = false;
+                self.inventory.local_quick_craft.reset();
                 self.counters.container_close_updates_applied += 1;
                 return true;
             }
@@ -381,6 +422,7 @@ impl WorldStore {
             .is_some_and(|container| container.container_id == packet.container_id)
         {
             self.inventory.open_container = None;
+            self.inventory.local_quick_craft.reset();
             self.counters.merchant_offers_tracked = 0;
             self.counters.container_close_updates_applied += 1;
             true
@@ -394,6 +436,7 @@ impl WorldStore {
         if container_id == INVENTORY_MENU_CONTAINER_ID {
             if self.inventory.local_inventory_open {
                 self.inventory.local_inventory_open = false;
+                self.inventory.local_quick_craft.reset();
                 return true;
             }
             return false;
@@ -406,6 +449,7 @@ impl WorldStore {
             .is_some_and(|container| container.container_id == container_id)
         {
             self.inventory.open_container = None;
+            self.inventory.local_quick_craft.reset();
             self.counters.merchant_offers_tracked = 0;
             true
         } else {
@@ -421,6 +465,7 @@ impl WorldStore {
         self.ensure_inventory_menu_slot_shape();
         let was_open = self.inventory.local_inventory_open;
         self.inventory.local_inventory_open = true;
+        self.inventory.local_quick_craft.reset();
         !was_open
     }
 
@@ -589,63 +634,88 @@ impl WorldStore {
         };
         let mut slots_after = slots_before.clone();
         let mut cursor_after = self.inventory.cursor_item.clone();
-        match request.input {
-            ProtocolContainerInput::Pickup => apply_pickup_click_to_slots(
-                container_id,
-                &mut slots_after,
-                &mut cursor_after,
-                request.slot_num,
-                request.button_num,
-                &self.default_item_max_stack_sizes,
-            ),
-            ProtocolContainerInput::QuickMove if container_id == INVENTORY_MENU_CONTAINER_ID => {
-                apply_quick_move_to_slots(
+        let mut quick_craft_after = self.inventory.local_quick_craft.clone();
+        if request.input != ProtocolContainerInput::QuickCraft && quick_craft_after.is_active() {
+            quick_craft_after.reset();
+        } else {
+            match request.input {
+                ProtocolContainerInput::Pickup => apply_pickup_click_to_slots(
                     container_id,
-                    &mut slots_after,
-                    request.slot_num,
-                    &self.default_item_max_stack_sizes,
-                )
-            }
-            ProtocolContainerInput::Throw if container_id == INVENTORY_MENU_CONTAINER_ID => {
-                apply_throw_click_to_slots(
-                    &mut slots_after,
-                    &cursor_after,
-                    request.slot_num,
-                    request.button_num,
-                )
-            }
-            ProtocolContainerInput::Swap if container_id == INVENTORY_MENU_CONTAINER_ID => {
-                apply_swap_click_to_slots(
-                    container_id,
-                    &mut slots_after,
-                    &cursor_after,
-                    request.slot_num,
-                    request.button_num,
-                    &self.default_item_max_stack_sizes,
-                )
-            }
-            ProtocolContainerInput::PickupAll if container_id == INVENTORY_MENU_CONTAINER_ID => {
-                apply_pickup_all_to_slots(
                     &mut slots_after,
                     &mut cursor_after,
                     request.slot_num,
                     request.button_num,
                     &self.default_item_max_stack_sizes,
-                )
-            }
-            input => {
-                return Err(ContainerClickBuildError::UnsupportedLocalClickInput(input));
+                ),
+                ProtocolContainerInput::QuickMove
+                    if container_id == INVENTORY_MENU_CONTAINER_ID =>
+                {
+                    apply_quick_move_to_slots(
+                        container_id,
+                        &mut slots_after,
+                        request.slot_num,
+                        &self.default_item_max_stack_sizes,
+                    )
+                }
+                ProtocolContainerInput::Throw if container_id == INVENTORY_MENU_CONTAINER_ID => {
+                    apply_throw_click_to_slots(
+                        &mut slots_after,
+                        &cursor_after,
+                        request.slot_num,
+                        request.button_num,
+                    )
+                }
+                ProtocolContainerInput::Swap if container_id == INVENTORY_MENU_CONTAINER_ID => {
+                    apply_swap_click_to_slots(
+                        container_id,
+                        &mut slots_after,
+                        &cursor_after,
+                        request.slot_num,
+                        request.button_num,
+                        &self.default_item_max_stack_sizes,
+                    )
+                }
+                ProtocolContainerInput::QuickCraft
+                    if container_id == INVENTORY_MENU_CONTAINER_ID =>
+                {
+                    apply_quick_craft_to_slots(
+                        container_id,
+                        &mut slots_after,
+                        &mut cursor_after,
+                        &mut quick_craft_after,
+                        request.slot_num,
+                        request.button_num,
+                        &self.default_item_max_stack_sizes,
+                    )
+                }
+                ProtocolContainerInput::PickupAll
+                    if container_id == INVENTORY_MENU_CONTAINER_ID =>
+                {
+                    apply_pickup_all_to_slots(
+                        &mut slots_after,
+                        &mut cursor_after,
+                        request.slot_num,
+                        request.button_num,
+                        &self.default_item_max_stack_sizes,
+                    )
+                }
+                input => {
+                    return Err(ContainerClickBuildError::UnsupportedLocalClickInput(input));
+                }
             }
         }
         let changed_slots = changed_hashed_slots(&slots_before, &slots_after)?;
         let carried_item = hashed_stack_from_summary(&cursor_after)
             .ok_or(ContainerClickBuildError::UnhashableCarriedItem)?;
 
-        let container = self
-            .active_container_mut()
-            .expect("active container still exists");
-        container.slots = slots_after;
+        {
+            let container = self
+                .active_container_mut()
+                .expect("active container still exists");
+            container.slots = slots_after;
+        }
         self.inventory.cursor_item = cursor_after;
+        self.inventory.local_quick_craft = quick_craft_after;
         if container_id == INVENTORY_MENU_CONTAINER_ID {
             self.sync_player_inventory_slots_from_inventory_menu();
         }
@@ -936,6 +1006,215 @@ fn apply_pickup_click_to_slots(
         }
         _ => {}
     }
+}
+
+fn apply_quick_craft_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    cursor: &mut ProtocolItemStackSummary,
+    quick_craft: &mut LocalQuickCraftState,
+    slot_num: i16,
+    button_num: i8,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if container_id != INVENTORY_MENU_CONTAINER_ID {
+        return;
+    }
+
+    let expected_status = quick_craft.status;
+    quick_craft.status = quickcraft_header(button_num);
+    if (expected_status != QUICKCRAFT_HEADER_CONTINUE
+        || quick_craft.status != QUICKCRAFT_HEADER_END)
+        && expected_status != quick_craft.status
+    {
+        quick_craft.reset();
+        return;
+    }
+    if item_stack_is_empty(cursor) {
+        quick_craft.reset();
+        return;
+    }
+
+    match quick_craft.status {
+        QUICKCRAFT_HEADER_START => {
+            quick_craft.quickcraft_type = quickcraft_type(button_num);
+            if local_survival_quickcraft_type_is_valid(quick_craft.quickcraft_type) {
+                quick_craft.status = QUICKCRAFT_HEADER_CONTINUE;
+                quick_craft.slots.clear();
+            } else {
+                quick_craft.reset();
+            }
+        }
+        QUICKCRAFT_HEADER_CONTINUE => {
+            let Some(slot) = slots.iter().find(|slot| slot.slot == slot_num) else {
+                return;
+            };
+            if quick_craft_slot_can_accept(
+                container_id,
+                slot_num,
+                &slot.item,
+                cursor,
+                default_item_max_stack_sizes,
+            ) && cursor.count > quick_craft.slots.len() as i32
+                && !quick_craft.slots.contains(&slot_num)
+            {
+                quick_craft.slots.push(slot_num);
+            }
+        }
+        QUICKCRAFT_HEADER_END => {
+            finish_quick_craft(
+                container_id,
+                slots,
+                cursor,
+                quick_craft,
+                default_item_max_stack_sizes,
+            );
+        }
+        _ => quick_craft.reset(),
+    }
+}
+
+fn finish_quick_craft(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    cursor: &mut ProtocolItemStackSummary,
+    quick_craft: &mut LocalQuickCraftState,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    let selected_slots = quick_craft.slots.clone();
+    if selected_slots.is_empty() {
+        quick_craft.reset();
+        return;
+    }
+
+    let quickcraft_type = quick_craft.quickcraft_type;
+    if selected_slots.len() == 1 {
+        quick_craft.reset();
+        apply_pickup_click_to_slots(
+            container_id,
+            slots,
+            cursor,
+            selected_slots[0],
+            quickcraft_type,
+            default_item_max_stack_sizes,
+        );
+        return;
+    }
+    if !local_survival_quickcraft_type_is_valid(quickcraft_type) {
+        quick_craft.reset();
+        return;
+    }
+
+    let source = cursor.clone();
+    if item_stack_is_empty(&source) {
+        quick_craft.reset();
+        return;
+    }
+
+    let slot_count = selected_slots.len() as i32;
+    let mut remaining = cursor.count;
+    for selected_slot in selected_slots {
+        if cursor.count < slot_count {
+            continue;
+        }
+        let Some(slot_index) = slots.iter().position(|slot| slot.slot == selected_slot) else {
+            continue;
+        };
+        if !quick_craft_slot_can_accept(
+            container_id,
+            selected_slot,
+            &slots[slot_index].item,
+            cursor,
+            default_item_max_stack_sizes,
+        ) {
+            continue;
+        }
+
+        let carry = if item_stack_is_empty(&slots[slot_index].item) {
+            0
+        } else {
+            slots[slot_index].item.count
+        };
+        let max_size = item_stack_max_stack_size(&source, default_item_max_stack_sizes).min(
+            container_slot_max_stack_size(
+                container_id,
+                selected_slot,
+                &source,
+                default_item_max_stack_sizes,
+            ),
+        );
+        let place_count = quickcraft_place_count(
+            slot_count,
+            quickcraft_type,
+            &source,
+            default_item_max_stack_sizes,
+        );
+        let new_count = (place_count + carry).min(max_size);
+        remaining -= new_count - carry;
+
+        let mut replacement = source.clone();
+        replacement.count = new_count;
+        normalize_item_stack(&mut replacement);
+        slots[slot_index].item = replacement;
+        normalize_container_slot_selection(&mut slots[slot_index]);
+    }
+
+    cursor.count = remaining;
+    normalize_item_stack(cursor);
+    quick_craft.reset();
+}
+
+fn quick_craft_slot_can_accept(
+    container_id: i32,
+    slot_num: i16,
+    slot_item: &ProtocolItemStackSummary,
+    cursor: &ProtocolItemStackSummary,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> bool {
+    if container_slot_max_stack_size(container_id, slot_num, cursor, default_item_max_stack_sizes)
+        <= 0
+    {
+        return false;
+    }
+    if item_stack_is_empty(slot_item) {
+        return true;
+    }
+    same_item_same_components(slot_item, cursor)
+        && slot_item.count <= item_stack_max_stack_size(cursor, default_item_max_stack_sizes)
+}
+
+fn quickcraft_place_count(
+    slot_count: i32,
+    quickcraft_type: i8,
+    source: &ProtocolItemStackSummary,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> i32 {
+    match quickcraft_type {
+        QUICKCRAFT_TYPE_CHARITABLE => source.count / slot_count,
+        QUICKCRAFT_TYPE_GREEDY => 1,
+        QUICKCRAFT_TYPE_CLONE => item_stack_max_stack_size(source, default_item_max_stack_sizes),
+        _ => source.count,
+    }
+}
+
+fn local_survival_quickcraft_type_is_valid(quickcraft_type: i8) -> bool {
+    matches!(
+        quickcraft_type,
+        QUICKCRAFT_TYPE_CHARITABLE | QUICKCRAFT_TYPE_GREEDY
+    )
+}
+
+fn quickcraft_header(mask: i8) -> i8 {
+    mask & 3
+}
+
+fn quickcraft_type(mask: i8) -> i8 {
+    (mask >> 2) & 3
+}
+
+#[cfg(test)]
+fn quickcraft_mask(header: i8, quickcraft_type: i8) -> i8 {
+    (header & 3) | ((quickcraft_type & 3) << 2)
 }
 
 fn apply_throw_click_to_slots(
@@ -2782,6 +3061,273 @@ mod tests {
     }
 
     #[test]
+    fn apply_local_container_quick_craft_left_drag_distributes_evenly() {
+        let mut store = WorldStore::new();
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(42, 8),
+        });
+        assert!(store.open_local_inventory());
+
+        let start = store
+            .apply_local_container_click_slot(quick_craft_request(
+                -999,
+                QUICKCRAFT_HEADER_START,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+        assert!(start.changed_slots.is_empty());
+        assert_eq!(start.carried_item, hashed_item_stack(42, 8));
+
+        let add_first = store
+            .apply_local_container_click_slot(quick_craft_request(
+                INVENTORY_MENU_MAIN_START,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+        assert!(add_first.changed_slots.is_empty());
+        assert_eq!(add_first.carried_item, hashed_item_stack(42, 8));
+
+        let add_second = store
+            .apply_local_container_click_slot(quick_craft_request(
+                INVENTORY_MENU_MAIN_START + 1,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+        assert!(add_second.changed_slots.is_empty());
+        assert_eq!(add_second.carried_item, hashed_item_stack(42, 8));
+
+        let finish = store
+            .apply_local_container_click_slot(quick_craft_request(
+                -999,
+                QUICKCRAFT_HEADER_END,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+
+        assert_eq!(finish.input, ProtocolContainerInput::QuickCraft);
+        assert_eq!(
+            finish.changed_slots,
+            BTreeMap::from([
+                (INVENTORY_MENU_MAIN_START, hashed_item_stack(42, 4)),
+                (INVENTORY_MENU_MAIN_START + 1, hashed_item_stack(42, 4)),
+            ])
+        );
+        assert_eq!(finish.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            item_stack(42, 4)
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START + 1),
+            item_stack(42, 4)
+        );
+        assert_eq!(player_slot_item(&store, 9), item_stack(42, 4));
+        assert_eq!(player_slot_item(&store, 10), item_stack(42, 4));
+        assert_eq!(
+            store.inventory().cursor_item,
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_container_quick_craft_right_drag_places_one_per_slot() {
+        let mut store = WorldStore::new();
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(42, 5),
+        });
+        assert!(store.open_local_inventory());
+
+        store
+            .apply_local_container_click_slot(quick_craft_request(
+                -999,
+                QUICKCRAFT_HEADER_START,
+                QUICKCRAFT_TYPE_GREEDY,
+            ))
+            .unwrap();
+        store
+            .apply_local_container_click_slot(quick_craft_request(
+                INVENTORY_MENU_MAIN_START,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_GREEDY,
+            ))
+            .unwrap();
+        store
+            .apply_local_container_click_slot(quick_craft_request(
+                INVENTORY_MENU_MAIN_START + 1,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_GREEDY,
+            ))
+            .unwrap();
+        let finish = store
+            .apply_local_container_click_slot(quick_craft_request(
+                -999,
+                QUICKCRAFT_HEADER_END,
+                QUICKCRAFT_TYPE_GREEDY,
+            ))
+            .unwrap();
+
+        assert_eq!(
+            finish.changed_slots,
+            BTreeMap::from([
+                (INVENTORY_MENU_MAIN_START, hashed_item_stack(42, 1)),
+                (INVENTORY_MENU_MAIN_START + 1, hashed_item_stack(42, 1)),
+            ])
+        );
+        assert_eq!(finish.carried_item, hashed_item_stack(42, 3));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START + 1),
+            item_stack(42, 1)
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn apply_local_container_quick_craft_single_slot_finish_uses_pickup_semantics() {
+        let mut store = WorldStore::new();
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(42, 5),
+        });
+        assert!(store.open_local_inventory());
+
+        store
+            .apply_local_container_click_slot(quick_craft_request(
+                -999,
+                QUICKCRAFT_HEADER_START,
+                QUICKCRAFT_TYPE_GREEDY,
+            ))
+            .unwrap();
+        store
+            .apply_local_container_click_slot(quick_craft_request(
+                INVENTORY_MENU_MAIN_START,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_GREEDY,
+            ))
+            .unwrap();
+        let finish = store
+            .apply_local_container_click_slot(quick_craft_request(
+                -999,
+                QUICKCRAFT_HEADER_END,
+                QUICKCRAFT_TYPE_GREEDY,
+            ))
+            .unwrap();
+
+        assert_eq!(
+            finish.changed_slots,
+            BTreeMap::from([(INVENTORY_MENU_MAIN_START, hashed_item_stack(42, 1))])
+        );
+        assert_eq!(finish.carried_item, hashed_item_stack(42, 4));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            item_stack(42, 1)
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(42, 4));
+    }
+
+    #[test]
+    fn apply_local_container_quick_craft_invalid_type_or_order_resets_without_corruption() {
+        let mut store = WorldStore::new();
+        store.apply_set_cursor_item(ProtocolSetCursorItem {
+            item: item_stack(42, 8),
+        });
+        assert!(store.open_local_inventory());
+
+        let clone_start = store
+            .apply_local_container_click_slot(quick_craft_request(
+                -999,
+                QUICKCRAFT_HEADER_START,
+                QUICKCRAFT_TYPE_CLONE,
+            ))
+            .unwrap();
+        assert!(clone_start.changed_slots.is_empty());
+        assert_eq!(clone_start.carried_item, hashed_item_stack(42, 8));
+
+        let continue_without_start = store
+            .apply_local_container_click_slot(quick_craft_request(
+                INVENTORY_MENU_MAIN_START,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+        assert!(continue_without_start.changed_slots.is_empty());
+        assert_eq!(
+            continue_without_start.carried_item,
+            hashed_item_stack(42, 8)
+        );
+
+        store
+            .apply_local_container_click_slot(quick_craft_request(
+                -999,
+                QUICKCRAFT_HEADER_START,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+        let pickup_while_active = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+        assert!(pickup_while_active.changed_slots.is_empty());
+        assert_eq!(pickup_while_active.carried_item, hashed_item_stack(42, 8));
+
+        let stale_continue = store
+            .apply_local_container_click_slot(quick_craft_request(
+                INVENTORY_MENU_MAIN_START,
+                QUICKCRAFT_HEADER_CONTINUE,
+                QUICKCRAFT_TYPE_CHARITABLE,
+            ))
+            .unwrap();
+        assert!(stale_continue.changed_slots.is_empty());
+        assert_eq!(stale_continue.carried_item, hashed_item_stack(42, 8));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(42, 8));
+    }
+
+    #[test]
+    fn apply_local_container_quick_craft_rejects_non_inventory_menu() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 1,
+            title: "Chest".to_string(),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 3,
+            items: vec![ProtocolItemStackSummary::empty()],
+            carried_item: item_stack(42, 8),
+        });
+
+        assert_eq!(
+            store
+                .apply_local_container_click_slot(quick_craft_request(
+                    0,
+                    QUICKCRAFT_HEADER_START,
+                    QUICKCRAFT_TYPE_CHARITABLE,
+                ))
+                .unwrap_err(),
+            ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickCraft
+            )
+        );
+        assert_eq!(
+            store.inventory().open_container.as_ref().unwrap().slots[0].item,
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(store.inventory().cursor_item, item_stack(42, 8));
+    }
+
+    #[test]
     fn apply_local_container_quick_move_moves_hotbar_to_inventory() {
         let mut store = WorldStore::new();
         store.apply_set_player_inventory(ProtocolSetPlayerInventory {
@@ -3259,6 +3805,18 @@ mod tests {
             count,
             components: ProtocolHashedComponentPatch::default(),
         })
+    }
+
+    fn quick_craft_request(
+        slot_num: i16,
+        header: i8,
+        quickcraft_type: i8,
+    ) -> ContainerClickSlotRequest {
+        ContainerClickSlotRequest {
+            slot_num,
+            button_num: quickcraft_mask(header, quickcraft_type),
+            input: ProtocolContainerInput::QuickCraft,
+        }
     }
 
     fn item_stack_with_component_summary(

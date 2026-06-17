@@ -70,6 +70,8 @@ pub(crate) struct ClientInputState {
     inventory_last_click_slot: Option<i16>,
     inventory_last_click_button_num: Option<i8>,
     inventory_last_click_at: Option<Instant>,
+    inventory_quick_craft_button_num: Option<i8>,
+    inventory_quick_craft_slots: Vec<i16>,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
@@ -114,6 +116,8 @@ impl ClientInputState {
         self.inventory_last_click_slot = None;
         self.inventory_last_click_button_num = None;
         self.inventory_last_click_at = None;
+        self.inventory_quick_craft_button_num = None;
+        self.inventory_quick_craft_slots.clear();
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
