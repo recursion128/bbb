@@ -128,6 +128,11 @@ pub(crate) async fn send_paddle_boat(conn: &mut RawConnection, packet: PaddleBoa
     conn.send_packet(id, &payload).await
 }
 
+pub(crate) async fn send_ping_request(conn: &mut RawConnection, time: i64) -> Result<()> {
+    let (id, payload) = packets::encode_play_ping_request(time);
+    conn.send_packet(id, &payload).await
+}
+
 pub(crate) async fn send_place_recipe(
     conn: &mut RawConnection,
     command: PlaceRecipeCommand,

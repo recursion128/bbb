@@ -92,6 +92,7 @@ pub enum NetCommand {
     PickItemFromBlock(PickItemFromBlock),
     PickItemFromEntity(PickItemFromEntity),
     PaddleBoat(PaddleBoat),
+    PingRequest(i64),
     PlaceRecipe(PlaceRecipeCommand),
     SelectTrade(SelectTradeCommand),
     SelectBundleItem(SelectBundleItem),

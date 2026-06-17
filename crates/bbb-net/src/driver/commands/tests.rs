@@ -2,8 +2,8 @@ use super::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_interact_entity,
-    send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_place_recipe,
-    send_player_abilities_command, send_player_action, send_player_command,
+    send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
+    send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_select_bundle_item,
     send_select_trade, send_set_held_slot_command, send_swing_command, send_use_item,
     send_use_item_on,
@@ -941,6 +941,35 @@ async fn send_paddle_boat_encodes_left_and_right_flags() {
     )
     .await
     .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_ping_request_encodes_play_ping_request_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("ping request command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PING_REQUEST);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 123_456_789);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_ping_request(&mut conn, 123_456_789).await.unwrap();
 
     server.await.unwrap();
 }

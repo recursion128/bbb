@@ -331,6 +331,12 @@ pub fn encode_play_paddle_boat(packet: PaddleBoat) -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_PADDLE_BOAT, out.into_inner())
 }
 
+pub fn encode_play_ping_request(time: i64) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_i64(time);
+    (ids::play::SERVERBOUND_PING_REQUEST, out.into_inner())
+}
+
 pub fn encode_play_player_loaded() -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_PLAYER_LOADED, Vec::new())
 }

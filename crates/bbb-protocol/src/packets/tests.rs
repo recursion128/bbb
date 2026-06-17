@@ -966,6 +966,7 @@ fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order
     assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
     assert_eq!(ids::play::SERVERBOUND_PADDLE_BOAT, 35);
     assert_eq!(ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY, 37);
+    assert_eq!(ids::play::SERVERBOUND_PING_REQUEST, 38);
 }
 
 #[test]
@@ -1441,6 +1442,18 @@ fn encodes_paddle_boat() {
     let mut decoder = Decoder::new(&payload);
     assert!(decoder.read_bool().unwrap());
     assert!(!decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_play_ping_request() {
+    let (id, payload) = encode_play_ping_request(1_717_986_918_300);
+    assert_eq!(id, ids::play::SERVERBOUND_PING_REQUEST);
+    assert_eq!(id, 38);
+    assert_eq!(payload.len(), 8);
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
     assert!(decoder.is_empty());
 }
 
