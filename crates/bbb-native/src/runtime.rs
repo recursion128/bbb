@@ -17,7 +17,7 @@ use crate::{
     audio_runtime::AudioEventSink,
     camera_pose::camera_pose_from_world,
     code_of_conduct::CodeOfConductAcceptance,
-    crosshair::selection_outline_from_camera,
+    crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     input::{advance_destroying_block_at_partial_tick, advance_player_input, ClientInputState},
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
@@ -118,6 +118,7 @@ pub(crate) fn pump_network_and_terrain(
     pump_control_net_requests(snapshot, net_commands, net_counters, world, code_of_conduct);
     let now = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
+    let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
     advance_block_destruction_render_ticks(world, advanced_ticks);
     renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
@@ -126,7 +127,7 @@ pub(crate) fn pump_network_and_terrain(
         world,
         net_counters,
         net_commands,
-        client_animation_ticks.entity_partial_tick(now),
+        entity_partial_tick,
         advanced_ticks,
     );
     let local_player = world.local_player();
@@ -142,6 +143,11 @@ pub(crate) fn pump_network_and_terrain(
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));
+    renderer.set_entity_target_outline(entity_target_outline_from_camera_at_partial_tick(
+        world,
+        camera_pose,
+        entity_partial_tick,
+    ));
     renderer.set_block_destroy_overlays(block_destroy_overlays_from_world(world, terrain_textures));
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);

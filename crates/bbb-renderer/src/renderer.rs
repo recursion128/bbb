@@ -54,6 +54,7 @@ pub struct Renderer {
     pub(super) camera_pose: Option<CameraPose>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
+    pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
     pub(super) hud_hotbar_selection: Option<HudSpriteGpu>,
@@ -196,6 +197,7 @@ impl Renderer {
             camera_pose: None,
             block_destroy_overlays: None,
             selection_outline: None,
+            entity_target_outline: None,
             hud_crosshair: None,
             hud_hotbar: None,
             hud_hotbar_selection: None,
@@ -258,6 +260,19 @@ impl Renderer {
             return;
         }
         self.selection_outline =
+            outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
+    }
+
+    pub fn set_entity_target_outline(&mut self, outline: Option<SelectionOutline>) {
+        if self
+            .entity_target_outline
+            .as_ref()
+            .map(|selection| &selection.outline)
+            == outline.as_ref()
+        {
+            return;
+        }
+        self.entity_target_outline =
             outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
     }
 

@@ -12,6 +12,8 @@ pub struct RendererCounters {
     #[serde(default)]
     pub block_destroy_overlay_draw_calls: u64,
     pub selection_draw_calls: u64,
+    #[serde(default)]
+    pub entity_target_draw_calls: u64,
     pub hud_draw_calls: u64,
     pub pipeline_switches: u64,
     pub screenshots_written: u64,

@@ -46,6 +46,40 @@ pub(crate) fn selection_outline_from_camera(
     }
 }
 
+pub(crate) fn entity_target_outline_from_camera_at_partial_tick(
+    world: &WorldStore,
+    pose: Option<CameraPose>,
+    entity_partial_tick: f32,
+) -> Option<SelectionOutline> {
+    let CrosshairTarget::Entity(hit) =
+        crosshair_target_from_camera_at_partial_tick(world, pose, entity_partial_tick)?
+    else {
+        return None;
+    };
+    let partial_tick = clamp_entity_partial_tick(entity_partial_tick);
+    world
+        .entity_pick_targets_at_partial_tick(partial_tick)
+        .into_iter()
+        .find(|target| target.entity_id == hit.entity_id)
+        .map(entity_pick_target_outline)
+}
+
+fn entity_pick_target_outline(target: EntityPickTargetState) -> SelectionOutline {
+    let inflate = f64::from(target.bounds.pick_radius);
+    SelectionOutline::from_box(
+        [
+            (target.position.x + f64::from(target.bounds.min[0]) - inflate) as f32,
+            (target.position.y + f64::from(target.bounds.min[1]) - inflate) as f32,
+            (target.position.z + f64::from(target.bounds.min[2]) - inflate) as f32,
+        ],
+        [
+            (target.position.x + f64::from(target.bounds.max[0]) + inflate) as f32,
+            (target.position.y + f64::from(target.bounds.max[1]) + inflate) as f32,
+            (target.position.z + f64::from(target.bounds.max[2]) + inflate) as f32,
+        ],
+    )
+}
+
 fn crosshair_block_hit_from_camera(
     world: &WorldStore,
     pose: Option<CameraPose>,
@@ -1163,6 +1197,41 @@ mod tests {
         );
     }
 
+    #[test]
+    fn entity_target_outline_is_none_without_crosshair_entity_target() {
+        let world = WorldStore::new();
+
+        assert_eq!(
+            entity_target_outline_from_camera_at_partial_tick(
+                &world,
+                Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0)),
+                1.0,
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn entity_target_outline_uses_current_pick_target_bounds() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            10,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 3.0],
+        ));
+
+        let outline = entity_target_outline_from_camera_at_partial_tick(
+            &world,
+            Some(camera_pose_at([0.0, 0.0, 0.0], 0.0, 0.0)),
+            1.0,
+        )
+        .expect("expected entity target outline");
+
+        assert_eq!(outline.boxes.len(), 1);
+        assert_selection_box_close(outline.boxes[0].min, [-0.49, 1.0, 2.51]);
+        assert_selection_box_close(outline.boxes[0].max, [0.49, 1.7, 3.49]);
+    }
+
     fn player_pose(y_rot: f32, x_rot: f32, z: f64) -> LocalPlayerPoseState {
         player_pose_at([0.0, 0.0, z], y_rot, x_rot)
     }
@@ -1177,6 +1246,15 @@ mod tests {
             y_rot,
             x_rot,
             ..LocalPlayerPoseState::default()
+        }
+    }
+
+    fn camera_pose_at(position: [f32; 3], y_rot: f32, x_rot: f32) -> CameraPose {
+        CameraPose {
+            position,
+            y_rot,
+            x_rot,
+            eye_height: CameraPose::STANDING_EYE_HEIGHT,
         }
     }
 
@@ -1226,5 +1304,16 @@ mod tests {
             expected[2],
             actual.z
         );
+    }
+
+    fn assert_selection_box_close(actual: [f32; 3], expected: [f32; 3]) {
+        for axis in 0..3 {
+            assert!(
+                (actual[axis] - expected[axis]).abs() < 1.0e-5,
+                "axis {axis}: expected {}, got {}",
+                expected[axis],
+                actual[axis]
+            );
+        }
     }
 }

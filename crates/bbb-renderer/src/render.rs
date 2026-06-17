@@ -30,6 +30,7 @@ impl Renderer {
         let mut translucent_draw_calls = 0;
         let mut block_destroy_overlay_draw_calls = 0;
         let mut selection_draw_calls = 0;
+        let mut entity_target_draw_calls = 0;
         let mut hud_draw_calls = 0;
         let mut pipeline_switches = 0;
         {
@@ -165,7 +166,7 @@ impl Renderer {
             block_destroy_overlay_draw_calls += 1;
         }
 
-        if let Some(outline) = &self.selection_outline {
+        if self.selection_outline.is_some() || self.entity_target_outline.is_some() {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-selection-outline-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -190,9 +191,16 @@ impl Renderer {
             pass.set_pipeline(&self.selection_pipeline);
             pipeline_switches += 1;
             pass.set_bind_group(0, &self.terrain_bind_group, &[]);
-            pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
-            pass.draw(0..outline.vertex_count, 0..1);
-            selection_draw_calls += 1;
+            if let Some(outline) = &self.selection_outline {
+                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                pass.draw(0..outline.vertex_count, 0..1);
+                selection_draw_calls += 1;
+            }
+            if let Some(outline) = &self.entity_target_outline {
+                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                pass.draw(0..outline.vertex_count, 0..1);
+                entity_target_draw_calls += 1;
+            }
         }
 
         {
@@ -250,12 +258,14 @@ impl Renderer {
         self.counters.translucent_draw_calls = translucent_draw_calls;
         self.counters.block_destroy_overlay_draw_calls = block_destroy_overlay_draw_calls;
         self.counters.selection_draw_calls = selection_draw_calls;
+        self.counters.entity_target_draw_calls = entity_target_draw_calls;
         self.counters.hud_draw_calls = hud_draw_calls;
         self.counters.draw_calls = opaque_draw_calls
             + cutout_draw_calls
             + translucent_draw_calls
             + block_destroy_overlay_draw_calls
             + selection_draw_calls
+            + entity_target_draw_calls
             + hud_draw_calls;
         self.counters.pipeline_switches = pipeline_switches;
         Ok(())
