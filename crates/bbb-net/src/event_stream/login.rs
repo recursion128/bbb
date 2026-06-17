@@ -54,6 +54,10 @@ impl EventStreamContext {
                 self.seen_code_of_conduct = false;
                 emit(&self.events, NetEvent::StateChanged { state: self.state }).await?;
 
+                let (id, payload) =
+                    packets::encode_configuration_brand_custom_payload("bbb-native");
+                self.conn.send_packet(id, &payload).await?;
+
                 let (id, payload) = packets::encode_client_information_default();
                 self.conn.send_packet(id, &payload).await?;
             }

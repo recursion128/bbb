@@ -152,12 +152,85 @@ mod tests {
     use bbb_protocol::{
         codec::Decoder,
         ids,
-        packets::{LoginClientbound, PlayClientbound},
+        packets::{GameProfile, LoginClientbound, PlayClientbound},
     };
     use bbb_world::code_of_conduct_text_hash;
     use bytes::BytesMut;
     use std::time::Duration;
     use tokio::{net::TcpListener, time::timeout};
+
+    #[tokio::test]
+    async fn login_finished_sends_brand_before_client_information() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Login,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: true,
+            accepted_code_of_conduct_hash: None,
+        };
+
+        stream
+            .handle_login_packet(LoginClientbound::LoginFinished {
+                profile: GameProfile {
+                    uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
+                    name: "bbb-client".to_string(),
+                    properties: Vec::new(),
+                },
+            })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("login acknowledgement should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::login::SERVERBOUND_LOGIN_ACKNOWLEDGED);
+        assert!(payload.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("brand custom payload should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_CUSTOM_PAYLOAD);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
+        assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("client information should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_CLIENT_INFORMATION
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(16).unwrap(), "en_us");
+
+        assert_eq!(stream.state, ConnectionState::Configuration);
+        assert!(!stream.seen_code_of_conduct);
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("state-changed event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::StateChanged {
+                state: ConnectionState::Configuration
+            }
+        ));
+    }
 
     #[tokio::test]
     async fn configuration_code_of_conduct_emits_event_without_immediate_accept() {

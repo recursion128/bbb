@@ -288,6 +288,16 @@ pub fn encode_client_information_default() -> (i32, Vec<u8>) {
     )
 }
 
+pub fn encode_configuration_brand_custom_payload(brand: &str) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_string("minecraft:brand");
+    out.write_string(brand);
+    (
+        ids::configuration::SERVERBOUND_CUSTOM_PAYLOAD,
+        out.into_inner(),
+    )
+}
+
 pub(super) fn encode_client_information_payload_default() -> Vec<u8> {
     let mut out = Encoder::new();
     out.write_string("en_us");

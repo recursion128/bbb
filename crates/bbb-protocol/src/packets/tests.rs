@@ -1806,6 +1806,17 @@ fn decodes_chunk_batch_and_encodes_client_play_status_packets() {
 }
 
 #[test]
+fn encodes_configuration_brand_custom_payload() {
+    let (id, payload) = encode_configuration_brand_custom_payload("bbb-native");
+    assert_eq!(id, ids::configuration::SERVERBOUND_CUSTOM_PAYLOAD);
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
+    assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_configuration_accept_code_of_conduct_as_unit_packet() {
     let (id, payload) = encode_configuration_accept_code_of_conduct();
     assert_eq!(id, ids::configuration::SERVERBOUND_ACCEPT_CODE_OF_CONDUCT);
