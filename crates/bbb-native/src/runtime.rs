@@ -7,8 +7,8 @@ use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPosition
 use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{
-    BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudItemIcon, HudUvRect,
-    HUD_HOTBAR_SLOTS,
+    BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryScreen,
+    HudInventorySlot, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -21,7 +21,7 @@ use crate::{
     entity_scene::entity_scene_outline_from_world_at_partial_tick,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
-        advance_using_item_at_partial_tick, ClientInputState,
+        advance_using_item_at_partial_tick, local_inventory_slot_layouts, ClientInputState,
     },
     item_entities::item_entity_billboards_from_world,
     item_runtime::NativeItemRuntime,
@@ -153,6 +153,11 @@ pub(crate) fn pump_network_and_terrain(
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
     renderer.set_hud_hotbar_item_icons(hotbar_item_icons(world, item_runtime));
+    renderer.set_hud_inventory_screen(hud_inventory_screen(
+        world,
+        item_runtime,
+        input.inventory_hovered_slot(),
+    ));
     renderer.set_item_entity_billboards(item_entity_billboards_from_world(world, item_runtime));
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
@@ -241,35 +246,79 @@ fn hotbar_item_icons(
     item_runtime: Option<&NativeItemRuntime>,
 ) -> [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] {
     let mut icons = std::array::from_fn(|_| None);
-    let Some(item_runtime) = item_runtime else {
-        return icons;
-    };
-
     for (slot_index, item) in world.inventory().hotbar_item_states().iter().enumerate() {
-        let Some(icon) = item_runtime.icon_for_stack_with_bundle_selected_item(
+        icons[slot_index] = hud_item_icon_for_stack(
+            item_runtime,
             &item.item,
             item.local_selected_bundle_item_index(),
-        ) else {
-            continue;
-        };
-        icons[slot_index] = Some(HudItemIcon {
-            layers: icon
-                .layers
-                .into_iter()
-                .map(|layer| {
-                    HudIconLayer::new(
-                        HudUvRect {
-                            min: layer.uv.min,
-                            max: layer.uv.max,
-                        },
-                        layer.tint,
-                    )
-                })
-                .collect(),
-        });
+        );
     }
 
     icons
+}
+
+fn hud_inventory_screen(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    hovered_slot_id: Option<i16>,
+) -> Option<HudInventoryScreen> {
+    if !world.local_inventory_is_open() {
+        return None;
+    }
+
+    let slots = local_inventory_slot_layouts()
+        .into_iter()
+        .map(|layout| {
+            let inventory_slot = world
+                .inventory()
+                .inventory_menu
+                .slots
+                .iter()
+                .find(|slot| slot.slot == layout.slot_id);
+            HudInventorySlot {
+                slot_id: u16::try_from(layout.slot_id).unwrap_or_default(),
+                x: layout.x,
+                y: layout.y,
+                icon: inventory_slot.and_then(|slot| {
+                    hud_item_icon_for_stack(
+                        item_runtime,
+                        &slot.item,
+                        (slot.local_selected_bundle_item_index >= 0)
+                            .then_some(slot.local_selected_bundle_item_index),
+                    )
+                }),
+            }
+        })
+        .collect();
+
+    Some(HudInventoryScreen {
+        slots,
+        hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
+    })
+}
+
+fn hud_item_icon_for_stack(
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    local_selected_bundle_item_index: Option<i32>,
+) -> Option<HudItemIcon> {
+    let icon = item_runtime?
+        .icon_for_stack_with_bundle_selected_item(item, local_selected_bundle_item_index)?;
+    Some(HudItemIcon {
+        layers: icon
+            .layers
+            .into_iter()
+            .map(|layer| {
+                HudIconLayer::new(
+                    HudUvRect {
+                        min: layer.uv.min,
+                        max: layer.uv.max,
+                    },
+                    layer.tint,
+                )
+            })
+            .collect(),
+    })
 }
 
 fn advance_entity_client_animations(
@@ -560,6 +609,34 @@ mod tests {
                 x_rot: -10.0,
             })
         );
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_open_local_inventory_layout() {
+        let mut world = WorldStore::new();
+        assert_eq!(hud_inventory_screen(&world, None, Some(36)), None);
+
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: bbb_protocol::packets::ItemStackSummary {
+                item_id: Some(42),
+                count: 3,
+                component_patch: Default::default(),
+            },
+        });
+        assert!(world.open_local_inventory());
+
+        let screen = hud_inventory_screen(&world, None, Some(36)).unwrap();
+
+        assert_eq!(screen.hovered_slot_id, Some(36));
+        assert_eq!(screen.slots.len(), 46);
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 36).unwrap();
+        assert_eq!(hotbar.x, 8);
+        assert_eq!(hotbar.y, 142);
+        assert!(hotbar.icon.is_none());
+        let offhand = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
+        assert_eq!(offhand.x, 77);
+        assert_eq!(offhand.y, 62);
     }
 
     #[test]

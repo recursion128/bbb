@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
-use bbb_pack::{PackRoots, SpriteImage};
+use bbb_pack::{PackRoots, ResourceLocation, SpriteImage};
 
 pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
     let Some(roots) = roots else {
@@ -24,6 +24,24 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         hotbar_selection.width,
         hotbar_selection.height,
         &hotbar_selection.rgba,
+    )?;
+    let inventory = gui_texture(
+        roots,
+        "textures/gui/container/inventory.png",
+        "minecraft:textures/gui/container/inventory",
+    )?;
+    renderer.upload_hud_inventory_background(inventory.width, inventory.height, &inventory.rgba)?;
+    let slot_highlight_back = hud_sprite(&sprites, "container/slot_highlight_back")?;
+    renderer.upload_hud_slot_highlight_back(
+        slot_highlight_back.width,
+        slot_highlight_back.height,
+        &slot_highlight_back.rgba,
+    )?;
+    let slot_highlight_front = hud_sprite(&sprites, "container/slot_highlight_front")?;
+    renderer.upload_hud_slot_highlight_front(
+        slot_highlight_front.width,
+        slot_highlight_front.height,
+        &slot_highlight_front.rgba,
     )?;
     let experience_background = hud_sprite(&sprites, "hud/experience_bar_background")?;
     renderer.upload_hud_experience_background(
@@ -56,6 +74,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     tracing::info!(
         crosshair = ?(crosshair.width, crosshair.height),
         hotbar = ?(hotbar.width, hotbar.height),
+        inventory = ?(inventory.width, inventory.height),
         experience = ?(experience_background.width, experience_background.height),
         heart = ?(heart_full.width, heart_full.height),
         food = ?(food_full.width, food_full.height),
@@ -80,6 +99,15 @@ fn hud_sprite<'a>(
     sprites
         .get(&id)
         .with_context(|| format!("missing HUD sprite {id} in vanilla GUI atlas"))
+}
+
+fn gui_texture(roots: &PackRoots, path: &str, id: &str) -> Result<SpriteImage> {
+    let location = ResourceLocation::parse(path)?;
+    let resource = roots
+        .resource_stack()
+        .get_resource(&location)
+        .with_context(|| format!("missing GUI texture minecraft:{path}"))?;
+    SpriteImage::from_png_file(id, resource.path)
 }
 
 #[cfg(test)]

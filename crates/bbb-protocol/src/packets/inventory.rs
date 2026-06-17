@@ -199,6 +199,7 @@ mod tests {
                 added: 2,
                 added_type_ids: vec![1, 10],
                 removed_type_ids: Vec::new(),
+                max_stack_size: Some(64),
                 ..DataComponentPatchSummary::default()
             }
         );

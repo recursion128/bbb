@@ -14,6 +14,7 @@ use winit::{
 
 mod bundle;
 mod commands;
+mod inventory;
 mod mouse;
 mod movement;
 
@@ -31,6 +32,10 @@ pub(crate) use commands::{
     queue_rename_item_command, queue_seen_advancements_command, queue_select_trade_command,
     queue_set_beacon_command, queue_sign_update_command, queue_spectate_entity_command,
     queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
+};
+pub(crate) use inventory::{
+    handle_inventory_cursor_moved, handle_inventory_mouse_input, handle_inventory_mouse_wheel,
+    local_inventory_slot_layouts,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -57,6 +62,7 @@ pub(crate) struct ClientInputState {
     scroll_accumulated_y: f64,
     bundle_scroll_accumulated_x: f64,
     bundle_scroll_accumulated_y: f64,
+    inventory_hovered_slot: Option<i16>,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
@@ -97,6 +103,7 @@ impl ClientInputState {
         self.scroll_accumulated_y = 0.0;
         self.bundle_scroll_accumulated_x = 0.0;
         self.bundle_scroll_accumulated_y = 0.0;
+        self.inventory_hovered_slot = None;
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
@@ -108,6 +115,10 @@ impl ClientInputState {
 
     pub(crate) fn chat_entry_is_active(&self) -> bool {
         self.chat_entry.is_some()
+    }
+
+    pub(crate) fn inventory_hovered_slot(&self) -> Option<i16> {
+        self.inventory_hovered_slot
     }
 }
 

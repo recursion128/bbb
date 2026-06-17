@@ -101,6 +101,8 @@ pub struct WorldStore {
     pub(crate) last_projectile_power: Option<ProjectilePowerUpdateState>,
     pub(crate) inventory: InventoryState,
     #[serde(default)]
+    pub(crate) default_item_max_stack_sizes: BTreeMap<i32, i32>,
+    #[serde(default)]
     pub(crate) apply_diagnostics: WorldApplyDiagnosticsState,
     pub(crate) counters: WorldCounters,
 }

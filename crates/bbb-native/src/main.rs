@@ -31,8 +31,10 @@ use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptanc
 use code_of_conduct_overlay::CodeOfConductOverlayState;
 use hud_assets::load_hud_textures;
 use input::{
-    handle_focus_change, handle_key_input, handle_mouse_input_at_partial_tick, handle_mouse_motion,
-    handle_mouse_wheel, handle_text_input, release_active_input, ClientInputState,
+    handle_focus_change, handle_inventory_cursor_moved, handle_inventory_mouse_input,
+    handle_inventory_mouse_wheel, handle_key_input, handle_mouse_input_at_partial_tick,
+    handle_mouse_motion, handle_mouse_wheel, handle_text_input, release_active_input,
+    ClientInputState,
 };
 use item_runtime::NativeItemRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
@@ -118,6 +120,7 @@ fn main() -> Result<()> {
             .ok()
     });
     if let Some(items) = &item_runtime {
+        world.set_default_item_max_stack_sizes(items.item_max_stack_sizes_by_protocol_id());
         let (atlas_width, atlas_height) = items.atlas_size();
         let missingno_index = items.texture_index("minecraft:missingno");
         tracing::info!(
@@ -180,6 +183,14 @@ fn main() -> Result<()> {
                 WindowEvent::Resized(size) => renderer.resize(size),
                 WindowEvent::CursorMoved { position, .. } => {
                     cursor_position = Some(position);
+                    handle_inventory_cursor_moved(
+                        &mut input,
+                        &mut world,
+                        &mut net_counters,
+                        &net_commands,
+                        cursor_position,
+                        window.inner_size(),
+                    );
                 }
                 WindowEvent::Focused(focused) => {
                     if !focused {
@@ -265,6 +276,20 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
+                    if world.local_inventory_is_open() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        handle_inventory_mouse_input(
+                            &mut input,
+                            &mut world,
+                            &mut net_counters,
+                            &net_commands,
+                            button,
+                            state,
+                            cursor_position,
+                            window.inner_size(),
+                        );
+                        return;
+                    }
                     if matches!(state, ElementState::Pressed) && !cursor_captured {
                         if world_wants_cursor(&world) {
                             set_cursor_capture(&window, &mut cursor_captured, false);
@@ -289,6 +314,19 @@ fn main() -> Result<()> {
                 WindowEvent::MouseWheel { delta, .. } => {
                     if code_of_conduct_overlay.is_visible(&world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if world.local_inventory_is_open() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        handle_inventory_mouse_wheel(
+                            &mut input,
+                            &mut world,
+                            &mut net_counters,
+                            &net_commands,
+                            delta,
+                            cursor_position,
+                            window.inner_size(),
+                        );
                         return;
                     }
                     if world_wants_cursor(&world) {

@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::{Context, Result};
 use bbb_pack::{
@@ -149,6 +149,20 @@ impl NativeItemRuntime {
 
     pub(crate) fn item_registry_count(&self) -> usize {
         self.item_registry_count
+    }
+
+    pub(crate) fn item_max_stack_sizes_by_protocol_id(&self) -> BTreeMap<i32, i32> {
+        let mut sizes = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return sizes;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(size) = registry.max_stack_size(resource_id) else {
+                continue;
+            };
+            sizes.insert(protocol_id as i32, size);
+        }
+        sizes
     }
 
     pub(crate) fn resolved_model_count(&self) -> usize {

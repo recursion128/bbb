@@ -32,6 +32,8 @@ pub struct DataComponentPatchSummary {
     pub added_type_ids: Vec<i32>,
     pub removed_type_ids: Vec<i32>,
     #[serde(default)]
+    pub max_stack_size: Option<i32>,
+    #[serde(default)]
     pub max_damage: Option<i32>,
     #[serde(default)]
     pub damage: Option<i32>,
@@ -117,6 +119,9 @@ fn decode_typed_data_component_patch_summary(
     for _ in 0..count {
         let type_id = decoder.read_var_i32()?;
         match type_id {
+            1 => {
+                summary.max_stack_size = Some(decoder.read_var_i32()?);
+            }
             2 => {
                 summary.max_damage = Some(decoder.read_var_i32()?);
             }
@@ -1093,6 +1098,7 @@ mod tests {
                 added: 7,
                 added_type_ids: vec![1, 2, 3, 4, 6, 10, 21],
                 removed_type_ids: vec![3, 12],
+                max_stack_size: Some(64),
                 max_damage: Some(432),
                 damage: Some(431),
                 unbreakable: true,

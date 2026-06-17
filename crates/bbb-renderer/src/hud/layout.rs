@@ -13,6 +13,11 @@ pub(super) const HUD_HEARTS_PER_ROW: u32 = 10;
 const HUD_HEART_SPACING: f32 = 8.0;
 pub(super) const HUD_FOOD_ICONS_PER_ROW: u32 = 10;
 const HUD_FOOD_SPACING: f32 = 8.0;
+const HUD_INVENTORY_IMAGE_WIDTH: u32 = 176;
+const HUD_INVENTORY_IMAGE_HEIGHT: u32 = 166;
+const HUD_INVENTORY_ITEM_SIZE: u32 = 16;
+const HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE: u32 = 24;
+const HUD_INVENTORY_SLOT_HIGHLIGHT_OFFSET: f32 = -4.0;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct HudRect {
@@ -128,6 +133,57 @@ pub(super) fn food_hud_rect(
         width,
         height,
     }
+}
+
+pub(super) fn inventory_background_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    width: u32,
+    height: u32,
+) -> HudRect {
+    let (x, y) = inventory_screen_origin(surface_size);
+    HudRect {
+        x,
+        y,
+        width,
+        height,
+    }
+}
+
+pub(super) fn inventory_slot_item_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    slot_x: i32,
+    slot_y: i32,
+) -> HudRect {
+    let (x, y) = inventory_screen_origin(surface_size);
+    HudRect {
+        x: x + slot_x as f32,
+        y: y + slot_y as f32,
+        width: HUD_INVENTORY_ITEM_SIZE,
+        height: HUD_INVENTORY_ITEM_SIZE,
+    }
+}
+
+pub(super) fn inventory_slot_highlight_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    slot_x: i32,
+    slot_y: i32,
+) -> HudRect {
+    let (x, y) = inventory_screen_origin(surface_size);
+    HudRect {
+        x: x + slot_x as f32 + HUD_INVENTORY_SLOT_HIGHLIGHT_OFFSET,
+        y: y + slot_y as f32 + HUD_INVENTORY_SLOT_HIGHLIGHT_OFFSET,
+        width: HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE,
+        height: HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE,
+    }
+}
+
+fn inventory_screen_origin(surface_size: PhysicalSize<u32>) -> (f32, f32) {
+    let surface_width = surface_size.width.max(1) as f32;
+    let surface_height = surface_size.height.max(1) as f32;
+    (
+        (surface_width - HUD_INVENTORY_IMAGE_WIDTH as f32) * 0.5,
+        (surface_height - HUD_INVENTORY_IMAGE_HEIGHT as f32) * 0.5,
+    )
 }
 
 pub(super) fn hud_heart_fill(health: f32, index: u32) -> HudIconFill {
@@ -325,6 +381,38 @@ mod tests {
         assert_eq!(first.y, 681.0);
         assert_eq!(last.x, 650.0);
         assert_eq!(last.y, 681.0);
+    }
+
+    #[test]
+    fn hud_layout_centers_vanilla_inventory_background() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let background = inventory_background_hud_rect(surface_size, 176, 166);
+        assert_eq!(background.x, 552.0);
+        assert_eq!(background.y, 277.0);
+        assert_eq!(background.width, 176);
+        assert_eq!(background.height, 166);
+
+        let oversized_background = inventory_background_hud_rect(surface_size, 200, 180);
+        assert_eq!(oversized_background.x, 552.0);
+        assert_eq!(oversized_background.y, 277.0);
+        assert_eq!(oversized_background.width, 200);
+        assert_eq!(oversized_background.height, 180);
+    }
+
+    #[test]
+    fn hud_layout_places_inventory_slot_icons_relative_to_screen_origin() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let item = inventory_slot_item_hud_rect(surface_size, 8, 84);
+        assert_eq!(item.x, 560.0);
+        assert_eq!(item.y, 361.0);
+        assert_eq!(item.width, 16);
+        assert_eq!(item.height, 16);
+
+        let highlight = inventory_slot_highlight_hud_rect(surface_size, 8, 84);
+        assert_eq!(highlight.x, 556.0);
+        assert_eq!(highlight.y, 357.0);
+        assert_eq!(highlight.width, 24);
+        assert_eq!(highlight.height, 24);
     }
 
     #[test]

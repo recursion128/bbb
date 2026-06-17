@@ -11,8 +11,9 @@ pub(super) use self::gpu::{create_hud_bind_group_layout, create_hud_pipeline, Hu
 use self::layout::{
     centered_hud_rect, experience_bar_hud_rect, food_hud_rect, heart_hud_rect, hotbar_hud_rect,
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_experience_progress_width, hud_food_fill,
-    hud_heart_fill, hud_quad_vertices, HudIconFill, HudRect, HUD_FOOD_ICONS_PER_ROW,
-    HUD_HEARTS_PER_ROW,
+    hud_heart_fill, hud_quad_vertices, inventory_background_hud_rect,
+    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
+    HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
 };
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
@@ -47,6 +48,24 @@ impl HudItemIcon {
             layers: vec![HudIconLayer::new(uv, HUD_TINT_WHITE)],
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudInventorySlot {
+    /// Slot id in the currently open inventory container.
+    pub slot_id: u16,
+    /// Slot x position relative to the centered inventory screen origin.
+    pub x: i32,
+    /// Slot y position relative to the centered inventory screen origin.
+    pub y: i32,
+    pub icon: Option<HudItemIcon>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudInventoryScreen {
+    /// Slots for the currently open inventory container.
+    pub slots: Vec<HudInventorySlot>,
+    pub hovered_slot_id: Option<u16>,
 }
 
 pub(super) struct HudDrawCommand<'a> {
@@ -89,6 +108,36 @@ impl Renderer {
 
     pub fn upload_hud_item_atlas(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
         self.hud_item_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_inventory_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_inventory_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_slot_highlight_back(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_slot_highlight_back = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_slot_highlight_front(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_slot_highlight_front = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -185,6 +234,14 @@ impl Renderer {
 
     pub fn set_hud_hotbar_item_icons(&mut self, icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS]) {
         self.hud_hotbar_item_icons = icons.map(|icon| icon.and_then(sanitize_hud_item_icon));
+    }
+
+    pub fn set_hud_inventory_screen(&mut self, screen: Option<HudInventoryScreen>) {
+        self.hud_inventory_screen = screen.map(sanitize_hud_inventory_screen);
+    }
+
+    pub fn clear_hud_inventory_screen(&mut self) {
+        self.hud_inventory_screen = None;
     }
 
     fn upload_hud_sprite(&self, width: u32, height: u32, rgba: &[u8]) -> Result<HudSpriteGpu> {
@@ -351,6 +408,64 @@ impl Renderer {
             }
         }
 
+        if let Some(screen) = &self.hud_inventory_screen {
+            if let Some(background) = &self.hud_inventory_background {
+                push_hud_draw(
+                    &mut vertices,
+                    &mut commands,
+                    background,
+                    surface_size,
+                    inventory_background_hud_rect(
+                        surface_size,
+                        background.width,
+                        background.height,
+                    ),
+                );
+            }
+
+            let hovered_slot = screen
+                .hovered_slot_id
+                .and_then(|slot_id| screen.slots.iter().find(|slot| slot.slot_id == slot_id));
+
+            if let (Some(slot), Some(highlight)) = (hovered_slot, &self.hud_slot_highlight_back) {
+                push_hud_draw(
+                    &mut vertices,
+                    &mut commands,
+                    highlight,
+                    surface_size,
+                    inventory_slot_highlight_hud_rect(surface_size, slot.x, slot.y),
+                );
+            }
+
+            if let Some(atlas) = &self.hud_item_atlas {
+                for slot in &screen.slots {
+                    if let Some(icon) = &slot.icon {
+                        for layer in &icon.layers {
+                            push_hud_draw_with_uv_and_tint(
+                                &mut vertices,
+                                &mut commands,
+                                atlas,
+                                surface_size,
+                                inventory_slot_item_hud_rect(surface_size, slot.x, slot.y),
+                                layer.uv,
+                                layer.tint,
+                            );
+                        }
+                    }
+                }
+            }
+
+            if let (Some(slot), Some(highlight)) = (hovered_slot, &self.hud_slot_highlight_front) {
+                push_hud_draw(
+                    &mut vertices,
+                    &mut commands,
+                    highlight,
+                    surface_size,
+                    inventory_slot_highlight_hud_rect(surface_size, slot.x, slot.y),
+                );
+            }
+        }
+
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
             push_hud_draw(
                 &mut vertices,
@@ -438,6 +553,26 @@ fn sanitize_hud_uv_rect(rect: HudUvRect) -> Option<HudUvRect> {
 
 fn sanitize_hud_hotbar_item_uv(uv: HudUvRect) -> Option<HudItemIcon> {
     sanitize_hud_item_icon(HudItemIcon::single(uv))
+}
+
+fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScreen {
+    HudInventoryScreen {
+        slots: screen
+            .slots
+            .into_iter()
+            .map(sanitize_hud_inventory_slot)
+            .collect(),
+        hovered_slot_id: screen.hovered_slot_id,
+    }
+}
+
+fn sanitize_hud_inventory_slot(slot: HudInventorySlot) -> HudInventorySlot {
+    HudInventorySlot {
+        slot_id: slot.slot_id,
+        x: slot.x,
+        y: slot.y,
+        icon: slot.icon.and_then(sanitize_hud_item_icon),
+    }
 }
 
 fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
@@ -598,5 +733,70 @@ mod tests {
             }),
             None
         );
+    }
+
+    #[test]
+    fn sanitize_hud_inventory_screen_keeps_slot_positions_and_sanitizes_icons() {
+        let screen = sanitize_hud_inventory_screen(HudInventoryScreen {
+            slots: vec![
+                HudInventorySlot {
+                    slot_id: 5,
+                    x: 8,
+                    y: 84,
+                    icon: Some(HudItemIcon {
+                        layers: vec![HudIconLayer::new(
+                            HudUvRect {
+                                min: [1.25, 0.75],
+                                max: [-0.5, 0.25],
+                            },
+                            [1.5, 0.25, -1.0, 1.0],
+                        )],
+                    }),
+                },
+                HudInventorySlot {
+                    slot_id: 6,
+                    x: 26,
+                    y: 84,
+                    icon: Some(HudItemIcon {
+                        layers: vec![HudIconLayer::new(
+                            HudUvRect {
+                                min: [0.0, f32::NAN],
+                                max: [1.0, 1.0],
+                            },
+                            [1.0, 1.0, 1.0, 1.0],
+                        )],
+                    }),
+                },
+                HudInventorySlot {
+                    slot_id: 7,
+                    x: 44,
+                    y: 84,
+                    icon: None,
+                },
+            ],
+            hovered_slot_id: Some(7),
+        });
+
+        assert_eq!(screen.hovered_slot_id, Some(7));
+        assert_eq!(screen.slots.len(), 3);
+        assert_eq!(screen.slots[0].slot_id, 5);
+        assert_eq!(screen.slots[0].x, 8);
+        assert_eq!(screen.slots[0].y, 84);
+        assert_eq!(
+            screen.slots[0].icon,
+            Some(HudItemIcon {
+                layers: vec![HudIconLayer::new(
+                    HudUvRect {
+                        min: [0.0, 0.25],
+                        max: [1.0, 0.75],
+                    },
+                    [1.0, 0.25, 0.0, 1.0],
+                )],
+            })
+        );
+        assert_eq!(screen.slots[1].slot_id, 6);
+        assert_eq!(screen.slots[1].icon, None);
+        assert_eq!(screen.slots[2].slot_id, 7);
+        assert_eq!(screen.slots[2].icon, None);
     }
 }
