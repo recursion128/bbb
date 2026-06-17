@@ -951,6 +951,7 @@ fn encodes_set_carried_item() {
 
 #[test]
 fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order() {
+    assert_eq!(ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED, 3);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK, 17);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLICK, 18);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLOSE, 19);
@@ -1074,6 +1075,26 @@ fn encodes_select_trade_packet() {
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 2);
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_select_bundle_item_packet() {
+    let (id, payload) = encode_play_select_bundle_item(SelectBundleItem {
+        slot_id: 7,
+        selected_item_index: 2,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED);
+    assert_eq!(payload, vec![0x07, 0x02]);
+}
+
+#[test]
+fn encodes_select_bundle_item_unselect_packet() {
+    let (id, payload) = encode_play_select_bundle_item(SelectBundleItem {
+        slot_id: 7,
+        selected_item_index: -1,
+    });
+    assert_eq!(id, ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED);
+    assert_eq!(payload, vec![0x07, 0xff, 0xff, 0xff, 0xff, 0x0f]);
 }
 
 #[test]

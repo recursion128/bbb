@@ -5,7 +5,7 @@ use bbb_protocol::packets::{
     ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection,
     InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
-    PlayerInput, SelectTradeCommand, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    PlayerInput, SelectBundleItem, SelectTradeCommand, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -84,6 +84,30 @@ pub(crate) fn queue_select_trade_command(
             counters.select_trade_commands_queued += 1;
         }
     }
+}
+
+pub(crate) fn queue_select_bundle_item_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    slot_id: i32,
+    selected_item_index: i32,
+) -> bool {
+    if selected_item_index < -1 {
+        return false;
+    }
+
+    if let Some(tx) = net_commands {
+        let packet = SelectBundleItem {
+            slot_id,
+            selected_item_index,
+        };
+        if tx.try_send(NetCommand::SelectBundleItem(packet)).is_ok() {
+            counters.select_bundle_item_commands_queued += 1;
+            return true;
+        }
+    }
+
+    false
 }
 
 pub(super) fn queue_player_command_action(
@@ -602,6 +626,79 @@ mod tests {
                 new_state: true,
             })
         );
+    }
+
+    #[test]
+    fn queues_select_bundle_item_command_and_rejects_invalid_index() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        assert!(queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            3
+        ));
+        assert!(queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            -1
+        ));
+        assert!(!queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            -2
+        ));
+
+        assert_eq!(counters.select_bundle_item_commands_queued, 2);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectBundleItem(SelectBundleItem {
+                slot_id: 12,
+                selected_item_index: 3,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectBundleItem(SelectBundleItem {
+                slot_id: 12,
+                selected_item_index: -1,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn select_bundle_item_counter_tracks_accepted_commands_only() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        assert!(queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            3
+        ));
+        assert!(!queue_select_bundle_item_command(
+            &mut counters,
+            &commands,
+            12,
+            4
+        ));
+
+        assert_eq!(counters.select_bundle_item_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectBundleItem(SelectBundleItem {
+                slot_id: 12,
+                selected_item_index: 3,
+            })
+        );
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

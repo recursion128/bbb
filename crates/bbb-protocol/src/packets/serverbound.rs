@@ -129,6 +129,12 @@ pub struct ContainerSlotStateChanged {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SelectBundleItem {
+    pub slot_id: i32,
+    pub selected_item_index: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContainerInput {
     Pickup,
     QuickMove,
@@ -373,6 +379,16 @@ pub fn encode_play_select_trade(command: SelectTradeCommand) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_var_i32(command.item);
     (ids::play::SERVERBOUND_SELECT_TRADE, out.into_inner())
+}
+
+pub fn encode_play_select_bundle_item(packet: SelectBundleItem) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.slot_id);
+    out.write_var_i32(packet.selected_item_index);
+    (
+        ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED,
+        out.into_inner(),
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

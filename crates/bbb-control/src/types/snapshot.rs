@@ -37,6 +37,10 @@ pub enum NetControlRequest {
     SelectTrade {
         item: i32,
     },
+    SelectBundleItem {
+        slot_id: i32,
+        selected_item_index: i32,
+    },
     ChatCommand {
         command: String,
     },

@@ -4,8 +4,9 @@ use super::{
     send_container_close, send_container_slot_state_changed, send_interact_entity,
     send_pick_item_from_block, send_pick_item_from_entity, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
-    send_player_input_command, send_player_move_command, send_select_trade,
-    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
+    send_player_input_command, send_player_move_command, send_select_bundle_item,
+    send_select_trade, send_set_held_slot_command, send_swing_command, send_use_item,
+    send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -19,7 +20,7 @@ use bbb_protocol::{
         ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, HashedComponentPatch,
         HashedItemStack, HashedStack, InteractEntity, InteractionHand, PickItemFromEntity,
         PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth,
-        PlayerInput, PlayerPositionState, SelectTradeCommand, Vec3d,
+        PlayerInput, PlayerPositionState, SelectBundleItem, SelectTradeCommand, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -633,6 +634,44 @@ async fn send_select_trade_encodes_select_trade_packet() {
 }
 
 #[tokio::test]
+async fn send_select_bundle_item_encodes_bundle_item_selected_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("select bundle item command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(decoder.read_var_i32().unwrap(), -1);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_select_bundle_item(
+        &mut conn,
+        SelectBundleItem {
+            slot_id: 7,
+            selected_item_index: -1,
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
 async fn send_swing_command_encodes_swing_packet() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -891,6 +930,16 @@ async fn send_container_inventory_commands_encode_packets() {
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
+            .expect("select bundle item should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 9);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
             .expect("container click should be sent")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_CONTAINER_CLICK);
@@ -945,6 +994,15 @@ async fn send_container_inventory_commands_encode_packets() {
         ContainerButtonClick {
             container_id: 7,
             button_id: 2,
+        },
+    )
+    .await
+    .unwrap();
+    send_select_bundle_item(
+        &mut conn,
+        SelectBundleItem {
+            slot_id: 9,
+            selected_item_index: 2,
         },
     )
     .await

@@ -4,7 +4,7 @@ use bbb_protocol::packets::{
     ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, InteractEntity,
     InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
-    PlayerPositionState, SelectTradeCommand, UseItem, UseItemOn,
+    PlayerPositionState, SelectBundleItem, SelectTradeCommand, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -136,6 +136,14 @@ pub(crate) async fn send_select_trade(
     command: SelectTradeCommand,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_select_trade(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_select_bundle_item(
+    conn: &mut RawConnection,
+    packet: SelectBundleItem,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_select_bundle_item(packet);
     conn.send_packet(id, &payload).await
 }
 

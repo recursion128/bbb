@@ -15,8 +15,8 @@ pub(crate) use commands::{
     send_container_close, send_container_slot_state_changed, send_interact_entity,
     send_pick_item_from_block, send_pick_item_from_entity, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
-    send_player_input_command, send_select_trade, send_set_held_slot_command, send_swing_command,
-    send_use_item, send_use_item_on,
+    send_player_input_command, send_select_bundle_item, send_select_trade,
+    send_set_held_slot_command, send_swing_command, send_use_item, send_use_item_on,
 };
 use commands::{send_player_move_command, send_vehicle_move_command};
 
@@ -125,6 +125,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::SelectTrade(command)) => {
                         send_select_trade(conn, command).await?;
                     }
+                    Some(NetCommand::SelectBundleItem(packet)) => {
+                        send_select_bundle_item(conn, packet).await?;
+                    }
                     Some(NetCommand::ContainerButtonClick(packet)) => {
                         send_container_button_click(conn, packet).await?;
                     }
@@ -180,6 +183,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::PickItemFromEntity(_)) => {}
                     Some(NetCommand::PlaceRecipe(_)) => {}
                     Some(NetCommand::SelectTrade(_)) => {}
+                    Some(NetCommand::SelectBundleItem(_)) => {}
                     Some(NetCommand::ContainerButtonClick(_)) => {}
                     Some(NetCommand::ContainerClick(_)) => {}
                     Some(NetCommand::ContainerClose(_)) => {}
@@ -210,7 +214,8 @@ mod tests {
             ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
             ContainerSlotStateChanged, Direction, HashedStack, InteractEntity, InteractionHand,
             PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-            PlayerAction, PlayerActionKind, SelectTradeCommand, UseItem, UseItemOn, Vec3d,
+            PlayerAction, PlayerActionKind, SelectBundleItem, SelectTradeCommand, UseItem,
+            UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -638,8 +643,14 @@ mod tests {
     #[tokio::test]
     async fn drive_connection_sends_inventory_net_commands_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
-        let (tx, mut commands) = mpsc::channel(6);
+        let (tx, mut commands) = mpsc::channel(7);
         tx.send(NetCommand::SetHeldSlot(12)).await.unwrap();
+        tx.send(NetCommand::SelectBundleItem(SelectBundleItem {
+            slot_id: 9,
+            selected_item_index: -1,
+        }))
+        .await
+        .unwrap();
         tx.send(NetCommand::ContainerButtonClick(ContainerButtonClick {
             container_id: 7,
             button_id: 2,
@@ -680,6 +691,13 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_i16().unwrap(), 8);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "select bundle item").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 9);
+        assert_eq!(decoder.read_var_i32().unwrap(), -1);
         assert!(decoder.is_empty());
 
         let (packet_id, payload) = read_server_packet(&mut server, "container button click").await;

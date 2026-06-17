@@ -322,6 +322,49 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.select_bundle_item" {
+        let Some(slot_id) = i32_param(&request.params, "slot_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.select_bundle_item requires integer param slot_id".to_string()),
+            };
+        };
+        let Some(selected_item_index) = i32_param(&request.params, "selected_item_index") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.select_bundle_item requires integer param selected_item_index".to_string(),
+                ),
+            };
+        };
+        if selected_item_index < -1 {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.select_bundle_item requires selected_item_index >= 0 or -1".to_string(),
+                ),
+            };
+        }
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::SelectBundleItem {
+                slot_id,
+                selected_item_index,
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.container_button_click" {
         let Some(container_id) = i32_param(&request.params, "container_id") else {
             return ControlResponse {
@@ -1284,6 +1327,70 @@ mod tests {
             &snapshot,
         );
         assert!(!invalid_item.ok);
+    }
+
+    #[test]
+    fn net_select_bundle_item_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.select_bundle_item".to_string(),
+                params: json!({"slot_id": 12, "selected_item_index": 3}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SelectBundleItem {
+                slot_id: 12,
+                selected_item_index: 3,
+            }]
+        );
+
+        let unselect_response = dispatch(
+            ControlRequest {
+                method: "net.select_bundle_item".to_string(),
+                params: json!({"slot_id": 12, "selected_item_index": -1}),
+            },
+            &snapshot,
+        );
+
+        assert!(unselect_response.ok);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![
+                NetControlRequest::SelectBundleItem {
+                    slot_id: 12,
+                    selected_item_index: 3,
+                },
+                NetControlRequest::SelectBundleItem {
+                    slot_id: 12,
+                    selected_item_index: -1,
+                },
+            ]
+        );
+
+        let missing_index = dispatch(
+            ControlRequest {
+                method: "net.select_bundle_item".to_string(),
+                params: json!({"slot_id": 12}),
+            },
+            &snapshot,
+        );
+        assert!(!missing_index.ok);
+
+        let invalid_index = dispatch(
+            ControlRequest {
+                method: "net.select_bundle_item".to_string(),
+                params: json!({"slot_id": 12, "selected_item_index": -2}),
+            },
+            &snapshot,
+        );
+        assert!(!invalid_index.ok);
+        assert_eq!(snapshot.read().unwrap().net_requests.len(), 2);
     }
 
     #[test]
