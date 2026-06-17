@@ -2,7 +2,7 @@ use bbb_protocol::packets::{
     MoveVehicle as ProtocolMoveVehicle, SetPassengers as ProtocolSetPassengers,
 };
 
-use crate::WorldStore;
+use crate::{LocalPlayerInputState, WorldStore};
 
 use super::{
     is_vanilla_boat_type,
@@ -11,6 +11,12 @@ use super::{
 };
 
 const MOVE_VEHICLE_SNAP_EPSILON_SQUARED: f64 = 1e-10;
+const LOCAL_BOAT_TICK_SECONDS: f64 = 0.05;
+const LOCAL_BOAT_TURN_DEGREES_PER_TICK: f32 = 1.0;
+const LOCAL_BOAT_FORWARD_ACCELERATION_PER_TICK: f64 = 0.04;
+const LOCAL_BOAT_BACKWARD_ACCELERATION_PER_TICK: f64 = -0.005;
+const LOCAL_BOAT_TURN_ONLY_ACCELERATION_PER_TICK: f64 = 0.005;
+const LOCAL_BOAT_HORIZONTAL_DAMPING: f64 = 0.9;
 
 impl WorldStore {
     pub fn apply_set_passengers(&mut self, packet: ProtocolSetPassengers) -> bool {
@@ -119,6 +125,62 @@ impl WorldStore {
         })
     }
 
+    pub fn advance_local_boat_vehicle_input(
+        &mut self,
+        input: LocalPlayerInputState,
+        dt_seconds: f64,
+    ) -> Option<VehicleMoveReport> {
+        let vehicle_id = self.local_player_root_boat_vehicle_id()?;
+        let ticks = (dt_seconds.max(0.0) / LOCAL_BOAT_TICK_SECONDS).max(0.0);
+        self.entities.with_transform_mut(vehicle_id, |transform| {
+            if ticks > 0.0 {
+                let turn = if input.focused {
+                    axis(input.right, input.left)
+                } else {
+                    0.0
+                };
+                transform.y_rot = wrap_degrees_f32(
+                    transform.y_rot + turn as f32 * LOCAL_BOAT_TURN_DEGREES_PER_TICK * ticks as f32,
+                );
+
+                let mut acceleration = 0.0;
+                if input.focused {
+                    if input.forward {
+                        acceleration += LOCAL_BOAT_FORWARD_ACCELERATION_PER_TICK;
+                    }
+                    if input.backward {
+                        acceleration += LOCAL_BOAT_BACKWARD_ACCELERATION_PER_TICK;
+                    }
+                    if turn != 0.0 && !input.forward && !input.backward {
+                        acceleration += LOCAL_BOAT_TURN_ONLY_ACCELERATION_PER_TICK;
+                    }
+                }
+                acceleration *= ticks;
+
+                let yaw = f64::from(transform.y_rot).to_radians();
+                transform.delta_movement.x += (-yaw.sin()) * acceleration;
+                transform.delta_movement.z += yaw.cos() * acceleration;
+                let damping = LOCAL_BOAT_HORIZONTAL_DAMPING.powf(ticks);
+                transform.delta_movement.x *= damping;
+                transform.delta_movement.z *= damping;
+                transform.position.x += transform.delta_movement.x * ticks;
+                transform.position.y += transform.delta_movement.y * ticks;
+                transform.position.z += transform.delta_movement.z * ticks;
+                transform.position_base = transform.position;
+            }
+        })?;
+
+        let transform = self.entities.transform(vehicle_id)?;
+        Some(VehicleMoveReport {
+            vehicle_id,
+            position: transform.position,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            on_ground: transform.on_ground.unwrap_or(false),
+            snapped: false,
+        })
+    }
+
     pub fn local_player_root_vehicle_id(&self) -> Option<i32> {
         self.resolve_root_vehicle_id(self.local_player_vehicle_id?)
     }
@@ -162,4 +224,23 @@ impl WorldStore {
         }
         None
     }
+}
+
+fn axis(positive: bool, negative: bool) -> f64 {
+    match (positive, negative) {
+        (true, false) => 1.0,
+        (false, true) => -1.0,
+        _ => 0.0,
+    }
+}
+
+fn wrap_degrees_f32(degrees: f32) -> f32 {
+    let mut wrapped = degrees % 360.0;
+    if wrapped >= 180.0 {
+        wrapped -= 360.0;
+    }
+    if wrapped < -180.0 {
+        wrapped += 360.0;
+    }
+    wrapped
 }

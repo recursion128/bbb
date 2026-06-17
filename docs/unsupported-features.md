@@ -37,6 +37,12 @@ update this file in the same slice.
 | Signed chat and chat acknowledgement production | `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native` | `partial` | Implement signed chat/chat-command last-seen updates and any remaining vanilla last-seen message entries needed for outbound signed payloads. | `ServerboundChatAckPacket` id 6 and VarInt `offset` encoding, offline unsigned `ServerboundChatPacket` encoding/sending, `NetCommand::ChatAcknowledgement` sending, canonical processed-signature offset tracking, online drain queueing, and offline probe ack sending after vanilla's `offset > 64` threshold are covered. Full signed chat payload generation remains follow-up work. |
 | Manual visual/audio comparisons | Relevant runtime owner | `deferred` | Whenever visual or audio behavior cannot be proven by automated tests, record the vanilla source path, asset path, screenshot, smoke test, or manual comparison required to close the slice. | The project gate allows manual or screenshot/audio smoke checks outside normal unit tests, but they must be documented when required. |
 
+Mounted boat input now has a basic locally authoritative path that updates
+local look while mounted, advances a simple root-boat transform from local input,
+and queues both paddle-state and `MoveVehicle` commands. Full vanilla boat
+physics, water/buoyancy/collision parity, and non-boat vehicle movement remain
+covered by the native input/movement ledger row above.
+
 ## Update Rules
 
 - Do not remove a row unless the current slice proves the feature is fully

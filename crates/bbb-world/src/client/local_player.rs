@@ -10,7 +10,9 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::local_player_movement::integrate_local_player_input_pose;
+use super::local_player_movement::{
+    apply_local_player_input_look, integrate_local_player_input_pose,
+};
 use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
 
 const STANDING_EYE_HEIGHT: f64 = 1.62;
@@ -360,6 +362,15 @@ impl WorldStore {
     ) -> Option<LocalPlayerPoseState> {
         let pose =
             integrate_local_player_input_pose(self, self.local_player.pose?, input, dt_seconds);
+        self.local_player.pose = Some(pose);
+        Some(pose)
+    }
+
+    pub fn advance_local_player_look_input(
+        &mut self,
+        input: LocalPlayerInputState,
+    ) -> Option<LocalPlayerPoseState> {
+        let pose = apply_local_player_input_look(self.local_player.pose?, input);
         self.local_player.pose = Some(pose);
         Some(pose)
     }
@@ -759,6 +770,35 @@ mod tests {
 
         assert_eq!(pose.y_rot, 12.0);
         assert_eq!(pose.x_rot, 90.0);
+    }
+
+    #[test]
+    fn local_player_look_input_rotates_without_moving_position() {
+        let mut store = WorldStore::new();
+        let initial = LocalPlayerPoseState {
+            position: vec3(3.0, 64.0, -2.0),
+            delta_movement: vec3(0.2, 0.0, -0.1),
+            y_rot: 170.0,
+            x_rot: 10.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        };
+        store.set_local_player_pose(initial);
+
+        let pose = store
+            .advance_local_player_look_input(LocalPlayerInputState {
+                focused: true,
+                mouse_delta_x: 200.0,
+                mouse_delta_y: -1000.0,
+                ..LocalPlayerInputState::default()
+            })
+            .unwrap();
+
+        assert_eq!(pose.position, initial.position);
+        assert_eq!(pose.delta_movement, initial.delta_movement);
+        assert_eq!(pose.y_rot, -166.0);
+        assert_eq!(pose.x_rot, -90.0);
+        assert_eq!(store.local_player_pose(), Some(pose));
     }
 
     #[test]

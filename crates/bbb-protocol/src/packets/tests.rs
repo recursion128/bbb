@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    codec::{offline_player_uuid, Decoder, Encoder},
+    codec::{offline_player_uuid, Decoder, Encoder, ProtocolError},
     ids,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -1837,6 +1837,31 @@ fn encodes_configuration_brand_custom_payload() {
     assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
     assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_play_brand_custom_payload() {
+    let (id, payload) = encode_play_custom_payload(&ServerboundCustomPayload::Brand {
+        brand: "bbb-native".to_string(),
+    })
+    .unwrap();
+    assert_eq!(id, ids::play::SERVERBOUND_CUSTOM_PAYLOAD);
+
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
+    assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn rejects_oversized_play_unknown_custom_payload() {
+    let err = encode_play_custom_payload(&ServerboundCustomPayload::Unknown {
+        id: "bbb:debug".to_string(),
+        raw_payload: vec![0; 32768],
+    })
+    .unwrap_err();
+
+    assert!(matches!(err, ProtocolError::PacketTooLarge(32768, 32767)));
 }
 
 fn assert_client_information_payload(payload: &[u8], expected: &ClientInformation) {

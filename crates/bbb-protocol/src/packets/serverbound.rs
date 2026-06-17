@@ -3,7 +3,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{codec::Encoder, ids};
+use crate::{
+    codec::{Encoder, ProtocolError, Result},
+    ids,
+};
 
 use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::client_state::Difficulty;
@@ -20,6 +23,7 @@ const PLAYER_INPUT_SPRINT: u8 = 64;
 const LAST_SEEN_MESSAGES_BITSET_BITS: u32 = 20;
 const LAST_SEEN_MESSAGES_BITSET_BYTES: usize = 3;
 const EMPTY_LAST_SEEN_MESSAGES_CHECKSUM: u8 = 1;
+const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
 const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
 const LP_VEC3_MAX_QUANTIZED_VALUE: f64 = 32766.0;
@@ -72,6 +76,12 @@ impl ChatMessage {
             last_seen_messages: LastSeenMessagesUpdate::default(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ServerboundCustomPayload {
+    Brand { brand: String },
+    Unknown { id: String, raw_payload: Vec<u8> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -498,6 +508,27 @@ pub fn encode_play_chat_acknowledgement(command: ChatAcknowledgement) -> (i32, V
     let mut out = Encoder::new();
     out.write_var_i32(command.offset);
     (ids::play::SERVERBOUND_CHAT_ACK, out.into_inner())
+}
+
+pub fn encode_play_custom_payload(packet: &ServerboundCustomPayload) -> Result<(i32, Vec<u8>)> {
+    let mut out = Encoder::new();
+    match packet {
+        ServerboundCustomPayload::Brand { brand } => {
+            out.write_string("minecraft:brand");
+            out.write_string(brand);
+        }
+        ServerboundCustomPayload::Unknown { id, raw_payload } => {
+            if raw_payload.len() > MAX_SERVERBOUND_CUSTOM_PAYLOAD {
+                return Err(ProtocolError::PacketTooLarge(
+                    raw_payload.len(),
+                    MAX_SERVERBOUND_CUSTOM_PAYLOAD,
+                ));
+            }
+            out.write_string(id);
+            out.write_bytes(raw_payload);
+        }
+    }
+    Ok((ids::play::SERVERBOUND_CUSTOM_PAYLOAD, out.into_inner()))
 }
 
 pub fn encode_play_lock_difficulty(command: LockDifficultyCommand) -> (i32, Vec<u8>) {

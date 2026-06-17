@@ -5,7 +5,10 @@ use bbb_net::{NetCommand, PlayerMoveCommand};
 use bbb_world::{LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
 
-use super::{commands::queue_paddle_boat_command, ClientInputState};
+use super::{
+    commands::{queue_paddle_boat_command, queue_vehicle_move_command},
+    ClientInputState,
+};
 
 const MOVE_COMMAND_INTERVAL: Duration = Duration::from_millis(50);
 const MOVE_COMMAND_POSITION_REMINDER_INTERVAL: Duration = Duration::from_secs(1);
@@ -46,7 +49,15 @@ pub(crate) fn advance_player_input(
     input.last_step = Some(now);
 
     if world.local_player_root_vehicle_id().is_some() {
-        maybe_queue_paddle_boat_command(input, world, counters, net_commands, now);
+        let input_state = input.local_player_input();
+        let before_pose = world.local_player_pose();
+        if let Some(pose) = world.advance_local_player_look_input(input_state) {
+            if Some(pose) != before_pose {
+                maybe_queue_player_move_command(input, counters, net_commands, pose, now);
+            }
+        }
+        let boat_report = world.advance_local_boat_vehicle_input(input_state, dt_seconds);
+        maybe_queue_boat_commands(input, world, counters, net_commands, now, boat_report);
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
@@ -65,12 +76,13 @@ pub(crate) fn advance_player_input(
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
 }
 
-fn maybe_queue_paddle_boat_command(
+fn maybe_queue_boat_commands(
     input: &mut ClientInputState,
     world: &WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     now: Instant,
+    boat_report: Option<bbb_world::VehicleMoveReport>,
 ) {
     if world.local_player_root_boat_vehicle_id().is_none() {
         input.last_paddle_boat_command_at = None;
@@ -86,6 +98,9 @@ fn maybe_queue_paddle_boat_command(
 
     let (left, right) = paddle_boat_state_from_input(input);
     queue_paddle_boat_command(counters, net_commands, left, right);
+    if let Some(report) = boat_report {
+        queue_vehicle_move_command(counters, net_commands, report);
+    }
     input.last_paddle_boat_command_at = Some(now);
 }
 
@@ -474,7 +489,7 @@ mod tests {
     }
 
     #[test]
-    fn mounted_boat_input_queues_paddle_boat_instead_of_player_move() {
+    fn mounted_boat_input_queues_paddle_and_vehicle_move_instead_of_player_walk() {
         let (tx, mut rx) = mpsc::channel(4);
         let commands = Some(tx);
         let start = Instant::now();
@@ -492,8 +507,16 @@ mod tests {
                 right: true,
             })
         );
+        let first_vehicle = match rx.try_recv().unwrap() {
+            NetCommand::MoveVehicle(command) => command,
+            other => panic!("expected vehicle move command, got {other:?}"),
+        };
+        assert_eq!(first_vehicle.position.x, 1.0);
+        assert_eq!(first_vehicle.position.y, 64.0);
+        assert_eq!(first_vehicle.position.z, -2.0);
         assert_eq!(world.local_player_pose(), Some(initial_pose));
         assert_eq!(counters.paddle_boat_commands_queued, 1);
+        assert_eq!(counters.move_vehicle_commands_queued, 1);
         assert_eq!(counters.player_move_commands_queued, 0);
 
         input.left = false;
@@ -521,12 +544,48 @@ mod tests {
                 right: true,
             })
         );
+        let second_vehicle = match rx.try_recv().unwrap() {
+            NetCommand::MoveVehicle(command) => command,
+            other => panic!("expected vehicle move command, got {other:?}"),
+        };
+        assert!(second_vehicle.position.z > first_vehicle.position.z);
         assert_eq!(counters.paddle_boat_commands_queued, 2);
+        assert_eq!(counters.move_vehicle_commands_queued, 2);
         assert_eq!(counters.player_move_commands_queued, 0);
     }
 
     #[test]
-    fn mounted_non_boat_input_does_not_queue_paddle_or_player_move() {
+    fn mounted_mouse_motion_updates_look_and_queues_riding_rotation() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.mouse_delta_x = 100.0;
+        input.mouse_delta_y = -50.0;
+        let mut world = world_with_local_vehicle(VANILLA_26_1_MINECART_ENTITY_TYPE_ID);
+        let initial_pose = world.local_player_pose().unwrap();
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+
+        let command = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected player rotation command, got {other:?}"),
+        };
+        assert_eq!(command.state.position, initial_pose.position);
+        assert_eq!(command.state.y_rot, 12.0);
+        assert_eq!(command.state.x_rot, -6.0);
+        assert_eq!(
+            world.local_player_pose().unwrap().position,
+            initial_pose.position
+        );
+        assert_eq!(counters.player_move_commands_queued, 1);
+        assert_eq!(counters.paddle_boat_commands_queued, 0);
+        assert_eq!(counters.move_vehicle_commands_queued, 0);
+    }
+
+    #[test]
+    fn mounted_non_boat_input_does_not_queue_paddle_or_vehicle_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let start = Instant::now();
@@ -541,6 +600,7 @@ mod tests {
         assert!(rx.try_recv().is_err());
         assert_eq!(world.local_player_pose(), Some(initial_pose));
         assert_eq!(counters.paddle_boat_commands_queued, 0);
+        assert_eq!(counters.move_vehicle_commands_queued, 0);
         assert_eq!(counters.player_move_commands_queued, 0);
     }
 

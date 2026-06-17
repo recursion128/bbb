@@ -13,10 +13,11 @@ pub(crate) use commands::{
     send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
     send_chat_message, send_command_suggestion_request, send_container_button_click,
-    send_container_click, send_container_close, send_container_slot_state_changed, send_edit_book,
-    send_entity_tag_query, send_interact_entity, send_lock_difficulty, send_paddle_boat,
-    send_perform_respawn, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
-    send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
+    send_container_click, send_container_close, send_container_slot_state_changed,
+    send_custom_payload, send_edit_book, send_entity_tag_query, send_interact_entity,
+    send_lock_difficulty, send_paddle_boat, send_perform_respawn, send_pick_item_from_block,
+    send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
     send_set_beacon, send_set_held_slot_command, send_sign_update, send_spectate_entity,
@@ -104,6 +105,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                     Some(NetCommand::ChatMessage(message)) => {
                         send_chat_message(conn, message).await?;
+                    }
+                    Some(NetCommand::CustomPayload(packet)) => {
+                        send_custom_payload(conn, packet).await?;
                     }
                     Some(NetCommand::AttackEntity(packet)) => {
                         send_attack_entity(conn, packet).await?;
@@ -236,6 +240,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ChatAcknowledgement(_)) => {}
                     Some(NetCommand::ChatCommand(_)) => {}
                     Some(NetCommand::ChatMessage(_)) => {}
+                    Some(NetCommand::CustomPayload(_)) => {}
                     Some(NetCommand::AttackEntity(_)) => {}
                     Some(NetCommand::InteractEntity(_)) => {}
                     Some(NetCommand::SetHeldSlot(_)) => {}
@@ -299,7 +304,8 @@ mod tests {
             PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
             RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
             RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-            SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
+            ServerboundCustomPayload, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity,
+            UseItem, UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -558,6 +564,28 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_ACK);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 65);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_custom_payload_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::CustomPayload(ServerboundCustomPayload::Brand {
+            brand: "bbb-native".to_string(),
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "custom payload").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CUSTOM_PAYLOAD);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
+        assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
         assert!(decoder.is_empty());
     }
 

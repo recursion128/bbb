@@ -6,8 +6,8 @@ use bbb_protocol::packets::{
     InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
     PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
     PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate,
-    SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
+    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
+    SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -57,6 +57,14 @@ pub(crate) async fn send_chat_acknowledgement(
     command: ChatAcknowledgement,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_chat_acknowledgement(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_custom_payload(
+    conn: &mut RawConnection,
+    packet: ServerboundCustomPayload,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_custom_payload(&packet)?;
     conn.send_packet(id, &payload).await
 }
 

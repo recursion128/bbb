@@ -3035,6 +3035,70 @@ fn local_player_root_boat_vehicle_id_tracks_vanilla_boat_roots() {
 }
 
 #[test]
+fn local_boat_input_advances_root_boat_and_reports_move() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let initial = store.probe_entity(20).unwrap();
+
+    let report = store
+        .advance_local_boat_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: true,
+                forward: true,
+                right: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            0.05,
+        )
+        .unwrap();
+
+    assert_eq!(report.vehicle_id, 20);
+    assert!(!report.snapped);
+    assert!(report.y_rot > initial.y_rot);
+    assert!(report.position.z > initial.position.z);
+    assert_eq!(report.position, store.probe_entity(20).unwrap().position);
+    assert_eq!(store.local_player_root_boat_vehicle_id(), Some(20));
+}
+
+#[test]
+fn local_boat_input_ignores_unfocused_controls() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    let initial = store.probe_entity(20).unwrap();
+
+    let report = store
+        .advance_local_boat_vehicle_input(
+            crate::LocalPlayerInputState {
+                focused: false,
+                forward: true,
+                right: true,
+                ..crate::LocalPlayerInputState::default()
+            },
+            0.05,
+        )
+        .unwrap();
+
+    assert_eq!(report.position, initial.position);
+    assert_eq!(report.y_rot, initial.y_rot);
+}
+
+#[test]
 fn move_vehicle_snaps_root_vehicle_and_returns_ack() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

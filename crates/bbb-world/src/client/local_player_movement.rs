@@ -36,14 +36,7 @@ pub(super) fn integrate_local_player_input_pose(
     input: LocalPlayerInputState,
     dt_seconds: f64,
 ) -> LocalPlayerPoseState {
-    if input.focused {
-        pose.y_rot = wrap_degrees_f32(
-            pose.y_rot + input.mouse_delta_x as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES,
-        );
-        pose.x_rot = (pose.x_rot
-            + input.mouse_delta_y as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES)
-            .clamp(-90.0, 90.0);
-    }
+    pose = apply_local_player_input_look(pose, input);
 
     let mut remaining_seconds = dt_seconds.max(0.0);
     while remaining_seconds > COLLISION_EPSILON {
@@ -52,6 +45,21 @@ pub(super) fn integrate_local_player_input_pose(
         remaining_seconds -= step_seconds;
     }
 
+    pose
+}
+
+pub(super) fn apply_local_player_input_look(
+    mut pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+) -> LocalPlayerPoseState {
+    if input.focused {
+        pose.y_rot = wrap_degrees_f32(
+            pose.y_rot + input.mouse_delta_x as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES,
+        );
+        pose.x_rot = (pose.x_rot
+            + input.mouse_delta_y as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES)
+            .clamp(-90.0, 90.0);
+    }
     pose
 }
 
