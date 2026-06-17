@@ -122,12 +122,14 @@ pub(crate) fn pump_control_net_requests(
                 slot_id,
                 selected_item_index,
             } => {
-                queue_select_bundle_item_command(
-                    counters,
-                    net_commands,
-                    slot_id,
-                    selected_item_index,
-                );
+                if world.apply_local_select_bundle_item(slot_id, selected_item_index) {
+                    queue_select_bundle_item_command(
+                        counters,
+                        net_commands,
+                        slot_id,
+                        selected_item_index,
+                    );
+                }
             }
             NetControlRequest::ChatCommand { command } => {
                 queue_chat_command(counters, net_commands, command);
@@ -425,11 +427,19 @@ mod tests {
         );
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
         let mut world = WorldStore::new();
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 12,
+            item: bundle_item_stack(42, 1, 4),
+        });
         let mut counters = NetCounters::default();
 
         pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.select_bundle_item_commands_queued, 1);
+        assert_eq!(
+            world.inventory().player_slots[0].local_selected_bundle_item_index,
+            3
+        );
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::SelectBundleItem(bbb_protocol::packets::SelectBundleItem {
@@ -451,11 +461,19 @@ mod tests {
         );
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
         let mut world = WorldStore::new();
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 12,
+            item: bundle_item_stack(42, 1, 4),
+        });
         let mut counters = NetCounters::default();
 
         pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.select_bundle_item_commands_queued, 0);
+        assert_eq!(
+            world.inventory().player_slots[0].local_selected_bundle_item_index,
+            -1
+        );
         assert!(rx.try_recv().is_err());
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
@@ -780,6 +798,21 @@ mod tests {
         let loaded = CodeOfConductAcceptance::load(&path).unwrap();
         assert_eq!(loaded.accepted_hash_for_options(&options), None);
         let _ = std::fs::remove_file(path);
+    }
+
+    fn bundle_item_stack(
+        item_id: i32,
+        count: i32,
+        bundle_contents_item_count: usize,
+    ) -> bbb_protocol::packets::ItemStackSummary {
+        bbb_protocol::packets::ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: bbb_protocol::packets::DataComponentPatchSummary {
+                bundle_contents_item_count: Some(bundle_contents_item_count),
+                ..bbb_protocol::packets::DataComponentPatchSummary::default()
+            },
+        }
     }
 
     fn unique_code_of_conduct_store_path() -> std::path::PathBuf {

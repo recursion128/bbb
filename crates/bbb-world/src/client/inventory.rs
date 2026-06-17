@@ -14,17 +14,44 @@ const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
 const PLAYER_HOTBAR_SIZE: usize = 9;
 const INVENTORY_MENU_CONTAINER_ID: i32 = 0;
 const INVENTORY_MENU_HOTBAR_START: i16 = 36;
+const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InventorySlot {
     pub slot: i32,
     pub item: ProtocolItemStackSummary,
+    #[serde(default = "default_local_selected_bundle_item_index")]
+    pub local_selected_bundle_item_index: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContainerSlot {
     pub slot: i16,
     pub item: ProtocolItemStackSummary,
+    #[serde(default = "default_local_selected_bundle_item_index")]
+    pub local_selected_bundle_item_index: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HotbarItemState {
+    pub item: ProtocolItemStackSummary,
+    pub local_selected_bundle_item_index: i32,
+}
+
+impl Default for HotbarItemState {
+    fn default() -> Self {
+        Self {
+            item: ProtocolItemStackSummary::empty(),
+            local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+        }
+    }
+}
+
+impl HotbarItemState {
+    pub fn local_selected_bundle_item_index(&self) -> Option<i32> {
+        (self.local_selected_bundle_item_index >= 0)
+            .then_some(self.local_selected_bundle_item_index)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,14 +114,20 @@ impl Default for InventoryState {
 
 impl InventoryState {
     pub fn hotbar_items(&self) -> [ProtocolItemStackSummary; PLAYER_HOTBAR_SIZE] {
-        let mut items = std::array::from_fn(|_| ProtocolItemStackSummary::empty());
+        self.hotbar_item_states().map(|state| state.item)
+    }
 
+    pub fn hotbar_item_states(&self) -> [HotbarItemState; PLAYER_HOTBAR_SIZE] {
+        let mut items = std::array::from_fn(|_| HotbarItemState::default());
         for slot in &self.player_slots {
             let Ok(slot_index) = usize::try_from(slot.slot) else {
                 continue;
             };
             if slot_index < PLAYER_HOTBAR_SIZE {
-                items[slot_index] = slot.item.clone();
+                items[slot_index] = HotbarItemState {
+                    item: slot.item.clone(),
+                    local_selected_bundle_item_index: slot.local_selected_bundle_item_index,
+                };
             }
         }
 
@@ -111,7 +144,10 @@ impl InventoryState {
                     continue;
                 };
                 if slot_index < PLAYER_HOTBAR_SIZE {
-                    items[slot_index] = slot.item.clone();
+                    items[slot_index] = HotbarItemState {
+                        item: slot.item.clone(),
+                        local_selected_bundle_item_index: slot.local_selected_bundle_item_index,
+                    };
                 }
             }
         }
@@ -128,6 +164,7 @@ impl WorldStore {
             InventorySlot {
                 slot: packet.slot,
                 item: packet.item,
+                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
             },
         );
         self.update_inventory_slot_count();
@@ -172,6 +209,16 @@ impl WorldStore {
         let merchant_offers = existing
             .as_ref()
             .and_then(|container| container.merchant_offers.clone());
+        let slots = packet
+            .items
+            .into_iter()
+            .enumerate()
+            .map(|(slot, item)| ContainerSlot {
+                slot: slot as i16,
+                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+                item,
+            })
+            .collect();
         self.inventory.open_container = Some(ContainerState {
             container_id: packet.container_id,
             menu_type_id: existing
@@ -181,15 +228,7 @@ impl WorldStore {
                 .as_ref()
                 .and_then(|container| container.title.clone()),
             state_id: packet.state_id,
-            slots: packet
-                .items
-                .into_iter()
-                .enumerate()
-                .map(|(slot, item)| ContainerSlot {
-                    slot: slot as i16,
-                    item,
-                })
-                .collect(),
+            slots,
             data_values: existing
                 .as_ref()
                 .map(|container| container.data_values.clone())
@@ -225,6 +264,7 @@ impl WorldStore {
             ContainerSlot {
                 slot: packet.slot,
                 item: packet.item,
+                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
             },
         );
         self.update_merchant_offer_count();
@@ -285,6 +325,44 @@ impl WorldStore {
         }
     }
 
+    pub fn apply_local_select_bundle_item(
+        &mut self,
+        slot_id: i32,
+        selected_item_index: i32,
+    ) -> bool {
+        if selected_item_index < NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX {
+            return false;
+        }
+
+        if let Some(container) = self.inventory.open_container.as_mut() {
+            let Ok(slot_id) = i16::try_from(slot_id) else {
+                return false;
+            };
+            let Some(slot) = container.slots.iter_mut().find(|slot| slot.slot == slot_id) else {
+                return false;
+            };
+            return apply_local_selected_bundle_item_index(
+                &slot.item,
+                &mut slot.local_selected_bundle_item_index,
+                selected_item_index,
+            );
+        }
+
+        let Some(slot) = self
+            .inventory
+            .player_slots
+            .iter_mut()
+            .find(|slot| slot.slot == slot_id)
+        else {
+            return false;
+        };
+        apply_local_selected_bundle_item_index(
+            &slot.item,
+            &mut slot.local_selected_bundle_item_index,
+            selected_item_index,
+        )
+    }
+
     pub fn inventory(&self) -> &InventoryState {
         &self.inventory
     }
@@ -322,7 +400,11 @@ impl WorldStore {
     }
 }
 
-fn set_inventory_slot(slots: &mut Vec<InventorySlot>, update: InventorySlot) {
+fn set_inventory_slot(slots: &mut Vec<InventorySlot>, mut update: InventorySlot) {
+    update.local_selected_bundle_item_index = normalize_local_selected_bundle_item_index(
+        update.local_selected_bundle_item_index,
+        &update.item,
+    );
     if let Some(existing) = slots.iter_mut().find(|slot| slot.slot == update.slot) {
         *existing = update;
     } else {
@@ -331,13 +413,60 @@ fn set_inventory_slot(slots: &mut Vec<InventorySlot>, update: InventorySlot) {
     slots.sort_by_key(|slot| slot.slot);
 }
 
-fn set_container_slot(slots: &mut Vec<ContainerSlot>, update: ContainerSlot) {
+fn set_container_slot(slots: &mut Vec<ContainerSlot>, mut update: ContainerSlot) {
+    update.local_selected_bundle_item_index = normalize_local_selected_bundle_item_index(
+        update.local_selected_bundle_item_index,
+        &update.item,
+    );
     if let Some(existing) = slots.iter_mut().find(|slot| slot.slot == update.slot) {
         *existing = update;
     } else {
         slots.push(update);
     }
     slots.sort_by_key(|slot| slot.slot);
+}
+
+fn default_local_selected_bundle_item_index() -> i32 {
+    NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+}
+
+fn apply_local_selected_bundle_item_index(
+    item: &ProtocolItemStackSummary,
+    current_selected_item_index: &mut i32,
+    selected_item_index: i32,
+) -> bool {
+    let Some(bundle_item_count) = item.component_patch.bundle_contents_item_count else {
+        return false;
+    };
+
+    *current_selected_item_index = if selected_item_index == NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        || selected_item_index == *current_selected_item_index
+        || usize::try_from(selected_item_index)
+            .map(|index| index >= bundle_item_count)
+            .unwrap_or(true)
+    {
+        NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+    } else {
+        selected_item_index
+    };
+    true
+}
+
+fn normalize_local_selected_bundle_item_index(
+    selected_item_index: i32,
+    item: &ProtocolItemStackSummary,
+) -> i32 {
+    let Some(bundle_item_count) = item.component_patch.bundle_contents_item_count else {
+        return NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX;
+    };
+    let Ok(selected_item_index_usize) = usize::try_from(selected_item_index) else {
+        return NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX;
+    };
+    if selected_item_index_usize < bundle_item_count {
+        selected_item_index
+    } else {
+        NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+    }
 }
 
 impl MerchantOffersState {
@@ -399,6 +528,7 @@ mod tests {
             vec![InventorySlot {
                 slot: 36,
                 item: item_stack(43, 2),
+                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
             }]
         );
         assert_eq!(store.inventory().cursor_item, item_stack(99, 1));
@@ -442,10 +572,12 @@ mod tests {
                 ContainerSlot {
                     slot: 0,
                     item: ProtocolItemStackSummary::empty(),
+                    local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
                 },
                 ContainerSlot {
                     slot: 1,
                     item: item_stack(44, 3),
+                    local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
                 },
             ]
         );
@@ -518,6 +650,220 @@ mod tests {
         assert_eq!(hotbar[4], item_stack(24, 3));
         assert_eq!(hotbar[8], item_stack(28, 2));
         assert_eq!(hotbar[1], ProtocolItemStackSummary::empty());
+    }
+
+    #[test]
+    fn hotbar_item_states_include_local_bundle_selection() {
+        let mut store = WorldStore::new();
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 4,
+            item: bundle_item_stack(10, 1, 2),
+        });
+        assert!(store.apply_local_select_bundle_item(4, 1));
+
+        let hotbar = store.inventory().hotbar_item_states();
+        assert_eq!(hotbar[4].item, bundle_item_stack(10, 1, 2));
+        assert_eq!(hotbar[4].local_selected_bundle_item_index(), Some(1));
+
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 0,
+            state_id: 1,
+            items: (0..45)
+                .map(|slot| {
+                    if slot == 40 {
+                        bundle_item_stack(20, 1, 2)
+                    } else {
+                        ProtocolItemStackSummary::empty()
+                    }
+                })
+                .collect(),
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(store.apply_local_select_bundle_item(40, 0));
+
+        let hotbar = store.inventory().hotbar_item_states();
+        assert_eq!(hotbar[4].item, bundle_item_stack(20, 1, 2));
+        assert_eq!(hotbar[4].local_selected_bundle_item_index(), Some(0));
+        assert_eq!(
+            store.inventory().hotbar_items()[4],
+            bundle_item_stack(20, 1, 2)
+        );
+    }
+
+    #[test]
+    fn local_bundle_selection_tracks_player_inventory_slot() {
+        let mut store = WorldStore::new();
+
+        assert!(!store.apply_local_select_bundle_item(4, 0));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 4,
+            item: bundle_item_stack(42, 1, 3),
+        });
+
+        assert!(!store.apply_local_select_bundle_item(4, -2));
+        assert_eq!(
+            player_slot_selection(&store, 4),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        assert!(store.apply_local_select_bundle_item(4, 1));
+        assert_eq!(player_slot_selection(&store, 4), 1);
+
+        assert!(store.apply_local_select_bundle_item(4, -1));
+        assert_eq!(
+            player_slot_selection(&store, 4),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        assert!(store.apply_local_select_bundle_item(4, 2));
+        assert_eq!(player_slot_selection(&store, 4), 2);
+
+        assert!(store.apply_local_select_bundle_item(4, 2));
+        assert_eq!(
+            player_slot_selection(&store, 4),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        assert!(store.apply_local_select_bundle_item(4, 0));
+        assert_eq!(player_slot_selection(&store, 4), 0);
+
+        assert!(store.apply_local_select_bundle_item(4, 3));
+        assert_eq!(
+            player_slot_selection(&store, 4),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 5,
+            item: item_stack(43, 1),
+        });
+        assert!(!store.apply_local_select_bundle_item(5, 0));
+        assert_eq!(
+            player_slot_selection(&store, 5),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+    }
+
+    #[test]
+    fn local_bundle_selection_is_cleared_when_player_slot_item_is_replaced() {
+        let mut store = WorldStore::new();
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 4,
+            item: bundle_item_stack(42, 1, 4),
+        });
+        assert!(store.apply_local_select_bundle_item(4, 2));
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 4,
+            item: bundle_item_stack(43, 1, 3),
+        });
+        assert_eq!(
+            player_slot_selection(&store, 4),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        assert!(store.apply_local_select_bundle_item(4, 1));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 4,
+            item: bundle_item_stack(44, 1, 2),
+        });
+        assert_eq!(
+            player_slot_selection(&store, 4),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        assert!(store.apply_local_select_bundle_item(4, 1));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 4,
+            item: item_stack(45, 1),
+        });
+        assert_eq!(
+            player_slot_selection(&store, 4),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+        assert!(!store.apply_local_select_bundle_item(4, 0));
+    }
+
+    #[test]
+    fn local_bundle_selection_applies_to_open_container_slots() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 1,
+            item: bundle_item_stack(99, 1, 2),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 1,
+            items: vec![item_stack(42, 1), bundle_item_stack(43, 1, 2)],
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        assert!(store.apply_local_select_bundle_item(1, 1));
+        assert_eq!(container_slot_selection(&store, 1), 1);
+        assert_eq!(
+            player_slot_selection(&store, 1),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 2,
+            items: vec![item_stack(42, 1), bundle_item_stack(43, 1, 2)],
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert_eq!(
+            container_slot_selection(&store, 1),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+        assert!(store.apply_local_select_bundle_item(1, 1));
+        assert_eq!(container_slot_selection(&store, 1), 1);
+
+        assert!(!store.apply_local_select_bundle_item(0, 0));
+        assert_eq!(
+            container_slot_selection(&store, 0),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        assert!(!store.apply_local_select_bundle_item(99, 0));
+
+        store.apply_container_set_slot(ProtocolContainerSetSlot {
+            container_id: 7,
+            state_id: 2,
+            slot: 1,
+            item: bundle_item_stack(44, 1, 1),
+        });
+        assert_eq!(
+            container_slot_selection(&store, 1),
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        assert!(store.apply_local_select_bundle_item(1, 0));
+        assert_eq!(container_slot_selection(&store, 1), 0);
+    }
+
+    #[test]
+    fn local_bundle_selection_fields_default_when_deserializing_old_slots() {
+        let player_slot: InventorySlot = serde_json::from_value(serde_json::json!({
+            "slot": 4,
+            "item": item_stack(42, 1),
+        }))
+        .unwrap();
+        assert_eq!(
+            player_slot.local_selected_bundle_item_index,
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
+
+        let container_slot: ContainerSlot = serde_json::from_value(serde_json::json!({
+            "slot": 4,
+            "item": item_stack(42, 1),
+        }))
+        .unwrap();
+        assert_eq!(
+            container_slot.local_selected_bundle_item_index,
+            NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX
+        );
     }
 
     #[test]
@@ -604,6 +950,39 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn bundle_item_stack(
+        item_id: i32,
+        count: i32,
+        bundle_contents_item_count: usize,
+    ) -> ProtocolItemStackSummary {
+        let mut stack = item_stack(item_id, count);
+        stack.component_patch.bundle_contents_item_count = Some(bundle_contents_item_count);
+        stack
+    }
+
+    fn player_slot_selection(store: &WorldStore, slot: i32) -> i32 {
+        store
+            .inventory()
+            .player_slots
+            .iter()
+            .find(|state| state.slot == slot)
+            .map(|state| state.local_selected_bundle_item_index)
+            .unwrap()
+    }
+
+    fn container_slot_selection(store: &WorldStore, slot: i16) -> i32 {
+        store
+            .inventory()
+            .open_container
+            .as_ref()
+            .unwrap()
+            .slots
+            .iter()
+            .find(|state| state.slot == slot)
+            .map(|state| state.local_selected_bundle_item_index)
+            .unwrap()
     }
 
     fn merchant_offers(container_id: i32, offer_count: usize) -> ProtocolMerchantOffers {

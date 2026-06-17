@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
-    ItemTintSource, TerrainColorMaps,
+    ItemTintSource, SelectCase, TerrainColorMaps,
 };
 use bbb_protocol::packets::DataComponentPatchSummary;
+use serde_json::Value;
 
 use super::{
     first_texture_id, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
@@ -95,6 +96,7 @@ impl ItemIconModel {
         &self,
         component_patch: Option<&DataComponentPatchSummary>,
         default_max_damage: Option<i32>,
+        bundle_selected_item_index: Option<i32>,
     ) -> Vec<ItemIconTextureLayer> {
         match self {
             Self::Empty => Vec::new(),
@@ -127,13 +129,31 @@ impl ItemIconModel {
                     {
                         on_true
                     }
+                    ItemModelPropertyKind::BundleHasSelectedItem
+                        if item_stack_has_selected_bundle_item(
+                            component_patch,
+                            bundle_selected_item_index,
+                        ) =>
+                    {
+                        on_true
+                    }
                     _ => on_false,
                 };
-                branch.icon_layers(component_patch, default_max_damage)
+                branch.icon_layers(
+                    component_patch,
+                    default_max_damage,
+                    bundle_selected_item_index,
+                )
             }
             Self::Composite(models) => models
                 .iter()
-                .flat_map(|model| model.icon_layers(component_patch, default_max_damage))
+                .flat_map(|model| {
+                    model.icon_layers(
+                        component_patch,
+                        default_max_damage,
+                        bundle_selected_item_index,
+                    )
+                })
                 .collect(),
         }
     }
@@ -155,6 +175,7 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
                 property.kind(),
                 ItemModelPropertyKind::Broken
                     | ItemModelPropertyKind::Damaged
+                    | ItemModelPropertyKind::BundleHasSelectedItem
                     | ItemModelPropertyKind::HasComponent
             ) || contains_runtime_condition(on_true)
                 || contains_runtime_condition(on_false)
@@ -168,11 +189,16 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
                 || fallback.as_deref().is_some_and(contains_runtime_condition)
         }
         ItemModelDefinition::Select {
-            cases, fallback, ..
+            property,
+            cases,
+            fallback,
+            ..
         } => {
-            cases
-                .iter()
-                .any(|case| contains_runtime_condition(&case.model))
+            selected_icon_select_model(property, cases, fallback.as_deref())
+                .is_some_and(contains_runtime_condition)
+                || cases
+                    .iter()
+                    .any(|case| contains_runtime_condition(&case.model))
                 || fallback.as_deref().is_some_and(contains_runtime_condition)
         }
         ItemModelDefinition::Composite { models, .. } => {
@@ -211,6 +237,7 @@ pub(super) fn item_icon_model_ref_for_definition(
                 property.kind(),
                 ItemModelPropertyKind::Broken
                     | ItemModelPropertyKind::Damaged
+                    | ItemModelPropertyKind::BundleHasSelectedItem
                     | ItemModelPropertyKind::HasComponent
             ) {
                 ItemIconModelRef::Condition {
@@ -234,10 +261,11 @@ pub(super) fn item_icon_model_ref_for_definition(
             })
             .unwrap_or(ItemIconModelRef::Empty),
         ItemModelDefinition::Select {
-            cases, fallback, ..
-        } => fallback
-            .as_deref()
-            .or_else(|| cases.first().map(|case| case.model.as_ref()))
+            property,
+            cases,
+            fallback,
+            ..
+        } => selected_icon_select_model(property, cases, fallback.as_deref())
             .map(|model| {
                 item_icon_model_ref_for_definition(model, cuboid_models, model_tints, colormaps)
             })
@@ -251,6 +279,26 @@ pub(super) fn item_icon_model_ref_for_definition(
                 .collect(),
         ),
     }
+}
+
+fn selected_icon_select_model<'a>(
+    property: &ItemModelProperty,
+    cases: &'a [SelectCase],
+    fallback: Option<&'a ItemModelDefinition>,
+) -> Option<&'a ItemModelDefinition> {
+    if property.property_type == "minecraft:display_context" {
+        cases
+            .iter()
+            .find(|case| case.when.iter().any(is_gui_display_context))
+            .map(|case| case.model.as_ref())
+            .or(fallback)
+    } else {
+        fallback.or_else(|| cases.first().map(|case| case.model.as_ref()))
+    }
+}
+
+fn is_gui_display_context(value: &Value) -> bool {
+    value.as_str() == Some("gui")
 }
 
 fn item_icon_model_ref_for_model_id(
@@ -274,6 +322,21 @@ fn item_icon_model_ref_for_model_id(
             })
             .unwrap_or_default(),
     )
+}
+
+fn item_stack_has_selected_bundle_item(
+    component_patch: Option<&DataComponentPatchSummary>,
+    selected_item_index: Option<i32>,
+) -> bool {
+    let Some(selected_item_index) = selected_item_index.filter(|index| *index >= 0) else {
+        return false;
+    };
+    let Ok(selected_item_index) = usize::try_from(selected_item_index) else {
+        return false;
+    };
+    component_patch
+        .and_then(|patch| patch.bundle_contents_item_count)
+        .is_some_and(|count| selected_item_index < count)
 }
 
 fn item_stack_next_damage_will_break(

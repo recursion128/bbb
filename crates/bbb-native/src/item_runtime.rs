@@ -186,7 +186,7 @@ impl NativeItemRuntime {
         Some(
             self.item_icon_models
                 .get(item_id)
-                .and_then(|model| model.icon_layers(None, None).into_iter().next())
+                .and_then(|model| model.icon_layers(None, None, None).into_iter().next())
                 .map(|layer| layer.texture_index)
                 .unwrap_or(self.textures.fallback_index()),
         )
@@ -199,20 +199,33 @@ impl NativeItemRuntime {
     }
 
     pub(crate) fn icon_for_stack(&self, stack: &ItemStackSummary) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_bundle_selected_item(stack, None)
+    }
+
+    pub(crate) fn icon_for_stack_with_bundle_selected_item(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+    ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
-        self.icon_for_resource_id(item_id, Some(&stack.component_patch))
+        self.icon_for_resource_id(
+            item_id,
+            Some(&stack.component_patch),
+            bundle_selected_item_index,
+        )
     }
 
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(item_id, None)
+        self.icon_for_resource_id(item_id, None, None)
     }
 
     fn icon_for_resource_id(
         &self,
         item_id: &str,
         component_patch: Option<&DataComponentPatchSummary>,
+        bundle_selected_item_index: Option<i32>,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -221,7 +234,13 @@ impl NativeItemRuntime {
         let layers = self
             .item_icon_models
             .get(item_id)
-            .map(|model| model.icon_layers(component_patch, default_max_damage))
+            .map(|model| {
+                model.icon_layers(
+                    component_patch,
+                    default_max_damage,
+                    bundle_selected_item_index,
+                )
+            })
             .unwrap_or_else(|| {
                 vec![ItemIconTextureLayer {
                     texture_index: self.textures.fallback_index(),
@@ -1098,6 +1117,78 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_selects_bundle_icon_from_local_selected_item() {
+        let root = unique_temp_dir("item-runtime-bundle-selected");
+        write_bundle_selected_item_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let normal_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/bundle"))
+            .unwrap();
+        let open_back_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/bundle_open_back"))
+            .unwrap();
+        let open_front_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/bundle_open_front"))
+            .unwrap();
+        let bundle_stack = ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                bundle_contents_item_count: Some(1),
+                ..DataComponentPatchSummary::default()
+            },
+        };
+
+        assert_eq!(
+            runtime.icon_texture_index_for_protocol_id(0),
+            Some(runtime.texture_index("minecraft:item/bundle"))
+        );
+
+        let default_icon = runtime.icon_for_stack(&bundle_stack).unwrap();
+        assert_eq!(default_icon.layers[0].uv, normal_uv);
+
+        let unselected_icon = runtime
+            .icon_for_stack_with_bundle_selected_item(&bundle_stack, Some(-1))
+            .unwrap();
+        assert_eq!(unselected_icon.layers[0].uv, normal_uv);
+
+        let selected_icon = runtime
+            .icon_for_stack_with_bundle_selected_item(&bundle_stack, Some(0))
+            .unwrap();
+        assert_eq!(
+            selected_icon
+                .layers
+                .iter()
+                .map(|layer| layer.uv)
+                .collect::<Vec<_>>(),
+            vec![open_back_uv, open_front_uv]
+        );
+
+        let out_of_bounds_icon = runtime
+            .icon_for_stack_with_bundle_selected_item(&bundle_stack, Some(1))
+            .unwrap();
+        assert_eq!(out_of_bounds_icon.layers[0].uv, normal_uv);
+
+        let no_contents_icon = runtime
+            .icon_for_stack_with_bundle_selected_item(
+                &ItemStackSummary {
+                    item_id: Some(0),
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                },
+                Some(0),
+            )
+            .unwrap();
+        assert_eq!(no_contents_icon.layers[0].uv, normal_uv);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_loads_assets_when_registry_source_is_missing() {
         let root = unique_temp_dir("item-runtime-no-registry");
         let assets = assets_dir(&root);
@@ -1347,6 +1438,57 @@ mod tests {
         );
         write_flat_item_model_and_texture(&assets, "compass", &[40, 120, 80, 255]);
         write_flat_item_model_and_texture(&assets, "compass_lodestone", &[120, 40, 80, 255]);
+    }
+
+    fn write_bundle_selected_item_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "bundle");
+        write_json(
+            &assets.join("items").join("bundle.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:select",
+                    "property": "minecraft:display_context",
+                    "cases": [
+                        {
+                            "when": "gui",
+                            "model": {
+                                "type": "minecraft:condition",
+                                "property": "minecraft:bundle/has_selected_item",
+                                "on_false": {
+                                    "type": "minecraft:model",
+                                    "model": "minecraft:item/bundle"
+                                },
+                                "on_true": {
+                                    "type": "minecraft:composite",
+                                    "models": [
+                                        {
+                                            "type": "minecraft:model",
+                                            "model": "minecraft:item/bundle_open_back"
+                                        },
+                                        {
+                                            "type": "minecraft:bundle/selected_item"
+                                        },
+                                        {
+                                            "type": "minecraft:model",
+                                            "model": "minecraft:item/bundle_open_front"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    "fallback": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/bundle"
+                    }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "bundle", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "bundle_open_back", &[120, 80, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "bundle_open_front", &[80, 120, 40, 255]);
     }
 
     fn write_single_item_registry_source(root: &Path, item_id: &str) {

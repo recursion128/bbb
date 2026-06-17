@@ -159,8 +159,11 @@ fn hotbar_item_icons(
         return icons;
     };
 
-    for (slot_index, item) in world.inventory().hotbar_items().iter().enumerate() {
-        let Some(icon) = item_runtime.icon_for_stack(item) else {
+    for (slot_index, item) in world.inventory().hotbar_item_states().iter().enumerate() {
+        let Some(icon) = item_runtime.icon_for_stack_with_bundle_selected_item(
+            &item.item,
+            item.local_selected_bundle_item_index(),
+        ) else {
             continue;
         };
         icons[slot_index] = Some(HudItemIcon {
