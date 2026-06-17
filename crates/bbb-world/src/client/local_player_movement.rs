@@ -10,6 +10,12 @@ pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
 pub(super) const LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 
+const VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID: i32 = 22;
+const VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID: i32 = 26;
+const LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE: f64 = 0.1;
+const LOCAL_INPUT_SPRINT_SPEED_MULTIPLIER: f64 =
+    LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND / LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
+const LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER: f64 = 0.3;
 const LOCAL_PHYSICS_TICK_SECONDS: f64 = 0.05;
 const LOCAL_GRAVITY_PER_TICK: f64 = 0.08;
 const LOCAL_JUMP_VELOCITY_PER_TICK: f64 = 0.42;
@@ -60,11 +66,7 @@ fn advance_local_player_physics_step(
     } else {
         0.0
     };
-    let speed = if input.sprint {
-        LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND
-    } else {
-        LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
-    };
+    let speed = local_player_horizontal_speed(world, input);
     let yaw = f64::from(pose.y_rot).to_radians();
     let forward = (-yaw.sin(), yaw.cos());
     let right = (-yaw.cos(), -yaw.sin());
@@ -229,6 +231,30 @@ fn should_back_off_from_edge(
         && pose.on_ground
 }
 
+fn local_player_horizontal_speed(world: &WorldStore, input: LocalPlayerInputState) -> f64 {
+    let movement_speed_scale =
+        local_player_attribute_value(world, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)
+            .unwrap_or(LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE)
+            .max(0.0)
+            / LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE;
+    let mut speed = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * movement_speed_scale;
+    if input.sprint {
+        speed *= LOCAL_INPUT_SPRINT_SPEED_MULTIPLIER;
+    }
+    if input.sneak && !local_player_is_flying(world) {
+        speed *= local_player_attribute_value(world, VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID)
+            .unwrap_or(LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER)
+            .clamp(0.0, 1.0);
+    }
+    speed
+}
+
+fn local_player_attribute_value(world: &WorldStore, attribute_id: i32) -> Option<f64> {
+    world
+        .local_player_id
+        .and_then(|id| world.entities.attribute_value(id, attribute_id))
+}
+
 fn local_player_is_flying(world: &WorldStore) -> bool {
     world
         .local_player()
@@ -367,9 +393,15 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::packets::{
+        AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
+        UpdateAttributes as ProtocolUpdateAttributes,
+    };
+    use uuid::Uuid;
+
     use crate::{
-        ChunkColumn, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
-        PalettedContainerData, WorldDimension,
+        entities::VANILLA_ENTITY_TYPE_PLAYER_ID, ChunkColumn, ChunkSection, ChunkState, LightData,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
     };
 
     const AIR_BLOCK_STATE_ID: i32 = 0;
@@ -1031,7 +1063,111 @@ mod tests {
             .unwrap();
 
         assert_f64_near(pose.position.y, 1.0, 0.0005);
-        assert!(pose.position.z > 1.0, "position was {:?}", pose.position);
+        let expected_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER * 0.2;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_sneak_uses_default_sneaking_speed_multiplier() {
+        let mut world = flat_collision_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
+            * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
+            * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_movement_speed_attribute_scales_horizontal_movement() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                base: 0.2,
+                modifiers: Vec::new(),
+            }],
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 2.0 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_sneak_uses_sneaking_speed_attribute_when_present() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID,
+                base: 0.4,
+                modifiers: Vec::new(),
+            }],
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.4 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
         assert!(pose.on_ground);
     }
 
@@ -1131,6 +1267,21 @@ mod tests {
         world.insert_decoded_chunk(empty_test_chunk());
         set_test_block(&mut world, 0, 0, 0, GRASS_BLOCK_STATE_ID);
         world
+    }
+
+    fn attach_local_player_entity(world: &mut WorldStore, id: i32) {
+        world.local_player_id = Some(id);
+        world.apply_add_entity(ProtocolAddEntity {
+            id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
     }
 
     fn empty_test_chunk() -> ChunkColumn {

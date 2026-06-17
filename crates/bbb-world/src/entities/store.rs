@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, fmt};
 
+use bbb_protocol::packets::AttributeSnapshot as ProtocolAttributeSnapshot;
 use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -187,6 +188,16 @@ impl EntityStore {
             .get::<&EntityTransform>(entity)
             .ok()
             .map(|transform| *transform)
+    }
+
+    pub(crate) fn attribute_value(&self, id: i32, attribute_id: i32) -> Option<f64> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
+        attributes
+            .attributes
+            .iter()
+            .find(|attribute| attribute.attribute_id == attribute_id)
+            .map(vanilla_attribute_value)
     }
 
     pub(crate) fn transform_state(&self, id: i32) -> Option<EntityTransformState> {
@@ -678,6 +689,28 @@ impl fmt::Debug for EntityStore {
             .field("entities", &states)
             .finish()
     }
+}
+
+fn vanilla_attribute_value(attribute: &ProtocolAttributeSnapshot) -> f64 {
+    let mut base = attribute.base;
+    for modifier in &attribute.modifiers {
+        if modifier.operation_id != 1 && modifier.operation_id != 2 {
+            base += modifier.amount;
+        }
+    }
+
+    let mut result = base;
+    for modifier in &attribute.modifiers {
+        if modifier.operation_id == 1 {
+            result += base * modifier.amount;
+        }
+    }
+    for modifier in &attribute.modifiers {
+        if modifier.operation_id == 2 {
+            result *= 1.0 + modifier.amount;
+        }
+    }
+    result
 }
 
 impl Serialize for EntityStore {
