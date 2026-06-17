@@ -674,11 +674,139 @@ fn create_palette_mapping(
 #[cfg(test)]
 mod tests {
     use super::{apply_palette_permutation, load_atlas_texture_entries, AtlasTextureEntry};
+    use regex::Regex;
+    use std::collections::BTreeSet;
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::{PackRoots, MC_VERSION};
     use crate::{SpriteImage, SpriteMipmapStrategy, SpriteTextureMetadata};
+
+    #[test]
+    fn atlas_source_supported_types_match_vanilla_bootstrap_when_sources_are_available() {
+        let Some(source) = local_vanilla_source(&[
+            "net",
+            "minecraft",
+            "client",
+            "renderer",
+            "texture",
+            "atlas",
+            "SpriteSources.java",
+        ]) else {
+            return;
+        };
+        let source_types = BTreeSet::from([
+            "minecraft:directory".to_string(),
+            "minecraft:filter".to_string(),
+            "minecraft:paletted_permutations".to_string(),
+            "minecraft:single".to_string(),
+            "minecraft:unstitch".to_string(),
+        ]);
+
+        assert_eq!(vanilla_bootstrap_ids(&source), source_types);
+
+        let root = unique_temp_dir("atlas-vanilla-source-types");
+        let assets_dir = root
+            .join("sources")
+            .join(MC_VERSION)
+            .join("assets")
+            .join("minecraft");
+        std::fs::create_dir_all(assets_dir.join("textures").join("block")).unwrap();
+        std::fs::create_dir_all(assets_dir.join("textures").join("item")).unwrap();
+        std::fs::create_dir_all(assets_dir.join("textures").join("pattern")).unwrap();
+        std::fs::create_dir_all(assets_dir.join("textures").join("palette")).unwrap();
+        std::fs::create_dir_all(assets_dir.join("textures").join("gui")).unwrap();
+        std::fs::create_dir_all(assets_dir.join("atlases")).unwrap();
+        write_file(&assets_dir.join("textures").join("block").join("stone.png"));
+        write_file(&assets_dir.join("textures").join("item").join("test.png"));
+        write_rgba_png(
+            &assets_dir.join("textures").join("pattern").join("base.png"),
+            1,
+            1,
+            &[10, 10, 10, 255],
+        );
+        write_rgba_png(
+            &assets_dir.join("textures").join("palette").join("key.png"),
+            1,
+            1,
+            &[10, 10, 10, 255],
+        );
+        write_rgba_png(
+            &assets_dir.join("textures").join("palette").join("red.png"),
+            1,
+            1,
+            &[120, 0, 0, 255],
+        );
+        write_rgba_png(
+            &assets_dir.join("textures").join("gui").join("widgets.png"),
+            2,
+            2,
+            &[
+                10, 10, 40, 255, 20, 10, 40, 255, 10, 20, 40, 255, 20, 20, 40, 255,
+            ],
+        );
+        write_json(
+            &assets_dir.join("atlases").join("vanilla_source_types.json"),
+            r#"{
+              "sources": [
+                {
+                  "type": "minecraft:directory",
+                  "source": "block",
+                  "prefix": "block/"
+                },
+                {
+                  "type": "minecraft:single",
+                  "resource": "minecraft:item/test"
+                },
+                {
+                  "type": "minecraft:filter",
+                  "pattern": {
+                    "path": "^does_not_match$"
+                  }
+                },
+                {
+                  "type": "minecraft:paletted_permutations",
+                  "textures": ["minecraft:pattern/base"],
+                  "palette_key": "minecraft:palette/key",
+                  "permutations": {
+                    "red": "minecraft:palette/red"
+                  }
+                },
+                {
+                  "type": "minecraft:unstitch",
+                  "resource": "minecraft:gui/widgets",
+                  "divisor_x": 2.0,
+                  "divisor_y": 2.0,
+                  "regions": [
+                    {
+                      "sprite": "minecraft:gui/top_left",
+                      "x": 0.0,
+                      "y": 0.0,
+                      "width": 1.0,
+                      "height": 1.0
+                    }
+                  ]
+                }
+              ]
+            }"#,
+        );
+
+        let roots = PackRoots::from_root(&root).unwrap();
+        let entries = load_atlas_texture_entries(&roots, "vanilla_source_types").unwrap();
+        let ids = entries.iter().map(entry_id).collect::<BTreeSet<_>>();
+        assert_eq!(
+            ids,
+            BTreeSet::from([
+                "minecraft:missingno",
+                "minecraft:block/stone",
+                "minecraft:item/test",
+                "minecraft:pattern/base_red",
+                "minecraft:gui/top_left",
+            ])
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn paletted_permutations_follow_vanilla_palette_size_rules() {
@@ -1431,5 +1559,24 @@ mod tests {
     fn write_json(path: &Path, contents: &str) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, contents).unwrap();
+    }
+
+    fn local_vanilla_source(relative: &[&str]) -> Option<String> {
+        let roots = PackRoots::discover().ok()?;
+        let mut path = roots.sources_dir.clone();
+        for segment in relative {
+            path.push(segment);
+        }
+        path.is_file()
+            .then(|| std::fs::read_to_string(path).ok())
+            .flatten()
+    }
+
+    fn vanilla_bootstrap_ids(source: &str) -> BTreeSet<String> {
+        Regex::new(r#"ID_MAPPER\.put\(\s*Identifier\.withDefaultNamespace\("([^"]+)"\)"#)
+            .unwrap()
+            .captures_iter(source)
+            .map(|capture| format!("minecraft:{}", &capture[1]))
+            .collect()
     }
 }

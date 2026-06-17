@@ -176,7 +176,8 @@ mod tests {
         let definitions = roots.load_particle_definition_catalog().unwrap();
         let sprites = roots.load_particle_sprite_catalog().unwrap();
 
-        assert_eq!(sprites.len(), 254);
+        assert_eq!(sprites.len(), 255);
+        assert!(sprites.sprite("minecraft:missingno").is_some());
         assert!(sprites.sprite("minecraft:generic_0").is_some());
         assert!(sprites
             .missing_sprites_for_definitions(&definitions)

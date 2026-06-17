@@ -896,10 +896,131 @@ fn item_id_from_resource(location: &ResourceLocation) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use regex::Regex;
     use std::{
         path::{Path, PathBuf},
         time::{SystemTime, UNIX_EPOCH},
     };
+
+    #[test]
+    fn item_model_supported_types_match_vanilla_bootstrap_when_sources_are_available() {
+        let Some(source) = local_vanilla_source(&[
+            "net",
+            "minecraft",
+            "client",
+            "renderer",
+            "item",
+            "ItemModels.java",
+        ]) else {
+            return;
+        };
+        let fixtures = BTreeMap::from([
+            ("minecraft:empty", r#"{"model":{"type":"minecraft:empty"}}"#),
+            (
+                "minecraft:model",
+                r#"{"model":{"type":"minecraft:model","model":"minecraft:item/test"}}"#,
+            ),
+            (
+                "minecraft:range_dispatch",
+                r#"{"model":{"type":"minecraft:range_dispatch","property":"minecraft:custom_model_data","entries":[]}}"#,
+            ),
+            (
+                "minecraft:special",
+                r#"{"model":{"type":"minecraft:special","base":"minecraft:item/template_skull","model":{"type":"minecraft:head","kind":"zombie"}}}"#,
+            ),
+            (
+                "minecraft:composite",
+                r#"{"model":{"type":"minecraft:composite","models":[{"type":"minecraft:empty"}]}}"#,
+            ),
+            (
+                "minecraft:bundle/selected_item",
+                r#"{"model":{"type":"minecraft:bundle/selected_item"}}"#,
+            ),
+            (
+                "minecraft:select",
+                r#"{"model":{"type":"minecraft:select","property":"minecraft:display_context","cases":[]}}"#,
+            ),
+            (
+                "minecraft:condition",
+                r#"{"model":{"type":"minecraft:condition","property":"minecraft:using_item","on_true":{"type":"minecraft:empty"},"on_false":{"type":"minecraft:empty"}}}"#,
+            ),
+        ]);
+
+        assert_eq!(
+            vanilla_bootstrap_ids(&source),
+            fixtures
+                .keys()
+                .map(|model_type| (*model_type).to_string())
+                .collect::<BTreeSet<_>>()
+        );
+        for (model_type, json) in fixtures {
+            ClientItemDefinition::from_json_bytes(json.as_bytes())
+                .unwrap_or_else(|err| panic!("{model_type} fixture should parse: {err}"));
+        }
+    }
+
+    #[test]
+    fn item_tint_supported_types_match_vanilla_bootstrap_when_sources_are_available() {
+        let Some(source) = local_vanilla_source(&[
+            "net",
+            "minecraft",
+            "client",
+            "color",
+            "item",
+            "ItemTintSources.java",
+        ]) else {
+            return;
+        };
+        let fixtures = BTreeMap::from([
+            (
+                "minecraft:custom_model_data",
+                r#"{"type":"minecraft:custom_model_data","default":16777215}"#,
+            ),
+            (
+                "minecraft:constant",
+                r#"{"type":"minecraft:constant","value":16711935}"#,
+            ),
+            (
+                "minecraft:dye",
+                r#"{"type":"minecraft:dye","default":16777215}"#,
+            ),
+            (
+                "minecraft:grass",
+                r#"{"type":"minecraft:grass","temperature":0.5,"downfall":0.7}"#,
+            ),
+            (
+                "minecraft:firework",
+                r#"{"type":"minecraft:firework","default":16777215}"#,
+            ),
+            (
+                "minecraft:potion",
+                r#"{"type":"minecraft:potion","default":16253176}"#,
+            ),
+            (
+                "minecraft:map_color",
+                r#"{"type":"minecraft:map_color","default":4603950}"#,
+            ),
+            (
+                "minecraft:team",
+                r#"{"type":"minecraft:team","default":16777215}"#,
+            ),
+        ]);
+
+        assert_eq!(
+            vanilla_bootstrap_ids(&source),
+            fixtures
+                .keys()
+                .map(|tint_type| (*tint_type).to_string())
+                .collect::<BTreeSet<_>>()
+        );
+        for (tint_type, tint) in fixtures {
+            let json = format!(
+                r#"{{"model":{{"type":"minecraft:model","model":"minecraft:item/test","tints":[{tint}]}}}}"#
+            );
+            ClientItemDefinition::from_json_bytes(json.as_bytes())
+                .unwrap_or_else(|err| panic!("{tint_type} fixture should parse: {err}"));
+        }
+    }
 
     #[test]
     fn item_model_catalog_loads_simple_models_and_properties() {
@@ -1747,6 +1868,25 @@ mod tests {
     fn write_json(path: &Path, contents: &str) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, contents).unwrap();
+    }
+
+    fn local_vanilla_source(relative: &[&str]) -> Option<String> {
+        let roots = PackRoots::discover().ok()?;
+        let mut path = roots.sources_dir.clone();
+        for segment in relative {
+            path.push(segment);
+        }
+        path.is_file()
+            .then(|| std::fs::read_to_string(path).ok())
+            .flatten()
+    }
+
+    fn vanilla_bootstrap_ids(source: &str) -> BTreeSet<String> {
+        Regex::new(r#"ID_MAPPER\.put\(\s*Identifier\.withDefaultNamespace\("([^"]+)"\)"#)
+            .unwrap()
+            .captures_iter(source)
+            .map(|capture| format!("minecraft:{}", &capture[1]))
+            .collect()
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {
