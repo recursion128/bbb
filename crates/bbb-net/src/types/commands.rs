@@ -1,6 +1,6 @@
 use bbb_protocol::packets::{
     self, AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
-    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, InteractEntity,
+    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, EditBook, InteractEntity,
     InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
     RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
@@ -97,6 +97,7 @@ pub enum NetCommand {
     PlaceRecipe(PlaceRecipeCommand),
     RecipeBookChangeSettings(RecipeBookChangeSettingsCommand),
     RecipeBookSeenRecipe(RecipeBookSeenRecipeCommand),
+    EditBook(EditBook),
     RenameItem(RenameItem),
     SeenAdvancements(SeenAdvancements),
     SelectTrade(SelectTradeCommand),

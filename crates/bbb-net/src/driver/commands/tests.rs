@@ -1,7 +1,7 @@
 use super::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_interact_entity,
+    send_container_close, send_container_slot_state_changed, send_edit_book, send_interact_entity,
     send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
@@ -18,7 +18,7 @@ use bbb_protocol::{
     ids,
     packets::{
         AttackEntity, BlockPos, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
-        ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
+        ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, EditBook,
         HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
         PaddleBoat, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
         PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
@@ -1038,6 +1038,49 @@ async fn send_recipe_book_commands_encode_packets() {
         &mut conn,
         RecipeBookSeenRecipeCommand {
             recipe: RecipeDisplayId { index: 321 },
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_edit_book_encodes_edit_book_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("edit book command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_EDIT_BOOK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 5);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert_eq!(decoder.read_string(1024).unwrap(), "first page");
+        assert_eq!(decoder.read_string(1024).unwrap(), "second page");
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_string(32).unwrap(), "Field Notes");
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_edit_book(
+        &mut conn,
+        EditBook {
+            slot: 5,
+            pages: vec!["first page".to_string(), "second page".to_string()],
+            title: Some("Field Notes".to_string()),
         },
     )
     .await

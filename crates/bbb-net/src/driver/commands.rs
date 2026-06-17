@@ -1,7 +1,7 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
     self, AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
-    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, InteractEntity,
+    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, EditBook, InteractEntity,
     InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
     PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
@@ -155,6 +155,11 @@ pub(crate) async fn send_recipe_book_seen_recipe(
     command: RecipeBookSeenRecipeCommand,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_recipe_book_seen_recipe(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_edit_book(conn: &mut RawConnection, packet: EditBook) -> Result<()> {
+    let (id, payload) = packets::encode_play_edit_book(&packet);
     conn.send_packet(id, &payload).await
 }
 

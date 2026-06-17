@@ -12,7 +12,7 @@ mod commands;
 pub(crate) use commands::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_interact_entity,
+    send_container_close, send_container_slot_state_changed, send_edit_book, send_interact_entity,
     send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
@@ -136,6 +136,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::RecipeBookSeenRecipe(command)) => {
                         send_recipe_book_seen_recipe(conn, command).await?;
                     }
+                    Some(NetCommand::EditBook(packet)) => {
+                        send_edit_book(conn, packet).await?;
+                    }
                     Some(NetCommand::RenameItem(packet)) => {
                         send_rename_item(conn, packet).await?;
                     }
@@ -209,6 +212,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::PlaceRecipe(_)) => {}
                     Some(NetCommand::RecipeBookChangeSettings(_)) => {}
                     Some(NetCommand::RecipeBookSeenRecipe(_)) => {}
+                    Some(NetCommand::EditBook(_)) => {}
                     Some(NetCommand::RenameItem(_)) => {}
                     Some(NetCommand::SeenAdvancements(_)) => {}
                     Some(NetCommand::SelectTrade(_)) => {}
@@ -242,8 +246,8 @@ mod tests {
         packets::{
             AttackEntity, BlockHitResult, BlockPos, ChatCommand, CommandSuggestionRequest,
             ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
-            ContainerSlotStateChanged, Direction, HashedStack, InteractEntity, InteractionHand,
-            PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+            ContainerSlotStateChanged, Direction, EditBook, HashedStack, InteractEntity,
+            InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
             PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
             RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
             RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
@@ -535,6 +539,32 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 321);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_edit_book_net_command_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(2);
+        tx.send(NetCommand::EditBook(EditBook {
+            slot: 5,
+            pages: vec!["first page".to_string()],
+            title: None,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "edit book").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_EDIT_BOOK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 5);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_string(1024).unwrap(), "first page");
+        assert!(!decoder.read_bool().unwrap());
         assert!(decoder.is_empty());
     }
 

@@ -217,6 +217,7 @@ pub mod play {
     pub const SERVERBOUND_CONTAINER_CLOSE: i32 = 19;
     pub const SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED: i32 = 20;
     pub const SERVERBOUND_COOKIE_RESPONSE: i32 = 21;
+    pub const SERVERBOUND_EDIT_BOOK: i32 = 24;
     pub const SERVERBOUND_INTERACT: i32 = 26;
     pub const SERVERBOUND_KEEP_ALIVE: i32 = 28;
     pub const SERVERBOUND_MOVE_PLAYER_POS: i32 = 30;

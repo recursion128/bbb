@@ -154,6 +154,13 @@ pub struct RecipeBookSeenRecipeCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EditBook {
+    pub slot: i32,
+    pub pages: Vec<String>,
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RenameItem {
     pub name: String,
 }
@@ -449,6 +456,23 @@ pub fn encode_play_recipe_book_seen_recipe(command: RecipeBookSeenRecipeCommand)
         ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE,
         out.into_inner(),
     )
+}
+
+pub fn encode_play_edit_book(packet: &EditBook) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.slot);
+    out.write_var_i32(packet.pages.len() as i32);
+    for page in &packet.pages {
+        out.write_string(page);
+    }
+    match &packet.title {
+        Some(title) => {
+            out.write_bool(true);
+            out.write_string(title);
+        }
+        None => out.write_bool(false),
+    }
+    (ids::play::SERVERBOUND_EDIT_BOOK, out.into_inner())
 }
 
 pub fn encode_play_rename_item(packet: &RenameItem) -> (i32, Vec<u8>) {

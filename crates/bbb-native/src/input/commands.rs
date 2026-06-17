@@ -2,7 +2,7 @@ use bbb_control::NetCounters;
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
     AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-    ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection,
+    ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook,
     InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
     PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
@@ -102,6 +102,18 @@ pub(crate) fn queue_recipe_book_seen_recipe_command(
             .is_ok()
         {
             counters.recipe_book_seen_recipe_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_edit_book_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: EditBook,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::EditBook(command)).is_ok() {
+            counters.edit_book_commands_queued += 1;
         }
     }
 }
@@ -653,6 +665,23 @@ mod tests {
                 recipe: RecipeDisplayId { index: 321 },
             })
         );
+    }
+
+    #[test]
+    fn queues_edit_book_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = EditBook {
+            slot: 5,
+            pages: vec!["first page".to_string()],
+            title: Some("Field Notes".to_string()),
+        };
+
+        queue_edit_book_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.edit_book_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::EditBook(command));
     }
 
     #[test]

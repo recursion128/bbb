@@ -45,6 +45,11 @@ pub enum NetControlRequest {
     RenameItem {
         name: String,
     },
+    EditBook {
+        slot: i32,
+        pages: Vec<String>,
+        title: Option<String>,
+    },
     SignUpdate {
         x: i32,
         y: i32,

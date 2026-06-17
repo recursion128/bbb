@@ -18,6 +18,9 @@ use crate::types::{
 const SIGN_UPDATE_LINE_COUNT: usize = 4;
 const SIGN_UPDATE_MAX_LINE_CHARS: usize = 384;
 const RENAME_ITEM_MAX_NAME_CHARS: usize = 32767;
+const EDIT_BOOK_MAX_PAGES: usize = 100;
+const EDIT_BOOK_MAX_PAGE_CHARS: usize = 1024;
+const EDIT_BOOK_MAX_TITLE_CHARS: usize = 32;
 
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
     Arc::new(RwLock::new(ControlSnapshot {
@@ -389,6 +392,48 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
             .push(NetControlRequest::RenameItem {
                 name: name.to_string(),
             });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.edit_book" {
+        let Some(slot) = i32_param(&request.params, "slot") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.edit_book requires integer param slot".to_string()),
+            };
+        };
+        let pages = match edit_book_pages_param(&request.params, "pages") {
+            Ok(pages) => pages,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(err),
+                };
+            }
+        };
+        let title = match edit_book_title_param(&request.params, "title") {
+            Ok(title) => title,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(err),
+                };
+            }
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::EditBook { slot, pages, title });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1024,6 +1069,51 @@ fn sign_lines_param(
     parsed
         .try_into()
         .map_err(|_| "net.update_sign requires exactly 4 lines".to_string())
+}
+
+fn edit_book_pages_param(params: &serde_json::Value, key: &str) -> Result<Vec<String>, String> {
+    let pages = params
+        .get(key)
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| "net.edit_book requires array param pages".to_string())?;
+    if pages.len() > EDIT_BOOK_MAX_PAGES {
+        return Err(format!(
+            "net.edit_book requires at most {EDIT_BOOK_MAX_PAGES} pages"
+        ));
+    }
+
+    let mut parsed = Vec::with_capacity(pages.len());
+    for (index, page) in pages.iter().enumerate() {
+        let page = page
+            .as_str()
+            .ok_or_else(|| format!("net.edit_book page {index} must be a string"))?;
+        if page.chars().count() > EDIT_BOOK_MAX_PAGE_CHARS {
+            return Err(format!(
+                "net.edit_book page {index} exceeds {EDIT_BOOK_MAX_PAGE_CHARS} characters"
+            ));
+        }
+        parsed.push(page.to_string());
+    }
+
+    Ok(parsed)
+}
+
+fn edit_book_title_param(params: &serde_json::Value, key: &str) -> Result<Option<String>, String> {
+    let Some(title) = params.get(key) else {
+        return Ok(None);
+    };
+    if title.is_null() {
+        return Ok(None);
+    }
+    let title = title
+        .as_str()
+        .ok_or_else(|| "net.edit_book title must be a string or null".to_string())?;
+    if title.chars().count() > EDIT_BOOK_MAX_TITLE_CHARS {
+        return Err(format!(
+            "net.edit_book title exceeds {EDIT_BOOK_MAX_TITLE_CHARS} characters"
+        ));
+    }
+    Ok(Some(title.to_string()))
 }
 
 fn bool_param(params: &serde_json::Value, key: &str) -> Option<bool> {
@@ -1685,6 +1775,155 @@ mod tests {
         );
         assert!(!oversized_name.ok);
         assert_eq!(snapshot.read().unwrap().net_requests.len(), 1);
+    }
+
+    #[test]
+    fn net_edit_book_queues_unsigned_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params: json!({
+                    "slot": 36,
+                    "pages": ["first page", "second page"],
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::EditBook {
+                slot: 36,
+                pages: vec!["first page".to_string(), "second page".to_string()],
+                title: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn net_edit_book_queues_signed_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params: json!({
+                    "slot": 8,
+                    "pages": ["signed page"],
+                    "title": "Field Notes",
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::EditBook {
+                slot: 8,
+                pages: vec!["signed page".to_string()],
+                title: Some("Field Notes".to_string()),
+            }]
+        );
+
+        let null_title = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params: json!({
+                    "slot": 8,
+                    "pages": ["still unsigned"],
+                    "title": null,
+                }),
+            },
+            &snapshot,
+        );
+        assert!(null_title.ok);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests[1],
+            NetControlRequest::EditBook {
+                slot: 8,
+                pages: vec!["still unsigned".to_string()],
+                title: None,
+            }
+        );
+    }
+
+    #[test]
+    fn net_edit_book_rejects_missing_or_non_array_pages() {
+        let snapshot = shared_snapshot("test");
+        let missing_pages = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params: json!({"slot": 36}),
+            },
+            &snapshot,
+        );
+        let non_array_pages = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params: json!({"slot": 36, "pages": "not pages"}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_pages.ok);
+        assert!(!non_array_pages.ok);
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_edit_book_rejects_too_many_pages() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params: json!({"slot": 36, "pages": vec!["x"; EDIT_BOOK_MAX_PAGES + 1]}),
+            },
+            &snapshot,
+        );
+
+        assert!(!response.ok);
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_edit_book_rejects_oversized_page() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params: json!({
+                    "slot": 36,
+                    "pages": ["x".repeat(EDIT_BOOK_MAX_PAGE_CHARS + 1)],
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(!response.ok);
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_edit_book_rejects_oversized_title() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.edit_book".to_string(),
+                params: json!({
+                    "slot": 36,
+                    "pages": ["page"],
+                    "title": "x".repeat(EDIT_BOOK_MAX_TITLE_CHARS + 1),
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(!response.ok);
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 
     #[test]

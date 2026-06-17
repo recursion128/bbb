@@ -956,6 +956,7 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLICK, 18);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLOSE, 19);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED, 20);
+    assert_eq!(ids::play::SERVERBOUND_EDIT_BOOK, 24);
     assert_eq!(ids::play::SERVERBOUND_RENAME_ITEM, 48);
     assert_eq!(ids::play::SERVERBOUND_SEEN_ADVANCEMENTS, 50);
     assert_eq!(ids::play::SERVERBOUND_SELECT_TRADE, 51);
@@ -1098,6 +1099,42 @@ fn encodes_recipe_book_seen_recipe_packet() {
     assert_eq!(id, ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE);
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 321);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_edit_book_unsigned_packet() {
+    let (id, payload) = encode_play_edit_book(&EditBook {
+        slot: 3,
+        pages: vec!["page 1".to_string(), "page 2".to_string()],
+        title: None,
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_EDIT_BOOK);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 3);
+    assert_eq!(decoder.read_var_i32().unwrap(), 2);
+    assert_eq!(decoder.read_string(1024).unwrap(), "page 1");
+    assert_eq!(decoder.read_string(1024).unwrap(), "page 2");
+    assert!(!decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_edit_book_signed_packet() {
+    let (id, payload) = encode_play_edit_book(&EditBook {
+        slot: 5,
+        pages: vec!["final page".to_string()],
+        title: Some("Field Notes".to_string()),
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_EDIT_BOOK);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 5);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_string(1024).unwrap(), "final page");
+    assert!(decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_string(32).unwrap(), "Field Notes");
     assert!(decoder.is_empty());
 }
 
