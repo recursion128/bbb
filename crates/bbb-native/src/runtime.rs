@@ -125,6 +125,7 @@ pub(crate) fn pump_network_and_terrain(
         net_counters,
         net_commands,
         client_animation_ticks.entity_partial_tick(now),
+        advanced_ticks,
     );
     let local_player = world.local_player();
     renderer.set_hud_health(local_player.health.map(|health| health.health));

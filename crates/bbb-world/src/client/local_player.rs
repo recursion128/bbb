@@ -86,6 +86,12 @@ pub struct LocalPlayerInteractionState {
     #[serde(default)]
     pub destroying_block_face: Option<ProtocolDirection>,
     #[serde(default)]
+    pub destroying_block_progress: u32,
+    #[serde(default)]
+    pub destroying_block_ticks: u32,
+    #[serde(default)]
+    pub destroy_delay_ticks: u8,
+    #[serde(default)]
     pub using_item: bool,
     #[serde(default)]
     pub prediction_sequence: i32,
@@ -361,15 +367,29 @@ impl WorldStore {
     pub fn set_local_destroying_block(&mut self, pos: BlockPos) {
         self.local_player.interaction.destroying_block = Some(pos);
         self.local_player.interaction.destroying_block_face = None;
+        self.local_player.interaction.destroying_block_progress = 0;
+        self.local_player.interaction.destroying_block_ticks = 0;
+        self.local_player.interaction.destroy_delay_ticks = 0;
     }
 
     pub fn set_local_destroying_block_hit(&mut self, pos: BlockPos, face: ProtocolDirection) {
         self.local_player.interaction.destroying_block = Some(pos);
         self.local_player.interaction.destroying_block_face = Some(face);
+        self.local_player.interaction.destroying_block_progress = 0;
+        self.local_player.interaction.destroying_block_ticks = 0;
+        self.local_player.interaction.destroy_delay_ticks = 0;
+    }
+
+    pub fn update_local_destroying_block_face(&mut self, face: ProtocolDirection) {
+        if self.local_player.interaction.destroying_block.is_some() {
+            self.local_player.interaction.destroying_block_face = Some(face);
+        }
     }
 
     pub fn take_local_destroying_block(&mut self) -> Option<BlockPos> {
         self.local_player.interaction.destroying_block_face = None;
+        self.local_player.interaction.destroying_block_progress = 0;
+        self.local_player.interaction.destroying_block_ticks = 0;
         self.local_player.interaction.destroying_block.take()
     }
 
@@ -381,6 +401,8 @@ impl WorldStore {
             .destroying_block_face
             .take()
             .unwrap_or(ProtocolDirection::Down);
+        self.local_player.interaction.destroying_block_progress = 0;
+        self.local_player.interaction.destroying_block_ticks = 0;
         Some((pos, face))
     }
 
@@ -722,6 +744,9 @@ mod tests {
             LocalPlayerInteractionState {
                 destroying_block: Some(BlockPos { x: 1, y: 2, z: 3 }),
                 destroying_block_face: None,
+                destroying_block_progress: 0,
+                destroying_block_ticks: 0,
+                destroy_delay_ticks: 0,
                 using_item: true,
                 prediction_sequence: 1,
             }

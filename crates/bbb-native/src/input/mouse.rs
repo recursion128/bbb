@@ -1,7 +1,7 @@
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{Direction as ProtocolDirection, InteractionHand, PlayerActionKind};
-use bbb_world::WorldStore;
+use bbb_world::{LocalDestroyBlockFinished, WorldStore};
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 
@@ -144,8 +144,12 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     entity_partial_tick: f32,
+    destroy_ticks: u32,
 ) {
     if !input.focused || !input.destroy_block_held {
+        return;
+    }
+    if world.tick_local_destroy_delay() {
         return;
     }
 
@@ -156,7 +160,7 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     );
     match camera_target {
         Some(CrosshairTarget::Block(hit)) => {
-            continue_destroy_block(counters, world, net_commands, hit)
+            continue_destroy_block(counters, world, net_commands, hit, destroy_ticks)
         }
         _ => {
             abort_destroy_block(counters, world, net_commands, ProtocolDirection::Down);
@@ -169,9 +173,16 @@ fn continue_destroy_block(
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     hit: CrosshairBlockHit,
+    destroy_ticks: u32,
 ) {
     if world.local_player().interaction.destroying_block == Some(hit.pos) {
-        world.set_local_destroying_block_hit(hit.pos, hit.face);
+        world.update_local_destroying_block_face(hit.face);
+        for _ in 0..destroy_ticks {
+            if let Some(finished) = world.advance_local_destroying_block_tick() {
+                stop_destroy_block(counters, net_commands, finished);
+                break;
+            }
+        }
         return;
     }
 
@@ -203,7 +214,26 @@ fn start_destroy_block(
         hit.face,
         sequence,
     );
+    if local_player_instabuild(world) || world.local_destroy_block_is_immediate(hit.pos) {
+        world.set_local_destroy_delay_ticks(5);
+        return;
+    }
     world.set_local_destroying_block_hit(hit.pos, hit.face);
+}
+
+fn stop_destroy_block(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    finished: LocalDestroyBlockFinished,
+) {
+    queue_player_action_command(
+        counters,
+        net_commands,
+        PlayerActionKind::StopDestroyBlock,
+        finished.pos,
+        finished.face,
+        finished.sequence,
+    );
 }
 
 fn abort_destroy_block(
@@ -222,6 +252,13 @@ fn abort_destroy_block(
             0,
         );
     }
+}
+
+fn local_player_instabuild(world: &WorldStore) -> bool {
+    world
+        .local_player()
+        .abilities
+        .is_some_and(|abilities| abilities.instabuild)
 }
 
 pub(crate) fn handle_mouse_wheel(
@@ -289,7 +326,8 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AttackEntity, BlockHitResult as ProtocolBlockHitResult,
         BlockPos as ProtocolBlockPos, BlockUpdate, InteractEntity, PickItemFromBlock,
-        PickItemFromEntity, PlayerAction, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+        PickItemFromEntity, PlayerAbilities, PlayerAction, UseItem, UseItemOn,
+        Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
@@ -541,6 +579,7 @@ mod tests {
             &mut counters,
             &commands,
             1.0,
+            0,
         );
 
         assert_eq!(
@@ -591,6 +630,7 @@ mod tests {
             &mut counters,
             &commands,
             1.0,
+            0,
         );
 
         assert!(input.destroy_block_held);
@@ -605,6 +645,121 @@ mod tests {
                 direction: ProtocolDirection::Down,
                 sequence: 0,
             })
+        );
+    }
+
+    #[test]
+    fn held_left_mouse_same_target_finishes_destroy_with_stop() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            18,
+        );
+
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(
+            world.local_player().interaction.destroying_block_progress,
+            0
+        );
+        assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
+        assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StopDestroyBlock,
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                direction: ProtocolDirection::North,
+                sequence: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn held_left_mouse_same_target_advances_destroy_only_on_client_ticks() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            0,
+        );
+
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_progress,
+            0
+        );
+        assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn creative_left_mouse_press_queues_start_without_destroy_state() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(input.destroy_block_held);
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                direction: ProtocolDirection::North,
+                sequence: 1,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
         );
     }
 

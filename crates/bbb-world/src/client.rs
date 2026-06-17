@@ -9,6 +9,7 @@ mod features;
 mod hud;
 mod inventory;
 mod local_player;
+mod local_player_destroy;
 mod local_player_movement;
 mod player_info;
 mod scoreboard;
