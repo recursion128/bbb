@@ -6,7 +6,9 @@ use bbb_pack::{
     ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemModelCatalog, ItemModelDefinition,
     ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage, TerrainColorMaps,
 };
-use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
+use bbb_protocol::packets::{
+    DataComponentPatchSummary, ItemStackSummary, ItemStackTemplateSummary,
+};
 
 mod icon_model;
 
@@ -16,6 +18,7 @@ use icon_model::{
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
 const ITEM_GENERATED_MAX_LAYERS: usize = 5;
+const ITEM_ICON_RECURSION_LIMIT: usize = 16;
 const MISSING_TEXTURE_ID: &str = "minecraft:missingno";
 const ITEM_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
@@ -235,18 +238,15 @@ impl NativeItemRuntime {
             .item_icon_models
             .get(item_id)
             .map(|model| {
-                model.icon_layers(
+                self.icon_layers_for_model(
+                    model,
                     component_patch,
                     default_max_damage,
                     bundle_selected_item_index,
+                    0,
                 )
             })
-            .unwrap_or_else(|| {
-                vec![ItemIconTextureLayer {
-                    texture_index: self.textures.fallback_index(),
-                    tint: ItemIconTint::Static(ITEM_TINT_WHITE),
-                }]
-            });
+            .unwrap_or_else(|| self.fallback_icon_texture_layers());
         let layers = layers
             .into_iter()
             .filter_map(|layer| {
@@ -259,6 +259,88 @@ impl NativeItemRuntime {
             })
             .collect::<Vec<_>>();
         (!layers.is_empty()).then_some(ItemAtlasIcon { layers })
+    }
+
+    fn icon_layers_for_model(
+        &self,
+        model: &ItemIconModel,
+        component_patch: Option<&DataComponentPatchSummary>,
+        default_max_damage: Option<i32>,
+        bundle_selected_item_index: Option<i32>,
+        depth: usize,
+    ) -> Vec<ItemIconTextureLayer> {
+        if depth >= ITEM_ICON_RECURSION_LIMIT {
+            return Vec::new();
+        }
+        let mut resolve_bundle_selected_item = || {
+            self.bundle_selected_item_layers(component_patch, bundle_selected_item_index, depth + 1)
+        };
+        model.icon_layers_with_bundle_resolver(
+            component_patch,
+            default_max_damage,
+            bundle_selected_item_index,
+            &mut resolve_bundle_selected_item,
+        )
+    }
+
+    fn bundle_selected_item_layers(
+        &self,
+        component_patch: Option<&DataComponentPatchSummary>,
+        bundle_selected_item_index: Option<i32>,
+        depth: usize,
+    ) -> Vec<ItemIconTextureLayer> {
+        let Some(selected_item_index) = bundle_selected_item_index.filter(|index| *index >= 0)
+        else {
+            return Vec::new();
+        };
+        let Ok(selected_item_index) = usize::try_from(selected_item_index) else {
+            return Vec::new();
+        };
+        let Some(template) =
+            component_patch.and_then(|patch| patch.bundle_contents_items.get(selected_item_index))
+        else {
+            return Vec::new();
+        };
+        self.item_template_layers(template, depth)
+    }
+
+    fn item_template_layers(
+        &self,
+        template: &ItemStackTemplateSummary,
+        depth: usize,
+    ) -> Vec<ItemIconTextureLayer> {
+        let Some(item_id) = self
+            .registry
+            .as_ref()
+            .and_then(|registry| registry.resource_id(template.item_id))
+        else {
+            return Vec::new();
+        };
+        let default_max_damage = self
+            .registry
+            .as_ref()
+            .and_then(|registry| registry.max_damage(item_id));
+        let layers = self
+            .item_icon_models
+            .get(item_id)
+            .map(|model| {
+                self.icon_layers_for_model(
+                    model,
+                    Some(&template.component_patch),
+                    default_max_damage,
+                    None,
+                    depth,
+                )
+            })
+            .unwrap_or_else(|| self.fallback_icon_texture_layers());
+        resolve_item_icon_texture_layer_tints(layers, Some(&template.component_patch))
+    }
+
+    fn fallback_icon_texture_layers(&self) -> Vec<ItemIconTextureLayer> {
+        vec![ItemIconTextureLayer {
+            texture_index: self.textures.fallback_index(),
+            tint: ItemIconTint::Static(ITEM_TINT_WHITE),
+        }]
     }
 }
 
@@ -515,6 +597,19 @@ fn item_icon_tint_color(
         ItemIconTint::Static(color) => *color,
         ItemIconTint::Source(source) => item_tint_source_color(source, component_patch),
     }
+}
+
+fn resolve_item_icon_texture_layer_tints(
+    layers: Vec<ItemIconTextureLayer>,
+    component_patch: Option<&DataComponentPatchSummary>,
+) -> Vec<ItemIconTextureLayer> {
+    layers
+        .into_iter()
+        .map(|layer| ItemIconTextureLayer {
+            texture_index: layer.texture_index,
+            tint: ItemIconTint::Static(item_icon_tint_color(&layer.tint, component_patch)),
+        })
+        .collect()
 }
 
 fn item_tint_source_color(
@@ -1134,10 +1229,19 @@ mod tests {
             .textures
             .texture_uv_rect(runtime.texture_index("minecraft:item/bundle_open_front"))
             .unwrap();
+        let apple_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/apple"))
+            .unwrap();
         let bundle_stack = ItemStackSummary {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
+                bundle_contents_items: vec![ItemStackTemplateSummary {
+                    item_id: 1,
+                    count: 1,
+                    component_patch: DataComponentPatchSummary::default(),
+                }],
                 bundle_contents_item_count: Some(1),
                 ..DataComponentPatchSummary::default()
             },
@@ -1165,7 +1269,7 @@ mod tests {
                 .iter()
                 .map(|layer| layer.uv)
                 .collect::<Vec<_>>(),
-            vec![open_back_uv, open_front_uv]
+            vec![open_back_uv, apple_uv, open_front_uv]
         );
 
         let out_of_bounds_icon = runtime
@@ -1443,7 +1547,7 @@ mod tests {
     fn write_bundle_selected_item_fixture(root: &Path) {
         let assets = assets_dir(root);
         write_item_atlases(&assets);
-        write_single_item_registry_source(root, "bundle");
+        write_item_registry_source(root, &["bundle", "apple"]);
         write_json(
             &assets.join("items").join("bundle.json"),
             r#"{
@@ -1489,10 +1593,22 @@ mod tests {
         write_flat_item_model_and_texture(&assets, "bundle", &[40, 80, 120, 255]);
         write_flat_item_model_and_texture(&assets, "bundle_open_back", &[120, 80, 40, 255]);
         write_flat_item_model_and_texture(&assets, "bundle_open_front", &[80, 120, 40, 255]);
+        write_flat_item_model_and_texture(&assets, "apple", &[200, 40, 40, 255]);
     }
 
     fn write_single_item_registry_source(root: &Path, item_id: &str) {
-        let constant = item_id.to_ascii_uppercase();
+        write_item_registry_source(root, &[item_id]);
+    }
+
+    fn write_item_registry_source(root: &Path, item_ids: &[&str]) {
+        let declarations = item_ids
+            .iter()
+            .map(|item_id| {
+                let constant = item_id.to_ascii_uppercase();
+                format!("public static final Item {constant} = registerItem(\"{item_id}\");")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
         write_json(
             &root
                 .join("sources")
@@ -1504,8 +1620,8 @@ mod tests {
                 .join("Items.java"),
             &format!(
                 r#"public class Items {{
-                public static final Item {constant} = registerItem("{item_id}");
-            }}"#
+                {declarations}
+            }}"#,
             ),
         );
     }

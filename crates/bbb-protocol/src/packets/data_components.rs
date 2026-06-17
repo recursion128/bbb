@@ -48,7 +48,16 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub firework_explosion_colors: Vec<i32>,
     #[serde(default)]
+    pub bundle_contents_items: Vec<ItemStackTemplateSummary>,
+    #[serde(default)]
     pub bundle_contents_item_count: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemStackTemplateSummary {
+    pub item_id: i32,
+    pub count: i32,
+    pub component_patch: DataComponentPatchSummary,
 }
 
 pub(crate) fn decode_data_component_patch_summary(
@@ -127,10 +136,9 @@ fn decode_typed_data_component_patch_summary(
                 summary.map_color = Some(decoder.read_i32()?);
             }
             50 => {
-                summary.bundle_contents_item_count = Some(decode_item_stack_template_list(
-                    decoder,
-                    MAX_DATA_COMPONENT_LIST_ITEMS,
-                )?);
+                summary.bundle_contents_items =
+                    decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+                summary.bundle_contents_item_count = Some(summary.bundle_contents_items.len());
             }
             51 => {
                 summary.potion_custom_color = decode_potion_contents(decoder)?;
@@ -230,7 +238,7 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         }
         // charged_projectiles and bundle_contents.
         49 | 50 => {
-            decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+            let _ = decode_item_stack_template_list(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
         }
         // potion_contents.
         51 => {
@@ -551,10 +559,11 @@ fn decode_consume_effect(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_use_remainder(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_item_stack_template(decoder)
+    let _ = decode_item_stack_template(decoder)?;
+    Ok(())
 }
 
-fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<ItemStackTemplateSummary> {
     let item_id = decoder.read_var_i32()?;
     if item_id < 0 {
         return Err(ProtocolError::InvalidData(format!(
@@ -567,21 +576,29 @@ fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
             "invalid item stack template count {count}"
         )));
     }
-    decode_data_component_patch_summary(decoder)?;
-    Ok(())
+    let component_patch = decode_data_component_patch_summary(decoder)?;
+    Ok(ItemStackTemplateSummary {
+        item_id,
+        count,
+        component_patch,
+    })
 }
 
-fn decode_item_stack_template_list(decoder: &mut Decoder<'_>, max: usize) -> Result<usize> {
+fn decode_item_stack_template_list(
+    decoder: &mut Decoder<'_>,
+    max: usize,
+) -> Result<Vec<ItemStackTemplateSummary>> {
     let count = read_bounded_len(decoder, max)?;
+    let mut items = Vec::with_capacity(count);
     for _ in 0..count {
-        decode_item_stack_template(decoder)?;
+        items.push(decode_item_stack_template(decoder)?);
     }
-    Ok(count)
+    Ok(items)
 }
 
 fn decode_optional_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
     if decoder.read_bool()? {
-        decode_item_stack_template(decoder)?;
+        let _ = decode_item_stack_template(decoder)?;
     }
     Ok(())
 }
@@ -1597,6 +1614,11 @@ mod tests {
                 map_color: Some(0x445566),
                 potion_custom_color: Some(0x778899),
                 firework_explosion_colors: vec![0x010203, 0x040506],
+                bundle_contents_items: vec![ItemStackTemplateSummary {
+                    item_id: 52,
+                    count: 3,
+                    component_patch: DataComponentPatchSummary::default(),
+                }],
                 bundle_contents_item_count: Some(1),
                 ..DataComponentPatchSummary::default()
             }
@@ -1612,8 +1634,21 @@ mod tests {
 
         payload.write_var_i32(50);
         payload.write_var_i32(2);
-        write_item_stack_template(&mut payload, 12, 1);
-        write_item_stack_template(&mut payload, 34, 3);
+        write_item_stack_template_with_patch(&mut payload, 12, 1, |payload| {
+            payload.write_var_i32(1);
+            payload.write_var_i32(0);
+            payload.write_var_i32(44);
+            payload.write_i32(0x224466);
+        });
+        write_item_stack_template_with_patch(&mut payload, 34, 3, |payload| {
+            payload.write_var_i32(2);
+            payload.write_var_i32(1);
+            payload.write_var_i32(2);
+            payload.write_var_i32(512);
+            payload.write_var_i32(3);
+            payload.write_var_i32(17);
+            payload.write_var_i32(45);
+        });
 
         let payload = payload.into_inner();
         let mut decoder = Decoder::new(&payload);
@@ -1625,6 +1660,31 @@ mod tests {
                 added: 1,
                 added_type_ids: vec![50],
                 removed_type_ids: Vec::new(),
+                bundle_contents_items: vec![
+                    ItemStackTemplateSummary {
+                        item_id: 12,
+                        count: 1,
+                        component_patch: DataComponentPatchSummary {
+                            added: 1,
+                            added_type_ids: vec![44],
+                            removed_type_ids: Vec::new(),
+                            dyed_color: Some(0x224466),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    },
+                    ItemStackTemplateSummary {
+                        item_id: 34,
+                        count: 3,
+                        component_patch: DataComponentPatchSummary {
+                            added: 2,
+                            added_type_ids: vec![2, 3],
+                            removed_type_ids: vec![45],
+                            max_damage: Some(512),
+                            damage: Some(17),
+                            ..DataComponentPatchSummary::default()
+                        },
+                    },
+                ],
                 bundle_contents_item_count: Some(2),
                 ..DataComponentPatchSummary::default()
             }
@@ -1766,10 +1826,21 @@ mod tests {
     }
 
     fn write_item_stack_template(payload: &mut Encoder, item_id: i32, count: i32) {
+        write_item_stack_template_with_patch(payload, item_id, count, |payload| {
+            payload.write_var_i32(0);
+            payload.write_var_i32(0);
+        });
+    }
+
+    fn write_item_stack_template_with_patch(
+        payload: &mut Encoder,
+        item_id: i32,
+        count: i32,
+        write_patch: impl FnOnce(&mut Encoder),
+    ) {
         payload.write_var_i32(item_id);
         payload.write_var_i32(count);
-        payload.write_var_i32(0);
-        payload.write_var_i32(0);
+        write_patch(payload);
     }
 
     fn write_empty_block_predicate(payload: &mut Encoder) {

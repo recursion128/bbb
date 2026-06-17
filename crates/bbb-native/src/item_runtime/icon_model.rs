@@ -28,6 +28,7 @@ const FIREWORKS_COMPONENT_ID: i32 = 69;
 pub(super) enum ItemIconModelRef {
     Empty,
     Layers(Vec<ItemIconTextureRef>),
+    BundleSelectedItem,
     Condition {
         property: ItemModelProperty,
         on_true: Box<ItemIconModelRef>,
@@ -41,6 +42,7 @@ impl ItemIconModelRef {
         match self {
             Self::Empty => true,
             Self::Layers(layers) => layers.is_empty(),
+            Self::BundleSelectedItem => false,
             Self::Condition {
                 on_true, on_false, ..
             } => on_true.is_empty() && on_false.is_empty(),
@@ -51,6 +53,7 @@ impl ItemIconModelRef {
     pub(super) fn into_indexed(self, textures: &ItemTextureState) -> ItemIconModel {
         match self {
             Self::Empty => ItemIconModel::Empty,
+            Self::BundleSelectedItem => ItemIconModel::BundleSelectedItem,
             Self::Layers(layers) => ItemIconModel::Layers(
                 layers
                     .into_iter()
@@ -83,6 +86,7 @@ impl ItemIconModelRef {
 pub(super) enum ItemIconModel {
     Empty,
     Layers(Vec<ItemIconTextureLayer>),
+    BundleSelectedItem,
     Condition {
         property: ItemModelProperty,
         on_true: Box<ItemIconModel>,
@@ -98,8 +102,25 @@ impl ItemIconModel {
         default_max_damage: Option<i32>,
         bundle_selected_item_index: Option<i32>,
     ) -> Vec<ItemIconTextureLayer> {
+        let mut no_bundle_selected_item = || Vec::new();
+        self.icon_layers_with_bundle_resolver(
+            component_patch,
+            default_max_damage,
+            bundle_selected_item_index,
+            &mut no_bundle_selected_item,
+        )
+    }
+
+    pub(super) fn icon_layers_with_bundle_resolver(
+        &self,
+        component_patch: Option<&DataComponentPatchSummary>,
+        default_max_damage: Option<i32>,
+        bundle_selected_item_index: Option<i32>,
+        resolve_bundle_selected_item: &mut impl FnMut() -> Vec<ItemIconTextureLayer>,
+    ) -> Vec<ItemIconTextureLayer> {
         match self {
             Self::Empty => Vec::new(),
+            Self::BundleSelectedItem => resolve_bundle_selected_item(),
             Self::Layers(layers) => layers.clone(),
             Self::Condition {
                 property,
@@ -139,19 +160,21 @@ impl ItemIconModel {
                     }
                     _ => on_false,
                 };
-                branch.icon_layers(
+                branch.icon_layers_with_bundle_resolver(
                     component_patch,
                     default_max_damage,
                     bundle_selected_item_index,
+                    resolve_bundle_selected_item,
                 )
             }
             Self::Composite(models) => models
                 .iter()
                 .flat_map(|model| {
-                    model.icon_layers(
+                    model.icon_layers_with_bundle_resolver(
                         component_patch,
                         default_max_damage,
                         bundle_selected_item_index,
+                        resolve_bundle_selected_item,
                     )
                 })
                 .collect(),
@@ -163,8 +186,8 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
     match model {
         ItemModelDefinition::Empty
         | ItemModelDefinition::Model { .. }
-        | ItemModelDefinition::Special { .. }
-        | ItemModelDefinition::BundleSelectedItem => false,
+        | ItemModelDefinition::Special { .. } => false,
+        ItemModelDefinition::BundleSelectedItem => true,
         ItemModelDefinition::Condition {
             property,
             on_true,
@@ -214,9 +237,8 @@ pub(super) fn item_icon_model_ref_for_definition(
     colormaps: Option<&TerrainColorMaps>,
 ) -> ItemIconModelRef {
     match model {
-        ItemModelDefinition::Empty | ItemModelDefinition::BundleSelectedItem => {
-            ItemIconModelRef::Empty
-        }
+        ItemModelDefinition::Empty => ItemIconModelRef::Empty,
+        ItemModelDefinition::BundleSelectedItem => ItemIconModelRef::BundleSelectedItem,
         ItemModelDefinition::Model { model, .. } => {
             item_icon_model_ref_for_model_id(model, cuboid_models, model_tints, colormaps)
         }
@@ -334,9 +356,12 @@ fn item_stack_has_selected_bundle_item(
     let Ok(selected_item_index) = usize::try_from(selected_item_index) else {
         return false;
     };
-    component_patch
-        .and_then(|patch| patch.bundle_contents_item_count)
-        .is_some_and(|count| selected_item_index < count)
+    component_patch.is_some_and(|patch| {
+        selected_item_index < patch.bundle_contents_items.len()
+            || patch
+                .bundle_contents_item_count
+                .is_some_and(|count| selected_item_index < count)
+    })
 }
 
 fn item_stack_next_damage_will_break(
