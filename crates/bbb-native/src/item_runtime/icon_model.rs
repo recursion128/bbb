@@ -101,6 +101,11 @@ impl ItemIconModel {
                     {
                         on_true
                     }
+                    ItemModelPropertyKind::Damaged
+                        if item_stack_is_damaged(component_patch, default_max_damage) =>
+                    {
+                        on_true
+                    }
                     _ => on_false,
                 };
                 branch.icon_layers(component_patch, default_max_damage)
@@ -113,7 +118,7 @@ impl ItemIconModel {
     }
 }
 
-pub(super) fn contains_broken_condition(model: &ItemModelDefinition) -> bool {
+pub(super) fn contains_damage_condition(model: &ItemModelDefinition) -> bool {
     match model {
         ItemModelDefinition::Empty
         | ItemModelDefinition::Model { .. }
@@ -125,28 +130,30 @@ pub(super) fn contains_broken_condition(model: &ItemModelDefinition) -> bool {
             on_false,
             ..
         } => {
-            property.kind() == ItemModelPropertyKind::Broken
-                || contains_broken_condition(on_true)
-                || contains_broken_condition(on_false)
+            matches!(
+                property.kind(),
+                ItemModelPropertyKind::Broken | ItemModelPropertyKind::Damaged
+            ) || contains_damage_condition(on_true)
+                || contains_damage_condition(on_false)
         }
         ItemModelDefinition::RangeDispatch {
             entries, fallback, ..
         } => {
             entries
                 .iter()
-                .any(|entry| contains_broken_condition(&entry.model))
-                || fallback.as_deref().is_some_and(contains_broken_condition)
+                .any(|entry| contains_damage_condition(&entry.model))
+                || fallback.as_deref().is_some_and(contains_damage_condition)
         }
         ItemModelDefinition::Select {
             cases, fallback, ..
         } => {
             cases
                 .iter()
-                .any(|case| contains_broken_condition(&case.model))
-                || fallback.as_deref().is_some_and(contains_broken_condition)
+                .any(|case| contains_damage_condition(&case.model))
+                || fallback.as_deref().is_some_and(contains_damage_condition)
         }
         ItemModelDefinition::Composite { models, .. } => {
-            models.iter().any(contains_broken_condition)
+            models.iter().any(contains_damage_condition)
         }
     }
 }
@@ -177,9 +184,12 @@ pub(super) fn item_icon_model_ref_for_definition(
                 item_icon_model_ref_for_definition(on_true, cuboid_models, model_tints, colormaps);
             let on_false =
                 item_icon_model_ref_for_definition(on_false, cuboid_models, model_tints, colormaps);
-            if property.kind() == ItemModelPropertyKind::Broken {
+            if matches!(
+                property.kind(),
+                ItemModelPropertyKind::Broken | ItemModelPropertyKind::Damaged
+            ) {
                 ItemIconModelRef::Condition {
-                    kind: ItemModelPropertyKind::Broken,
+                    kind: property.kind(),
                     on_true: Box::new(on_true),
                     on_false: Box::new(on_false),
                 }
@@ -245,28 +255,41 @@ fn item_stack_next_damage_will_break(
     component_patch: Option<&DataComponentPatchSummary>,
     default_max_damage: Option<i32>,
 ) -> bool {
-    let Some(component_patch) = component_patch else {
-        return false;
-    };
+    effective_damage_state(component_patch, default_max_damage)
+        .is_some_and(|(damage, max_damage)| damage >= max_damage - 1)
+}
+
+fn item_stack_is_damaged(
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+) -> bool {
+    effective_damage_state(component_patch, default_max_damage)
+        .is_some_and(|(damage, _)| damage > 0)
+}
+
+fn effective_damage_state(
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+) -> Option<(i32, i32)> {
+    let component_patch = component_patch?;
     if component_patch.unbreakable && !component_patch.removed_type_ids.contains(&4) {
-        return false;
+        return None;
     }
     if component_patch.removed_type_ids.contains(&2) {
-        return false;
+        return None;
     }
-    let Some(max_damage) = component_patch
+    let max_damage = component_patch
         .max_damage
         .or(default_max_damage)
-        .filter(|max_damage| *max_damage > 0)
-    else {
-        return false;
-    };
+        .filter(|max_damage| *max_damage > 0)?;
     if component_patch.removed_type_ids.contains(&3) {
-        return false;
+        return None;
     }
     if component_patch.damage.is_none() && default_max_damage.is_none() {
-        return false;
+        return None;
     }
-    let damage = component_patch.damage.unwrap_or(0);
-    damage.clamp(0, max_damage) >= max_damage - 1
+    Some((
+        component_patch.damage.unwrap_or(0).clamp(0, max_damage),
+        max_damage,
+    ))
 }

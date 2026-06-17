@@ -238,6 +238,7 @@ pub struct ItemModelProperty {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ItemModelPropertyKind {
     Broken,
+    Damaged,
     Other,
 }
 
@@ -253,6 +254,7 @@ impl ItemModelProperty {
     pub fn kind(&self) -> ItemModelPropertyKind {
         match self.property_type.as_str() {
             "minecraft:broken" => ItemModelPropertyKind::Broken,
+            "minecraft:damaged" => ItemModelPropertyKind::Damaged,
             _ => ItemModelPropertyKind::Other,
         }
     }
@@ -1533,6 +1535,43 @@ mod tests {
                 "minecraft:item/elytra_broken".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_damaged_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:damaged",
+                "on_false": {
+                  "type": "minecraft:empty"
+                },
+                "on_true": {
+                  "type": "minecraft:empty"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a damaged condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:damaged");
+        assert_eq!(property.kind(), ItemModelPropertyKind::Damaged);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:damaged"})
+        );
+        assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
+        assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
     }
 
     #[test]

@@ -11,7 +11,7 @@ use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
 mod icon_model;
 
 use icon_model::{
-    contains_broken_condition, item_icon_model_ref_for_definition, ItemIconModel, ItemIconModelRef,
+    contains_damage_condition, item_icon_model_ref_for_definition, ItemIconModel, ItemIconModelRef,
 };
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
@@ -84,7 +84,7 @@ impl NativeItemRuntime {
             resolved_model_count += models.models.len();
             texture_ids.extend(models.texture_ids());
             let model_tints = model_tints_for_definition(&definition.model);
-            let icon_model = if contains_broken_condition(&definition.model) {
+            let icon_model = if contains_damage_condition(&definition.model) {
                 item_icon_model_ref_for_definition(
                     &definition.model,
                     &cuboid_models,
@@ -808,74 +808,10 @@ mod tests {
     #[test]
     fn native_item_runtime_selects_broken_condition_icon_from_stack_damage() {
         let root = unique_temp_dir("item-runtime-broken");
-        let assets = assets_dir(&root);
-        write_item_atlases(&assets);
-        write_json(
-            &root
-                .join("sources")
-                .join(bbb_pack::MC_VERSION)
-                .join("net")
-                .join("minecraft")
-                .join("world")
-                .join("item")
-                .join("Items.java"),
-            r#"public class Items {
-                public static final Item ELYTRA = registerItem(
-                    "elytra",
-                    Item::new,
-                    new Item.Properties().durability(432)
-                );
-            }"#,
-        );
-        write_json(
-            &assets.join("items").join("elytra.json"),
-            r#"{
-                "model": {
-                    "type": "minecraft:condition",
-                    "property": "minecraft:broken",
-                    "on_false": {
-                        "type": "minecraft:model",
-                        "model": "minecraft:item/elytra"
-                    },
-                    "on_true": {
-                        "type": "minecraft:model",
-                        "model": "minecraft:item/elytra_broken"
-                    }
-                }
-            }"#,
-        );
-        write_json(
-            &assets.join("models").join("item").join("elytra.json"),
-            r#"{
-                "textures": {
-                    "layer0": "minecraft:item/elytra"
-                }
-            }"#,
-        );
-        write_json(
-            &assets
-                .join("models")
-                .join("item")
-                .join("elytra_broken.json"),
-            r#"{
-                "textures": {
-                    "layer0": "minecraft:item/elytra_broken"
-                }
-            }"#,
-        );
-        write_test_rgba_png(
-            &assets.join("textures").join("item").join("elytra.png"),
-            1,
-            1,
-            &[40, 80, 120, 255],
-        );
-        write_test_rgba_png(
-            &assets
-                .join("textures")
-                .join("item")
-                .join("elytra_broken.png"),
-            1,
-            1,
+        write_elytra_damage_condition_fixture(
+            &root,
+            "minecraft:broken",
+            "elytra_broken",
             &[120, 80, 40, 255],
         );
 
@@ -957,6 +893,81 @@ mod tests {
                 item_id: Some(0),
                 count: 1,
                 component_patch: DataComponentPatchSummary {
+                    removed_type_ids: vec![3],
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(removed_damage_icon.layers[0].uv, normal_uv);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_item_runtime_selects_damaged_condition_icon_from_stack_damage() {
+        let root = unique_temp_dir("item-runtime-damaged");
+        write_elytra_damage_condition_fixture(
+            &root,
+            "minecraft:damaged",
+            "elytra_damaged",
+            &[80, 120, 40, 255],
+        );
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let normal_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/elytra"))
+            .unwrap();
+        let damaged_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/elytra_damaged"))
+            .unwrap();
+
+        assert_eq!(
+            runtime.icon_texture_index_for_protocol_id(0),
+            Some(runtime.texture_index("minecraft:item/elytra"))
+        );
+
+        let pristine_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            })
+            .unwrap();
+        assert_eq!(pristine_icon.layers[0].uv, normal_uv);
+
+        let damaged_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    damage: Some(1),
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(damaged_icon.layers[0].uv, damaged_uv);
+
+        let unbreakable_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    damage: Some(1),
+                    unbreakable: true,
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(unbreakable_icon.layers[0].uv, normal_uv);
+
+        let removed_damage_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    damage: Some(1),
                     removed_type_ids: vec![3],
                     ..DataComponentPatchSummary::default()
                 },
@@ -1057,6 +1068,88 @@ mod tests {
                     }
                 ]
             }"#,
+        );
+    }
+
+    fn write_elytra_damage_condition_fixture(
+        root: &Path,
+        property: &str,
+        true_model: &str,
+        true_color: &[u8],
+    ) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item ELYTRA = registerItem(
+                    "elytra",
+                    Item::new,
+                    new Item.Properties().durability(432)
+                );
+            }"#,
+        );
+        write_json(
+            &assets.join("items").join("elytra.json"),
+            &format!(
+                r#"{{
+                "model": {{
+                    "type": "minecraft:condition",
+                    "property": "{property}",
+                    "on_false": {{
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/elytra"
+                    }},
+                    "on_true": {{
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/{true_model}"
+                    }}
+                }}
+            }}"#
+            ),
+        );
+        write_json(
+            &assets.join("models").join("item").join("elytra.json"),
+            r#"{
+                "textures": {
+                    "layer0": "minecraft:item/elytra"
+                }
+            }"#,
+        );
+        write_json(
+            &assets
+                .join("models")
+                .join("item")
+                .join(format!("{true_model}.json")),
+            &format!(
+                r#"{{
+                "textures": {{
+                    "layer0": "minecraft:item/{true_model}"
+                }}
+            }}"#
+            ),
+        );
+        write_test_rgba_png(
+            &assets.join("textures").join("item").join("elytra.png"),
+            1,
+            1,
+            &[40, 80, 120, 255],
+        );
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("item")
+                .join(format!("{true_model}.png")),
+            1,
+            1,
+            true_color,
         );
     }
 
