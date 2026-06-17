@@ -31,6 +31,7 @@ impl Renderer {
         let mut block_destroy_overlay_draw_calls = 0;
         let mut particle_draw_calls = 0;
         let mut selection_draw_calls = 0;
+        let mut entity_scene_draw_calls = 0;
         let mut entity_target_draw_calls = 0;
         let mut hud_draw_calls = 0;
         let mut pipeline_switches = 0;
@@ -207,7 +208,10 @@ impl Renderer {
             }
         }
 
-        if self.selection_outline.is_some() || self.entity_target_outline.is_some() {
+        if self.selection_outline.is_some()
+            || self.entity_scene_outline.is_some()
+            || self.entity_target_outline.is_some()
+        {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("bbb-native-selection-outline-pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -236,6 +240,11 @@ impl Renderer {
                 pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
                 pass.draw(0..outline.vertex_count, 0..1);
                 selection_draw_calls += 1;
+            }
+            if let Some(outline) = &self.entity_scene_outline {
+                pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
+                pass.draw(0..outline.vertex_count, 0..1);
+                entity_scene_draw_calls += 1;
             }
             if let Some(outline) = &self.entity_target_outline {
                 pass.set_vertex_buffer(0, outline.vertex_buffer.slice(..));
@@ -300,6 +309,7 @@ impl Renderer {
         self.counters.block_destroy_overlay_draw_calls = block_destroy_overlay_draw_calls;
         self.counters.particle_draw_calls = particle_draw_calls;
         self.counters.selection_draw_calls = selection_draw_calls;
+        self.counters.entity_scene_draw_calls = entity_scene_draw_calls;
         self.counters.entity_target_draw_calls = entity_target_draw_calls;
         self.counters.hud_draw_calls = hud_draw_calls;
         self.counters.draw_calls = opaque_draw_calls
@@ -308,6 +318,7 @@ impl Renderer {
             + block_destroy_overlay_draw_calls
             + particle_draw_calls
             + selection_draw_calls
+            + entity_scene_draw_calls
             + entity_target_draw_calls
             + hud_draw_calls;
         self.counters.pipeline_switches = pipeline_switches;

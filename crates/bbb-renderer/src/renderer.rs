@@ -56,6 +56,7 @@ pub struct Renderer {
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) particle_atlas: Option<ParticleAtlasGpu>,
     pub(super) selection_outline: Option<SelectionOutlineGpu>,
+    pub(super) entity_scene_outline: Option<SelectionOutlineGpu>,
     pub(super) entity_target_outline: Option<SelectionOutlineGpu>,
     pub(super) hud_crosshair: Option<HudSpriteGpu>,
     pub(super) hud_hotbar: Option<HudSpriteGpu>,
@@ -203,6 +204,7 @@ impl Renderer {
             block_destroy_overlays: None,
             particle_atlas: None,
             selection_outline: None,
+            entity_scene_outline: None,
             entity_target_outline: None,
             hud_crosshair: None,
             hud_hotbar: None,
@@ -266,6 +268,21 @@ impl Renderer {
             return;
         }
         self.selection_outline =
+            outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
+    }
+
+    pub fn set_entity_scene_outline(&mut self, outline: Option<SelectionOutline>) {
+        let entity_scene_boxes = outline.as_ref().map_or(0, |outline| outline.boxes.len());
+        self.counters.entity_scene_boxes = entity_scene_boxes;
+        if self
+            .entity_scene_outline
+            .as_ref()
+            .map(|selection| &selection.outline)
+            == outline.as_ref()
+        {
+            return;
+        }
+        self.entity_scene_outline =
             outline.map(|outline| create_selection_outline_gpu(&self.device, outline));
     }
 

@@ -18,6 +18,7 @@ use crate::{
     camera_pose::camera_pose_from_world,
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
+    entity_scene::entity_scene_outline_from_world_at_partial_tick,
     input::{advance_destroying_block_at_partial_tick, advance_player_input, ClientInputState},
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
@@ -143,6 +144,10 @@ pub(crate) fn pump_network_and_terrain(
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));
+    renderer.set_entity_scene_outline(entity_scene_outline_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+    ));
     renderer.set_entity_target_outline(entity_target_outline_from_camera_at_partial_tick(
         world,
         camera_pose,

@@ -316,6 +316,14 @@ Good uses:
 - Expiring effects: query entities with `EntityMobEffects`.
 - Rendering extraction: query the exact renderable component tuple.
 
+Renderer-facing entity extraction should read canonical `WorldStore`
+projections instead of exposing `hecs` handles. The current basic visibility
+path lets `bbb-native` convert `WorldStore::entity_pick_targets_at_partial_tick`
+into a renderer-owned bounds outline, skipping the local player and current
+camera entity. That outline is a temporary scene proxy; full entity models,
+equipment, skins, item stacks, lighting, animation, culling, and draw ordering
+remain renderer-owned follow-up work.
+
 Avoid:
 
 - Projecting every entity to `EntityState` during hot updates.

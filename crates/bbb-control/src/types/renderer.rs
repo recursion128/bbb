@@ -15,7 +15,11 @@ pub struct RendererCounters {
     pub particle_draw_calls: u64,
     pub selection_draw_calls: u64,
     #[serde(default)]
+    pub entity_scene_draw_calls: u64,
+    #[serde(default)]
     pub entity_target_draw_calls: u64,
+    #[serde(default)]
+    pub entity_scene_boxes: usize,
     pub hud_draw_calls: u64,
     pub pipeline_switches: u64,
     pub screenshots_written: u64,

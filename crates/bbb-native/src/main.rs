@@ -15,6 +15,7 @@ mod camera_pose;
 mod code_of_conduct;
 mod code_of_conduct_overlay;
 mod crosshair;
+mod entity_scene;
 mod hud_assets;
 mod input;
 mod item_runtime;
