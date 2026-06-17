@@ -1,9 +1,10 @@
 use bbb_control::NetCounters;
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-    ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook,
-    InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+    AttackEntity, ChangeDifficultyCommand, ChatCommand, CommandSuggestionRequest,
+    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
+    Direction as ProtocolDirection, EditBook, InteractEntity, InteractionHand,
+    LockDifficultyCommand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
     PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
     SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem,
@@ -114,6 +115,30 @@ pub(crate) fn queue_edit_book_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::EditBook(command)).is_ok() {
             counters.edit_book_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_change_difficulty_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: ChangeDifficultyCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::ChangeDifficulty(command)).is_ok() {
+            counters.change_difficulty_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_lock_difficulty_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: LockDifficultyCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::LockDifficulty(command)).is_ok() {
+            counters.lock_difficulty_commands_queued += 1;
         }
     }
 }
@@ -694,6 +719,39 @@ mod tests {
 
         assert_eq!(counters.edit_book_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::EditBook(command));
+    }
+
+    #[test]
+    fn queues_difficulty_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_change_difficulty_command(
+            &mut counters,
+            &commands,
+            ChangeDifficultyCommand {
+                difficulty: bbb_protocol::packets::Difficulty::Hard,
+            },
+        );
+        queue_lock_difficulty_command(
+            &mut counters,
+            &commands,
+            LockDifficultyCommand { locked: true },
+        );
+
+        assert_eq!(counters.change_difficulty_commands_queued, 1);
+        assert_eq!(counters.lock_difficulty_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChangeDifficulty(ChangeDifficultyCommand {
+                difficulty: bbb_protocol::packets::Difficulty::Hard,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::LockDifficulty(LockDifficultyCommand { locked: true })
+        );
     }
 
     #[test]

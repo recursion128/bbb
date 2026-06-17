@@ -205,6 +205,7 @@ pub mod play {
     pub const SERVERBOUND_ACCEPT_TELEPORTATION: i32 = 0;
     pub const SERVERBOUND_ATTACK: i32 = 1;
     pub const SERVERBOUND_BUNDLE_ITEM_SELECTED: i32 = 3;
+    pub const SERVERBOUND_CHANGE_DIFFICULTY: i32 = 4;
     pub const SERVERBOUND_CHAT_COMMAND: i32 = 7;
     pub const SERVERBOUND_CHUNK_BATCH_RECEIVED: i32 = 11;
     pub const SERVERBOUND_CLIENT_COMMAND: i32 = 12;
@@ -220,6 +221,7 @@ pub mod play {
     pub const SERVERBOUND_EDIT_BOOK: i32 = 24;
     pub const SERVERBOUND_INTERACT: i32 = 26;
     pub const SERVERBOUND_KEEP_ALIVE: i32 = 28;
+    pub const SERVERBOUND_LOCK_DIFFICULTY: i32 = 29;
     pub const SERVERBOUND_MOVE_PLAYER_POS: i32 = 30;
     pub const SERVERBOUND_MOVE_PLAYER_POS_ROT: i32 = 31;
     pub const SERVERBOUND_MOVE_PLAYER_ROT: i32 = 32;

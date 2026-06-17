@@ -1,7 +1,8 @@
 use super::{
-    maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity, send_chat_command,
-    send_command_suggestion_request, send_container_button_click, send_container_click,
-    send_container_close, send_container_slot_state_changed, send_edit_book, send_interact_entity,
+    maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity,
+    send_change_difficulty, send_chat_command, send_command_suggestion_request,
+    send_container_button_click, send_container_click, send_container_close,
+    send_container_slot_state_changed, send_edit_book, send_interact_entity, send_lock_difficulty,
     send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
@@ -17,10 +18,11 @@ use bbb_protocol::{
     codec::Decoder,
     ids,
     packets::{
-        AttackEntity, BlockPos, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
-        ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, EditBook,
-        HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
-        PaddleBoat, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
+        AttackEntity, BlockPos, ChangeDifficultyCommand, ChatCommand, CommandSuggestionRequest,
+        ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
+        ContainerSlotStateChanged, Difficulty, EditBook, HashedComponentPatch, HashedItemStack,
+        HashedStack, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+        PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
         PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
         RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
         RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
@@ -981,6 +983,54 @@ async fn send_ping_request_encodes_play_ping_request_packet() {
         .unwrap();
 
     send_ping_request(&mut conn, 123_456_789).await.unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_difficulty_commands_encode_packets() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("change difficulty command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHANGE_DIFFICULTY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("lock difficulty command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_LOCK_DIFFICULTY);
+        let mut decoder = Decoder::new(&payload);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_change_difficulty(
+        &mut conn,
+        ChangeDifficultyCommand {
+            difficulty: Difficulty::Hard,
+        },
+    )
+    .await
+    .unwrap();
+    send_lock_difficulty(&mut conn, LockDifficultyCommand { locked: true })
+        .await
+        .unwrap();
 
     server.await.unwrap();
 }

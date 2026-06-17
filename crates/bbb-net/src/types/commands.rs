@@ -1,10 +1,11 @@
 use bbb_protocol::packets::{
-    self, AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
-    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, EditBook, InteractEntity,
-    InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
-    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem, UseItemOn, Vec3d,
+    self, AttackEntity, ChangeDifficultyCommand, ChatCommand, CommandSuggestionRequest,
+    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
+    EditBook, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
+    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
+    SelectTradeCommand, SetBeacon, SignUpdate, UseItem, UseItemOn, Vec3d,
 };
 use serde::{Deserialize, Serialize};
 
@@ -94,6 +95,8 @@ pub enum NetCommand {
     PickItemFromEntity(PickItemFromEntity),
     PaddleBoat(PaddleBoat),
     PingRequest(i64),
+    ChangeDifficulty(ChangeDifficultyCommand),
+    LockDifficulty(LockDifficultyCommand),
     PlaceRecipe(PlaceRecipeCommand),
     RecipeBookChangeSettings(RecipeBookChangeSettingsCommand),
     RecipeBookSeenRecipe(RecipeBookSeenRecipeCommand),

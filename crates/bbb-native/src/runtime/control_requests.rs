@@ -1,12 +1,13 @@
 use bbb_control::{
     CodeOfConductControlRequest, ContainerClickControlRequest, ContainerInputControl,
-    HashedComponentPatchControl, HashedStackControl, NetControlRequest, NetCounters,
-    RecipeBookTypeControl, SharedSnapshot,
+    DifficultyControl, HashedComponentPatchControl, HashedStackControl, NetControlRequest,
+    NetCounters, RecipeBookTypeControl, SharedSnapshot,
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, ContainerClick, ContainerInput, EditBook, HashedComponentPatch,
-    HashedItemStack, HashedStack, RecipeBookType, RenameItem, SeenAdvancements, SetBeacon,
+    BlockPos as ProtocolBlockPos, ChangeDifficultyCommand, ContainerClick, ContainerInput,
+    Difficulty, EditBook, HashedComponentPatch, HashedItemStack, HashedStack,
+    LockDifficultyCommand, RecipeBookType, RenameItem, SeenAdvancements, SetBeacon,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -14,14 +15,14 @@ use tokio::sync::mpsc;
 use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     input::{
-        queue_chat_command, queue_command_suggestion_request, queue_container_button_click_command,
-        queue_container_click_command, queue_container_close_request_command,
-        queue_container_slot_state_changed_command, queue_edit_book_command,
-        queue_place_recipe_command, queue_player_abilities_command,
-        queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
-        queue_rename_item_command, queue_seen_advancements_command, queue_select_trade_command,
-        queue_set_beacon_command, queue_sign_update_command, select_bundle_item,
-        select_hotbar_slot,
+        queue_change_difficulty_command, queue_chat_command, queue_command_suggestion_request,
+        queue_container_button_click_command, queue_container_click_command,
+        queue_container_close_request_command, queue_container_slot_state_changed_command,
+        queue_edit_book_command, queue_lock_difficulty_command, queue_place_recipe_command,
+        queue_player_abilities_command, queue_recipe_book_change_settings_command,
+        queue_recipe_book_seen_recipe_command, queue_rename_item_command,
+        queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
+        queue_sign_update_command, select_bundle_item, select_hotbar_slot,
     },
 };
 
@@ -84,6 +85,15 @@ fn protocol_recipe_book_type(book_type: RecipeBookTypeControl) -> RecipeBookType
     }
 }
 
+fn protocol_difficulty(difficulty: DifficultyControl) -> Difficulty {
+    match difficulty {
+        DifficultyControl::Peaceful => Difficulty::Peaceful,
+        DifficultyControl::Easy => Difficulty::Easy,
+        DifficultyControl::Normal => Difficulty::Normal,
+        DifficultyControl::Hard => Difficulty::Hard,
+    }
+}
+
 pub(crate) fn pump_control_net_requests(
     snapshot: &SharedSnapshot,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -103,6 +113,22 @@ pub(crate) fn pump_control_net_requests(
 
     for request in net_requests {
         match request {
+            NetControlRequest::ChangeDifficulty { difficulty } => {
+                queue_change_difficulty_command(
+                    counters,
+                    net_commands,
+                    ChangeDifficultyCommand {
+                        difficulty: protocol_difficulty(difficulty),
+                    },
+                );
+            }
+            NetControlRequest::LockDifficulty { locked } => {
+                queue_lock_difficulty_command(
+                    counters,
+                    net_commands,
+                    LockDifficultyCommand { locked },
+                );
+            }
             NetControlRequest::SetHeldSlot { slot } => {
                 select_hotbar_slot(counters, world, net_commands, slot);
             }
@@ -472,6 +498,36 @@ mod tests {
                 recipe_index: 123,
                 use_max_items: true,
             })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_difficulty_commands() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.extend([
+            bbb_control::NetControlRequest::ChangeDifficulty {
+                difficulty: bbb_control::DifficultyControl::Hard,
+            },
+            bbb_control::NetControlRequest::LockDifficulty { locked: true },
+        ]);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.change_difficulty_commands_queued, 1);
+        assert_eq!(counters.lock_difficulty_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChangeDifficulty(ChangeDifficultyCommand {
+                difficulty: Difficulty::Hard,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::LockDifficulty(LockDifficultyCommand { locked: true })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }

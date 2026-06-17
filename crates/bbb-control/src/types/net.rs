@@ -23,6 +23,10 @@ pub struct NetCounters {
     #[serde(default)]
     pub chat_command_commands_queued: usize,
     #[serde(default)]
+    pub change_difficulty_commands_queued: usize,
+    #[serde(default)]
+    pub lock_difficulty_commands_queued: usize,
+    #[serde(default)]
     pub attack_entity_commands_queued: usize,
     #[serde(default)]
     pub interact_entity_commands_queued: usize,

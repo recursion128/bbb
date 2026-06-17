@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{codec::Encoder, ids};
 
 use super::client_features::{RecipeBookType, RecipeDisplayId};
+use super::client_state::Difficulty;
 use super::{chunks, connection, BlockPos, Vec3d};
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
@@ -47,6 +48,16 @@ pub struct PlayerAction {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChatCommand {
     pub command: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangeDifficultyCommand {
+    pub difficulty: Difficulty,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LockDifficultyCommand {
+    pub locked: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -390,6 +401,18 @@ pub fn encode_play_player_loaded() -> (i32, Vec<u8>) {
 
 pub fn encode_play_client_tick_end() -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_CLIENT_TICK_END, Vec::new())
+}
+
+pub fn encode_play_change_difficulty(command: ChangeDifficultyCommand) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(command.difficulty.id());
+    (ids::play::SERVERBOUND_CHANGE_DIFFICULTY, out.into_inner())
+}
+
+pub fn encode_play_lock_difficulty(command: LockDifficultyCommand) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_bool(command.locked);
+    (ids::play::SERVERBOUND_LOCK_DIFFICULTY, out.into_inner())
 }
 
 pub fn encode_play_player_input(input: PlayerInput) -> (i32, Vec<u8>) {

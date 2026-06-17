@@ -967,8 +967,10 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
 #[test]
 fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order() {
     assert_eq!(ids::play::SERVERBOUND_ATTACK, 1);
+    assert_eq!(ids::play::SERVERBOUND_CHANGE_DIFFICULTY, 4);
     assert_eq!(ids::play::SERVERBOUND_CHAT_COMMAND, 7);
     assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
+    assert_eq!(ids::play::SERVERBOUND_LOCK_DIFFICULTY, 29);
     assert_eq!(ids::play::SERVERBOUND_PADDLE_BOAT, 35);
     assert_eq!(ids::play::SERVERBOUND_PICK_ITEM_FROM_ENTITY, 37);
     assert_eq!(ids::play::SERVERBOUND_PING_REQUEST, 38);
@@ -1100,6 +1102,28 @@ fn encodes_recipe_book_seen_recipe_packet() {
     assert_eq!(id, ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE);
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 321);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_change_difficulty_packet() {
+    let (id, payload) = encode_play_change_difficulty(ChangeDifficultyCommand {
+        difficulty: Difficulty::Hard,
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHANGE_DIFFICULTY);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 3);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_lock_difficulty_packet() {
+    let (id, payload) = encode_play_lock_difficulty(LockDifficultyCommand { locked: true });
+
+    assert_eq!(id, ids::play::SERVERBOUND_LOCK_DIFFICULTY);
+    let mut decoder = Decoder::new(&payload);
+    assert!(decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
 }
 

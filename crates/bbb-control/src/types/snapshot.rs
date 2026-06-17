@@ -23,6 +23,12 @@ pub enum CodeOfConductControlRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetControlRequest {
+    ChangeDifficulty {
+        difficulty: DifficultyControl,
+    },
+    LockDifficulty {
+        locked: bool,
+    },
     SetHeldSlot {
         slot: u8,
     },
@@ -92,6 +98,28 @@ pub enum NetControlRequest {
         container_id: i32,
         new_state: bool,
     },
+}
+
+impl NetControlRequest {
+    pub fn change_difficulty_named(difficulty: &str) -> Option<Self> {
+        let difficulty = match difficulty {
+            "peaceful" => DifficultyControl::Peaceful,
+            "easy" => DifficultyControl::Easy,
+            "normal" => DifficultyControl::Normal,
+            "hard" => DifficultyControl::Hard,
+            _ => return None,
+        };
+        Some(Self::ChangeDifficulty { difficulty })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DifficultyControl {
+    Peaceful,
+    Easy,
+    Normal,
+    Hard,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

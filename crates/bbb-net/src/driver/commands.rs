@@ -1,12 +1,12 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
-    self, AttackEntity, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
-    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, EditBook, InteractEntity,
-    InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
-    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem,
-    UseItemOn,
+    self, AttackEntity, ChangeDifficultyCommand, ChatCommand, CommandSuggestionRequest,
+    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
+    EditBook, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
+    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
+    SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -132,6 +132,22 @@ pub(crate) async fn send_paddle_boat(conn: &mut RawConnection, packet: PaddleBoa
 
 pub(crate) async fn send_ping_request(conn: &mut RawConnection, time: i64) -> Result<()> {
     let (id, payload) = packets::encode_play_ping_request(time);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_change_difficulty(
+    conn: &mut RawConnection,
+    command: ChangeDifficultyCommand,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_change_difficulty(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_lock_difficulty(
+    conn: &mut RawConnection,
+    command: LockDifficultyCommand,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_lock_difficulty(command);
     conn.send_packet(id, &payload).await
 }
 

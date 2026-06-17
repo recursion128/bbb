@@ -10,7 +10,7 @@ pub use net::NetCounters;
 pub use renderer::RendererCounters;
 pub use snapshot::{
     AppStatus, CodeOfConductControlRequest, ContainerChangedSlotControl,
-    ContainerClickControlRequest, ContainerInputControl, ControlSnapshot,
+    ContainerClickControlRequest, ContainerInputControl, ControlSnapshot, DifficultyControl,
     HashedComponentPatchControl, HashedStackControl, NetControlRequest, RecipeBookTypeControl,
     SharedSnapshot,
 };

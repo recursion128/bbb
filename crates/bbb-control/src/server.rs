@@ -208,6 +208,51 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.change_difficulty" {
+        let change_difficulty = match change_difficulty_request_param(&request.params) {
+            Ok(change_difficulty) => change_difficulty,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(err),
+                };
+            }
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard.net_requests.push(change_difficulty);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.lock_difficulty" {
+        let Some(locked) = bool_param(&request.params, "locked") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.lock_difficulty requires boolean param locked".to_string()),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::LockDifficulty { locked });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.set_held_slot" {
         let Some(slot) = i32_param(&request.params, "slot") else {
             return ControlResponse {
@@ -1095,6 +1140,19 @@ fn recipe_book_type_param(params: &serde_json::Value, key: &str) -> Option<Recip
     }
 }
 
+fn change_difficulty_request_param(
+    params: &serde_json::Value,
+) -> Result<NetControlRequest, String> {
+    let Some(value) = string_param(params, "difficulty") else {
+        return Err(format!(
+            "net.change_difficulty requires string param difficulty: peaceful, easy, normal, or hard"
+        ));
+    };
+    NetControlRequest::change_difficulty_named(value).ok_or_else(|| {
+        format!("net.change_difficulty requires difficulty peaceful, easy, normal, or hard")
+    })
+}
+
 fn sign_lines_param(
     params: &serde_json::Value,
     key: &str,
@@ -1629,6 +1687,129 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_id.ok);
+    }
+
+    #[test]
+    fn net_change_difficulty_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.change_difficulty".to_string(),
+                params: json!({"difficulty": "hard"}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::change_difficulty_named("hard").unwrap()]
+        );
+    }
+
+    #[test]
+    fn net_change_difficulty_rejects_missing_or_invalid_difficulty() {
+        let snapshot = shared_snapshot("test");
+        let missing_difficulty = dispatch(
+            ControlRequest {
+                method: "net.change_difficulty".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        let invalid_difficulty = dispatch(
+            ControlRequest {
+                method: "net.change_difficulty".to_string(),
+                params: json!({"difficulty": "nightmare"}),
+            },
+            &snapshot,
+        );
+        let non_string_difficulty = dispatch(
+            ControlRequest {
+                method: "net.change_difficulty".to_string(),
+                params: json!({"difficulty": 3}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_difficulty.ok);
+        assert_eq!(
+            missing_difficulty.error.as_deref(),
+            Some(
+                "net.change_difficulty requires string param difficulty: peaceful, easy, normal, or hard"
+            )
+        );
+        assert!(!invalid_difficulty.ok);
+        assert_eq!(
+            invalid_difficulty.error.as_deref(),
+            Some("net.change_difficulty requires difficulty peaceful, easy, normal, or hard")
+        );
+        assert!(!non_string_difficulty.ok);
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_lock_difficulty_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.lock_difficulty".to_string(),
+                params: json!({"locked": false}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::LockDifficulty { locked: false }]
+        );
+    }
+
+    #[test]
+    fn net_lock_difficulty_rejects_missing_or_non_bool_locked() {
+        let snapshot = shared_snapshot("test");
+        let missing_locked = dispatch(
+            ControlRequest {
+                method: "net.lock_difficulty".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        let non_bool_locked = dispatch(
+            ControlRequest {
+                method: "net.lock_difficulty".to_string(),
+                params: json!({"locked": "true"}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_locked.ok);
+        assert_eq!(
+            missing_locked.error.as_deref(),
+            Some("net.lock_difficulty requires boolean param locked")
+        );
+        assert!(!non_bool_locked.ok);
+        assert_eq!(
+            non_bool_locked.error.as_deref(),
+            Some("net.lock_difficulty requires boolean param locked")
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_difficulty_counters_deserialize_with_defaults() {
+        let mut value = serde_json::to_value(NetCounters::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("change_difficulty_commands_queued");
+        object.remove("lock_difficulty_commands_queued");
+
+        let counters: NetCounters = serde_json::from_value(value).unwrap();
+
+        assert_eq!(counters.change_difficulty_commands_queued, 0);
+        assert_eq!(counters.lock_difficulty_commands_queued, 0);
     }
 
     #[test]

@@ -187,6 +187,15 @@ pub enum Difficulty {
 }
 
 impl Difficulty {
+    pub fn id(self) -> i32 {
+        match self {
+            Self::Peaceful => 0,
+            Self::Easy => 1,
+            Self::Normal => 2,
+            Self::Hard => 3,
+        }
+    }
+
     fn from_id(id: i32) -> Self {
         match id.rem_euclid(4) {
             0 => Self::Peaceful,
