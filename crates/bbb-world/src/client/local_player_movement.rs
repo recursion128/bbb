@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
-
 use bbb_protocol::packets::Vec3d as ProtocolVec3d;
 
 use super::local_player::{LocalPlayerInputState, LocalPlayerPoseState};
-use crate::{BlockPos, BlockProbe, TerrainMaterialClass, WorldStore};
+use super::local_player_collision::{
+    local_player_collides, CollisionAxis as Axis, LocalPlayerBounds, COLLISION_EPSILON,
+};
+use crate::WorldStore;
 
 pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
@@ -13,10 +14,7 @@ const LOCAL_PHYSICS_TICK_SECONDS: f64 = 0.05;
 const LOCAL_GRAVITY_PER_TICK: f64 = 0.08;
 const LOCAL_JUMP_VELOCITY_PER_TICK: f64 = 0.42;
 const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
-const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
-const LOCAL_PLAYER_HEIGHT: f64 = 1.8;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
-const COLLISION_EPSILON: f64 = 1.0e-7;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
 const COLLISION_CLIP_STEPS: usize = 12;
 
@@ -250,158 +248,6 @@ fn local_player_supported(world: &WorldStore, position: ProtocolVec3d) -> bool {
     )
 }
 
-fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBounds) -> bool {
-    let min_x = block_floor(bounds.min_x + COLLISION_EPSILON);
-    let max_x = block_floor(bounds.max_x - COLLISION_EPSILON);
-    let min_y = block_floor(bounds.min_y + COLLISION_EPSILON);
-    let max_y = block_floor(bounds.max_y - COLLISION_EPSILON);
-    let min_z = block_floor(bounds.min_z + COLLISION_EPSILON);
-    let max_z = block_floor(bounds.max_z - COLLISION_EPSILON);
-
-    for y in min_y..=max_y {
-        for z in min_z..=max_z {
-            for x in min_x..=max_x {
-                let Some(block) = world.probe_block(BlockPos { x, y, z }) else {
-                    continue;
-                };
-                if block_collides_with_local_player_bounds(&block, BlockPos { x, y, z }, bounds) {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
-
-fn block_collides_with_local_player_bounds(
-    block: &BlockProbe,
-    pos: BlockPos,
-    bounds: LocalPlayerBounds,
-) -> bool {
-    if let Some(shape) = block_collision_shape(block) {
-        return bounds_intersects_block_shape(bounds, pos, shape);
-    }
-    false
-}
-
-fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
-    if is_slab_block(block) {
-        return match block.block_properties.get("type").map(String::as_str) {
-            Some("bottom") => Some(BlockCollisionShape::single(BlockCollisionBox::BOTTOM_SLAB)),
-            Some("top") => Some(BlockCollisionShape::single(BlockCollisionBox::TOP_SLAB)),
-            Some("double") => Some(BlockCollisionShape::single(BlockCollisionBox::FULL)),
-            _ => None,
-        };
-    }
-    if is_stair_block(block) {
-        return stair_collision_shape(&block.block_properties);
-    }
-    match block.material {
-        TerrainMaterialClass::Opaque | TerrainMaterialClass::Translucent => {
-            Some(BlockCollisionShape::single(BlockCollisionBox::FULL))
-        }
-        TerrainMaterialClass::Invisible => {
-            if matches!(block.block_name.as_deref(), Some("minecraft:barrier")) {
-                Some(BlockCollisionShape::single(BlockCollisionBox::FULL))
-            } else {
-                None
-            }
-        }
-        TerrainMaterialClass::Empty
-        | TerrainMaterialClass::Cutout
-        | TerrainMaterialClass::Fluid => None,
-    }
-}
-
-fn is_slab_block(block: &BlockProbe) -> bool {
-    block
-        .block_name
-        .as_deref()
-        .is_some_and(|name| name.ends_with("_slab"))
-}
-
-fn is_stair_block(block: &BlockProbe) -> bool {
-    block
-        .block_name
-        .as_deref()
-        .is_some_and(|name| name.ends_with("_stairs"))
-}
-
-fn stair_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
-    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
-    let top = match properties.get("half").map(String::as_str)? {
-        "bottom" => false,
-        "top" => true,
-        _ => return None,
-    };
-    let (kind, direction) = match properties.get("shape").map(String::as_str)? {
-        "straight" => (StairShapeKind::Straight, facing),
-        "outer_left" => (StairShapeKind::Outer, facing),
-        "outer_right" => (StairShapeKind::Outer, facing.clockwise()),
-        "inner_left" => (StairShapeKind::Inner, facing.counter_clockwise()),
-        "inner_right" => (StairShapeKind::Inner, facing),
-        _ => return None,
-    };
-
-    let mut shape = match kind {
-        StairShapeKind::Straight => BlockCollisionShape::from_boxes([
-            Some(BlockCollisionBox::BOTTOM_SLAB),
-            Some(BlockCollisionBox::STAIR_NORTH_HALF),
-            None,
-        ]),
-        StairShapeKind::Outer => BlockCollisionShape::from_boxes([
-            Some(BlockCollisionBox::BOTTOM_SLAB),
-            Some(BlockCollisionBox::STAIR_NORTH_WEST_OCTET),
-            None,
-        ]),
-        StairShapeKind::Inner => BlockCollisionShape::from_boxes([
-            Some(BlockCollisionBox::BOTTOM_SLAB),
-            Some(BlockCollisionBox::STAIR_NORTH_HALF),
-            Some(BlockCollisionBox::STAIR_SOUTH_EAST_OCTET),
-        ]),
-    };
-    if top {
-        shape = shape.invert_y();
-    }
-    Some(shape.rotate_to_direction(direction))
-}
-
-fn bounds_intersects_block_shape(
-    bounds: LocalPlayerBounds,
-    pos: BlockPos,
-    shape: BlockCollisionShape,
-) -> bool {
-    shape
-        .boxes()
-        .any(|shape_box| bounds_intersects_block_box(bounds, pos, shape_box))
-}
-
-fn bounds_intersects_block_box(
-    bounds: LocalPlayerBounds,
-    pos: BlockPos,
-    shape: BlockCollisionBox,
-) -> bool {
-    let block_x = f64::from(pos.x);
-    let min_x = block_x + shape.min_x;
-    let max_x = block_x + shape.max_x;
-    let min_y = f64::from(pos.y) + shape.min_y;
-    let max_y = f64::from(pos.y) + shape.max_y;
-    let block_z = f64::from(pos.z);
-    let min_z = block_z + shape.min_z;
-    let max_z = block_z + shape.max_z;
-
-    bounds.max_x > min_x + COLLISION_EPSILON
-        && bounds.min_x < max_x - COLLISION_EPSILON
-        && bounds.max_y > min_y + COLLISION_EPSILON
-        && bounds.min_y < max_y - COLLISION_EPSILON
-        && bounds.max_z > min_z + COLLISION_EPSILON
-        && bounds.min_z < max_z - COLLISION_EPSILON
-}
-
-fn block_floor(value: f64) -> i32 {
-    value.floor() as i32
-}
-
 fn axis(positive: bool, negative: bool) -> f64 {
     match (positive, negative) {
         (true, false) => 1.0,
@@ -421,252 +267,6 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
     wrapped
 }
 
-#[derive(Debug, Clone, Copy)]
-enum Axis {
-    X,
-    Y,
-    Z,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum HorizontalDirection {
-    North,
-    East,
-    South,
-    West,
-}
-
-impl HorizontalDirection {
-    fn parse(value: &str) -> Option<Self> {
-        match value {
-            "north" => Some(Self::North),
-            "east" => Some(Self::East),
-            "south" => Some(Self::South),
-            "west" => Some(Self::West),
-            _ => None,
-        }
-    }
-
-    fn clockwise(self) -> Self {
-        match self {
-            Self::North => Self::East,
-            Self::East => Self::South,
-            Self::South => Self::West,
-            Self::West => Self::North,
-        }
-    }
-
-    fn counter_clockwise(self) -> Self {
-        match self {
-            Self::North => Self::West,
-            Self::East => Self::North,
-            Self::South => Self::East,
-            Self::West => Self::South,
-        }
-    }
-
-    fn quarter_turns_from_north(self) -> usize {
-        match self {
-            Self::North => 0,
-            Self::East => 1,
-            Self::South => 2,
-            Self::West => 3,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum StairShapeKind {
-    Straight,
-    Outer,
-    Inner,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct LocalPlayerBounds {
-    min_x: f64,
-    min_y: f64,
-    min_z: f64,
-    max_x: f64,
-    max_y: f64,
-    max_z: f64,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct BlockCollisionShape {
-    boxes: [Option<BlockCollisionBox>; 3],
-}
-
-impl BlockCollisionShape {
-    fn single(shape_box: BlockCollisionBox) -> Self {
-        Self::from_boxes([Some(shape_box), None, None])
-    }
-
-    fn from_boxes(boxes: [Option<BlockCollisionBox>; 3]) -> Self {
-        Self { boxes }
-    }
-
-    fn boxes(self) -> impl Iterator<Item = BlockCollisionBox> {
-        self.boxes.into_iter().flatten()
-    }
-
-    fn invert_y(self) -> Self {
-        Self {
-            boxes: self
-                .boxes
-                .map(|shape_box| shape_box.map(BlockCollisionBox::invert_y)),
-        }
-    }
-
-    fn rotate_to_direction(self, direction: HorizontalDirection) -> Self {
-        let mut rotated = self;
-        for _ in 0..direction.quarter_turns_from_north() {
-            rotated = Self {
-                boxes: rotated
-                    .boxes
-                    .map(|shape_box| shape_box.map(BlockCollisionBox::rotate_y_90)),
-            };
-        }
-        rotated
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct BlockCollisionBox {
-    min_x: f64,
-    min_y: f64,
-    min_z: f64,
-    max_x: f64,
-    max_y: f64,
-    max_z: f64,
-}
-
-impl BlockCollisionBox {
-    const FULL: Self = Self {
-        min_x: 0.0,
-        min_y: 0.0,
-        min_z: 0.0,
-        max_x: 1.0,
-        max_y: 1.0,
-        max_z: 1.0,
-    };
-    const BOTTOM_SLAB: Self = Self {
-        min_x: 0.0,
-        min_y: 0.0,
-        min_z: 0.0,
-        max_x: 1.0,
-        max_y: 0.5,
-        max_z: 1.0,
-    };
-    const TOP_SLAB: Self = Self {
-        min_x: 0.0,
-        min_y: 0.5,
-        min_z: 0.0,
-        max_x: 1.0,
-        max_y: 1.0,
-        max_z: 1.0,
-    };
-    const STAIR_NORTH_HALF: Self = Self {
-        min_x: 0.0,
-        min_y: 0.5,
-        min_z: 0.0,
-        max_x: 1.0,
-        max_y: 1.0,
-        max_z: 0.5,
-    };
-    const STAIR_NORTH_WEST_OCTET: Self = Self {
-        min_x: 0.0,
-        min_y: 0.5,
-        min_z: 0.0,
-        max_x: 0.5,
-        max_y: 1.0,
-        max_z: 0.5,
-    };
-    const STAIR_SOUTH_EAST_OCTET: Self = Self {
-        min_x: 0.5,
-        min_y: 0.5,
-        min_z: 0.5,
-        max_x: 1.0,
-        max_y: 1.0,
-        max_z: 1.0,
-    };
-
-    fn invert_y(self) -> Self {
-        Self {
-            min_x: self.min_x,
-            min_y: 1.0 - self.max_y,
-            min_z: self.min_z,
-            max_x: self.max_x,
-            max_y: 1.0 - self.min_y,
-            max_z: self.max_z,
-        }
-    }
-
-    fn rotate_y_90(self) -> Self {
-        Self {
-            min_x: 1.0 - self.max_z,
-            min_y: self.min_y,
-            min_z: self.min_x,
-            max_x: 1.0 - self.min_z,
-            max_y: self.max_y,
-            max_z: self.max_x,
-        }
-    }
-}
-
-impl LocalPlayerBounds {
-    fn at(position: ProtocolVec3d) -> Self {
-        Self {
-            min_x: position.x - LOCAL_PLAYER_HALF_WIDTH,
-            min_y: position.y,
-            min_z: position.z - LOCAL_PLAYER_HALF_WIDTH,
-            max_x: position.x + LOCAL_PLAYER_HALF_WIDTH,
-            max_y: position.y + LOCAL_PLAYER_HEIGHT,
-            max_z: position.z + LOCAL_PLAYER_HALF_WIDTH,
-        }
-    }
-
-    fn moved(self, x: f64, y: f64, z: f64) -> Self {
-        Self {
-            min_x: self.min_x + x,
-            min_y: self.min_y + y,
-            min_z: self.min_z + z,
-            max_x: self.max_x + x,
-            max_y: self.max_y + y,
-            max_z: self.max_z + z,
-        }
-    }
-
-    fn moved_axis(self, axis: Axis, amount: f64) -> Self {
-        match axis {
-            Axis::X => self.moved(amount, 0.0, 0.0),
-            Axis::Y => self.moved(0.0, amount, 0.0),
-            Axis::Z => self.moved(0.0, 0.0, amount),
-        }
-    }
-
-    fn swept_axis(self, axis: Axis, amount: f64) -> Self {
-        let moved = self.moved_axis(axis, amount);
-        match axis {
-            Axis::X => Self {
-                min_x: self.min_x.min(moved.min_x),
-                max_x: self.max_x.max(moved.max_x),
-                ..self
-            },
-            Axis::Y => Self {
-                min_y: self.min_y.min(moved.min_y),
-                max_y: self.max_y.max(moved.max_y),
-                ..self
-            },
-            Axis::Z => Self {
-                min_z: self.min_z.min(moved.min_z),
-                max_z: self.max_z.max(moved.max_z),
-                ..self
-            },
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -682,6 +282,13 @@ mod tests {
     const OAK_TOP_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3928;
     const OAK_BOTTOM_STRAIGHT_NORTH_STAIR_BLOCK_STATE_ID: i32 = 3918;
     const OAK_BOTTOM_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3938;
+    const OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID: i32 = 5666;
+    const OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7121;
+    const OAK_NORTH_FENCE_BLOCK_STATE_ID: i32 = 6988;
+    const OAK_CLOSED_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8653;
+    const OAK_OPEN_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8651;
+    const GLASS_NORTH_PANE_BLOCK_STATE_ID: i32 = 8323;
+    const COBBLESTONE_NORTH_EAST_WALL_BLOCK_STATE_ID: i32 = 10236;
 
     #[test]
     fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
@@ -820,6 +427,97 @@ mod tests {
     }
 
     #[test]
+    fn local_player_does_not_walk_through_door_and_trapdoor_shapes() {
+        let cases = [
+            ("closed door", OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID, 1.5135),
+            (
+                "closed top trapdoor",
+                OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID,
+                0.7005,
+            ),
+        ];
+
+        for (name, block_state_id, max_z) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_fence_pane_or_wall_connections() {
+        let cases = [
+            ("north fence", OAK_NORTH_FENCE_BLOCK_STATE_ID),
+            ("north pane", GLASS_NORTH_PANE_BLOCK_STATE_ID),
+            (
+                "north/east wall",
+                COBBLESTONE_NORTH_EAST_WALL_BLOCK_STATE_ID,
+            ),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z <= 0.7005,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_respects_closed_and_open_fence_gate_collision() {
+        let mut closed_world = flat_collision_world();
+        set_test_block(
+            &mut closed_world,
+            0,
+            1,
+            1,
+            OAK_CLOSED_NORTH_FENCE_GATE_BLOCK_STATE_ID,
+        );
+        let closed_pose = advance_forward_from_standard_start(&mut closed_world, 1.0);
+
+        assert!(
+            closed_pose.position.z <= 1.0755,
+            "position was {:?}",
+            closed_pose.position
+        );
+        assert!(closed_pose.horizontal_collision);
+        assert!(closed_pose.on_ground);
+
+        let mut open_world = flat_collision_world();
+        set_test_block(
+            &mut open_world,
+            0,
+            1,
+            1,
+            OAK_OPEN_NORTH_FENCE_GATE_BLOCK_STATE_ID,
+        );
+        let open_pose = advance_forward_from_standard_start(&mut open_world, 0.35);
+
+        assert!(
+            open_pose.position.z > 1.5,
+            "position was {:?}",
+            open_pose.position
+        );
+        assert!(!open_pose.horizontal_collision);
+        assert!(open_pose.on_ground);
+    }
+
+    #[test]
     fn local_player_jump_starts_only_from_ground() {
         let mut world = flat_collision_world();
         world.set_local_player_pose(LocalPlayerPoseState {
@@ -900,7 +598,7 @@ mod tests {
         });
         world.insert_decoded_chunk(empty_test_chunk());
         for x in 0..3 {
-            for z in 0..3 {
+            for z in 0..8 {
                 set_test_block(&mut world, x, 0, z, GRASS_BLOCK_STATE_ID);
             }
         }
