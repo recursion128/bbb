@@ -54,9 +54,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         };
         drained += 1;
 
-        if let NetEvent::LevelParticles(update) = &event {
-            emit_level_particles(&mut particle_events, &mut particle_renderer, update);
-        }
         apply_control_projection_event(&event, counters);
 
         match event {
@@ -173,7 +170,8 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 world.apply_explosion(update);
             }
             NetEvent::LevelParticles(update) => {
-                world.apply_level_particles(update);
+                world.apply_level_particles(update.clone());
+                emit_level_particles(&mut particle_events, &mut particle_renderer, &update);
             }
             NetEvent::ProjectilePower(update) => {
                 world.apply_projectile_power(update);
