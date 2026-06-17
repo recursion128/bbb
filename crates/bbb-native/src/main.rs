@@ -2,7 +2,7 @@ use anyhow::Result;
 use bbb_control::{shared_snapshot, AudioCounters, NetCounters};
 use bbb_world::WorldStore;
 use winit::{
-    event::{DeviceEvent, ElementState, Event, WindowEvent},
+    event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
     keyboard::{KeyCode, PhysicalKey},
     window::{CursorGrabMode, Window},
@@ -32,7 +32,7 @@ use code_of_conduct_overlay::CodeOfConductOverlayState;
 use hud_assets::load_hud_textures;
 use input::{
     handle_focus_change, handle_key_input, handle_mouse_input_at_partial_tick, handle_mouse_motion,
-    handle_mouse_wheel, release_active_input, ClientInputState,
+    handle_mouse_wheel, handle_text_input, release_active_input, ClientInputState,
 };
 use item_runtime::NativeItemRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
@@ -137,6 +137,7 @@ fn main() -> Result<()> {
 
     let event_loop = create_event_loop()?;
     let window = build_window(&event_loop)?;
+    window.set_ime_allowed(true);
     let mut input = ClientInputState::new(window.has_focus());
     spawn_frame_tick(&event_loop);
 
@@ -201,6 +202,7 @@ fn main() -> Result<()> {
                     if matches!(event.state, ElementState::Pressed)
                         && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
                         && cursor_captured
+                        && !input.command_entry_is_active()
                         && !world_wants_cursor(&world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
@@ -222,6 +224,26 @@ fn main() -> Result<()> {
                         &net_commands,
                         event.physical_key,
                         event.state,
+                    );
+                }
+                WindowEvent::Ime(Ime::Commit(text)) => {
+                    if code_of_conduct_overlay.is_visible(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if world_wants_cursor(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if !cursor_captured {
+                        return;
+                    }
+                    handle_text_input(
+                        &mut input,
+                        &mut net_counters,
+                        &mut world,
+                        &net_commands,
+                        &text,
                     );
                 }
                 WindowEvent::MouseInput { state, button, .. } => {

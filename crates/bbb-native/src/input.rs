@@ -54,10 +54,16 @@ pub(crate) struct ClientInputState {
     scroll_accumulated_y: f64,
     bundle_scroll_accumulated_x: f64,
     bundle_scroll_accumulated_y: f64,
+    command_entry: Option<CommandEntryState>,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
     last_move_command_pose: Option<LocalPlayerPoseState>,
     last_paddle_boat_command_at: Option<Instant>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct CommandEntryState {
+    text: String,
 }
 
 impl ClientInputState {
@@ -83,7 +89,12 @@ impl ClientInputState {
         self.scroll_accumulated_y = 0.0;
         self.bundle_scroll_accumulated_x = 0.0;
         self.bundle_scroll_accumulated_y = 0.0;
+        self.command_entry = None;
         self.last_paddle_boat_command_at = None;
+    }
+
+    pub(crate) fn command_entry_is_active(&self) -> bool {
+        self.command_entry.is_some()
     }
 }
 
@@ -153,6 +164,11 @@ pub(crate) fn handle_key_input(
     let PhysicalKey::Code(code) = physical_key else {
         return;
     };
+
+    if input.command_entry_is_active() {
+        handle_command_entry_key(input, counters, net_commands, code, pressed);
+        return;
+    }
 
     if pressed {
         if matches!(code, KeyCode::Escape | KeyCode::KeyE)
@@ -237,6 +253,93 @@ pub(crate) fn handle_key_input(
             }
         }
     }
+}
+
+pub(crate) fn handle_text_input(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    text: &str,
+) {
+    if !input.focused {
+        return;
+    }
+
+    if input.command_entry.is_none() {
+        if !text.starts_with('/') {
+            return;
+        }
+        release_active_input(input, world, counters, net_commands);
+        input.command_entry = Some(CommandEntryState {
+            text: String::new(),
+        });
+    }
+
+    let Some(entry) = &mut input.command_entry else {
+        return;
+    };
+    for ch in text.chars().filter(|ch| is_command_text_char(*ch)) {
+        entry.text.push(ch);
+    }
+    if entry.text.is_empty() || !entry.text.starts_with('/') {
+        input.command_entry = None;
+    }
+}
+
+fn handle_command_entry_key(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    code: KeyCode,
+    pressed: bool,
+) {
+    if !pressed {
+        return;
+    }
+
+    match code {
+        KeyCode::Enter | KeyCode::NumpadEnter => {
+            submit_command_entry(input, counters, net_commands)
+        }
+        KeyCode::Escape => input.command_entry = None,
+        KeyCode::Backspace => {
+            if let Some(entry) = &mut input.command_entry {
+                entry.text.pop();
+                if entry.text.is_empty() {
+                    input.command_entry = None;
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn submit_command_entry(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    let Some(entry) = input.command_entry.take() else {
+        return;
+    };
+    let Some(command) = normalize_command_entry(&entry.text) else {
+        return;
+    };
+    queue_chat_command(counters, net_commands, command);
+}
+
+fn normalize_command_entry(text: &str) -> Option<String> {
+    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let command = normalized.strip_prefix('/')?;
+    if command.is_empty() {
+        return None;
+    }
+    Some(command.to_string())
+}
+
+fn is_command_text_char(ch: char) -> bool {
+    !ch.is_control() && ch != '\u{7f}'
 }
 
 fn player_input_from_state(input: &ClientInputState) -> PlayerInput {

@@ -1,8 +1,8 @@
 use super::*;
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, CommonPlayerSpawnInfo, ContainerCloseRequest,
-    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerCommand,
-    SetPassengers, Vec3d as ProtocolVec3d,
+    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommonPlayerSpawnInfo,
+    ContainerCloseRequest, OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction,
+    PlayerCommand, SetPassengers, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use uuid::Uuid;
@@ -25,6 +25,16 @@ fn handle_key_input_without_world(
         physical_key,
         state,
     );
+}
+
+fn handle_text_input_without_world(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    text: &str,
+) {
+    let mut world = WorldStore::new();
+    handle_text_input(input, counters, &mut world, net_commands, text);
 }
 
 fn world_with_local_player_id(player_id: i32) -> WorldStore {
@@ -162,6 +172,133 @@ fn unfocused_hotbar_or_drop_key_does_not_queue_command() {
     assert_eq!(world.local_player().selected_hotbar_slot, 0);
     assert_eq!(counters.held_slot_commands_queued, 0);
     assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn slash_text_opens_command_entry_and_releases_pressed_input() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.forward = true;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/");
+
+    assert_eq!(
+        input
+            .command_entry
+            .as_ref()
+            .map(|entry| entry.text.as_str()),
+        Some("/")
+    );
+    assert!(!input.forward);
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+}
+
+#[test]
+fn command_entry_submits_slash_command_without_leading_slash() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    handle_text_input_without_world(&mut input, &mut counters, &commands, "/time set day");
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.command_entry_is_active());
+    assert_eq!(counters.chat_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ChatCommand(ChatCommand {
+            command: "time set day".to_string(),
+        })
+    );
+}
+
+#[test]
+fn command_entry_blocks_movement_keys_and_backspace_edits_text() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    handle_text_input_without_world(&mut input, &mut counters, &commands, "/givw");
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+    handle_text_input_without_world(&mut input, &mut counters, &commands, "e");
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        input
+            .command_entry
+            .as_ref()
+            .map(|entry| entry.text.as_str()),
+        Some("/give")
+    );
+    assert!(!input.forward);
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn command_entry_escape_cancels_without_queuing_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+
+    handle_text_input_without_world(&mut input, &mut counters, &commands, "/seed");
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.command_entry_is_active());
+    assert_eq!(counters.chat_command_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn text_input_requires_focus_and_leading_slash() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(false);
+    let mut counters = NetCounters::default();
+
+    handle_text_input_without_world(&mut input, &mut counters, &commands, "/seed");
+    assert!(!input.command_entry_is_active());
+
+    input.focused = true;
+    handle_text_input_without_world(&mut input, &mut counters, &commands, "seed");
+
+    assert!(!input.command_entry_is_active());
+    assert_eq!(counters.chat_command_commands_queued, 0);
     assert!(rx.try_recv().is_err());
 }
 
