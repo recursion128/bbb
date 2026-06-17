@@ -56,6 +56,7 @@ impl WorldStore {
             .take()
             .unwrap_or(ProtocolDirection::Down);
         interaction.destroying_block = None;
+        interaction.destroying_item_signature = None;
         interaction.destroying_block_progress = 0;
         interaction.destroying_block_ticks = 0;
         interaction.destroy_delay_ticks = LOCAL_DESTROY_COMPLETION_DELAY_TICKS;
@@ -159,6 +160,8 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         BlockPos as ProtocolBlockPos, BlockUpdate, Direction as ProtocolDirection,
+        ItemStackSummary as ProtocolItemStackSummary,
+        SetPlayerInventory as ProtocolSetPlayerInventory,
     };
 
     use crate::{
@@ -217,6 +220,38 @@ mod tests {
         assert_eq!(world.local_player().interaction.destroy_delay_ticks, 5);
     }
 
+    #[test]
+    fn local_destroy_target_item_signature_follows_vanilla_same_item_same_components() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 9);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        world.set_local_destroying_block_hit(pos, ProtocolDirection::North);
+
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 64),
+        });
+        assert!(world.local_destroying_block_matches_current_item());
+
+        let mut damaged_item = item_stack(42, 1);
+        damaged_item.component_patch.damage = Some(3);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: damaged_item,
+        });
+        assert!(!world.local_destroying_block_matches_current_item());
+
+        world.set_local_destroying_block_hit(pos, ProtocolDirection::North);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(43, 1),
+        });
+        assert!(!world.local_destroying_block_matches_current_item());
+    }
+
     fn world_with_block(pos: BlockPos, block_state_id: i32) -> WorldStore {
         let mut world = WorldStore::with_dimension(WorldDimension {
             min_y: 0,
@@ -244,6 +279,14 @@ mod tests {
             block_state_id,
         }));
         world
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
+        ProtocolItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
     }
 
     fn single_value_container(

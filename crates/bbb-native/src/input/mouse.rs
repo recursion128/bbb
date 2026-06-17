@@ -175,7 +175,9 @@ fn continue_destroy_block(
     hit: CrosshairBlockHit,
     destroy_ticks: u32,
 ) {
-    if world.local_player().interaction.destroying_block == Some(hit.pos) {
+    if world.local_player().interaction.destroying_block == Some(hit.pos)
+        && world.local_destroying_block_matches_current_item()
+    {
         world.update_local_destroying_block_face(hit.face);
         for _ in 0..destroy_ticks {
             if let Some(finished) = world.advance_local_destroying_block_tick() {
@@ -325,9 +327,10 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity, AttackEntity, BlockHitResult as ProtocolBlockHitResult,
-        BlockPos as ProtocolBlockPos, BlockUpdate, InteractEntity, PickItemFromBlock,
-        PickItemFromEntity, PlayerAbilities, PlayerAction, UseItem, UseItemOn,
-        Vec3d as ProtocolVec3d,
+        BlockPos as ProtocolBlockPos, BlockUpdate, InteractEntity,
+        ItemStackSummary as ProtocolItemStackSummary, PickItemFromBlock, PickItemFromEntity,
+        PlayerAbilities, PlayerAction, SetPlayerInventory as ProtocolSetPlayerInventory, UseItem,
+        UseItemOn, Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
@@ -596,6 +599,67 @@ mod tests {
             NetCommand::PlayerAction(PlayerAction {
                 action: PlayerActionKind::AbortDestroyBlock,
                 pos: ProtocolBlockPos { x: 2, y: 65, z: -3 },
+                direction: ProtocolDirection::North,
+                sequence: 0,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                direction: ProtocolDirection::North,
+                sequence: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn held_left_mouse_same_target_restarts_destroy_when_main_hand_item_changes() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(43, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            1,
+        );
+
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(CROSSHAIR_BLOCK_POS)
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_face,
+            Some(ProtocolDirection::North)
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_progress,
+            0
+        );
+        assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
+        assert_eq!(counters.player_action_commands_queued, 2);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::AbortDestroyBlock,
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
                 direction: ProtocolDirection::North,
                 sequence: 0,
             })
@@ -1164,6 +1228,14 @@ mod tests {
             palette_global_ids: vec![global_id],
             packed_data: Vec::new(),
             entry_count,
+        }
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
+        ProtocolItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
         }
     }
 

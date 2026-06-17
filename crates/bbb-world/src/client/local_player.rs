@@ -1,5 +1,6 @@
 use bbb_protocol::packets::{
-    Direction as ProtocolDirection, EntityAnchor, PlayerAbilities as ProtocolPlayerAbilities,
+    DataComponentPatchSummary, Direction as ProtocolDirection, EntityAnchor,
+    ItemStackSummary as ProtocolItemStackSummary, PlayerAbilities as ProtocolPlayerAbilities,
     PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
     PlayerLookAt as ProtocolPlayerLookAt, PlayerPositionState as ProtocolPlayerPositionState,
     PlayerPositionUpdate as ProtocolPlayerPositionUpdate,
@@ -79,12 +80,14 @@ pub struct LocalPlayerExperienceState {
     pub total: i32,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocalPlayerInteractionState {
     #[serde(default)]
     pub destroying_block: Option<BlockPos>,
     #[serde(default)]
     pub destroying_block_face: Option<ProtocolDirection>,
+    #[serde(default)]
+    pub destroying_item_signature: Option<LocalPlayerDestroyItemSignature>,
     #[serde(default)]
     pub destroying_block_progress: u32,
     #[serde(default)]
@@ -95,6 +98,21 @@ pub struct LocalPlayerInteractionState {
     pub using_item: bool,
     #[serde(default)]
     pub prediction_sequence: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LocalPlayerDestroyItemSignature {
+    pub item_id: Option<i32>,
+    pub component_patch: DataComponentPatchSummary,
+}
+
+impl LocalPlayerDestroyItemSignature {
+    fn from_item_stack(stack: &ProtocolItemStackSummary) -> Self {
+        Self {
+            item_id: stack.item_id,
+            component_patch: stack.component_patch.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
@@ -365,19 +383,31 @@ impl WorldStore {
     }
 
     pub fn set_local_destroying_block(&mut self, pos: BlockPos) {
+        let item_signature = self.local_selected_hotbar_item_signature();
         self.local_player.interaction.destroying_block = Some(pos);
         self.local_player.interaction.destroying_block_face = None;
+        self.local_player.interaction.destroying_item_signature = Some(item_signature);
         self.local_player.interaction.destroying_block_progress = 0;
         self.local_player.interaction.destroying_block_ticks = 0;
         self.local_player.interaction.destroy_delay_ticks = 0;
     }
 
     pub fn set_local_destroying_block_hit(&mut self, pos: BlockPos, face: ProtocolDirection) {
+        let item_signature = self.local_selected_hotbar_item_signature();
         self.local_player.interaction.destroying_block = Some(pos);
         self.local_player.interaction.destroying_block_face = Some(face);
+        self.local_player.interaction.destroying_item_signature = Some(item_signature);
         self.local_player.interaction.destroying_block_progress = 0;
         self.local_player.interaction.destroying_block_ticks = 0;
         self.local_player.interaction.destroy_delay_ticks = 0;
+    }
+
+    pub fn local_destroying_block_matches_current_item(&self) -> bool {
+        self.local_player
+            .interaction
+            .destroying_item_signature
+            .as_ref()
+            .is_none_or(|signature| signature == &self.local_selected_hotbar_item_signature())
     }
 
     pub fn update_local_destroying_block_face(&mut self, face: ProtocolDirection) {
@@ -388,6 +418,7 @@ impl WorldStore {
 
     pub fn take_local_destroying_block(&mut self) -> Option<BlockPos> {
         self.local_player.interaction.destroying_block_face = None;
+        self.local_player.interaction.destroying_item_signature = None;
         self.local_player.interaction.destroying_block_progress = 0;
         self.local_player.interaction.destroying_block_ticks = 0;
         self.local_player.interaction.destroying_block.take()
@@ -401,6 +432,7 @@ impl WorldStore {
             .destroying_block_face
             .take()
             .unwrap_or(ProtocolDirection::Down);
+        self.local_player.interaction.destroying_item_signature = None;
         self.local_player.interaction.destroying_block_progress = 0;
         self.local_player.interaction.destroying_block_ticks = 0;
         Some((pos, face))
@@ -424,6 +456,12 @@ impl WorldStore {
                     .map(|entity| entity_anchor_position(entity.position, target.to_anchor))
             })
             .unwrap_or(packet.position)
+    }
+
+    fn local_selected_hotbar_item_signature(&self) -> LocalPlayerDestroyItemSignature {
+        let hotbar_items = self.inventory.hotbar_items();
+        let selected_slot = usize::from(self.local_player.selected_hotbar_slot.min(8));
+        LocalPlayerDestroyItemSignature::from_item_stack(&hotbar_items[selected_slot])
     }
 }
 
@@ -744,6 +782,9 @@ mod tests {
             LocalPlayerInteractionState {
                 destroying_block: Some(BlockPos { x: 1, y: 2, z: 3 }),
                 destroying_block_face: None,
+                destroying_item_signature: Some(LocalPlayerDestroyItemSignature::from_item_stack(
+                    &ProtocolItemStackSummary::empty(),
+                )),
                 destroying_block_progress: 0,
                 destroying_block_ticks: 0,
                 destroy_delay_ticks: 0,
