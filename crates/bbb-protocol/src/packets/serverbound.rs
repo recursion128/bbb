@@ -431,9 +431,15 @@ pub fn encode_play_pong(id: i32) -> (i32, Vec<u8>) {
 }
 
 pub fn encode_play_client_information_default() -> (i32, Vec<u8>) {
+    encode_play_client_information(&connection::ClientInformation::default())
+}
+
+pub fn encode_play_client_information(
+    information: &connection::ClientInformation,
+) -> (i32, Vec<u8>) {
     (
         ids::play::SERVERBOUND_CLIENT_INFORMATION,
-        connection::encode_client_information_payload_default(),
+        connection::encode_client_information_payload(information),
     )
 }
 

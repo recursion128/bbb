@@ -1806,6 +1806,29 @@ fn decodes_chunk_batch_and_encodes_client_play_status_packets() {
 }
 
 #[test]
+fn encodes_client_information_from_struct() {
+    let information = ClientInformation {
+        language: "zh_cn".to_string(),
+        view_distance: 12,
+        chat_visibility: ClientChatVisibility::System,
+        chat_colors: false,
+        displayed_skin_parts: 0x15,
+        main_hand: ClientMainHand::Left,
+        text_filtering_enabled: true,
+        allows_listing: true,
+        particle_status: ClientParticleStatus::Minimal,
+    };
+
+    let (id, payload) = encode_client_information(&information);
+    assert_eq!(id, ids::configuration::SERVERBOUND_CLIENT_INFORMATION);
+    assert_client_information_payload(&payload, &information);
+
+    let (id, play_payload) = encode_play_client_information(&information);
+    assert_eq!(id, ids::play::SERVERBOUND_CLIENT_INFORMATION);
+    assert_eq!(play_payload, payload);
+}
+
+#[test]
 fn encodes_configuration_brand_custom_payload() {
     let (id, payload) = encode_configuration_brand_custom_payload("bbb-native");
     assert_eq!(id, ids::configuration::SERVERBOUND_CUSTOM_PAYLOAD);
@@ -1813,6 +1836,43 @@ fn encodes_configuration_brand_custom_payload() {
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
     assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
+    assert!(decoder.is_empty());
+}
+
+fn assert_client_information_payload(payload: &[u8], expected: &ClientInformation) {
+    let mut decoder = Decoder::new(payload);
+    assert_eq!(decoder.read_string(16).unwrap(), expected.language.as_str());
+    assert_eq!(decoder.read_i8().unwrap(), expected.view_distance);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        match expected.chat_visibility {
+            ClientChatVisibility::Full => 0,
+            ClientChatVisibility::System => 1,
+            ClientChatVisibility::Hidden => 2,
+        }
+    );
+    assert_eq!(decoder.read_bool().unwrap(), expected.chat_colors);
+    assert_eq!(decoder.read_u8().unwrap(), expected.displayed_skin_parts);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        match expected.main_hand {
+            ClientMainHand::Left => 0,
+            ClientMainHand::Right => 1,
+        }
+    );
+    assert_eq!(
+        decoder.read_bool().unwrap(),
+        expected.text_filtering_enabled
+    );
+    assert_eq!(decoder.read_bool().unwrap(), expected.allows_listing);
+    assert_eq!(
+        decoder.read_var_i32().unwrap(),
+        match expected.particle_status {
+            ClientParticleStatus::All => 0,
+            ClientParticleStatus::Decreased => 1,
+            ClientParticleStatus::Minimal => 2,
+        }
+    );
     assert!(decoder.is_empty());
 }
 

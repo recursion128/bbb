@@ -43,7 +43,11 @@ impl ProbeContext {
                 self.state = ConnectionState::Configuration;
                 self.seen_code_of_conduct = false;
 
-                let (id, payload) = packets::encode_client_information_default();
+                let (id, payload) =
+                    packets::encode_configuration_brand_custom_payload("bbb-native");
+                self.conn.send_packet(id, &payload).await?;
+
+                let (id, payload) = packets::encode_client_information(&self.client_information);
                 self.conn.send_packet(id, &payload).await?;
             }
             LoginClientbound::Unknown { packet_id, len } => {
@@ -58,7 +62,13 @@ impl ProbeContext {
 mod tests {
     use super::*;
     use crate::connection::RawConnection;
-    use bbb_protocol::{codec::Decoder, packets::CookieRequest};
+    use bbb_protocol::{
+        codec::Decoder,
+        packets::{
+            ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
+            CookieRequest, GameProfile,
+        },
+    };
     use bbb_world::ChunkPos;
     use bytes::BytesMut;
     use std::time::Duration;
@@ -91,6 +101,73 @@ mod tests {
         assert_eq!(probe.world.counters().cookie_request_packets, 1);
         assert_eq!(probe.world.counters().cookie_response_hits, 0);
         assert_eq!(probe.world.counters().cookie_response_misses, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_login_finished_sends_brand_and_configured_client_information() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.client_information = ClientInformation {
+            language: "zh_cn".to_string(),
+            view_distance: 12,
+            chat_visibility: ClientChatVisibility::Hidden,
+            chat_colors: false,
+            displayed_skin_parts: 0x15,
+            main_hand: ClientMainHand::Left,
+            text_filtering_enabled: true,
+            allows_listing: true,
+            particle_status: ClientParticleStatus::Decreased,
+        };
+
+        probe
+            .handle_login_packet(LoginClientbound::LoginFinished {
+                profile: GameProfile {
+                    uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
+                    name: "bbb-client".to_string(),
+                    properties: Vec::new(),
+                },
+            })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("login acknowledgement should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::login::SERVERBOUND_LOGIN_ACKNOWLEDGED);
+        assert!(payload.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("brand custom payload should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_CUSTOM_PAYLOAD);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "minecraft:brand");
+        assert_eq!(decoder.read_string(32767).unwrap(), "bbb-native");
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("client information should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_CLIENT_INFORMATION
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(16).unwrap(), "zh_cn");
+        assert_eq!(decoder.read_i8().unwrap(), 12);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_u8().unwrap(), 0x15);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.is_empty());
+        assert_eq!(probe.state, ConnectionState::Configuration);
+        assert!(!probe.seen_code_of_conduct);
     }
 
     #[tokio::test]

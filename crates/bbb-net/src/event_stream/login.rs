@@ -58,7 +58,7 @@ impl EventStreamContext {
                     packets::encode_configuration_brand_custom_payload("bbb-native");
                 self.conn.send_packet(id, &payload).await?;
 
-                let (id, payload) = packets::encode_client_information_default();
+                let (id, payload) = packets::encode_client_information(&self.client_information);
                 self.conn.send_packet(id, &payload).await?;
             }
             LoginClientbound::Unknown { packet_id, len } => {

@@ -1,7 +1,7 @@
 use std::{net::ToSocketAddrs, time::Duration};
 
 use anyhow::{anyhow, Result};
-use bbb_protocol::codec::offline_player_uuid;
+use bbb_protocol::{codec::offline_player_uuid, packets::ClientInformation};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -17,6 +17,8 @@ pub struct ConnectionOptions {
     pub accepted_code_of_conduct_hash: Option<i32>,
     #[serde(default)]
     pub probe_after_first_chunk_packets: usize,
+    #[serde(default)]
+    pub client_information: ClientInformation,
 }
 
 impl ConnectionOptions {
@@ -34,6 +36,7 @@ impl ConnectionOptions {
             timeout: Duration::from_secs(20),
             accepted_code_of_conduct_hash: None,
             probe_after_first_chunk_packets: 0,
+            client_information: ClientInformation::default(),
         })
     }
 }

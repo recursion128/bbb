@@ -47,6 +47,84 @@ pub struct GameProfileProperty {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClientInformation {
+    pub language: String,
+    pub view_distance: i8,
+    pub chat_visibility: ClientChatVisibility,
+    pub chat_colors: bool,
+    pub displayed_skin_parts: u8,
+    pub main_hand: ClientMainHand,
+    pub text_filtering_enabled: bool,
+    pub allows_listing: bool,
+    pub particle_status: ClientParticleStatus,
+}
+
+impl Default for ClientInformation {
+    fn default() -> Self {
+        Self {
+            language: "en_us".to_string(),
+            view_distance: 10,
+            chat_visibility: ClientChatVisibility::Full,
+            chat_colors: true,
+            displayed_skin_parts: 0x7f,
+            main_hand: ClientMainHand::Right,
+            text_filtering_enabled: false,
+            allows_listing: false,
+            particle_status: ClientParticleStatus::All,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientChatVisibility {
+    Full,
+    System,
+    Hidden,
+}
+
+impl ClientChatVisibility {
+    fn id(self) -> i32 {
+        match self {
+            Self::Full => 0,
+            Self::System => 1,
+            Self::Hidden => 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientMainHand {
+    Left,
+    Right,
+}
+
+impl ClientMainHand {
+    fn id(self) -> i32 {
+        match self {
+            Self::Left => 0,
+            Self::Right => 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientParticleStatus {
+    All,
+    Decreased,
+    Minimal,
+}
+
+impl ClientParticleStatus {
+    fn id(self) -> i32 {
+        match self {
+            Self::All => 0,
+            Self::Decreased => 1,
+            Self::Minimal => 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoginClientbound {
     Disconnect { raw_json: String },
     EncryptionRequest,
@@ -282,9 +360,13 @@ pub fn encode_login_cookie_response(key: &str, payload: Option<&[u8]>) -> (i32, 
 }
 
 pub fn encode_client_information_default() -> (i32, Vec<u8>) {
+    encode_client_information(&ClientInformation::default())
+}
+
+pub fn encode_client_information(information: &ClientInformation) -> (i32, Vec<u8>) {
     (
         ids::configuration::SERVERBOUND_CLIENT_INFORMATION,
-        encode_client_information_payload_default(),
+        encode_client_information_payload(information),
     )
 }
 
@@ -298,17 +380,17 @@ pub fn encode_configuration_brand_custom_payload(brand: &str) -> (i32, Vec<u8>) 
     )
 }
 
-pub(super) fn encode_client_information_payload_default() -> Vec<u8> {
+pub(super) fn encode_client_information_payload(information: &ClientInformation) -> Vec<u8> {
     let mut out = Encoder::new();
-    out.write_string("en_us");
-    out.write_i8(10);
-    out.write_var_i32(0);
-    out.write_bool(true);
-    out.write_u8(0x7f);
-    out.write_var_i32(1);
-    out.write_bool(false);
-    out.write_bool(false);
-    out.write_var_i32(0);
+    out.write_string(&information.language);
+    out.write_i8(information.view_distance);
+    out.write_var_i32(information.chat_visibility.id());
+    out.write_bool(information.chat_colors);
+    out.write_u8(information.displayed_skin_parts);
+    out.write_var_i32(information.main_hand.id());
+    out.write_bool(information.text_filtering_enabled);
+    out.write_bool(information.allows_listing);
+    out.write_var_i32(information.particle_status.id());
     out.into_inner()
 }
 

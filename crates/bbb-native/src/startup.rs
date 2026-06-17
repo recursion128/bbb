@@ -1,11 +1,14 @@
 use std::{net::SocketAddr, path::PathBuf, thread, time::Duration};
 
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use bbb_control::SharedSnapshot;
 use bbb_net::{ConnectionOptions, NetCommand, NetEvent};
 use bbb_pack::PackRoots;
 use bbb_platform::WindowConfig;
-use clap::Parser;
+use bbb_protocol::packets::{
+    ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
+};
+use clap::{ArgAction, Parser, ValueEnum};
 use tokio::{runtime::Runtime, sync::mpsc};
 use winit::{
     event_loop::EventLoop,
@@ -37,6 +40,85 @@ pub(crate) struct Args {
     pub(crate) code_of_conduct_store: Option<PathBuf>,
     #[arg(long = "resource-pack-dir", value_name = "PATH")]
     pub(crate) resource_pack_dirs: Vec<PathBuf>,
+    #[arg(long = "client-locale", default_value = "en_us")]
+    pub(crate) client_locale: String,
+    #[arg(long = "client-view-distance", default_value_t = 10)]
+    pub(crate) client_view_distance: i8,
+    #[arg(long = "client-chat-visibility", value_enum, default_value = "full")]
+    pub(crate) client_chat_visibility: ClientChatVisibilityArg,
+    #[arg(
+        long = "client-chat-colors",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_chat_colors: bool,
+    #[arg(long = "client-skin-parts", default_value_t = 0x7f)]
+    pub(crate) client_skin_parts: u8,
+    #[arg(long = "client-main-hand", value_enum, default_value = "right")]
+    pub(crate) client_main_hand: ClientMainHandArg,
+    #[arg(
+        long = "client-text-filtering",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_text_filtering: bool,
+    #[arg(
+        long = "client-allow-server-listing",
+        default_value_t = false,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_allow_server_listing: bool,
+    #[arg(long = "client-particles", value_enum, default_value = "all")]
+    pub(crate) client_particles: ClientParticleStatusArg,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum ClientChatVisibilityArg {
+    Full,
+    System,
+    Hidden,
+}
+
+impl From<ClientChatVisibilityArg> for ClientChatVisibility {
+    fn from(value: ClientChatVisibilityArg) -> Self {
+        match value {
+            ClientChatVisibilityArg::Full => Self::Full,
+            ClientChatVisibilityArg::System => Self::System,
+            ClientChatVisibilityArg::Hidden => Self::Hidden,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum ClientMainHandArg {
+    Left,
+    Right,
+}
+
+impl From<ClientMainHandArg> for ClientMainHand {
+    fn from(value: ClientMainHandArg) -> Self {
+        match value {
+            ClientMainHandArg::Left => Self::Left,
+            ClientMainHandArg::Right => Self::Right,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum ClientParticleStatusArg {
+    All,
+    Decreased,
+    Minimal,
+}
+
+impl From<ClientParticleStatusArg> for ClientParticleStatus {
+    fn from(value: ClientParticleStatusArg) -> Self {
+        match value {
+            ClientParticleStatusArg::All => Self::All,
+            ClientParticleStatusArg::Decreased => Self::Decreased,
+            ClientParticleStatusArg::Minimal => Self::Minimal,
+        }
+    }
 }
 
 pub(crate) struct NetworkHandles {
@@ -60,6 +142,7 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
     }
 
     let mut options = ConnectionOptions::offline(&args.server, &args.username)?;
+    options.client_information = client_information_from_args(args)?;
     options.probe_after_first_chunk_packets = args.probe_after_first_chunk_packets;
     let report = runtime.block_on(bbb_net::run_offline_probe(options))?;
     println!("{}", serde_json::to_string_pretty(&report)?);
@@ -99,6 +182,7 @@ pub(crate) fn start_network_if_requested(
     }
 
     let mut options = ConnectionOptions::offline(&args.server, &args.username)?;
+    options.client_information = client_information_from_args(args)?;
     options.accepted_code_of_conduct_hash = code_of_conduct.accepted_hash_for_options(&options);
     code_of_conduct.set_connected_server(&options);
     let (tx, rx) = mpsc::channel(8192);
@@ -115,6 +199,24 @@ pub(crate) fn start_network_if_requested(
     Ok(NetworkHandles {
         events: Some(rx),
         commands: Some(command_tx),
+    })
+}
+
+pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformation> {
+    ensure!(
+        args.client_locale.len() <= 16,
+        "client locale must be at most 16 UTF-8 bytes"
+    );
+    Ok(ClientInformation {
+        language: args.client_locale.clone(),
+        view_distance: args.client_view_distance,
+        chat_visibility: args.client_chat_visibility.into(),
+        chat_colors: args.client_chat_colors,
+        displayed_skin_parts: args.client_skin_parts,
+        main_hand: args.client_main_hand.into(),
+        text_filtering_enabled: args.client_text_filtering,
+        allows_listing: args.client_allow_server_listing,
+        particle_status: args.client_particles.into(),
     })
 }
 
@@ -176,6 +278,54 @@ mod tests {
             args.resource_pack_dirs,
             vec![PathBuf::from("packs/base"), PathBuf::from("packs/overlay")]
         );
+    }
+
+    #[test]
+    fn args_build_client_information_from_startup_options() {
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--client-locale",
+            "zh_cn",
+            "--client-view-distance",
+            "12",
+            "--client-chat-visibility",
+            "system",
+            "--client-chat-colors",
+            "false",
+            "--client-skin-parts",
+            "21",
+            "--client-main-hand",
+            "left",
+            "--client-text-filtering",
+            "true",
+            "--client-allow-server-listing",
+            "true",
+            "--client-particles",
+            "minimal",
+        ])
+        .unwrap();
+
+        let information = client_information_from_args(&args).unwrap();
+
+        assert_eq!(information.language, "zh_cn");
+        assert_eq!(information.view_distance, 12);
+        assert_eq!(information.chat_visibility, ClientChatVisibility::System);
+        assert!(!information.chat_colors);
+        assert_eq!(information.displayed_skin_parts, 21);
+        assert_eq!(information.main_hand, ClientMainHand::Left);
+        assert!(information.text_filtering_enabled);
+        assert!(information.allows_listing);
+        assert_eq!(information.particle_status, ClientParticleStatus::Minimal);
+    }
+
+    #[test]
+    fn client_locale_rejects_more_than_sixteen_utf8_bytes() {
+        let args =
+            Args::try_parse_from(["bbb-native", "--client-locale", "abcdefghijklmnopq"]).unwrap();
+
+        let err = client_information_from_args(&args).unwrap_err();
+
+        assert!(err.to_string().contains("at most 16 UTF-8 bytes"));
     }
 
     #[test]

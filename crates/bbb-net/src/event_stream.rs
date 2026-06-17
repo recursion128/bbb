@@ -34,6 +34,7 @@ struct EventStreamContext {
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
     accepted_code_of_conduct_hash: Option<i32>,
+    client_information: packets::ClientInformation,
 }
 
 pub async fn run_offline_event_stream(
@@ -60,6 +61,7 @@ pub async fn run_offline_event_stream(
         server_cookies: BTreeMap::new(),
         seen_code_of_conduct: false,
         accepted_code_of_conduct_hash: options.accepted_code_of_conduct_hash,
+        client_information: options.client_information.clone(),
     };
 
     emit(&stream.events, NetEvent::Connected).await?;
@@ -177,6 +179,17 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: true,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation {
+                language: "zh_cn".to_string(),
+                view_distance: 12,
+                chat_visibility: packets::ClientChatVisibility::System,
+                chat_colors: false,
+                displayed_skin_parts: 0x15,
+                main_hand: packets::ClientMainHand::Left,
+                text_filtering_enabled: true,
+                allows_listing: true,
+                particle_status: packets::ClientParticleStatus::Minimal,
+            },
         };
 
         stream
@@ -216,7 +229,16 @@ mod tests {
             ids::configuration::SERVERBOUND_CLIENT_INFORMATION
         );
         let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_string(16).unwrap(), "en_us");
+        assert_eq!(decoder.read_string(16).unwrap(), "zh_cn");
+        assert_eq!(decoder.read_i8().unwrap(), 12);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(!decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_u8().unwrap(), 0x15);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(decoder.read_bool().unwrap());
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
 
         assert_eq!(stream.state, ConnectionState::Configuration);
         assert!(!stream.seen_code_of_conduct);
@@ -228,6 +250,83 @@ mod tests {
             event,
             NetEvent::StateChanged {
                 state: ConnectionState::Configuration
+            }
+        ));
+    }
+
+    #[tokio::test]
+    async fn configuration_finish_sends_configured_play_client_information() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            player_was_dead: false,
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation {
+                language: "ja_jp".to_string(),
+                view_distance: 8,
+                chat_visibility: packets::ClientChatVisibility::Hidden,
+                chat_colors: true,
+                displayed_skin_parts: 0x03,
+                main_hand: packets::ClientMainHand::Right,
+                text_filtering_enabled: false,
+                allows_listing: true,
+                particle_status: packets::ClientParticleStatus::Decreased,
+            },
+        };
+
+        stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::Finish)
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("finish configuration should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_FINISH_CONFIGURATION
+        );
+        assert!(payload.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("play client information should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_INFORMATION);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(16).unwrap(), "ja_jp");
+        assert_eq!(decoder.read_i8().unwrap(), 8);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_u8().unwrap(), 0x03);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(!decoder.read_bool().unwrap());
+        assert!(decoder.read_bool().unwrap());
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.is_empty());
+        assert_eq!(stream.state, ConnectionState::Play);
+        assert!(stream.play_tick.is_some());
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("state-changed event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::StateChanged {
+                state: ConnectionState::Play
             }
         ));
     }
@@ -250,6 +349,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
 
         stream
@@ -294,6 +394,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: Some(code_of_conduct_text_hash(text)),
+            client_information: packets::ClientInformation::default(),
         };
 
         stream
@@ -340,6 +441,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
 
         stream
@@ -391,6 +493,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
         let pack_id = uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678);
 
@@ -459,6 +562,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
         let pack_id = uuid::Uuid::from_u128(0x33333333_1234_5678_90ab_cdef12345678);
 
@@ -527,6 +631,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
 
         stream
@@ -589,6 +694,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
 
         stream
@@ -634,6 +740,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
 
         stream
@@ -679,6 +786,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
         stream
             .handle_play_packet(PlayClientbound::ChunkBatchFinished { batch_size: 0 })
@@ -712,6 +820,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
         let pack_id = uuid::Uuid::from_u128(0x87654321_4321_8765_90ab_cdef12345678);
 
@@ -780,6 +889,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
         let pack_id = uuid::Uuid::from_u128(0x44444444_4321_8765_90ab_cdef12345678);
 
@@ -848,6 +958,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
 
         stream
@@ -893,6 +1004,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
         let first_update = packets::PlayerPositionUpdate {
             id: 17,
@@ -1007,6 +1119,7 @@ mod tests {
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: true,
             accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
         };
 
         stream
