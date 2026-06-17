@@ -340,6 +340,9 @@ fn handle_chat_entry_key(
     match code {
         KeyCode::Enter | KeyCode::NumpadEnter => submit_chat_entry(input, counters, net_commands),
         KeyCode::Escape => input.chat_entry = None,
+        KeyCode::Tab => {
+            apply_latest_command_suggestion(input, world);
+        }
         KeyCode::Backspace => {
             if let Some(entry) = &mut input.chat_entry {
                 entry.text.pop();
@@ -352,6 +355,59 @@ fn handle_chat_entry_key(
         }
         _ => {}
     }
+}
+
+fn apply_latest_command_suggestion(input: &mut ClientInputState, world: &WorldStore) {
+    let Some(current_text) = input.chat_entry.as_ref().map(|entry| entry.text.as_str()) else {
+        return;
+    };
+    let Some(updated_text) = latest_command_suggestion_text(world, current_text) else {
+        return;
+    };
+    if let Some(entry) = &mut input.chat_entry {
+        entry.text = updated_text;
+        entry.last_suggestion_request_text = Some(entry.text.clone());
+    }
+}
+
+fn latest_command_suggestion_text(world: &WorldStore, current_text: &str) -> Option<String> {
+    let suggestions = world.command_suggestions();
+    let request = suggestions.last_request.as_ref()?;
+    if request.command != current_text {
+        return None;
+    }
+
+    let result = suggestions
+        .last_id
+        .and_then(|id| suggestions.by_id.get(&id))?;
+    if result.id != request.id {
+        return None;
+    }
+    let suggestion = result.suggestions.first()?;
+    apply_command_suggestion_text(current_text, result.start, result.length, &suggestion.text)
+}
+
+fn apply_command_suggestion_text(
+    current_text: &str,
+    start: i32,
+    length: i32,
+    suggestion: &str,
+) -> Option<String> {
+    let start = usize::try_from(start).ok()?;
+    let length = usize::try_from(length).ok()?;
+    let end = start.checked_add(length)?;
+    if end > current_text.len()
+        || !current_text.is_char_boundary(start)
+        || !current_text.is_char_boundary(end)
+    {
+        return None;
+    }
+
+    let mut updated = String::with_capacity(current_text.len() - length + suggestion.len());
+    updated.push_str(&current_text[..start]);
+    updated.push_str(suggestion);
+    updated.push_str(&current_text[end..]);
+    Some(updated)
 }
 
 fn submit_chat_entry(

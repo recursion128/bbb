@@ -1,9 +1,9 @@
 use super::*;
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestionRequest,
-    CommonPlayerSpawnInfo, ContainerCloseRequest, LastSeenMessagesUpdate,
-    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerCommand,
-    SetPassengers, Vec3d as ProtocolVec3d,
+    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestion,
+    CommandSuggestionRequest, CommandSuggestions, CommonPlayerSpawnInfo, ContainerCloseRequest,
+    LastSeenMessagesUpdate, OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction,
+    PlayerCommand, SetPassengers, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use uuid::Uuid;
@@ -502,6 +502,161 @@ fn command_entry_multi_character_commit_requests_suggestions_once() {
         NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
             id: 0,
             command: "/seed".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn command_entry_tab_applies_latest_suggestion_range() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/giv");
+    world.apply_command_suggestions(CommandSuggestions {
+        id: 0,
+        start: 1,
+        length: 3,
+        suggestions: vec![CommandSuggestion {
+            text: "give".to_string(),
+            tooltip: Some("Run give".to_string()),
+        }],
+    });
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("/give")
+    );
+    assert_eq!(
+        input
+            .chat_entry
+            .as_ref()
+            .and_then(|entry| entry.last_suggestion_request_text.as_deref()),
+        Some("/give")
+    );
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/giv".to_string(),
+        })
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ChatCommand(ChatCommand {
+            command: "give".to_string(),
+        })
+    );
+}
+
+#[test]
+fn command_entry_tab_ignores_stale_suggestion_response() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/giv");
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "e");
+    world.apply_command_suggestions(CommandSuggestions {
+        id: 0,
+        start: 1,
+        length: 3,
+        suggestions: vec![CommandSuggestion {
+            text: "gamemode".to_string(),
+            tooltip: None,
+        }],
+    });
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("/give")
+    );
+    assert_eq!(counters.command_suggestion_commands_queued, 2);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/giv".to_string(),
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 1,
+            command: "/give".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn command_entry_tab_ignores_invalid_suggestion_range() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/give");
+    world.apply_command_suggestions(CommandSuggestions {
+        id: 0,
+        start: 10,
+        length: 1,
+        suggestions: vec![CommandSuggestion {
+            text: "gamemode".to_string(),
+            tooltip: None,
+        }],
+    });
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("/give")
+    );
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/give".to_string(),
         })
     );
     assert!(rx.try_recv().is_err());
