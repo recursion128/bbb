@@ -20,6 +20,8 @@ use super::{
     ClientInputState,
 };
 
+const USE_ITEM_REPEAT_DELAY_TICKS: u8 = 4;
+
 pub(crate) fn handle_mouse_motion(input: &mut ClientInputState, delta: (f64, f64)) {
     if !input.focused {
         return;
@@ -81,37 +83,20 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
             input.destroy_block_held = false;
             abort_destroy_block(counters, world, net_commands, ProtocolDirection::Down);
         }
-        (MouseButton::Right, ElementState::Pressed) => match camera_target {
-            Some(CrosshairTarget::Entity(hit)) => {
-                queue_interact_entity_command(
-                    counters,
-                    net_commands,
-                    hit.entity_id,
-                    InteractionHand::MainHand,
-                    hit.relative_location,
-                    input.sneak,
-                );
-            }
-            Some(CrosshairTarget::Block(hit)) => {
-                let sequence = world.next_local_prediction_sequence();
-                queue_use_item_on_command(counters, net_commands, hit, sequence);
-            }
-            None => {
-                if let Some(pose) = player_pose {
-                    let sequence = world.next_local_prediction_sequence();
-                    let using_item = queue_use_item_command(
-                        counters,
-                        net_commands,
-                        InteractionHand::MainHand,
-                        pose.y_rot,
-                        pose.x_rot,
-                        sequence,
-                    );
-                    world.set_local_using_item(using_item);
-                }
-            }
-        },
+        (MouseButton::Right, ElementState::Pressed) => {
+            input.use_item_held = true;
+            start_use_item(
+                input,
+                world,
+                counters,
+                net_commands,
+                camera_target,
+                player_pose,
+            );
+        }
         (MouseButton::Right, ElementState::Released) => {
+            input.use_item_held = false;
+            input.use_item_repeat_delay_ticks = 0;
             if world.take_local_using_item() {
                 queue_zero_pos_player_action_command(
                     counters,
@@ -136,6 +121,102 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
         },
         _ => {}
     }
+}
+
+pub(crate) fn advance_using_item_at_partial_tick(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    entity_partial_tick: f32,
+    use_ticks: u32,
+) {
+    if !input.focused || !input.use_item_held || use_ticks == 0 {
+        return;
+    }
+
+    let mut ticks_remaining = use_ticks;
+    loop {
+        if world.local_player().interaction.using_item
+            || world.local_player().interaction.destroying_block.is_some()
+        {
+            return;
+        }
+
+        let delay_ticks = u32::from(input.use_item_repeat_delay_ticks);
+        if delay_ticks > ticks_remaining {
+            input.use_item_repeat_delay_ticks = (delay_ticks - ticks_remaining) as u8;
+            return;
+        }
+        ticks_remaining -= delay_ticks;
+        input.use_item_repeat_delay_ticks = 0;
+
+        let camera_target = crosshair_target_from_camera_at_partial_tick(
+            world,
+            camera_pose_from_world(world),
+            entity_partial_tick,
+        );
+        let player_pose = world.local_player_pose();
+        if !start_use_item(
+            input,
+            world,
+            counters,
+            net_commands,
+            camera_target,
+            player_pose,
+        ) || ticks_remaining == 0
+        {
+            return;
+        }
+    }
+}
+
+fn start_use_item(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    camera_target: Option<CrosshairTarget>,
+    player_pose: Option<bbb_world::LocalPlayerPoseState>,
+) -> bool {
+    if world.local_player().interaction.using_item
+        || world.local_player().interaction.destroying_block.is_some()
+    {
+        return false;
+    }
+
+    input.use_item_repeat_delay_ticks = USE_ITEM_REPEAT_DELAY_TICKS;
+    match camera_target {
+        Some(CrosshairTarget::Entity(hit)) => {
+            queue_interact_entity_command(
+                counters,
+                net_commands,
+                hit.entity_id,
+                InteractionHand::MainHand,
+                hit.relative_location,
+                input.sneak,
+            );
+        }
+        Some(CrosshairTarget::Block(hit)) => {
+            let sequence = world.next_local_prediction_sequence();
+            queue_use_item_on_command(counters, net_commands, hit, sequence);
+        }
+        None => {
+            if let Some(pose) = player_pose {
+                let sequence = world.next_local_prediction_sequence();
+                let using_item = queue_use_item_command(
+                    counters,
+                    net_commands,
+                    InteractionHand::MainHand,
+                    pose.y_rot,
+                    pose.x_rot,
+                    sequence,
+                );
+                world.set_local_using_item(using_item);
+            }
+        }
+    }
+    true
 }
 
 pub(crate) fn advance_destroying_block_at_partial_tick(
@@ -986,6 +1067,11 @@ mod tests {
         );
 
         assert!(!world.local_player().interaction.using_item);
+        assert!(input.use_item_held);
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
         assert_eq!(counters.interact_entity_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -1020,6 +1106,11 @@ mod tests {
         );
 
         assert!(!world.local_player().interaction.using_item);
+        assert!(input.use_item_held);
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
         assert_eq!(counters.use_item_on_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -1037,6 +1128,163 @@ mod tests {
                 sequence: 1,
             })
         );
+    }
+
+    #[test]
+    fn held_right_mouse_on_block_repeats_use_item_on_after_vanilla_delay() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: ProtocolBlockHitResult {
+                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                    direction: ProtocolDirection::North,
+                    cursor_x: 0.0,
+                    cursor_y: 0.62,
+                    cursor_z: 0.0,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 1,
+            })
+        );
+
+        advance_using_item_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            3,
+        );
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(input.use_item_repeat_delay_ticks, 1);
+
+        advance_using_item_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            1,
+        );
+
+        assert_eq!(counters.use_item_on_commands_queued, 2);
+        assert_eq!(
+            input.use_item_repeat_delay_ticks,
+            USE_ITEM_REPEAT_DELAY_TICKS
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: ProtocolBlockHitResult {
+                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                    direction: ProtocolDirection::North,
+                    cursor_x: 0.0,
+                    cursor_y: 0.62,
+                    cursor_z: 0.0,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn right_mouse_release_stops_repeated_block_use() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+        assert!(rx.try_recv().is_ok());
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Released,
+        );
+        assert!(!input.use_item_held);
+        assert_eq!(input.use_item_repeat_delay_ticks, 0);
+
+        advance_using_item_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            USE_ITEM_REPEAT_DELAY_TICKS.into(),
+        );
+
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn held_right_mouse_without_target_does_not_repeat_while_item_is_in_use() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            y_rot: 45.0,
+            x_rot: -20.0,
+            ..LocalPlayerPoseState::default()
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::UseItem(_)));
+
+        advance_using_item_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            USE_ITEM_REPEAT_DELAY_TICKS.into(),
+        );
+
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

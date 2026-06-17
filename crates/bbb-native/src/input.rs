@@ -33,8 +33,8 @@ pub(crate) use commands::{
     queue_vehicle_move_command, select_hotbar_slot,
 };
 pub(crate) use mouse::{
-    advance_destroying_block_at_partial_tick, handle_mouse_input_at_partial_tick,
-    handle_mouse_motion, handle_mouse_wheel,
+    advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
+    handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
 };
 pub(crate) use movement::advance_player_input;
 
@@ -49,6 +49,8 @@ pub(crate) struct ClientInputState {
     sneak: bool,
     sprint: bool,
     destroy_block_held: bool,
+    use_item_held: bool,
+    use_item_repeat_delay_ticks: u8,
     mouse_delta_x: f64,
     mouse_delta_y: f64,
     scroll_accumulated_x: f64,
@@ -86,6 +88,8 @@ impl ClientInputState {
         self.sneak = false;
         self.sprint = false;
         self.destroy_block_held = false;
+        self.use_item_held = false;
+        self.use_item_repeat_delay_ticks = 0;
         self.mouse_delta_x = 0.0;
         self.mouse_delta_y = 0.0;
         self.scroll_accumulated_x = 0.0;

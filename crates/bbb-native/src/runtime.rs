@@ -19,7 +19,10 @@ use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
     entity_scene::entity_scene_outline_from_world_at_partial_tick,
-    input::{advance_destroying_block_at_partial_tick, advance_player_input, ClientInputState},
+    input::{
+        advance_destroying_block_at_partial_tick, advance_player_input,
+        advance_using_item_at_partial_tick, ClientInputState,
+    },
     item_entities::item_entity_billboards_from_world,
     item_runtime::NativeItemRuntime,
     particle_runtime::ParticleEventSink,
@@ -125,6 +128,14 @@ pub(crate) fn pump_network_and_terrain(
     renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     advance_destroying_block_at_partial_tick(
+        input,
+        world,
+        net_counters,
+        net_commands,
+        entity_partial_tick,
+        advanced_ticks,
+    );
+    advance_using_item_at_partial_tick(
         input,
         world,
         net_counters,
