@@ -78,8 +78,8 @@ fn maybe_queue_player_move_command(
 
     let command = NetCommand::MovePlayer(PlayerMoveCommand {
         state: pose.position_state(),
-        on_ground: pose.delta_movement.y.abs() <= f64::EPSILON,
-        horizontal_collision: false,
+        on_ground: pose.on_ground,
+        horizontal_collision: pose.horizontal_collision,
         force_position,
     });
     if tx.try_send(command).is_ok() {
@@ -140,7 +140,7 @@ mod tests {
             other => panic!("expected move command, got {other:?}"),
         };
         assert_f64_near(first.state.position.y, 64.0, 0.000001);
-        assert!(first.on_ground);
+        assert!(!first.on_ground);
         assert_eq!(counters.player_move_commands_queued, 1);
 
         input.forward = true;
@@ -213,6 +213,31 @@ mod tests {
         assert!(reminder.force_position);
         assert_eq!(reminder.state, first.state);
         assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
+    fn move_command_uses_world_collision_flags() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let now = Instant::now();
+        let pose = LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            on_ground: false,
+            horizontal_collision: true,
+            ..LocalPlayerPoseState::default()
+        };
+
+        maybe_queue_player_move_command(&mut input, &mut counters, &commands, pose, now);
+
+        let command = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected move command, got {other:?}"),
+        };
+        assert!(!command.on_ground);
+        assert!(command.horizontal_collision);
+        assert_eq!(counters.player_move_commands_queued, 1);
     }
 
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {

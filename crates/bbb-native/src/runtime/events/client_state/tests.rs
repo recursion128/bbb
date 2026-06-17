@@ -486,6 +486,7 @@ fn local_player_pose(
         y_rot,
         x_rot,
         last_teleport_id,
+        ..LocalPlayerPoseState::default()
     }
 }
 

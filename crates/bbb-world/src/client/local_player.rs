@@ -9,12 +9,10 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
+use super::local_player_movement::integrate_local_player_input_pose;
 use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
 
 const STANDING_EYE_HEIGHT: f64 = 1.62;
-const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
-const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
-const LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocalPlayerState {
@@ -95,6 +93,10 @@ pub struct LocalPlayerInteractionState {
 pub struct LocalPlayerPoseState {
     pub position: ProtocolVec3d,
     pub delta_movement: ProtocolVec3d,
+    #[serde(default)]
+    pub on_ground: bool,
+    #[serde(default)]
+    pub horizontal_collision: bool,
     pub y_rot: f32,
     pub x_rot: f32,
     pub last_teleport_id: i32,
@@ -128,6 +130,8 @@ impl LocalPlayerPoseState {
         Self {
             position: state.position,
             delta_movement: state.delta_movement,
+            on_ground: false,
+            horizontal_collision: false,
             y_rot: state.y_rot,
             x_rot: state.x_rot,
             last_teleport_id,
@@ -320,7 +324,8 @@ impl WorldStore {
         input: LocalPlayerInputState,
         dt_seconds: f64,
     ) -> Option<LocalPlayerPoseState> {
-        let pose = integrate_local_player_input_pose(self.local_player.pose?, input, dt_seconds);
+        let pose =
+            integrate_local_player_input_pose(self, self.local_player.pose?, input, dt_seconds);
         self.local_player.pose = Some(pose);
         Some(pose)
     }
@@ -380,58 +385,6 @@ impl WorldStore {
     }
 }
 
-fn integrate_local_player_input_pose(
-    mut pose: LocalPlayerPoseState,
-    input: LocalPlayerInputState,
-    dt_seconds: f64,
-) -> LocalPlayerPoseState {
-    if input.focused {
-        pose.y_rot = wrap_degrees_f32(
-            pose.y_rot + input.mouse_delta_x as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES,
-        );
-        pose.x_rot = (pose.x_rot
-            + input.mouse_delta_y as f32 * LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES)
-            .clamp(-90.0, 90.0);
-    }
-
-    let forward_input = axis(input.forward, input.backward);
-    let strafe_input = axis(input.right, input.left);
-    let vertical_input = axis(input.jump, input.sneak);
-    let speed = if input.sprint {
-        LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND
-    } else {
-        LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
-    };
-    let yaw = f64::from(pose.y_rot).to_radians();
-    let forward = (-yaw.sin(), yaw.cos());
-    let right = (-yaw.cos(), -yaw.sin());
-    let mut move_x = forward.0 * forward_input + right.0 * strafe_input;
-    let mut move_z = forward.1 * forward_input + right.1 * strafe_input;
-    let horizontal_len = (move_x * move_x + move_z * move_z).sqrt();
-    if horizontal_len > f64::EPSILON {
-        move_x /= horizontal_len;
-        move_z /= horizontal_len;
-    }
-
-    pose.position.x += move_x * speed * dt_seconds;
-    pose.position.y += vertical_input * speed * dt_seconds;
-    pose.position.z += move_z * speed * dt_seconds;
-    pose.delta_movement = ProtocolVec3d {
-        x: move_x * speed / 20.0,
-        y: vertical_input * speed / 20.0,
-        z: move_z * speed / 20.0,
-    };
-    pose
-}
-
-fn axis(positive: bool, negative: bool) -> f64 {
-    match (positive, negative) {
-        (true, false) => 1.0,
-        (false, true) => -1.0,
-        _ => 0.0,
-    }
-}
-
 fn apply_look_at_to_pose(
     pose: LocalPlayerPoseState,
     from_anchor: EntityAnchor,
@@ -480,6 +433,7 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
+    use super::super::local_player_movement::LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
     use super::*;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, PlayerLookAtTarget, Vec3d as ProtocolVec3d,
@@ -659,6 +613,7 @@ mod tests {
             LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND / 20.0,
             0.000001,
         );
+        assert!(!pose.on_ground);
         assert_eq!(store.local_player_pose(), Some(pose));
     }
 
@@ -835,6 +790,7 @@ mod tests {
             y_rot: 0.0,
             x_rot: 0.0,
             last_teleport_id: 3,
+            ..LocalPlayerPoseState::default()
         };
         store.set_local_player_pose(initial_pose);
         store.local_player_vehicle_id = Some(10);
@@ -863,6 +819,7 @@ mod tests {
             y_rot: 90.0,
             x_rot: 30.0,
             last_teleport_id: 7,
+            ..LocalPlayerPoseState::default()
         });
         store.apply_add_entity(protocol_add_entity_at(123, vec3(0.0, 70.0, 10.0)));
 
