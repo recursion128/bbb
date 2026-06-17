@@ -1,7 +1,8 @@
 use bbb_protocol::packets::{
-    ChatTypeHolder as ProtocolChatTypeHolder, DeleteChat as ProtocolDeleteChat,
-    DisguisedChat as ProtocolDisguisedChat, FilterMaskKind as ProtocolFilterMaskKind,
-    MessageSignature as ProtocolMessageSignature, PackedMessageSignature, PlayerChat,
+    ChatAcknowledgement as ProtocolChatAcknowledgement, ChatTypeHolder as ProtocolChatTypeHolder,
+    DeleteChat as ProtocolDeleteChat, DisguisedChat as ProtocolDisguisedChat,
+    FilterMaskKind as ProtocolFilterMaskKind, MessageSignature as ProtocolMessageSignature,
+    PackedMessageSignature, PlayerChat,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -9,6 +10,7 @@ use uuid::Uuid;
 use crate::WorldStore;
 
 const SIGNATURE_CACHE_CAPACITY: usize = 128;
+const CHAT_ACKNOWLEDGEMENT_OFFSET_THRESHOLD: i32 = 64;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientChatState {
@@ -16,6 +18,8 @@ pub struct ClientChatState {
     pub deleted_messages: Vec<DeletedChatState>,
     pub expected_player_chat_global_index: i32,
     pub signature_cache: Vec<Option<ChatSignatureState>>,
+    #[serde(default)]
+    pub acknowledgement: ChatAcknowledgementState,
 }
 
 impl Default for ClientChatState {
@@ -25,6 +29,7 @@ impl Default for ClientChatState {
             deleted_messages: Vec::new(),
             expected_player_chat_global_index: 0,
             signature_cache: vec![None; SIGNATURE_CACHE_CAPACITY],
+            acknowledgement: ChatAcknowledgementState::default(),
         }
     }
 }
@@ -72,6 +77,18 @@ pub struct ChatSignatureState {
     pub bytes_len: usize,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatAcknowledgementState {
+    pub pending_offset: i32,
+    pub last_processed_signature: Option<ProcessedChatSignatureState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProcessedChatSignatureState {
+    pub checksum: i32,
+    pub bytes: Vec<u8>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeletedChatState {
     pub signature: Option<ChatSignatureState>,
@@ -107,7 +124,7 @@ impl WorldStore {
         refresh_chat_counters(self);
     }
 
-    pub fn apply_player_chat(&mut self, packet: PlayerChat) {
+    pub fn apply_player_chat(&mut self, packet: PlayerChat) -> Option<ProtocolChatAcknowledgement> {
         self.counters.player_chat_packets += 1;
         let mut validation_state = if packet.signature.is_some() {
             ChatValidationState::Unchecked
@@ -154,6 +171,10 @@ impl WorldStore {
         if packet.unsigned_content.is_some() {
             self.counters.player_chat_unsigned_content_packets += 1;
         }
+        let acknowledgement = packet
+            .signature
+            .as_ref()
+            .and_then(|signature| self.record_processed_player_chat_signature(signature));
         match packet.filter_mask.kind {
             ProtocolFilterMaskKind::FullyFiltered => {
                 self.counters.player_chat_fully_filtered_packets += 1;
@@ -180,6 +201,7 @@ impl WorldStore {
         };
         self.client_chat.messages.push(message);
         refresh_chat_counters(self);
+        acknowledgement
     }
 
     pub fn apply_disguised_chat(&mut self, packet: ProtocolDisguisedChat) {
@@ -219,6 +241,38 @@ impl WorldStore {
 
     pub fn client_chat(&self) -> &ClientChatState {
         &self.client_chat
+    }
+
+    fn record_processed_player_chat_signature(
+        &mut self,
+        signature: &ProtocolMessageSignature,
+    ) -> Option<ProtocolChatAcknowledgement> {
+        let processed_signature = processed_chat_signature_state(signature);
+        if self
+            .client_chat
+            .acknowledgement
+            .last_processed_signature
+            .as_ref()
+            == Some(&processed_signature)
+        {
+            return None;
+        }
+
+        self.client_chat.acknowledgement.last_processed_signature = Some(processed_signature);
+        self.client_chat.acknowledgement.pending_offset = self
+            .client_chat
+            .acknowledgement
+            .pending_offset
+            .saturating_add(1);
+
+        if self.client_chat.acknowledgement.pending_offset > CHAT_ACKNOWLEDGEMENT_OFFSET_THRESHOLD {
+            let offset = self.client_chat.acknowledgement.pending_offset;
+            self.client_chat.acknowledgement.pending_offset = 0;
+            self.counters.player_chat_acknowledgement_packets += 1;
+            Some(ProtocolChatAcknowledgement { offset })
+        } else {
+            None
+        }
     }
 }
 
@@ -264,6 +318,15 @@ fn chat_signature_state(signature: &ProtocolMessageSignature) -> ChatSignatureSt
     }
 }
 
+fn processed_chat_signature_state(
+    signature: &ProtocolMessageSignature,
+) -> ProcessedChatSignatureState {
+    ProcessedChatSignatureState {
+        checksum: signature.checksum(),
+        bytes: signature.bytes.clone(),
+    }
+}
+
 fn chat_type_state(chat_type: ProtocolChatTypeHolder) -> ChatTypeState {
     match chat_type {
         ProtocolChatTypeHolder::Registry { id } => ChatTypeState {
@@ -286,6 +349,8 @@ fn refresh_chat_counters(store: &mut WorldStore) {
         .iter()
         .filter(|entry| entry.is_some())
         .count();
+    store.counters.player_chat_acknowledgement_pending_offset =
+        usize::try_from(store.client_chat.acknowledgement.pending_offset.max(0)).unwrap_or(0);
 }
 
 #[cfg(test)]
@@ -301,7 +366,7 @@ mod tests {
         let mut store = WorldStore::new();
         let sender = Uuid::from_u128(1);
 
-        store.apply_player_chat(PlayerChat {
+        let acknowledgement = store.apply_player_chat(PlayerChat {
             global_index: 0,
             sender,
             index: 5,
@@ -320,6 +385,7 @@ mod tests {
             chat_type: chat_type("Alice"),
         });
 
+        assert_eq!(acknowledgement, None);
         let message = store.client_chat().messages.last().unwrap();
         assert_eq!(message.kind, ChatMessageKind::Player);
         assert_eq!(message.content, "hello");
@@ -331,12 +397,61 @@ mod tests {
         assert_eq!(store.counters().player_chat_unsigned_content_packets, 1);
         assert_eq!(store.counters().player_chat_filtered_packets, 1);
         assert_eq!(store.counters().chat_signature_cache_entries, 1);
+        assert_eq!(
+            store.counters().player_chat_acknowledgement_pending_offset,
+            1
+        );
+    }
+
+    #[test]
+    fn player_chat_generates_acknowledgement_after_vanilla_offset_threshold() {
+        let mut store = WorldStore::new();
+        let mut acknowledgement = None;
+
+        for index in 0..65 {
+            acknowledgement =
+                store.apply_player_chat(player_chat_with_signature(index, signature(index as u8)));
+        }
+
+        assert_eq!(
+            acknowledgement,
+            Some(ProtocolChatAcknowledgement { offset: 65 })
+        );
+        assert_eq!(store.counters().player_chat_packets, 65);
+        assert_eq!(store.counters().player_chat_acknowledgement_packets, 1);
+        assert_eq!(
+            store.counters().player_chat_acknowledgement_pending_offset,
+            0
+        );
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 0);
+    }
+
+    #[test]
+    fn player_chat_acknowledgement_ignores_duplicate_last_signature() {
+        let mut store = WorldStore::new();
+        let duplicate = signature(7);
+
+        assert_eq!(
+            store.apply_player_chat(player_chat_with_signature(0, duplicate.clone())),
+            None
+        );
+        assert_eq!(
+            store.apply_player_chat(player_chat_with_signature(1, duplicate)),
+            None
+        );
+
+        assert_eq!(store.counters().player_chat_packets, 2);
+        assert_eq!(
+            store.counters().player_chat_acknowledgement_pending_offset,
+            1
+        );
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
     }
 
     #[test]
     fn delete_chat_resolves_cached_signature() {
         let mut store = WorldStore::new();
-        store.apply_player_chat(PlayerChat {
+        let _ = store.apply_player_chat(PlayerChat {
             global_index: 0,
             sender: Uuid::from_u128(1),
             index: 0,
@@ -372,7 +487,7 @@ mod tests {
     #[test]
     fn player_chat_out_of_order_is_counted() {
         let mut store = WorldStore::new();
-        store.apply_player_chat(PlayerChat {
+        let _ = store.apply_player_chat(PlayerChat {
             global_index: 3,
             sender: Uuid::from_u128(1),
             index: 0,
@@ -421,7 +536,7 @@ mod tests {
     #[test]
     fn reset_chat_clears_messages_and_signature_state() {
         let mut store = WorldStore::new();
-        store.apply_player_chat(PlayerChat {
+        let _ = store.apply_player_chat(PlayerChat {
             global_index: 0,
             sender: Uuid::from_u128(1),
             index: 0,
@@ -456,6 +571,12 @@ mod tests {
             .signature_cache
             .iter()
             .all(Option::is_none));
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 0);
+        assert!(store
+            .client_chat()
+            .acknowledgement
+            .last_processed_signature
+            .is_none());
         assert_eq!(store.counters().reset_chat_packets, 1);
         assert_eq!(store.counters().player_chat_packets, 1);
         assert_eq!(store.counters().delete_chat_packets, 1);
@@ -467,6 +588,27 @@ mod tests {
     fn signature(byte: u8) -> MessageSignature {
         MessageSignature {
             bytes: vec![byte; 256],
+        }
+    }
+
+    fn player_chat_with_signature(global_index: i32, signature: MessageSignature) -> PlayerChat {
+        PlayerChat {
+            global_index,
+            sender: Uuid::from_u128(1),
+            index: global_index,
+            signature: Some(signature),
+            body: SignedMessageBody {
+                content: format!("message {global_index}"),
+                timestamp_millis: i64::from(global_index),
+                salt: i64::from(global_index) + 1,
+                last_seen: Vec::new(),
+            },
+            unsigned_content: None,
+            filter_mask: FilterMask {
+                kind: FilterMaskKind::PassThrough,
+                mask_words: Vec::new(),
+            },
+            chat_type: chat_type("Alice"),
         }
     }
 

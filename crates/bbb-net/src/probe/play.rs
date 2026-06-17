@@ -236,7 +236,10 @@ impl ProbeContext {
                 self.world.apply_player_abilities(update);
             }
             PlayClientbound::PlayerChat(update) => {
-                self.world.apply_player_chat(update);
+                if let Some(command) = self.world.apply_player_chat(update) {
+                    let (id, payload) = packets::encode_play_chat_acknowledgement(command);
+                    self.conn.send_packet(id, &payload).await?;
+                }
             }
             PlayClientbound::SetExperience(update) => {
                 self.world.apply_player_experience(update);
@@ -505,24 +508,25 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
         BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
-        BossEventOperation, ChangeDifficulty, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
-        ClockUpdate, CommandSuggestion, CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest,
-        CustomChatCompletions, CustomChatCompletionsAction, CustomReportDetails, DebugBlockValue,
-        DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder, Difficulty,
-        EntityAnchor, Explosion, GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos,
-        InteractionHand, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent,
-        LevelParticles, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
+        BossEventOperation, ChangeDifficulty, ChatTypeBound, ChatTypeHolder, ChunkHeightmapData,
+        ChunkPos as ProtocolChunkPos, ClockUpdate, CommandSuggestion, CommandSuggestions,
+        CommonPlayerSpawnInfo, CookieRequest, CustomChatCompletions, CustomChatCompletionsAction,
+        CustomReportDetails, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent,
+        DebugSample, DialogHolder, Difficulty, EntityAnchor, Explosion, FilterMask, FilterMaskKind,
+        GameEvent, GameRuleValue, GameRuleValues, GameTestHighlightPos, InteractionHand,
+        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
+        LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MessageSignature,
         MountScreenOpen, MoveVehicle, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
-        PlayLogin, PlayTime, PlayerAbilities, PlayerExperience, PlayerHealth, PlayerLookAt,
-        PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
+        PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth,
+        PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
         RecipeDisplayType, RemoteDebugSampleType, ResourcePackPop, ResourcePackPush,
         ResourcePackResponseAction, ServerData, ServerLinkEntry, ServerLinkKnownType,
         ServerLinkType, ServerLinks, SetCamera, SetDefaultSpawnPosition, SetHeldSlot,
-        SetPassengers, SetSimulationDistance, ShowDialog, SoundEntityEvent, SoundEvent,
-        SoundEventHolder, SoundSource, StatUpdate, StopSound, StoreCookie, TabList, TagQuery,
-        TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
-        Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
-        WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        SetPassengers, SetSimulationDistance, ShowDialog, SignedMessageBody, SoundEntityEvent,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StopSound, StoreCookie, TabList,
+        TagQuery, TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint,
+        TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -1038,6 +1042,40 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_CHUNK_BATCH_RECEIVED);
         let desired = Decoder::new(&payload).read_f32().unwrap();
         assert_eq!(desired, 3.5);
+    }
+
+    #[tokio::test]
+    async fn probe_player_chat_sends_chat_acknowledgement_after_threshold() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        for index in 0..65 {
+            probe
+                .handle_play_packet(PlayClientbound::PlayerChat(
+                    protocol_player_chat_with_signature(
+                        index,
+                        MessageSignature {
+                            bytes: vec![index as u8; 256],
+                        },
+                    ),
+                ))
+                .await
+                .unwrap();
+        }
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("chat acknowledgement packet should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_ACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 65);
+        assert!(decoder.is_empty());
+        assert_eq!(probe.world.counters().player_chat_packets, 65);
+        assert_eq!(
+            probe.world.counters().player_chat_acknowledgement_packets,
+            1
+        );
     }
 
     #[tokio::test]
@@ -2348,6 +2386,34 @@ mod tests {
                 sea_level: 63,
             },
             enforces_secure_chat: false,
+        }
+    }
+
+    fn protocol_player_chat_with_signature(
+        global_index: i32,
+        signature: MessageSignature,
+    ) -> PlayerChat {
+        PlayerChat {
+            global_index,
+            sender: Uuid::from_u128(0x1234),
+            index: global_index,
+            signature: Some(signature),
+            body: SignedMessageBody {
+                content: format!("message {global_index}"),
+                timestamp_millis: i64::from(global_index),
+                salt: i64::from(global_index) + 1,
+                last_seen: Vec::new(),
+            },
+            unsigned_content: None,
+            filter_mask: FilterMask {
+                kind: FilterMaskKind::PassThrough,
+                mask_words: Vec::new(),
+            },
+            chat_type: ChatTypeBound {
+                chat_type: ChatTypeHolder::Registry { id: 0 },
+                name: "Alice".to_string(),
+                target_name: None,
+            },
         }
     }
 

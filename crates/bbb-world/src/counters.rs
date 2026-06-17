@@ -387,6 +387,10 @@ pub struct WorldCounters {
     #[serde(default)]
     pub player_chat_fully_filtered_packets: usize,
     #[serde(default)]
+    pub player_chat_acknowledgement_packets: usize,
+    #[serde(default)]
+    pub player_chat_acknowledgement_pending_offset: usize,
+    #[serde(default)]
     pub player_combat_end_packets: usize,
     #[serde(default)]
     pub player_combat_enter_packets: usize,

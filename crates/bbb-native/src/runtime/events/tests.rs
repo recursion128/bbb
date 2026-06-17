@@ -689,7 +689,7 @@ fn configuration_state_events_update_snapshot_counters() {
     .unwrap();
 
     let mut world = WorldStore::new();
-    world.apply_player_chat(PlayerChat {
+    let _ = world.apply_player_chat(PlayerChat {
         global_index: 0,
         sender: Uuid::from_u128(1),
         index: 0,
@@ -1278,6 +1278,41 @@ fn client_chat_events_update_world_and_world_counters() {
     assert_eq!(world_counters.chat_signature_cache_entries, 1);
     assert_eq!(world_counters.player_chat_unsigned_content_packets, 1);
     assert_eq!(world_counters.player_chat_filtered_packets, 1);
+}
+
+#[test]
+fn player_chat_events_queue_vanilla_threshold_acknowledgement() {
+    let (tx, mut rx) = mpsc::channel(80);
+    for index in 0..65 {
+        tx.try_send(NetEvent::PlayerChat(player_chat_with_signature(
+            index,
+            MessageSignature {
+                bytes: vec![index as u8; 256],
+            },
+        )))
+        .unwrap();
+    }
+
+    let (command_tx, mut command_rx) = mpsc::channel(2);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &Some(command_tx)),
+        65
+    );
+    assert_eq!(world.counters().player_chat_packets, 65);
+    assert_eq!(world.counters().player_chat_acknowledgement_packets, 1);
+    assert_eq!(
+        world.counters().player_chat_acknowledgement_pending_offset,
+        0
+    );
+    assert_eq!(counters.chat_acknowledgement_commands_queued, 1);
+    assert_eq!(
+        command_rx.try_recv().unwrap(),
+        NetCommand::ChatAcknowledgement(bbb_protocol::packets::ChatAcknowledgement { offset: 65 })
+    );
+    assert!(command_rx.try_recv().is_err());
 }
 
 #[test]
@@ -4114,6 +4149,27 @@ fn protocol_chat_type(name: &str) -> ChatTypeBound {
         chat_type: ChatTypeHolder::Registry { id: 0 },
         name: name.to_string(),
         target_name: None,
+    }
+}
+
+fn player_chat_with_signature(global_index: i32, signature: MessageSignature) -> PlayerChat {
+    PlayerChat {
+        global_index,
+        sender: Uuid::from_u128(0x1234),
+        index: global_index,
+        signature: Some(signature),
+        body: SignedMessageBody {
+            content: format!("message {global_index}"),
+            timestamp_millis: i64::from(global_index),
+            salt: i64::from(global_index) + 1,
+            last_seen: Vec::new(),
+        },
+        unsigned_content: None,
+        filter_mask: FilterMask {
+            kind: FilterMaskKind::PassThrough,
+            mask_words: Vec::new(),
+        },
+        chat_type: protocol_chat_type("Alice"),
     }
 }
 

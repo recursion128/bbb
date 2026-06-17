@@ -198,7 +198,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 world.apply_disguised_chat(update);
             }
             NetEvent::PlayerChat(update) => {
-                world.apply_player_chat(update);
+                if let Some(command) = world.apply_player_chat(update) {
+                    queue_chat_acknowledgement(net_commands, counters, command);
+                }
             }
             NetEvent::GameRuleValues(update) => {
                 world.apply_game_rule_values(update);
@@ -540,6 +542,21 @@ fn emit_positioned_sound(
 ) {
     if let Some(audio_events) = audio_events.as_deref_mut() {
         audio_events.play_positioned_sound(state);
+    }
+}
+
+fn queue_chat_acknowledgement(
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    counters: &mut NetCounters,
+    command: bbb_protocol::packets::ChatAcknowledgement,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::ChatAcknowledgement(command))
+            .is_ok()
+        {
+            counters.chat_acknowledgement_commands_queued += 1;
+        }
     }
 }
 
