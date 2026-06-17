@@ -199,15 +199,22 @@ fn start_use_item(
         }
         Some(CrosshairTarget::Block(hit)) => {
             let sequence = world.next_local_prediction_sequence();
-            queue_use_item_on_command(counters, net_commands, hit, sequence);
+            queue_use_item_on_command(
+                counters,
+                net_commands,
+                InteractionHand::MainHand,
+                hit,
+                sequence,
+            );
         }
         None => {
             if let Some(pose) = player_pose {
                 let sequence = world.next_local_prediction_sequence();
+                let hand = item_use_hand(world);
                 let using_item = queue_use_item_command(
                     counters,
                     net_commands,
-                    InteractionHand::MainHand,
+                    hand,
                     pose.y_rot,
                     pose.x_rot,
                     sequence,
@@ -217,6 +224,14 @@ fn start_use_item(
         }
     }
     true
+}
+
+fn item_use_hand(world: &WorldStore) -> InteractionHand {
+    if world.local_item_use_prefers_offhand() {
+        InteractionHand::OffHand
+    } else {
+        InteractionHand::MainHand
+    }
 }
 
 pub(crate) fn advance_destroying_block_at_partial_tick(
@@ -426,6 +441,7 @@ mod tests {
     const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+    const VANILLA_PLAYER_OFFHAND_SLOT: i32 = 40;
 
     #[test]
     fn left_mouse_press_queues_main_hand_swing() {
@@ -570,6 +586,45 @@ mod tests {
                 pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
                 direction: ProtocolDirection::Down,
                 sequence: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn right_mouse_press_without_target_uses_offhand_when_selected_hotbar_slot_is_empty() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            y_rot: 45.0,
+            x_rot: -20.0,
+            ..LocalPlayerPoseState::default()
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItem(UseItem {
+                hand: InteractionHand::OffHand,
+                sequence: 1,
+                y_rot: 45.0,
+                x_rot: -20.0,
             })
         );
     }
@@ -1112,6 +1167,45 @@ mod tests {
             USE_ITEM_REPEAT_DELAY_TICKS
         );
         assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOn {
+                hand: InteractionHand::MainHand,
+                hit: ProtocolBlockHitResult {
+                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                    direction: ProtocolDirection::North,
+                    cursor_x: 0.0,
+                    cursor_y: 0.62,
+                    cursor_z: 0.0,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn right_mouse_press_on_block_starts_with_main_hand_when_offhand_has_item() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::UseItemOn(UseItemOn {

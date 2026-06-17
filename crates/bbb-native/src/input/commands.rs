@@ -593,12 +593,13 @@ pub(super) fn queue_swing_command(
 pub(super) fn queue_use_item_on_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    hand: InteractionHand,
     hit: CrosshairBlockHit,
     sequence: i32,
 ) {
     if let Some(tx) = net_commands {
         let packet = UseItemOn {
-            hand: InteractionHand::MainHand,
+            hand,
             hit: protocol_block_hit_result_from_crosshair_hit(hit),
             sequence,
         };
@@ -1284,13 +1285,13 @@ mod tests {
             inside: false,
         };
 
-        queue_use_item_on_command(&mut counters, &commands, hit, 5);
+        queue_use_item_on_command(&mut counters, &commands, InteractionHand::OffHand, hit, 5);
 
         assert_eq!(counters.use_item_on_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::UseItemOn(UseItemOn {
-                hand: InteractionHand::MainHand,
+                hand: InteractionHand::OffHand,
                 hit: ProtocolBlockHitResult {
                     pos: ProtocolBlockPos {
                         x: -5,

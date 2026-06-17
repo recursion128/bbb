@@ -17,8 +17,10 @@ use crate::WorldStore;
 
 const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
 const PLAYER_HOTBAR_SIZE: usize = 9;
+const PLAYER_OFFHAND_SLOT: i32 = 40;
 const INVENTORY_MENU_CONTAINER_ID: i32 = 0;
 const INVENTORY_MENU_HOTBAR_START: i16 = 36;
+const INVENTORY_MENU_OFFHAND_SLOT: i16 = 45;
 const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -386,6 +388,15 @@ impl WorldStore {
         &self.inventory
     }
 
+    pub fn local_item_use_prefers_offhand(&self) -> bool {
+        let hotbar_items = self.inventory.hotbar_items();
+        let selected_slot = usize::from(self.local_player.selected_hotbar_slot.min(8));
+        !item_stack_is_non_empty(&hotbar_items[selected_slot])
+            && self
+                .local_offhand_item()
+                .is_some_and(item_stack_is_non_empty)
+    }
+
     pub fn build_container_click_slot(
         &self,
         request: ContainerClickSlotRequest,
@@ -408,6 +419,27 @@ impl WorldStore {
             changed_slots: BTreeMap::new(),
             carried_item,
         })
+    }
+
+    fn local_offhand_item(&self) -> Option<&ProtocolItemStackSummary> {
+        if let Some(item) = self
+            .inventory
+            .player_slots
+            .iter()
+            .find_map(|slot| (slot.slot == PLAYER_OFFHAND_SLOT).then_some(&slot.item))
+        {
+            return Some(item);
+        }
+
+        self.inventory
+            .open_container
+            .as_ref()
+            .filter(|container| container.container_id == INVENTORY_MENU_CONTAINER_ID)
+            .and_then(|container| {
+                container.slots.iter().find_map(|slot| {
+                    (slot.slot == INVENTORY_MENU_OFFHAND_SLOT).then_some(&slot.item)
+                })
+            })
     }
 
     fn ensure_container(&mut self, container_id: i32) -> &mut ContainerState {
@@ -459,6 +491,10 @@ fn hashed_stack_from_summary(stack: &ProtocolItemStackSummary) -> Option<Protoco
         count: stack.count,
         components: ProtocolHashedComponentPatch::default(),
     }))
+}
+
+fn item_stack_is_non_empty(stack: &ProtocolItemStackSummary) -> bool {
+    stack.item_id.is_some() && stack.count > 0
 }
 
 fn component_patch_can_be_hashed_from_summary(patch: &ProtocolDataComponentPatchSummary) -> bool {
@@ -715,6 +751,64 @@ mod tests {
         assert_eq!(hotbar[4], item_stack(24, 3));
         assert_eq!(hotbar[8], item_stack(28, 2));
         assert_eq!(hotbar[1], ProtocolItemStackSummary::empty());
+    }
+
+    #[test]
+    fn local_item_use_prefers_offhand_only_when_selected_hotbar_slot_is_empty() {
+        let mut store = WorldStore::new();
+
+        assert!(!store.local_item_use_prefers_offhand());
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        assert!(store.local_item_use_prefers_offhand());
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(10, 1),
+        });
+        assert!(!store.local_item_use_prefers_offhand());
+
+        assert!(store.set_local_selected_hotbar_slot(1));
+        assert!(store.local_item_use_prefers_offhand());
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_OFFHAND_SLOT,
+            item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(!store.local_item_use_prefers_offhand());
+    }
+
+    #[test]
+    fn local_item_use_reads_inventory_menu_offhand_slot_when_player_slot_is_absent() {
+        let mut store = WorldStore::new();
+
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: INVENTORY_MENU_CONTAINER_ID,
+            state_id: 1,
+            items: (0..46)
+                .map(|slot| {
+                    if slot == INVENTORY_MENU_OFFHAND_SLOT {
+                        item_stack(99, 1)
+                    } else {
+                        ProtocolItemStackSummary::empty()
+                    }
+                })
+                .collect(),
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        assert!(store.local_item_use_prefers_offhand());
+
+        store.apply_container_set_slot(ProtocolContainerSetSlot {
+            container_id: INVENTORY_MENU_CONTAINER_ID,
+            state_id: 2,
+            slot: INVENTORY_MENU_OFFHAND_SLOT,
+            item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(!store.local_item_use_prefers_offhand());
     }
 
     #[test]
