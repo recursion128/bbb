@@ -7,6 +7,7 @@ pub(crate) struct ParticleDescriptor {
     pub(crate) provider: &'static str,
     pub(crate) lifetime: ParticleLifetimeDescriptor,
     pub(crate) sprite_selection: ParticleSpriteSelection,
+    pub(crate) visual: ParticleVisualDescriptor,
     pub(crate) friction: f32,
     pub(crate) gravity: f32,
     pub(crate) has_physics: bool,
@@ -32,6 +33,41 @@ pub(crate) enum ParticleSpriteSelection {
     Age,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum ParticleVisualDescriptor {
+    BaseSingleQuad,
+    PlayerCloud,
+    Flame {
+        scale: f32,
+    },
+    BaseAshSmoke {
+        scale: f32,
+        color: ParticleColorDescriptor,
+    },
+    Explode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum ParticleColorDescriptor {
+    RandomGray { max: f32 },
+    FixedRgb([f32; 3]),
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParticleQuadSizeCurve {
+    #[default]
+    Constant,
+    GrowToBase,
+    Flame,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ParticleVisualState {
+    pub(crate) base_quad_size: f32,
+    pub(crate) color: [f32; 4],
+    pub(crate) quad_size_curve: ParticleQuadSizeCurve,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct ParticleRandom {
     seed: u64,
@@ -44,6 +80,7 @@ impl ParticleDescriptor {
                 provider: "PlayerCloudParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::PlayerCloud,
                 sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::PlayerCloud,
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
@@ -54,6 +91,7 @@ impl ParticleDescriptor {
                     provider: "FlameParticle.Provider",
                     lifetime: ParticleLifetimeDescriptor::Rising,
                     sprite_selection: ParticleSpriteSelection::Random,
+                    visual: ParticleVisualDescriptor::Flame { scale: 1.0 },
                     friction: 0.96,
                     gravity: 0.0,
                     has_physics: false,
@@ -64,6 +102,7 @@ impl ParticleDescriptor {
                 provider: "FlameParticle.SmallFlameProvider",
                 lifetime: ParticleLifetimeDescriptor::Rising,
                 sprite_selection: ParticleSpriteSelection::Random,
+                visual: ParticleVisualDescriptor::Flame { scale: 0.5 },
                 friction: 0.96,
                 gravity: 0.0,
                 has_physics: false,
@@ -76,6 +115,10 @@ impl ParticleDescriptor {
                     scale_tenths: 25,
                 },
                 sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::BaseAshSmoke {
+                    scale: 2.5,
+                    color: ParticleColorDescriptor::RandomGray { max: 0.3 },
+                },
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -88,6 +131,10 @@ impl ParticleDescriptor {
                     scale_tenths: 10,
                 },
                 sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::BaseAshSmoke {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::RandomGray { max: 0.3 },
+                },
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -100,6 +147,10 @@ impl ParticleDescriptor {
                     scale_tenths: 10,
                 },
                 sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::BaseAshSmoke {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
+                },
                 friction: 0.96,
                 gravity: -0.1,
                 has_physics: true,
@@ -112,6 +163,10 @@ impl ParticleDescriptor {
                     scale_tenths: 10,
                 },
                 sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::BaseAshSmoke {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::RandomGray { max: 0.5 },
+                },
                 friction: 0.96,
                 gravity: 0.1,
                 has_physics: false,
@@ -124,6 +179,10 @@ impl ParticleDescriptor {
                     scale_tenths: 10,
                 },
                 sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::BaseAshSmoke {
+                    scale: 1.0,
+                    color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
+                },
                 friction: 0.96,
                 gravity: 0.0125,
                 has_physics: false,
@@ -133,6 +192,7 @@ impl ParticleDescriptor {
                 provider: "ExplodeParticle.Provider",
                 lifetime: ParticleLifetimeDescriptor::Explode,
                 sprite_selection: ParticleSpriteSelection::Age,
+                visual: ParticleVisualDescriptor::Explode,
                 friction: 0.9,
                 gravity: -0.1,
                 has_physics: true,
@@ -142,11 +202,74 @@ impl ParticleDescriptor {
                 provider: "Particle",
                 lifetime: ParticleLifetimeDescriptor::BaseParticle,
                 sprite_selection: ParticleSpriteSelection::First,
+                visual: ParticleVisualDescriptor::BaseSingleQuad,
                 friction: 0.98,
                 gravity: 0.0,
                 has_physics: true,
                 speed_up_when_y_motion_is_blocked: false,
             },
+        }
+    }
+}
+
+impl ParticleVisualDescriptor {
+    pub(crate) fn sample(self, random: &mut ParticleRandom) -> ParticleVisualState {
+        let base_quad_size = sample_single_quad_size(random);
+        match self {
+            Self::BaseSingleQuad => ParticleVisualState::new(
+                base_quad_size,
+                WHITE_PARTICLE_COLOR,
+                ParticleQuadSizeCurve::Constant,
+            ),
+            Self::PlayerCloud => {
+                let color = 1.0 - random.next_f32() * 0.3;
+                ParticleVisualState::new(
+                    base_quad_size * 1.875,
+                    [color, color, color, 1.0],
+                    ParticleQuadSizeCurve::GrowToBase,
+                )
+            }
+            Self::Flame { scale } => ParticleVisualState::new(
+                base_quad_size * scale,
+                WHITE_PARTICLE_COLOR,
+                ParticleQuadSizeCurve::Flame,
+            ),
+            Self::BaseAshSmoke { scale, color } => ParticleVisualState::new(
+                base_quad_size * 0.75 * scale,
+                color.sample(random),
+                ParticleQuadSizeCurve::GrowToBase,
+            ),
+            Self::Explode => {
+                let color = random.next_f32() * 0.3 + 0.7;
+                let base_quad_size = 0.1 * (random.next_f32() * random.next_f32() * 6.0 + 1.0);
+                ParticleVisualState::new(
+                    base_quad_size,
+                    [color, color, color, 1.0],
+                    ParticleQuadSizeCurve::Constant,
+                )
+            }
+        }
+    }
+}
+
+impl ParticleColorDescriptor {
+    fn sample(self, random: &mut ParticleRandom) -> [f32; 4] {
+        match self {
+            Self::RandomGray { max } => {
+                let color = random.next_f32() * max;
+                [color, color, color, 1.0]
+            }
+            Self::FixedRgb([red, green, blue]) => [red, green, blue, 1.0],
+        }
+    }
+}
+
+impl ParticleVisualState {
+    fn new(base_quad_size: f32, color: [f32; 4], quad_size_curve: ParticleQuadSizeCurve) -> Self {
+        Self {
+            base_quad_size,
+            color,
+            quad_size_curve,
         }
     }
 }
@@ -206,6 +329,8 @@ pub(crate) fn sprite_index_for_age(
 const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
 const RANDOM_INCREMENT: u64 = 11;
 const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
+const WHITE_PARTICLE_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const WHITE_ASH_SMOKE_RGB: [f32; 3] = [186.0 / 255.0, 177.0 / 255.0, 194.0 / 255.0];
 
 impl ParticleRandom {
     pub(crate) fn new(seed: i64) -> Self {
@@ -216,6 +341,10 @@ impl ParticleRandom {
 
     fn next_f64(&mut self) -> f64 {
         f64::from(self.next_bits(24)) / f64::from(1_u32 << 24)
+    }
+
+    fn next_f32(&mut self) -> f32 {
+        self.next_bits(24) as f32 / (1_u32 << 24) as f32
     }
 
     fn next_index(&mut self, len: usize) -> Option<usize> {
@@ -242,6 +371,10 @@ impl ParticleRandom {
     }
 }
 
+fn sample_single_quad_size(random: &mut ParticleRandom) -> f32 {
+    0.1 * (random.next_f32() * 0.5 + 0.5) * 2.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,6 +386,7 @@ mod tests {
             "PlayerCloudParticle.Provider",
             ParticleLifetimeDescriptor::PlayerCloud,
             ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::PlayerCloud,
             0.96,
             0.0,
             false,
@@ -263,6 +397,7 @@ mod tests {
             "FlameParticle.Provider",
             ParticleLifetimeDescriptor::Rising,
             ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Flame { scale: 1.0 },
             0.96,
             0.0,
             false,
@@ -273,6 +408,7 @@ mod tests {
             "FlameParticle.SmallFlameProvider",
             ParticleLifetimeDescriptor::Rising,
             ParticleSpriteSelection::Random,
+            ParticleVisualDescriptor::Flame { scale: 0.5 },
             0.96,
             0.0,
             false,
@@ -286,6 +422,10 @@ mod tests {
                 scale_tenths: 10,
             },
             ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::BaseAshSmoke {
+                scale: 1.0,
+                color: ParticleColorDescriptor::RandomGray { max: 0.3 },
+            },
             0.96,
             -0.1,
             true,
@@ -299,6 +439,10 @@ mod tests {
                 scale_tenths: 25,
             },
             ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::BaseAshSmoke {
+                scale: 2.5,
+                color: ParticleColorDescriptor::RandomGray { max: 0.3 },
+            },
             0.96,
             -0.1,
             true,
@@ -312,6 +456,10 @@ mod tests {
                 scale_tenths: 10,
             },
             ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::BaseAshSmoke {
+                scale: 1.0,
+                color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
+            },
             0.96,
             -0.1,
             true,
@@ -325,6 +473,10 @@ mod tests {
                 scale_tenths: 10,
             },
             ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::BaseAshSmoke {
+                scale: 1.0,
+                color: ParticleColorDescriptor::RandomGray { max: 0.5 },
+            },
             0.96,
             0.1,
             false,
@@ -338,6 +490,10 @@ mod tests {
                 scale_tenths: 10,
             },
             ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::BaseAshSmoke {
+                scale: 1.0,
+                color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
+            },
             0.96,
             0.0125,
             false,
@@ -348,6 +504,7 @@ mod tests {
             "ExplodeParticle.Provider",
             ParticleLifetimeDescriptor::Explode,
             ParticleSpriteSelection::Age,
+            ParticleVisualDescriptor::Explode,
             0.9,
             -0.1,
             true,
@@ -365,11 +522,67 @@ mod tests {
         assert_eq!(sprite_index_for_age(0, 20, 20), None);
     }
 
+    #[test]
+    fn visual_descriptors_sample_vanilla_shaped_size_color_and_curves() {
+        let mut flame_random = ParticleRandom::new(7);
+        let flame = ParticleVisualDescriptor::Flame { scale: 1.0 }.sample(&mut flame_random);
+        let mut small_flame_random = ParticleRandom::new(7);
+        let small_flame =
+            ParticleVisualDescriptor::Flame { scale: 0.5 }.sample(&mut small_flame_random);
+        assert_close_f32(small_flame.base_quad_size, flame.base_quad_size * 0.5);
+        assert_eq!(flame.color, WHITE_PARTICLE_COLOR);
+        assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
+
+        let mut cloud_random = ParticleRandom::new(8);
+        let cloud = ParticleVisualDescriptor::PlayerCloud.sample(&mut cloud_random);
+        assert_range_f32(cloud.base_quad_size, 0.1875, 0.375);
+        assert_range_f32(cloud.color[0], 0.7, 1.0);
+        assert_eq!(cloud.color[0], cloud.color[1]);
+        assert_eq!(cloud.color[1], cloud.color[2]);
+        assert_eq!(cloud.color[3], 1.0);
+        assert_eq!(cloud.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+
+        let mut smoke_random = ParticleRandom::new(9);
+        let smoke = ParticleVisualDescriptor::BaseAshSmoke {
+            scale: 2.5,
+            color: ParticleColorDescriptor::RandomGray { max: 0.3 },
+        }
+        .sample(&mut smoke_random);
+        assert_range_f32(smoke.base_quad_size, 0.1875, 0.375);
+        assert_range_f32(smoke.color[0], 0.0, 0.3);
+        assert_eq!(smoke.color[0], smoke.color[1]);
+        assert_eq!(smoke.color[1], smoke.color[2]);
+        assert_eq!(smoke.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+
+        let mut white_smoke_random = ParticleRandom::new(10);
+        let white_smoke = ParticleVisualDescriptor::BaseAshSmoke {
+            scale: 1.0,
+            color: ParticleColorDescriptor::FixedRgb(WHITE_ASH_SMOKE_RGB),
+        }
+        .sample(&mut white_smoke_random);
+        assert_eq!(
+            white_smoke.color,
+            [
+                WHITE_ASH_SMOKE_RGB[0],
+                WHITE_ASH_SMOKE_RGB[1],
+                WHITE_ASH_SMOKE_RGB[2],
+                1.0,
+            ]
+        );
+
+        let mut poof_random = ParticleRandom::new(11);
+        let poof = ParticleVisualDescriptor::Explode.sample(&mut poof_random);
+        assert_range_f32(poof.base_quad_size, 0.1, 0.7);
+        assert_range_f32(poof.color[0], 0.7, 1.0);
+        assert_eq!(poof.quad_size_curve, ParticleQuadSizeCurve::Constant);
+    }
+
     fn assert_descriptor(
         particle_id: &str,
         provider: &'static str,
         lifetime: ParticleLifetimeDescriptor,
         sprite_selection: ParticleSpriteSelection,
+        visual: ParticleVisualDescriptor,
         friction: f32,
         gravity: f32,
         has_physics: bool,
@@ -379,6 +592,7 @@ mod tests {
         assert_eq!(descriptor.provider, provider);
         assert_eq!(descriptor.lifetime, lifetime);
         assert_eq!(descriptor.sprite_selection, sprite_selection);
+        assert_eq!(descriptor.visual, visual);
         assert_close_f32(descriptor.friction, friction);
         assert_close_f32(descriptor.gravity, gravity);
         assert_eq!(descriptor.has_physics, has_physics);
@@ -392,6 +606,13 @@ mod tests {
         assert!(
             (actual - expected).abs() < 1.0e-6,
             "expected {expected}, got {actual}"
+        );
+    }
+
+    fn assert_range_f32(actual: f32, min: f32, max: f32) {
+        assert!(
+            actual >= min && actual <= max,
+            "expected {actual} to be in {min}..={max}"
         );
     }
 }

@@ -399,8 +399,9 @@ Target ownership:
   instances through the native runtime pump, advances instance age only on the
   native 20Hz client tick path, applies data-only provider/lifetime descriptors
   for common 26.1 particles, applies no-collision gravity/friction motion, tracks
-  current sprite ids with vanilla SpriteSet age/random selection rules, and
-  reports active/intake/expired/drop counters. Native uploads a stitched
+  current sprite ids with vanilla SpriteSet age/random selection rules, samples
+  provider-shaped billboard size/color and age-size curves for common particles,
+  and reports active/intake/expired/drop counters. Native uploads a stitched
   official particle atlas when assets are available, and renderer draws active
   instances as camera-facing textured billboards. The active instance state and
   GPU resources are renderer runtime state, not canonical world state.

@@ -296,12 +296,14 @@ Deliverables:
   for common 26.1 particles such as cloud, flame, smoke, large smoke, and poof;
   active instances apply a vanilla-shaped no-collision motion tick using stored
   gravity and friction, and track current particle sprite ids using vanilla
-  SpriteSet age/random selection rules. Native uploads a stitched official
-  particle atlas when assets are available, and renderer draws active particles
-  as alpha-blended, depth-tested, camera-facing textured billboards. Full vanilla
-  provider behavior, scale/color/light curves, sorting, collision/player-coupled
-  physics, particle limits/settings, atlas mip animation, and terrain/item
-  particle option rendering remain separate follow-up work.
+  SpriteSet age/random selection rules. Common providers now sample
+  vanilla-shaped billboard size/color and age-size curves. Native uploads a
+  stitched official particle atlas when assets are available, and renderer draws
+  active particles as alpha-blended, depth-tested, camera-facing textured
+  billboards. Full vanilla provider behavior, light curves, sorting,
+  collision/player-coupled physics, particle limits/settings, atlas mip
+  animation, and terrain/item particle option rendering remain separate
+  follow-up work.
 - HUD, title/action bar, scoreboard, chat, debug overlays, selection outline,
   camera pose, screenshots, and interaction feedback.
 - Renderer caches and GPU resources remain outside `bbb-world`.

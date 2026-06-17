@@ -10,8 +10,8 @@ mod descriptors;
 mod gpu;
 
 use descriptors::{
-    select_initial_sprite, sprite_index_for_age, ParticleDescriptor, ParticleRandom,
-    ParticleSpriteSelection, DEFAULT_PARTICLE_RANDOM_SEED,
+    select_initial_sprite, sprite_index_for_age, ParticleDescriptor, ParticleQuadSizeCurve,
+    ParticleRandom, ParticleSpriteSelection, DEFAULT_PARTICLE_RANDOM_SEED,
 };
 pub(super) use gpu::{
     create_particle_atlas_gpu, create_particle_pipeline, ParticleAtlasGpu, ParticleVertex,
@@ -20,6 +20,7 @@ pub(super) use gpu::{
 const DEFAULT_MAX_PENDING_PARTICLE_SPAWNS: usize = 16_384;
 const DEFAULT_MAX_ACTIVE_PARTICLE_INSTANCES: usize = 16_384;
 const DEFAULT_PARTICLE_QUAD_SIZE: f32 = 0.2;
+const DEFAULT_PARTICLE_RENDER_PARTIAL_TICK: f32 = 0.5;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParticleSpawnCommand {
@@ -85,6 +86,12 @@ pub(crate) struct ParticleInstance {
     pub(crate) velocity: [f64; 3],
     pub(crate) age_ticks: u32,
     pub(crate) lifetime_ticks: u32,
+    #[serde(default = "default_particle_quad_size")]
+    pub(crate) base_quad_size: f32,
+    #[serde(default = "default_particle_color")]
+    pub(crate) color: [f32; 4],
+    #[serde(default)]
+    pub(crate) quad_size_curve: ParticleQuadSizeCurve,
     pub(crate) provider: String,
     pub(crate) friction: f32,
     pub(crate) gravity: f32,
@@ -132,6 +139,14 @@ impl ParticleSpawnBatch {
             && self.missing_sprite_count == 0
             && self.unknown_particle_type_count == 0
     }
+}
+
+fn default_particle_quad_size() -> f32 {
+    DEFAULT_PARTICLE_QUAD_SIZE
+}
+
+fn default_particle_color() -> [f32; 4] {
+    [1.0, 1.0, 1.0, 1.0]
 }
 
 impl Default for ParticleRuntimeState {
@@ -317,6 +332,7 @@ impl ParticleInstance {
         let descriptor = ParticleDescriptor::for_particle(&command.particle_id);
         let (current_sprite_index, current_sprite_id) =
             select_initial_sprite(&command.sprite_ids, descriptor.sprite_selection, random);
+        let visual = descriptor.visual.sample(random);
         Self {
             particle_type_id: command.particle_type_id,
             particle_id: command.particle_id,
@@ -328,6 +344,9 @@ impl ParticleInstance {
             velocity: command.velocity,
             age_ticks: 0,
             lifetime_ticks: descriptor.lifetime.sample(random),
+            base_quad_size: visual.base_quad_size,
+            color: visual.color,
+            quad_size_curve: visual.quad_size_curve,
             provider: descriptor.provider.to_string(),
             friction: descriptor.friction,
             gravity: descriptor.gravity,
@@ -337,6 +356,25 @@ impl ParticleInstance {
             override_limiter: command.override_limiter,
             always_show: command.always_show,
             raw_options_len: command.raw_options_len,
+        }
+    }
+
+    fn render_quad_size(&self) -> f32 {
+        self.quad_size_at_partial_tick(DEFAULT_PARTICLE_RENDER_PARTIAL_TICK)
+    }
+
+    fn quad_size_at_partial_tick(&self, partial_tick: f32) -> f32 {
+        let lifetime = self.lifetime_ticks.max(1) as f32;
+        let age = (self.age_ticks as f32 + partial_tick.clamp(0.0, 1.0)).clamp(0.0, lifetime);
+        let progress = age / lifetime;
+        match self.quad_size_curve {
+            ParticleQuadSizeCurve::Constant => self.base_quad_size,
+            ParticleQuadSizeCurve::GrowToBase => {
+                self.base_quad_size * (progress * 32.0).clamp(0.0, 1.0)
+            }
+            ParticleQuadSizeCurve::Flame => {
+                self.base_quad_size * (1.0 - progress * progress * 0.5).max(0.0)
+            }
         }
     }
 
@@ -513,14 +551,14 @@ fn particle_instance_vertices(
         instance.position[1] as f32,
         instance.position[2] as f32,
     );
-    let half_size = DEFAULT_PARTICLE_QUAD_SIZE * 0.5;
+    let half_size = instance.render_quad_size() * 0.5;
     let right = axes.right * half_size;
     let up = axes.up * half_size;
     let bottom_left = center - right - up;
     let bottom_right = center + right - up;
     let top_right = center + right + up;
     let top_left = center - right + up;
-    let tint = [1.0, 1.0, 1.0, 1.0];
+    let tint = instance.color;
 
     [
         particle_vertex(bottom_left, [uv.min[0], uv.max[1]], tint),
@@ -914,6 +952,71 @@ mod tests {
     }
 
     #[test]
+    fn particle_instances_sample_provider_visual_state() {
+        let mut flame_random = ParticleRandom::new(42);
+        let flame = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:flame", 1.0),
+            &mut flame_random,
+        );
+        let mut small_flame_random = ParticleRandom::new(42);
+        let small_flame = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:small_flame", 1.0),
+            &mut small_flame_random,
+        );
+        assert_close_f32(small_flame.base_quad_size, flame.base_quad_size * 0.5);
+        assert_eq!(flame.color, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(flame.quad_size_curve, ParticleQuadSizeCurve::Flame);
+
+        let mut cloud_random = ParticleRandom::new(43);
+        let cloud = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:cloud", 1.0),
+            &mut cloud_random,
+        );
+        assert_eq!(cloud.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+        assert_range_f32(cloud.base_quad_size, 0.1875, 0.375);
+        assert_range_f32(cloud.color[0], 0.7, 1.0);
+        assert_eq!(cloud.color[0], cloud.color[1]);
+        assert_eq!(cloud.color[1], cloud.color[2]);
+
+        let mut smoke_random = ParticleRandom::new(44);
+        let smoke = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:white_smoke", 1.0),
+            &mut smoke_random,
+        );
+        assert_eq!(smoke.quad_size_curve, ParticleQuadSizeCurve::GrowToBase);
+        assert_close_f32(smoke.color[0], 186.0 / 255.0);
+        assert_close_f32(smoke.color[1], 177.0 / 255.0);
+        assert_close_f32(smoke.color[2], 194.0 / 255.0);
+
+        let mut poof_random = ParticleRandom::new(45);
+        let poof = ParticleInstance::from_spawn_command(
+            spawn_command("minecraft:poof", 1.0),
+            &mut poof_random,
+        );
+        assert_eq!(poof.quad_size_curve, ParticleQuadSizeCurve::Constant);
+        assert_range_f32(poof.base_quad_size, 0.1, 0.7);
+        assert_range_f32(poof.color[0], 0.7, 1.0);
+    }
+
+    #[test]
+    fn particle_quad_size_curves_follow_vanilla_shapes() {
+        let mut cloud = test_instance_with_lifetime("minecraft:cloud", 64);
+        cloud.base_quad_size = 0.4;
+        cloud.quad_size_curve = ParticleQuadSizeCurve::GrowToBase;
+        assert_close_f32(cloud.quad_size_at_partial_tick(0.0), 0.0);
+        assert_close_f32(cloud.quad_size_at_partial_tick(0.5), 0.1);
+        cloud.age_ticks = 2;
+        assert_close_f32(cloud.quad_size_at_partial_tick(0.0), 0.4);
+
+        let mut flame = test_instance_with_lifetime("minecraft:flame", 20);
+        flame.base_quad_size = 0.2;
+        flame.quad_size_curve = ParticleQuadSizeCurve::Flame;
+        assert_close_f32(flame.quad_size_at_partial_tick(0.0), 0.2);
+        flame.age_ticks = 20;
+        assert_close_f32(flame.quad_size_at_partial_tick(0.0), 0.1);
+    }
+
+    #[test]
     fn particle_runtime_expires_existing_active_before_intaking_pending_spawns() {
         let mut particles = ParticleRuntimeState::with_capacities(4, 4);
         particles
@@ -968,6 +1071,8 @@ mod tests {
         let mut instance = test_instance_with_lifetime("minecraft:cloud", 20);
         instance.position = [1.0, 2.0, 3.0];
         instance.current_sprite_id = Some("minecraft:generic_0".to_string());
+        instance.base_quad_size = 0.4;
+        instance.color = [0.25, 0.5, 0.75, 0.8];
         let sprite_uvs = BTreeMap::from([(
             "minecraft:generic_0".to_string(),
             ParticleUvRect {
@@ -986,12 +1091,15 @@ mod tests {
         );
 
         assert_eq!(vertices.len(), 6);
-        assert_close3_f32(vertices[0].position, [0.9, 1.9, 3.0]);
+        assert_close3_f32(vertices[0].position, [0.8, 1.8, 3.0]);
         assert_eq!(vertices[0].uv, [0.25, 0.375]);
-        assert_close3_f32(vertices[2].position, [1.1, 2.1, 3.0]);
+        assert_eq!(vertices[0].color, [0.25, 0.5, 0.75, 0.8]);
+        assert_close3_f32(vertices[2].position, [1.2, 2.2, 3.0]);
         assert_eq!(vertices[2].uv, [0.5, 0.125]);
-        assert_close3_f32(vertices[5].position, [0.9, 2.1, 3.0]);
+        assert_eq!(vertices[2].color, [0.25, 0.5, 0.75, 0.8]);
+        assert_close3_f32(vertices[5].position, [0.8, 2.2, 3.0]);
         assert_eq!(vertices[5].uv, [0.25, 0.125]);
+        assert_eq!(vertices[5].color, [0.25, 0.5, 0.75, 0.8]);
     }
 
     #[test]
@@ -1024,6 +1132,9 @@ mod tests {
             velocity: [0.0, 0.0, 0.0],
             age_ticks: 0,
             lifetime_ticks,
+            base_quad_size: DEFAULT_PARTICLE_QUAD_SIZE,
+            color: [1.0, 1.0, 1.0, 1.0],
+            quad_size_curve: ParticleQuadSizeCurve::Constant,
             provider: descriptor.provider.to_string(),
             friction: descriptor.friction,
             gravity: descriptor.gravity,
@@ -1053,6 +1164,13 @@ mod tests {
         assert!(
             (actual - expected).abs() < 1.0e-6,
             "expected {expected}, got {actual}"
+        );
+    }
+
+    fn assert_range_f32(actual: f32, min: f32, max: f32) {
+        assert!(
+            actual >= min && actual <= max,
+            "expected {actual} to be in {min}..={max}"
         );
     }
 
