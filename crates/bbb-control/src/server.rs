@@ -371,6 +371,29 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.change_game_mode" {
+        let change_game_mode = match change_game_mode_request_param(&request.params) {
+            Ok(change_game_mode) => change_game_mode,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(err),
+                };
+            }
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard.net_requests.push(change_game_mode);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.lock_difficulty" {
         let Some(locked) = bool_param(&request.params, "locked") else {
             return ControlResponse {
@@ -1293,6 +1316,19 @@ fn change_difficulty_request_param(
     })
 }
 
+fn change_game_mode_request_param(params: &serde_json::Value) -> Result<NetControlRequest, String> {
+    let Some(value) = params.get("game_mode") else {
+        return Err("net.change_game_mode requires string param game_mode".to_string());
+    };
+    let Some(value) = value.as_str() else {
+        return Err("net.change_game_mode param game_mode must be a string".to_string());
+    };
+    NetControlRequest::change_game_mode_named(value).ok_or_else(|| {
+        "net.change_game_mode requires game_mode survival, creative, adventure, or spectator"
+            .to_string()
+    })
+}
+
 fn sign_lines_param(
     params: &serde_json::Value,
     key: &str,
@@ -2141,6 +2177,87 @@ mod tests {
         );
         assert!(!non_string_difficulty.ok);
         assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_change_game_mode_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let game_modes = ["survival", "creative", "adventure", "spectator"];
+
+        for (index, game_mode) in game_modes.iter().enumerate() {
+            let response = dispatch(
+                ControlRequest {
+                    method: "net.change_game_mode".to_string(),
+                    params: json!({"game_mode": game_mode}),
+                },
+                &snapshot,
+            );
+
+            assert!(response.ok);
+            assert_eq!(response.result.unwrap()["pending"], index + 1);
+        }
+
+        let expected_requests = game_modes
+            .iter()
+            .map(|game_mode| NetControlRequest::change_game_mode_named(game_mode).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(snapshot.read().unwrap().net_requests, expected_requests);
+    }
+
+    #[test]
+    fn net_change_game_mode_rejects_missing_non_string_or_invalid_game_mode() {
+        let snapshot = shared_snapshot("test");
+        let missing_game_mode = dispatch(
+            ControlRequest {
+                method: "net.change_game_mode".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        let non_string_game_mode = dispatch(
+            ControlRequest {
+                method: "net.change_game_mode".to_string(),
+                params: json!({"game_mode": 1}),
+            },
+            &snapshot,
+        );
+        let invalid_game_mode = dispatch(
+            ControlRequest {
+                method: "net.change_game_mode".to_string(),
+                params: json!({"game_mode": "builder"}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_game_mode.ok);
+        assert_eq!(
+            missing_game_mode.error.as_deref(),
+            Some("net.change_game_mode requires string param game_mode")
+        );
+        assert!(!non_string_game_mode.ok);
+        assert_eq!(
+            non_string_game_mode.error.as_deref(),
+            Some("net.change_game_mode param game_mode must be a string")
+        );
+        assert!(!invalid_game_mode.ok);
+        assert_eq!(
+            invalid_game_mode.error.as_deref(),
+            Some(
+                "net.change_game_mode requires game_mode survival, creative, adventure, or spectator"
+            )
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_change_game_mode_counters_deserialize_with_defaults() {
+        let mut value = serde_json::to_value(NetCounters::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("change_game_mode_commands_queued");
+
+        let counters: NetCounters = serde_json::from_value(value).unwrap();
+
+        assert_eq!(counters.change_game_mode_commands_queued, 0);
     }
 
     #[test]

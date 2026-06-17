@@ -1,12 +1,12 @@
 use bbb_protocol::packets::{
-    self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChatCommand,
-    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-    ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity, InteractionHand,
-    LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
-    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity,
-    UseItem, UseItemOn, Vec3d,
+    self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
+    ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+    ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity,
+    InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity,
+    PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput,
+    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
+    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity,
+    TeleportToEntity, UseItem, UseItemOn, Vec3d,
 };
 use serde::{Deserialize, Serialize};
 
@@ -99,6 +99,7 @@ pub enum NetCommand {
     BlockEntityTagQuery(BlockEntityTagQuery),
     EntityTagQuery(EntityTagQuery),
     ChangeDifficulty(ChangeDifficultyCommand),
+    ChangeGameMode(ChangeGameModeCommand),
     LockDifficulty(LockDifficultyCommand),
     PlaceRecipe(PlaceRecipeCommand),
     RecipeBookChangeSettings(RecipeBookChangeSettingsCommand),

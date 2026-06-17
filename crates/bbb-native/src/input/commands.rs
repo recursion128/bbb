@@ -1,7 +1,7 @@
 use bbb_control::NetCounters;
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChatCommand,
+    AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand, ChatCommand,
     CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
     ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook, EntityTagQuery,
     InteractEntity, InteractionHand, LockDifficultyCommand, PickItemFromBlock, PickItemFromEntity,
@@ -127,6 +127,18 @@ pub(crate) fn queue_change_difficulty_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::ChangeDifficulty(command)).is_ok() {
             counters.change_difficulty_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_change_game_mode_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: ChangeGameModeCommand,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::ChangeGameMode(command)).is_ok() {
+            counters.change_game_mode_commands_queued += 1;
         }
     }
 }
@@ -775,7 +787,7 @@ mod tests {
 
     #[test]
     fn queues_difficulty_commands() {
-        let (tx, mut rx) = mpsc::channel(2);
+        let (tx, mut rx) = mpsc::channel(3);
         let commands = Some(tx);
         let mut counters = NetCounters::default();
 
@@ -786,6 +798,13 @@ mod tests {
                 difficulty: bbb_protocol::packets::Difficulty::Hard,
             },
         );
+        queue_change_game_mode_command(
+            &mut counters,
+            &commands,
+            ChangeGameModeCommand {
+                game_mode: bbb_protocol::packets::GameType::Adventure,
+            },
+        );
         queue_lock_difficulty_command(
             &mut counters,
             &commands,
@@ -793,11 +812,18 @@ mod tests {
         );
 
         assert_eq!(counters.change_difficulty_commands_queued, 1);
+        assert_eq!(counters.change_game_mode_commands_queued, 1);
         assert_eq!(counters.lock_difficulty_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::ChangeDifficulty(ChangeDifficultyCommand {
                 difficulty: bbb_protocol::packets::Difficulty::Hard,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChangeGameMode(ChangeGameModeCommand {
+                game_mode: bbb_protocol::packets::GameType::Adventure,
             })
         );
         assert_eq!(

@@ -11,7 +11,7 @@ mod commands;
 
 pub(crate) use commands::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity,
-    send_block_entity_tag_query, send_change_difficulty, send_chat_command,
+    send_block_entity_tag_query, send_change_difficulty, send_change_game_mode, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_edit_book, send_entity_tag_query,
     send_interact_entity, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
@@ -138,6 +138,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::ChangeDifficulty(command)) => {
                         send_change_difficulty(conn, command).await?;
                     }
+                    Some(NetCommand::ChangeGameMode(command)) => {
+                        send_change_game_mode(conn, command).await?;
+                    }
                     Some(NetCommand::LockDifficulty(command)) => {
                         send_lock_difficulty(conn, command).await?;
                     }
@@ -235,6 +238,7 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::BlockEntityTagQuery(_)) => {}
                     Some(NetCommand::EntityTagQuery(_)) => {}
                     Some(NetCommand::ChangeDifficulty(_)) => {}
+                    Some(NetCommand::ChangeGameMode(_)) => {}
                     Some(NetCommand::LockDifficulty(_)) => {}
                     Some(NetCommand::PlaceRecipe(_)) => {}
                     Some(NetCommand::RecipeBookChangeSettings(_)) => {}
@@ -275,14 +279,15 @@ mod tests {
         ids,
         packets::{
             AttackEntity, BlockEntityTagQuery, BlockHitResult, BlockPos, ChangeDifficultyCommand,
-            ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-            ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, Difficulty,
-            Direction, EditBook, EntityTagQuery, HashedStack, InteractEntity, InteractionHand,
-            LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity,
-            PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
-            RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
-            RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-            SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
+            ChangeGameModeCommand, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
+            ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
+            Difficulty, Direction, EditBook, EntityTagQuery, GameType, HashedStack, InteractEntity,
+            InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
+            PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
+            PlayerActionKind, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+            RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
+            SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
+            UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -782,9 +787,14 @@ mod tests {
     #[tokio::test]
     async fn drive_connection_sends_difficulty_net_commands_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
-        let (tx, mut commands) = mpsc::channel(3);
+        let (tx, mut commands) = mpsc::channel(4);
         tx.send(NetCommand::ChangeDifficulty(ChangeDifficultyCommand {
             difficulty: Difficulty::Easy,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ChangeGameMode(ChangeGameModeCommand {
+            game_mode: GameType::Creative,
         }))
         .await
         .unwrap();
@@ -800,6 +810,12 @@ mod tests {
 
         let (packet_id, payload) = read_server_packet(&mut server, "change difficulty").await;
         assert_eq!(packet_id, ids::play::SERVERBOUND_CHANGE_DIFFICULTY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "change game mode").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHANGE_GAME_MODE);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 1);
         assert!(decoder.is_empty());

@@ -1,13 +1,13 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
-    self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChatCommand,
-    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-    ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity, InteractionHand,
-    LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
-    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity,
-    TeleportToEntity, UseItem, UseItemOn,
+    self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
+    ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+    ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity,
+    InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity,
+    PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth,
+    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate,
+    SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -157,6 +157,14 @@ pub(crate) async fn send_change_difficulty(
     command: ChangeDifficultyCommand,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_change_difficulty(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_change_game_mode(
+    conn: &mut RawConnection,
+    command: ChangeGameModeCommand,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_change_game_mode(command);
     conn.send_packet(id, &payload).await
 }
 

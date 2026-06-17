@@ -7,6 +7,7 @@ use crate::{codec::Encoder, ids};
 
 use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::client_state::Difficulty;
+use super::player_info::GameType;
 use super::{chunks, connection, BlockPos, Vec3d};
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
@@ -54,6 +55,11 @@ pub struct ChatCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChangeDifficultyCommand {
     pub difficulty: Difficulty,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangeGameModeCommand {
+    pub game_mode: GameType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -430,6 +436,12 @@ pub fn encode_play_change_difficulty(command: ChangeDifficultyCommand) -> (i32, 
     let mut out = Encoder::new();
     out.write_var_i32(command.difficulty.id());
     (ids::play::SERVERBOUND_CHANGE_DIFFICULTY, out.into_inner())
+}
+
+pub fn encode_play_change_game_mode(command: ChangeGameModeCommand) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(command.game_mode.id());
+    (ids::play::SERVERBOUND_CHANGE_GAME_MODE, out.into_inner())
 }
 
 pub fn encode_play_lock_difficulty(command: LockDifficultyCommand) -> (i32, Vec<u8>) {

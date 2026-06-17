@@ -1,14 +1,14 @@
 use bbb_control::{
     CodeOfConductControlRequest, ContainerClickControlRequest, ContainerInputControl,
-    DifficultyControl, HashedComponentPatchControl, HashedStackControl, NetControlRequest,
-    NetCounters, RecipeBookTypeControl, SharedSnapshot,
+    DifficultyControl, GameModeControl, HashedComponentPatchControl, HashedStackControl,
+    NetControlRequest, NetCounters, RecipeBookTypeControl, SharedSnapshot,
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
-    BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeDifficultyCommand, ContainerClick,
-    ContainerInput, Difficulty, EditBook, EntityTagQuery, HashedComponentPatch, HashedItemStack,
-    HashedStack, LockDifficultyCommand, RecipeBookType, RenameItem, SeenAdvancements, SetBeacon,
-    SpectateEntity, TeleportToEntity,
+    BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeDifficultyCommand,
+    ChangeGameModeCommand, ContainerClick, ContainerInput, Difficulty, EditBook, EntityTagQuery,
+    GameType, HashedComponentPatch, HashedItemStack, HashedStack, LockDifficultyCommand,
+    RecipeBookType, RenameItem, SeenAdvancements, SetBeacon, SpectateEntity, TeleportToEntity,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -16,16 +16,16 @@ use tokio::sync::mpsc;
 use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     input::{
-        queue_block_entity_tag_query_command, queue_change_difficulty_command, queue_chat_command,
-        queue_command_suggestion_request, queue_container_button_click_command,
-        queue_container_click_command, queue_container_close_request_command,
-        queue_container_slot_state_changed_command, queue_edit_book_command,
-        queue_entity_tag_query_command, queue_lock_difficulty_command, queue_place_recipe_command,
-        queue_player_abilities_command, queue_recipe_book_change_settings_command,
-        queue_recipe_book_seen_recipe_command, queue_rename_item_command,
-        queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
-        queue_sign_update_command, queue_spectate_entity_command, queue_teleport_to_entity_command,
-        select_bundle_item, select_hotbar_slot,
+        queue_block_entity_tag_query_command, queue_change_difficulty_command,
+        queue_change_game_mode_command, queue_chat_command, queue_command_suggestion_request,
+        queue_container_button_click_command, queue_container_click_command,
+        queue_container_close_request_command, queue_container_slot_state_changed_command,
+        queue_edit_book_command, queue_entity_tag_query_command, queue_lock_difficulty_command,
+        queue_place_recipe_command, queue_player_abilities_command,
+        queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
+        queue_rename_item_command, queue_seen_advancements_command, queue_select_trade_command,
+        queue_set_beacon_command, queue_sign_update_command, queue_spectate_entity_command,
+        queue_teleport_to_entity_command, select_bundle_item, select_hotbar_slot,
     },
 };
 
@@ -97,6 +97,15 @@ fn protocol_difficulty(difficulty: DifficultyControl) -> Difficulty {
     }
 }
 
+fn protocol_game_mode(game_mode: GameModeControl) -> GameType {
+    match game_mode {
+        GameModeControl::Survival => GameType::Survival,
+        GameModeControl::Creative => GameType::Creative,
+        GameModeControl::Adventure => GameType::Adventure,
+        GameModeControl::Spectator => GameType::Spectator,
+    }
+}
+
 pub(crate) fn pump_control_net_requests(
     snapshot: &SharedSnapshot,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -122,6 +131,15 @@ pub(crate) fn pump_control_net_requests(
                     net_commands,
                     ChangeDifficultyCommand {
                         difficulty: protocol_difficulty(difficulty),
+                    },
+                );
+            }
+            NetControlRequest::ChangeGameMode { game_mode } => {
+                queue_change_game_mode_command(
+                    counters,
+                    net_commands,
+                    ChangeGameModeCommand {
+                        game_mode: protocol_game_mode(game_mode),
                     },
                 );
             }
@@ -618,20 +636,30 @@ mod tests {
             bbb_control::NetControlRequest::ChangeDifficulty {
                 difficulty: bbb_control::DifficultyControl::Hard,
             },
+            bbb_control::NetControlRequest::ChangeGameMode {
+                game_mode: bbb_control::GameModeControl::Adventure,
+            },
             bbb_control::NetControlRequest::LockDifficulty { locked: true },
         ]);
-        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(3);
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 
         pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
 
         assert_eq!(counters.change_difficulty_commands_queued, 1);
+        assert_eq!(counters.change_game_mode_commands_queued, 1);
         assert_eq!(counters.lock_difficulty_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::ChangeDifficulty(ChangeDifficultyCommand {
                 difficulty: Difficulty::Hard,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChangeGameMode(ChangeGameModeCommand {
+                game_mode: GameType::Adventure,
             })
         );
         assert_eq!(

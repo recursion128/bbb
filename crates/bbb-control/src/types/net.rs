@@ -25,6 +25,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub change_difficulty_commands_queued: usize,
     #[serde(default)]
+    pub change_game_mode_commands_queued: usize,
+    #[serde(default)]
     pub lock_difficulty_commands_queued: usize,
     #[serde(default)]
     pub attack_entity_commands_queued: usize,

@@ -26,6 +26,9 @@ pub enum NetControlRequest {
     ChangeDifficulty {
         difficulty: DifficultyControl,
     },
+    ChangeGameMode {
+        game_mode: GameModeControl,
+    },
     LockDifficulty {
         locked: bool,
     },
@@ -127,6 +130,17 @@ impl NetControlRequest {
         };
         Some(Self::ChangeDifficulty { difficulty })
     }
+
+    pub fn change_game_mode_named(game_mode: &str) -> Option<Self> {
+        let game_mode = match game_mode {
+            "survival" => GameModeControl::Survival,
+            "creative" => GameModeControl::Creative,
+            "adventure" => GameModeControl::Adventure,
+            "spectator" => GameModeControl::Spectator,
+            _ => return None,
+        };
+        Some(Self::ChangeGameMode { game_mode })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -136,6 +150,15 @@ pub enum DifficultyControl {
     Easy,
     Normal,
     Hard,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GameModeControl {
+    Survival,
+    Creative,
+    Adventure,
+    Spectator,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

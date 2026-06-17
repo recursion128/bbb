@@ -1,6 +1,6 @@
 use super::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity,
-    send_block_entity_tag_query, send_change_difficulty, send_chat_command,
+    send_block_entity_tag_query, send_change_difficulty, send_change_game_mode, send_chat_command,
     send_command_suggestion_request, send_container_button_click, send_container_click,
     send_container_close, send_container_slot_state_changed, send_edit_book, send_entity_tag_query,
     send_interact_entity, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
@@ -20,15 +20,16 @@ use bbb_protocol::{
     codec::Decoder,
     ids,
     packets::{
-        AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand, ChatCommand,
-        CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-        ContainerInput, ContainerSlotStateChanged, Difficulty, EditBook, EntityTagQuery,
-        HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
-        LockDifficultyCommand, PaddleBoat, PickItemFromEntity, PlaceRecipeCommand,
-        PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
-        PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-        RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
-        SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
+        AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand,
+        ChangeGameModeCommand, ChatCommand, CommandSuggestionRequest, ContainerButtonClick,
+        ContainerClick, ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
+        Difficulty, EditBook, EntityTagQuery, GameType, HashedComponentPatch, HashedItemStack,
+        HashedStack, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+        PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
+        PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
+        RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
+        RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+        SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -1124,6 +1125,15 @@ async fn send_difficulty_commands_encode_packets() {
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
+            .expect("change game mode command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHANGE_GAME_MODE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 2);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
             .expect("lock difficulty command should be sent")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_LOCK_DIFFICULTY);
@@ -1139,6 +1149,14 @@ async fn send_difficulty_commands_encode_packets() {
         &mut conn,
         ChangeDifficultyCommand {
             difficulty: Difficulty::Hard,
+        },
+    )
+    .await
+    .unwrap();
+    send_change_game_mode(
+        &mut conn,
+        ChangeGameModeCommand {
+            game_mode: GameType::Adventure,
         },
     )
     .await
