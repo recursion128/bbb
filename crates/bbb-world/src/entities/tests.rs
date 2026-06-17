@@ -3035,6 +3035,74 @@ fn local_player_root_boat_vehicle_id_tracks_vanilla_boat_roots() {
 }
 
 #[test]
+fn local_player_rideable_jumping_vehicle_id_tracks_vanilla_controlled_mounts() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        20,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        30,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        40,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    ));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(store.local_player_rideable_jumping_vehicle_id(), Some(10));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 20,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(store.local_player_rideable_jumping_vehicle_id(), Some(20));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 30,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(store.local_player_rideable_jumping_vehicle_id(), Some(30));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 40,
+        passenger_ids: vec![99],
+    }));
+    assert_eq!(store.local_player_rideable_jumping_vehicle_id(), None);
+}
+
+#[test]
+fn local_player_rideable_jumping_vehicle_requires_controlling_passenger() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        123,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![123, 99],
+    }));
+
+    assert_eq!(store.local_player_vehicle_id(), Some(10));
+    assert_eq!(store.local_player_rideable_jumping_vehicle_id(), None);
+}
+
+#[test]
 fn local_boat_input_advances_root_boat_and_reports_move() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

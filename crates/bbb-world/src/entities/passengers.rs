@@ -7,7 +7,11 @@ use crate::{LocalPlayerInputState, WorldStore};
 use super::{
     is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
-    VehicleMoveReport,
+    VehicleMoveReport, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
+    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
 
 const MOVE_VEHICLE_SNAP_EPSILON_SQUARED: f64 = 1e-10;
@@ -193,6 +197,22 @@ impl WorldStore {
             .map(|_| vehicle_id)
     }
 
+    pub fn local_player_rideable_jumping_vehicle_id(&self) -> Option<i32> {
+        let (Some(local_player_id), Some(vehicle_id)) =
+            (self.local_player_id, self.local_player_vehicle_id)
+        else {
+            return None;
+        };
+        let mount = self.entities.mount(vehicle_id)?;
+        if mount.passengers.first().copied() != Some(local_player_id) {
+            return None;
+        }
+        self.entities
+            .entity_type_id(vehicle_id)
+            .filter(|entity_type_id| is_vanilla_player_rideable_jumping_type(*entity_type_id))
+            .map(|_| vehicle_id)
+    }
+
     pub(crate) fn clear_local_player_mount(&mut self, local_player_id: i32) {
         self.local_player_vehicle_id = None;
         self.entities.for_each_mount_mut(|entity_id, mount| {
@@ -243,4 +263,21 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
         wrapped += 360.0;
     }
     wrapped
+}
+
+fn is_vanilla_player_rideable_jumping_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_CAMEL_ID
+            | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
+            | VANILLA_ENTITY_TYPE_DONKEY_ID
+            | VANILLA_ENTITY_TYPE_HORSE_ID
+            | VANILLA_ENTITY_TYPE_LLAMA_ID
+            | VANILLA_ENTITY_TYPE_MULE_ID
+            | VANILLA_ENTITY_TYPE_NAUTILUS_ID
+            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
+            | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
+            | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID
+    )
 }

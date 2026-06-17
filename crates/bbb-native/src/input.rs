@@ -62,6 +62,7 @@ pub(crate) struct ClientInputState {
     last_move_command_at: Option<Instant>,
     last_move_command_pose: Option<LocalPlayerPoseState>,
     last_paddle_boat_command_at: Option<Instant>,
+    riding_jump_charge_seconds: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -98,6 +99,7 @@ impl ClientInputState {
         self.bundle_scroll_accumulated_y = 0.0;
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
+        self.riding_jump_charge_seconds = None;
     }
 
     pub(crate) fn command_entry_is_active(&self) -> bool {

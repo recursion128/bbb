@@ -2,11 +2,14 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::{NetCommand, PlayerMoveCommand};
+use bbb_protocol::packets::PlayerCommandAction;
 use bbb_world::{LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
 
 use super::{
-    commands::{queue_paddle_boat_command, queue_vehicle_move_command},
+    commands::{
+        queue_paddle_boat_command, queue_player_command_action, queue_vehicle_move_command,
+    },
     ClientInputState,
 };
 
@@ -15,6 +18,7 @@ const MOVE_COMMAND_POSITION_REMINDER_INTERVAL: Duration = Duration::from_secs(1)
 const MOVE_COMMAND_POSITION_THRESHOLD: f64 = 2.0E-4;
 const MOVE_COMMAND_POSITION_THRESHOLD_SQUARED: f64 =
     MOVE_COMMAND_POSITION_THRESHOLD * MOVE_COMMAND_POSITION_THRESHOLD;
+const RIDING_JUMP_TICK_SECONDS: f64 = 0.05;
 
 impl ClientInputState {
     fn local_player_input(&self) -> LocalPlayerInputState {
@@ -56,6 +60,7 @@ pub(crate) fn advance_player_input(
                 maybe_queue_player_move_command(input, counters, net_commands, pose, now);
             }
         }
+        maybe_queue_riding_jump_command(input, world, counters, net_commands, dt_seconds);
         let boat_report = world.advance_local_boat_vehicle_input(input_state, dt_seconds);
         maybe_queue_boat_commands(input, world, counters, net_commands, now, boat_report);
         input.mouse_delta_x = 0.0;
@@ -63,6 +68,7 @@ pub(crate) fn advance_player_input(
         return;
     }
     input.last_paddle_boat_command_at = None;
+    input.riding_jump_charge_seconds = None;
 
     let Some(pose) = world.advance_local_player_input(input.local_player_input(), dt_seconds)
     else {
@@ -74,6 +80,42 @@ pub(crate) fn advance_player_input(
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
+}
+
+fn maybe_queue_riding_jump_command(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    dt_seconds: f64,
+) {
+    if world.local_player_rideable_jumping_vehicle_id().is_none() {
+        input.riding_jump_charge_seconds = None;
+        return;
+    }
+
+    if let Some(charge_seconds) = &mut input.riding_jump_charge_seconds {
+        *charge_seconds += dt_seconds.max(0.0);
+    }
+
+    if input.focused && input.jump {
+        input.riding_jump_charge_seconds.get_or_insert(0.0);
+        return;
+    }
+
+    let Some(charge_seconds) = input.riding_jump_charge_seconds.take() else {
+        return;
+    };
+    let jump_data = riding_jump_command_data(charge_seconds);
+    if jump_data > 0 {
+        queue_player_command_action(
+            counters,
+            world,
+            net_commands,
+            PlayerCommandAction::StartRidingJump,
+            jump_data,
+        );
+    }
 }
 
 fn maybe_queue_boat_commands(
@@ -108,6 +150,19 @@ fn paddle_boat_state_from_input(input: &ClientInputState) -> (bool, bool) {
     let left = (input.right && !input.left) || input.forward;
     let right = (input.left && !input.right) || input.forward;
     (left, right)
+}
+
+fn riding_jump_command_data(charge_seconds: f64) -> i32 {
+    let ticks = (charge_seconds.max(0.0) / RIDING_JUMP_TICK_SECONDS).floor() as i32;
+    if ticks <= 0 {
+        return 0;
+    }
+    let scale = if ticks < 10 {
+        ticks as f32 * 0.1
+    } else {
+        0.8 + 2.0 / (ticks - 9) as f32 * 0.1
+    };
+    (scale * 100.0).floor() as i32
 }
 
 fn maybe_queue_player_move_command(
@@ -207,6 +262,7 @@ mod tests {
     use uuid::Uuid;
 
     const VANILLA_26_1_MINECART_ENTITY_TYPE_ID: i32 = 85;
+    const VANILLA_26_1_HORSE_ENTITY_TYPE_ID: i32 = 66;
     const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
 
     #[test]
@@ -602,6 +658,86 @@ mod tests {
         assert_eq!(counters.paddle_boat_commands_queued, 0);
         assert_eq!(counters.move_vehicle_commands_queued, 0);
         assert_eq!(counters.player_move_commands_queued, 0);
+    }
+
+    #[test]
+    fn mounted_jumpable_vehicle_release_queues_riding_jump_command() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.jump = true;
+        let mut world = world_with_local_vehicle(VANILLA_26_1_HORSE_ENTITY_TYPE_ID);
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+        assert!(rx.try_recv().is_err());
+
+        input.jump = false;
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + Duration::from_millis(100),
+        );
+
+        let command = match rx.try_recv().unwrap() {
+            NetCommand::PlayerCommand(command) => command,
+            other => panic!("expected riding jump player command, got {other:?}"),
+        };
+        assert_eq!(command.entity_id, 99);
+        assert_eq!(command.action, PlayerCommandAction::StartRidingJump);
+        assert_eq!(command.data, 20);
+        assert_eq!(counters.player_command_commands_queued, 1);
+    }
+
+    #[test]
+    fn mounted_non_jumpable_vehicle_release_does_not_queue_riding_jump() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        input.jump = true;
+        let mut world = world_with_local_vehicle(VANILLA_26_1_MINECART_ENTITY_TYPE_ID);
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+        input.jump = false;
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + Duration::from_millis(100),
+        );
+
+        assert!(rx.try_recv().is_err());
+        assert_eq!(counters.player_command_commands_queued, 0);
+    }
+
+    #[test]
+    fn riding_jump_command_data_matches_vanilla_charge_shape() {
+        assert_eq!(
+            riding_jump_command_data(Duration::from_millis(49).as_secs_f64()),
+            0
+        );
+        assert_eq!(
+            riding_jump_command_data(Duration::from_millis(50).as_secs_f64()),
+            10
+        );
+        assert_eq!(
+            riding_jump_command_data(Duration::from_millis(450).as_secs_f64()),
+            90
+        );
+        assert_eq!(
+            riding_jump_command_data(Duration::from_millis(500).as_secs_f64()),
+            100
+        );
+        assert_eq!(
+            riding_jump_command_data(Duration::from_millis(550).as_secs_f64()),
+            90
+        );
     }
 
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {

@@ -1380,6 +1380,17 @@ fn encodes_player_command_actions() {
     assert_eq!(decoder.read_var_i32().unwrap(), 2);
     assert_eq!(decoder.read_var_i32().unwrap(), 0);
     assert!(decoder.is_empty());
+
+    let (_, payload) = encode_play_player_command(PlayerCommand {
+        entity_id: 99,
+        action: PlayerCommandAction::StartRidingJump,
+        data: 20,
+    });
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 99);
+    assert_eq!(decoder.read_var_i32().unwrap(), 3);
+    assert_eq!(decoder.read_var_i32().unwrap(), 20);
+    assert!(decoder.is_empty());
 }
 
 #[test]
