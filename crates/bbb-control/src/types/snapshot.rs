@@ -85,6 +85,16 @@ pub enum NetControlRequest {
         id: i32,
         command: String,
     },
+    QueryBlockEntityTag {
+        transaction_id: i32,
+        x: i32,
+        y: i32,
+        z: i32,
+    },
+    QueryEntityTag {
+        transaction_id: i32,
+        entity_id: i32,
+    },
     ContainerButtonClick {
         container_id: i32,
         button_id: i32,

@@ -208,6 +208,90 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.query_block_entity_tag" {
+        let Some(transaction_id) = i32_param(&request.params, "transaction_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.query_block_entity_tag requires integer param transaction_id".to_string(),
+                ),
+            };
+        };
+        let Some(x) = i32_param(&request.params, "x") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.query_block_entity_tag requires integer param x".to_string()),
+            };
+        };
+        let Some(y) = i32_param(&request.params, "y") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.query_block_entity_tag requires integer param y".to_string()),
+            };
+        };
+        let Some(z) = i32_param(&request.params, "z") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.query_block_entity_tag requires integer param z".to_string()),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::QueryBlockEntityTag {
+                transaction_id,
+                x,
+                y,
+                z,
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.query_entity_tag" {
+        let Some(transaction_id) = i32_param(&request.params, "transaction_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "net.query_entity_tag requires integer param transaction_id".to_string(),
+                ),
+            };
+        };
+        let Some(entity_id) = i32_param(&request.params, "entity_id") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.query_entity_tag requires integer param entity_id".to_string()),
+            };
+        };
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::QueryEntityTag {
+                transaction_id,
+                entity_id,
+            });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.change_difficulty" {
         let change_difficulty = match change_difficulty_request_param(&request.params) {
             Ok(change_difficulty) => change_difficulty,
@@ -1687,6 +1771,131 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_id.ok);
+    }
+
+    #[test]
+    fn net_tag_query_block_entity_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.query_block_entity_tag".to_string(),
+                params: json!({"transaction_id": 42, "x": -5, "y": 70, "z": 12}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let result = response.result.unwrap();
+        assert_eq!(result["queued"], true);
+        assert_eq!(result["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::QueryBlockEntityTag {
+                transaction_id: 42,
+                x: -5,
+                y: 70,
+                z: 12,
+            }]
+        );
+    }
+
+    #[test]
+    fn net_tag_query_block_entity_rejects_missing_or_non_integer_params() {
+        let snapshot = shared_snapshot("test");
+        let missing_transaction = dispatch(
+            ControlRequest {
+                method: "net.query_block_entity_tag".to_string(),
+                params: json!({"x": -5, "y": 70, "z": 12}),
+            },
+            &snapshot,
+        );
+        let non_integer_y = dispatch(
+            ControlRequest {
+                method: "net.query_block_entity_tag".to_string(),
+                params: json!({"transaction_id": 42, "x": -5, "y": "70", "z": 12}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_transaction.ok);
+        assert_eq!(
+            missing_transaction.error.as_deref(),
+            Some("net.query_block_entity_tag requires integer param transaction_id")
+        );
+        assert!(!non_integer_y.ok);
+        assert_eq!(
+            non_integer_y.error.as_deref(),
+            Some("net.query_block_entity_tag requires integer param y")
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_tag_query_entity_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.query_entity_tag".to_string(),
+                params: json!({"transaction_id": 43, "entity_id": 99}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        let result = response.result.unwrap();
+        assert_eq!(result["queued"], true);
+        assert_eq!(result["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::QueryEntityTag {
+                transaction_id: 43,
+                entity_id: 99,
+            }]
+        );
+    }
+
+    #[test]
+    fn net_tag_query_entity_rejects_missing_or_non_integer_params() {
+        let snapshot = shared_snapshot("test");
+        let missing_transaction = dispatch(
+            ControlRequest {
+                method: "net.query_entity_tag".to_string(),
+                params: json!({"entity_id": 99}),
+            },
+            &snapshot,
+        );
+        let non_integer_entity = dispatch(
+            ControlRequest {
+                method: "net.query_entity_tag".to_string(),
+                params: json!({"transaction_id": 43, "entity_id": "99"}),
+            },
+            &snapshot,
+        );
+
+        assert!(!missing_transaction.ok);
+        assert_eq!(
+            missing_transaction.error.as_deref(),
+            Some("net.query_entity_tag requires integer param transaction_id")
+        );
+        assert!(!non_integer_entity.ok);
+        assert_eq!(
+            non_integer_entity.error.as_deref(),
+            Some("net.query_entity_tag requires integer param entity_id")
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_tag_query_counters_deserialize_with_defaults() {
+        let mut value = serde_json::to_value(NetCounters::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("block_entity_tag_query_commands_queued");
+        object.remove("entity_tag_query_commands_queued");
+
+        let counters: NetCounters = serde_json::from_value(value).unwrap();
+
+        assert_eq!(counters.block_entity_tag_query_commands_queued, 0);
+        assert_eq!(counters.entity_tag_query_commands_queued, 0);
     }
 
     #[test]

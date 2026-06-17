@@ -967,8 +967,10 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
 #[test]
 fn play_serverbound_interaction_packet_ids_match_vanilla_26_1_registration_order() {
     assert_eq!(ids::play::SERVERBOUND_ATTACK, 1);
+    assert_eq!(ids::play::SERVERBOUND_BLOCK_ENTITY_TAG_QUERY, 2);
     assert_eq!(ids::play::SERVERBOUND_CHANGE_DIFFICULTY, 4);
     assert_eq!(ids::play::SERVERBOUND_CHAT_COMMAND, 7);
+    assert_eq!(ids::play::SERVERBOUND_ENTITY_TAG_QUERY, 25);
     assert_eq!(ids::play::SERVERBOUND_INTERACT, 26);
     assert_eq!(ids::play::SERVERBOUND_LOCK_DIFFICULTY, 29);
     assert_eq!(ids::play::SERVERBOUND_PADDLE_BOAT, 35);
@@ -1124,6 +1126,42 @@ fn encodes_lock_difficulty_packet() {
     assert_eq!(id, ids::play::SERVERBOUND_LOCK_DIFFICULTY);
     let mut decoder = Decoder::new(&payload);
     assert!(decoder.read_bool().unwrap());
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_block_entity_tag_query_packet() {
+    let pos = BlockPos {
+        x: -5,
+        y: 70,
+        z: 12,
+    };
+    let (id, payload) = encode_play_block_entity_tag_query(BlockEntityTagQuery {
+        transaction_id: 7,
+        pos,
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_BLOCK_ENTITY_TAG_QUERY);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert_eq!(
+        decoder.read_i64().unwrap(),
+        encode_block_pos(pos.x, pos.y, pos.z)
+    );
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_entity_tag_query_packet() {
+    let (id, payload) = encode_play_entity_tag_query(EntityTagQuery {
+        transaction_id: 8,
+        entity_id: 1234,
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_ENTITY_TAG_QUERY);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 8);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1234);
     assert!(decoder.is_empty());
 }
 

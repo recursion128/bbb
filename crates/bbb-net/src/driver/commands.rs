@@ -1,12 +1,13 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
-    self, AttackEntity, ChangeDifficultyCommand, ChatCommand, CommandSuggestionRequest,
-    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
-    EditBook, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
-    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-    PlayerAction, PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
-    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem, UseItemOn,
+    self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChatCommand,
+    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
+    ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity, InteractionHand,
+    LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
+    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
+    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem,
+    UseItemOn,
 };
 
 use crate::{
@@ -132,6 +133,22 @@ pub(crate) async fn send_paddle_boat(conn: &mut RawConnection, packet: PaddleBoa
 
 pub(crate) async fn send_ping_request(conn: &mut RawConnection, time: i64) -> Result<()> {
     let (id, payload) = packets::encode_play_ping_request(time);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_block_entity_tag_query(
+    conn: &mut RawConnection,
+    packet: BlockEntityTagQuery,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_block_entity_tag_query(packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_entity_tag_query(
+    conn: &mut RawConnection,
+    packet: EntityTagQuery,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_entity_tag_query(packet);
     conn.send_packet(id, &payload).await
 }
 

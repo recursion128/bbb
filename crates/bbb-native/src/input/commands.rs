@@ -1,14 +1,14 @@
 use bbb_control::NetCounters;
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    AttackEntity, ChangeDifficultyCommand, ChatCommand, CommandSuggestionRequest,
-    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
-    Direction as ProtocolDirection, EditBook, InteractEntity, InteractionHand,
-    LockDifficultyCommand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-    PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
-    PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem,
-    UseItemOn, Vec3d as ProtocolVec3d,
+    AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChatCommand,
+    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
+    ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook, EntityTagQuery,
+    InteractEntity, InteractionHand, LockDifficultyCommand, PickItemFromBlock, PickItemFromEntity,
+    PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand,
+    PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate,
+    UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -199,6 +199,33 @@ pub(crate) fn queue_sign_update_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SignUpdate(command)).is_ok() {
             counters.sign_update_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_block_entity_tag_query_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: BlockEntityTagQuery,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::BlockEntityTagQuery(command))
+            .is_ok()
+        {
+            counters.block_entity_tag_query_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_entity_tag_query_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: EntityTagQuery,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::EntityTagQuery(command)).is_ok() {
+            counters.entity_tag_query_commands_queued += 1;
         }
     }
 }
@@ -827,6 +854,39 @@ mod tests {
 
         assert_eq!(counters.sign_update_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::SignUpdate(command));
+    }
+
+    #[test]
+    fn queues_tag_query_commands() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let block_query = BlockEntityTagQuery {
+            transaction_id: 11,
+            pos: ProtocolBlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+        };
+        let entity_query = EntityTagQuery {
+            transaction_id: 12,
+            entity_id: 123,
+        };
+
+        queue_block_entity_tag_query_command(&mut counters, &commands, block_query);
+        queue_entity_tag_query_command(&mut counters, &commands, entity_query);
+
+        assert_eq!(counters.block_entity_tag_query_commands_queued, 1);
+        assert_eq!(counters.entity_tag_query_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::BlockEntityTagQuery(block_query)
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::EntityTagQuery(entity_query)
+        );
     }
 
     #[test]

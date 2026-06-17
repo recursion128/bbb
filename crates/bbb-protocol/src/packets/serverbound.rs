@@ -61,6 +61,18 @@ pub struct LockDifficultyCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockEntityTagQuery {
+    pub transaction_id: i32,
+    pub pos: BlockPos,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EntityTagQuery {
+    pub transaction_id: i32,
+    pub entity_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AttackEntity {
     pub entity_id: i32,
 }
@@ -413,6 +425,23 @@ pub fn encode_play_lock_difficulty(command: LockDifficultyCommand) -> (i32, Vec<
     let mut out = Encoder::new();
     out.write_bool(command.locked);
     (ids::play::SERVERBOUND_LOCK_DIFFICULTY, out.into_inner())
+}
+
+pub fn encode_play_block_entity_tag_query(packet: BlockEntityTagQuery) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.transaction_id);
+    out.write_i64(chunks::encode_block_pos(packet.pos));
+    (
+        ids::play::SERVERBOUND_BLOCK_ENTITY_TAG_QUERY,
+        out.into_inner(),
+    )
+}
+
+pub fn encode_play_entity_tag_query(packet: EntityTagQuery) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_var_i32(packet.transaction_id);
+    out.write_var_i32(packet.entity_id);
+    (ids::play::SERVERBOUND_ENTITY_TAG_QUERY, out.into_inner())
 }
 
 pub fn encode_play_player_input(input: PlayerInput) -> (i32, Vec<u8>) {

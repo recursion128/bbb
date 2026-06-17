@@ -11,11 +11,12 @@ mod commands;
 
 pub(crate) use commands::{
     maybe_send_perform_respawn, send_accept_code_of_conduct, send_attack_entity,
-    send_change_difficulty, send_chat_command, send_command_suggestion_request,
-    send_container_button_click, send_container_click, send_container_close,
-    send_container_slot_state_changed, send_edit_book, send_interact_entity, send_lock_difficulty,
-    send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
-    send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
+    send_block_entity_tag_query, send_change_difficulty, send_chat_command,
+    send_command_suggestion_request, send_container_button_click, send_container_click,
+    send_container_close, send_container_slot_state_changed, send_edit_book, send_entity_tag_query,
+    send_interact_entity, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
+    send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
     send_rename_item, send_seen_advancements, send_select_bundle_item, send_select_trade,
     send_set_beacon, send_set_held_slot_command, send_sign_update, send_swing_command,
@@ -128,6 +129,12 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::PingRequest(time)) => {
                         send_ping_request(conn, time).await?;
                     }
+                    Some(NetCommand::BlockEntityTagQuery(packet)) => {
+                        send_block_entity_tag_query(conn, packet).await?;
+                    }
+                    Some(NetCommand::EntityTagQuery(packet)) => {
+                        send_entity_tag_query(conn, packet).await?;
+                    }
                     Some(NetCommand::ChangeDifficulty(command)) => {
                         send_change_difficulty(conn, command).await?;
                     }
@@ -219,6 +226,8 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::PickItemFromEntity(_)) => {}
                     Some(NetCommand::PaddleBoat(_)) => {}
                     Some(NetCommand::PingRequest(_)) => {}
+                    Some(NetCommand::BlockEntityTagQuery(_)) => {}
+                    Some(NetCommand::EntityTagQuery(_)) => {}
                     Some(NetCommand::ChangeDifficulty(_)) => {}
                     Some(NetCommand::LockDifficulty(_)) => {}
                     Some(NetCommand::PlaceRecipe(_)) => {}
@@ -257,15 +266,15 @@ mod tests {
         codec::Decoder,
         ids,
         packets::{
-            AttackEntity, BlockHitResult, BlockPos, ChangeDifficultyCommand, ChatCommand,
-            CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-            ContainerInput, ContainerSlotStateChanged, Difficulty, Direction, EditBook,
-            HashedStack, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
-            PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-            PlayerAction, PlayerActionKind, RecipeBookChangeSettingsCommand,
-            RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
-            SeenAdvancements, SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, UseItem,
-            UseItemOn, Vec3d,
+            AttackEntity, BlockEntityTagQuery, BlockHitResult, BlockPos, ChangeDifficultyCommand,
+            ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+            ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, Difficulty,
+            Direction, EditBook, EntityTagQuery, HashedStack, InteractEntity, InteractionHand,
+            LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity,
+            PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
+            RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
+            RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+            SetBeacon, SignUpdate, UseItem, UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -680,6 +689,53 @@ mod tests {
         assert_eq!(packet_id, ids::play::SERVERBOUND_PING_REQUEST);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_i64().unwrap(), 123_456_789);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_tag_query_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        tx.send(NetCommand::BlockEntityTagQuery(BlockEntityTagQuery {
+            transaction_id: 7,
+            pos: BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::EntityTagQuery(EntityTagQuery {
+            transaction_id: 8,
+            entity_id: 1234,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "block entity tag query").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_BLOCK_ENTITY_TAG_QUERY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 7);
+        assert_eq!(
+            decode_packed_block_pos(decoder.read_i64().unwrap()),
+            BlockPos {
+                x: -5,
+                y: 70,
+                z: 12
+            }
+        );
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "entity tag query").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_ENTITY_TAG_QUERY);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 8);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1234);
         assert!(decoder.is_empty());
     }
 

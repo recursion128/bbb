@@ -5,9 +5,9 @@ use bbb_control::{
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, ChangeDifficultyCommand, ContainerClick, ContainerInput,
-    Difficulty, EditBook, HashedComponentPatch, HashedItemStack, HashedStack,
-    LockDifficultyCommand, RecipeBookType, RenameItem, SeenAdvancements, SetBeacon,
+    BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeDifficultyCommand, ContainerClick,
+    ContainerInput, Difficulty, EditBook, EntityTagQuery, HashedComponentPatch, HashedItemStack,
+    HashedStack, LockDifficultyCommand, RecipeBookType, RenameItem, SeenAdvancements, SetBeacon,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -15,10 +15,11 @@ use tokio::sync::mpsc;
 use crate::{
     code_of_conduct::CodeOfConductAcceptance,
     input::{
-        queue_change_difficulty_command, queue_chat_command, queue_command_suggestion_request,
-        queue_container_button_click_command, queue_container_click_command,
-        queue_container_close_request_command, queue_container_slot_state_changed_command,
-        queue_edit_book_command, queue_lock_difficulty_command, queue_place_recipe_command,
+        queue_block_entity_tag_query_command, queue_change_difficulty_command, queue_chat_command,
+        queue_command_suggestion_request, queue_container_button_click_command,
+        queue_container_click_command, queue_container_close_request_command,
+        queue_container_slot_state_changed_command, queue_edit_book_command,
+        queue_entity_tag_query_command, queue_lock_difficulty_command, queue_place_recipe_command,
         queue_player_abilities_command, queue_recipe_book_change_settings_command,
         queue_recipe_book_seen_recipe_command, queue_rename_item_command,
         queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
@@ -245,6 +246,34 @@ pub(crate) fn pump_control_net_requests(
             NetControlRequest::CommandSuggestionRequest { id, command } => {
                 queue_command_suggestion_request(counters, net_commands, id, command);
             }
+            NetControlRequest::QueryBlockEntityTag {
+                transaction_id,
+                x,
+                y,
+                z,
+            } => {
+                queue_block_entity_tag_query_command(
+                    counters,
+                    net_commands,
+                    BlockEntityTagQuery {
+                        transaction_id,
+                        pos: ProtocolBlockPos { x, y, z },
+                    },
+                );
+            }
+            NetControlRequest::QueryEntityTag {
+                transaction_id,
+                entity_id,
+            } => {
+                queue_entity_tag_query_command(
+                    counters,
+                    net_commands,
+                    EntityTagQuery {
+                        transaction_id,
+                        entity_id,
+                    },
+                );
+            }
             NetControlRequest::ContainerButtonClick {
                 container_id,
                 button_id,
@@ -384,6 +413,50 @@ mod tests {
             NetCommand::CommandSuggestionRequest(bbb_protocol::packets::CommandSuggestionRequest {
                 id: 18,
                 command: "/give @p minecraft:stone".to_string(),
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_tag_query_commands() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.extend([
+            bbb_control::NetControlRequest::QueryBlockEntityTag {
+                transaction_id: 11,
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            bbb_control::NetControlRequest::QueryEntityTag {
+                transaction_id: 12,
+                entity_id: 123,
+            },
+        ]);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.block_entity_tag_query_commands_queued, 1);
+        assert_eq!(counters.entity_tag_query_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::BlockEntityTagQuery(BlockEntityTagQuery {
+                transaction_id: 11,
+                pos: ProtocolBlockPos {
+                    x: -5,
+                    y: 70,
+                    z: 12,
+                },
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::EntityTagQuery(EntityTagQuery {
+                transaction_id: 12,
+                entity_id: 123,
             })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());

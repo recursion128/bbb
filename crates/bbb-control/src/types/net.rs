@@ -58,6 +58,10 @@ pub struct NetCounters {
     pub select_bundle_item_commands_queued: usize,
     pub command_suggestion_commands_queued: usize,
     #[serde(default)]
+    pub block_entity_tag_query_commands_queued: usize,
+    #[serde(default)]
+    pub entity_tag_query_commands_queued: usize,
+    #[serde(default)]
     pub container_close_commands_queued: usize,
     #[serde(default)]
     pub container_button_click_commands_queued: usize,
