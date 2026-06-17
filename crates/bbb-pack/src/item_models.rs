@@ -239,6 +239,7 @@ pub struct ItemModelProperty {
 pub enum ItemModelPropertyKind {
     Broken,
     Damaged,
+    HasComponent,
     Other,
 }
 
@@ -255,6 +256,7 @@ impl ItemModelProperty {
         match self.property_type.as_str() {
             "minecraft:broken" => ItemModelPropertyKind::Broken,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
+            "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
             _ => ItemModelPropertyKind::Other,
         }
     }
@@ -1403,6 +1405,7 @@ mod tests {
                 "type": "minecraft:condition",
                 "property": "minecraft:has_component",
                 "component": "minecraft:lodestone_tracker",
+                "ignore_default": true,
                 "on_true": {
                   "type": "minecraft:range_dispatch",
                   "property": "minecraft:compass",
@@ -1452,12 +1455,17 @@ mod tests {
             panic!("root should parse as a condition item model");
         };
         assert_eq!(property.property_type, "minecraft:has_component");
-        assert_eq!(property.kind(), ItemModelPropertyKind::Other);
+        assert_eq!(property.kind(), ItemModelPropertyKind::HasComponent);
         assert_eq!(
-            property.raw()["component"],
-            serde_json::json!("minecraft:lodestone_tracker")
+            property.raw(),
+            &serde_json::json!({
+                "property": "minecraft:has_component",
+                "component": "minecraft:lodestone_tracker",
+                "ignore_default": true
+            })
         );
         assert!(property.raw().get("on_true").is_none());
+        assert!(property.raw().get("on_false").is_none());
 
         let ItemModelDefinition::RangeDispatch {
             property, entries, ..

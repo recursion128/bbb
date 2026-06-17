@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use bbb_pack::{
-    ItemCuboidModelCatalog, ItemModelDefinition, ItemModelPropertyKind, ItemTintSource,
-    TerrainColorMaps,
+    ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
+    ItemTintSource, TerrainColorMaps,
 };
 use bbb_protocol::packets::DataComponentPatchSummary;
 
@@ -11,12 +11,24 @@ use super::{
     ItemIconTint, ItemTextureState, ITEM_TINT_WHITE,
 };
 
+// 26.1 DataComponents ids from vanilla registration order.
+const MAX_DAMAGE_COMPONENT_ID: i32 = 2;
+const DAMAGE_COMPONENT_ID: i32 = 3;
+const UNBREAKABLE_COMPONENT_ID: i32 = 4;
+const CUSTOM_MODEL_DATA_COMPONENT_ID: i32 = 17;
+const DYED_COLOR_COMPONENT_ID: i32 = 44;
+const MAP_COLOR_COMPONENT_ID: i32 = 45;
+const POTION_CONTENTS_COMPONENT_ID: i32 = 51;
+const LODESTONE_TRACKER_COMPONENT_ID: i32 = 67;
+const FIREWORK_EXPLOSION_COMPONENT_ID: i32 = 68;
+const FIREWORKS_COMPONENT_ID: i32 = 69;
+
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum ItemIconModelRef {
     Empty,
     Layers(Vec<ItemIconTextureRef>),
     Condition {
-        kind: ItemModelPropertyKind,
+        property: ItemModelProperty,
         on_true: Box<ItemIconModelRef>,
         on_false: Box<ItemIconModelRef>,
     },
@@ -48,11 +60,11 @@ impl ItemIconModelRef {
                     .collect(),
             ),
             Self::Condition {
-                kind,
+                property,
                 on_true,
                 on_false,
             } => ItemIconModel::Condition {
-                kind,
+                property,
                 on_true: Box::new(on_true.into_indexed(textures)),
                 on_false: Box::new(on_false.into_indexed(textures)),
             },
@@ -71,7 +83,7 @@ pub(super) enum ItemIconModel {
     Empty,
     Layers(Vec<ItemIconTextureLayer>),
     Condition {
-        kind: ItemModelPropertyKind,
+        property: ItemModelProperty,
         on_true: Box<ItemIconModel>,
         on_false: Box<ItemIconModel>,
     },
@@ -88,11 +100,11 @@ impl ItemIconModel {
             Self::Empty => Vec::new(),
             Self::Layers(layers) => layers.clone(),
             Self::Condition {
-                kind,
+                property,
                 on_true,
                 on_false,
             } => {
-                let branch = match kind {
+                let branch = match property.kind() {
                     ItemModelPropertyKind::Broken
                         if item_stack_next_damage_will_break(
                             component_patch,
@@ -103,6 +115,15 @@ impl ItemIconModel {
                     }
                     ItemModelPropertyKind::Damaged
                         if item_stack_is_damaged(component_patch, default_max_damage) =>
+                    {
+                        on_true
+                    }
+                    ItemModelPropertyKind::HasComponent
+                        if item_stack_has_component(
+                            property,
+                            component_patch,
+                            default_max_damage,
+                        ) =>
                     {
                         on_true
                     }
@@ -118,7 +139,7 @@ impl ItemIconModel {
     }
 }
 
-pub(super) fn contains_damage_condition(model: &ItemModelDefinition) -> bool {
+pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
     match model {
         ItemModelDefinition::Empty
         | ItemModelDefinition::Model { .. }
@@ -132,28 +153,30 @@ pub(super) fn contains_damage_condition(model: &ItemModelDefinition) -> bool {
         } => {
             matches!(
                 property.kind(),
-                ItemModelPropertyKind::Broken | ItemModelPropertyKind::Damaged
-            ) || contains_damage_condition(on_true)
-                || contains_damage_condition(on_false)
+                ItemModelPropertyKind::Broken
+                    | ItemModelPropertyKind::Damaged
+                    | ItemModelPropertyKind::HasComponent
+            ) || contains_runtime_condition(on_true)
+                || contains_runtime_condition(on_false)
         }
         ItemModelDefinition::RangeDispatch {
             entries, fallback, ..
         } => {
             entries
                 .iter()
-                .any(|entry| contains_damage_condition(&entry.model))
-                || fallback.as_deref().is_some_and(contains_damage_condition)
+                .any(|entry| contains_runtime_condition(&entry.model))
+                || fallback.as_deref().is_some_and(contains_runtime_condition)
         }
         ItemModelDefinition::Select {
             cases, fallback, ..
         } => {
             cases
                 .iter()
-                .any(|case| contains_damage_condition(&case.model))
-                || fallback.as_deref().is_some_and(contains_damage_condition)
+                .any(|case| contains_runtime_condition(&case.model))
+                || fallback.as_deref().is_some_and(contains_runtime_condition)
         }
         ItemModelDefinition::Composite { models, .. } => {
-            models.iter().any(contains_damage_condition)
+            models.iter().any(contains_runtime_condition)
         }
     }
 }
@@ -186,10 +209,12 @@ pub(super) fn item_icon_model_ref_for_definition(
                 item_icon_model_ref_for_definition(on_false, cuboid_models, model_tints, colormaps);
             if matches!(
                 property.kind(),
-                ItemModelPropertyKind::Broken | ItemModelPropertyKind::Damaged
+                ItemModelPropertyKind::Broken
+                    | ItemModelPropertyKind::Damaged
+                    | ItemModelPropertyKind::HasComponent
             ) {
                 ItemIconModelRef::Condition {
-                    kind: property.kind(),
+                    property: property.clone(),
                     on_true: Box::new(on_true),
                     on_false: Box::new(on_false),
                 }
@@ -265,6 +290,58 @@ fn item_stack_is_damaged(
 ) -> bool {
     effective_damage_state(component_patch, default_max_damage)
         .is_some_and(|(damage, _)| damage > 0)
+}
+
+fn item_stack_has_component(
+    property: &ItemModelProperty,
+    component_patch: Option<&DataComponentPatchSummary>,
+    default_max_damage: Option<i32>,
+) -> bool {
+    let Some(component) = property
+        .raw()
+        .get("component")
+        .and_then(|value| value.as_str())
+    else {
+        return false;
+    };
+    let Some(component_id) = data_component_type_id(component) else {
+        return false;
+    };
+    let ignore_default = property
+        .raw()
+        .get("ignore_default")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false);
+    let non_default =
+        component_patch.is_some_and(|patch| patch.added_type_ids.contains(&component_id));
+    if component_patch.is_some_and(|patch| patch.removed_type_ids.contains(&component_id)) {
+        return false;
+    }
+    if ignore_default {
+        return non_default;
+    }
+    non_default || item_default_has_component(component_id, default_max_damage)
+}
+
+fn data_component_type_id(component: &str) -> Option<i32> {
+    match component {
+        "minecraft:max_damage" => Some(MAX_DAMAGE_COMPONENT_ID),
+        "minecraft:damage" => Some(DAMAGE_COMPONENT_ID),
+        "minecraft:unbreakable" => Some(UNBREAKABLE_COMPONENT_ID),
+        "minecraft:custom_model_data" => Some(CUSTOM_MODEL_DATA_COMPONENT_ID),
+        "minecraft:dyed_color" => Some(DYED_COLOR_COMPONENT_ID),
+        "minecraft:map_color" => Some(MAP_COLOR_COMPONENT_ID),
+        "minecraft:potion_contents" => Some(POTION_CONTENTS_COMPONENT_ID),
+        "minecraft:lodestone_tracker" => Some(LODESTONE_TRACKER_COMPONENT_ID),
+        "minecraft:firework_explosion" => Some(FIREWORK_EXPLOSION_COMPONENT_ID),
+        "minecraft:fireworks" => Some(FIREWORKS_COMPONENT_ID),
+        _ => None,
+    }
+}
+
+fn item_default_has_component(component_id: i32, default_max_damage: Option<i32>) -> bool {
+    matches!(component_id, MAX_DAMAGE_COMPONENT_ID | DAMAGE_COMPONENT_ID)
+        && default_max_damage.is_some()
 }
 
 fn effective_damage_state(

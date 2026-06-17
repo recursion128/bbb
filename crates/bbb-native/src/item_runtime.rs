@@ -11,7 +11,7 @@ use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
 mod icon_model;
 
 use icon_model::{
-    contains_damage_condition, item_icon_model_ref_for_definition, ItemIconModel, ItemIconModelRef,
+    contains_runtime_condition, item_icon_model_ref_for_definition, ItemIconModel, ItemIconModelRef,
 };
 
 const ITEM_ATLAS_MAX_WIDTH: u32 = 4096;
@@ -84,7 +84,7 @@ impl NativeItemRuntime {
             resolved_model_count += models.models.len();
             texture_ids.extend(models.texture_ids());
             let model_tints = model_tints_for_definition(&definition.model);
-            let icon_model = if contains_damage_condition(&definition.model) {
+            let icon_model = if contains_runtime_condition(&definition.model) {
                 item_icon_model_ref_for_definition(
                     &definition.model,
                     &cuboid_models,
@@ -979,6 +979,125 @@ mod tests {
     }
 
     #[test]
+    fn native_item_runtime_selects_has_component_icon_from_dyed_color() {
+        let root = unique_temp_dir("item-runtime-has-dyed-color");
+        write_wolf_armor_has_component_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let normal_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/wolf_armor"))
+            .unwrap();
+        let dyed_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/wolf_armor_dyed"))
+            .unwrap();
+
+        assert_eq!(
+            runtime.icon_texture_index_for_protocol_id(0),
+            Some(runtime.texture_index("minecraft:item/wolf_armor"))
+        );
+
+        let default_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            })
+            .unwrap();
+        assert_eq!(default_icon.layers[0].uv, normal_uv);
+        assert_eq!(default_icon.layers[0].tint, ITEM_TINT_WHITE);
+
+        let dyed_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![44],
+                    dyed_color: Some(0x33_66_99),
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(dyed_icon.layers[0].uv, dyed_uv);
+        assert_eq!(dyed_icon.layers[0].tint, rgb_i32_tint(0x33_66_99));
+
+        let removed_dye_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![44],
+                    removed_type_ids: vec![44],
+                    dyed_color: Some(0x33_66_99),
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(removed_dye_icon.layers[0].uv, normal_uv);
+        assert_eq!(removed_dye_icon.layers[0].tint, ITEM_TINT_WHITE);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_item_runtime_selects_has_component_icon_from_lodestone_tracker() {
+        let root = unique_temp_dir("item-runtime-has-lodestone");
+        write_compass_has_component_fixture(&root);
+
+        let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+        let normal_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/compass"))
+            .unwrap();
+        let lodestone_uv = runtime
+            .textures
+            .texture_uv_rect(runtime.texture_index("minecraft:item/compass_lodestone"))
+            .unwrap();
+
+        assert_eq!(
+            runtime.icon_texture_index_for_protocol_id(0),
+            Some(runtime.texture_index("minecraft:item/compass"))
+        );
+
+        let normal_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            })
+            .unwrap();
+        assert_eq!(normal_icon.layers[0].uv, normal_uv);
+
+        let lodestone_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![67],
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(lodestone_icon.layers[0].uv, lodestone_uv);
+
+        let removed_lodestone_icon = runtime
+            .icon_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added_type_ids: vec![67],
+                    removed_type_ids: vec![67],
+                    ..DataComponentPatchSummary::default()
+                },
+            })
+            .unwrap();
+        assert_eq!(removed_lodestone_icon.layers[0].uv, normal_uv);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn native_item_runtime_loads_assets_when_registry_source_is_missing() {
         let root = unique_temp_dir("item-runtime-no-registry");
         let assets = assets_dir(&root);
@@ -1150,6 +1269,127 @@ mod tests {
             1,
             1,
             true_color,
+        );
+    }
+
+    fn write_wolf_armor_has_component_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "wolf_armor");
+        write_json(
+            &assets.join("items").join("wolf_armor.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:has_component",
+                    "component": "minecraft:dyed_color",
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/wolf_armor"
+                    },
+                    "on_true": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/wolf_armor_dyed",
+                        "tints": [
+                            { "type": "minecraft:dye", "default": 0 }
+                        ]
+                    }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "wolf_armor", &[40, 80, 120, 255]);
+        write_flat_item_model_and_texture(&assets, "wolf_armor_dyed", &[120, 80, 40, 255]);
+    }
+
+    fn write_compass_has_component_fixture(root: &Path) {
+        let assets = assets_dir(root);
+        write_item_atlases(&assets);
+        write_single_item_registry_source(root, "compass");
+        write_json(
+            &assets.join("items").join("compass.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:has_component",
+                    "component": "minecraft:lodestone_tracker",
+                    "on_true": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:compass",
+                        "target": "lodestone",
+                        "scale": 32.0,
+                        "entries": [
+                            {
+                                "threshold": 0.0,
+                                "model": {
+                                    "type": "minecraft:model",
+                                    "model": "minecraft:item/compass_lodestone"
+                                }
+                            }
+                        ]
+                    },
+                    "on_false": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:compass",
+                        "target": "spawn",
+                        "scale": 32.0,
+                        "entries": [
+                            {
+                                "threshold": 0.0,
+                                "model": {
+                                    "type": "minecraft:model",
+                                    "model": "minecraft:item/compass"
+                                }
+                            }
+                        ]
+                    }
+                }
+            }"#,
+        );
+        write_flat_item_model_and_texture(&assets, "compass", &[40, 120, 80, 255]);
+        write_flat_item_model_and_texture(&assets, "compass_lodestone", &[120, 40, 80, 255]);
+    }
+
+    fn write_single_item_registry_source(root: &Path, item_id: &str) {
+        let constant = item_id.to_ascii_uppercase();
+        write_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            &format!(
+                r#"public class Items {{
+                public static final Item {constant} = registerItem("{item_id}");
+            }}"#
+            ),
+        );
+    }
+
+    fn write_flat_item_model_and_texture(assets: &Path, model_id: &str, color: &[u8]) {
+        write_json(
+            &assets
+                .join("models")
+                .join("item")
+                .join(format!("{model_id}.json")),
+            &format!(
+                r#"{{
+                "textures": {{
+                    "layer0": "minecraft:item/{model_id}"
+                }}
+            }}"#
+            ),
+        );
+        write_test_rgba_png(
+            &assets
+                .join("textures")
+                .join("item")
+                .join(format!("{model_id}.png")),
+            1,
+            1,
+            color,
         );
     }
 
