@@ -920,6 +920,17 @@ impl LocalPlayerBounds {
         }
     }
 
+    pub(super) fn edge_support_probe(self, min_height: f64) -> Self {
+        Self {
+            min_x: self.min_x + COLLISION_EPSILON,
+            min_y: self.min_y - min_height - COLLISION_EPSILON,
+            min_z: self.min_z + COLLISION_EPSILON,
+            max_x: self.max_x - COLLISION_EPSILON,
+            max_y: self.min_y,
+            max_z: self.max_z - COLLISION_EPSILON,
+        }
+    }
+
     fn moved_axis(self, axis: CollisionAxis, amount: f64) -> Self {
         match axis {
             CollisionAxis::X => self.moved(amount, 0.0, 0.0),

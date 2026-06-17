@@ -16,6 +16,7 @@ const LOCAL_JUMP_VELOCITY_PER_TICK: f64 = 0.42;
 const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
+const EDGE_BACKOFF_STEP: f64 = 0.05;
 const COLLISION_CLIP_STEPS: usize = 12;
 
 pub(super) fn integrate_local_player_input_pose(
@@ -80,9 +81,13 @@ fn advance_local_player_physics_step(
     }
 
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
-    let requested_x = move_x * speed * step_seconds;
+    let mut requested_x = move_x * speed * step_seconds;
     let requested_y = pose.delta_movement.y * step_ticks;
-    let requested_z = move_z * speed * step_seconds;
+    let mut requested_z = move_z * speed * step_seconds;
+    if should_back_off_from_edge(world, pose, input, requested_y) {
+        (requested_x, requested_z) =
+            back_off_from_edge(world, pose.position, requested_x, requested_z);
+    }
     let movement = clip_local_player_movement(
         world,
         pose.position,
@@ -209,6 +214,98 @@ fn clip_local_player_step_up_movement(
 
 fn horizontal_distance_sqr(movement: ProtocolVec3d) -> f64 {
     movement.x * movement.x + movement.z * movement.z
+}
+
+fn should_back_off_from_edge(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+    requested_y: f64,
+) -> bool {
+    input.focused
+        && input.sneak
+        && !local_player_is_flying(world)
+        && requested_y <= 0.0
+        && pose.on_ground
+}
+
+fn local_player_is_flying(world: &WorldStore) -> bool {
+    world
+        .local_player()
+        .abilities
+        .is_some_and(|abilities| abilities.flying)
+}
+
+fn back_off_from_edge(
+    world: &WorldStore,
+    position: ProtocolVec3d,
+    requested_x: f64,
+    requested_z: f64,
+) -> (f64, f64) {
+    let mut backed_x = requested_x;
+    let mut backed_z = requested_z;
+    let step_x = backed_x.signum() * EDGE_BACKOFF_STEP;
+    let step_z = backed_z.signum() * EDGE_BACKOFF_STEP;
+
+    while backed_x != 0.0
+        && local_player_can_fall_at_least(world, position, backed_x, 0.0, LOCAL_PLAYER_STEP_HEIGHT)
+    {
+        if backed_x.abs() <= EDGE_BACKOFF_STEP {
+            backed_x = 0.0;
+            break;
+        }
+        backed_x -= step_x;
+    }
+
+    while backed_z != 0.0
+        && local_player_can_fall_at_least(world, position, 0.0, backed_z, LOCAL_PLAYER_STEP_HEIGHT)
+    {
+        if backed_z.abs() <= EDGE_BACKOFF_STEP {
+            backed_z = 0.0;
+            break;
+        }
+        backed_z -= step_z;
+    }
+
+    while backed_x != 0.0
+        && backed_z != 0.0
+        && local_player_can_fall_at_least(
+            world,
+            position,
+            backed_x,
+            backed_z,
+            LOCAL_PLAYER_STEP_HEIGHT,
+        )
+    {
+        if backed_x.abs() <= EDGE_BACKOFF_STEP {
+            backed_x = 0.0;
+        } else {
+            backed_x -= step_x;
+        }
+
+        if backed_z.abs() <= EDGE_BACKOFF_STEP {
+            backed_z = 0.0;
+        } else {
+            backed_z -= step_z;
+        }
+    }
+
+    (backed_x, backed_z)
+}
+
+fn local_player_can_fall_at_least(
+    world: &WorldStore,
+    position: ProtocolVec3d,
+    delta_x: f64,
+    delta_z: f64,
+    min_height: f64,
+) -> bool {
+    !local_player_collides(
+        world,
+        LocalPlayerBounds::at(position)
+            .moved(delta_x, 0.0, delta_z)
+            .edge_support_probe(min_height),
+    )
 }
 
 fn clip_axis_delta(
@@ -790,6 +887,155 @@ mod tests {
     }
 
     #[test]
+    fn local_player_sneak_backs_off_from_block_edge() {
+        let mut world = single_floor_block_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                1.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(
+            pose.position.z <= 1.3005,
+            "position was {:?}",
+            pose.position
+        );
+        assert!(pose.on_ground);
+        assert!(!pose.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_without_sneak_walks_off_block_edge() {
+        let mut world = single_floor_block_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                0.5,
+            )
+            .unwrap();
+
+        assert!(pose.position.z > 1.3, "position was {:?}", pose.position);
+        assert!(
+            pose.position.y < 1.0 || !pose.on_ground,
+            "pose was {:?}",
+            pose
+        );
+    }
+
+    #[test]
+    fn local_player_sneak_backs_off_from_block_corner_diagonally() {
+        let mut world = single_floor_block_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    right: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                1.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(
+            pose.position.x >= -0.3005 && pose.position.z <= 1.3005,
+            "position was {:?}",
+            pose.position
+        );
+        assert!(pose.on_ground);
+        assert!(!pose.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_sneak_edge_backoff_does_not_apply_while_flying() {
+        let mut world = single_floor_block_world();
+        world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: false,
+            flying: true,
+            can_fly: true,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                0.5,
+            )
+            .unwrap();
+
+        assert!(pose.position.z > 1.3, "position was {:?}", pose.position);
+    }
+
+    #[test]
+    fn local_player_sneak_moves_over_supported_ground() {
+        let mut world = flat_collision_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                0.2,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.position.z > 1.0, "position was {:?}", pose.position);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
     fn local_player_jump_starts_only_from_ground() {
         let mut world = flat_collision_world();
         world.set_local_player_pose(LocalPlayerPoseState {
@@ -874,6 +1120,16 @@ mod tests {
                 set_test_block(&mut world, x, 0, z, GRASS_BLOCK_STATE_ID);
             }
         }
+        world
+    }
+
+    fn single_floor_block_world() -> WorldStore {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        world.insert_decoded_chunk(empty_test_chunk());
+        set_test_block(&mut world, 0, 0, 0, GRASS_BLOCK_STATE_ID);
         world
     }
 
