@@ -6,7 +6,7 @@ use bbb_control::{
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, ContainerClick, ContainerInput, HashedComponentPatch,
-    HashedItemStack, HashedStack, RecipeBookType,
+    HashedItemStack, HashedStack, RecipeBookType, RenameItem,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -18,8 +18,9 @@ use crate::{
         queue_container_click_command, queue_container_close_request_command,
         queue_container_slot_state_changed_command, queue_place_recipe_command,
         queue_player_abilities_command, queue_recipe_book_change_settings_command,
-        queue_recipe_book_seen_recipe_command, queue_select_trade_command,
-        queue_sign_update_command, select_bundle_item, select_hotbar_slot,
+        queue_recipe_book_seen_recipe_command, queue_rename_item_command,
+        queue_select_trade_command, queue_sign_update_command, select_bundle_item,
+        select_hotbar_slot,
     },
 };
 
@@ -147,6 +148,9 @@ pub(crate) fn pump_control_net_requests(
                         },
                     },
                 );
+            }
+            NetControlRequest::RenameItem { name } => {
+                queue_rename_item_command(counters, net_commands, RenameItem { name });
             }
             NetControlRequest::SelectTrade { item } => {
                 queue_select_trade_command(
@@ -520,6 +524,32 @@ mod tests {
                     "line 2".to_string(),
                     "line 3".to_string(),
                 ],
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_rename_item() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::RenameItem {
+                name: "Sharp Pick".to_string(),
+            });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.rename_item_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RenameItem(RenameItem {
+                name: "Sharp Pick".to_string(),
             })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());

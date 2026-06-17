@@ -39,6 +39,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub recipe_book_seen_recipe_commands_queued: usize,
     #[serde(default)]
+    pub rename_item_commands_queued: usize,
+    #[serde(default)]
     pub select_trade_commands_queued: usize,
     #[serde(default)]
     pub sign_update_commands_queued: usize,

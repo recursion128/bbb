@@ -4,7 +4,7 @@ use bbb_protocol::packets::{
     ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, InteractEntity,
     InteractionHand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerHealth, PlayerInput,
-    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+    PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
     SelectBundleItem, SelectTradeCommand, SignUpdate, UseItem, UseItemOn,
 };
 
@@ -163,6 +163,11 @@ pub(crate) async fn send_select_trade(
     command: SelectTradeCommand,
 ) -> Result<()> {
     let (id, payload) = packets::encode_play_select_trade(command);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_rename_item(conn: &mut RawConnection, packet: RenameItem) -> Result<()> {
+    let (id, payload) = packets::encode_play_rename_item(&packet);
     conn.send_packet(id, &payload).await
 }
 

@@ -42,6 +42,9 @@ pub enum NetControlRequest {
     MarkRecipeSeen {
         recipe_index: i32,
     },
+    RenameItem {
+        name: String,
+    },
     SignUpdate {
         x: i32,
         y: i32,

@@ -17,6 +17,7 @@ use crate::types::{
 
 const SIGN_UPDATE_LINE_COUNT: usize = 4;
 const SIGN_UPDATE_MAX_LINE_CHARS: usize = 384;
+const RENAME_ITEM_MAX_NAME_CHARS: usize = 32767;
 
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
     Arc::new(RwLock::new(ControlSnapshot {
@@ -355,6 +356,39 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         snapshot_guard
             .net_requests
             .push(NetControlRequest::MarkRecipeSeen { recipe_index });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.rename_item" {
+        let Some(name) = string_param(&request.params, "name") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("net.rename_item requires string param name".to_string()),
+            };
+        };
+        if name.chars().count() > RENAME_ITEM_MAX_NAME_CHARS {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(format!(
+                    "net.rename_item name exceeds {RENAME_ITEM_MAX_NAME_CHARS} characters"
+                )),
+            };
+        }
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::RenameItem {
+                name: name.to_string(),
+            });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({
@@ -1528,6 +1562,46 @@ mod tests {
             &snapshot,
         );
         assert!(!missing_recipe.ok);
+    }
+
+    #[test]
+    fn net_rename_item_queues_request_and_validates_name() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.rename_item".to_string(),
+                params: json!({"name": "Polished Pickaxe"}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok);
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::RenameItem {
+                name: "Polished Pickaxe".to_string()
+            }]
+        );
+
+        let non_string_name = dispatch(
+            ControlRequest {
+                method: "net.rename_item".to_string(),
+                params: json!({"name": 7}),
+            },
+            &snapshot,
+        );
+        assert!(!non_string_name.ok);
+
+        let oversized_name = dispatch(
+            ControlRequest {
+                method: "net.rename_item".to_string(),
+                params: json!({"name": "x".repeat(RENAME_ITEM_MAX_NAME_CHARS + 1)}),
+            },
+            &snapshot,
+        );
+        assert!(!oversized_name.ok);
+        assert_eq!(snapshot.read().unwrap().net_requests.len(), 1);
     }
 
     #[test]

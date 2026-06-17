@@ -5,8 +5,8 @@ use bbb_protocol::packets::{
     ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection,
     InteractEntity, InteractionHand, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction,
-    PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, SelectBundleItem,
-    SelectTradeCommand, SignUpdate, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    PlayerInput, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
+    SelectBundleItem, SelectTradeCommand, SignUpdate, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -101,6 +101,18 @@ pub(crate) fn queue_recipe_book_seen_recipe_command(
             .is_ok()
         {
             counters.recipe_book_seen_recipe_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_rename_item_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: RenameItem,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::RenameItem(command)).is_ok() {
+            counters.rename_item_commands_queued += 1;
         }
     }
 }
@@ -628,6 +640,21 @@ mod tests {
                 recipe: RecipeDisplayId { index: 321 },
             })
         );
+    }
+
+    #[test]
+    fn queues_rename_item_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = RenameItem {
+            name: "Sharp Pick".to_string(),
+        };
+
+        queue_rename_item_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.rename_item_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::RenameItem(command));
     }
 
     #[test]

@@ -5,7 +5,7 @@ use super::{
     send_paddle_boat, send_pick_item_from_block, send_pick_item_from_entity, send_ping_request,
     send_place_recipe, send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
-    send_recipe_book_seen_recipe, send_select_bundle_item, send_select_trade,
+    send_recipe_book_seen_recipe, send_rename_item, send_select_bundle_item, send_select_trade,
     send_set_held_slot_command, send_sign_update, send_swing_command, send_use_item,
     send_use_item_on,
 };
@@ -23,7 +23,7 @@ use bbb_protocol::{
         PaddleBoat, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
         PlayerCommand, PlayerHealth, PlayerInput, PlayerPositionState,
         RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
-        RecipeDisplayId, SelectBundleItem, SelectTradeCommand, SignUpdate, Vec3d,
+        RecipeDisplayId, RenameItem, SelectBundleItem, SelectTradeCommand, SignUpdate, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -1037,6 +1037,42 @@ async fn send_recipe_book_commands_encode_packets() {
         &mut conn,
         RecipeBookSeenRecipeCommand {
             recipe: RecipeDisplayId { index: 321 },
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_rename_item_encodes_rename_item_packet() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("rename item command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_RENAME_ITEM);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "Sharp Pick");
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_rename_item(
+        &mut conn,
+        RenameItem {
+            name: "Sharp Pick".to_string(),
         },
     )
     .await

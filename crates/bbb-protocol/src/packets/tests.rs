@@ -956,6 +956,7 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLICK, 18);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_CLOSE, 19);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_SLOT_STATE_CHANGED, 20);
+    assert_eq!(ids::play::SERVERBOUND_RENAME_ITEM, 48);
     assert_eq!(ids::play::SERVERBOUND_SELECT_TRADE, 51);
     assert_eq!(ids::play::SERVERBOUND_SIGN_UPDATE, 61);
 }
@@ -1096,6 +1097,18 @@ fn encodes_recipe_book_seen_recipe_packet() {
     assert_eq!(id, ids::play::SERVERBOUND_RECIPE_BOOK_SEEN_RECIPE);
     let mut decoder = Decoder::new(&payload);
     assert_eq!(decoder.read_var_i32().unwrap(), 321);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_rename_item_packet() {
+    let (id, payload) = encode_play_rename_item(&RenameItem {
+        name: "Sharp Pick".to_string(),
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_RENAME_ITEM);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(32767).unwrap(), "Sharp Pick");
     assert!(decoder.is_empty());
 }
 
