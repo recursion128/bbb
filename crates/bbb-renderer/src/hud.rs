@@ -86,6 +86,24 @@ impl Default for HudDigitGlyph {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HudInventoryBackgroundTexture {
+    Inventory,
+    GenericContainer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudInventoryBackgroundLayer {
+    pub texture: HudInventoryBackgroundTexture,
+    /// Layer x position relative to the centered inventory screen origin.
+    pub x: i32,
+    /// Layer y position relative to the centered inventory screen origin.
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub uv: HudUvRect,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventorySlot {
     /// Slot id in the currently open inventory container.
@@ -99,6 +117,9 @@ pub struct HudInventorySlot {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryScreen {
+    pub width: u32,
+    pub height: u32,
+    pub background_layers: Vec<HudInventoryBackgroundLayer>,
     /// Slots for the currently open inventory container.
     pub slots: Vec<HudInventorySlot>,
     pub hovered_slot_id: Option<u16>,
@@ -166,6 +187,16 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_inventory_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_generic_container_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_generic_container_background = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -467,18 +498,25 @@ impl Renderer {
         }
 
         if let Some(screen) = &self.hud_inventory_screen {
-            if let Some(background) = &self.hud_inventory_background {
-                push_hud_draw(
-                    &mut vertices,
-                    &mut commands,
-                    background,
-                    surface_size,
-                    inventory_background_hud_rect(
+            for layer in &screen.background_layers {
+                if let Some(background) = self.hud_inventory_background_sprite(layer.texture) {
+                    push_hud_draw_with_uv(
+                        &mut vertices,
+                        &mut commands,
+                        background,
                         surface_size,
-                        background.width,
-                        background.height,
-                    ),
-                );
+                        inventory_background_hud_rect(
+                            surface_size,
+                            screen.width,
+                            screen.height,
+                            layer.x,
+                            layer.y,
+                            layer.width,
+                            layer.height,
+                        ),
+                        layer.uv,
+                    );
+                }
             }
 
             let hovered_slot = screen
@@ -491,14 +529,26 @@ impl Renderer {
                     &mut commands,
                     highlight,
                     surface_size,
-                    inventory_slot_highlight_hud_rect(surface_size, slot.x, slot.y),
+                    inventory_slot_highlight_hud_rect(
+                        surface_size,
+                        screen.width,
+                        screen.height,
+                        slot.x,
+                        slot.y,
+                    ),
                 );
             }
 
             if let Some(atlas) = &self.hud_item_atlas {
                 for slot in &screen.slots {
                     if let Some(icon) = &slot.icon {
-                        let item_rect = inventory_slot_item_hud_rect(surface_size, slot.x, slot.y);
+                        let item_rect = inventory_slot_item_hud_rect(
+                            surface_size,
+                            screen.width,
+                            screen.height,
+                            slot.x,
+                            slot.y,
+                        );
                         for layer in &icon.layers {
                             push_hud_draw_with_uv_and_tint(
                                 &mut vertices,
@@ -529,7 +579,13 @@ impl Renderer {
                     &mut commands,
                     highlight,
                     surface_size,
-                    inventory_slot_highlight_hud_rect(surface_size, slot.x, slot.y),
+                    inventory_slot_highlight_hud_rect(
+                        surface_size,
+                        screen.width,
+                        screen.height,
+                        slot.x,
+                        slot.y,
+                    ),
                 );
             }
         }
@@ -545,6 +601,18 @@ impl Renderer {
         }
 
         (vertices, commands)
+    }
+
+    fn hud_inventory_background_sprite(
+        &self,
+        texture: HudInventoryBackgroundTexture,
+    ) -> Option<&HudSpriteGpu> {
+        match texture {
+            HudInventoryBackgroundTexture::Inventory => self.hud_inventory_background.as_ref(),
+            HudInventoryBackgroundTexture::GenericContainer => {
+                self.hud_generic_container_background.as_ref()
+            }
+        }
     }
 }
 
@@ -677,6 +745,13 @@ fn sanitize_hud_hotbar_item_uv(uv: HudUvRect) -> Option<HudItemIcon> {
 
 fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScreen {
     HudInventoryScreen {
+        width: screen.width.clamp(1, 512),
+        height: screen.height.clamp(1, 512),
+        background_layers: screen
+            .background_layers
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_background_layer)
+            .collect(),
         slots: screen
             .slots
             .into_iter()
@@ -684,6 +759,13 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .collect(),
         hovered_slot_id: screen.hovered_slot_id,
     }
+}
+
+fn sanitize_hud_inventory_background_layer(
+    layer: HudInventoryBackgroundLayer,
+) -> Option<HudInventoryBackgroundLayer> {
+    let uv = sanitize_hud_uv_rect(layer.uv)?;
+    (layer.width > 0 && layer.height > 0).then_some(HudInventoryBackgroundLayer { uv, ..layer })
 }
 
 fn sanitize_hud_inventory_slot(slot: HudInventorySlot) -> HudInventorySlot {
@@ -884,6 +966,32 @@ mod tests {
     #[test]
     fn sanitize_hud_inventory_screen_keeps_slot_positions_and_sanitizes_icons() {
         let screen = sanitize_hud_inventory_screen(HudInventoryScreen {
+            width: 0,
+            height: 700,
+            background_layers: vec![
+                HudInventoryBackgroundLayer {
+                    texture: HudInventoryBackgroundTexture::GenericContainer,
+                    x: 0,
+                    y: 0,
+                    width: 176,
+                    height: 125,
+                    uv: HudUvRect {
+                        min: [-1.0, 0.0],
+                        max: [0.75, 2.0],
+                    },
+                },
+                HudInventoryBackgroundLayer {
+                    texture: HudInventoryBackgroundTexture::Inventory,
+                    x: 0,
+                    y: 0,
+                    width: 0,
+                    height: 96,
+                    uv: HudUvRect {
+                        min: [0.0, 0.0],
+                        max: [1.0, 1.0],
+                    },
+                },
+            ],
             slots: vec![
                 HudInventorySlot {
                     slot_id: 5,
@@ -925,6 +1033,15 @@ mod tests {
             hovered_slot_id: Some(7),
         });
 
+        assert_eq!(screen.width, 1);
+        assert_eq!(screen.height, 512);
+        assert_eq!(screen.background_layers.len(), 1);
+        assert_eq!(
+            screen.background_layers[0].texture,
+            HudInventoryBackgroundTexture::GenericContainer
+        );
+        assert_eq!(screen.background_layers[0].uv.min, [0.0, 0.0]);
+        assert_eq!(screen.background_layers[0].uv.max, [0.75, 1.0]);
         assert_eq!(screen.hovered_slot_id, Some(7));
         assert_eq!(screen.slots.len(), 3);
         assert_eq!(screen.slots[0].slot_id, 5);

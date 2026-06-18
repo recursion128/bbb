@@ -276,7 +276,7 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if world.local_inventory_is_open() {
+                    if world.open_container_id().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_inventory_mouse_input(
                             &mut input,
@@ -316,7 +316,7 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if world.local_inventory_is_open() {
+                    if world.open_container_id().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_inventory_mouse_wheel(
                             &mut input,

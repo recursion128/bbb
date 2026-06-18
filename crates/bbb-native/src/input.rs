@@ -35,7 +35,7 @@ pub(crate) use commands::{
 };
 pub(crate) use inventory::{
     handle_inventory_cursor_moved, handle_inventory_key_input, handle_inventory_mouse_input,
-    handle_inventory_mouse_wheel, local_inventory_slot_layouts,
+    handle_inventory_mouse_wheel, inventory_screen_layout, InventoryScreenBackground,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -273,10 +273,13 @@ pub(crate) fn handle_key_input(
             return;
         }
     }
-    if world.local_inventory_is_open() {
+    if inventory_screen_layout(world).is_some() {
         if pressed {
             handle_inventory_key_input(input, world, counters, net_commands, code);
         }
+        return;
+    }
+    if world.open_container_id().is_some() {
         return;
     }
 

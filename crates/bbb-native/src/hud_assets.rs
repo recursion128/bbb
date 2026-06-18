@@ -37,6 +37,16 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         "minecraft:textures/gui/container/inventory",
     )?;
     renderer.upload_hud_inventory_background(inventory.width, inventory.height, &inventory.rgba)?;
+    let generic_container = gui_texture(
+        roots,
+        "textures/gui/container/generic_54.png",
+        "minecraft:textures/gui/container/generic_54",
+    )?;
+    renderer.upload_hud_generic_container_background(
+        generic_container.width,
+        generic_container.height,
+        &generic_container.rgba,
+    )?;
     let slot_highlight_back = hud_sprite(&sprites, "container/slot_highlight_back")?;
     renderer.upload_hud_slot_highlight_back(
         slot_highlight_back.width,
@@ -88,6 +98,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         crosshair = ?(crosshair.width, crosshair.height),
         hotbar = ?(hotbar.width, hotbar.height),
         inventory = ?(inventory.width, inventory.height),
+        generic_container = ?(generic_container.width, generic_container.height),
         experience = ?(experience_background.width, experience_background.height),
         heart = ?(heart_full.width, heart_full.height),
         food = ?(food_full.width, food_full.height),

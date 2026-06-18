@@ -17,14 +17,35 @@ use super::{
     ClientInputState,
 };
 
-const INVENTORY_SCREEN_WIDTH: f64 = 176.0;
-const INVENTORY_SCREEN_HEIGHT: f64 = 166.0;
+const INVENTORY_SCREEN_WIDTH: i32 = 176;
+const INVENTORY_SCREEN_HEIGHT: i32 = 166;
+const GENERIC_CONTAINER_WIDTH: i32 = 176;
+const GENERIC_CONTAINER_BASE_HEIGHT: i32 = 114;
+const GENERIC_CONTAINER_ROW_HEIGHT: i32 = 18;
+const GENERIC_CONTAINER_FIRST_MENU_TYPE_ID: i32 = 0;
+const GENERIC_CONTAINER_LAST_MENU_TYPE_ID: i32 = 5;
+const GENERIC_CONTAINER_SLOT_COLUMNS: i32 = 9;
+const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const SLOT_SIZE: f64 = 16.0;
 const SLOT_HOVER_MARGIN: f64 = 1.0;
 const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct LocalInventorySlotLayout {
+pub(crate) enum InventoryScreenBackground {
+    LocalInventory,
+    Generic9xRows { rows: u8 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct InventoryScreenLayout {
+    pub(crate) width: i32,
+    pub(crate) height: i32,
+    pub(crate) background: InventoryScreenBackground,
+    pub(crate) slots: Vec<InventorySlotLayout>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct InventorySlotLayout {
     pub(crate) slot_id: i16,
     pub(crate) x: i32,
     pub(crate) y: i32,
@@ -37,16 +58,16 @@ enum InventoryClickTarget {
     Outside,
 }
 
-pub(crate) fn local_inventory_slot_layouts() -> Vec<LocalInventorySlotLayout> {
+pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
     let mut slots = Vec::with_capacity(46);
-    slots.push(LocalInventorySlotLayout {
+    slots.push(InventorySlotLayout {
         slot_id: 0,
         x: 154,
         y: 28,
     });
     for y in 0..2 {
         for x in 0..2 {
-            slots.push(LocalInventorySlotLayout {
+            slots.push(InventorySlotLayout {
                 slot_id: (1 + x + y * 2) as i16,
                 x: 98 + x * 18,
                 y: 18 + y * 18,
@@ -54,7 +75,7 @@ pub(crate) fn local_inventory_slot_layouts() -> Vec<LocalInventorySlotLayout> {
         }
     }
     for index in 0..4 {
-        slots.push(LocalInventorySlotLayout {
+        slots.push(InventorySlotLayout {
             slot_id: (5 + index) as i16,
             x: 8,
             y: 8 + index * 18,
@@ -62,7 +83,7 @@ pub(crate) fn local_inventory_slot_layouts() -> Vec<LocalInventorySlotLayout> {
     }
     for y in 0..3 {
         for x in 0..9 {
-            slots.push(LocalInventorySlotLayout {
+            slots.push(InventorySlotLayout {
                 slot_id: (9 + x + y * 9) as i16,
                 x: 8 + x * 18,
                 y: 84 + y * 18,
@@ -70,17 +91,79 @@ pub(crate) fn local_inventory_slot_layouts() -> Vec<LocalInventorySlotLayout> {
         }
     }
     for x in 0..9 {
-        slots.push(LocalInventorySlotLayout {
+        slots.push(InventorySlotLayout {
             slot_id: (36 + x) as i16,
             x: 8 + x * 18,
             y: 142,
         });
     }
-    slots.push(LocalInventorySlotLayout {
+    slots.push(InventorySlotLayout {
         slot_id: 45,
         x: 77,
         y: 62,
     });
+    slots
+}
+
+pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScreenLayout> {
+    if world.local_inventory_is_open() {
+        return Some(InventoryScreenLayout {
+            width: INVENTORY_SCREEN_WIDTH,
+            height: INVENTORY_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::LocalInventory,
+            slots: local_inventory_slot_layouts(),
+        });
+    }
+
+    let container = world.inventory().open_container.as_ref()?;
+    let rows = generic_container_rows(container.menu_type_id?)?;
+    Some(InventoryScreenLayout {
+        width: GENERIC_CONTAINER_WIDTH,
+        height: GENERIC_CONTAINER_BASE_HEIGHT + i32::from(rows) * GENERIC_CONTAINER_ROW_HEIGHT,
+        background: InventoryScreenBackground::Generic9xRows { rows },
+        slots: generic_container_slot_layouts(rows),
+    })
+}
+
+fn generic_container_rows(menu_type_id: i32) -> Option<u8> {
+    (GENERIC_CONTAINER_FIRST_MENU_TYPE_ID..=GENERIC_CONTAINER_LAST_MENU_TYPE_ID)
+        .contains(&menu_type_id)
+        .then(|| (menu_type_id - GENERIC_CONTAINER_FIRST_MENU_TYPE_ID + 1) as u8)
+}
+
+fn generic_container_slot_layouts(rows: u8) -> Vec<InventorySlotLayout> {
+    let rows = rows.clamp(1, 6);
+    let row_count = i32::from(rows);
+    let container_slot_count = i16::from(rows) * GENERIC_CONTAINER_SLOT_COUNT_PER_ROW;
+    let inventory_top = 18 + row_count * GENERIC_CONTAINER_ROW_HEIGHT + 13;
+    let mut slots = Vec::with_capacity(container_slot_count as usize + 36);
+
+    for y in 0..row_count {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 18 + y * 18,
+            });
+        }
+    }
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: container_slot_count + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: inventory_top + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: container_slot_count + 27 + x as i16,
+            x: 8 + x * 18,
+            y: inventory_top + 58,
+        });
+    }
+
     slots
 }
 
@@ -92,11 +175,11 @@ pub(crate) fn handle_inventory_cursor_moved(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    if !input.focused || !world.local_inventory_is_open() {
+    if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
 
-    let hovered = local_inventory_hovered_slot(cursor_position, surface_size);
+    let hovered = inventory_screen_hovered_slot(world, cursor_position, surface_size);
     if input.inventory_hovered_slot != hovered {
         if let Some(previous) = input.inventory_hovered_slot {
             handle_bundle_slot_hover_end(world, counters, net_commands, i32::from(previous));
@@ -104,7 +187,9 @@ pub(crate) fn handle_inventory_cursor_moved(
         input.inventory_hovered_slot = hovered;
     }
     if let Some(slot) = hovered {
-        local_inventory_add_quick_craft_slot(input, world, slot);
+        if world.local_inventory_is_open() {
+            local_inventory_add_quick_craft_slot(input, world, slot);
+        }
     }
     true
 }
@@ -119,7 +204,7 @@ pub(crate) fn handle_inventory_mouse_input(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    if !input.focused || !world.local_inventory_is_open() {
+    if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
     let button_num = match button {
@@ -140,7 +225,7 @@ pub(crate) fn handle_inventory_mouse_input(
         );
     }
 
-    let click_target = local_inventory_click_target(cursor_position, surface_size);
+    let click_target = inventory_screen_click_target(world, cursor_position, surface_size);
     let now = Instant::now();
     let double_click_slot = match click_target {
         Some(InventoryClickTarget::Slot(slot)) => {
@@ -160,7 +245,9 @@ pub(crate) fn handle_inventory_mouse_input(
     local_inventory_clear_quick_craft(input);
     let (slot_num, click_input) = match click_target {
         Some(InventoryClickTarget::Slot(slot)) => {
-            if double_click_slot == Some(slot)
+            if !world.local_inventory_is_open() {
+                (slot, ContainerInput::Pickup)
+            } else if double_click_slot == Some(slot)
                 && button_num == 0
                 && !input.shift_down()
                 && !inventory_cursor_is_empty(world)
@@ -204,6 +291,10 @@ fn handle_inventory_mouse_released(
     let Some(quick_craft_button_num) = input.inventory_quick_craft_button_num else {
         return true;
     };
+    if !world.local_inventory_is_open() {
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
     if quick_craft_button_num != button_num {
         local_inventory_clear_quick_craft(input);
         return true;
@@ -222,7 +313,7 @@ fn handle_inventory_mouse_released(
         return true;
     }
 
-    let click_target = local_inventory_click_target(cursor_position, surface_size);
+    let click_target = inventory_screen_click_target(world, cursor_position, surface_size);
     let Some((slot_num, click_input)) = local_inventory_release_fallback_click(world, click_target)
     else {
         return true;
@@ -295,8 +386,16 @@ fn local_inventory_apply_and_queue_click(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     request: ContainerClickSlotRequest,
 ) -> bool {
-    let Ok(click) = world.apply_local_container_click_slot(request) else {
-        return false;
+    let click = if world.local_inventory_is_open() || request.input == ContainerInput::Pickup {
+        let Ok(click) = world.apply_local_container_click_slot(request) else {
+            return false;
+        };
+        click
+    } else {
+        let Ok(click) = world.build_container_click_slot(request) else {
+            return false;
+        };
+        click
     };
     queue_container_click_command(counters, net_commands, click);
     true
@@ -380,8 +479,12 @@ pub(crate) fn handle_inventory_key_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     code: KeyCode,
 ) -> bool {
-    if !input.focused || !world.local_inventory_is_open() {
+    if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
+    }
+
+    if !world.local_inventory_is_open() {
+        return true;
     }
 
     if let Some(button_num) = local_inventory_swap_button_num(code) {
@@ -457,10 +560,10 @@ pub(crate) fn handle_inventory_mouse_wheel(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    if !input.focused || !world.local_inventory_is_open() {
+    if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
-    if let Some(slot) = local_inventory_hovered_slot(cursor_position, surface_size) {
+    if let Some(slot) = inventory_screen_hovered_slot(world, cursor_position, surface_size) {
         handle_bundle_slot_mouse_scroll(
             input,
             world,
@@ -473,28 +576,31 @@ pub(crate) fn handle_inventory_mouse_wheel(
     true
 }
 
-fn local_inventory_hovered_slot(
+fn inventory_screen_hovered_slot(
+    world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<i16> {
-    match local_inventory_click_target(cursor_position, surface_size) {
+    match inventory_screen_click_target(world, cursor_position, surface_size) {
         Some(InventoryClickTarget::Slot(slot)) => Some(slot),
         _ => None,
     }
 }
 
-fn local_inventory_click_target(
+fn inventory_screen_click_target(
+    world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<InventoryClickTarget> {
+    let layout = inventory_screen_layout(world)?;
     let cursor = cursor_position?;
-    let (origin_x, origin_y) = local_inventory_screen_origin(surface_size);
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
     let x = cursor.x - origin_x;
     let y = cursor.y - origin_y;
-    if x < 0.0 || y < 0.0 || x >= INVENTORY_SCREEN_WIDTH || y >= INVENTORY_SCREEN_HEIGHT {
+    if x < 0.0 || y < 0.0 || x >= f64::from(layout.width) || y >= f64::from(layout.height) {
         return Some(InventoryClickTarget::Outside);
     }
-    for slot in local_inventory_slot_layouts() {
+    for slot in layout.slots {
         if x >= f64::from(slot.x) - SLOT_HOVER_MARGIN
             && x < f64::from(slot.x) + SLOT_SIZE + SLOT_HOVER_MARGIN
             && y >= f64::from(slot.y) - SLOT_HOVER_MARGIN
@@ -506,10 +612,13 @@ fn local_inventory_click_target(
     Some(InventoryClickTarget::EmptyPanel)
 }
 
-fn local_inventory_screen_origin(surface_size: PhysicalSize<u32>) -> (f64, f64) {
+fn inventory_screen_origin(
+    surface_size: PhysicalSize<u32>,
+    layout: &InventoryScreenLayout,
+) -> (f64, f64) {
     (
-        (f64::from(surface_size.width.max(1)) - INVENTORY_SCREEN_WIDTH) * 0.5,
-        (f64::from(surface_size.height.max(1)) - INVENTORY_SCREEN_HEIGHT) * 0.5,
+        (f64::from(surface_size.width.max(1)) - f64::from(layout.width)) * 0.5,
+        (f64::from(surface_size.height.max(1)) - f64::from(layout.height)) * 0.5,
     )
 }
 
@@ -558,8 +667,8 @@ mod tests {
     use std::collections::BTreeMap;
 
     use bbb_protocol::packets::{
-        ContainerClick, HashedComponentPatch, HashedItemStack, HashedStack, ItemStackSummary,
-        SelectBundleItem, SetCursorItem, SetPlayerInventory,
+        ContainerClick, ContainerSetContent, HashedComponentPatch, HashedItemStack, HashedStack,
+        ItemStackSummary, OpenScreen, SelectBundleItem, SetCursorItem, SetPlayerInventory,
     };
 
     #[test]
@@ -568,7 +677,7 @@ mod tests {
         assert_eq!(slots.len(), 46);
         assert_eq!(
             slots[0],
-            LocalInventorySlotLayout {
+            InventorySlotLayout {
                 slot_id: 0,
                 x: 154,
                 y: 28,
@@ -576,7 +685,7 @@ mod tests {
         );
         assert_eq!(
             slots[1],
-            LocalInventorySlotLayout {
+            InventorySlotLayout {
                 slot_id: 1,
                 x: 98,
                 y: 18,
@@ -584,7 +693,7 @@ mod tests {
         );
         assert_eq!(
             slots[5],
-            LocalInventorySlotLayout {
+            InventorySlotLayout {
                 slot_id: 5,
                 x: 8,
                 y: 8,
@@ -592,7 +701,7 @@ mod tests {
         );
         assert_eq!(
             slots[9],
-            LocalInventorySlotLayout {
+            InventorySlotLayout {
                 slot_id: 9,
                 x: 8,
                 y: 84,
@@ -600,7 +709,7 @@ mod tests {
         );
         assert_eq!(
             slots[36],
-            LocalInventorySlotLayout {
+            InventorySlotLayout {
                 slot_id: 36,
                 x: 8,
                 y: 142,
@@ -608,7 +717,7 @@ mod tests {
         );
         assert_eq!(
             slots[45],
-            LocalInventorySlotLayout {
+            InventorySlotLayout {
                 slot_id: 45,
                 x: 77,
                 y: 62,
@@ -619,21 +728,158 @@ mod tests {
     #[test]
     fn local_inventory_hit_test_uses_centered_vanilla_screen_and_hover_margin() {
         let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        assert!(world.open_local_inventory());
         assert_eq!(
-            local_inventory_click_target(Some(PhysicalPosition::new(560.0, 419.0)), size),
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(560.0, 419.0)), size),
             Some(InventoryClickTarget::Slot(36))
         );
         assert_eq!(
-            local_inventory_click_target(Some(PhysicalPosition::new(559.0, 418.0)), size),
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(559.0, 418.0)), size),
             Some(InventoryClickTarget::Slot(36))
         );
         assert_eq!(
-            local_inventory_click_target(Some(PhysicalPosition::new(600.0, 300.0)), size),
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(600.0, 300.0)), size),
             Some(InventoryClickTarget::EmptyPanel)
         );
         assert_eq!(
-            local_inventory_click_target(Some(PhysicalPosition::new(551.0, 277.0)), size),
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(551.0, 277.0)), size),
             Some(InventoryClickTarget::Outside)
+        );
+    }
+
+    #[test]
+    fn generic_container_layout_matches_vanilla_chest_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 5,
+            title: "Large Chest".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 222);
+        assert_eq!(
+            layout.background,
+            InventoryScreenBackground::Generic9xRows { rows: 6 }
+        );
+        assert_eq!(layout.slots.len(), 90);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 8,
+                y: 18,
+            }
+        );
+        assert_eq!(
+            layout.slots[53],
+            InventorySlotLayout {
+                slot_id: 53,
+                x: 152,
+                y: 108,
+            }
+        );
+        assert_eq!(
+            layout.slots[54],
+            InventorySlotLayout {
+                slot_id: 54,
+                x: 8,
+                y: 139,
+            }
+        );
+        assert_eq!(
+            layout.slots[89],
+            InventorySlotLayout {
+                slot_id: 89,
+                x: 152,
+                y: 197,
+            }
+        );
+    }
+
+    #[test]
+    fn generic_container_hit_test_uses_vanilla_screen_height() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 5,
+            title: "Large Chest".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(560.0, 267.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(704.0, 446.0)), size),
+            Some(InventoryClickTarget::Slot(89))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(600.0, 375.0)), size),
+            Some(InventoryClickTarget::EmptyPanel)
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(551.0, 249.0)), size),
+            Some(InventoryClickTarget::Outside)
+        );
+    }
+
+    #[test]
+    fn generic_container_mouse_click_queues_pickup() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 5,
+            title: "Large Chest".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 90];
+        items[0] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 267.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 0,
+                input: ContainerInput::Pickup,
+                changed_slots: [(0, HashedStack::Empty)].into(),
+                carried_item: HashedStack::Item(HashedItemStack {
+                    item_id: 42,
+                    count: 3,
+                    components: HashedComponentPatch::default(),
+                }),
+            })
+        );
+        assert_eq!(
+            world.inventory().open_container.as_ref().unwrap().slots[0].item,
+            ItemStackSummary::empty()
         );
     }
 

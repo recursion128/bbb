@@ -7,8 +7,9 @@ use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPosition
 use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{
-    BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryScreen,
-    HudInventorySlot, HudItemCountLabel, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryScreen, HudInventorySlot, HudItemCountLabel,
+    HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -21,7 +22,8 @@ use crate::{
     entity_scene::entity_scene_outline_from_world_at_partial_tick,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
-        advance_using_item_at_partial_tick, local_inventory_slot_layouts, ClientInputState,
+        advance_using_item_at_partial_tick, inventory_screen_layout, ClientInputState,
+        InventoryScreenBackground,
     },
     item_entities::item_entity_billboards_from_world,
     item_runtime::NativeItemRuntime,
@@ -262,16 +264,18 @@ fn hud_inventory_screen(
     item_runtime: Option<&NativeItemRuntime>,
     hovered_slot_id: Option<i16>,
 ) -> Option<HudInventoryScreen> {
-    if !world.local_inventory_is_open() {
-        return None;
-    }
+    let layout = inventory_screen_layout(world)?;
+    let container = if world.local_inventory_is_open() {
+        &world.inventory().inventory_menu
+    } else {
+        world.inventory().open_container.as_ref()?
+    };
 
-    let slots = local_inventory_slot_layouts()
+    let slots = layout
+        .slots
         .into_iter()
         .map(|layout| {
-            let inventory_slot = world
-                .inventory()
-                .inventory_menu
+            let inventory_slot = container
                 .slots
                 .iter()
                 .find(|slot| slot.slot == layout.slot_id);
@@ -292,9 +296,75 @@ fn hud_inventory_screen(
         .collect();
 
     Some(HudInventoryScreen {
+        width: u32::try_from(layout.width).unwrap_or_default(),
+        height: u32::try_from(layout.height).unwrap_or_default(),
+        background_layers: hud_inventory_background_layers(layout.background),
         slots,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
     })
+}
+
+fn hud_inventory_background_layers(
+    background: InventoryScreenBackground,
+) -> Vec<HudInventoryBackgroundLayer> {
+    match background {
+        InventoryScreenBackground::LocalInventory => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Inventory,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        }
+        InventoryScreenBackground::Generic9xRows { rows } => {
+            let top_height = u32::from(rows) * 18 + 17;
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::GenericContainer,
+                    0,
+                    0,
+                    176,
+                    top_height,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, top_height as f32 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::GenericContainer,
+                    0,
+                    i32::try_from(top_height).unwrap_or_default(),
+                    176,
+                    96,
+                    [0.0, 126.0 / 256.0],
+                    [176.0 / 256.0, 222.0 / 256.0],
+                ),
+            ]
+        }
+    }
+}
+
+fn hud_inventory_background_layer(
+    texture: HudInventoryBackgroundTexture,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    uv_min: [f32; 2],
+    uv_max: [f32; 2],
+) -> HudInventoryBackgroundLayer {
+    HudInventoryBackgroundLayer {
+        texture,
+        x,
+        y,
+        width,
+        height,
+        uv: HudUvRect {
+            min: uv_min,
+            max: uv_max,
+        },
+    }
 }
 
 fn hud_item_icon_for_stack(
@@ -640,6 +710,20 @@ mod tests {
 
         let screen = hud_inventory_screen(&world, None, Some(36)).unwrap();
 
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Inventory,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        );
         assert_eq!(screen.hovered_slot_id, Some(36));
         assert_eq!(screen.slots.len(), 46);
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 36).unwrap();
@@ -649,6 +733,58 @@ mod tests {
         let offhand = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
         assert_eq!(offhand.x, 77);
         assert_eq!(offhand.y, 62);
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_generic_container_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 5,
+            title: "Large Chest".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 90],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(89)).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 222);
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::GenericContainer,
+                    0,
+                    0,
+                    176,
+                    125,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 125.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::GenericContainer,
+                    0,
+                    125,
+                    176,
+                    96,
+                    [0.0, 126.0 / 256.0],
+                    [176.0 / 256.0, 222.0 / 256.0],
+                ),
+            ]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(89));
+        assert_eq!(screen.slots.len(), 90);
+        let first_container = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((first_container.x, first_container.y), (8, 18));
+        let player_inventory = screen.slots.iter().find(|slot| slot.slot_id == 54).unwrap();
+        assert_eq!((player_inventory.x, player_inventory.y), (8, 139));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 89).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 197));
     }
 
     #[test]

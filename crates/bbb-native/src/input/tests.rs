@@ -1388,6 +1388,39 @@ fn inventory_key_closes_open_container_before_open_inventory_command() {
 }
 
 #[test]
+fn gameplay_keys_are_consumed_while_unsupported_container_is_open() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    assert!(world.set_local_selected_hotbar_slot(0));
+    world.apply_open_screen(ProtocolOpenScreen {
+        container_id: 9,
+        menu_type_id: 19,
+        title: "Merchant".to_string(),
+    });
+
+    for code in [KeyCode::Digit5, KeyCode::KeyQ] {
+        handle_key_input(
+            &mut input,
+            &mut counters,
+            &mut world,
+            &commands,
+            PhysicalKey::Code(code),
+            ElementState::Pressed,
+        );
+    }
+
+    assert_eq!(world.local_player().selected_hotbar_slot, 0);
+    assert_eq!(counters.held_slot_commands_queued, 0);
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert_eq!(counters.container_close_commands_queued, 0);
+    assert!(world.inventory().open_container.is_some());
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn escape_key_without_open_container_does_not_queue_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
