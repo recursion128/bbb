@@ -3,8 +3,8 @@ use std::time::Instant;
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
-    Direction as ProtocolDirection, InteractionHand, PlayerActionKind, PlayerCommandAction,
-    PlayerInput,
+    Direction as ProtocolDirection, InteractionHand, ItemStackSummary, PlayerActionKind,
+    PlayerCommandAction, PlayerInput,
 };
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
@@ -35,10 +35,10 @@ pub(crate) use commands::{
     queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
 pub(crate) use inventory::{
-    handle_inventory_cursor_moved, handle_inventory_key_input, handle_inventory_mouse_input,
-    handle_inventory_mouse_wheel, inventory_screen_layout, sync_beacon_effect_selection_state,
-    sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state,
-    InventoryScreenBackground,
+    anvil_rename_entry_consumes_key, handle_inventory_cursor_moved, handle_inventory_key_input,
+    handle_inventory_mouse_input, handle_inventory_mouse_wheel, handle_inventory_text_input,
+    inventory_screen_layout, sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
+    sync_stonecutter_recipe_scroll_state, InventoryScreenBackground,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -90,6 +90,8 @@ pub(crate) struct ClientInputState {
     beacon_effect_selection_dirty: bool,
     beacon_primary_effect: Option<i32>,
     beacon_secondary_effect: Option<i32>,
+    anvil_rename_input: Option<AnvilRenameInputSignature>,
+    anvil_rename_text: String,
     merchant_trade_scrolling: bool,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
@@ -107,6 +109,12 @@ struct ChatEntryState {
     text: String,
     last_suggestion_request_text: Option<String>,
     suppress_open_key_commit: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AnvilRenameInputSignature {
+    container_id: i32,
+    item: ItemStackSummary,
 }
 
 impl ClientInputState {
@@ -143,6 +151,8 @@ impl ClientInputState {
         self.loom_pattern_scrolling = false;
         self.merchant_trade_scrolling = false;
         self.stonecutter_recipe_scrolling = false;
+        self.anvil_rename_input = None;
+        self.anvil_rename_text.clear();
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
@@ -207,6 +217,10 @@ impl ClientInputState {
 
     pub(crate) fn beacon_effect_selection(&self) -> (Option<i32>, Option<i32>) {
         (self.beacon_primary_effect, self.beacon_secondary_effect)
+    }
+
+    pub(crate) fn anvil_rename_text(&self) -> &str {
+        &self.anvil_rename_text
     }
 
     fn advance_creative_flight_jump_trigger(&mut self, dt_seconds: f64) {
@@ -330,7 +344,13 @@ pub(crate) fn handle_key_input(
     }
 
     if pressed {
-        if matches!(code, KeyCode::Escape | KeyCode::KeyE)
+        if matches!(code, KeyCode::Escape)
+            && queue_container_close_command(counters, world, net_commands)
+        {
+            return;
+        }
+        if matches!(code, KeyCode::KeyE)
+            && !anvil_rename_entry_consumes_key(world, code)
             && queue_container_close_command(counters, world, net_commands)
         {
             return;
@@ -524,6 +544,10 @@ pub(crate) fn handle_text_input(
     text: &str,
 ) {
     if !input.focused {
+        return;
+    }
+
+    if handle_inventory_text_input(input, world, counters, net_commands, text) {
         return;
     }
 

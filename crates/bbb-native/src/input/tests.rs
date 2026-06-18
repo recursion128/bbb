@@ -8,7 +8,7 @@ use bbb_protocol::packets::{
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
     OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAbilities,
-    PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
+    PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth, RenameItem,
     SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, SignedMessageBody, Vec3d as ProtocolVec3d,
 };
@@ -1658,6 +1658,119 @@ fn server_opened_container_swap_key_with_carried_item_is_consumed_without_packet
 }
 
 #[test]
+fn anvil_text_input_queues_rename_item_command() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "Sharp Pick",
+    );
+
+    assert_eq!(input.anvil_rename_text(), "Sharp Pick");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Sharp Pick".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn anvil_backspace_queues_updated_rename_item_command() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "Axe");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(input.anvil_rename_text(), "Ax");
+    assert_eq!(counters.rename_item_commands_queued, 2);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Axe".to_string(),
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Ax".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn anvil_rename_field_consumes_inventory_key_when_editable() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyE),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "e");
+
+    assert!(world.inventory().open_container.is_some());
+    assert_eq!(counters.container_close_commands_queued, 0);
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "e".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn anvil_text_input_filters_vanilla_invalid_chars_and_max_length() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+    let text = format!("{}{}\u{a7}\n", "a".repeat(49), "🙂");
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, &text);
+
+    let expected = "a".repeat(49);
+    assert_eq!(input.anvil_rename_text(), expected);
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem { name: expected })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn swap_offhand_key_queues_swap_action() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -2735,6 +2848,30 @@ fn generic_9x1_container_world(
     let mut items = vec![ProtocolItemStackSummary::empty(); 45];
     if let Some((slot, stack)) = item {
         items[slot] = stack;
+    }
+    world.apply_container_set_content(ProtocolContainerSetContent {
+        container_id,
+        state_id,
+        items,
+        carried_item: ProtocolItemStackSummary::empty(),
+    });
+    world
+}
+
+fn anvil_container_world(
+    container_id: i32,
+    state_id: i32,
+    input_item: Option<ProtocolItemStackSummary>,
+) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.apply_open_screen(ProtocolOpenScreen {
+        container_id,
+        menu_type_id: 8,
+        title: "Anvil".to_string(),
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 39];
+    if let Some(stack) = input_item {
+        items[0] = stack;
     }
     world.apply_container_set_content(ProtocolContainerSetContent {
         container_id,

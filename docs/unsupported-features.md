@@ -525,6 +525,7 @@ When an agent does any of the following, update this file in the same slice:
         - `container/anvil/text_field`
         - `text_field_disabled`
         - error sprites
+        - rename text input that queues `ServerboundRenameItemPacket`
       - BeaconMenu screens with official:
         - `beacon.png` background
         - payment slot layout
@@ -620,7 +621,7 @@ When an agent does any of the following, update this file in the same slice:
       - `generic_3x3`
       - AnvilMenu:
         - quick-move and result-slot paths are kept server-authoritative until:
-          - rename packet entry
+          - rename field text rendering and default hover-name initialization
           - repair/enchantment result prediction
           - XP cost
           - repair-cost component updates

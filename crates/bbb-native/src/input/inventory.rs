@@ -2,7 +2,9 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
-use bbb_protocol::packets::{ContainerInput, ItemStackSummary, SelectTradeCommand, SetBeacon};
+use bbb_protocol::packets::{
+    ContainerInput, ItemStackSummary, RenameItem, SelectTradeCommand, SetBeacon,
+};
 use bbb_world::{
     ContainerClickBuildError, ContainerClickSlotRequest, MountEquipmentSlotVisibility,
     MountInventoryKind, WorldStore,
@@ -19,9 +21,9 @@ use super::{
     commands::{
         hotbar_slot_for_key, queue_container_button_click_command, queue_container_click_command,
         queue_container_close_command, queue_container_slot_state_changed_command,
-        queue_select_trade_command, queue_set_beacon_command,
+        queue_rename_item_command, queue_select_trade_command, queue_set_beacon_command,
     },
-    ClientInputState,
+    AnvilRenameInputSignature, ClientInputState,
 };
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;
@@ -66,6 +68,7 @@ const CRAFTER_TOTAL_SLOT_COUNT: i16 = 46;
 const ANVIL_SCREEN_WIDTH: i32 = 176;
 const ANVIL_SCREEN_HEIGHT: i32 = 166;
 const ANVIL_SLOT_COUNT: i16 = 3;
+const ANVIL_RENAME_MAX_LENGTH: usize = 50;
 const BEACON_SCREEN_WIDTH: i32 = 230;
 const BEACON_SCREEN_HEIGHT: i32 = 219;
 const BEACON_SLOT_COUNT: i16 = 1;
@@ -1848,8 +1851,36 @@ fn local_inventory_is_double_click(
             .is_some_and(|elapsed| elapsed < VANILLA_DOUBLE_CLICK_THRESHOLD)
 }
 
+pub(crate) fn anvil_rename_entry_consumes_key(world: &WorldStore, code: KeyCode) -> bool {
+    matches!(code, KeyCode::KeyE) && anvil_rename_input_signature(world).is_some()
+}
+
+pub(crate) fn handle_inventory_text_input(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    text: &str,
+) -> bool {
+    if !input.focused || !anvil_screen_is_open(world) {
+        return false;
+    }
+
+    sync_anvil_rename_input(input, world);
+    if input.anvil_rename_input.is_none() {
+        return true;
+    }
+
+    let before = input.anvil_rename_text.clone();
+    push_anvil_rename_text(&mut input.anvil_rename_text, text);
+    if input.anvil_rename_text != before {
+        queue_anvil_rename(input, counters, net_commands);
+    }
+    true
+}
+
 pub(crate) fn handle_inventory_key_input(
-    input: &ClientInputState,
+    input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -1857,6 +1888,10 @@ pub(crate) fn handle_inventory_key_input(
 ) -> bool {
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
+    }
+
+    if handle_anvil_rename_key_input(input, world, counters, net_commands, code) {
+        return true;
     }
 
     if let Some(button_num) = local_inventory_swap_button_num(code) {
@@ -1891,6 +1926,99 @@ pub(crate) fn handle_inventory_key_input(
     }
     local_inventory_apply_and_queue_click(world, counters, net_commands, request);
     true
+}
+
+fn handle_anvil_rename_key_input(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    code: KeyCode,
+) -> bool {
+    if !anvil_screen_is_open(world) {
+        return false;
+    }
+
+    match code {
+        KeyCode::Backspace => {
+            sync_anvil_rename_input(input, world);
+            if input.anvil_rename_input.is_some() && input.anvil_rename_text.pop().is_some() {
+                queue_anvil_rename(input, counters, net_commands);
+            }
+            true
+        }
+        KeyCode::Delete => true,
+        _ => false,
+    }
+}
+
+fn sync_anvil_rename_input(input: &mut ClientInputState, world: &WorldStore) {
+    let next = anvil_rename_input_signature(world);
+    if input.anvil_rename_input != next {
+        input.anvil_rename_input = next;
+        input.anvil_rename_text.clear();
+    }
+}
+
+fn anvil_screen_is_open(world: &WorldStore) -> bool {
+    world
+        .inventory()
+        .open_container
+        .as_ref()
+        .is_some_and(|container| container.menu_type_id == Some(ANVIL_MENU_TYPE_ID))
+}
+
+fn anvil_rename_input_signature(world: &WorldStore) -> Option<AnvilRenameInputSignature> {
+    let container = world.inventory().open_container.as_ref()?;
+    if container.menu_type_id != Some(ANVIL_MENU_TYPE_ID) {
+        return None;
+    }
+    let item = container
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 0)
+        .map(|slot| &slot.item)?;
+    if item_stack_is_empty(item) {
+        return None;
+    }
+    Some(AnvilRenameInputSignature {
+        container_id: container.container_id,
+        item: item.clone(),
+    })
+}
+
+fn push_anvil_rename_text(current: &mut String, text: &str) {
+    let mut remaining = ANVIL_RENAME_MAX_LENGTH.saturating_sub(anvil_rename_len(current));
+    for ch in text.chars().filter(|ch| is_anvil_rename_char(*ch)) {
+        let len = ch.len_utf16();
+        if len > remaining {
+            break;
+        }
+        current.push(ch);
+        remaining -= len;
+    }
+}
+
+fn queue_anvil_rename(
+    input: &ClientInputState,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    queue_rename_item_command(
+        counters,
+        net_commands,
+        RenameItem {
+            name: input.anvil_rename_text.clone(),
+        },
+    );
+}
+
+fn is_anvil_rename_char(ch: char) -> bool {
+    ch != '\u{a7}' && ch >= ' ' && ch != '\u{7f}'
+}
+
+fn anvil_rename_len(text: &str) -> usize {
+    text.encode_utf16().count()
 }
 
 fn local_inventory_swap_button_num(code: KeyCode) -> Option<i8> {
