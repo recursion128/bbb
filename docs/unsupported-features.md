@@ -350,7 +350,9 @@ When an agent does any of the following, update this file in the same slice:
   - Inventory:
     - Implement:
       - remaining rich tooltip behavior:
-        - renderer text drawing
+        - non-ASCII font providers
+        - bidirectional text shaping
+        - official tooltip background/frame sprites
         - custom item names
         - lore
         - rarity/style
@@ -542,6 +544,8 @@ When an agent does any of the following, update this file in the same slice:
         `QUICK_MOVE` / `SWAP` container clicks
       - projects hovered-slot default item tooltip names from official language
         assets and protocol item ids
+      - renders hovered-slot item tooltip names as basic ASCII text using
+        official 26.1 `font/ascii.png` glyphs
     - It renders and hit-tests supported server-opened screens:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices

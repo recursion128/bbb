@@ -1,6 +1,6 @@
 use winit::dpi::PhysicalSize;
 
-use super::{HudDigitGlyph, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
+use super::{HudAsciiGlyph, HudDigitGlyph, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
 
 const HUD_HOTBAR_WIDTH: u32 = 182;
 const HUD_HOTBAR_HEIGHT: u32 = 22;
@@ -18,6 +18,15 @@ const HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE: u32 = 24;
 const HUD_INVENTORY_SLOT_HIGHLIGHT_OFFSET: f32 = -4.0;
 const HUD_ITEM_DURABILITY_BAR_X_OFFSET: f32 = 2.0;
 const HUD_ITEM_DURABILITY_BAR_Y_OFFSET: f32 = 13.0;
+const HUD_TOOLTIP_MOUSE_X_OFFSET: f32 = 12.0;
+const HUD_TOOLTIP_MOUSE_Y_OFFSET: f32 = -12.0;
+const HUD_TOOLTIP_RIGHT_FALLBACK_OFFSET: f32 = 24.0;
+const HUD_TOOLTIP_RIGHT_MARGIN: f32 = 4.0;
+const HUD_TOOLTIP_BOTTOM_PADDING: f32 = 3.0;
+const HUD_TOOLTIP_BACKGROUND_INSET: f32 = 12.0;
+const HUD_TOOLTIP_BACKGROUND_PADDING: u32 = 24;
+const HUD_TOOLTIP_LINE_HEIGHT: u32 = 10;
+const HUD_TOOLTIP_FIRST_LINE_EXTRA_GAP: u32 = 2;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct HudRect {
@@ -200,6 +209,72 @@ pub(super) fn hud_item_count_digit_hud_rect(
     }
 }
 
+pub(super) fn hud_inventory_tooltip_text_height(line_count: usize) -> Option<u32> {
+    match line_count {
+        0 => None,
+        1 => Some(HUD_TOOLTIP_LINE_HEIGHT - HUD_TOOLTIP_FIRST_LINE_EXTRA_GAP),
+        line_count => u32::try_from(line_count)
+            .ok()
+            .and_then(|line_count| line_count.checked_mul(HUD_TOOLTIP_LINE_HEIGHT)),
+    }
+}
+
+pub(super) fn hud_inventory_tooltip_background_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+    anchor_x: i32,
+    anchor_y: i32,
+    text_width: u32,
+    text_height: u32,
+) -> HudRect {
+    let (x, y) = inventory_tooltip_text_origin(
+        surface_size,
+        screen_width,
+        screen_height,
+        anchor_x,
+        anchor_y,
+        text_width,
+        text_height,
+    );
+    HudRect {
+        x: x - HUD_TOOLTIP_BACKGROUND_INSET,
+        y: y - HUD_TOOLTIP_BACKGROUND_INSET,
+        width: text_width + HUD_TOOLTIP_BACKGROUND_PADDING,
+        height: text_height + HUD_TOOLTIP_BACKGROUND_PADDING,
+    }
+}
+
+pub(super) fn hud_inventory_tooltip_text_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+    anchor_x: i32,
+    anchor_y: i32,
+    text_width: u32,
+    text_height: u32,
+    line_index: usize,
+    pen_x: u32,
+    shadow_offset: f32,
+    glyph: HudAsciiGlyph,
+) -> HudRect {
+    let (x, y) = inventory_tooltip_text_origin(
+        surface_size,
+        screen_width,
+        screen_height,
+        anchor_x,
+        anchor_y,
+        text_width,
+        text_height,
+    );
+    HudRect {
+        x: x + pen_x as f32 + shadow_offset,
+        y: y + tooltip_line_y(line_index) as f32 + shadow_offset,
+        width: glyph.width,
+        height: glyph.height,
+    }
+}
+
 pub(super) fn hud_item_durability_bar_rect(item_rect: HudRect, width: u32, height: u32) -> HudRect {
     HudRect {
         x: item_rect.x + HUD_ITEM_DURABILITY_BAR_X_OFFSET,
@@ -235,6 +310,47 @@ fn inventory_screen_origin(
         (surface_width - screen_width as f32) * 0.5,
         (surface_height - screen_height as f32) * 0.5,
     )
+}
+
+fn inventory_tooltip_text_origin(
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+    anchor_x: i32,
+    anchor_y: i32,
+    text_width: u32,
+    text_height: u32,
+) -> (f32, f32) {
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, screen_width, screen_height);
+    let surface_width = surface_size.width.max(1) as f32;
+    let surface_height = surface_size.height.max(1) as f32;
+    let text_width = text_width as f32;
+    let text_height = text_height as f32;
+    let mut x = origin_x + anchor_x as f32 + HUD_TOOLTIP_MOUSE_X_OFFSET;
+    let mut y = origin_y + anchor_y as f32 + HUD_TOOLTIP_MOUSE_Y_OFFSET;
+
+    if x + text_width > surface_width {
+        x = (x - HUD_TOOLTIP_RIGHT_FALLBACK_OFFSET - text_width).max(HUD_TOOLTIP_RIGHT_MARGIN);
+    }
+
+    let padded_height = text_height + HUD_TOOLTIP_BOTTOM_PADDING;
+    if y + padded_height > surface_height {
+        y = surface_height - padded_height;
+    }
+
+    (x, y)
+}
+
+fn tooltip_line_y(line_index: usize) -> u32 {
+    if line_index == 0 {
+        0
+    } else {
+        u32::try_from(line_index)
+            .ok()
+            .and_then(|line_index| line_index.checked_mul(HUD_TOOLTIP_LINE_HEIGHT))
+            .and_then(|line_y| line_y.checked_add(HUD_TOOLTIP_FIRST_LINE_EXTRA_GAP))
+            .unwrap_or(u32::MAX)
+    }
 }
 
 pub(super) fn hud_heart_fill(health: f32, index: u32) -> HudIconFill {
@@ -481,6 +597,60 @@ mod tests {
         assert_eq!(highlight.y, 357.0);
         assert_eq!(highlight.width, 24);
         assert_eq!(highlight.height, 24);
+    }
+
+    #[test]
+    fn hud_inventory_tooltip_layout_uses_vanilla_default_offsets() {
+        let surface_size = PhysicalSize::new(320, 240);
+        assert_eq!(hud_inventory_tooltip_text_height(1), Some(8));
+        assert_eq!(hud_inventory_tooltip_text_height(2), Some(20));
+
+        let background =
+            hud_inventory_tooltip_background_hud_rect(surface_size, 176, 166, 8, 84, 36, 8);
+        assert_eq!(background.x, 80.0);
+        assert_eq!(background.y, 97.0);
+        assert_eq!(background.width, 60);
+        assert_eq!(background.height, 32);
+
+        let glyph = HudAsciiGlyph {
+            width: 8,
+            height: 8,
+            advance: 6,
+            ..HudAsciiGlyph::default()
+        };
+        let text = hud_inventory_tooltip_text_hud_rect(
+            surface_size,
+            176,
+            166,
+            8,
+            84,
+            36,
+            8,
+            1,
+            6,
+            1.0,
+            glyph,
+        );
+        assert_eq!(text.x, 99.0);
+        assert_eq!(text.y, 122.0);
+        assert_eq!(text.width, 8);
+        assert_eq!(text.height, 8);
+    }
+
+    #[test]
+    fn hud_inventory_tooltip_layout_matches_vanilla_edge_fallbacks() {
+        let surface_size = PhysicalSize::new(100, 100);
+
+        let right = hud_inventory_tooltip_background_hud_rect(surface_size, 80, 80, 70, 20, 60, 8);
+        assert_eq!(right.x, -4.0);
+        assert_eq!(right.y, 6.0);
+        assert_eq!(right.width, 84);
+
+        let bottom =
+            hud_inventory_tooltip_background_hud_rect(surface_size, 80, 80, 20, 96, 30, 20);
+        assert_eq!(bottom.x, 30.0);
+        assert_eq!(bottom.y, 65.0);
+        assert_eq!(bottom.height, 44);
     }
 
     #[test]

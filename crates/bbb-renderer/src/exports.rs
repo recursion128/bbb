@@ -1,9 +1,10 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{CameraPose, ClearColor};
 pub use crate::hud::{
-    HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTooltip, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    HudAsciiGlyph, HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer,
+    HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
+    HudInventoryTooltip, HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect,
+    HUD_ASCII_FIRST_GLYPH, HUD_ASCII_GLYPH_COUNT, HUD_ASCII_LAST_GLYPH, HUD_HOTBAR_SLOTS,
 };
 pub use crate::item_entities::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};
 pub use crate::particles::{

@@ -12,13 +12,18 @@ pub(super) use self::gpu::{
 use self::layout::{
     centered_hud_rect, experience_bar_hud_rect, food_hud_rect, heart_hud_rect, hotbar_hud_rect,
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_experience_progress_width, hud_food_fill,
-    hud_heart_fill, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
+    hud_heart_fill, hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_text_height,
+    hud_inventory_tooltip_text_hud_rect, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
     hud_item_durability_bar_rect, hud_quad_vertices, inventory_background_hud_rect,
     inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
     HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
 };
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
+pub const HUD_ASCII_FIRST_GLYPH: u8 = b' ';
+pub const HUD_ASCII_LAST_GLYPH: u8 = b'~';
+pub const HUD_ASCII_GLYPH_COUNT: usize =
+    (HUD_ASCII_LAST_GLYPH - HUD_ASCII_FIRST_GLYPH + 1) as usize;
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const HUD_TEXT_SHADOW_TINT: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
 const HUD_ITEM_BAR_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
@@ -26,6 +31,8 @@ const HUD_ITEM_BAR_BACKGROUND_WIDTH: u32 = 13;
 const HUD_ITEM_BAR_BACKGROUND_HEIGHT: u32 = 2;
 const HUD_ITEM_BAR_FOREGROUND_HEIGHT: u32 = 1;
 const HUD_ITEM_COOLDOWN_TINT: [f32; 4] = [1.0, 1.0, 1.0, 127.0 / 255.0];
+const HUD_TOOLTIP_BACKGROUND_TINT: [f32; 4] = [0.0625, 0.0, 0.0625, 0.94];
+const HUD_ASCII_REPLACEMENT_GLYPH: char = '?';
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HudUvRect {
@@ -108,6 +115,8 @@ impl Default for HudDigitGlyph {
         }
     }
 }
+
+pub type HudAsciiGlyph = HudDigitGlyph;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HudInventoryBackgroundTexture {
@@ -318,6 +327,18 @@ impl Renderer {
     ) -> Result<()> {
         self.hud_digit_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
         self.hud_digit_glyphs = glyphs;
+        Ok(())
+    }
+
+    pub fn upload_hud_ascii_atlas(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        glyphs: [HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    ) -> Result<()> {
+        self.hud_ascii_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
+        self.hud_ascii_glyphs = glyphs;
         Ok(())
     }
 
@@ -1654,6 +1675,16 @@ impl Renderer {
                     ),
                 );
             }
+
+            push_hud_inventory_tooltip(
+                &mut vertices,
+                &mut commands,
+                &self.hud_white_pixel,
+                self.hud_ascii_atlas.as_ref(),
+                &self.hud_ascii_glyphs,
+                surface_size,
+                screen,
+            );
         }
 
         if let Some(overlay) = &self.hud_code_of_conduct_overlay {
@@ -2118,6 +2149,90 @@ fn push_hud_item_count_label<'a>(
     }
 }
 
+fn push_hud_inventory_tooltip<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    ascii_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+) {
+    let (Some(ascii_atlas), Some(tooltip)) = (ascii_atlas, screen.tooltip.as_ref()) else {
+        return;
+    };
+    let Some(text_height) = hud_inventory_tooltip_text_height(tooltip.lines.len()) else {
+        return;
+    };
+    let Some(text_width) = tooltip
+        .lines
+        .iter()
+        .filter_map(|line| hud_ascii_text_width(line, glyphs))
+        .max()
+    else {
+        return;
+    };
+
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        hud_inventory_tooltip_background_hud_rect(
+            surface_size,
+            screen.width,
+            screen.height,
+            tooltip.x,
+            tooltip.y,
+            text_width,
+            text_height,
+        ),
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        HUD_TOOLTIP_BACKGROUND_TINT,
+    );
+
+    for shadow_offset in [1.0, 0.0] {
+        let tint = if shadow_offset > 0.0 {
+            HUD_TEXT_SHADOW_TINT
+        } else {
+            HUD_TINT_WHITE
+        };
+        for (line_index, line) in tooltip.lines.iter().enumerate() {
+            let mut pen_x = 0;
+            for ch in line.chars() {
+                let glyph = hud_ascii_glyph(ch, glyphs);
+                if glyph.width > 0 && glyph.height > 0 {
+                    push_hud_draw_with_uv_and_tint(
+                        vertices,
+                        commands,
+                        ascii_atlas,
+                        surface_size,
+                        hud_inventory_tooltip_text_hud_rect(
+                            surface_size,
+                            screen.width,
+                            screen.height,
+                            tooltip.x,
+                            tooltip.y,
+                            text_width,
+                            text_height,
+                            line_index,
+                            pen_x,
+                            shadow_offset,
+                            glyph,
+                        ),
+                        glyph.uv,
+                        tint,
+                    );
+                }
+                pen_x = pen_x.saturating_add(glyph.advance);
+            }
+        }
+    }
+}
+
 fn hud_digit_text_width(text: &str, glyphs: &[HudDigitGlyph; 10]) -> Option<u32> {
     let mut width = 0u32;
     for digit in text.bytes() {
@@ -2127,6 +2242,31 @@ fn hud_digit_text_width(text: &str, glyphs: &[HudDigitGlyph; 10]) -> Option<u32>
         width = width.checked_add(glyphs[(digit - b'0') as usize].advance)?;
     }
     (width > 0).then_some(width)
+}
+
+fn hud_ascii_text_width(
+    text: &str,
+    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+) -> Option<u32> {
+    let mut width = 0u32;
+    for ch in text.chars() {
+        width = width.checked_add(hud_ascii_glyph(ch, glyphs).advance)?;
+    }
+    (width > 0).then_some(width)
+}
+
+fn hud_ascii_glyph(ch: char, glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT]) -> HudAsciiGlyph {
+    let byte = if ch.is_ascii() {
+        ch as u8
+    } else {
+        HUD_ASCII_REPLACEMENT_GLYPH as u8
+    };
+    let byte = if (HUD_ASCII_FIRST_GLYPH..=HUD_ASCII_LAST_GLYPH).contains(&byte) {
+        byte
+    } else {
+        HUD_ASCII_REPLACEMENT_GLYPH as u8
+    };
+    glyphs[(byte - HUD_ASCII_FIRST_GLYPH) as usize]
 }
 
 fn sanitize_hud_uv_rect(rect: HudUvRect) -> Option<HudUvRect> {
@@ -2434,6 +2574,19 @@ mod tests {
         assert_eq!(hud_digit_text_width("64", &glyphs), Some(12));
         assert_eq!(hud_digit_text_width("1x", &glyphs), None);
         assert_eq!(hud_digit_text_width("", &glyphs), None);
+    }
+
+    #[test]
+    fn hud_ascii_text_width_uses_printable_ascii_with_replacement_fallback() {
+        let mut glyphs = [HudAsciiGlyph::default(); HUD_ASCII_GLYPH_COUNT];
+        glyphs[(b'A' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 6;
+        glyphs[(b' ' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 4;
+        glyphs[(b'?' - HUD_ASCII_FIRST_GLYPH) as usize].advance = 5;
+
+        assert_eq!(hud_ascii_text_width("A A", &glyphs), Some(16));
+        assert_eq!(hud_ascii_text_width("A\u{0007}", &glyphs), Some(11));
+        assert_eq!(hud_ascii_text_width("钻", &glyphs), Some(5));
+        assert_eq!(hud_ascii_text_width("", &glyphs), None);
     }
 
     #[test]
