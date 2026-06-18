@@ -219,6 +219,61 @@ fn terrain_chunk_events_update_world_counters() {
 }
 
 #[test]
+fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelChunkWithLight(
+        synthetic_native_level_chunk_packet(),
+    ))
+    .unwrap();
+    tx.try_send(NetEvent::BlockEntityData(BlockEntityData {
+        pos: ProtocolBlockPos {
+            x: 16,
+            y: -64,
+            z: -32,
+        },
+        block_entity_type_id: 7,
+        raw_nbt: sign_text_nbt(
+            ["Front A", "Front B", "Front C", "Front D"],
+            ["Back A", "Back B", "Back C", "Back D"],
+        ),
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    let pos = BlockPos {
+        x: 16,
+        y: -64,
+        z: -32,
+    };
+    assert_eq!(
+        world.sign_text_lines(pos, true),
+        Some(&[
+            "Front A".to_string(),
+            "Front B".to_string(),
+            "Front C".to_string(),
+            "Front D".to_string(),
+        ])
+    );
+    assert_eq!(
+        world.sign_text_lines(pos, false),
+        Some(&[
+            "Back A".to_string(),
+            "Back B".to_string(),
+            "Back C".to_string(),
+            "Back D".to_string(),
+        ])
+    );
+    assert_eq!(world.counters().block_entity_updates_applied, 1);
+}
+
+#[test]
 fn terrain_chunk_ignored_counters_stay_in_world_store() {
     let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::BlockUpdate(BlockUpdate {
@@ -4478,6 +4533,32 @@ fn single_biome_payload(biome_id: i32) -> Vec<u8> {
     payload.write_u8(0);
     payload.write_var_i32(biome_id);
     payload.into_inner()
+}
+
+fn sign_text_nbt(front: [&str; 4], back: [&str; 4]) -> Vec<u8> {
+    let mut payload = vec![10];
+    write_sign_text_side(&mut payload, "front_text", front);
+    write_sign_text_side(&mut payload, "back_text", back);
+    payload.push(0);
+    payload
+}
+
+fn write_sign_text_side(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
+    out.push(10);
+    write_nbt_string(out, name);
+    out.push(9);
+    write_nbt_string(out, "messages");
+    out.push(8);
+    out.extend_from_slice(&4i32.to_be_bytes());
+    for line in lines {
+        write_nbt_string(out, line);
+    }
+    out.push(0);
+}
+
+fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
 }
 
 fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
