@@ -1584,10 +1584,6 @@ pub(crate) fn handle_inventory_key_input(
         return false;
     }
 
-    if !world.local_inventory_is_open() {
-        return true;
-    }
-
     if let Some(button_num) = local_inventory_swap_button_num(code) {
         handle_inventory_swap_key(input, world, counters, net_commands, button_num);
         return true;
@@ -1600,7 +1596,7 @@ pub(crate) fn handle_inventory_key_input(
     let Some(slot_num) = input.inventory_hovered_slot else {
         return true;
     };
-    if !local_inventory_slot_has_item(world, slot_num) {
+    if !inventory_slot_has_item(world, slot_num) {
         return true;
     }
     let request = ContainerClickSlotRequest {
@@ -1608,13 +1604,17 @@ pub(crate) fn handle_inventory_key_input(
         button_num: if input.control_down() { 1 } else { 0 },
         input: ContainerInput::Throw,
     };
-    let Ok(click) = world.apply_local_container_click_slot(request) else {
-        return true;
-    };
-    if click.changed_slots.is_empty() {
+    if world.local_inventory_is_open() {
+        let Ok(click) = world.apply_local_container_click_slot(request) else {
+            return true;
+        };
+        if click.changed_slots.is_empty() {
+            return true;
+        }
+        queue_container_click_command(counters, net_commands, click);
         return true;
     }
-    queue_container_click_command(counters, net_commands, click);
+    local_inventory_apply_and_queue_click(world, counters, net_commands, request);
     true
 }
 
@@ -1643,13 +1643,17 @@ fn handle_inventory_swap_key(
         button_num,
         input: ContainerInput::Swap,
     };
-    let Ok(click) = world.apply_local_container_click_slot(request) else {
-        return;
-    };
-    if click.changed_slots.is_empty() {
+    if world.local_inventory_is_open() {
+        let Ok(click) = world.apply_local_container_click_slot(request) else {
+            return;
+        };
+        if click.changed_slots.is_empty() {
+            return;
+        }
+        queue_container_click_command(counters, net_commands, click);
         return;
     }
-    queue_container_click_command(counters, net_commands, click);
+    local_inventory_apply_and_queue_click(world, counters, net_commands, request);
 }
 
 pub(crate) fn handle_inventory_mouse_wheel(
@@ -1899,6 +1903,18 @@ fn inventory_cursor_is_empty(world: &WorldStore) -> bool {
 
 fn local_inventory_slot_has_item(world: &WorldStore, slot_num: i16) -> bool {
     local_inventory_slot_item(world, slot_num).is_some_and(|item| !item_stack_is_empty(item))
+}
+
+fn inventory_slot_has_item(world: &WorldStore, slot_num: i16) -> bool {
+    if world.local_inventory_is_open() {
+        return local_inventory_slot_has_item(world, slot_num);
+    }
+    world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.slots.iter().find(|slot| slot.slot == slot_num))
+        .is_some_and(|slot| !item_stack_is_empty(&slot.item))
 }
 
 fn item_stack_is_empty(stack: &ItemStackSummary) -> bool {

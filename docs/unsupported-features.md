@@ -576,6 +576,10 @@ When an agent does any of the following, update this file in the same slice:
       - vanilla `AbstractFurnaceMenu` / `BrewingStandScreen` progress formulas
     - It queues basic left/right `PICKUP` container clicks for those supported
       fixed-slot screens.
+    - It queues server-authoritative keyboard container clicks for those
+      supported fixed-slot screens:
+      - hovered-slot Q/Ctrl+Q as `THROW`
+      - hovered-slot number keys and F as `SWAP`
     - MerchantMenu visible trade-row clicks queue
       `ServerboundSelectTradePacket` for the current visible offer window.
     - MerchantMenu mouse wheel input updates the local trade-list scroll offset
