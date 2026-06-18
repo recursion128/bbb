@@ -369,3 +369,29 @@ The cartography merge gate rebuilt changed workspace crates before this warm
 update. That gate compiled in 38.85s and passed, which is expected for a warm
 incremental run after protocol and native runtime edits rather than a clean
 baseline.
+
+## Warm Update: 2026-06-19 After Sign Text Slice
+
+Environment:
+
+- `sccache` is still not installed on `PATH`.
+- Stable target caches found:
+  - `/tmp/bbb-target-main`: 11G.
+  - `/tmp/bbb-target-net`: 726M.
+- No clean target was created for this update. The slice did not change Cargo
+  profiles, dependencies, or cache policy.
+
+Measured command:
+
+- Warm full workspace:
+  `scripts/cargo-dev.sh timings --workspace --timings`
+  - Cargo compile: 0.27s.
+  - Wall time: 3.15s.
+  - Target size: 11G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260618T211121498Z-14ffed61c5c1036c.html`
+
+This confirms the current external-target workflow keeps a post-slice warm full
+workspace gate in the low single-digit seconds once incremental rebuild work is
+complete. Keep `sccache` optional until it is installed and measured locally.
