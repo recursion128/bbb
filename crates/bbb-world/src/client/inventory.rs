@@ -73,6 +73,19 @@ pub struct HotbarItemState {
     pub local_selected_bundle_item_index: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ItemEquipmentSlot {
+    MainHand,
+    OffHand,
+    Feet,
+    Legs,
+    Chest,
+    Head,
+    Body,
+    Saddle,
+}
+
 impl Default for HotbarItemState {
     fn default() -> Self {
         Self {
@@ -621,6 +634,16 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_default_item_equipment_slots(
+        &mut self,
+        equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
+    ) {
+        self.default_item_equipment_slots = equipment_slots
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect();
+    }
+
     pub fn build_container_click_slot(
         &self,
         request: ContainerClickSlotRequest,
@@ -684,6 +707,7 @@ impl WorldStore {
                             container_id,
                             &mut slots_after,
                             request.slot_num,
+                            &self.default_item_equipment_slots,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if let Some(container_slot_count) =
@@ -1548,6 +1572,7 @@ fn apply_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
     slot_num: i16,
+    default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
     if container_id != INVENTORY_MENU_CONTAINER_ID || slot_num < 0 {
@@ -1559,12 +1584,17 @@ fn apply_quick_move_to_slots(
     if item_stack_is_empty(&slots[source_index].item) {
         return;
     }
-    let Some((start_slot, end_slot, backwards)) = inventory_menu_quick_move_target_range(slot_num)
-    else {
+    let source_item = slots[source_index].item.clone();
+    let Some((start_slot, end_slot, backwards)) = inventory_menu_quick_move_target_range(
+        slot_num,
+        &source_item,
+        slots,
+        default_item_equipment_slots,
+    ) else {
         return;
     };
 
-    let mut moving = slots[source_index].item.clone();
+    let mut moving = source_item;
     if move_item_stack_to_slots(
         container_id,
         slots,
@@ -1712,23 +1742,79 @@ fn furnace_is_fuel(
         .is_some_and(|item_id| furnace_fuel_item_ids.contains(&item_id))
 }
 
-fn inventory_menu_quick_move_target_range(slot_num: i16) -> Option<(i16, i16, bool)> {
+fn inventory_menu_quick_move_target_range(
+    slot_num: i16,
+    source_item: &ProtocolItemStackSummary,
+    slots: &[ContainerSlot],
+    default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+) -> Option<(i16, i16, bool)> {
     match slot_num {
         0 => Some((INVENTORY_MENU_MAIN_START, INVENTORY_MENU_HOTBAR_END, true)),
         1..=8 => Some((INVENTORY_MENU_MAIN_START, INVENTORY_MENU_HOTBAR_END, false)),
-        INVENTORY_MENU_MAIN_START..=35 => Some((
+        INVENTORY_MENU_MAIN_START..=35 => inventory_menu_equipment_quick_move_target(
+            source_item,
+            slots,
+            default_item_equipment_slots,
+        )
+        .or(Some((
             INVENTORY_MENU_HOTBAR_START,
             INVENTORY_MENU_HOTBAR_END,
             false,
-        )),
-        INVENTORY_MENU_HOTBAR_START..=44 => {
-            Some((INVENTORY_MENU_MAIN_START, INVENTORY_MENU_MAIN_END, false))
-        }
-        INVENTORY_MENU_OFFHAND_SLOT => {
-            Some((INVENTORY_MENU_MAIN_START, INVENTORY_MENU_HOTBAR_END, false))
-        }
+        ))),
+        INVENTORY_MENU_HOTBAR_START..=44 => inventory_menu_equipment_quick_move_target(
+            source_item,
+            slots,
+            default_item_equipment_slots,
+        )
+        .or(Some((
+            INVENTORY_MENU_MAIN_START,
+            INVENTORY_MENU_MAIN_END,
+            false,
+        ))),
+        INVENTORY_MENU_OFFHAND_SLOT => inventory_menu_equipment_quick_move_target(
+            source_item,
+            slots,
+            default_item_equipment_slots,
+        )
+        .or(Some((
+            INVENTORY_MENU_MAIN_START,
+            INVENTORY_MENU_HOTBAR_END,
+            false,
+        ))),
         _ => None,
     }
+}
+
+fn inventory_menu_equipment_quick_move_target(
+    source_item: &ProtocolItemStackSummary,
+    slots: &[ContainerSlot],
+    default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+) -> Option<(i16, i16, bool)> {
+    let item_id = source_item.item_id?;
+    let target_slot =
+        inventory_menu_equipment_slot(default_item_equipment_slots.get(&item_id).copied()?)?;
+    if inventory_menu_slot_has_item(slots, target_slot) {
+        return None;
+    }
+    Some((target_slot, target_slot + 1, false))
+}
+
+fn inventory_menu_equipment_slot(equipment_slot: ItemEquipmentSlot) -> Option<i16> {
+    match equipment_slot {
+        ItemEquipmentSlot::Head => Some(5),
+        ItemEquipmentSlot::Chest => Some(6),
+        ItemEquipmentSlot::Legs => Some(7),
+        ItemEquipmentSlot::Feet => Some(8),
+        ItemEquipmentSlot::OffHand => Some(INVENTORY_MENU_OFFHAND_SLOT),
+        ItemEquipmentSlot::MainHand | ItemEquipmentSlot::Body | ItemEquipmentSlot::Saddle => None,
+    }
+}
+
+fn inventory_menu_slot_has_item(slots: &[ContainerSlot], slot_num: i16) -> bool {
+    slots
+        .iter()
+        .find(|slot| slot.slot == slot_num)
+        .is_some_and(|slot| item_stack_is_non_empty(&slot.item))
 }
 
 fn move_item_stack_to_slots(
@@ -3701,6 +3787,138 @@ mod tests {
             player_slot_item(&store, 0),
             ProtocolItemStackSummary::empty()
         );
+    }
+
+    #[test]
+    fn apply_local_container_quick_move_auto_equips_armor_slot() {
+        let mut store = WorldStore::new();
+        store.set_default_item_equipment_slots(BTreeMap::from([(42, ItemEquipmentSlot::Chest)]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        assert!(store.open_local_inventory());
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_HOTBAR_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (6, hashed_item_stack(42, 1)),
+                (INVENTORY_MENU_HOTBAR_START, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 6), item_stack(42, 1));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            player_slot_item(&store, PLAYER_CHEST_EQUIPMENT_SLOT),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            player_slot_item(&store, 0),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_container_quick_move_auto_equips_offhand_slot() {
+        let mut store = WorldStore::new();
+        store.set_default_item_equipment_slots(BTreeMap::from([(43, ItemEquipmentSlot::OffHand)]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(43, 1),
+        });
+        assert!(store.open_local_inventory());
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (INVENTORY_MENU_MAIN_START, ProtocolHashedStack::Empty),
+                (INVENTORY_MENU_OFFHAND_SLOT, hashed_item_stack(43, 1)),
+            ])
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_OFFHAND_SLOT),
+            item_stack(43, 1)
+        );
+        assert_eq!(
+            player_slot_item(&store, 9),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            player_slot_item(&store, PLAYER_OFFHAND_SLOT),
+            item_stack(43, 1)
+        );
+    }
+
+    #[test]
+    fn apply_local_container_quick_move_uses_inventory_fallback_when_equipment_slot_is_occupied() {
+        let mut store = WorldStore::new();
+        store.set_default_item_equipment_slots(BTreeMap::from([(42, ItemEquipmentSlot::Chest)]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+            item: item_stack(99, 1),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 9,
+            item: item_stack(42, 1),
+        });
+        assert!(store.open_local_inventory());
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: INVENTORY_MENU_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (INVENTORY_MENU_MAIN_START, ProtocolHashedStack::Empty),
+                (INVENTORY_MENU_HOTBAR_START, hashed_item_stack(42, 1)),
+            ])
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 6), item_stack(99, 1));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_MAIN_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            player_slot_item(&store, PLAYER_CHEST_EQUIPMENT_SLOT),
+            item_stack(99, 1)
+        );
+        assert_eq!(
+            player_slot_item(&store, 9),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(player_slot_item(&store, 0), item_stack(42, 1));
     }
 
     #[test]

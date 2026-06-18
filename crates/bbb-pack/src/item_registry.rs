@@ -6,6 +6,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::{resources::ResourceLocation, PackRoots};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ItemEquipmentSlot {
+    MainHand,
+    OffHand,
+    Feet,
+    Legs,
+    Chest,
+    Head,
+    Body,
+    Saddle,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemRegistryCatalog {
     resource_ids: Vec<String>,
@@ -14,6 +27,8 @@ pub struct ItemRegistryCatalog {
     max_damage: BTreeMap<String, i32>,
     #[serde(default)]
     max_stack_size: BTreeMap<String, i32>,
+    #[serde(default)]
+    default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
 }
 
 impl ItemRegistryCatalog {
@@ -62,12 +77,14 @@ impl ItemRegistryCatalog {
         let mut resource_ids = Vec::new();
         let mut max_damage = BTreeMap::new();
         let mut max_stack_size = BTreeMap::new();
+        let mut default_equipment_slots = BTreeMap::new();
         for capture in declaration.captures_iter(source) {
             let kind = capture.get(1).unwrap().as_str();
             let field = capture.get(2).unwrap().as_str();
             let expression = capture.get(3).unwrap().as_str();
             let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
             let stack_size = max_stack_size_for_declaration(expression)?;
+            let equipment_slot = equipment_slot_for_declaration(expression)?;
             if let Some(durability) = durability_for_declaration(expression)? {
                 for resource_id in &ids {
                     max_damage.insert(resource_id.clone(), durability);
@@ -75,6 +92,9 @@ impl ItemRegistryCatalog {
             }
             for resource_id in &ids {
                 max_stack_size.insert(resource_id.clone(), stack_size);
+                if let Some(equipment_slot) = equipment_slot {
+                    default_equipment_slots.insert(resource_id.clone(), equipment_slot);
+                }
             }
             resource_ids.extend(ids);
         }
@@ -98,6 +118,7 @@ impl ItemRegistryCatalog {
             protocol_ids,
             max_damage,
             max_stack_size,
+            default_equipment_slots,
         })
     }
 
@@ -125,6 +146,11 @@ impl ItemRegistryCatalog {
     pub fn max_stack_size(&self, resource_id: &str) -> Option<i32> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.max_stack_size.get(&resource_id).copied()
+    }
+
+    pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_equipment_slots.get(&resource_id).copied()
     }
 
     pub fn len(&self) -> usize {
@@ -256,6 +282,52 @@ fn max_stack_size_for_declaration(expression: &str) -> Result<i32> {
     Ok(64)
 }
 
+fn equipment_slot_for_declaration(expression: &str) -> Result<Option<ItemEquipmentSlot>> {
+    for pattern in [
+        r#"Equippable\.builder\(\s*EquipmentSlot\.([A-Z_]+)\s*\)"#,
+        r#"\.equippableUnswappable\(\s*EquipmentSlot\.([A-Z_]+)\s*\)"#,
+        r#"\.equippable\(\s*EquipmentSlot\.([A-Z_]+)\s*\)"#,
+    ] {
+        if let Some(slot) = optional_capture(pattern, expression)? {
+            return equipment_slot_from_name(&slot).map(Some);
+        }
+    }
+
+    if let Some(armor_type) = optional_capture(
+        r#"(?s)\.humanoidArmor\(\s*.*?,\s*ArmorType\.([A-Z_]+)\s*\)"#,
+        expression,
+    )? {
+        return armor_type_equipment_slot(&armor_type).map(Some);
+    }
+
+    Ok(None)
+}
+
+fn equipment_slot_from_name(name: &str) -> Result<ItemEquipmentSlot> {
+    match name {
+        "MAINHAND" => Ok(ItemEquipmentSlot::MainHand),
+        "OFFHAND" => Ok(ItemEquipmentSlot::OffHand),
+        "FEET" => Ok(ItemEquipmentSlot::Feet),
+        "LEGS" => Ok(ItemEquipmentSlot::Legs),
+        "CHEST" => Ok(ItemEquipmentSlot::Chest),
+        "HEAD" => Ok(ItemEquipmentSlot::Head),
+        "BODY" => Ok(ItemEquipmentSlot::Body),
+        "SADDLE" => Ok(ItemEquipmentSlot::Saddle),
+        _ => bail!("unsupported item equipment slot EquipmentSlot.{name}"),
+    }
+}
+
+fn armor_type_equipment_slot(name: &str) -> Result<ItemEquipmentSlot> {
+    match name {
+        "HELMET" => Ok(ItemEquipmentSlot::Head),
+        "CHESTPLATE" => Ok(ItemEquipmentSlot::Chest),
+        "LEGGINGS" => Ok(ItemEquipmentSlot::Legs),
+        "BOOTS" => Ok(ItemEquipmentSlot::Feet),
+        "BODY" => Ok(ItemEquipmentSlot::Body),
+        _ => bail!("unsupported item armor equipment slot ArmorType.{name}"),
+    }
+}
+
 fn required_capture(pattern: &str, expression: &str, field: &str) -> Result<String> {
     optional_capture(pattern, expression)?
         .ok_or_else(|| anyhow::anyhow!("unsupported item registry declaration {field}"))
@@ -338,6 +410,106 @@ mod tests {
     }
 
     #[test]
+    fn item_registry_catalog_parses_default_equipment_slots() {
+        let source = r#"
+            public class Items {
+               public static final Item DIAMOND_HELMET = registerItem("diamond_helmet", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.HELMET));
+               public static final Item DIAMOND_CHESTPLATE = registerItem(
+                  "diamond_chestplate", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.CHESTPLATE)
+               );
+               public static final Item DIAMOND_LEGGINGS = registerItem("diamond_leggings", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.LEGGINGS));
+               public static final Item DIAMOND_BOOTS = registerItem("diamond_boots", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.BOOTS));
+               public static final Item BODY_ARMOR = registerItem("body_armor", new Item.Properties().humanoidArmor(ArmorMaterials.TEST, ArmorType.BODY));
+               public static final Item CARVED_PUMPKIN = registerBlock(
+                  Blocks.CARVED_PUMPKIN,
+                  p -> p.component(
+                     DataComponents.EQUIPPABLE,
+                     Equippable.builder(EquipmentSlot.HEAD).setSwappable(false).build()
+                  )
+               );
+               public static final Item ELYTRA = registerItem(
+                  "elytra",
+                  new Item.Properties()
+                     .component(
+                        DataComponents.EQUIPPABLE,
+                        Equippable.builder(EquipmentSlot.CHEST).build()
+                     )
+               );
+               public static final Item SHIELD = registerItem(
+                  "shield",
+                  ShieldItem::new,
+                  new Item.Properties().equippableUnswappable(EquipmentSlot.OFFHAND)
+               );
+               public static final Item OFFHAND_ITEM = registerItem("offhand_item", new Item.Properties().equippable(EquipmentSlot.OFFHAND));
+               public static final Item MAINHAND_ITEM = registerItem("mainhand_item", new Item.Properties().equippable(EquipmentSlot.MAINHAND));
+               public static final Item SADDLE_ITEM = registerItem("saddle_item", new Item.Properties().equippable(EquipmentSlot.SADDLE));
+               public static final Item STONE = registerBlock(Blocks.STONE);
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+
+        assert_eq!(
+            catalog.equipment_slot("minecraft:diamond_helmet"),
+            Some(ItemEquipmentSlot::Head)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:diamond_chestplate"),
+            Some(ItemEquipmentSlot::Chest)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:diamond_leggings"),
+            Some(ItemEquipmentSlot::Legs)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:diamond_boots"),
+            Some(ItemEquipmentSlot::Feet)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:body_armor"),
+            Some(ItemEquipmentSlot::Body)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:carved_pumpkin"),
+            Some(ItemEquipmentSlot::Head)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:elytra"),
+            Some(ItemEquipmentSlot::Chest)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:shield"),
+            Some(ItemEquipmentSlot::OffHand)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:offhand_item"),
+            Some(ItemEquipmentSlot::OffHand)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:mainhand_item"),
+            Some(ItemEquipmentSlot::MainHand)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:saddle_item"),
+            Some(ItemEquipmentSlot::Saddle)
+        );
+        assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
+        assert_eq!(catalog.equipment_slot("minecraft:missing_item"), None);
+
+        let encoded = serde_json::to_value(&catalog).unwrap();
+        assert_eq!(
+            encoded["default_equipment_slots"]["minecraft:shield"],
+            serde_json::json!("offhand")
+        );
+        let decoded: ItemRegistryCatalog = serde_json::from_value(encoded).unwrap();
+        assert_eq!(
+            decoded.equipment_slot("minecraft:mainhand_item"),
+            Some(ItemEquipmentSlot::MainHand)
+        );
+    }
+
+    #[test]
     fn item_registry_catalog_loads_java_sources() {
         let root = unique_temp_dir("item-registry");
         let sources = root.join("sources").join(crate::MC_VERSION);
@@ -398,6 +570,19 @@ mod tests {
         assert_eq!(catalog.max_stack_size("minecraft:stone"), Some(64));
         assert_eq!(catalog.max_stack_size("minecraft:ender_pearl"), Some(16));
         assert_eq!(catalog.max_stack_size("minecraft:diamond_sword"), Some(1));
+        assert_eq!(
+            catalog.equipment_slot("minecraft:diamond_boots"),
+            Some(ItemEquipmentSlot::Feet)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:elytra"),
+            Some(ItemEquipmentSlot::Chest)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:shield"),
+            Some(ItemEquipmentSlot::OffHand)
+        );
+        assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
     }
 
     fn write_file(path: &Path, contents: &str) {

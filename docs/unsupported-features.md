@@ -267,8 +267,7 @@ update this file in the same slice.
       - hopper
       - shulker box
     - recipe book/creative variants
-    - fuller local quick-move parity:
-      - armor/offhand auto-equip
+    - remaining local quick-move parity:
       - crafting result semantics for container `0`
 - Evidence / boundary:
   - Movement:
@@ -338,8 +337,9 @@ update this file in the same slice.
       - hit-tests the fixed slot layout
       - routes left/right pickup and outside-drop clicks through a basic local
         `PICKUP` simulation
-      - routes Shift-click slots through a basic local `QUICK_MOVE` simulation
-        for main-inventory/hotbar/container-zero ranges
+      - routes Shift-click slots through a local `QUICK_MOVE` simulation for:
+        - armor/offhand auto-equip from official item default equipment slots
+        - main-inventory/hotbar/container-zero ranges
       - routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation
       - routes hovered-slot number/F keys through a basic local `SWAP`
         simulation

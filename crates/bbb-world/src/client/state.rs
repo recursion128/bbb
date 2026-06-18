@@ -26,7 +26,7 @@ pub use crate::client::hud::{
 };
 pub use crate::client::inventory::{
     ContainerClickBuildError, ContainerClickSlotRequest, ContainerDataValue, ContainerSlot,
-    ContainerState, HotbarItemState, InventorySlot, InventoryState,
+    ContainerState, HotbarItemState, InventorySlot, InventoryState, ItemEquipmentSlot,
 };
 pub use crate::client::local_player::{
     CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerExperienceState,

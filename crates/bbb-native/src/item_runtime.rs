@@ -3,13 +3,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use anyhow::{Context, Result};
 use bbb_pack::{
     AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, FurnaceFuelCatalog, ItemCuboidModel,
-    ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemModelCatalog,
-    ItemModelDefinition, ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage,
-    TerrainColorMaps,
+    ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
+    ItemEquipmentSlot as PackItemEquipmentSlot, ItemModelCatalog, ItemModelDefinition,
+    ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage, TerrainColorMaps,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemStackSummary, ItemStackTemplateSummary,
 };
+use bbb_world::ItemEquipmentSlot as WorldItemEquipmentSlot;
 
 mod icon_model;
 
@@ -180,6 +181,26 @@ impl NativeItemRuntime {
             sizes.insert(protocol_id as i32, size);
         }
         sizes
+    }
+
+    pub(crate) fn item_equipment_slots_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldItemEquipmentSlot> {
+        let mut slots = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return slots;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(slot) = registry.equipment_slot(resource_id) else {
+                continue;
+            };
+            slots.insert(protocol_id as i32, world_item_equipment_slot(slot));
+        }
+        slots
+    }
+
+    pub(crate) fn item_equipment_slot_count(&self) -> usize {
+        self.item_equipment_slots_by_protocol_id().len()
     }
 
     pub(crate) fn furnace_fuel_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
@@ -380,6 +401,19 @@ impl NativeItemRuntime {
             texture_index: self.textures.fallback_index(),
             tint: ItemIconTint::Static(ITEM_TINT_WHITE),
         }]
+    }
+}
+
+fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {
+    match slot {
+        PackItemEquipmentSlot::MainHand => WorldItemEquipmentSlot::MainHand,
+        PackItemEquipmentSlot::OffHand => WorldItemEquipmentSlot::OffHand,
+        PackItemEquipmentSlot::Feet => WorldItemEquipmentSlot::Feet,
+        PackItemEquipmentSlot::Legs => WorldItemEquipmentSlot::Legs,
+        PackItemEquipmentSlot::Chest => WorldItemEquipmentSlot::Chest,
+        PackItemEquipmentSlot::Head => WorldItemEquipmentSlot::Head,
+        PackItemEquipmentSlot::Body => WorldItemEquipmentSlot::Body,
+        PackItemEquipmentSlot::Saddle => WorldItemEquipmentSlot::Saddle,
     }
 }
 
@@ -907,6 +941,11 @@ mod tests {
 
         assert_eq!(runtime.item_definition_count(), 1);
         assert_eq!(runtime.item_registry_count(), 1);
+        assert_eq!(runtime.item_equipment_slot_count(), 1);
+        assert_eq!(
+            runtime.item_equipment_slots_by_protocol_id(),
+            BTreeMap::from([(0, WorldItemEquipmentSlot::Chest)])
+        );
         assert_eq!(runtime.resolved_model_count(), 1);
         assert_eq!(runtime.missing_model_count(), 1);
         assert_eq!(runtime.missing_texture_count(), 1);
@@ -1364,6 +1403,8 @@ mod tests {
 
         assert_eq!(runtime.item_definition_count(), 1);
         assert_eq!(runtime.item_registry_count(), 0);
+        assert_eq!(runtime.item_equipment_slot_count(), 0);
+        assert!(runtime.item_equipment_slots_by_protocol_id().is_empty());
         assert_eq!(runtime.texture_count(), 2);
         assert_eq!(runtime.icon_texture_count(), 1);
         assert!(!runtime.atlas_rgba().is_empty());
@@ -1701,7 +1742,7 @@ mod tests {
                 .join("item")
                 .join("Items.java"),
             r#"public class Items {
-                public static final Item TEST_COMBO = registerItem("test_combo");
+                public static final Item TEST_COMBO = registerItem("test_combo", new Item.Properties().equippable(EquipmentSlot.CHEST));
             }"#,
         );
     }

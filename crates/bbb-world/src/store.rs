@@ -8,10 +8,10 @@ use crate::{
     ClientDebugGameState, ClientDebugQueryState, ClientEffectsState, ClientFeatureState,
     ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemCooldownState,
-    LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState, LocalPlayerState,
-    MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet, ScoreboardState,
-    ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState, WorldCounters,
-    WorldDimension, WorldGameplayState, WorldLevelInfo,
+    ItemEquipmentSlot, LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState,
+    LocalPlayerState, MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet,
+    ScoreboardState, ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState,
+    WorldCounters, WorldDimension, WorldGameplayState, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -102,6 +102,8 @@ pub struct WorldStore {
     pub(crate) inventory: InventoryState,
     #[serde(default)]
     pub(crate) default_item_max_stack_sizes: BTreeMap<i32, i32>,
+    #[serde(default)]
+    pub(crate) default_item_equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     #[serde(default)]
     pub(crate) furnace_fuel_item_ids: BTreeSet<i32>,
     #[serde(default)]
