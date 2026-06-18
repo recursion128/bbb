@@ -300,8 +300,6 @@ When an agent does any of the following, update this file in the same slice:
     - recipe book/creative variants
     - remaining local crafting result parity for container `0`:
       - server-authored result recomputation from local 2x2 inputs
-      - repeated Shift-click crafting while the recomputed result stays the
-        same
       - recipe-specific remainder items
 - Evidence / boundary:
   - Movement:
@@ -400,8 +398,10 @@ When an agent does any of the following, update this file in the same slice:
       - routes Shift-click slots through a local `QUICK_MOVE` simulation for:
         - armor/offhand auto-equip from official item default equipment slots
         - main-inventory/hotbar/container-zero ranges
-        - single-take crafting result movement with vanilla-shaped input
-          consumption
+        - repeated crafting result movement while the result stack remains the
+          same item/components and the original input slots can still be
+          consumed
+        - vanilla-shaped result-to-player transfer order
       - routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation
       - routes hovered-slot number/F keys through a basic local `SWAP`
         simulation

@@ -703,13 +703,20 @@ impl WorldStore {
                 ),
                 ProtocolContainerInput::QuickMove => {
                     if container_id == INVENTORY_MENU_CONTAINER_ID {
-                        apply_quick_move_to_slots(
-                            container_id,
-                            &mut slots_after,
-                            request.slot_num,
-                            &self.default_item_equipment_slots,
-                            &self.default_item_max_stack_sizes,
-                        )
+                        if request.slot_num == 0 {
+                            apply_inventory_menu_result_quick_move_to_slots(
+                                &mut slots_after,
+                                &self.default_item_max_stack_sizes,
+                            );
+                        } else {
+                            apply_quick_move_to_slots(
+                                container_id,
+                                &mut slots_after,
+                                request.slot_num,
+                                &self.default_item_equipment_slots,
+                                &self.default_item_max_stack_sizes,
+                            )
+                        }
                     } else if let Some(container_slot_count) =
                         generic_9x_container_slot_count(menu_type_id)
                     {
@@ -815,6 +822,7 @@ impl WorldStore {
         }
         if container_id == INVENTORY_MENU_CONTAINER_ID
             && request.slot_num == 0
+            && request.input != ProtocolContainerInput::QuickMove
             && inventory_menu_result_was_taken(&slots_before, &slots_after)
         {
             apply_inventory_menu_result_take_side_effects(&mut slots_after);
@@ -1109,8 +1117,37 @@ fn inventory_menu_result_was_taken(before: &[ContainerSlot], after: &[ContainerS
 }
 
 fn apply_inventory_menu_result_take_side_effects(slots: &mut [ContainerSlot]) {
-    for slot_num in 1..=4 {
-        let Some(slot) = slots.iter_mut().find(|slot| slot.slot == slot_num) else {
+    let input_slot_nums = inventory_menu_non_empty_crafting_slot_nums(slots);
+    apply_inventory_menu_result_take_side_effects_for_slots(slots, &input_slot_nums);
+}
+
+fn inventory_menu_non_empty_crafting_slot_nums(slots: &[ContainerSlot]) -> Vec<i16> {
+    (1..=4)
+        .filter(|slot_num| {
+            slots
+                .iter()
+                .find(|slot| slot.slot == *slot_num)
+                .is_some_and(|slot| item_stack_is_non_empty(&slot.item))
+        })
+        .collect()
+}
+
+fn inventory_menu_inputs_can_take_result(slots: &[ContainerSlot], input_slot_nums: &[i16]) -> bool {
+    !input_slot_nums.is_empty()
+        && input_slot_nums.iter().all(|slot_num| {
+            slots
+                .iter()
+                .find(|slot| slot.slot == *slot_num)
+                .is_some_and(|slot| item_stack_is_non_empty(&slot.item))
+        })
+}
+
+fn apply_inventory_menu_result_take_side_effects_for_slots(
+    slots: &mut [ContainerSlot],
+    input_slot_nums: &[i16],
+) {
+    for slot_num in input_slot_nums {
+        let Some(slot) = slots.iter_mut().find(|slot| slot.slot == *slot_num) else {
             continue;
         };
         if item_stack_is_empty(&slot.item) {
@@ -1656,6 +1693,88 @@ fn apply_quick_move_to_slots(
         normalize_item_stack(&mut moving);
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn apply_inventory_menu_result_quick_move_to_slots(
+    slots: &mut [ContainerSlot],
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    let Some(result_index) = slots.iter().position(|slot| slot.slot == 0) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[result_index].item) {
+        return;
+    }
+
+    let result_template = slots[result_index].item.clone();
+    let input_slot_nums = inventory_menu_non_empty_crafting_slot_nums(slots);
+    if input_slot_nums.is_empty() {
+        let mut moving = result_template;
+        if move_item_stack_to_slots(
+            INVENTORY_MENU_CONTAINER_ID,
+            slots,
+            result_index,
+            &mut moving,
+            INVENTORY_MENU_MAIN_START,
+            INVENTORY_MENU_HOTBAR_END,
+            true,
+            default_item_max_stack_sizes,
+        ) {
+            normalize_item_stack(&mut moving);
+            slots[result_index].item = moving;
+            normalize_container_slot_selection(&mut slots[result_index]);
+        }
+        return;
+    }
+
+    let max_crafts = input_slot_nums
+        .iter()
+        .filter_map(|slot_num| {
+            slots
+                .iter()
+                .find(|slot| slot.slot == *slot_num)
+                .map(|slot| slot.item.count)
+        })
+        .min()
+        .unwrap_or(0)
+        .max(0);
+
+    for _ in 0..max_crafts {
+        let result_still_same = container_slot_item(slots, 0).is_some_and(|item| {
+            item_stack_is_non_empty(item) && same_item_same_components(item, &result_template)
+        });
+        if !result_still_same || !inventory_menu_inputs_can_take_result(slots, &input_slot_nums) {
+            break;
+        }
+
+        let mut candidate_slots = slots.to_vec();
+        candidate_slots[result_index].item = result_template.clone();
+        let mut moving = result_template.clone();
+        if !move_item_stack_to_slots(
+            INVENTORY_MENU_CONTAINER_ID,
+            &mut candidate_slots,
+            result_index,
+            &mut moving,
+            INVENTORY_MENU_MAIN_START,
+            INVENTORY_MENU_HOTBAR_END,
+            true,
+            default_item_max_stack_sizes,
+        ) {
+            break;
+        }
+
+        candidate_slots[result_index].item = ProtocolItemStackSummary::empty();
+        normalize_container_slot_selection(&mut candidate_slots[result_index]);
+        apply_inventory_menu_result_take_side_effects_for_slots(
+            &mut candidate_slots,
+            &input_slot_nums,
+        );
+        if inventory_menu_inputs_can_take_result(&candidate_slots, &input_slot_nums) {
+            candidate_slots[result_index].item = result_template.clone();
+            normalize_container_slot_selection(&mut candidate_slots[result_index]);
+        }
+        slots.clone_from_slice(&candidate_slots);
     }
 }
 
@@ -4017,12 +4136,12 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_container_quick_move_result_consumes_crafting_inputs_once() {
+    fn apply_local_container_quick_move_result_repeats_while_inputs_remain() {
         let mut store = WorldStore::new();
         let mut items = vec![ProtocolItemStackSummary::empty(); 46];
         items[0] = item_stack(90, 2);
-        items[1] = item_stack(42, 2);
-        items[2] = item_stack(43, 1);
+        items[1] = item_stack(42, 3);
+        items[2] = item_stack(43, 3);
         items[4] = item_stack(44, 3);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: INVENTORY_MENU_CONTAINER_ID,
@@ -4044,10 +4163,10 @@ mod tests {
             quick_move.changed_slots,
             BTreeMap::from([
                 (0, ProtocolHashedStack::Empty),
-                (1, hashed_item_stack(42, 1)),
+                (1, ProtocolHashedStack::Empty),
                 (2, ProtocolHashedStack::Empty),
-                (4, hashed_item_stack(44, 2)),
-                (44, hashed_item_stack(90, 2)),
+                (4, ProtocolHashedStack::Empty),
+                (44, hashed_item_stack(90, 6)),
             ])
         );
         assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
@@ -4055,14 +4174,79 @@ mod tests {
             inventory_menu_slot_item(&store, 0),
             ProtocolItemStackSummary::empty()
         );
-        assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+        assert_eq!(
+            inventory_menu_slot_item(&store, 1),
+            ProtocolItemStackSummary::empty()
+        );
         assert_eq!(
             inventory_menu_slot_item(&store, 2),
             ProtocolItemStackSummary::empty()
         );
-        assert_eq!(inventory_menu_slot_item(&store, 4), item_stack(44, 2));
-        assert_eq!(inventory_menu_slot_item(&store, 44), item_stack(90, 2));
-        assert_eq!(player_slot_item(&store, 8), item_stack(90, 2));
+        assert_eq!(
+            inventory_menu_slot_item(&store, 4),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 44), item_stack(90, 6));
+        assert_eq!(player_slot_item(&store, 8), item_stack(90, 6));
+    }
+
+    #[test]
+    fn apply_local_container_quick_move_result_consumes_after_partial_transfer() {
+        let mut store = WorldStore::new();
+        store.set_default_item_max_stack_sizes(BTreeMap::from([(90, 1)]));
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[0] = item_stack(90, 2);
+        items[1] = item_stack(42, 2);
+        items[2] = item_stack(43, 2);
+        items[4] = item_stack(44, 2);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: INVENTORY_MENU_CONTAINER_ID,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(store.open_local_inventory());
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, ProtocolHashedStack::Empty),
+                (1, ProtocolHashedStack::Empty),
+                (2, ProtocolHashedStack::Empty),
+                (4, ProtocolHashedStack::Empty),
+                (43, hashed_item_stack(90, 1)),
+                (44, hashed_item_stack(90, 1)),
+            ])
+        );
+        assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            inventory_menu_slot_item(&store, 0),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, 1),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, 2),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, 4),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 43), item_stack(90, 1));
+        assert_eq!(inventory_menu_slot_item(&store, 44), item_stack(90, 1));
+        assert_eq!(player_slot_item(&store, 7), item_stack(90, 1));
+        assert_eq!(player_slot_item(&store, 8), item_stack(90, 1));
     }
 
     #[test]
