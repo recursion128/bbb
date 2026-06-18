@@ -89,6 +89,11 @@ const ENCHANTING_TABLE_OPTION_SPACING: i32 = 19;
 const ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_SIZE: u32 = 16;
+const ENCHANTING_TABLE_COST_TEXT_X_RIGHT: i32 = 166;
+const ENCHANTING_TABLE_COST_TEXT_Y_OFFSET: i32 = 23;
+const ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR: [f32; 4] = [128.0 / 255.0, 1.0, 32.0 / 255.0, 1.0];
+const ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR: [f32; 4] =
+    [64.0 / 255.0, 127.0 / 255.0, 16.0 / 255.0, 1.0];
 const ANVIL_COST_DATA_ID: i16 = 0;
 const ANVIL_RESULT_SLOT: i16 = 2;
 const ANVIL_TOO_EXPENSIVE_LEVEL_COST: i16 = 40;
@@ -566,8 +571,40 @@ fn hud_inventory_text_labels(
             }
             labels
         }
+        InventoryScreenBackground::EnchantmentTable => enchanting_table_cost_text_labels(world),
         _ => Vec::new(),
     }
+}
+
+fn enchanting_table_cost_text_labels(world: &WorldStore) -> Vec<HudInventoryTextLabel> {
+    let mut labels = Vec::new();
+    for index in 0..ENCHANTING_TABLE_OPTION_COUNT {
+        let cost = world.open_container_data_value(index).unwrap_or_default();
+        if cost <= 0 {
+            continue;
+        }
+        let text = cost.to_string();
+        let Some(text_width) = hud_ascii_approx_text_width(&text) else {
+            continue;
+        };
+        let Some(text_width_i32) = i32::try_from(text_width).ok() else {
+            continue;
+        };
+        labels.push(HudInventoryTextLabel {
+            x: ENCHANTING_TABLE_COST_TEXT_X_RIGHT - text_width_i32,
+            y: ENCHANTING_TABLE_COST_TEXT_Y_OFFSET
+                + i32::from(index) * ENCHANTING_TABLE_OPTION_SPACING,
+            width: text_width,
+            text,
+            tint: if enchanting_table_option_is_enabled(world, index, cost) {
+                ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR
+            } else {
+                ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR
+            },
+            background: None,
+        });
+    }
+    labels
 }
 
 fn anvil_cost_text_label(world: &WorldStore) -> Option<HudInventoryTextLabel> {
@@ -1934,9 +1971,14 @@ fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgro
             ));
             continue;
         }
+        let enabled = enchanting_table_option_is_enabled(world, index, cost);
 
         layers.push(hud_inventory_background_layer(
-            HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlot,
+            if enabled {
+                HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlot
+            } else {
+                HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled
+            },
             ENCHANTING_TABLE_OPTION_X,
             y,
             ENCHANTING_TABLE_OPTION_WIDTH,
@@ -1945,7 +1987,7 @@ fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgro
             [1.0, 1.0],
         ));
         layers.push(hud_inventory_background_layer(
-            enchanting_table_level_texture(index),
+            enchanting_table_level_texture(index, enabled),
             ENCHANTING_TABLE_OPTION_X + ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET,
             y + ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET,
             ENCHANTING_TABLE_LEVEL_ICON_SIZE,
@@ -1957,11 +1999,31 @@ fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgro
     layers
 }
 
-fn enchanting_table_level_texture(index: i16) -> HudInventoryBackgroundTexture {
-    match index {
-        0 => HudInventoryBackgroundTexture::EnchantingTableLevel1,
-        1 => HudInventoryBackgroundTexture::EnchantingTableLevel2,
-        _ => HudInventoryBackgroundTexture::EnchantingTableLevel3,
+fn enchanting_table_option_is_enabled(world: &WorldStore, index: i16, cost: i16) -> bool {
+    if world.gameplay().game_type == 1 {
+        return true;
+    }
+    let required_lapis = i32::from(index) + 1;
+    let lapis_count = open_container_slot_item(world, 1)
+        .filter(|item| !item_stack_is_empty(item))
+        .map(|item| item.count)
+        .unwrap_or_default();
+    if lapis_count < required_lapis {
+        return false;
+    }
+    world.local_player().experience.is_some_and(|experience| {
+        experience.level >= i32::from(cost) && experience.level >= required_lapis
+    })
+}
+
+fn enchanting_table_level_texture(index: i16, enabled: bool) -> HudInventoryBackgroundTexture {
+    match (index, enabled) {
+        (0, true) => HudInventoryBackgroundTexture::EnchantingTableLevel1,
+        (1, true) => HudInventoryBackgroundTexture::EnchantingTableLevel2,
+        (_, true) => HudInventoryBackgroundTexture::EnchantingTableLevel3,
+        (0, false) => HudInventoryBackgroundTexture::EnchantingTableLevel1Disabled,
+        (1, false) => HudInventoryBackgroundTexture::EnchantingTableLevel2Disabled,
+        (_, false) => HudInventoryBackgroundTexture::EnchantingTableLevel3Disabled,
     }
 }
 
@@ -3163,16 +3225,23 @@ mod tests {
             menu_type_id: 13,
             title: "Enchanting Table".to_string(),
         });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 38];
+        items[1] = item_stack(42, 2);
         world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
             container_id: 7,
             state_id: 12,
-            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 38],
+            items,
             carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
         });
         world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
             container_id: 7,
             id: 1,
             value: 12,
+        });
+        world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
+            progress: 0.0,
+            level: 12,
+            total: 0,
         });
 
         let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
@@ -3199,6 +3268,81 @@ mod tests {
                 [0.0, 0.0],
                 [1.0, 1.0],
             )));
+        assert_eq!(
+            screen.text_labels,
+            vec![HudInventoryTextLabel {
+                x: 154,
+                y: 42,
+                width: 12,
+                text: "12".to_string(),
+                tint: ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR,
+                background: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 13,
+            title: "Enchanting Table".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 38];
+        items[1] = item_stack(42, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 2,
+            value: 30,
+        });
+        world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
+            progress: 0.0,
+            level: 40,
+            total: 0,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled,
+                60,
+                52,
+                108,
+                19,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::EnchantingTableLevel3Disabled,
+                61,
+                53,
+                16,
+                16,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert_eq!(
+            screen.text_labels,
+            vec![HudInventoryTextLabel {
+                x: 154,
+                y: 61,
+                width: 12,
+                text: "30".to_string(),
+                tint: ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR,
+                background: None,
+            }]
+        );
     }
 
     #[test]
