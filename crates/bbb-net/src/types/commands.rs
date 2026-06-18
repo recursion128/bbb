@@ -1,12 +1,13 @@
 use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ChatCommand, ChatMessage, CommandSuggestionRequest, ContainerButtonClick,
-    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery,
-    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
-    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
-    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
-    SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
+    ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, CommandSuggestionRequest,
+    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
+    EditBook, EntityTagQuery, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
+    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
+    SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SignUpdate, SpectateEntity,
+    TeleportToEntity, UseItem, UseItemOn, Vec3d,
 };
 use serde::{Deserialize, Serialize};
 
@@ -122,6 +123,7 @@ pub enum NetCommand {
     PlayerInput(PlayerInput),
     ChatAcknowledgement(ChatAcknowledgement),
     ChatCommand(ChatCommand),
+    ChatCommandSigned(ChatCommandSigned),
     ChatMessage(ChatMessage),
     CustomPayload(ServerboundCustomPayload),
     AttackEntity(AttackEntity),

@@ -116,8 +116,11 @@ Known priority areas:
   `offset > 64` threshold in both online dispatch and offline probe paths.
   Native unsigned chat submissions consume the same canonical last-seen tracker
   for their outbound `LastSeenMessages.Update`. Remaining chat work should focus
-  on signatures, argument signatures, and `ServerboundChatCommandSignedPacket`
-  rather than a second ack owner.
+  on full session signatures and non-empty argument signatures rather than a
+  second ack owner; offline/no-profile-key slash commands with signable
+  `minecraft:message` arguments now route through
+  `ServerboundChatCommandSignedPacket` with empty argument signatures and a
+  canonical last-seen update.
 - Play -> configuration re-entry is a level teardown boundary. `StartConfiguration`
   must acknowledge the server, stop play ticking, reset Code of Conduct
   duplicate detection, and clear current client-level state in both online native

@@ -1461,6 +1461,75 @@ fn encodes_chat_command_packet() {
 }
 
 #[test]
+fn encodes_signed_chat_command_packet_with_empty_argument_signatures() {
+    let mut packet = ChatCommandSigned::unsigned_arguments(
+        "say hello",
+        1_717_986_918_300,
+        0x0102_0304_0506_0708,
+    );
+    packet.last_seen_messages = LastSeenMessagesUpdate {
+        offset: 3,
+        acknowledged: (1 << 1) | (1 << 9),
+        checksum: 0x42,
+    };
+
+    let (id, payload) = encode_play_chat_command_signed(&packet);
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHAT_COMMAND_SIGNED);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(32767).unwrap(), "say hello");
+    assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
+    assert_eq!(decoder.read_i64().unwrap(), 0x0102_0304_0506_0708);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(decoder.read_var_i32().unwrap(), 3);
+    assert_eq!(
+        decoder.read_exact(3, "last seen bitset").unwrap(),
+        &[0x02, 0x02, 0x00]
+    );
+    assert_eq!(decoder.read_u8().unwrap(), 0x42);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_signed_chat_command_argument_signatures() {
+    let packet = ChatCommandSigned {
+        command: "tell Steve hello".to_string(),
+        timestamp_millis: 1_717_986_918_300,
+        salt: 0x0102_0304_0506_0708,
+        argument_signatures: ArgumentSignatures {
+            entries: vec![ArgumentSignature {
+                name: "message".to_string(),
+                signature: MessageSignature {
+                    bytes: vec![0xab; 256],
+                },
+            }],
+        },
+        last_seen_messages: LastSeenMessagesUpdate::default(),
+    };
+
+    let (id, payload) = encode_play_chat_command_signed(&packet);
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHAT_COMMAND_SIGNED);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(32767).unwrap(), "tell Steve hello");
+    assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
+    assert_eq!(decoder.read_i64().unwrap(), 0x0102_0304_0506_0708);
+    assert_eq!(decoder.read_var_i32().unwrap(), 1);
+    assert_eq!(decoder.read_string(16).unwrap(), "message");
+    assert_eq!(
+        decoder.read_exact(256, "argument signature").unwrap(),
+        vec![0xab; 256].as_slice()
+    );
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(
+        decoder.read_exact(3, "last seen bitset").unwrap(),
+        &[0, 0, 0]
+    );
+    assert_eq!(decoder.read_u8().unwrap(), 1);
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_unsigned_chat_message_packet() {
     let (id, payload) = encode_play_chat_message(&ChatMessage::unsigned(
         "hello",

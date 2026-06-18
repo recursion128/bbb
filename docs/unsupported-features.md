@@ -735,8 +735,7 @@ When an agent does any of the following, update this file in the same slice:
 - Next action:
   - Implement remaining signed chat payload production:
     - `ServerboundChatPacket` signatures
-    - `ServerboundChatCommandSignedPacket` for commands with signable arguments
-    - argument signatures
+    - non-empty `ServerboundChatCommandSignedPacket` argument signatures
     - session/key handling if offline-compatible servers require it
 - Evidence / boundary:
   - Covered pieces:
@@ -756,6 +755,13 @@ When an agent does any of the following, update this file in the same slice:
       - full-signature pending delete ignore
     - native normal chat submission consumes the canonical last-seen update
     - slash commands keep vanilla string-only `ServerboundChatCommandPacket`
+      when the canonical command tree has no signable argument path
+    - slash commands with a `minecraft:message` signable argument path send
+      `ServerboundChatCommandSignedPacket` with:
+      - timestamp
+      - salt
+      - empty argument signatures for offline/no-profile-key mode
+      - canonical outbound last-seen update
   - Full signed chat payload generation remains follow-up work.
 
 ### Manual Visual/Audio Comparisons

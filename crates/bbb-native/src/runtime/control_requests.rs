@@ -274,7 +274,7 @@ pub(crate) fn pump_control_net_requests(
                 select_bundle_item(counters, world, net_commands, slot_id, selected_item_index);
             }
             NetControlRequest::ChatCommand { command } => {
-                queue_chat_command(counters, net_commands, command);
+                queue_chat_command(counters, world, net_commands, command);
             }
             NetControlRequest::CommandSuggestionRequest { id, command } => {
                 queue_command_suggestion_request(counters, net_commands, id, command);
@@ -411,6 +411,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
+    use bbb_protocol::packets::{CommandArgumentParser, CommandNode, CommandNodeType, Commands};
     use uuid::Uuid;
 
     #[test]
@@ -436,6 +437,36 @@ mod tests {
                 command: "give @p minecraft:stone".to_string()
             })
         );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_signed_chat_command_for_signable_argument() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot
+            .write()
+            .unwrap()
+            .net_requests
+            .push(bbb_control::NetControlRequest::ChatCommand {
+                command: "say hello".to_string(),
+            });
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        world.apply_commands(signable_message_command_tree());
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        match rx.try_recv().unwrap() {
+            NetCommand::ChatCommandSigned(packet) => {
+                assert_eq!(packet.command, "say hello");
+                assert!(packet.timestamp_millis > 0);
+                assert_ne!(packet.salt, 0);
+                assert!(packet.argument_signatures.entries.is_empty());
+            }
+            command => panic!("expected signed chat command, got {command:?}"),
+        }
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 
@@ -1468,6 +1499,51 @@ mod tests {
                 bundle_contents_item_count: Some(bundle_contents_item_count),
                 ..bbb_protocol::packets::DataComponentPatchSummary::default()
             },
+        }
+    }
+
+    fn signable_message_command_tree() -> Commands {
+        Commands {
+            root_index: 0,
+            nodes: vec![
+                CommandNode {
+                    node_type: CommandNodeType::Root,
+                    flags: 0,
+                    children: vec![1],
+                    redirect: None,
+                    name: None,
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Literal,
+                    flags: 1,
+                    children: vec![2],
+                    redirect: None,
+                    name: Some("say".to_string()),
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Argument,
+                    flags: 6,
+                    children: Vec::new(),
+                    redirect: None,
+                    name: Some("message".to_string()),
+                    parser: Some(CommandArgumentParser {
+                        type_id: 20,
+                        name: "minecraft:message".to_string(),
+                        properties: Vec::new(),
+                    }),
+                    suggestions: None,
+                    executable: true,
+                    restricted: false,
+                },
+            ],
         }
     }
 

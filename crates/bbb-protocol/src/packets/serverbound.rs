@@ -11,7 +11,7 @@ use crate::{
 use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::client_state::Difficulty;
 use super::player_info::GameType;
-use super::{chunks, connection, BlockPos, Vec3d};
+use super::{chunks, connection, BlockPos, MessageSignature, Vec3d};
 
 const PLAYER_INPUT_FORWARD: u8 = 1;
 const PLAYER_INPUT_BACKWARD: u8 = 2;
@@ -23,6 +23,9 @@ const PLAYER_INPUT_SPRINT: u8 = 64;
 const LAST_SEEN_MESSAGES_BITSET_BITS: u32 = 20;
 const LAST_SEEN_MESSAGES_BITSET_BYTES: usize = 3;
 const EMPTY_LAST_SEEN_MESSAGES_CHECKSUM: u8 = 1;
+const ARGUMENT_SIGNATURE_BYTES: usize = 256;
+const MAX_ARGUMENT_SIGNATURE_COUNT: usize = 8;
+const MAX_ARGUMENT_SIGNATURE_NAME_CHARS: usize = 16;
 const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
 const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
@@ -57,6 +60,42 @@ pub struct PlayerAction {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChatCommand {
     pub command: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatCommandSigned {
+    pub command: String,
+    pub timestamp_millis: i64,
+    pub salt: i64,
+    pub argument_signatures: ArgumentSignatures,
+    pub last_seen_messages: LastSeenMessagesUpdate,
+}
+
+impl ChatCommandSigned {
+    pub fn unsigned_arguments(
+        command: impl Into<String>,
+        timestamp_millis: i64,
+        salt: i64,
+    ) -> Self {
+        Self {
+            command: command.into(),
+            timestamp_millis,
+            salt,
+            argument_signatures: ArgumentSignatures::default(),
+            last_seen_messages: LastSeenMessagesUpdate::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArgumentSignatures {
+    pub entries: Vec<ArgumentSignature>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArgumentSignature {
+    pub name: String,
+    pub signature: MessageSignature,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -734,6 +773,16 @@ pub fn encode_play_chat_command(packet: &ChatCommand) -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_CHAT_COMMAND, out.into_inner())
 }
 
+pub fn encode_play_chat_command_signed(packet: &ChatCommandSigned) -> (i32, Vec<u8>) {
+    let mut out = Encoder::new();
+    out.write_string(&packet.command);
+    out.write_i64(packet.timestamp_millis);
+    out.write_i64(packet.salt);
+    encode_argument_signatures(&mut out, &packet.argument_signatures);
+    encode_last_seen_messages_update(&mut out, packet.last_seen_messages);
+    (ids::play::SERVERBOUND_CHAT_COMMAND_SIGNED, out.into_inner())
+}
+
 pub fn encode_play_chat_message(packet: &ChatMessage) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_string(&packet.message);
@@ -742,6 +791,27 @@ pub fn encode_play_chat_message(packet: &ChatMessage) -> (i32, Vec<u8>) {
     out.write_bool(false);
     encode_last_seen_messages_update(&mut out, packet.last_seen_messages);
     (ids::play::SERVERBOUND_CHAT, out.into_inner())
+}
+
+fn encode_argument_signatures(out: &mut Encoder, signatures: &ArgumentSignatures) {
+    assert!(
+        signatures.entries.len() <= MAX_ARGUMENT_SIGNATURE_COUNT,
+        "argument signatures exceed vanilla maximum of 8 entries"
+    );
+
+    out.write_var_i32(signatures.entries.len() as i32);
+    for entry in &signatures.entries {
+        assert!(
+            entry.name.chars().count() <= MAX_ARGUMENT_SIGNATURE_NAME_CHARS,
+            "argument signature name exceeds vanilla maximum of 16 characters"
+        );
+        assert!(
+            entry.signature.bytes.len() == ARGUMENT_SIGNATURE_BYTES,
+            "argument signature must be exactly 256 bytes"
+        );
+        out.write_string(&entry.name);
+        out.write_bytes(&entry.signature.bytes);
+    }
 }
 
 fn encode_last_seen_messages_update(out: &mut Encoder, update: LastSeenMessagesUpdate) {

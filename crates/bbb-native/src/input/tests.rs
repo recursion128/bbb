@@ -1,12 +1,13 @@
 use super::*;
 use bbb_protocol::packets::{
-    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestion,
-    CommandSuggestionRequest, CommandSuggestions, CommonPlayerSpawnInfo, ContainerClick,
-    ContainerCloseRequest, ContainerInput, EntityDataValue as ProtocolEntityDataValue,
-    EntityDataValueKind, FilterMask, FilterMaskKind, HashedComponentPatch, HashedItemStack,
-    HashedStack, ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate,
-    MessageSignature, OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction,
-    PlayerChat, PlayerCommand, PlayerHealth, SetCursorItem as ProtocolSetCursorItem,
+    AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandArgumentParser, CommandNode,
+    CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
+    CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, FilterMask, FilterMaskKind,
+    HashedComponentPatch, HashedItemStack, HashedStack,
+    ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
+    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerChat,
+    PlayerCommand, PlayerHealth, SetCursorItem as ProtocolSetCursorItem,
     SetEntityData as ProtocolSetEntityData, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, SignedMessageBody, Vec3d as ProtocolVec3d,
 };
@@ -124,6 +125,51 @@ fn player_chat_with_signature(global_index: i32, signature: MessageSignature) ->
             name: "Alice".to_string(),
             target_name: None,
         },
+    }
+}
+
+fn signable_message_command_tree() -> Commands {
+    Commands {
+        root_index: 0,
+        nodes: vec![
+            CommandNode {
+                node_type: CommandNodeType::Root,
+                flags: 0,
+                children: vec![1],
+                redirect: None,
+                name: None,
+                parser: None,
+                suggestions: None,
+                executable: false,
+                restricted: false,
+            },
+            CommandNode {
+                node_type: CommandNodeType::Literal,
+                flags: 1,
+                children: vec![2],
+                redirect: None,
+                name: Some("say".to_string()),
+                parser: None,
+                suggestions: None,
+                executable: false,
+                restricted: false,
+            },
+            CommandNode {
+                node_type: CommandNodeType::Argument,
+                flags: 6,
+                children: Vec::new(),
+                redirect: None,
+                name: Some("message".to_string()),
+                parser: Some(CommandArgumentParser {
+                    type_id: 20,
+                    name: "minecraft:message".to_string(),
+                    properties: Vec::new(),
+                }),
+                suggestions: None,
+                executable: true,
+                restricted: false,
+            },
+        ],
     }
 }
 
@@ -331,6 +377,69 @@ fn command_entry_submits_slash_command_without_leading_slash() {
         NetCommand::ChatCommand(ChatCommand {
             command: "time set day".to_string(),
         })
+    );
+}
+
+#[test]
+fn command_entry_with_signable_message_argument_submits_signed_command() {
+    let (tx, mut rx) = mpsc::channel(3);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_commands(signable_message_command_tree());
+    let _ = world.apply_player_chat(player_chat_with_signature(
+        0,
+        MessageSignature {
+            bytes: vec![12; 256],
+        },
+    ));
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "/say hello",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.chat_entry_is_active());
+    assert_eq!(counters.command_suggestion_commands_queued, 1);
+    assert_eq!(counters.chat_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/say hello".to_string(),
+        })
+    );
+    match rx.try_recv().unwrap() {
+        NetCommand::ChatCommandSigned(packet) => {
+            assert_eq!(packet.command, "say hello");
+            assert!(packet.timestamp_millis > 0);
+            assert_ne!(packet.salt, 0);
+            assert!(packet.argument_signatures.entries.is_empty());
+            assert_eq!(packet.last_seen_messages.offset, 1);
+            assert_eq!(packet.last_seen_messages.acknowledged, 1 << 19);
+            assert_ne!(
+                packet.last_seen_messages.checksum,
+                LastSeenMessagesUpdate::default().checksum
+            );
+        }
+        command => panic!("expected signed chat command, got {command:?}"),
+    }
+    assert!(rx.try_recv().is_err());
+    assert_eq!(
+        world.counters().player_chat_acknowledgement_pending_offset,
+        0
     );
 }
 

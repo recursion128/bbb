@@ -9,7 +9,7 @@ use bbb_control::NetCounters;
 use bbb_net::{NetCommand, VehicleMoveCommand};
 use bbb_protocol::packets::{
     AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand, ChatCommand,
-    ChatMessage, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+    ChatCommandSigned, ChatMessage, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
     ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook,
     EntityTagQuery, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
     PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
@@ -424,14 +424,21 @@ pub(super) fn queue_player_action_command(
 
 pub(crate) fn queue_chat_command(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     command: impl Into<String>,
 ) {
     if let Some(tx) = net_commands {
-        let packet = ChatCommand {
-            command: command.into(),
+        let command = command.into();
+        let command = if world.command_requires_signed_arguments(&command) {
+            let (timestamp_millis, salt) = unsigned_chat_clock_fields(&command);
+            let mut packet = ChatCommandSigned::unsigned_arguments(command, timestamp_millis, salt);
+            packet.last_seen_messages = world.take_last_seen_messages_update_for_outbound_chat();
+            NetCommand::ChatCommandSigned(packet)
+        } else {
+            NetCommand::ChatCommand(ChatCommand { command })
         };
-        if tx.try_send(NetCommand::ChatCommand(packet)).is_ok() {
+        if tx.try_send(command).is_ok() {
             counters.chat_command_commands_queued += 1;
         }
     }
@@ -739,7 +746,8 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
-        ChatCommand, CommandSuggestionRequest, ContainerButtonClick, ContainerSlotStateChanged,
+        ChatCommand, ChatCommandSigned, CommandArgumentParser, CommandNode, CommandNodeType,
+        CommandSuggestionRequest, Commands, ContainerButtonClick, ContainerSlotStateChanged,
         Direction as ProtocolDirection, InteractEntity, InteractionHand, LastSeenMessagesUpdate,
         PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind, RecipeBookType,
         RecipeDisplayId, UseItemOn,
@@ -784,8 +792,14 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
 
-        queue_chat_command(&mut counters, &commands, "give @p minecraft:stone");
+        queue_chat_command(
+            &mut counters,
+            &mut world,
+            &commands,
+            "give @p minecraft:stone",
+        );
 
         assert_eq!(counters.chat_command_commands_queued, 1);
         assert_eq!(
@@ -794,6 +808,38 @@ mod tests {
                 command: "give @p minecraft:stone".to_string(),
             })
         );
+    }
+
+    #[test]
+    fn queues_signed_chat_command_for_signable_message_argument() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_commands(signable_message_command_tree());
+
+        queue_chat_command(&mut counters, &mut world, &commands, "say hello world");
+
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        match rx.try_recv().unwrap() {
+            NetCommand::ChatCommandSigned(packet) => {
+                let timestamp_millis = packet.timestamp_millis;
+                let salt = packet.salt;
+                assert_eq!(
+                    packet,
+                    ChatCommandSigned {
+                        command: "say hello world".to_string(),
+                        timestamp_millis,
+                        salt,
+                        argument_signatures: Default::default(),
+                        last_seen_messages: LastSeenMessagesUpdate::default(),
+                    }
+                );
+                assert!(timestamp_millis > 0);
+                assert_ne!(salt, 0);
+            }
+            command => panic!("expected signed chat command, got {command:?}"),
+        }
     }
 
     #[test]
@@ -814,6 +860,51 @@ mod tests {
                 assert_eq!(packet.last_seen_messages, LastSeenMessagesUpdate::default());
             }
             command => panic!("expected chat message command, got {command:?}"),
+        }
+    }
+
+    fn signable_message_command_tree() -> Commands {
+        Commands {
+            root_index: 0,
+            nodes: vec![
+                CommandNode {
+                    node_type: CommandNodeType::Root,
+                    flags: 0,
+                    children: vec![1],
+                    redirect: None,
+                    name: None,
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Literal,
+                    flags: 1,
+                    children: vec![2],
+                    redirect: None,
+                    name: Some("say".to_string()),
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Argument,
+                    flags: 6,
+                    children: Vec::new(),
+                    redirect: None,
+                    name: Some("message".to_string()),
+                    parser: Some(CommandArgumentParser {
+                        type_id: 20,
+                        name: "minecraft:message".to_string(),
+                        properties: Vec::new(),
+                    }),
+                    suggestions: None,
+                    executable: true,
+                    restricted: false,
+                },
+            ],
         }
     }
 

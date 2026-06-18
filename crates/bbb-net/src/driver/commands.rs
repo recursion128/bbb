@@ -1,13 +1,14 @@
 use anyhow::Result;
 use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ChatCommand, ChatMessage, CommandSuggestionRequest, ContainerButtonClick,
-    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, EditBook, EntityTagQuery,
-    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
-    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
-    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
-    SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
+    ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, CommandSuggestionRequest,
+    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
+    EditBook, EntityTagQuery, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
+    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
+    SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SignUpdate, SpectateEntity,
+    TeleportToEntity, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -45,6 +46,14 @@ pub(crate) async fn send_player_action(
 
 pub(crate) async fn send_chat_command(conn: &mut RawConnection, packet: ChatCommand) -> Result<()> {
     let (id, payload) = packets::encode_play_chat_command(&packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_chat_command_signed(
+    conn: &mut RawConnection,
+    packet: ChatCommandSigned,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_chat_command_signed(&packet);
     conn.send_packet(id, &payload).await
 }
 

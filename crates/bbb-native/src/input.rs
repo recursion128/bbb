@@ -543,7 +543,7 @@ fn submit_chat_entry(
         queue_chat_message_command(counters, world, net_commands, message);
         return;
     };
-    queue_chat_command(counters, net_commands, command);
+    queue_chat_command(counters, world, net_commands, command);
 }
 
 fn normalize_command_entry(text: &str) -> Option<String> {
