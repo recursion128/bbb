@@ -7,20 +7,38 @@ configuration UI.
 
 ## Roles
 
-- Main agent: owns scope selection, plan, vanilla-source checks, task split, integration, final tests, review, and commit.
-- Worker agents: own bounded implementation tasks with explicit write scopes. Workers do not commit and do not rewrite git history.
-- Explorer agents: answer narrow codebase or vanilla-source questions when the main agent can keep implementing in parallel.
+- Main agent: owns scope selection, plan, vanilla-source checks, task split,
+  integration, final tests, review, and commit.
+- Worker agents: own bounded implementation tasks with explicit write scopes,
+  normally in independent git worktrees and temporary branches. Workers do not
+  commit to `master` and do not rewrite git history.
+- Explorer agents: answer narrow codebase or vanilla-source questions when the
+  main agent can keep implementing in parallel.
 
 ## Turn Loop
 
 1. Main agent checks `git status --short` and identifies existing user or agent changes.
-2. Main agent selects the next slice that moves the repo closer to a full native Minecraft Java 26.1 client.
-3. Main agent verifies packet wire format or behavior against `<MC_CODE_ROOT>/sources/26.1/` when relevant.
+2. Main agent selects the next slice that moves the repo closer to a full
+   native Minecraft Java 26.1 client.
+3. Main agent verifies packet wire format or behavior against
+   `<MC_CODE_ROOT>/sources/26.1/` when relevant.
 4. Main agent splits work by disjoint file ownership and starts workers for non-blocking modules.
-5. Main agent keeps one critical-path task local while workers run.
-6. Workers edit only their assigned files, run focused tests, and report changed paths plus test results.
-7. Main agent reviews all diffs, resolves integration issues, runs `cargo fmt`, `git diff --check`, and `cargo test --workspace`.
-8. Main agent commits with a normal commit after verification. It never cleans or rewrites git history unless explicitly instructed.
+5. Each coding worker uses a separate git worktree and temporary branch when
+   parallel implementation is expected, for example:
+   - `../bbb-wt-renderer`
+   - `../bbb-wt-world`
+   - `../bbb-wt-protocol`
+6. Main agent gives each worker an exact write scope and a distinct
+   `CARGO_TARGET_DIR` when focused tests may run in parallel.
+7. Main agent keeps one critical-path task local while workers run.
+8. Workers edit only their assigned files, run focused tests, and report
+   changed paths plus test results.
+9. Main agent reviews worker diffs and integrates them by patch, cherry-pick, or
+   merge from temporary branches.
+10. Main agent resolves integration issues, runs `cargo fmt`,
+   `git diff --check`, and `cargo test --workspace`.
+11. Main agent commits with a normal commit after verification. It never cleans
+   or rewrites git history unless explicitly instructed.
 
 ## Default Slice Shape
 
@@ -51,11 +69,26 @@ intact and choose a smaller feature slice instead.
 Every worker prompt must include:
 
 - Working directory.
+- Worktree path and temporary branch name when the worker is expected to edit
+  outside the main worktree.
+- `CARGO_TARGET_DIR` for that worktree when the worker may run Cargo tests.
 - Exact file or module ownership.
 - Required behavior and authoritative vanilla facts.
 - Reminder that other agents may be editing the repo.
-- No commit and no history rewriting.
+- No `master` commit, no direct merge to `master`, and no history rewriting.
 - Required focused tests and final report format.
+
+## Worktree Discipline
+
+- Do not let multiple workers edit the same large file or unstable module.
+- Prefer parallel worktrees for renderer/assets, world tests, protocol
+  decode/encode, and narrow net wiring.
+- Keep `lib.rs` extraction and other structural refactors single-owner because
+  they create broad merge conflicts.
+- Worker branches are integration inputs. The main agent owns the final diff,
+  final tests, and final commit.
+- Delete or reuse temporary worktrees deliberately after integration so stale
+  branches do not become an alternate source of truth.
 
 ## Merge Gate
 

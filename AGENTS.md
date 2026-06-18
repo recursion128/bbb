@@ -30,12 +30,16 @@ configuration UI.
 
 - Main agent owns task selection, planning, vanilla-source verification, worker
   orchestration, integration, review, final tests, and commits.
-- Worker agents own bounded coding tasks with explicit file/module write scopes.
+- Worker agents own bounded coding tasks with explicit file/module write scopes,
+  normally in independent git worktrees and temporary branches.
 - Explorer agents answer narrow codebase or vanilla-source questions when that can run
   in parallel with implementation.
 
 The main agent should keep the critical path moving locally while workers handle
-disjoint modules. Workers must not commit and must not rewrite git history.
+disjoint modules. Workers must not commit to `master`, merge into `master`, or
+rewrite git history. If a slice explicitly allows worker commits, those commits
+stay on temporary branches and the main agent remains the only merger and final
+committer.
 
 ## Standard Workflow
 
@@ -49,15 +53,24 @@ disjoint modules. Workers must not commit and must not rewrite git history.
    - native/control: drain handling, snapshot counters, runtime tests
    - renderer/input: visible or interactive behavior when the slice needs it
 5. Spawn worker agents for non-overlapping modules when parallelism helps.
-6. Main agent integrates worker changes, resolves API mismatches, and reviews the full diff.
-7. Run formatting, diff checks, and tests.
-8. Make a normal commit after verification.
+   Prefer one independent git worktree per worker, for example:
+   - `../bbb-wt-renderer`
+   - `../bbb-wt-world`
+   - `../bbb-wt-protocol`
+6. Give each worker worktree a temporary branch and, when tests may run in
+   parallel, a distinct `CARGO_TARGET_DIR` to avoid Cargo lock contention.
+7. Main agent integrates worker changes by reviewing diffs and using patch,
+   cherry-pick, or merge from temporary branches. Main agent resolves API
+   mismatches and reviews the full integrated diff.
+8. Run formatting, diff checks, and tests.
+9. Make a normal commit after verification.
 
 ## Worker Prompt Requirements
 
 Every worker prompt should include:
 
 - Working directory.
+- Temporary branch/worktree name when using a worker worktree.
 - Exact owned files/modules.
 - Required behavior and authoritative vanilla facts.
 - Reminder that other agents may be editing concurrently.
@@ -65,6 +78,16 @@ Every worker prompt should include:
 - Instruction not to commit or rewrite history.
 - Required focused tests.
 - Final report with changed paths and test results.
+
+## Worker Worktree Discipline
+
+- Do not assign multiple workers to the same large file or unstable module.
+- Renderer assets, world tests, protocol decode/encode, and narrow net wiring
+  are good parallel worktree tasks.
+- Structural refactors such as `lib.rs` extraction are usually main-agent work
+  or a single-worker task because concurrent edits are likely to conflict.
+- Worker branches are integration inputs, not final history. The main agent
+  owns the final reviewed commit on `master`.
 
 ## Testing Gate
 
