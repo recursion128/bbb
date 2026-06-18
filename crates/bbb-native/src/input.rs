@@ -3,8 +3,8 @@ use std::time::Instant;
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
-    Direction as ProtocolDirection, InteractionHand, ItemStackSummary, PlayerActionKind,
-    PlayerCommandAction, PlayerInput,
+    BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
+    ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, SignUpdate,
 };
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
@@ -19,6 +19,7 @@ mod inventory;
 mod mouse;
 mod movement;
 
+use crate::crosshair::protocol_block_pos_from_world;
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{
@@ -48,6 +49,7 @@ pub(crate) use movement::advance_player_input;
 
 const CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS: u8 = 7;
 const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
+const SIGN_LINE_MAX_LENGTH: usize = 384;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
@@ -92,6 +94,8 @@ pub(crate) struct ClientInputState {
     beacon_secondary_effect: Option<i32>,
     anvil_rename_input: Option<AnvilRenameInputSignature>,
     anvil_rename_text: String,
+    sign_editor: Option<SignEditorInputState>,
+    dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
@@ -115,6 +119,20 @@ struct ChatEntryState {
 struct AnvilRenameInputSignature {
     container_id: i32,
     item: ItemStackSummary,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SignEditorInputSignature {
+    open_count: usize,
+    pos: ProtocolBlockPos,
+    is_front_text: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SignEditorInputState {
+    signature: SignEditorInputSignature,
+    lines: [String; 4],
+    line: usize,
 }
 
 impl ClientInputState {
@@ -193,6 +211,12 @@ impl ClientInputState {
 
     pub(crate) fn command_entry_is_active(&self) -> bool {
         self.chat_entry_is_active()
+    }
+
+    pub(crate) fn sign_editor_is_active_or_pending(&self, world: &WorldStore) -> bool {
+        self.sign_editor.is_some()
+            || sign_editor_signature_from_world(world)
+                .is_some_and(|signature| Some(&signature) != self.dismissed_sign_editor.as_ref())
     }
 
     pub(crate) fn chat_entry_is_active(&self) -> bool {
@@ -316,6 +340,10 @@ pub(crate) fn handle_key_input(
     }
     if matches!(code, KeyCode::ControlLeft | KeyCode::ControlRight) {
         input.set_control_key(code, pressed);
+    }
+
+    if handle_sign_editor_key(input, counters, world, net_commands, code, pressed) {
+        return;
     }
 
     if input.command_entry_is_active() {
@@ -547,6 +575,10 @@ pub(crate) fn handle_text_input(
         return;
     }
 
+    if handle_sign_editor_text(input, counters, world, net_commands, text) {
+        return;
+    }
+
     if handle_inventory_text_input(input, world, counters, net_commands, text) {
         return;
     }
@@ -738,6 +770,144 @@ fn maybe_queue_command_suggestion_request(
 
 fn is_chat_text_char(ch: char) -> bool {
     !ch.is_control() && ch != '\u{7f}'
+}
+
+fn handle_sign_editor_text(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    text: &str,
+) -> bool {
+    sync_sign_editor_input(input, counters, world, net_commands);
+    let Some(editor) = &mut input.sign_editor else {
+        return false;
+    };
+
+    push_sign_line_text(&mut editor.lines[editor.line], text);
+    true
+}
+
+fn handle_sign_editor_key(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    code: KeyCode,
+    pressed: bool,
+) -> bool {
+    sync_sign_editor_input(input, counters, world, net_commands);
+    if input.sign_editor.is_none() {
+        return false;
+    }
+    if !pressed {
+        return true;
+    }
+
+    match code {
+        KeyCode::Escape => submit_sign_editor(input, counters, net_commands),
+        KeyCode::ArrowUp => {
+            if let Some(editor) = &mut input.sign_editor {
+                editor.line = (editor.line + 3) % editor.lines.len();
+            }
+        }
+        KeyCode::ArrowDown | KeyCode::Enter | KeyCode::NumpadEnter => {
+            if let Some(editor) = &mut input.sign_editor {
+                editor.line = (editor.line + 1) % editor.lines.len();
+            }
+        }
+        KeyCode::Backspace => {
+            if let Some(editor) = &mut input.sign_editor {
+                editor.lines[editor.line].pop();
+            }
+        }
+        _ => {}
+    }
+    true
+}
+
+fn sync_sign_editor_input(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) -> bool {
+    let Some(signature) = sign_editor_signature_from_world(world) else {
+        input.sign_editor = None;
+        return false;
+    };
+    if input
+        .sign_editor
+        .as_ref()
+        .is_some_and(|editor| editor.signature == signature)
+    {
+        return false;
+    }
+    if input.dismissed_sign_editor.as_ref() == Some(&signature) {
+        input.sign_editor = None;
+        return false;
+    }
+
+    input.sign_editor = Some(SignEditorInputState {
+        signature,
+        lines: std::array::from_fn(|_| String::new()),
+        line: 0,
+    });
+    release_active_input(input, world, counters, net_commands);
+    true
+}
+
+fn sign_editor_signature_from_world(world: &WorldStore) -> Option<SignEditorInputSignature> {
+    let editor = world.last_open_sign_editor()?;
+    let open_count = world.counters().open_sign_editor_packets;
+    if open_count == 0 {
+        return None;
+    }
+    Some(SignEditorInputSignature {
+        open_count,
+        pos: protocol_block_pos_from_world(editor.pos),
+        is_front_text: editor.is_front_text,
+    })
+}
+
+fn submit_sign_editor(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    let Some(editor) = input.sign_editor.take() else {
+        return;
+    };
+    input.dismissed_sign_editor = Some(editor.signature.clone());
+    queue_sign_update_command(
+        counters,
+        net_commands,
+        SignUpdate {
+            pos: editor.signature.pos,
+            is_front_text: editor.signature.is_front_text,
+            lines: editor.lines,
+        },
+    );
+}
+
+fn push_sign_line_text(current: &mut String, text: &str) {
+    let mut remaining = SIGN_LINE_MAX_LENGTH.saturating_sub(sign_line_len(current));
+    for ch in text.chars().filter(|ch| is_sign_text_char(*ch)) {
+        let len = ch.len_utf16();
+        if len > remaining {
+            break;
+        }
+        current.push(ch);
+        remaining -= len;
+    }
+}
+
+fn is_sign_text_char(ch: char) -> bool {
+    ch != '\u{a7}' && ch >= ' ' && ch != '\u{7f}'
+}
+
+fn sign_line_len(text: &str) -> usize {
+    text.encode_utf16().count()
 }
 
 fn player_input_from_state(input: &ClientInputState) -> PlayerInput {

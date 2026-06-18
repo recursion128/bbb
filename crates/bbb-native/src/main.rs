@@ -237,6 +237,7 @@ fn main() -> Result<()> {
                         && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
                         && cursor_captured
                         && !input.command_entry_is_active()
+                        && !input.sign_editor_is_active_or_pending(&world)
                         && !world_wants_cursor(&world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);

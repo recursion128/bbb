@@ -7,10 +7,11 @@ use bbb_protocol::packets::{
     EntityDataValueKind, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
-    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAbilities,
+    OpenScreen as ProtocolOpenScreen, OpenSignEditor, PaddleBoat, PlayLogin, PlayerAbilities,
     PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth, RenameItem,
     SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetPassengers,
-    SetPlayerInventory as ProtocolSetPlayerInventory, SignedMessageBody, Vec3d as ProtocolVec3d,
+    SetPlayerInventory as ProtocolSetPlayerInventory, SignUpdate, SignedMessageBody,
+    Vec3d as ProtocolVec3d,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_world::{BlockPos, LocalPlayerPoseState, WorldStore};
@@ -1766,6 +1767,157 @@ fn anvil_text_input_filters_vanilla_invalid_chars_and_max_length() {
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::RenameItem(RenameItem { name: expected })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn pending_sign_editor_escape_queues_empty_sign_update() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: -5,
+            y: 70,
+            z: 12,
+        },
+        is_front_text: false,
+    });
+
+    assert!(input.sign_editor_is_active_or_pending(&world));
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.sign_editor_is_active_or_pending(&world));
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate {
+            pos: ProtocolBlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            is_front_text: false,
+            lines: Default::default(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sign_editor_text_input_changes_lines_and_queues_sign_update() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.forward = true;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 3, y: 64, z: -9 },
+        is_front_text: true,
+    });
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "Front");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "Back");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowUp),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.forward);
+    assert!(!input.sign_editor_is_active_or_pending(&world));
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate {
+            pos: ProtocolBlockPos { x: 3, y: 64, z: -9 },
+            is_front_text: true,
+            lines: [
+                "Fron".to_string(),
+                "Back".to_string(),
+                String::new(),
+                String::new(),
+            ],
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sign_editor_text_input_filters_invalid_chars_and_max_length() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 0, y: 1, z: 2 },
+        is_front_text: true,
+    });
+    let text = format!("{}{}\u{a7}\n", "a".repeat(383), "🙂");
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, &text);
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    let expected = "a".repeat(383);
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate {
+            pos: ProtocolBlockPos { x: 0, y: 1, z: 2 },
+            is_front_text: true,
+            lines: [expected, String::new(), String::new(), String::new(),],
+        })
     );
     assert!(rx.try_recv().is_err());
 }

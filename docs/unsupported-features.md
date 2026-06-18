@@ -320,6 +320,12 @@ When an agent does any of the following, update this file in the same slice:
       - interaction
       - chat
       - command
+      - sign editing
+    - Sign editing follow-up work:
+      - preload existing sign text from canonical block entity state
+      - renderer presentation for the vanilla sign edit screen
+      - cursor-aware editing beyond append/backspace
+      - mouse/cursor capture parity while the sign edit screen is open
     - Gameplay Q/Ctrl+Q drop input now follows vanilla 26.1 modifier
       semantics:
       - Ctrl, not sprint, selects `DROP_ALL_ITEMS`.
@@ -468,6 +474,11 @@ When an agent does any of the following, update this file in the same slice:
         - perform-respawn
         - from native/control input
       - avoid auto-respawning on dead health
+    - Sign editor input paths:
+      - open from `ClientboundOpenSignEditorPacket`
+      - edit four pending lines
+      - cycle lines with vanilla-shaped up/down/confirmation keys
+      - close by queueing `ServerboundSignUpdatePacket`
   - Inventory:
     - Native opens the ordinary local inventory as container `0`.
     - While the local inventory is open, it:
