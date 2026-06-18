@@ -159,6 +159,13 @@ fn profile_for_declaration(
     };
 
     apply_property_chain(expression, &mut profile)?;
+    if let Some(host) = infested_host_from_constructor(expression)? {
+        let Some(host_profile) = fields.get(&host) else {
+            return Ok(None);
+        };
+        profile.destroy_time_tenths =
+            infested_destroy_time_tenths(host_profile.destroy_time_tenths);
+    }
     Ok(Some(profile))
 }
 
@@ -204,6 +211,17 @@ fn profile_from_known_helper(expression: &str) -> Option<BlockDestroyProfile> {
         return Some(profile(15, false));
     }
     None
+}
+
+fn infested_host_from_constructor(expression: &str) -> Result<Option<String>> {
+    optional_capture(
+        r#"new\s+Infested(?:RotatedPillar)?Block\(\s*([A-Z0-9_]+)\s*,\s*p\s*\)"#,
+        expression,
+    )
+}
+
+fn infested_destroy_time_tenths(host_destroy_time_tenths: Option<u32>) -> Option<u32> {
+    host_destroy_time_tenths.map(|value| (f64::from(value) / 2.0).round() as u32)
 }
 
 fn apply_property_chain(expression: &str, profile: &mut BlockDestroyProfile) -> Result<()> {
@@ -289,6 +307,9 @@ mod tests {
                   "stone",
                   BlockBehaviour.Properties.of().mapColor(MapColor.STONE).requiresCorrectToolForDrops().strength(1.5F, 6.0F)
                );
+               public static final Block INFESTED_STONE = register(
+                  "infested_stone", p -> new InfestedBlock(STONE, p), BlockBehaviour.Properties.of().mapColor(MapColor.CLAY)
+               );
                public static final Block DIRT = register(BlockIds.DIRT, BlockBehaviour.Properties.of().strength(0.5F));
                public static final Block BEDROCK = register("bedrock", BlockBehaviour.Properties.of().strength(-1.0F, 3600000.0F).noLootTable());
                public static final Block DEEPSLATE_DIAMOND_ORE = register(
@@ -320,6 +341,13 @@ mod tests {
             &BlockDestroyProfile {
                 destroy_time_tenths: Some(15),
                 requires_correct_tool: true,
+            }
+        );
+        assert_eq!(
+            catalog.profile("minecraft:infested_stone").unwrap(),
+            &BlockDestroyProfile {
+                destroy_time_tenths: Some(8),
+                requires_correct_tool: false,
             }
         );
         assert_eq!(
@@ -395,6 +423,27 @@ mod tests {
                 .unwrap()
                 .destroy_time_tenths,
             Some(45)
+        );
+        assert_eq!(
+            catalog.profile("minecraft:infested_stone").unwrap(),
+            &BlockDestroyProfile {
+                destroy_time_tenths: Some(8),
+                requires_correct_tool: false,
+            }
+        );
+        assert_eq!(
+            catalog.profile("minecraft:infested_cobblestone").unwrap(),
+            &BlockDestroyProfile {
+                destroy_time_tenths: Some(10),
+                requires_correct_tool: false,
+            }
+        );
+        assert_eq!(
+            catalog.profile("minecraft:infested_deepslate").unwrap(),
+            &BlockDestroyProfile {
+                destroy_time_tenths: Some(15),
+                requires_correct_tool: false,
+            }
         );
         assert_eq!(
             catalog

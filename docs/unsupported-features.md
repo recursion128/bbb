@@ -306,7 +306,8 @@ When an agent does any of the following, update this file in the same slice:
   - Block destroy:
     - Close remaining block destroy profile gaps outside the mechanically
       parsed `Blocks.java` property declarations:
-      - constructor-level mutations such as `InfestedBlock`
+      - constructor-level mutations beyond the covered `InfestedBlock` /
+        `InfestedRotatedPillarBlock` host destroy-time rule
       - arbitrary helper/lambda evaluation not covered by the current parser
     - Close remaining vanilla player destroy-speed gaps:
       - validate exact pose/fluid nuance beyond the current standing-eye
@@ -850,6 +851,8 @@ When an agent does any of the following, update this file in the same slice:
       - direct `strength` / `destroyTime` / `instabreak` chains
       - `requiresCorrectToolForDrops`
       - `ofLegacyCopy` / `ofFullCopy` inheritance
+      - `InfestedBlock` / `InfestedRotatedPillarBlock` host destroy-time
+        halving
       - common helper registrations for:
         - logs
         - stems
