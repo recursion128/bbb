@@ -850,7 +850,7 @@ fn sync_sign_editor_input(
 
     input.sign_editor = Some(SignEditorInputState {
         signature,
-        lines: std::array::from_fn(|_| String::new()),
+        lines: sign_editor_initial_lines(world),
         line: 0,
     });
     release_active_input(input, world, counters, net_commands);
@@ -868,6 +868,14 @@ fn sign_editor_signature_from_world(world: &WorldStore) -> Option<SignEditorInpu
         pos: protocol_block_pos_from_world(editor.pos),
         is_front_text: editor.is_front_text,
     })
+}
+
+fn sign_editor_initial_lines(world: &WorldStore) -> [String; 4] {
+    world
+        .last_open_sign_editor()
+        .and_then(|editor| world.sign_text_lines(editor.pos, editor.is_front_text))
+        .cloned()
+        .unwrap_or_else(|| std::array::from_fn(|_| String::new()))
 }
 
 fn submit_sign_editor(

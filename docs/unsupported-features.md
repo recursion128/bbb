@@ -322,7 +322,6 @@ When an agent does any of the following, update this file in the same slice:
       - command
       - sign editing
     - Sign editing follow-up work:
-      - preload existing sign text from canonical block entity state
       - renderer presentation for the vanilla sign edit screen
       - cursor-aware editing beyond append/backspace
     - Gameplay Q/Ctrl+Q drop input now follows vanilla 26.1 modifier
@@ -475,6 +474,8 @@ When an agent does any of the following, update this file in the same slice:
       - avoid auto-respawning on dead health
     - Sign editor input paths:
       - open from `ClientboundOpenSignEditorPacket`
+      - initialize from canonical sign block entity front/back text when
+        available
       - edit four pending lines
       - cycle lines with vanilla-shaped up/down/confirmation keys
       - close by queueing `ServerboundSignUpdatePacket`

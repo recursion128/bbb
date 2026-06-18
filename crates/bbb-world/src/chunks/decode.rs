@@ -8,6 +8,7 @@ use crate::{ChunkPos, Result, WorldDecodeError};
 
 use super::{
     palette::{packed_long_len, palette_kind, PaletteDomain, PaletteKind, PalettedContainerData},
+    sign_text::decode_sign_block_entity_text,
     state::{
         BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, NbtPayloadSummary,
     },
@@ -150,12 +151,14 @@ fn decode_block_entities(
                 remaining: decoder.remaining_len(),
             });
         }
+        let sign_text = decode_sign_block_entity_text(&entity.raw_nbt)?;
         out.push(BlockEntityRecord {
             local_x: entity.packed_xz >> 4,
             y: entity.y,
             local_z: entity.packed_xz & 0x0f,
             type_id: entity.block_entity_type_id,
             nbt,
+            sign_text,
         });
     }
     Ok(out)

@@ -20,7 +20,7 @@ use crate::{
 
 use super::{
     decode_biome_sections, decode_level_chunk_with_light, decode_nbt_payload_summary,
-    merge_light_data, sample_terrain_light,
+    merge_light_data, sample_terrain_light, sign_text::decode_sign_block_entity_text,
 };
 
 impl WorldStore {
@@ -117,6 +117,13 @@ impl WorldStore {
                 return Err(err);
             }
         };
+        let sign_text = match decode_sign_block_entity_text(&packet.raw_nbt) {
+            Ok(text) => text,
+            Err(err) => {
+                self.record_apply_error("block_entity_data", &err);
+                return Err(err);
+            }
+        };
 
         let chunk_pos = ChunkPos {
             x: pos.x.div_euclid(16),
@@ -128,6 +135,7 @@ impl WorldStore {
             local_z: pos.z.rem_euclid(16) as u8,
             type_id: packet.block_entity_type_id,
             nbt,
+            sign_text,
         };
         let Some(chunk) = self.chunks.iter_mut().find(|chunk| chunk.pos == chunk_pos) else {
             self.counters.block_entity_updates_ignored += 1;
@@ -256,6 +264,28 @@ impl WorldStore {
     pub fn probe_chunk_summary(&self, pos: ChunkPos) -> Option<ChunkProbeSummaryState> {
         self.probe_chunk(pos)
             .map(ChunkProbeSummaryState::from_chunk)
+    }
+
+    pub fn sign_text_lines(&self, pos: BlockPos, is_front_text: bool) -> Option<&[String; 4]> {
+        let chunk_pos = ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        };
+        let local_x = pos.x.rem_euclid(16) as u8;
+        let y = i16::try_from(pos.y).ok()?;
+        let local_z = pos.z.rem_euclid(16) as u8;
+        let sign_text = self
+            .probe_chunk(chunk_pos)?
+            .block_entities
+            .iter()
+            .find(|entity| entity.local_x == local_x && entity.y == y && entity.local_z == local_z)?
+            .sign_text
+            .as_ref()?;
+        if is_front_text {
+            Some(&sign_text.front)
+        } else {
+            Some(&sign_text.back)
+        }
     }
 
     pub fn probe_block(&self, pos: BlockPos) -> Option<BlockProbe> {

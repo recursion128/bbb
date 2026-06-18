@@ -671,6 +671,7 @@ fn applies_block_entity_data_update() {
                 root_type: 10,
                 byte_len: raw_nbt.len(),
             }),
+            sign_text: None,
         }
     );
 
@@ -705,6 +706,66 @@ fn applies_block_entity_data_update() {
     assert_eq!(store.counters().block_entity_updates_received, 3);
     assert_eq!(store.counters().block_entity_updates_applied, 2);
     assert_eq!(store.counters().block_entity_updates_ignored, 1);
+}
+
+#[test]
+fn applies_sign_block_entity_text_update() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let raw_nbt = sign_text_nbt(
+        ["Front 1", "Front 2", "Front 3", "Front 4"],
+        ["Back 1", "Back 2", "Back 3", "Back 4"],
+    );
+    assert!(store
+        .apply_block_entity_data(ProtocolBlockEntityData {
+            pos: ProtocolBlockPos {
+                x: 33,
+                y: 7,
+                z: -46,
+            },
+            block_entity_type_id: 7,
+            raw_nbt,
+        })
+        .unwrap());
+
+    assert_eq!(
+        store.sign_text_lines(
+            BlockPos {
+                x: 33,
+                y: 7,
+                z: -46
+            },
+            true
+        ),
+        Some(&[
+            "Front 1".to_string(),
+            "Front 2".to_string(),
+            "Front 3".to_string(),
+            "Front 4".to_string(),
+        ])
+    );
+    assert_eq!(
+        store.sign_text_lines(
+            BlockPos {
+                x: 33,
+                y: 7,
+                z: -46
+            },
+            false
+        ),
+        Some(&[
+            "Back 1".to_string(),
+            "Back 2".to_string(),
+            "Back 3".to_string(),
+            "Back 4".to_string(),
+        ])
+    );
 }
 
 #[test]
@@ -848,6 +909,32 @@ fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
     payload.extend_from_slice(value.as_bytes());
     payload.push(0);
     payload
+}
+
+fn sign_text_nbt(front: [&str; 4], back: [&str; 4]) -> Vec<u8> {
+    let mut payload = vec![10];
+    write_sign_text_side(&mut payload, "front_text", front);
+    write_sign_text_side(&mut payload, "back_text", back);
+    payload.push(0);
+    payload
+}
+
+fn write_sign_text_side(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
+    out.push(10);
+    write_nbt_string(out, name);
+    out.push(9);
+    write_nbt_string(out, "messages");
+    out.push(8);
+    out.extend_from_slice(&4i32.to_be_bytes());
+    for line in lines {
+        write_nbt_string(out, line);
+    }
+    out.push(0);
+}
+
+fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
 }
 
 fn pack_fixed_values(values: &[u64], bits_per_entry: usize) -> Vec<u64> {

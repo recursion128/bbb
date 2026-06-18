@@ -81,6 +81,14 @@ pub struct BlockEntityRecord {
     pub local_z: u8,
     pub type_id: i32,
     pub nbt: Option<NbtPayloadSummary>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sign_text: Option<SignBlockEntityTextState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignBlockEntityTextState {
+    pub front: [String; 4],
+    pub back: [String; 4],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

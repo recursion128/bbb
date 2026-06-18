@@ -1,6 +1,7 @@
 mod decode;
 mod light;
 mod palette;
+mod sign_text;
 mod state;
 mod store;
 
@@ -11,7 +12,7 @@ pub(crate) use light::{merge_light_data, sample_terrain_light};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub use state::{
     BlockEntityRecord, ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState,
-    ChunkViewState, HeightmapData, NbtPayloadSummary,
+    ChunkViewState, HeightmapData, NbtPayloadSummary, SignBlockEntityTextState,
 };
 
 #[cfg(test)]

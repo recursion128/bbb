@@ -14,7 +14,10 @@ use bbb_protocol::packets::{
     Vec3d as ProtocolVec3d,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
-use bbb_world::{BlockPos, LocalPlayerPoseState, WorldStore};
+use bbb_world::{
+    BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkState, LightData,
+    LocalPlayerPoseState, SignBlockEntityTextState, WorldStore,
+};
 use uuid::Uuid;
 
 const VANILLA_26_1_ELYTRA_ITEM_ID: i32 = 14;
@@ -107,6 +110,32 @@ fn world_with_local_vehicle(player_id: i32, vehicle_id: i32, entity_type_id: i32
         vehicle_id,
         passenger_ids: vec![player_id],
     }));
+    world
+}
+
+fn world_with_sign_text(pos: BlockPos, front: [&str; 4], back: [&str; 4]) -> WorldStore {
+    let mut world = WorldStore::new();
+    world.insert_decoded_chunk(ChunkColumn {
+        pos: ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        },
+        state: ChunkState::Decoded,
+        heightmaps: Vec::new(),
+        sections: Vec::new(),
+        block_entities: vec![BlockEntityRecord {
+            local_x: pos.x.rem_euclid(16) as u8,
+            y: i16::try_from(pos.y).unwrap(),
+            local_z: pos.z.rem_euclid(16) as u8,
+            type_id: 7,
+            nbt: None,
+            sign_text: Some(SignBlockEntityTextState {
+                front: front.map(str::to_string),
+                back: back.map(str::to_string),
+            }),
+        }],
+        light: LightData::default(),
+    });
     world
 }
 
@@ -1809,6 +1838,58 @@ fn pending_sign_editor_escape_queues_empty_sign_update() {
             },
             is_front_text: false,
             lines: Default::default(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn pending_sign_editor_escape_preserves_existing_sign_text() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let sign_pos = BlockPos { x: 3, y: 64, z: -9 };
+    let mut world = world_with_sign_text(
+        sign_pos,
+        ["Front 1", "Front 2", "Front 3", "Front 4"],
+        ["Back 1", "Back 2", "Back 3", "Back 4"],
+    );
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: sign_pos.x,
+            y: sign_pos.y,
+            z: sign_pos.z,
+        },
+        is_front_text: false,
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.sign_editor_is_active_or_pending(&world));
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate {
+            pos: ProtocolBlockPos {
+                x: sign_pos.x,
+                y: sign_pos.y,
+                z: sign_pos.z,
+            },
+            is_front_text: false,
+            lines: [
+                "Back 1".to_string(),
+                "Back 2".to_string(),
+                "Back 3".to_string(),
+                "Back 4".to_string(),
+            ],
         })
     );
     assert!(rx.try_recv().is_err());
