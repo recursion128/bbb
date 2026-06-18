@@ -83,6 +83,21 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
         if is_campfire_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::CAMPFIRE));
         }
+        if is_cactus_or_honey_block_name(block_name) {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::CENTERED_14PX_COLUMN_15PX_HIGH,
+            ));
+        }
+        if is_farmland_or_dirt_path_block_name(block_name) {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::FULL_WIDTH_15PX_HIGH,
+            ));
+        }
+        if is_soul_sand_or_mud_block_name(block_name) {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::FULL_WIDTH_14PX_HIGH,
+            ));
+        }
         if is_cauldron_block_name(block_name) {
             return Some(cauldron_collision_shape());
         }
@@ -228,6 +243,18 @@ fn is_rod_block_name(block_name: &str) -> bool {
 
 fn is_campfire_block_name(block_name: &str) -> bool {
     matches!(block_name, "minecraft:campfire" | "minecraft:soul_campfire")
+}
+
+fn is_cactus_or_honey_block_name(block_name: &str) -> bool {
+    matches!(block_name, "minecraft:cactus" | "minecraft:honey_block")
+}
+
+fn is_farmland_or_dirt_path_block_name(block_name: &str) -> bool {
+    matches!(block_name, "minecraft:farmland" | "minecraft:dirt_path")
+}
+
+fn is_soul_sand_or_mud_block_name(block_name: &str) -> bool {
+    matches!(block_name, "minecraft:soul_sand" | "minecraft:mud")
 }
 
 fn is_door_block_name(block_name: &str) -> bool {
@@ -1086,6 +1113,30 @@ impl BlockCollisionBox {
         max_x: 1.0,
         max_y: 7.0 * PX,
         max_z: 1.0,
+    };
+    const FULL_WIDTH_15PX_HIGH: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: 15.0 * PX,
+        max_z: 1.0,
+    };
+    const FULL_WIDTH_14PX_HIGH: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: 14.0 * PX,
+        max_z: 1.0,
+    };
+    const CENTERED_14PX_COLUMN_15PX_HIGH: Self = Self {
+        min_x: PX,
+        min_y: 0.0,
+        min_z: PX,
+        max_x: 15.0 * PX,
+        max_y: 15.0 * PX,
+        max_z: 15.0 * PX,
     };
     const CHEST_SINGLE: Self = Self {
         min_x: PX,

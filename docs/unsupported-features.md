@@ -368,6 +368,10 @@ When an agent does any of the following, update this file in the same slice:
       - leaves
       - snow layer
       - flat carpet
+      - cactus
+      - farmland / dirt path
+      - soul sand / mud
+      - honey block
       - chain
       - ladder
       - rod

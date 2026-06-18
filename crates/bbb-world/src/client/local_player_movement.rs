@@ -606,8 +606,11 @@ mod tests {
     const OAK_BOTTOM_STRAIGHT_NORTH_STAIR_BLOCK_STATE_ID: i32 = 3918;
     const OAK_BOTTOM_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3938;
     const OAK_LEAVES_BLOCK_STATE_ID: i32 = 255;
+    const FARMLAND_MOISTURE_0_BLOCK_STATE_ID: i32 = 5319;
     const SNOW_5_LAYERS_BLOCK_STATE_ID: i32 = 6923;
     const SNOW_6_LAYERS_BLOCK_STATE_ID: i32 = 6924;
+    const CACTUS_AGE_0_BLOCK_STATE_ID: i32 = 6929;
+    const SOUL_SAND_BLOCK_STATE_ID: i32 = 6998;
     const OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID: i32 = 5666;
     const OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7121;
     const STONE_PRESSURE_PLATE_BLOCK_STATE_ID: i32 = 6796;
@@ -620,8 +623,10 @@ mod tests {
     const IRON_CHAIN_Y_AXIS_BLOCK_STATE_ID: i32 = 8249;
     const LADDER_SOUTH_BLOCK_STATE_ID: i32 = 5722;
     const END_ROD_NORTH_BLOCK_STATE_ID: i32 = 14636;
+    const DIRT_PATH_BLOCK_STATE_ID: i32 = 14815;
     const LANTERN_STANDING_BLOCK_STATE_ID: i32 = 20840;
     const CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID: i32 = 20880;
+    const HONEY_BLOCK_STATE_ID: i32 = 21816;
     const CHEST_SINGLE_NORTH_BLOCK_STATE_ID: i32 = 3988;
     const CHEST_LEFT_NORTH_BLOCK_STATE_ID: i32 = 3990;
     const TRAPPED_CHEST_RIGHT_NORTH_BLOCK_STATE_ID: i32 = 11212;
@@ -636,6 +641,7 @@ mod tests {
     const COPPER_GRATE_BLOCK_STATE_ID: i32 = 27048;
     const WAXED_COPPER_GRATE_BLOCK_STATE_ID: i32 = 27056;
     const LIGHTNING_ROD_UP_UNPOWERED_BLOCK_STATE_ID: i32 = 27562;
+    const MUD_BLOCK_STATE_ID: i32 = 27922;
 
     #[test]
     fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
@@ -925,6 +931,63 @@ mod tests {
                 pose.position
             );
             assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_lands_on_vanilla_low_ground_shapes() {
+        let cases = [
+            ("farmland", FARMLAND_MOISTURE_0_BLOCK_STATE_ID, 1.9375),
+            ("dirt path", DIRT_PATH_BLOCK_STATE_ID, 1.9375),
+            ("soul sand", SOUL_SAND_BLOCK_STATE_ID, 1.875),
+            ("mud", MUD_BLOCK_STATE_ID, 1.875),
+        ];
+
+        for (name, block_state_id, expected_y) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            world.set_local_player_pose(LocalPlayerPoseState {
+                position: vec3(0.5, 3.0, 1.5),
+                on_ground: false,
+                ..LocalPlayerPoseState::default()
+            });
+
+            let pose = world
+                .advance_local_player_input(
+                    LocalPlayerInputState {
+                        focused: true,
+                        ..LocalPlayerInputState::default()
+                    },
+                    2.0,
+                )
+                .unwrap();
+
+            assert_f64_near(pose.position.y, expected_y, 0.0005);
+            assert!(pose.on_ground, "{name}");
+            assert!(!pose.horizontal_collision, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_walks_up_to_narrow_cactus_and_honey_columns() {
+        let cases = [
+            ("cactus", CACTUS_AGE_0_BLOCK_STATE_ID),
+            ("honey block", HONEY_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z > 0.7005 && pose.position.z <= 0.763,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
             assert!(pose.on_ground, "{name}");
         }
     }
