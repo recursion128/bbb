@@ -509,7 +509,7 @@ mod tests {
         BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
         BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound, ChatTypeHolder,
         ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ClockUpdate, CommandSuggestion,
-        CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, CustomChatCompletions,
+        CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, Cooldown, CustomChatCompletions,
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
         DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
         Difficulty, EntityAnchor, Explosion, FilterMask, FilterMaskKind, GameEvent, GameProfile,
@@ -689,6 +689,53 @@ mod tests {
         assert_eq!(report.world_counters.award_stats_entries_received, 2);
         assert_eq!(report.world_counters.last_award_stats_entry_count, 2);
         assert_eq!(report.world_counters.stats_tracked, 2);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_item_cooldown_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Cooldown(Cooldown {
+                cooldown_group: "minecraft:ender_pearl".to_string(),
+                duration: 20,
+            }))
+            .await
+            .unwrap();
+
+        let cooldown = probe
+            .world
+            .cooldown("minecraft:ender_pearl")
+            .expect("cooldown should be tracked after positive duration");
+        assert_eq!(cooldown.duration, 20);
+        assert_eq!(cooldown.remaining_ticks, 20);
+        assert_eq!(
+            probe
+                .world
+                .item_cooldown_percent("minecraft:ender_pearl", 0.5),
+            0.975
+        );
+
+        probe
+            .handle_play_packet(PlayClientbound::Cooldown(Cooldown {
+                cooldown_group: "minecraft:ender_pearl".to_string(),
+                duration: 0,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+
+        assert!(report.world.cooldown("minecraft:ender_pearl").is_none());
+        assert_eq!(
+            report
+                .world
+                .item_cooldown_percent("minecraft:ender_pearl", 0.0),
+            0.0
+        );
+        assert_eq!(report.world_counters.cooldown_packets, 2);
+        assert_eq!(report.world_counters.cooldowns_tracked, 0);
     }
 
     #[tokio::test]
