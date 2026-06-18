@@ -506,35 +506,36 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary,
         AdvancementSummary, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
-        BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
-        BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound, ChatTypeHolder,
-        ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ClockUpdate, CommandSuggestion,
-        CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, Cooldown, CustomChatCompletions,
-        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
-        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat,
-        DialogHolder, Difficulty, DisguisedChat, EntityAnchor, EntityAnimation, Explosion,
-        FilterMask, FilterMaskKind, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
-        GameRuleValues, GameTestHighlightPos, GameType, HurtAnimation, IngredientSummary,
-        InitializeBorder, InteractionHand, LevelChunkBlockEntity, LevelChunkData,
-        LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdateData, MapColorPatch,
-        MapDecoration, MapItemData, MessageSignature, MountScreenOpen, MoveVehicle,
-        ObjectiveRenderType, OpenBook, OpenSignEditor, PackedMessageSignature, ParticlePayload,
-        PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerExperience,
-        PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove,
-        PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate,
-        PlayerTeamMethod, PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd,
-        RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
-        RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
-        RecipePropertySetSummary, RemoteDebugSampleType, ResetScore, ResourcePackPop,
-        ResourcePackPush, ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot,
-        SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
-        ServerLinks, SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
-        SetBorderWarningDistance, SetCamera, SetDefaultSpawnPosition, SetDisplayObjective,
-        SetEntityMotion, SetHeldSlot, SetObjective, SetObjectiveMethod, SetObjectiveParameters,
-        SetPassengers, SetPlayerTeam, SetScore, SetSimulationDistance, ShowDialog,
-        SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder,
-        SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound, StoreCookie,
-        TabList, TagQuery, TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus,
+        BlockPos as ProtocolBlockPos, BlockUpdate, BossBarColor, BossBarOverlay, BossEvent,
+        BossEventFlags, BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound,
+        ChatTypeHolder, ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ClockUpdate,
+        CommandSuggestion, CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, Cooldown,
+        CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
+        CustomReportDetails, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent,
+        DebugSample, DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor,
+        EntityAnimation, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameEvent,
+        GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameTestHighlightPos,
+        GameType, HurtAnimation, IngredientSummary, InitializeBorder, InteractionHand,
+        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
+        LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MessageSignature,
+        MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenSignEditor,
+        PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime,
+        PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction,
+        PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt,
+        PlayerPositionUpdate, PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters,
+        PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
+        RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
+        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType,
+        ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, RotateHead,
+        ScoreboardDisplaySlot, SectionBlocksUpdate, SelectAdvancementsTab, ServerData,
+        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetBorderCenter,
+        SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
+        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetDefaultSpawnPosition,
+        SetDisplayObjective, SetEntityMotion, SetHeldSlot, SetObjective, SetObjectiveMethod,
+        SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore, SetSimulationDistance,
+        ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
+        SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
+        StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus,
         TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
         UpdateAdvancements, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
         WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
@@ -1375,6 +1376,120 @@ mod tests {
         assert_eq!(first_chunk, Some(ChunkPos { x: 1, z: -2 }));
         assert_eq!(probe.world.counters().chunks_received, 1);
         assert_eq!(probe.world.counters().world_apply_errors, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_chunk_view_and_block_updates_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let chunk_pos = ChunkPos { x: 1, z: -2 };
+
+        probe
+            .handle_play_packet(PlayClientbound::SetChunkCacheCenter(SetChunkCacheCenter {
+                chunk_x: chunk_pos.x,
+                chunk_z: chunk_pos.z,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetChunkCacheRadius(SetChunkCacheRadius {
+                radius: 7,
+            }))
+            .await
+            .unwrap();
+
+        let first_chunk = probe
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(
+                synthetic_probe_level_chunk_packet(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(first_chunk, Some(chunk_pos));
+        assert_eq!(probe.world.chunk_cache_center(), Some(chunk_pos));
+        assert_eq!(probe.world.chunk_cache_radius(), Some(7));
+        assert_eq!(probe.world.first_chunk(), Some(chunk_pos));
+        assert_eq!(probe.world.chunk_positions(), vec![chunk_pos]);
+
+        probe
+            .handle_play_packet(PlayClientbound::BlockUpdate(BlockUpdate {
+                pos: ProtocolBlockPos {
+                    x: 16,
+                    y: -64,
+                    z: -32,
+                },
+                block_state_id: 9,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SectionBlocksUpdate(SectionBlocksUpdate {
+                section_x: 1,
+                section_y: -4,
+                section_z: -2,
+                updates: vec![
+                    BlockUpdate {
+                        pos: ProtocolBlockPos {
+                            x: 17,
+                            y: -64,
+                            z: -32,
+                        },
+                        block_state_id: 9,
+                    },
+                    BlockUpdate {
+                        pos: ProtocolBlockPos {
+                            x: 18,
+                            y: -64,
+                            z: -32,
+                        },
+                        block_state_id: 9,
+                    },
+                ],
+            }))
+            .await
+            .unwrap();
+
+        for x in 16..=18 {
+            assert_eq!(
+                probe
+                    .world
+                    .probe_block(BlockPos { x, y: -64, z: -32 })
+                    .unwrap()
+                    .block_state_id,
+                9
+            );
+        }
+        assert_eq!(probe.world.counters().chunks_received, 1);
+        assert_eq!(probe.world.counters().chunks_decoded, 1);
+        assert_eq!(probe.world.counters().block_updates_received, 3);
+        assert_eq!(probe.world.counters().block_updates_applied, 3);
+        assert_eq!(probe.world.counters().block_updates_ignored, 0);
+        assert_eq!(
+            probe.world.counters().chunk_cache_center_updates_received,
+            1
+        );
+        assert_eq!(
+            probe.world.counters().chunk_cache_radius_updates_received,
+            1
+        );
+
+        probe
+            .handle_play_packet(PlayClientbound::ForgetLevelChunk(ForgetLevelChunk {
+                pos: ProtocolChunkPos {
+                    x: chunk_pos.x,
+                    z: chunk_pos.z,
+                },
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world.chunk_count(), 0);
+        assert_eq!(report.world.first_chunk(), Some(chunk_pos));
+        assert_eq!(report.world_counters.chunk_forgets_received, 1);
+        assert_eq!(report.world_counters.chunks_forgotten, 1);
+        assert_eq!(report.world_counters.chunk_forgets_ignored, 0);
     }
 
     #[tokio::test]
