@@ -12,7 +12,8 @@ pub(super) use self::gpu::{
 use self::layout::{
     centered_hud_rect, experience_bar_hud_rect, food_hud_rect, heart_hud_rect, hotbar_hud_rect,
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_experience_progress_width, hud_food_fill,
-    hud_heart_fill, hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_text_height,
+    hud_heart_fill, hud_inventory_text_label_glyph_hud_rect,
+    hud_inventory_tooltip_background_hud_rect, hud_inventory_tooltip_text_height,
     hud_inventory_tooltip_text_hud_rect, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
     hud_item_durability_bar_rect, hud_quad_vertices, inventory_background_hud_rect,
     inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
@@ -253,6 +254,16 @@ pub struct HudInventoryItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudInventoryTextLabel {
+    /// Text x position relative to the centered inventory screen origin.
+    pub x: i32,
+    /// Text y position relative to the centered inventory screen origin.
+    pub y: i32,
+    pub width: u32,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HudInventoryTooltip {
     pub slot_id: u16,
     /// Tooltip anchor x position relative to the centered inventory screen origin.
@@ -271,6 +282,7 @@ pub struct HudInventoryScreen {
     pub slots: Vec<HudInventorySlot>,
     /// Item icons drawn by the inventory screen that are not container slots.
     pub floating_items: Vec<HudInventoryItem>,
+    pub text_labels: Vec<HudInventoryTextLabel>,
     pub hovered_slot_id: Option<u16>,
     pub tooltip: Option<HudInventoryTooltip>,
 }
@@ -1660,6 +1672,15 @@ impl Renderer {
                 }
             }
 
+            push_hud_inventory_text_labels(
+                &mut vertices,
+                &mut commands,
+                self.hud_ascii_atlas.as_ref(),
+                &self.hud_ascii_glyphs,
+                surface_size,
+                screen,
+            );
+
             if let (Some(slot), Some(highlight)) = (hovered_slot, &self.hud_slot_highlight_front) {
                 push_hud_draw(
                     &mut vertices,
@@ -2149,6 +2170,59 @@ fn push_hud_item_count_label<'a>(
     }
 }
 
+fn push_hud_inventory_text_labels<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    ascii_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+) {
+    let Some(ascii_atlas) = ascii_atlas else {
+        return;
+    };
+    for label in &screen.text_labels {
+        for shadow_offset in [1.0, 0.0] {
+            let tint = if shadow_offset > 0.0 {
+                HUD_TEXT_SHADOW_TINT
+            } else {
+                HUD_TINT_WHITE
+            };
+            let mut pen_x = 0u32;
+            for ch in label.text.chars() {
+                let glyph = hud_ascii_glyph(ch, glyphs);
+                if pen_x >= label.width {
+                    break;
+                }
+                if glyph.width > 0
+                    && glyph.height > 0
+                    && pen_x.saturating_add(glyph.width) <= label.width
+                {
+                    push_hud_draw_with_uv_and_tint(
+                        vertices,
+                        commands,
+                        ascii_atlas,
+                        surface_size,
+                        hud_inventory_text_label_glyph_hud_rect(
+                            surface_size,
+                            screen.width,
+                            screen.height,
+                            label.x,
+                            label.y,
+                            pen_x,
+                            shadow_offset,
+                            glyph,
+                        ),
+                        glyph.uv,
+                        tint,
+                    );
+                }
+                pen_x = pen_x.saturating_add(glyph.advance);
+            }
+        }
+    }
+}
+
 fn push_hud_inventory_tooltip<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -2308,6 +2382,11 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .into_iter()
             .filter_map(sanitize_hud_inventory_item)
             .collect(),
+        text_labels: screen
+            .text_labels
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_text_label)
+            .collect(),
         hovered_slot_id: screen.hovered_slot_id,
         tooltip: screen.tooltip.and_then(sanitize_hud_inventory_tooltip),
     }
@@ -2337,17 +2416,32 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
     })
 }
 
+fn sanitize_hud_inventory_text_label(
+    label: HudInventoryTextLabel,
+) -> Option<HudInventoryTextLabel> {
+    let x = label.x;
+    let y = label.y;
+    let width = label.width;
+    let text = sanitize_hud_text_line(label.text)?;
+    (width > 0).then_some(HudInventoryTextLabel {
+        x,
+        y,
+        width: width.min(512),
+        text,
+    })
+}
+
 fn sanitize_hud_inventory_tooltip(tooltip: HudInventoryTooltip) -> Option<HudInventoryTooltip> {
     let lines = tooltip
         .lines
         .into_iter()
-        .filter_map(sanitize_hud_tooltip_line)
+        .filter_map(sanitize_hud_text_line)
         .take(16)
         .collect::<Vec<_>>();
     (!lines.is_empty()).then_some(HudInventoryTooltip { lines, ..tooltip })
 }
 
-fn sanitize_hud_tooltip_line(line: String) -> Option<String> {
+fn sanitize_hud_text_line(line: String) -> Option<String> {
     let line = line
         .chars()
         .filter(|ch| !ch.is_control())
@@ -2661,6 +2755,20 @@ mod tests {
                 },
             ],
             floating_items: Vec::new(),
+            text_labels: vec![
+                HudInventoryTextLabel {
+                    x: 62,
+                    y: 24,
+                    width: 103,
+                    text: "Name\u{0007}".to_string(),
+                },
+                HudInventoryTextLabel {
+                    x: 10,
+                    y: 10,
+                    width: 0,
+                    text: "ignored".to_string(),
+                },
+            ],
             hovered_slot_id: Some(7),
             tooltip: Some(HudInventoryTooltip {
                 slot_id: 5,
@@ -2707,6 +2815,15 @@ mod tests {
         assert_eq!(screen.slots[1].icon, None);
         assert_eq!(screen.slots[2].slot_id, 7);
         assert_eq!(screen.slots[2].icon, None);
+        assert_eq!(
+            screen.text_labels,
+            vec![HudInventoryTextLabel {
+                x: 62,
+                y: 24,
+                width: 103,
+                text: "Name".to_string(),
+            }]
+        );
         assert_eq!(
             screen.tooltip,
             Some(HudInventoryTooltip {
@@ -2761,6 +2878,7 @@ mod tests {
             ],
             hovered_slot_id: None,
             tooltip: None,
+            text_labels: Vec::new(),
         });
 
         assert_eq!(screen.floating_items.len(), 1);

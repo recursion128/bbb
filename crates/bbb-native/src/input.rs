@@ -20,6 +20,7 @@ mod mouse;
 mod movement;
 
 use crate::crosshair::protocol_block_pos_from_world;
+use crate::item_runtime::NativeItemRuntime;
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{
@@ -328,6 +329,26 @@ pub(crate) fn handle_key_input(
     physical_key: PhysicalKey,
     state: ElementState,
 ) {
+    handle_key_input_with_item_runtime(
+        input,
+        counters,
+        world,
+        net_commands,
+        None,
+        physical_key,
+        state,
+    );
+}
+
+pub(crate) fn handle_key_input_with_item_runtime(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
+    physical_key: PhysicalKey,
+    state: ElementState,
+) {
     if !input.focused {
         return;
     }
@@ -387,7 +408,7 @@ pub(crate) fn handle_key_input(
     }
     if inventory_screen_layout(world).is_some() {
         if pressed {
-            handle_inventory_key_input(input, world, counters, net_commands, code);
+            handle_inventory_key_input(input, world, counters, net_commands, item_runtime, code);
         }
         return;
     }
@@ -572,6 +593,17 @@ pub(crate) fn handle_text_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     text: &str,
 ) {
+    handle_text_input_with_item_runtime(input, counters, world, net_commands, None, text);
+}
+
+pub(crate) fn handle_text_input_with_item_runtime(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
+    text: &str,
+) {
     if !input.focused {
         return;
     }
@@ -580,7 +612,7 @@ pub(crate) fn handle_text_input(
         return;
     }
 
-    if handle_inventory_text_input(input, world, counters, net_commands, text) {
+    if handle_inventory_text_input(input, world, counters, net_commands, item_runtime, text) {
         return;
     }
 

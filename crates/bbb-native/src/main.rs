@@ -34,9 +34,9 @@ use code_of_conduct_overlay::CodeOfConductOverlayState;
 use hud_assets::load_hud_textures;
 use input::{
     handle_focus_change, handle_inventory_cursor_moved, handle_inventory_mouse_input,
-    handle_inventory_mouse_wheel, handle_key_input, handle_mouse_input_at_partial_tick,
-    handle_mouse_motion, handle_mouse_wheel, handle_text_input, release_active_input,
-    ClientInputState,
+    handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
+    handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
+    handle_text_input_with_item_runtime, release_active_input, ClientInputState,
 };
 use item_runtime::NativeItemRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
@@ -256,11 +256,12 @@ fn main() -> Result<()> {
                     if !cursor_captured && !container_open && !sign_editor_open {
                         return;
                     }
-                    handle_key_input(
+                    handle_key_input_with_item_runtime(
                         &mut input,
                         &mut net_counters,
                         &mut world,
                         &net_commands,
+                        item_runtime.as_ref(),
                         event.physical_key,
                         event.state,
                     );
@@ -271,21 +272,23 @@ fn main() -> Result<()> {
                         return;
                     }
                     let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
-                    if world_wants_cursor(&world) {
+                    let container_open = world.open_container_id().is_some();
+                    if world.current_dialog().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if sign_editor_open {
+                    if sign_editor_open || container_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
-                    if !cursor_captured && !sign_editor_open {
+                    if !cursor_captured && !sign_editor_open && !container_open {
                         return;
                     }
-                    handle_text_input(
+                    handle_text_input_with_item_runtime(
                         &mut input,
                         &mut net_counters,
                         &mut world,
                         &net_commands,
+                        item_runtime.as_ref(),
                         &text,
                     );
                 }

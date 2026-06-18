@@ -1,4 +1,5 @@
 use super::*;
+use crate::item_runtime::NativeItemRuntime;
 use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandArgumentParser, CommandNode,
     CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
@@ -18,6 +19,10 @@ use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_world::{
     BlockEntityRecord, BlockPos, ChunkColumn, ChunkPos, ChunkState, LightData,
     LocalPlayerPoseState, SignBlockEntityTextState, WorldStore,
+};
+use std::{
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
 };
 use uuid::Uuid;
 
@@ -1760,6 +1765,40 @@ fn anvil_text_input_queues_rename_item_command() {
 }
 
 #[test]
+fn anvil_text_input_starts_from_default_hover_name_when_item_runtime_is_available() {
+    let root = unique_input_temp_dir("anvil-rename-default");
+    write_input_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(0, 1)));
+
+    handle_text_input_with_item_runtime(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        Some(&item_runtime),
+        "!",
+    );
+
+    assert_eq!(input.anvil_rename_text(), "Test Combo!");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Test Combo!".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn anvil_backspace_queues_updated_rename_item_command() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
@@ -3269,6 +3308,99 @@ fn anvil_container_world(
         carried_item: ProtocolItemStackSummary::empty(),
     });
     world
+}
+
+fn write_input_tooltip_item_assets(root: &Path) {
+    let assets = input_assets_dir(root);
+    write_input_json(
+        &assets.join("atlases").join("items.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "item/",
+                    "source": "item"
+                }
+            ]
+        }"#,
+    );
+    write_input_json(
+        &assets.join("atlases").join("blocks.json"),
+        r#"{
+            "sources": [
+                {
+                    "type": "minecraft:directory",
+                    "prefix": "block/",
+                    "source": "block"
+                }
+            ]
+        }"#,
+    );
+    write_input_json(
+        &assets.join("items").join("test_combo.json"),
+        r#"{
+            "model": {
+                "type": "minecraft:model",
+                "model": "minecraft:item/test_combo"
+            }
+        }"#,
+    );
+    write_input_json(
+        &assets.join("models").join("item").join("test_combo.json"),
+        r#"{
+            "textures": {
+                "layer0": "minecraft:item/test_combo"
+            }
+        }"#,
+    );
+    write_input_json(
+        &assets.join("lang").join("en_us.json"),
+        r#"{
+            "item.minecraft.test_combo": "Test Combo"
+        }"#,
+    );
+    write_input_png(
+        &assets.join("textures").join("item").join("test_combo.png"),
+        &[80, 120, 160, 255],
+    );
+    write_input_json(
+        &root
+            .join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("net")
+            .join("minecraft")
+            .join("world")
+            .join("item")
+            .join("Items.java"),
+        r#"public class Items {
+            public static final Item TEST_COMBO = registerItem("test_combo");
+        }"#,
+    );
+}
+
+fn input_assets_dir(root: &Path) -> PathBuf {
+    root.join("sources")
+        .join(bbb_pack::MC_VERSION)
+        .join("assets")
+        .join("minecraft")
+}
+
+fn write_input_json(path: &Path, contents: &str) {
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, contents).unwrap();
+}
+
+fn write_input_png(path: &Path, rgba: &[u8]) {
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    image::save_buffer(path, rgba, 1, 1, image::ColorType::Rgba8).unwrap();
+}
+
+fn unique_input_temp_dir(label: &str) -> PathBuf {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    std::env::temp_dir().join(format!("bbb-native-input-{label}-{nanos}"))
 }
 
 fn test_player_slot_item(world: &WorldStore, slot: i32) -> ProtocolItemStackSummary {

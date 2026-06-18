@@ -659,8 +659,10 @@ When an agent does any of the following, update this file in the same slice:
       - supported generic containers
       - `generic_3x3`
       - AnvilMenu:
+        - rename field text renders from native HUD text labels
+        - rename input initializes from the default item hover name when item
+          runtime assets are available
         - quick-move and result-slot paths are kept server-authoritative until:
-          - rename field text rendering and default hover-name initialization
           - repair/enchantment result prediction
           - XP cost
           - repair-cost component updates

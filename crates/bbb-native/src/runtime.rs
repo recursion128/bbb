@@ -13,8 +13,8 @@ use bbb_protocol::{
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTooltip, HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect,
-    HUD_HOTBAR_SLOTS,
+    HudInventoryTextLabel, HudInventoryTooltip, HudItemCountLabel, HudItemDurabilityBar,
+    HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
 use bbb_world::{
     ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
@@ -205,12 +205,13 @@ struct BeaconEffectButton {
     y: i32,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct InventoryHudLocalState {
     stonecutter_recipe_scroll_row: Option<i32>,
     beacon_effect_selection: Option<(Option<i32>, Option<i32>)>,
     loom_pattern_scroll_row: Option<i32>,
     loom_selected_pattern_index: Option<i32>,
+    anvil_rename_text: Option<String>,
 }
 
 pub(crate) use control_requests::pump_control_net_requests;
@@ -342,6 +343,7 @@ pub(crate) fn pump_network_and_terrain(
             beacon_effect_selection: Some(input.beacon_effect_selection()),
             loom_pattern_scroll_row: Some(input.loom_pattern_scroll_row()),
             loom_selected_pattern_index: input.loom_selected_pattern_index(),
+            anvil_rename_text: Some(input.anvil_rename_text().to_string()),
         },
         entity_partial_tick,
     ));
@@ -510,7 +512,7 @@ fn hud_inventory_screen_with_local_state(
             world,
             item_runtime,
             layout.background,
-            local_state,
+            &local_state,
         ),
         slots,
         floating_items: hud_inventory_floating_items(
@@ -520,9 +522,32 @@ fn hud_inventory_screen_with_local_state(
             local_state.stonecutter_recipe_scroll_row,
             partial_tick,
         ),
+        text_labels: hud_inventory_text_labels(layout.background, &local_state),
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
         tooltip: hud_inventory_tooltip(item_runtime, hovered_slot_id, &layout.slots, container),
     })
+}
+
+fn hud_inventory_text_labels(
+    background: InventoryScreenBackground,
+    local_state: &InventoryHudLocalState,
+) -> Vec<HudInventoryTextLabel> {
+    match background {
+        InventoryScreenBackground::Anvil => local_state
+            .anvil_rename_text
+            .as_ref()
+            .filter(|text| !text.is_empty())
+            .map(|text| {
+                vec![HudInventoryTextLabel {
+                    x: 62,
+                    y: 24,
+                    width: 103,
+                    text: text.clone(),
+                }]
+            })
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    }
 }
 
 fn hud_inventory_tooltip(
@@ -570,7 +595,7 @@ fn hud_inventory_background_layers(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
-    local_state: InventoryHudLocalState,
+    local_state: &InventoryHudLocalState,
 ) -> Vec<HudInventoryBackgroundLayer> {
     match background {
         InventoryScreenBackground::LocalInventory => {
@@ -3468,6 +3493,46 @@ mod tests {
                     [1.0, 1.0],
                 ),
             ]
+        );
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_anvil_rename_text_label() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 8,
+            title: "Anvil".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen_with_local_state(
+            &world,
+            None,
+            None,
+            InventoryHudLocalState {
+                anvil_rename_text: Some("Sharp Pick".to_string()),
+                ..InventoryHudLocalState::default()
+            },
+            0.0,
+        )
+        .unwrap();
+
+        assert_eq!(
+            screen.text_labels,
+            vec![HudInventoryTextLabel {
+                x: 62,
+                y: 24,
+                width: 103,
+                text: "Sharp Pick".to_string(),
+            }]
         );
     }
 

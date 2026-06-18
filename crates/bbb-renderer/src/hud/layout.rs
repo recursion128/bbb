@@ -275,6 +275,25 @@ pub(super) fn hud_inventory_tooltip_text_hud_rect(
     }
 }
 
+pub(super) fn hud_inventory_text_label_glyph_hud_rect(
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+    label_x: i32,
+    label_y: i32,
+    pen_x: u32,
+    shadow_offset: f32,
+    glyph: HudAsciiGlyph,
+) -> HudRect {
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, screen_width, screen_height);
+    HudRect {
+        x: origin_x + label_x as f32 + pen_x as f32 + shadow_offset,
+        y: origin_y + label_y as f32 + shadow_offset,
+        width: glyph.width,
+        height: glyph.height,
+    }
+}
+
 pub(super) fn hud_item_durability_bar_rect(item_rect: HudRect, width: u32, height: u32) -> HudRect {
     HudRect {
         x: item_rect.x + HUD_ITEM_DURABILITY_BAR_X_OFFSET,
@@ -651,6 +670,31 @@ mod tests {
         assert_eq!(bottom.x, 30.0);
         assert_eq!(bottom.y, 65.0);
         assert_eq!(bottom.height, 44);
+    }
+
+    #[test]
+    fn hud_inventory_text_label_glyph_rect_uses_inventory_origin() {
+        let glyph = HudAsciiGlyph {
+            width: 8,
+            height: 8,
+            advance: 6,
+            ..HudAsciiGlyph::default()
+        };
+        let rect = hud_inventory_text_label_glyph_hud_rect(
+            PhysicalSize::new(320, 240),
+            176,
+            166,
+            62,
+            24,
+            12,
+            1.0,
+            glyph,
+        );
+
+        assert_eq!(rect.x, 147.0);
+        assert_eq!(rect.y, 62.0);
+        assert_eq!(rect.width, 8);
+        assert_eq!(rect.height, 8);
     }
 
     #[test]

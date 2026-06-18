@@ -26,6 +26,7 @@ use super::{
     },
     AnvilRenameInputSignature, ClientInputState,
 };
+use crate::item_runtime::NativeItemRuntime;
 
 const INVENTORY_SCREEN_WIDTH: i32 = 176;
 const INVENTORY_SCREEN_HEIGHT: i32 = 166;
@@ -1921,13 +1922,14 @@ pub(crate) fn handle_inventory_text_input(
     world: &WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
     text: &str,
 ) -> bool {
     if !input.focused || !anvil_screen_is_open(world) {
         return false;
     }
 
-    sync_anvil_rename_input(input, world);
+    sync_anvil_rename_input(input, world, item_runtime);
     if input.anvil_rename_input.is_none() {
         return true;
     }
@@ -1945,13 +1947,14 @@ pub(crate) fn handle_inventory_key_input(
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
     code: KeyCode,
 ) -> bool {
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
 
-    if handle_anvil_rename_key_input(input, world, counters, net_commands, code) {
+    if handle_anvil_rename_key_input(input, world, counters, net_commands, item_runtime, code) {
         return true;
     }
 
@@ -1994,6 +1997,7 @@ fn handle_anvil_rename_key_input(
     world: &WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
     code: KeyCode,
 ) -> bool {
     if !anvil_screen_is_open(world) {
@@ -2002,7 +2006,7 @@ fn handle_anvil_rename_key_input(
 
     match code {
         KeyCode::Backspace => {
-            sync_anvil_rename_input(input, world);
+            sync_anvil_rename_input(input, world, item_runtime);
             if input.anvil_rename_input.is_some() && input.anvil_rename_text.pop().is_some() {
                 queue_anvil_rename(input, counters, net_commands);
             }
@@ -2013,12 +2017,29 @@ fn handle_anvil_rename_key_input(
     }
 }
 
-fn sync_anvil_rename_input(input: &mut ClientInputState, world: &WorldStore) {
+fn sync_anvil_rename_input(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
     let next = anvil_rename_input_signature(world);
     if input.anvil_rename_input != next {
         input.anvil_rename_input = next;
-        input.anvil_rename_text.clear();
+        input.anvil_rename_text = anvil_initial_rename_text(world, item_runtime);
     }
+}
+
+fn anvil_initial_rename_text(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+) -> String {
+    let Some(input) = anvil_input_slot_item(world) else {
+        return String::new();
+    };
+    item_runtime
+        .and_then(|runtime| runtime.tooltip_lines_for_stack(input))
+        .and_then(|lines| lines.into_iter().next())
+        .unwrap_or_default()
 }
 
 fn anvil_screen_is_open(world: &WorldStore) -> bool {
@@ -2046,6 +2067,19 @@ fn anvil_rename_input_signature(world: &WorldStore) -> Option<AnvilRenameInputSi
         container_id: container.container_id,
         item: item.clone(),
     })
+}
+
+fn anvil_input_slot_item(world: &WorldStore) -> Option<&ItemStackSummary> {
+    let container = world.inventory().open_container.as_ref()?;
+    if container.menu_type_id != Some(ANVIL_MENU_TYPE_ID) {
+        return None;
+    }
+    let item = container
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 0)
+        .map(|slot| &slot.item)?;
+    (!item_stack_is_empty(item)).then_some(item)
 }
 
 fn push_anvil_rename_text(current: &mut String, text: &str) {
