@@ -6,9 +6,9 @@ use bbb_protocol::packets::{
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, FilterMask, FilterMaskKind,
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
-    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerChat,
-    PlayerCommand, PlayerHealth, SetCursorItem as ProtocolSetCursorItem,
-    SetEntityData as ProtocolSetEntityData, SetPassengers,
+    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAbilities,
+    PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
+    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, SignedMessageBody, Vec3d as ProtocolVec3d,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
@@ -182,6 +182,17 @@ fn set_local_player_on_ground(world: &mut WorldStore, on_ground: bool) {
     world.set_local_player_pose(LocalPlayerPoseState {
         on_ground,
         ..LocalPlayerPoseState::default()
+    });
+}
+
+fn set_player_abilities(world: &mut WorldStore, flying: bool, can_fly: bool) {
+    world.apply_player_abilities(PlayerAbilities {
+        invulnerable: false,
+        flying,
+        can_fly,
+        instabuild: can_fly,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
     });
 }
 
@@ -1828,6 +1839,227 @@ fn sprint_key_without_local_player_id_only_queues_input() {
             sprint: true,
             ..PlayerInput::default()
         })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn jump_key_double_tap_toggles_creative_flight() {
+    let (tx, mut rx) = mpsc::channel(6);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_player_abilities(&mut world, false, true);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 3);
+    assert_eq!(counters.player_abilities_commands_queued, 1);
+    assert!(world.local_player().abilities.unwrap().flying);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            jump: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            jump: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerAbilities(PlayerAbilitiesCommand { flying: true })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn jump_key_double_tap_without_can_fly_only_queues_player_input() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_player_abilities(&mut world, false, false);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 3);
+    assert_eq!(counters.player_abilities_commands_queued, 0);
+    assert!(!world.local_player().abilities.unwrap().flying);
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn creative_flight_jump_trigger_expires_after_vanilla_window() {
+    let (tx, mut rx) = mpsc::channel(6);
+    let commands = Some(tx);
+    let start = Instant::now();
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_player_abilities(&mut world, false, true);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Released,
+    );
+    advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_millis(250),
+    );
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_millis(350),
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 3);
+    assert_eq!(counters.player_abilities_commands_queued, 0);
+    assert!(!world.local_player().abilities.unwrap().flying);
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn creative_flight_toggle_suppresses_same_jump_fall_flying_command() {
+    let (tx, mut rx) = mpsc::channel(6);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_player_abilities(&mut world, false, true);
+    set_local_player_on_ground(&mut world, true);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Released,
+    );
+
+    set_local_player_on_ground(&mut world, false);
+    equip_player_slot(
+        &mut world,
+        VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
+        VANILLA_26_1_ELYTRA_ITEM_ID,
+        1,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 3);
+    assert_eq!(counters.player_abilities_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert!(world.local_player().abilities.unwrap().flying);
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerAbilities(PlayerAbilitiesCommand { flying: true })
     );
     assert!(rx.try_recv().is_err());
 }

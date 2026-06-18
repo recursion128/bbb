@@ -51,6 +51,7 @@ pub(crate) fn advance_player_input(
         .as_secs_f64()
         .min(0.25);
     input.last_step = Some(now);
+    input.advance_creative_flight_jump_trigger(dt_seconds);
 
     if world.local_player_root_vehicle_id().is_some() {
         let input_state = input.local_player_input();

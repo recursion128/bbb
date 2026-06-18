@@ -399,6 +399,9 @@ When an agent does any of the following, update this file in the same slice:
       `PlayerRideableJumping` vehicle types using:
       - the 26.1 charge scale
       - jump release
+    - They toggle local creative/spectator-style flying with the vanilla
+      double-jump window when synced abilities allow flight, then queue
+      `ServerboundPlayerAbilitiesPacket`.
     - They queue `START_FALL_FLYING` player commands when an airborne local
       player has an elytra-equipped chest slot.
     - They queue `STOP_SLEEPING` player commands when wake-up input is pressed

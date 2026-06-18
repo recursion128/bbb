@@ -43,6 +43,9 @@ pub(crate) use mouse::{
 };
 pub(crate) use movement::advance_player_input;
 
+const CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS: u8 = 7;
+const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
     focused: bool,
@@ -79,6 +82,8 @@ pub(crate) struct ClientInputState {
     last_move_command_pose: Option<LocalPlayerPoseState>,
     last_paddle_boat_command_at: Option<Instant>,
     riding_jump_charge_seconds: Option<f64>,
+    creative_flight_jump_trigger_ticks: u8,
+    creative_flight_jump_trigger_elapsed_seconds: f64,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -122,6 +127,8 @@ impl ClientInputState {
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
+        self.creative_flight_jump_trigger_ticks = 0;
+        self.creative_flight_jump_trigger_elapsed_seconds = 0.0;
     }
 
     fn clear_modifiers(&mut self) {
@@ -165,6 +172,26 @@ impl ClientInputState {
 
     pub(crate) fn inventory_hovered_slot(&self) -> Option<i16> {
         self.inventory_hovered_slot
+    }
+
+    fn advance_creative_flight_jump_trigger(&mut self, dt_seconds: f64) {
+        if self.creative_flight_jump_trigger_ticks == 0 {
+            self.creative_flight_jump_trigger_elapsed_seconds = 0.0;
+            return;
+        }
+
+        self.creative_flight_jump_trigger_elapsed_seconds += dt_seconds.max(0.0);
+        while self.creative_flight_jump_trigger_elapsed_seconds + f64::EPSILON
+            >= CREATIVE_FLIGHT_TICK_SECONDS
+            && self.creative_flight_jump_trigger_ticks > 0
+        {
+            self.creative_flight_jump_trigger_elapsed_seconds -= CREATIVE_FLIGHT_TICK_SECONDS;
+            self.creative_flight_jump_trigger_ticks -= 1;
+        }
+
+        if self.creative_flight_jump_trigger_ticks == 0 {
+            self.creative_flight_jump_trigger_elapsed_seconds = 0.0;
+        }
     }
 }
 
@@ -371,17 +398,56 @@ pub(crate) fn handle_key_input(
             if before.sprint != after.sprint {
                 queue_sprint_command(counters, world, net_commands, after.sprint);
             }
+            let just_toggled_creative_flight =
+                maybe_toggle_creative_flight(input, counters, world, net_commands, before, after);
             if should_queue_start_fall_flying(world, before, after) {
-                queue_player_command_action(
-                    counters,
-                    world,
-                    net_commands,
-                    PlayerCommandAction::StartFallFlying,
-                    0,
-                );
+                if !just_toggled_creative_flight {
+                    queue_player_command_action(
+                        counters,
+                        world,
+                        net_commands,
+                        PlayerCommandAction::StartFallFlying,
+                        0,
+                    );
+                }
             }
         }
     }
+}
+
+fn maybe_toggle_creative_flight(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    before: PlayerInput,
+    after: PlayerInput,
+) -> bool {
+    if !after.jump || before.jump || !world.local_player().abilities.is_some_and(|a| a.can_fly) {
+        return false;
+    }
+
+    if world.local_player_root_vehicle_id().is_some()
+        && world.local_player_rideable_jumping_vehicle_id().is_none()
+    {
+        input.creative_flight_jump_trigger_ticks = 0;
+        input.creative_flight_jump_trigger_elapsed_seconds = 0.0;
+        return false;
+    }
+
+    if input.creative_flight_jump_trigger_ticks == 0 {
+        input.creative_flight_jump_trigger_ticks = CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS;
+        input.creative_flight_jump_trigger_elapsed_seconds = 0.0;
+        return false;
+    }
+
+    let flying = !world.local_player().abilities.is_some_and(|a| a.flying);
+    let toggled = queue_player_abilities_command(counters, world, net_commands, flying);
+    if toggled {
+        input.creative_flight_jump_trigger_ticks = 0;
+        input.creative_flight_jump_trigger_elapsed_seconds = 0.0;
+    }
+    toggled
 }
 
 fn should_queue_start_fall_flying(
