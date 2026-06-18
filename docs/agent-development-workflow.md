@@ -35,9 +35,13 @@ configuration UI.
    changed paths plus test results.
 9. Main agent reviews worker diffs and integrates them by patch, cherry-pick, or
    merge from temporary branches.
-10. Main agent resolves integration issues, runs `cargo fmt`,
+10. Workers should remove their own worktree-local Cargo build output after
+   reporting, for example `rm -rf target` or the assigned `CARGO_TARGET_DIR`.
+11. Main agent removes temporary worktrees and branches after the worker diff is
+   either integrated or explicitly abandoned.
+12. Main agent resolves integration issues, runs `cargo fmt`,
    `git diff --check`, and `cargo test --workspace`.
-11. Main agent commits with a normal commit after verification. It never cleans
+13. Main agent commits with a normal commit after verification. It never cleans
    or rewrites git history unless explicitly instructed.
 
 ## Default Slice Shape
@@ -87,8 +91,15 @@ Every worker prompt must include:
   they create broad merge conflicts.
 - Worker branches are integration inputs. The main agent owns the final diff,
   final tests, and final commit.
+- Workers clean worktree-local Cargo outputs before they finish so temporary
+  `target` directories do not accumulate.
 - Delete or reuse temporary worktrees deliberately after integration so stale
   branches do not become an alternate source of truth.
+- Do not force-remove a dirty worker worktree until the main agent has reviewed
+  its diff and confirmed the changes are integrated, duplicated, or explicitly
+  abandoned.
+- When removing a completed worker worktree, also delete the temporary branch if
+  it is merged or no longer needed.
 
 ## Merge Gate
 

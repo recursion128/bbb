@@ -62,8 +62,11 @@ committer.
 7. Main agent integrates worker changes by reviewing diffs and using patch,
    cherry-pick, or merge from temporary branches. Main agent resolves API
    mismatches and reviews the full integrated diff.
-8. Run formatting, diff checks, and tests.
-9. Make a normal commit after verification.
+8. Workers remove their worktree-local Cargo build output after reporting.
+9. Main agent removes temporary worktrees and branches after their diffs are
+   integrated or explicitly abandoned.
+10. Run formatting, diff checks, and tests.
+11. Make a normal commit after verification.
 
 ## Worker Prompt Requirements
 
@@ -88,6 +91,12 @@ Every worker prompt should include:
   or a single-worker task because concurrent edits are likely to conflict.
 - Worker branches are integration inputs, not final history. The main agent
   owns the final reviewed commit on `master`.
+- Workers should clean their own `target` or assigned `CARGO_TARGET_DIR` before
+  they finish.
+- Main agent should remove completed worker worktrees and temporary branches
+  after integration.
+- Do not force-remove a dirty worker worktree until its diff has been reviewed
+  and confirmed integrated, duplicated, or intentionally abandoned.
 
 ## Testing Gate
 
