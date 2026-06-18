@@ -6,7 +6,7 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::WorldStore;
+use crate::{BlockPos, WorldStore};
 
 const DEFAULT_WORLD_BORDER_SIZE: f64 = 5.999997E7;
 const DEFAULT_WORLD_BORDER_ABSOLUTE_MAX_SIZE: i32 = 29_999_984;
@@ -51,6 +51,35 @@ impl WorldBorderState {
         self.size = old_size;
         self.lerp_target = new_size;
         self.lerp_time = lerp_time;
+    }
+
+    pub fn contains_block_pos(&self, pos: BlockPos) -> bool {
+        self.contains_xz(f64::from(pos.x), f64::from(pos.z))
+    }
+
+    fn contains_xz(&self, x: f64, z: f64) -> bool {
+        x >= self.min_x() && x < self.max_x() && z >= self.min_z() && z < self.max_z()
+    }
+
+    fn min_x(&self) -> f64 {
+        self.clamp_to_absolute_max(self.center_x - self.size / 2.0)
+    }
+
+    fn min_z(&self) -> f64 {
+        self.clamp_to_absolute_max(self.center_z - self.size / 2.0)
+    }
+
+    fn max_x(&self) -> f64 {
+        self.clamp_to_absolute_max(self.center_x + self.size / 2.0)
+    }
+
+    fn max_z(&self) -> f64 {
+        self.clamp_to_absolute_max(self.center_z + self.size / 2.0)
+    }
+
+    fn clamp_to_absolute_max(&self, value: f64) -> f64 {
+        let absolute_max = f64::from(self.absolute_max_size);
+        value.clamp(-absolute_max, absolute_max)
     }
 }
 
@@ -234,5 +263,68 @@ mod tests {
         assert_eq!(counters.world_border_size_updates_received, 1);
         assert_eq!(counters.world_border_warning_delay_updates_received, 1);
         assert_eq!(counters.world_border_warning_distance_updates_received, 1);
+    }
+
+    #[test]
+    fn world_border_contains_block_pos_uses_vanilla_min_inclusive_max_exclusive_bounds() {
+        let mut store = WorldStore::new();
+        store.apply_initialize_border(ProtocolInitializeBorder {
+            new_center_x: 10.0,
+            new_center_z: -20.0,
+            old_size: 4.0,
+            new_size: 4.0,
+            lerp_time: 0,
+            new_absolute_max_size: DEFAULT_WORLD_BORDER_ABSOLUTE_MAX_SIZE,
+            warning_blocks: DEFAULT_WORLD_BORDER_WARNING_BLOCKS,
+            warning_time: DEFAULT_WORLD_BORDER_WARNING_TIME,
+        });
+
+        let border = store.world_border();
+        assert!(border.contains_block_pos(BlockPos {
+            x: 8,
+            y: -64,
+            z: -22
+        }));
+        assert!(border.contains_block_pos(BlockPos {
+            x: 11,
+            y: 320,
+            z: -19
+        }));
+        assert!(!border.contains_block_pos(BlockPos {
+            x: 12,
+            y: 0,
+            z: -20
+        }));
+        assert!(!border.contains_block_pos(BlockPos {
+            x: 10,
+            y: 0,
+            z: -18
+        }));
+        assert!(!border.contains_block_pos(BlockPos { x: 7, y: 0, z: -20 }));
+        assert!(!border.contains_block_pos(BlockPos {
+            x: 10,
+            y: 0,
+            z: -23
+        }));
+    }
+
+    #[test]
+    fn world_border_contains_block_pos_clamps_bounds_to_absolute_max_size() {
+        let mut store = WorldStore::new();
+        store.apply_initialize_border(ProtocolInitializeBorder {
+            new_center_x: 0.0,
+            new_center_z: 0.0,
+            old_size: 100.0,
+            new_size: 100.0,
+            lerp_time: 0,
+            new_absolute_max_size: 3,
+            warning_blocks: DEFAULT_WORLD_BORDER_WARNING_BLOCKS,
+            warning_time: DEFAULT_WORLD_BORDER_WARNING_TIME,
+        });
+
+        let border = store.world_border();
+        assert!(border.contains_block_pos(BlockPos { x: -3, y: 0, z: 0 }));
+        assert!(border.contains_block_pos(BlockPos { x: 2, y: 0, z: 0 }));
+        assert!(!border.contains_block_pos(BlockPos { x: 3, y: 0, z: 0 }));
     }
 }

@@ -887,6 +887,8 @@ When an agent does any of the following, update this file in the same slice:
       state and clears them on completion/abort/restart.
     - Left-click attack and block destroy input is suppressed while canonical
       local `using_item` is active.
+    - Block destroy and block-target item use are suppressed when the hit block
+      position is outside the canonical world border bounds.
     - It projects destroy progress to batched renderer-visible cube crack
       overlays from:
       - local stages
