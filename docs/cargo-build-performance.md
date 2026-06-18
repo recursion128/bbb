@@ -14,6 +14,21 @@ used to keep focused tests fast without weakening the final merge gate.
 - Keep caches stable across slices and clean them deliberately, not after every
   worker task.
 
+## Current Slice Policy
+
+Cargo build performance work is an engineering-efficiency slice, not a reason
+to relax correctness checks. The preferred order is:
+
+1. Keep the main worktree and worker worktrees on stable external target
+   directories.
+2. Measure clean full workspace, warm focused, warm full workspace, and target
+   size before changing profiles or cache policy.
+3. Evaluate optional `sccache` only when it is installed locally, and compare
+   runs with and without `RUSTC_WRAPPER=sccache`.
+4. Use `fast-test` only for daily focused iteration.
+5. Keep the final merge gate on the default profile with
+   `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`.
+
 ## Target Directories
 
 Use stable external target directories:
@@ -167,3 +182,24 @@ Top cold timing entries included:
   dominant cold compilation cost.
 - Do not prioritize mold/lld on this macOS machine; target caching, sccache, and
   profile measurement are the higher-confidence local optimizations.
+
+## Warm Update: 2026-06-19
+
+Environment change:
+
+- `sccache` is still not installed on `PATH`.
+
+Measured command:
+
+- Warm full workspace:
+  `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace --timings`
+  - Cargo compile: 0.10s.
+  - Wall time: 2.78s.
+  - Target size: 7.8G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260618T164915003Z-14ffed61c5c1036c.html`
+
+The increased target size is from retained external cache data, which is
+intentional for daily development. Reclaim it with explicit periodic cleanup,
+not after each slice or worker run.

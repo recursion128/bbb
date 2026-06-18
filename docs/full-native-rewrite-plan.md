@@ -144,6 +144,11 @@ Known priority areas:
   is active.
 - Keep audio split into world-observed audio events and the Kira-backed
   `bbb-audio` playback runtime.
+- Treat Cargo build performance as an engineering-efficiency slice when it helps
+  maintain feature velocity. Follow `docs/cargo-build-performance.md`: keep
+  stable external target caches for main and worker worktrees, measure before
+  changing profiles or cache policy, keep `sccache` optional unless a local
+  environment proves it available, and do not weaken the final merge gate.
 - Native crosshair entity interaction is partially wired: `bbb-world` exposes
   verified 26.1 base pick bounds for vanilla `LivingEntity` types, boats,
   minecarts, TNT, falling blocks, end crystals, shulker bullets,
@@ -392,7 +397,7 @@ Every slice should run focused tests for affected crates. Before commit, run:
 ```sh
 cargo fmt --check
 git diff --check
-cargo test --workspace
+CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace
 ```
 
 If a command cannot be run, record why. If behavior depends on local vanilla
