@@ -506,25 +506,29 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
         BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
-        BossEventOperation, ChangeDifficulty, ChatTypeBound, ChatTypeHolder, ChunkHeightmapData,
-        ChunkPos as ProtocolChunkPos, ClockUpdate, CommandSuggestion, CommandSuggestions,
-        CommonPlayerSpawnInfo, CookieRequest, CustomChatCompletions, CustomChatCompletionsAction,
-        CustomReportDetails, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent,
-        DebugSample, DialogHolder, Difficulty, EntityAnchor, Explosion, FilterMask, FilterMaskKind,
-        GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues,
-        GameTestHighlightPos, GameType, InteractionHand, LevelChunkBlockEntity, LevelChunkData,
-        LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdateData, MapColorPatch,
-        MapDecoration, MapItemData, MessageSignature, MountScreenOpen, MoveVehicle, OpenBook,
-        OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities,
-        PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoChatSession,
-        PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate,
-        PlayerRotationUpdate, PongResponse, ProjectilePower, RecipeDisplayType,
-        RemoteDebugSampleType, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
-        ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera,
-        SetDefaultSpawnPosition, SetHeldSlot, SetPassengers, SetSimulationDistance, ShowDialog,
-        SignedMessageBody, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
-        StopSound, StoreCookie, TabList, TagQuery, TestInstanceBlockStatus, TickingState,
-        TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d,
+        BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound, ChatTypeHolder,
+        ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ClockUpdate, CommandSuggestion,
+        CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, CustomChatCompletions,
+        CustomChatCompletionsAction, CustomReportDetails, DebugBlockValue, DebugChunkValue,
+        DebugEntityValue, DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor,
+        Explosion, FilterMask, FilterMaskKind, GameEvent, GameProfile, GameProfileProperty,
+        GameRuleValue, GameRuleValues, GameTestHighlightPos, GameType, InteractionHand,
+        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
+        LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MessageSignature,
+        MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenSignEditor,
+        ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat,
+        PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry,
+        PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate,
+        PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters, PongResponse,
+        ProjectilePower, RecipeDisplayType, RemoteDebugSampleType, ResetScore, ResourcePackPop,
+        ResourcePackPush, ResourcePackResponseAction, ScoreboardDisplaySlot, ServerData,
+        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetHeldSlot, SetObjective,
+        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore,
+        SetSimulationDistance, ShowDialog, SignedMessageBody, SoundEntityEvent, SoundEvent,
+        SoundEventHolder, SoundSource, StatUpdate, StopSound, StoreCookie, TabList, TagQuery,
+        TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus, TickingState, TickingStep,
+        TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d,
         Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
         WaypointVec3i,
     };
@@ -1987,6 +1991,160 @@ mod tests {
         assert_eq!(report.world_counters.boss_events_ignored, 1);
         assert_eq!(report.world_counters.tab_list_packets, 1);
         assert_eq!(report.world_counters.change_difficulty_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_scoreboard_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::SetObjective(SetObjective {
+                objective_name: "kills".to_string(),
+                method: SetObjectiveMethod::Add,
+                parameters: Some(SetObjectiveParameters {
+                    display_name: "Kills".to_string(),
+                    render_type: ObjectiveRenderType::Integer,
+                    number_format: Some(vec![9]),
+                }),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetDisplayObjective(SetDisplayObjective {
+                slot: ScoreboardDisplaySlot::Sidebar,
+                objective_name: Some("kills".to_string()),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetScore(SetScore {
+                owner: "Steve".to_string(),
+                objective_name: "kills".to_string(),
+                score: 4,
+                display: Some("Four".to_string()),
+                number_format: None,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetScore(SetScore {
+                owner: "Alex".to_string(),
+                objective_name: "kills".to_string(),
+                score: 1,
+                display: None,
+                number_format: None,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetPlayerTeam(SetPlayerTeam {
+                name: "red".to_string(),
+                method: PlayerTeamMethod::Add,
+                parameters: Some(PlayerTeamParameters {
+                    display_name: "Red Team".to_string(),
+                    options: 0b11,
+                    nametag_visibility: TeamVisibility::Always,
+                    collision_rule: TeamCollisionRule::Never,
+                    color: ChatFormatting::Red,
+                    player_prefix: "[R]".to_string(),
+                    player_suffix: "!".to_string(),
+                }),
+                players: vec!["Steve".to_string()],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ResetScore(ResetScore {
+                owner: "Alex".to_string(),
+                objective_name: Some("kills".to_string()),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetObjective(SetObjective {
+                objective_name: "missing".to_string(),
+                method: SetObjectiveMethod::Change,
+                parameters: Some(SetObjectiveParameters {
+                    display_name: "Missing".to_string(),
+                    render_type: ObjectiveRenderType::Integer,
+                    number_format: None,
+                }),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetDisplayObjective(SetDisplayObjective {
+                slot: ScoreboardDisplaySlot::List,
+                objective_name: Some("missing".to_string()),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetScore(SetScore {
+                owner: "Nobody".to_string(),
+                objective_name: "missing".to_string(),
+                score: 9,
+                display: None,
+                number_format: None,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetPlayerTeam(SetPlayerTeam {
+                name: "missing".to_string(),
+                method: PlayerTeamMethod::Join,
+                parameters: None,
+                players: vec!["Nobody".to_string()],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ResetScore(ResetScore {
+                owner: "Nobody".to_string(),
+                objective_name: Some("missing".to_string()),
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(11, ChunkPos { x: 0, z: 0 });
+        let counters = &report.world_counters;
+        assert_eq!(counters.set_objective_packets, 2);
+        assert_eq!(counters.set_objective_updates_applied, 1);
+        assert_eq!(counters.set_objective_updates_ignored, 1);
+        assert_eq!(counters.set_display_objective_packets, 2);
+        assert_eq!(counters.set_display_objective_updates_applied, 1);
+        assert_eq!(counters.set_display_objective_updates_ignored, 1);
+        assert_eq!(counters.set_score_packets, 3);
+        assert_eq!(counters.set_score_updates_applied, 2);
+        assert_eq!(counters.set_score_updates_ignored, 1);
+        assert_eq!(counters.set_player_team_packets, 2);
+        assert_eq!(counters.set_player_team_updates_applied, 1);
+        assert_eq!(counters.set_player_team_updates_ignored, 1);
+        assert_eq!(counters.reset_score_packets, 2);
+        assert_eq!(counters.reset_score_updates_applied, 1);
+        assert_eq!(counters.reset_score_updates_ignored, 1);
+
+        let scoreboard = report.world.scoreboard();
+        let objective = scoreboard.objectives.get("kills").unwrap();
+        assert_eq!(objective.display_name, "Kills");
+        assert_eq!(objective.render_type, "integer");
+        assert_eq!(objective.number_format, Some(vec![9]));
+        assert_eq!(
+            scoreboard.display_slots.get("sidebar").map(String::as_str),
+            Some("kills")
+        );
+
+        let steve_score = &scoreboard.scores["Steve"]["kills"];
+        assert_eq!(steve_score.value, 4);
+        assert_eq!(steve_score.display.as_deref(), Some("Four"));
+        assert!(!scoreboard.scores.contains_key("Alex"));
+
+        let team = scoreboard.teams.get("red").unwrap();
+        assert!(team.players.contains("Steve"));
+        let parameters = team.parameters.as_ref().unwrap();
+        assert_eq!(parameters.display_name, "Red Team");
+        assert_eq!(parameters.color, "red");
     }
 
     #[tokio::test]

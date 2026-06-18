@@ -88,6 +88,7 @@ When an agent does any of the following, update this file in the same slice:
   - Probe and online paths now cover many packet families, including:
     - unsupported diagnostics
     - play -> configuration teardown
+    - scoreboard objective/display/score/team updates
   - The final criterion:
     - every supported decoded packet stays aligned
 
