@@ -25,14 +25,20 @@ const GENERIC_CONTAINER_ROW_HEIGHT: i32 = 18;
 const GENERIC_CONTAINER_FIRST_MENU_TYPE_ID: i32 = 0;
 const GENERIC_CONTAINER_LAST_MENU_TYPE_ID: i32 = 5;
 const GENERIC_3X3_MENU_TYPE_ID: i32 = 6;
+const BLAST_FURNACE_MENU_TYPE_ID: i32 = 10;
+const FURNACE_MENU_TYPE_ID: i32 = 14;
 const HOPPER_MENU_TYPE_ID: i32 = 16;
 const SHULKER_BOX_MENU_TYPE_ID: i32 = 20;
+const SMOKER_MENU_TYPE_ID: i32 = 22;
 const GENERIC_CONTAINER_SLOT_COLUMNS: i32 = 9;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_SCREEN_WIDTH: i32 = 176;
 const GENERIC_3X3_SCREEN_HEIGHT: i32 = 166;
 const GENERIC_3X3_SLOT_COLUMNS: i32 = 3;
 const GENERIC_3X3_SLOT_COUNT: i16 = 9;
+const FURNACE_SCREEN_WIDTH: i32 = 176;
+const FURNACE_SCREEN_HEIGHT: i32 = 166;
+const FURNACE_SLOT_COUNT: i16 = 3;
 const HOPPER_SCREEN_WIDTH: i32 = 176;
 const HOPPER_SCREEN_HEIGHT: i32 = 133;
 const HOPPER_SLOT_COUNT: i16 = 5;
@@ -48,8 +54,11 @@ pub(crate) enum InventoryScreenBackground {
     LocalInventory,
     Generic9xRows { rows: u8 },
     Generic3x3,
+    BlastFurnace,
+    Furnace,
     Hopper,
     ShulkerBox,
+    Smoker,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +158,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             slots: generic_3x3_slot_layouts(),
         });
     }
+    if let Some(background) = furnace_screen_background(menu_type_id) {
+        return Some(InventoryScreenLayout {
+            width: FURNACE_SCREEN_WIDTH,
+            height: FURNACE_SCREEN_HEIGHT,
+            background,
+            slots: furnace_slot_layouts(),
+        });
+    }
     if menu_type_id == HOPPER_MENU_TYPE_ID {
         return Some(InventoryScreenLayout {
             width: HOPPER_SCREEN_WIDTH,
@@ -172,6 +189,15 @@ fn generic_container_rows(menu_type_id: i32) -> Option<u8> {
     (GENERIC_CONTAINER_FIRST_MENU_TYPE_ID..=GENERIC_CONTAINER_LAST_MENU_TYPE_ID)
         .contains(&menu_type_id)
         .then(|| (menu_type_id - GENERIC_CONTAINER_FIRST_MENU_TYPE_ID + 1) as u8)
+}
+
+fn furnace_screen_background(menu_type_id: i32) -> Option<InventoryScreenBackground> {
+    match menu_type_id {
+        BLAST_FURNACE_MENU_TYPE_ID => Some(InventoryScreenBackground::BlastFurnace),
+        FURNACE_MENU_TYPE_ID => Some(InventoryScreenBackground::Furnace),
+        SMOKER_MENU_TYPE_ID => Some(InventoryScreenBackground::Smoker),
+        _ => None,
+    }
 }
 
 fn generic_container_slot_layouts(rows: u8) -> Vec<InventorySlotLayout> {
@@ -264,6 +290,43 @@ fn hopper_slot_layouts() -> Vec<InventorySlotLayout> {
             slot_id: HOPPER_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 109,
+        });
+    }
+
+    slots
+}
+
+fn furnace_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(FURNACE_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 56,
+        y: 17,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 56,
+        y: 53,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 2,
+        x: 116,
+        y: 35,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: FURNACE_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: FURNACE_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
         });
     }
 
@@ -1000,6 +1063,81 @@ mod tests {
     }
 
     #[test]
+    fn furnace_like_layouts_match_vanilla_abstract_furnace_menu() {
+        for (menu_type_id, title, background) in [
+            (
+                BLAST_FURNACE_MENU_TYPE_ID,
+                "Blast Furnace",
+                InventoryScreenBackground::BlastFurnace,
+            ),
+            (
+                FURNACE_MENU_TYPE_ID,
+                "Furnace",
+                InventoryScreenBackground::Furnace,
+            ),
+            (
+                SMOKER_MENU_TYPE_ID,
+                "Smoker",
+                InventoryScreenBackground::Smoker,
+            ),
+        ] {
+            let mut world = WorldStore::new();
+            world.apply_open_screen(OpenScreen {
+                container_id: 7,
+                menu_type_id,
+                title: title.to_string(),
+            });
+
+            let layout = inventory_screen_layout(&world).unwrap();
+
+            assert_eq!(layout.width, 176);
+            assert_eq!(layout.height, 166);
+            assert_eq!(layout.background, background);
+            assert_eq!(layout.slots.len(), 39);
+            assert_eq!(
+                layout.slots[0],
+                InventorySlotLayout {
+                    slot_id: 0,
+                    x: 56,
+                    y: 17,
+                }
+            );
+            assert_eq!(
+                layout.slots[1],
+                InventorySlotLayout {
+                    slot_id: 1,
+                    x: 56,
+                    y: 53,
+                }
+            );
+            assert_eq!(
+                layout.slots[2],
+                InventorySlotLayout {
+                    slot_id: 2,
+                    x: 116,
+                    y: 35,
+                }
+            );
+            assert_eq!(
+                layout.slots[3],
+                InventorySlotLayout {
+                    slot_id: 3,
+                    x: 8,
+                    y: 84,
+                }
+            );
+            assert_eq!(
+                layout.slots[38],
+                InventorySlotLayout {
+                    slot_id: 38,
+                    x: 152,
+                    y: 142,
+                }
+            );
+        }
+    }
+
+    #[test]
     fn hopper_layout_matches_vanilla_hopper_menu() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -1150,6 +1288,34 @@ mod tests {
     }
 
     #[test]
+    fn furnace_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: FURNACE_MENU_TYPE_ID,
+            title: "Furnace".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(616.0, 302.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(616.0, 338.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(676.0, 320.0)), size),
+            Some(InventoryClickTarget::Slot(2))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(38))
+        );
+    }
+
+    #[test]
     fn hopper_hit_test_uses_vanilla_slots() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -1226,6 +1392,61 @@ mod tests {
             MouseButton::Left,
             ElementState::Pressed,
             Some(PhysicalPosition::new(560.0, 267.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 0,
+                input: ContainerInput::Pickup,
+                changed_slots: [(0, HashedStack::Empty)].into(),
+                carried_item: HashedStack::Item(HashedItemStack {
+                    item_id: 42,
+                    count: 3,
+                    components: HashedComponentPatch::default(),
+                }),
+            })
+        );
+        assert_eq!(
+            world.inventory().open_container.as_ref().unwrap().slots[0].item,
+            ItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn furnace_mouse_click_queues_pickup() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: FURNACE_MENU_TYPE_ID,
+            title: "Furnace".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(616.0, 302.0)),
             PhysicalSize::new(1280, 720),
         ));
 

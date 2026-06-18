@@ -353,6 +353,28 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 166.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::BlastFurnace => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::BlastFurnace,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        }
+        InventoryScreenBackground::Furnace => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Furnace,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        }
         InventoryScreenBackground::Hopper => {
             vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Hopper,
@@ -373,6 +395,17 @@ fn hud_inventory_background_layers(
                 167,
                 [0.0, 0.0],
                 [176.0 / 256.0, 167.0 / 256.0],
+            )]
+        }
+        InventoryScreenBackground::Smoker => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Smoker,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
             )]
         }
     }
@@ -857,6 +890,59 @@ mod tests {
         assert_eq!((first_container.x, first_container.y), (62, 17));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 44).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_furnace_like_layouts() {
+        for (menu_type_id, title, texture) in [
+            (
+                10,
+                "Blast Furnace",
+                HudInventoryBackgroundTexture::BlastFurnace,
+            ),
+            (14, "Furnace", HudInventoryBackgroundTexture::Furnace),
+            (22, "Smoker", HudInventoryBackgroundTexture::Smoker),
+        ] {
+            let mut world = WorldStore::new();
+            world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+                container_id: 7,
+                menu_type_id,
+                title: title.to_string(),
+            });
+            world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+                container_id: 7,
+                state_id: 12,
+                items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 39],
+                carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+            });
+
+            let screen = hud_inventory_screen(&world, None, Some(38)).unwrap();
+
+            assert_eq!(screen.width, 176);
+            assert_eq!(screen.height, 166);
+            assert_eq!(
+                screen.background_layers,
+                vec![hud_inventory_background_layer(
+                    texture,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                )]
+            );
+            assert_eq!(screen.hovered_slot_id, Some(38));
+            assert_eq!(screen.slots.len(), 39);
+            let ingredient = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+            assert_eq!((ingredient.x, ingredient.y), (56, 17));
+            let fuel = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+            assert_eq!((fuel.x, fuel.y), (56, 53));
+            let result = screen.slots.iter().find(|slot| slot.slot_id == 2).unwrap();
+            assert_eq!((result.x, result.y), (116, 35));
+            let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 38).unwrap();
+            assert_eq!((hotbar.x, hotbar.y), (152, 142));
+        }
     }
 
     #[test]

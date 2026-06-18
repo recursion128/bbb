@@ -53,6 +53,28 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         "minecraft:textures/gui/container/dispenser",
     )?;
     renderer.upload_hud_dispenser_background(dispenser.width, dispenser.height, &dispenser.rgba)?;
+    let furnace = gui_texture(
+        roots,
+        "textures/gui/container/furnace.png",
+        "minecraft:textures/gui/container/furnace",
+    )?;
+    renderer.upload_hud_furnace_background(furnace.width, furnace.height, &furnace.rgba)?;
+    let blast_furnace = gui_texture(
+        roots,
+        "textures/gui/container/blast_furnace.png",
+        "minecraft:textures/gui/container/blast_furnace",
+    )?;
+    renderer.upload_hud_blast_furnace_background(
+        blast_furnace.width,
+        blast_furnace.height,
+        &blast_furnace.rgba,
+    )?;
+    let smoker = gui_texture(
+        roots,
+        "textures/gui/container/smoker.png",
+        "minecraft:textures/gui/container/smoker",
+    )?;
+    renderer.upload_hud_smoker_background(smoker.width, smoker.height, &smoker.rgba)?;
     let hopper = gui_texture(
         roots,
         "textures/gui/container/hopper.png",
@@ -121,6 +143,9 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         hotbar = ?(hotbar.width, hotbar.height),
         inventory = ?(inventory.width, inventory.height),
         generic_container = ?(generic_container.width, generic_container.height),
+        furnace = ?(furnace.width, furnace.height),
+        blast_furnace = ?(blast_furnace.width, blast_furnace.height),
+        smoker = ?(smoker.width, smoker.height),
         experience = ?(experience_background.width, experience_background.height),
         heart = ?(heart_full.width, heart_full.height),
         food = ?(food_full.width, food_full.height),

@@ -201,10 +201,11 @@ update this file in the same slice.
   - Commands: continue adding focused command queue and encode tests for missing
     inventory, interaction, chat, and command flows.
   - Inventory: implement tooltips, item durability/cooldown decorations,
-    remaining dedicated server-opened menu layouts beyond `generic_9xN`,
-    `generic_3x3`, hopper, and shulker box, recipe book/creative variants, and
-    fuller local quick-move parity such as armor/offhand auto-equip and crafting
-    result semantics for container `0`.
+    furnace progress/flame indicators, remaining dedicated server-opened menu
+    layouts beyond `generic_9xN`, `generic_3x3`, furnace/blast furnace/smoker,
+    hopper, and shulker box, recipe book/creative variants, and fuller local
+    quick-move parity such as furnace input/fuel/result routing,
+    armor/offhand auto-equip, and crafting result semantics for container `0`.
 - Evidence / boundary:
   - Movement:
     - Native movement projects world-computed `on_ground` and
@@ -260,10 +261,13 @@ update this file in the same slice.
     - It renders and hit-tests server-opened `generic_9x1` through
       `generic_9x6` ChestMenu screens with official `generic_54.png` background
       slices, `generic_3x3` DispenserMenu screens with official
-      `dispenser.png`, HopperMenu screens with official `hopper.png`, and
-      ShulkerBoxMenu screens with official `shulker_box.png`.
-    - It queues basic left/right `PICKUP` and Shift-click `QUICK_MOVE` container
-      clicks for those supported fixed-slot screens.
+      `dispenser.png`, FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with
+      official furnace-family backgrounds, HopperMenu screens with official
+      `hopper.png`, and ShulkerBoxMenu screens with official `shulker_box.png`.
+    - It queues basic left/right `PICKUP` container clicks for those supported
+      fixed-slot screens.
+    - It also queues Shift-click `QUICK_MOVE` container clicks for the supported
+      generic container, `generic_3x3`, hopper, and shulker box screens.
     - Control/native can still build a basic `ServerboundContainerClickPacket`
       from the active container id, state id, slot id, and cursor item for
       server-opened containers when the carried stack is hash-safe.

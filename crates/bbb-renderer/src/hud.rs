@@ -91,6 +91,9 @@ pub enum HudInventoryBackgroundTexture {
     Inventory,
     GenericContainer,
     Dispenser,
+    Furnace,
+    BlastFurnace,
+    Smoker,
     Hopper,
     ShulkerBox,
 }
@@ -210,6 +213,36 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_dispenser_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_furnace_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_furnace_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_blast_furnace_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_blast_furnace_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_smoker_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_smoker_background = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -646,6 +679,11 @@ impl Renderer {
                 self.hud_generic_container_background.as_ref()
             }
             HudInventoryBackgroundTexture::Dispenser => self.hud_dispenser_background.as_ref(),
+            HudInventoryBackgroundTexture::Furnace => self.hud_furnace_background.as_ref(),
+            HudInventoryBackgroundTexture::BlastFurnace => {
+                self.hud_blast_furnace_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::Smoker => self.hud_smoker_background.as_ref(),
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
             HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
         }
