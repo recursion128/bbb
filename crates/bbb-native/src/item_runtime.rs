@@ -6,7 +6,8 @@ use bbb_pack::{
     ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
     ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
     ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
-    ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage, TerrainColorMaps,
+    ItemRegistryCatalog, ItemTintSource, LanguageCatalog, PackRoots, SpriteImage, TerrainColorMaps,
+    DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemStackSummary, ItemStackTemplateSummary,
@@ -37,11 +38,16 @@ pub(crate) struct NativeItemRuntime {
     furnace_fuel_item_ids: BTreeSet<i32>,
     item_icon_models: HashMap<String, ItemIconModel>,
     registry: Option<ItemRegistryCatalog>,
+    language: LanguageCatalog,
     textures: ItemTextureState,
 }
 
 impl NativeItemRuntime {
     pub(crate) fn load(roots: &PackRoots) -> Result<Self> {
+        Self::load_with_locale(roots, DEFAULT_LANGUAGE_CODE)
+    }
+
+    pub(crate) fn load_with_locale(roots: &PackRoots, language_code: &str) -> Result<Self> {
         let item_models = roots
             .load_item_model_catalog()
             .context("load item model catalog")?;
@@ -78,6 +84,9 @@ impl NativeItemRuntime {
                 err
             })
             .ok();
+        let language = roots
+            .load_client_language_catalog(language_code)
+            .context("load item tooltip language catalog")?;
         Self::from_loaded(
             item_models,
             cuboid_models,
@@ -85,6 +94,7 @@ impl NativeItemRuntime {
             registry,
             colormaps,
             furnace_fuel_item_ids,
+            language,
         )
     }
 
@@ -95,6 +105,7 @@ impl NativeItemRuntime {
         registry: Option<ItemRegistryCatalog>,
         colormaps: Option<TerrainColorMaps>,
         furnace_fuel_item_ids: BTreeSet<i32>,
+        language: LanguageCatalog,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
         let mut item_icon_model_refs = HashMap::new();
@@ -160,6 +171,7 @@ impl NativeItemRuntime {
             furnace_fuel_item_ids,
             item_icon_models,
             registry,
+            language,
             textures,
         })
     }
@@ -280,6 +292,14 @@ impl NativeItemRuntime {
 
     pub(crate) fn item_resource_id_for_protocol_id(&self, protocol_id: i32) -> Option<&str> {
         self.registry.as_ref()?.resource_id(protocol_id)
+    }
+
+    pub(crate) fn tooltip_lines_for_stack(&self, stack: &ItemStackSummary) -> Option<Vec<String>> {
+        if item_stack_is_empty(stack) {
+            return None;
+        }
+        let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
+        Some(vec![localized_item_name(&self.language, item_id)])
     }
 
     #[cfg(test)]
@@ -429,6 +449,27 @@ impl NativeItemRuntime {
             tint: ItemIconTint::Static(ITEM_TINT_WHITE),
         }]
     }
+}
+
+fn localized_item_name(language: &LanguageCatalog, resource_id: &str) -> String {
+    let item_key = description_key("item", resource_id);
+    if let Some(name) = language.get(&item_key) {
+        return name.to_string();
+    }
+
+    let block_key = description_key("block", resource_id);
+    language.get(&block_key).unwrap_or(&item_key).to_string()
+}
+
+fn description_key(prefix: &str, resource_id: &str) -> String {
+    let (namespace, path) = resource_id
+        .split_once(':')
+        .unwrap_or(("minecraft", resource_id));
+    format!("{prefix}.{namespace}.{}", path.replace('/', "."))
+}
+
+fn item_stack_is_empty(stack: &ItemStackSummary) -> bool {
+    stack.item_id.is_none() || stack.count <= 0
 }
 
 fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {
@@ -933,11 +974,42 @@ mod tests {
     }
 
     #[test]
+    fn localized_item_name_prefers_item_key_then_block_key() {
+        let language = LanguageCatalog::from_json_bytes(
+            br#"{
+                "item.minecraft.redstone": "Redstone Dust",
+                "block.minecraft.stone": "Stone"
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            localized_item_name(&language, "minecraft:redstone"),
+            "Redstone Dust"
+        );
+        assert_eq!(localized_item_name(&language, "minecraft:stone"), "Stone");
+        assert_eq!(
+            localized_item_name(&language, "minecraft:missing_item"),
+            "item.minecraft.missing_item"
+        );
+        assert_eq!(
+            description_key("item", "custom:tools/hammer"),
+            "item.custom.tools.hammer"
+        );
+    }
+
+    #[test]
     fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         let root = unique_temp_dir("item-runtime");
         let assets = assets_dir(&root);
         write_item_atlases(&assets);
         write_item_registry_sources(&root);
+        write_json(
+            &assets.join("lang").join("en_us.json"),
+            r#"{
+                "item.minecraft.test_combo": "Test Combo"
+            }"#,
+        );
         write_json(
             &assets.join("items").join("test_combo.json"),
             r#"{
@@ -1023,6 +1095,22 @@ mod tests {
                 .unwrap()
         );
         assert_eq!(runtime.icon_uv_for_protocol_id(0), Some(icon.layers[0].uv));
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary::default(),
+            }),
+            Some(vec!["Test Combo".to_string()])
+        );
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 0,
+                component_patch: DataComponentPatchSummary::default(),
+            }),
+            None
+        );
 
         let stack_icon = runtime
             .icon_for_stack(&ItemStackSummary {

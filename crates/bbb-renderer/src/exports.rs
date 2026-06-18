@@ -2,7 +2,7 @@ pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{CameraPose, ClearColor};
 pub use crate::hud::{
     HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer, HudInventoryBackgroundTexture,
-    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudItemCountLabel,
+    HudInventoryItem, HudInventoryScreen, HudInventorySlot, HudInventoryTooltip, HudItemCountLabel,
     HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
 pub use crate::item_entities::{ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityUvRect};

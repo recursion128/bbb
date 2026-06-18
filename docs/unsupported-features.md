@@ -349,7 +349,12 @@ When an agent does any of the following, update this file in the same slice:
         offhand would be preferred for non-spectator item use.
   - Inventory:
     - Implement:
-      - tooltips
+      - remaining rich tooltip behavior:
+        - renderer text drawing
+        - custom item names
+        - lore
+        - rarity/style
+        - component-specific detail lines
       - remaining dedicated server-opened menu layouts beyond:
         - `generic_9xN`
         - `generic_3x3`
@@ -535,6 +540,8 @@ When an agent does any of the following, update this file in the same slice:
       - supports bundle wheel selection on hovered local inventory slots
       - clears selected bundle items before local and server-opened
         `QUICK_MOVE` / `SWAP` container clicks
+      - projects hovered-slot default item tooltip names from official language
+        assets and protocol item ids
     - It renders and hit-tests supported server-opened screens:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices

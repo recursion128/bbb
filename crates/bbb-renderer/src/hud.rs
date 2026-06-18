@@ -243,6 +243,16 @@ pub struct HudInventoryItem {
     pub icon: HudItemIcon,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudInventoryTooltip {
+    pub slot_id: u16,
+    /// Tooltip anchor x position relative to the centered inventory screen origin.
+    pub x: i32,
+    /// Tooltip anchor y position relative to the centered inventory screen origin.
+    pub y: i32,
+    pub lines: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryScreen {
     pub width: u32,
@@ -253,6 +263,7 @@ pub struct HudInventoryScreen {
     /// Item icons drawn by the inventory screen that are not container slots.
     pub floating_items: Vec<HudInventoryItem>,
     pub hovered_slot_id: Option<u16>,
+    pub tooltip: Option<HudInventoryTooltip>,
 }
 
 pub(super) struct HudDrawCommand<'a> {
@@ -2158,6 +2169,7 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .filter_map(sanitize_hud_inventory_item)
             .collect(),
         hovered_slot_id: screen.hovered_slot_id,
+        tooltip: screen.tooltip.and_then(sanitize_hud_inventory_tooltip),
     }
 }
 
@@ -2183,6 +2195,25 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
         y: item.y,
         icon: sanitize_hud_item_icon(item.icon)?,
     })
+}
+
+fn sanitize_hud_inventory_tooltip(tooltip: HudInventoryTooltip) -> Option<HudInventoryTooltip> {
+    let lines = tooltip
+        .lines
+        .into_iter()
+        .filter_map(sanitize_hud_tooltip_line)
+        .take(16)
+        .collect::<Vec<_>>();
+    (!lines.is_empty()).then_some(HudInventoryTooltip { lines, ..tooltip })
+}
+
+fn sanitize_hud_tooltip_line(line: String) -> Option<String> {
+    let line = line
+        .chars()
+        .filter(|ch| !ch.is_control())
+        .take(256)
+        .collect::<String>();
+    (!line.is_empty()).then_some(line)
 }
 
 fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
@@ -2478,6 +2509,16 @@ mod tests {
             ],
             floating_items: Vec::new(),
             hovered_slot_id: Some(7),
+            tooltip: Some(HudInventoryTooltip {
+                slot_id: 5,
+                x: 8,
+                y: 84,
+                lines: vec![
+                    "Diamond Sword".to_string(),
+                    String::new(),
+                    "Attack\u{0007}Damage".to_string(),
+                ],
+            }),
         });
 
         assert_eq!(screen.width, 1);
@@ -2513,6 +2554,15 @@ mod tests {
         assert_eq!(screen.slots[1].icon, None);
         assert_eq!(screen.slots[2].slot_id, 7);
         assert_eq!(screen.slots[2].icon, None);
+        assert_eq!(
+            screen.tooltip,
+            Some(HudInventoryTooltip {
+                slot_id: 5,
+                x: 8,
+                y: 84,
+                lines: vec!["Diamond Sword".to_string(), "AttackDamage".to_string()],
+            })
+        );
     }
 
     #[test]
@@ -2557,6 +2607,7 @@ mod tests {
                 },
             ],
             hovered_slot_id: None,
+            tooltip: None,
         });
 
         assert_eq!(screen.floating_items.len(), 1);

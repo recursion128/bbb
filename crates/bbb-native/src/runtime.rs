@@ -13,10 +13,12 @@ use bbb_protocol::{
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    HudInventoryTooltip, HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect,
+    HUD_HOTBAR_SLOTS,
 };
 use bbb_world::{
-    MerchantOfferState, MerchantOffersState, MountArmorSlotKind, MountInventoryKind, WorldStore,
+    ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
+    MountInventoryKind, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -476,7 +478,8 @@ fn hud_inventory_screen_with_local_state(
 
     let slots = layout
         .slots
-        .into_iter()
+        .iter()
+        .copied()
         .map(|layout| {
             let inventory_slot = container
                 .slots
@@ -518,6 +521,27 @@ fn hud_inventory_screen_with_local_state(
             partial_tick,
         ),
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
+        tooltip: hud_inventory_tooltip(item_runtime, hovered_slot_id, &layout.slots, container),
+    })
+}
+
+fn hud_inventory_tooltip(
+    item_runtime: Option<&NativeItemRuntime>,
+    hovered_slot_id: Option<i16>,
+    layout_slots: &[crate::input::InventorySlotLayout],
+    container: &ContainerState,
+) -> Option<HudInventoryTooltip> {
+    let slot_id = hovered_slot_id?;
+    let layout = layout_slots
+        .iter()
+        .find(|layout| layout.slot_id == slot_id)?;
+    let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
+    let lines = item_runtime?.tooltip_lines_for_stack(&slot.item)?;
+    Some(HudInventoryTooltip {
+        slot_id: u16::try_from(slot_id).ok()?,
+        x: layout.x,
+        y: layout.y,
+        lines,
     })
 }
 
@@ -2439,6 +2463,11 @@ pub(crate) fn publish_snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{
+        path::{Path, PathBuf},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
     use bbb_protocol::packets::{MerchantOffer, MerchantOffers};
     use bbb_world::LocalPlayerPoseState;
 
@@ -2650,6 +2679,7 @@ mod tests {
             )]
         );
         assert_eq!(screen.hovered_slot_id, Some(36));
+        assert_eq!(screen.tooltip, None);
         assert_eq!(screen.slots.len(), 46);
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 36).unwrap();
         assert_eq!(hotbar.x, 8);
@@ -2658,6 +2688,34 @@ mod tests {
         let offhand = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
         assert_eq!(offhand.x, 77);
         assert_eq!(offhand.y, 62);
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_hovered_item_tooltip_name() {
+        let root = unique_runtime_temp_dir("inventory-tooltip");
+        write_runtime_tooltip_item_assets(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: item_stack(0, 1),
+        });
+        assert!(world.open_local_inventory());
+
+        let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+
+        assert_eq!(
+            screen.tooltip,
+            Some(HudInventoryTooltip {
+                slot_id: 36,
+                x: 8,
+                y: 142,
+                lines: vec!["Test Combo".to_string()],
+            })
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -5357,5 +5415,98 @@ mod tests {
         item.component_patch.damage = Some(damage);
         item.component_patch.unbreakable = unbreakable;
         item
+    }
+
+    fn write_runtime_tooltip_item_assets(root: &Path) {
+        let assets = runtime_assets_dir(root);
+        write_runtime_json(
+            &assets.join("atlases").join("items.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "item/",
+                        "source": "item"
+                    }
+                ]
+            }"#,
+        );
+        write_runtime_json(
+            &assets.join("atlases").join("blocks.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "block/",
+                        "source": "block"
+                    }
+                ]
+            }"#,
+        );
+        write_runtime_json(
+            &assets.join("items").join("test_combo.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:model",
+                    "model": "minecraft:item/test_combo"
+                }
+            }"#,
+        );
+        write_runtime_json(
+            &assets.join("models").join("item").join("test_combo.json"),
+            r#"{
+                "textures": {
+                    "layer0": "minecraft:item/test_combo"
+                }
+            }"#,
+        );
+        write_runtime_json(
+            &assets.join("lang").join("en_us.json"),
+            r#"{
+                "item.minecraft.test_combo": "Test Combo"
+            }"#,
+        );
+        write_runtime_png(
+            &assets.join("textures").join("item").join("test_combo.png"),
+            &[80, 120, 160, 255],
+        );
+        write_runtime_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item TEST_COMBO = registerItem("test_combo");
+            }"#,
+        );
+    }
+
+    fn runtime_assets_dir(root: &Path) -> PathBuf {
+        root.join("sources")
+            .join(bbb_pack::MC_VERSION)
+            .join("assets")
+            .join("minecraft")
+    }
+
+    fn write_runtime_json(path: &Path, contents: &str) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, contents).unwrap();
+    }
+
+    fn write_runtime_png(path: &Path, rgba: &[u8]) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        image::save_buffer(path, rgba, 1, 1, image::ColorType::Rgba8).unwrap();
+    }
+
+    fn unique_runtime_temp_dir(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("bbb-native-runtime-{label}-{nanos}"))
     }
 }

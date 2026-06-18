@@ -114,7 +114,7 @@ fn main() -> Result<()> {
             .ok()
     });
     let item_runtime = pack_roots.as_ref().and_then(|roots| {
-        NativeItemRuntime::load(roots)
+        NativeItemRuntime::load_with_locale(roots, &args.client_locale)
             .map_err(|err| {
                 tracing::warn!(?err, "continuing without native item asset runtime");
                 err
