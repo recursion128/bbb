@@ -1,6 +1,7 @@
 pub use crate::atlas::{
     AtlasImage, AtlasLayout, AtlasMipImage, AtlasMipLevel, AtlasPacker, AtlasRect, AtlasSprite,
 };
+pub use crate::block_destroy_profiles::{BlockDestroyProfile, BlockDestroyProfileCatalog};
 pub use crate::block_models::{
     BlockFaceTextures, BlockModelBox, BlockModelCatalog, BlockModelCross, BlockModelDisplayContext,
     BlockModelDisplayTransform, BlockModelDisplayTransforms, BlockModelFace, BlockModelGuiLight,

@@ -250,7 +250,10 @@ update this file in the same slice.
     - full flying friction
     - vanilla movement send thresholds
   - Block destroy: close:
-    - complete official block hardness coverage beyond the current named subset
+    - remaining block destroy profile gaps outside the mechanically parsed
+      `Blocks.java` property declarations:
+      - constructor-level mutations such as `InfestedBlock`
+      - arbitrary helper/lambda evaluation not covered by the current parser
     - remaining vanilla player destroy-speed modifiers:
       - mining efficiency attribute / Efficiency enchantment
       - Haste and Conduit Power
@@ -413,6 +416,13 @@ update this file in the same slice.
       - shovel
       - sword
       - shears
+    - Default block destroy profiles are derived from official 26.1
+      `Blocks.java` declarations for:
+      - direct `strength` / `destroyTime` / `instabreak` chains
+      - `requiresCorrectToolForDrops`
+      - `ofLegacyCopy` / `ofFullCopy` inheritance
+      - common helper registrations for logs, stems, leaves, buttons, flower
+        pots, candles, beds, stained glass, shulker boxes, pistons, and stairs
     - Local destroy progress applies the selected main-hand item profile through
       vanilla-shaped mining speed and `correct_for_drops` rule order.
     - It tracks vanilla-shaped local destroy stages in canonical interaction

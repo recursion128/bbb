@@ -14,6 +14,12 @@ pub struct LocalDestroyBlockFinished {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldBlockDestroyProfile {
+    pub destroy_time_tenths: Option<u32>,
+    pub requires_correct_tool: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldItemMiningRule {
     pub block_names: Vec<String>,
     pub mining_speed_thousandths: Option<u32>,
@@ -27,6 +33,16 @@ pub struct WorldItemMiningProfile {
 }
 
 impl WorldStore {
+    pub fn set_default_block_destroy_profiles(
+        &mut self,
+        profiles: std::collections::BTreeMap<String, WorldBlockDestroyProfile>,
+    ) {
+        self.default_block_destroy_profiles = profiles
+            .into_iter()
+            .filter(|(block_name, _)| !block_name.is_empty())
+            .collect();
+    }
+
     pub fn set_default_item_mining_profiles(
         &mut self,
         profiles: std::collections::BTreeMap<i32, WorldItemMiningProfile>,
@@ -113,7 +129,8 @@ impl WorldStore {
         let item = &hotbar_items[selected_slot];
         let mining_speed = self.local_destroy_mining_speed_thousandths(block_name, item);
         let correct_for_drops = self.local_destroy_item_is_correct_for_drops(block_name, item);
-        local_destroy_progress_per_tick_with_tool(block_name, mining_speed, correct_for_drops)
+        let block_profile = self.local_block_destroy_profile(block_name)?;
+        local_destroy_progress_per_tick_with_tool(block_profile, mining_speed, correct_for_drops)
     }
 
     fn local_destroy_mining_speed_thousandths(
@@ -138,28 +155,49 @@ impl WorldStore {
             .and_then(|item_id| self.default_item_mining_profiles.get(&item_id))
             .is_some_and(|profile| item_is_correct_for_drops(profile, block_name))
     }
+
+    fn local_block_destroy_profile(&self, block_name: &str) -> Option<LocalBlockDestroyProfile> {
+        self.default_block_destroy_profiles
+            .get(block_name)
+            .map(LocalBlockDestroyProfile::from)
+            .or_else(|| fallback_local_block_destroy_profile(block_name))
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 struct LocalBlockDestroyProfile {
-    destroy_time_tenths: u32,
+    destroy_time_tenths: Option<u32>,
     requires_correct_tool: bool,
+}
+
+impl From<&WorldBlockDestroyProfile> for LocalBlockDestroyProfile {
+    fn from(profile: &WorldBlockDestroyProfile) -> Self {
+        Self {
+            destroy_time_tenths: profile.destroy_time_tenths,
+            requires_correct_tool: profile.requires_correct_tool,
+        }
+    }
 }
 
 #[cfg(test)]
 fn local_destroy_progress_per_tick(block_name: &str) -> Option<u32> {
-    local_destroy_progress_per_tick_with_tool(block_name, 1_000, false)
+    local_destroy_progress_per_tick_with_tool(
+        fallback_local_block_destroy_profile(block_name)?,
+        1_000,
+        false,
+    )
 }
 
 fn local_destroy_progress_per_tick_with_tool(
-    block_name: &str,
+    profile: LocalBlockDestroyProfile,
     mining_speed_thousandths: u32,
     correct_for_drops: bool,
 ) -> Option<u32> {
-    let profile = local_block_destroy_profile(block_name)?;
-    if profile.destroy_time_tenths == 0 {
-        return Some(LOCAL_DESTROY_PROGRESS_SCALE);
-    }
+    let destroy_time_tenths = match profile.destroy_time_tenths {
+        Some(0) => return Some(LOCAL_DESTROY_PROGRESS_SCALE),
+        Some(destroy_time_tenths) => destroy_time_tenths,
+        None => return Some(0),
+    };
 
     let modifier = if !profile.requires_correct_tool || correct_for_drops {
         30_u64
@@ -168,7 +206,7 @@ fn local_destroy_progress_per_tick_with_tool(
     };
     let numerator =
         u64::from(LOCAL_DESTROY_PROGRESS_SCALE).saturating_mul(u64::from(mining_speed_thousandths));
-    let denominator = u64::from(profile.destroy_time_tenths)
+    let denominator = u64::from(destroy_time_tenths)
         .saturating_mul(100)
         .saturating_mul(modifier);
     Some(ceil_div_u64(numerator, denominator).min(u64::from(u32::MAX)) as u32)
@@ -181,9 +219,9 @@ fn local_destroy_stage(progress: u32) -> Option<u8> {
     Some(((progress.saturating_mul(10)) / LOCAL_DESTROY_PROGRESS_SCALE).min(9) as u8)
 }
 
-fn local_block_destroy_profile(block_name: &str) -> Option<LocalBlockDestroyProfile> {
+fn fallback_local_block_destroy_profile(block_name: &str) -> Option<LocalBlockDestroyProfile> {
     let profile = |destroy_time_tenths, requires_correct_tool| LocalBlockDestroyProfile {
-        destroy_time_tenths,
+        destroy_time_tenths: Some(destroy_time_tenths),
         requires_correct_tool,
     };
     match block_name {
@@ -353,6 +391,62 @@ mod tests {
     }
 
     #[test]
+    fn local_destroy_progress_uses_injected_block_destroy_profiles() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 5307);
+        assert_eq!(
+            world.probe_block(pos).unwrap().block_name.as_deref(),
+            Some("minecraft:diamond_ore")
+        );
+        assert_eq!(world.local_destroy_progress_per_tick(pos), None);
+
+        world.set_default_block_destroy_profiles(BTreeMap::from([(
+            "minecraft:diamond_ore".to_string(),
+            block_destroy_profile(Some(30), true),
+        )]));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(3_334));
+
+        world.set_default_item_mining_profiles(BTreeMap::from([(
+            42,
+            mining_profile(vec![mining_rule(
+                vec!["minecraft:diamond_ore"],
+                Some(8_000),
+                Some(true),
+            )]),
+        )]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(88_889));
+    }
+
+    #[test]
+    fn local_destroy_progress_keeps_unbreakable_blocks_active_without_progress() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 85);
+        assert_eq!(
+            world.probe_block(pos).unwrap().block_name.as_deref(),
+            Some("minecraft:bedrock")
+        );
+        assert_eq!(world.local_destroy_progress_per_tick(pos), None);
+
+        world.set_default_block_destroy_profiles(BTreeMap::from([(
+            "minecraft:bedrock".to_string(),
+            block_destroy_profile(None, false),
+        )]));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(0));
+
+        world.set_local_destroying_block_hit(pos, ProtocolDirection::North);
+        assert_eq!(world.advance_local_destroying_block_tick(), None);
+        assert_eq!(world.local_player().interaction.destroying_block, Some(pos));
+        assert_eq!(
+            world.local_player().interaction.destroying_block_progress,
+            0
+        );
+    }
+
+    #[test]
     fn local_destroy_stage_tracks_active_progress_range() {
         assert_eq!(local_destroy_stage(0), None);
         assert_eq!(local_destroy_stage(1), Some(0));
@@ -497,6 +591,16 @@ mod tests {
             block_names: block_names.into_iter().map(str::to_string).collect(),
             mining_speed_thousandths,
             correct_for_drops,
+        }
+    }
+
+    fn block_destroy_profile(
+        destroy_time_tenths: Option<u32>,
+        requires_correct_tool: bool,
+    ) -> WorldBlockDestroyProfile {
+        WorldBlockDestroyProfile {
+            destroy_time_tenths,
+            requires_correct_tool,
         }
     }
 

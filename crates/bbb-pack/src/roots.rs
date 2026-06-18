@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     atlas_sources::{load_atlas_texture_entries, AtlasTextureEntry},
+    block_destroy_profiles::BlockDestroyProfileCatalog,
     block_models::BlockModelCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
     item_cuboid_models::ItemCuboidModelCatalog,
@@ -236,6 +237,10 @@ impl PackRoots {
 
     pub fn load_item_registry_catalog(&self) -> Result<ItemRegistryCatalog> {
         ItemRegistryCatalog::load(self)
+    }
+
+    pub fn load_block_destroy_profile_catalog(&self) -> Result<BlockDestroyProfileCatalog> {
+        BlockDestroyProfileCatalog::load(self)
     }
 
     pub fn load_waypoint_style_catalog(&self) -> Result<WaypointStyleCatalog> {

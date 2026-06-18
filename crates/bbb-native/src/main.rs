@@ -1,6 +1,8 @@
 use anyhow::Result;
 use bbb_control::{shared_snapshot, AudioCounters, NetCounters};
-use bbb_world::WorldStore;
+use bbb_pack::{BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog};
+use bbb_world::{WorldBlockDestroyProfile, WorldStore};
+use std::collections::BTreeMap;
 use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
@@ -142,6 +144,21 @@ fn main() -> Result<()> {
             atlas_height,
             "loaded native item assets"
         );
+    }
+    if let Some(roots) = &pack_roots {
+        match roots.load_block_destroy_profile_catalog() {
+            Ok(catalog) => {
+                world
+                    .set_default_block_destroy_profiles(block_destroy_profiles_for_world(&catalog));
+                tracing::info!(
+                    block_destroy_profiles = catalog.len(),
+                    "loaded block destroy profiles"
+                );
+            }
+            Err(err) => {
+                tracing::warn!(?err, "continuing without block destroy profiles");
+            }
+        }
     }
 
     let event_loop = create_event_loop()?;
@@ -521,6 +538,23 @@ fn main() -> Result<()> {
     })?;
 
     Ok(())
+}
+
+fn block_destroy_profiles_for_world(
+    catalog: &BlockDestroyProfileCatalog,
+) -> BTreeMap<String, WorldBlockDestroyProfile> {
+    catalog
+        .profiles()
+        .iter()
+        .map(|(block_name, profile)| (block_name.clone(), world_block_destroy_profile(profile)))
+        .collect()
+}
+
+fn world_block_destroy_profile(profile: &PackBlockDestroyProfile) -> WorldBlockDestroyProfile {
+    WorldBlockDestroyProfile {
+        destroy_time_tenths: profile.destroy_time_tenths,
+        requires_correct_tool: profile.requires_correct_tool,
+    }
 }
 
 fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
