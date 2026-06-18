@@ -364,6 +364,17 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 133.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::ShulkerBox => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::ShulkerBox,
+                0,
+                0,
+                176,
+                167,
+                [0.0, 0.0],
+                [176.0 / 256.0, 167.0 / 256.0],
+            )]
+        }
     }
 }
 
@@ -885,6 +896,47 @@ mod tests {
         assert_eq!((first_container.x, first_container.y), (44, 20));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 40).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 109));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_shulker_box_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 20,
+            title: "Shulker Box".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 63],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(62)).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 167);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::ShulkerBox,
+                0,
+                0,
+                176,
+                167,
+                [0.0, 0.0],
+                [176.0 / 256.0, 167.0 / 256.0],
+            )]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(62));
+        assert_eq!(screen.slots.len(), 63);
+        let first_container = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((first_container.x, first_container.y), (8, 18));
+        let last_container = screen.slots.iter().find(|slot| slot.slot_id == 26).unwrap();
+        assert_eq!((last_container.x, last_container.y), (152, 54));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 62).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
     }
 
     #[test]

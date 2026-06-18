@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 use crate::WorldStore;
 
 const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
+const VANILLA_MENU_TYPE_SHULKER_BOX_ID: i32 = 20;
 const VANILLA_MENU_TYPE_GENERIC_9X1_ID: i32 = 0;
 const VANILLA_MENU_TYPE_GENERIC_9X6_ID: i32 = 5;
 const VANILLA_MENU_TYPE_GENERIC_3X3_ID: i32 = 6;
@@ -23,6 +24,7 @@ const VANILLA_MENU_TYPE_HOPPER_ID: i32 = 16;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_CONTAINER_SLOT_COUNT: i16 = 9;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
+const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
 const GENERIC_CONTAINER_PLAYER_SLOT_COUNT: i16 = 36;
 const PLAYER_HOTBAR_SIZE: usize = 9;
 const PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
@@ -686,6 +688,16 @@ impl WorldStore {
                         )
                     } else if let Some(container_slot_count) =
                         hopper_container_slot_count(menu_type_id)
+                    {
+                        apply_generic_container_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            container_slot_count,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else if let Some(container_slot_count) =
+                        shulker_box_container_slot_count(menu_type_id)
                     {
                         apply_generic_container_quick_move_to_slots(
                             container_id,
@@ -1484,6 +1496,11 @@ fn generic_3x3_container_slot_count(menu_type_id: Option<i32>) -> Option<i16> {
 
 fn hopper_container_slot_count(menu_type_id: Option<i32>) -> Option<i16> {
     (menu_type_id == Some(VANILLA_MENU_TYPE_HOPPER_ID)).then_some(HOPPER_CONTAINER_SLOT_COUNT)
+}
+
+fn shulker_box_container_slot_count(menu_type_id: Option<i32>) -> Option<i16> {
+    (menu_type_id == Some(VANILLA_MENU_TYPE_SHULKER_BOX_ID))
+        .then_some(SHULKER_BOX_CONTAINER_SLOT_COUNT)
 }
 
 fn apply_quick_move_to_slots(
@@ -3792,6 +3809,84 @@ mod tests {
         let slots = &store.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, item_stack(42, 3));
         assert_eq!(slots[5].item, ProtocolItemStackSummary::empty());
+    }
+
+    #[test]
+    fn apply_local_shulker_box_quick_move_moves_shulker_to_player_reverse() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
+            title: "Shulker Box".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 63];
+        items[0] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(quick_move.container_id, 7);
+        assert_eq!(quick_move.state_id, 12);
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, ProtocolHashedStack::Empty),
+                (62, hashed_item_stack(42, 3))
+            ])
+        );
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[62].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn apply_local_shulker_box_quick_move_moves_player_to_shulker_forward() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
+            title: "Shulker Box".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 63];
+        items[27] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 27,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(quick_move.container_id, 7);
+        assert_eq!(quick_move.state_id, 13);
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, hashed_item_stack(42, 3)),
+                (27, ProtocolHashedStack::Empty)
+            ])
+        );
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(42, 3));
+        assert_eq!(slots[27].item, ProtocolItemStackSummary::empty());
     }
 
     #[test]

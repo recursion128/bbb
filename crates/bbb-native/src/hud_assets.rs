@@ -59,6 +59,16 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         "minecraft:textures/gui/container/hopper",
     )?;
     renderer.upload_hud_hopper_background(hopper.width, hopper.height, &hopper.rgba)?;
+    let shulker_box = gui_texture(
+        roots,
+        "textures/gui/container/shulker_box.png",
+        "minecraft:textures/gui/container/shulker_box",
+    )?;
+    renderer.upload_hud_shulker_box_background(
+        shulker_box.width,
+        shulker_box.height,
+        &shulker_box.rgba,
+    )?;
     let slot_highlight_back = hud_sprite(&sprites, "container/slot_highlight_back")?;
     renderer.upload_hud_slot_highlight_back(
         slot_highlight_back.width,

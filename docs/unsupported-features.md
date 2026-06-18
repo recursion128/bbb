@@ -20,22 +20,297 @@ update this file in the same slice.
 
 ## Ledger
 
-| Area | Owner | Status | Next action | Evidence / boundary |
-| --- | --- | --- | --- | --- |
-| Unknown clientbound packets in login, configuration, and play | `bbb-protocol` + `bbb-net` + `bbb-native` | `diagnostic` | When an unsupported packet appears in probe/control diagnostics, verify it against local vanilla 26.1 sources, then either implement protocol decode and world/runtime handling or record why it is runtime-only. | Unknown login/config/play packets preserve `packet_id` and `len`, emit `NetEvent::UnsupportedPacket`, and project into `NetCounters` / `ProbeReport`. |
-| Protocol coverage for remaining required 26.1 packet families | `bbb-protocol` | `partial` | Continue auditing packet ids, field order, nullability, enum ordinals, and serverbound encoders against `<MC_CODE_ROOT>/sources/26.1/`; add focused encode/decode tests with each packet slice. | `docs/full-native-rewrite-plan.md` phase 2 remains open until required login, configuration, play, movement, inventory, chat, resource-pack, interaction, and command suggestion paths are covered. |
-| Offline probe and online dispatcher parity | `bbb-net` + `bbb-native` + `bbb-world` | `partial` | Keep adding parity regression tests for every decoded packet that has a `WorldStore` apply API; prefer shared semantics or focused paired tests when probe and online handling differ. | Probe and online paths now cover many packet families, including unsupported diagnostics and play -> configuration teardown, but the final criterion requires every supported decoded packet to stay aligned. |
-| Native-owned business snapshots | `bbb-world` + `bbb-native` + `bbb-control` | `partial` | Continue moving client-observable state into `WorldStore`; keep `NetCounters` for connection/runtime status and command queue projections only. | The architecture plan still calls out removal of native-only `last_*` snapshots where a world owner exists or should exist. |
-| Code of Conduct presentation | `bbb-world` + `bbb-native` + `bbb-renderer` | `deferred` | Replace the native bitmap prompt with fuller vanilla screen/font rendering when the renderer UI stack is mature. | Canonical Code of Conduct UI state and control requests are covered; presentation parity is explicitly deferred in `docs/full-native-rewrite-plan.md`. |
-| Crosshair entity interaction parity | `bbb-world` + `bbb-native` + `bbb-renderer` | `partial` | Validate any future `yRotA` source, then replace the debug target overlay with full entity model rendering and interaction feedback when renderer entity presentation exists. | `bbb-world` and `bbb-native` expose many verified pick bounds and interaction packets; native now projects the current crosshair entity pick target into a renderer-visible wire outline using the same pick AABB as raycast selection. |
-| Particle runtime vanilla parity | `bbb-renderer` + `bbb-native` + `bbb-pack` | `partial` | Implement remaining provider-specific behavior, light curves, particle sorting, collision/player-coupled physics, particle limits/settings, atlas mip animation, and terrain/item particle option rendering as separate renderer slices; preserve missing definition/sprite diagnostics. | Current runtime drains level-particle spawn batches, advances CPU-side common particles, samples vanilla-shaped size/color/age-size curves for the common particle providers, uploads a stitched official particle atlas when assets are available, and draws active particles as camera-facing textured billboards. Full vanilla provider behavior and presentation parity remain follow-up work in the plan. |
-| Renderer scene parity | `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world` | `partial` | Replace the entity bounds and dropped-item icon proxies with full model, equipment, skin, lighting, animation, culling, and ordering extraction from canonical world and pack data; implement vanilla dropped-item ground-context model rendering, bobbing, Y spin, count-based multiple copies, and lighting as a follow-up. Continue HUD, overlay, screenshot, and interaction-feedback work with deterministic renderer tests or explicit manual comparison notes. | Renderer draws terrain, HUD, particles, selection/block-destroy overlays, crosshair entity target outlines, a basic hecs-derived entity bounds scene proxy, and dropped item entities as camera-facing item-icon billboards from canonical item entity stack metadata and the native item atlas. Backend GPU resources stay outside `WorldStore`; full entity presentation remains phase 6 work. |
-| Audio runtime parity | `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world` | `partial` | Continue validating source/category mapping, spatial/entity-following sounds, stop semantics, and device/runtime diagnostics against vanilla behavior without requiring an audio device in unit tests. | `bbb-audio` has Kira-backed command/runtime boundaries and pack-driven sound lookup, but full vanilla playback parity remains phase 7 work. |
-| Official 26.1 resource-pack coverage | `bbb-pack` | `partial` | Implement unsupported atlas, item model, item tint, and registry declaration shapes as official assets or resource packs require them; keep resource-pack precedence/filter tests close to loaders. | Loaders report unsupported atlas/item declarations; sounds, generated vanilla fallback, and resource-pack filters are covered for current audio use. |
-| Bundle selected-item icon state | `bbb-protocol` + `bbb-world` + `bbb-native` + `bbb-pack` | `partial` | Connect native bundle slot mouse helpers to inventory/container screen slot hit-testing when that UI exists, then expand renderer/UI coverage beyond hotbar icon snapshots. | Vanilla `BundleHasSelectedItem` checks `BundleItem.getSelectedItem(itemStack) != null`; `BundleContents.STREAM_CODEC` sends the item template list but not the selected index. `bbb-protocol` preserves bundle item-template summaries, `bbb-world` stores the local selected index per inventory/container slot, control pumping and native bundle mouse helpers update that canonical state before queueing `ServerboundSelectBundleItemPacket`, and the GUI item icon runtime evaluates `minecraft:bundle/has_selected_item` plus resolves `minecraft:bundle/selected_item` from the selected template. |
-| Native input, movement, interaction, inventory, and command flows | `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world` | `partial` | Extend local movement from the current basic AABB collision and gravity/jump slice to full fixed 20Hz survival physics, remaining vanilla voxel collision shapes, fluids, effects, sneak pose details, the near-ground/fallDistance branch of sneak edge backoff, full flying friction, and vanilla movement send thresholds. Close full block-destroy parity for vanilla hardness/tool-sensitive progress, collision-aware rollback position handling, hit effects, full model-shaped crack decals with vanilla crumbling blend/depth-bias behavior, and any remaining `STOP_DESTROY_BLOCK` sequencing gaps. Continue adding focused command queue and encode tests for missing inventory, interaction, chat, and command flows; next inventory work should implement tooltips, item durability/cooldown decorations, remaining dedicated server-opened menu layouts beyond generic_9xN, generic_3x3, and hopper, recipe book/creative variants, and fuller local quick-move parity such as armor/offhand auto-equip and crafting result semantics for container `0`. | Native movement now projects world-computed `on_ground` and `horizontal_collision` into serverbound move commands, clips local player movement with a basic AABB solver against simple full-block terrain plus slab, stair, door, trapdoor, fence, fence gate, bars/pane, wall, leaves, snow layer, flat carpet, chain, ladder, rod, campfire, copper grate, chest, bed, cauldron, hopper, composter, enchanting table, stonecutter, and anvil shapes, applies basic gravity, starts jumps only from ground, applies local player `movement_speed` / `sneaking_speed` attributes with the vanilla default sneaking-speed reduction, supports basic abilities-driven flying movement with no ordinary gravity plus jump/sneak vertical controls and vanilla 0.6 Y-velocity damping, supports vanilla default 0.6 step-up onto bottom slabs/stairs and low ground shapes without auto-stepping full blocks, and applies a basic vanilla-shaped sneak edge backoff so grounded local players do not walk off supported block edges while holding sneak. Existing input modules queue many serverbound packets, including vanilla-shaped boat/raft paddle-state packets from local mounted input, `START_RIDING_JUMP` player commands for vanilla `PlayerRideableJumping` vehicle types using the 26.1 charge scale on jump release, `START_FALL_FLYING` player commands when an airborne local player has an elytra-equipped chest slot, `STOP_SLEEPING` player commands when wake-up input is pressed while the local player entity has sleeping pose metadata, and chat entry paths that send offline unsigned `ServerboundChatPacket` messages, request `ServerboundCommandSuggestionPacket` completions with the leading slash while typing slash commands, submit `ServerboundChatCommandPacket` payloads without the leading slash, and queue explicit `ServerboundClientCommandPacket` perform-respawn commands from native/control input instead of auto-respawning on dead health; native opens the ordinary local inventory as container `0`, releases cursor capture while it is open, closes it with E/Esc by queueing `ServerboundContainerClosePacket(0)`, renders the centered vanilla survival inventory background with item icons and slot hover highlights, hit-tests the fixed container `0` slot layout, routes left/right pickup and outside-drop clicks through a basic local `PICKUP` simulation, routes Shift-click slots through a basic local `QUICK_MOVE` simulation for main-inventory/hotbar/container-zero ranges, routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation for one-item/full-stack drops, routes hovered-slot number/F keys through a basic local `SWAP` simulation for hotbar/offhand swaps, routes rapid same-slot left double-clicks through a basic local `PICKUP_ALL` simulation to collect matching stacks into the carried item, routes local left/right drag distribution through vanilla-shaped `QUICK_CRAFT` start/add/end clicks for container `0`, renders stack count labels for hotbar and local inventory item icons using official 26.1 `font/ascii.png` digit glyphs with vanilla item-count placement, updates cursor/slot state, and fills `ServerboundContainerClickPacket(0)` changed-slot hashes, supports bundle wheel selection on hovered local inventory slots, renders and hit-tests server-opened `generic_9x1` through `generic_9x6` ChestMenu screens with official `generic_54.png` background slices, `generic_3x3` DispenserMenu screens with official `dispenser.png`, and HopperMenu screens with official `hopper.png`, queues basic left/right `PICKUP` and Shift-click `QUICK_MOVE` container clicks for those supported fixed-slot screens, and control/native can still build a basic `ServerboundContainerClickPacket` from the active container id, state id, slot id, and cursor item for server-opened containers when the carried stack is hash-safe. Native block destroy progress records the starting main-hand item signature and restarts the destroy sequence when the selected item/components change, tracks vanilla-shaped local destroy stages in canonical interaction state and clears them on completion/abort/restart, projects local stages and server `BlockDestruction` progress to batched renderer-visible cube crack overlays using official `destroy_stage_0..9` block atlas textures, keeps the highest stage when multiple overlays target one block position, expires server destruction entries after the vanilla-shaped 400 render tick window, predicts the locally destroyed block to air or a legacy water/lava state before queuing stop/instant destroy packets, defers server block updates into pending prediction state, and reconciles those predictions on `BlockChangedAck`. Completion requires full vanilla movement and these flows to work through encoded serverbound packets end to end. |
-| Signed chat and chat acknowledgement production | `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native` | `partial` | Implement signed chat/chat-command last-seen updates and any remaining vanilla last-seen message entries needed for outbound signed payloads. | `ServerboundChatAckPacket` id 6 and VarInt `offset` encoding, offline unsigned `ServerboundChatPacket` encoding/sending, `NetCommand::ChatAcknowledgement` sending, canonical processed-signature offset tracking, online drain queueing, and offline probe ack sending after vanilla's `offset > 64` threshold are covered. Full signed chat payload generation remains follow-up work. |
-| Manual visual/audio comparisons | Relevant runtime owner | `deferred` | Whenever visual or audio behavior cannot be proven by automated tests, record the vanilla source path, asset path, screenshot, smoke test, or manual comparison required to close the slice. | The project gate allows manual or screenshot/audio smoke checks outside normal unit tests, but they must be documented when required. |
+### Unknown Clientbound Packets In Login, Configuration, And Play
+
+- Owner: `bbb-protocol` + `bbb-net` + `bbb-native`
+- Status: `diagnostic`
+- Next action:
+  - When an unsupported packet appears in probe/control diagnostics, verify it
+    against local vanilla 26.1 sources.
+  - Then either implement protocol decode plus world/runtime handling, or record
+    why it is runtime-only.
+- Evidence / boundary:
+  - Unknown login/config/play packets preserve `packet_id` and `len`.
+  - They emit `NetEvent::UnsupportedPacket` and project into `NetCounters` /
+    `ProbeReport`.
+
+### Protocol Coverage For Remaining Required 26.1 Packet Families
+
+- Owner: `bbb-protocol`
+- Status: `partial`
+- Next action:
+  - Continue auditing packet ids, field order, nullability, enum ordinals, and
+    serverbound encoders against `<MC_CODE_ROOT>/sources/26.1/`.
+  - Add focused encode/decode tests with each packet slice.
+- Evidence / boundary:
+  - `docs/full-native-rewrite-plan.md` phase 2 remains open until required
+    login, configuration, play, movement, inventory, chat, resource-pack,
+    interaction, and command suggestion paths are covered.
+
+### Offline Probe And Online Dispatcher Parity
+
+- Owner: `bbb-net` + `bbb-native` + `bbb-world`
+- Status: `partial`
+- Next action:
+  - Keep adding parity regression tests for every decoded packet that has a
+    `WorldStore` apply API.
+  - Prefer shared semantics or focused paired tests when probe and online
+    handling differ.
+- Evidence / boundary:
+  - Probe and online paths now cover many packet families, including unsupported
+    diagnostics and play -> configuration teardown.
+  - The final criterion requires every supported decoded packet to stay aligned.
+
+### Native-Owned Business Snapshots
+
+- Owner: `bbb-world` + `bbb-native` + `bbb-control`
+- Status: `partial`
+- Next action:
+  - Continue moving client-observable state into `WorldStore`.
+  - Keep `NetCounters` for connection/runtime status and command queue
+    projections only.
+- Evidence / boundary:
+  - The architecture plan still calls out removal of native-only `last_*`
+    snapshots where a world owner exists or should exist.
+
+### Code Of Conduct Presentation
+
+- Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
+- Status: `deferred`
+- Next action:
+  - Replace the native bitmap prompt with fuller vanilla screen/font rendering
+    when the renderer UI stack is mature.
+- Evidence / boundary:
+  - Canonical Code of Conduct UI state and control requests are covered.
+  - Presentation parity is explicitly deferred in
+    `docs/full-native-rewrite-plan.md`.
+
+### Crosshair Entity Interaction Parity
+
+- Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
+- Status: `partial`
+- Next action:
+  - Validate any future `yRotA` source.
+  - Replace the debug target overlay with full entity model rendering and
+    interaction feedback when renderer entity presentation exists.
+- Evidence / boundary:
+  - `bbb-world` and `bbb-native` expose many verified pick bounds and
+    interaction packets.
+  - Native projects the current crosshair entity pick target into a
+    renderer-visible wire outline using the same pick AABB as raycast selection.
+
+### Particle Runtime Vanilla Parity
+
+- Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
+- Status: `partial`
+- Next action:
+  - Implement remaining provider-specific behavior, light curves, particle
+    sorting, collision/player-coupled physics, particle limits/settings, atlas
+    mip animation, and terrain/item particle option rendering as separate
+    renderer slices.
+  - Preserve missing definition/sprite diagnostics.
+- Evidence / boundary:
+  - Current runtime drains level-particle spawn batches, advances CPU-side
+    common particles, samples vanilla-shaped size/color/age-size curves for the
+    common particle providers, uploads a stitched official particle atlas when
+    assets are available, and draws active particles as camera-facing textured
+    billboards.
+  - Full vanilla provider behavior and presentation parity remain follow-up work
+    in the plan.
+
+### Renderer Scene Parity
+
+- Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
+- Status: `partial`
+- Next action:
+  - Replace the entity bounds and dropped-item icon proxies with full model,
+    equipment, skin, lighting, animation, culling, and ordering extraction from
+    canonical world and pack data.
+  - Implement vanilla dropped-item ground-context model rendering, bobbing,
+    Y spin, count-based multiple copies, and lighting as a follow-up.
+  - Continue HUD, overlay, screenshot, and interaction-feedback work with
+    deterministic renderer tests or explicit manual comparison notes.
+- Evidence / boundary:
+  - Renderer draws terrain, HUD, particles, selection/block-destroy overlays,
+    crosshair entity target outlines, a basic hecs-derived entity bounds scene
+    proxy, and dropped item entities as camera-facing item-icon billboards from
+    canonical item entity stack metadata and the native item atlas.
+  - Backend GPU resources stay outside `WorldStore`.
+  - Full entity presentation remains phase 6 work.
+
+### Audio Runtime Parity
+
+- Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
+- Status: `partial`
+- Next action:
+  - Continue validating source/category mapping, spatial/entity-following
+    sounds, stop semantics, and device/runtime diagnostics against vanilla
+    behavior without requiring an audio device in unit tests.
+- Evidence / boundary:
+  - `bbb-audio` has Kira-backed command/runtime boundaries and pack-driven sound
+    lookup.
+  - Full vanilla playback parity remains phase 7 work.
+
+### Official 26.1 Resource-Pack Coverage
+
+- Owner: `bbb-pack`
+- Status: `partial`
+- Next action:
+  - Implement unsupported atlas, item model, item tint, and registry declaration
+    shapes as official assets or resource packs require them.
+  - Keep resource-pack precedence/filter tests close to loaders.
+- Evidence / boundary:
+  - Loaders report unsupported atlas/item declarations.
+  - Sounds, generated vanilla fallback, and resource-pack filters are covered for
+    current audio use.
+
+### Bundle Selected-Item Icon State
+
+- Owner: `bbb-protocol` + `bbb-world` + `bbb-native` + `bbb-pack`
+- Status: `partial`
+- Next action:
+  - Connect native bundle slot mouse helpers to inventory/container screen slot
+    hit-testing when that UI exists.
+  - Expand renderer/UI coverage beyond hotbar icon snapshots.
+- Evidence / boundary:
+  - Vanilla `BundleHasSelectedItem` checks
+    `BundleItem.getSelectedItem(itemStack) != null`.
+  - `BundleContents.STREAM_CODEC` sends the item template list but not the
+    selected index.
+  - `bbb-protocol` preserves bundle item-template summaries.
+  - `bbb-world` stores the local selected index per inventory/container slot.
+  - Control pumping and native bundle mouse helpers update canonical state before
+    queueing `ServerboundSelectBundleItemPacket`.
+  - The GUI item icon runtime evaluates `minecraft:bundle/has_selected_item` and
+    resolves `minecraft:bundle/selected_item` from the selected template.
+
+### Native Input, Movement, Interaction, Inventory, And Command Flows
+
+- Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
+- Status: `partial`
+- Next action:
+  - Movement: extend the current basic AABB collision and gravity/jump slice to
+    full fixed 20Hz survival physics, remaining vanilla voxel collision shapes,
+    fluids, effects, sneak pose details, the near-ground/fallDistance branch of
+    sneak edge backoff, full flying friction, and vanilla movement send
+    thresholds.
+  - Block destroy: close full vanilla hardness/tool-sensitive progress,
+    collision-aware rollback position handling, hit effects, full model-shaped
+    crack decals with vanilla crumbling blend/depth-bias behavior, and any
+    remaining `STOP_DESTROY_BLOCK` sequencing gaps.
+  - Commands: continue adding focused command queue and encode tests for missing
+    inventory, interaction, chat, and command flows.
+  - Inventory: implement tooltips, item durability/cooldown decorations,
+    remaining dedicated server-opened menu layouts beyond `generic_9xN`,
+    `generic_3x3`, hopper, and shulker box, recipe book/creative variants, and
+    fuller local quick-move parity such as armor/offhand auto-equip and crafting
+    result semantics for container `0`.
+- Evidence / boundary:
+  - Movement:
+    - Native movement projects world-computed `on_ground` and
+      `horizontal_collision` into serverbound move commands.
+    - It clips local player movement with a basic AABB solver against simple
+      full-block terrain plus slab, stair, door, trapdoor, fence, fence gate,
+      bars/pane, wall, leaves, snow layer, flat carpet, chain, ladder, rod,
+      campfire, copper grate, chest, bed, cauldron, hopper, composter,
+      enchanting table, stonecutter, and anvil shapes.
+    - It applies basic gravity, starts jumps only from ground, applies local
+      player `movement_speed` / `sneaking_speed` attributes with the vanilla
+      default sneaking-speed reduction, supports basic abilities-driven flying
+      movement with no ordinary gravity plus jump/sneak vertical controls and
+      vanilla 0.6 Y-velocity damping, supports vanilla default 0.6 step-up onto
+      bottom slabs/stairs and low ground shapes without auto-stepping full
+      blocks, and applies a basic vanilla-shaped sneak edge backoff.
+  - Commands:
+    - Existing input modules queue many serverbound packets, including
+      vanilla-shaped boat/raft paddle-state packets from local mounted input.
+    - They queue `START_RIDING_JUMP` player commands for vanilla
+      `PlayerRideableJumping` vehicle types using the 26.1 charge scale on jump
+      release.
+    - They queue `START_FALL_FLYING` player commands when an airborne local
+      player has an elytra-equipped chest slot.
+    - They queue `STOP_SLEEPING` player commands when wake-up input is pressed
+      while the local player entity has sleeping pose metadata.
+    - Chat entry paths send offline unsigned `ServerboundChatPacket` messages,
+      request `ServerboundCommandSuggestionPacket` completions with the leading
+      slash while typing slash commands, submit `ServerboundChatCommandPacket`
+      payloads without the leading slash, and queue explicit
+      `ServerboundClientCommandPacket` perform-respawn commands from
+      native/control input instead of auto-respawning on dead health.
+  - Inventory:
+    - Native opens the ordinary local inventory as container `0`, releases cursor
+      capture while it is open, and closes it with E/Esc by queueing
+      `ServerboundContainerClosePacket(0)`.
+    - It renders the centered vanilla survival inventory background with item
+      icons and slot hover highlights, hit-tests the fixed container `0` slot
+      layout, routes left/right pickup and outside-drop clicks through a basic
+      local `PICKUP` simulation, routes Shift-click slots through a basic local
+      `QUICK_MOVE` simulation for main-inventory/hotbar/container-zero ranges,
+      routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation,
+      routes hovered-slot number/F keys through a basic local `SWAP` simulation,
+      routes rapid same-slot left double-clicks through a basic local
+      `PICKUP_ALL` simulation, and routes local left/right drag distribution
+      through vanilla-shaped `QUICK_CRAFT` start/add/end clicks for container
+      `0`.
+    - It renders stack count labels for hotbar and local inventory item icons
+      using official 26.1 `font/ascii.png` digit glyphs with vanilla item-count
+      placement, updates cursor/slot state, fills
+      `ServerboundContainerClickPacket(0)` changed-slot hashes, and supports
+      bundle wheel selection on hovered local inventory slots.
+    - It renders and hit-tests server-opened `generic_9x1` through
+      `generic_9x6` ChestMenu screens with official `generic_54.png` background
+      slices, `generic_3x3` DispenserMenu screens with official
+      `dispenser.png`, HopperMenu screens with official `hopper.png`, and
+      ShulkerBoxMenu screens with official `shulker_box.png`.
+    - It queues basic left/right `PICKUP` and Shift-click `QUICK_MOVE` container
+      clicks for those supported fixed-slot screens.
+    - Control/native can still build a basic `ServerboundContainerClickPacket`
+      from the active container id, state id, slot id, and cursor item for
+      server-opened containers when the carried stack is hash-safe.
+  - Block destroy:
+    - Native block destroy progress records the starting main-hand item
+      signature and restarts the destroy sequence when the selected
+      item/components change.
+    - It tracks vanilla-shaped local destroy stages in canonical interaction
+      state and clears them on completion/abort/restart.
+    - It projects local stages and server `BlockDestruction` progress to batched
+      renderer-visible cube crack overlays using official `destroy_stage_0..9`
+      block atlas textures, keeps the highest stage when multiple overlays target
+      one block position, and expires server destruction entries after the
+      vanilla-shaped 400 render tick window.
+    - It predicts the locally destroyed block to air or a legacy water/lava state
+      before queuing stop/instant destroy packets, defers server block updates
+      into pending prediction state, and reconciles those predictions on
+      `BlockChangedAck`.
+  - Completion requires full vanilla movement and these flows to work through
+    encoded serverbound packets end to end.
+
+### Signed Chat And Chat Acknowledgement Production
+
+- Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
+- Status: `partial`
+- Next action:
+  - Implement signed chat/chat-command last-seen updates and any remaining
+    vanilla last-seen message entries needed for outbound signed payloads.
+- Evidence / boundary:
+  - `ServerboundChatAckPacket` id 6 and VarInt `offset` encoding, offline
+    unsigned `ServerboundChatPacket` encoding/sending, `NetCommand::ChatAcknowledgement`
+    sending, canonical processed-signature offset tracking, online drain
+    queueing, and offline probe ack sending after vanilla's `offset > 64`
+    threshold are covered.
+  - Full signed chat payload generation remains follow-up work.
+
+### Manual Visual/Audio Comparisons
+
+- Owner: relevant runtime owner
+- Status: `deferred`
+- Next action:
+  - Whenever visual or audio behavior cannot be proven by automated tests, record
+    the vanilla source path, asset path, screenshot, smoke test, or manual
+    comparison required to close the slice.
+- Evidence / boundary:
+  - The project gate allows manual or screenshot/audio smoke checks outside
+    normal unit tests, but they must be documented when required.
 
 Mounted boat input now has a basic locally authoritative path that updates
 local look while mounted, advances a simple root-boat transform from local input,

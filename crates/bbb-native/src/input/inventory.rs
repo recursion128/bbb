@@ -26,6 +26,7 @@ const GENERIC_CONTAINER_FIRST_MENU_TYPE_ID: i32 = 0;
 const GENERIC_CONTAINER_LAST_MENU_TYPE_ID: i32 = 5;
 const GENERIC_3X3_MENU_TYPE_ID: i32 = 6;
 const HOPPER_MENU_TYPE_ID: i32 = 16;
+const SHULKER_BOX_MENU_TYPE_ID: i32 = 20;
 const GENERIC_CONTAINER_SLOT_COLUMNS: i32 = 9;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_SCREEN_WIDTH: i32 = 176;
@@ -35,6 +36,9 @@ const GENERIC_3X3_SLOT_COUNT: i16 = 9;
 const HOPPER_SCREEN_WIDTH: i32 = 176;
 const HOPPER_SCREEN_HEIGHT: i32 = 133;
 const HOPPER_SLOT_COUNT: i16 = 5;
+const SHULKER_BOX_SCREEN_WIDTH: i32 = 176;
+const SHULKER_BOX_SCREEN_HEIGHT: i32 = 167;
+const SHULKER_BOX_SLOT_COUNT: i16 = 27;
 const SLOT_SIZE: f64 = 16.0;
 const SLOT_HOVER_MARGIN: f64 = 1.0;
 const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
@@ -45,6 +49,7 @@ pub(crate) enum InventoryScreenBackground {
     Generic9xRows { rows: u8 },
     Generic3x3,
     Hopper,
+    ShulkerBox,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -152,6 +157,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             slots: hopper_slot_layouts(),
         });
     }
+    if menu_type_id == SHULKER_BOX_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: SHULKER_BOX_SCREEN_WIDTH,
+            height: SHULKER_BOX_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::ShulkerBox,
+            slots: shulker_box_slot_layouts(),
+        });
+    }
     None
 }
 
@@ -251,6 +264,37 @@ fn hopper_slot_layouts() -> Vec<InventorySlotLayout> {
             slot_id: HOPPER_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 109,
+        });
+    }
+
+    slots
+}
+
+fn shulker_box_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(SHULKER_BOX_SLOT_COUNT as usize + 36);
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 18 + y * 18,
+            });
+        }
+    }
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: SHULKER_BOX_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: SHULKER_BOX_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
         });
     }
 
@@ -1005,6 +1049,55 @@ mod tests {
     }
 
     #[test]
+    fn shulker_box_layout_matches_vanilla_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 20,
+            title: "Shulker Box".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 167);
+        assert_eq!(layout.background, InventoryScreenBackground::ShulkerBox);
+        assert_eq!(layout.slots.len(), 63);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 8,
+                y: 18,
+            }
+        );
+        assert_eq!(
+            layout.slots[26],
+            InventorySlotLayout {
+                slot_id: 26,
+                x: 152,
+                y: 54,
+            }
+        );
+        assert_eq!(
+            layout.slots[27],
+            InventorySlotLayout {
+                slot_id: 27,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[62],
+            InventorySlotLayout {
+                slot_id: 62,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn generic_container_hit_test_uses_vanilla_screen_height() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -1077,6 +1170,30 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(704.0, 403.0)), size),
             Some(InventoryClickTarget::Slot(40))
+        );
+    }
+
+    #[test]
+    fn shulker_box_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 20,
+            title: "Shulker Box".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(560.0, 303.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 339.0)), size),
+            Some(InventoryClickTarget::Slot(26))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(62))
         );
     }
 
@@ -1298,6 +1415,61 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, ItemStackSummary::empty());
         assert_eq!(slots[40].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn shulker_box_shift_click_queues_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 20,
+            title: "Shulker Box".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 63];
+        items[0] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 303.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Empty),
+                    (62, HashedStack::Item(hashed_item(42, 3))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[62].item, item_stack(42, 3));
     }
 
     #[test]

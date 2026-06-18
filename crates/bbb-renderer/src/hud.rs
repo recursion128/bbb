@@ -92,6 +92,7 @@ pub enum HudInventoryBackgroundTexture {
     GenericContainer,
     Dispenser,
     Hopper,
+    ShulkerBox,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -219,6 +220,16 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_hopper_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_shulker_box_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_shulker_box_background = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -636,6 +647,7 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::Dispenser => self.hud_dispenser_background.as_ref(),
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
+            HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
         }
     }
 }
