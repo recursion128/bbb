@@ -102,6 +102,7 @@ When an agent does any of the following, update this file in the same slice:
     - inventory, container, cursor, and merchant-offer updates
     - entity position, metadata, equipment, attributes, status, link,
       passenger, take-item, and remove updates
+    - minecart along-track lerp updates
   - The final criterion:
     - every supported decoded packet stays aligned
 

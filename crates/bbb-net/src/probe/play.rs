@@ -522,20 +522,21 @@ mod tests {
         ItemCostSummary, ItemStackSummary, LevelChunkBlockEntity, LevelChunkData,
         LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdate, LightUpdateData,
         MapColorPatch, MapDecoration, MapItemData, MerchantOffer, MerchantOffers, MessageSignature,
-        MobEffectFlags, MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenScreen,
-        OpenSignEditor, PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin,
-        PlayTime, PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction,
-        PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt,
-        PlayerPositionUpdate, PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters,
-        PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
-        RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
-        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType,
-        RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop, ResourcePackPush,
-        ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot, SectionBlocksUpdate,
-        SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
-        ServerLinks, SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
-        SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
-        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
+        MinecartStep, MobEffectFlags, MountScreenOpen, MoveMinecartAlongTrack, MoveVehicle,
+        ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
+        ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat,
+        PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry,
+        PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate,
+        PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters, PongResponse,
+        ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
+        RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
+        RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType, RemoveEntities,
+        RemoveMobEffect, ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
+        RotateHead, ScoreboardDisplaySlot, SectionBlocksUpdate, SelectAdvancementsTab, ServerData,
+        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetBorderCenter,
+        SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
+        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
         SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetObjectiveMethod,
         SetObjectiveParameters, SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore,
         SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
@@ -2051,6 +2052,82 @@ mod tests {
         assert_eq!(report.world_counters.vehicle_moves_applied, 1);
         assert_eq!(report.world_counters.vehicle_moves_acked, 1);
         assert_eq!(report.world_counters.vehicle_moves_snapped, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_minecart_along_track_to_world() {
+        const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity_with_type(
+                10,
+                VANILLA_ENTITY_TYPE_MINECART_ID,
+            )))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(20)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MoveMinecartAlongTrack(
+                MoveMinecartAlongTrack {
+                    entity_id: 10,
+                    lerp_steps: vec![
+                        minecart_step(1.25, 64.1, -2.25, 0.2, 0.0, -0.2, 45.0, -10.0, 0.5),
+                        minecart_step(1.75, 64.2, -2.75, 0.4, 0.0, -0.4, 90.0, 5.0, 1.25),
+                    ],
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MoveMinecartAlongTrack(
+                MoveMinecartAlongTrack {
+                    entity_id: 999,
+                    lerp_steps: vec![minecart_step(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)],
+                },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MoveMinecartAlongTrack(
+                MoveMinecartAlongTrack {
+                    entity_id: 20,
+                    lerp_steps: vec![minecart_step(3.0, 64.0, -4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)],
+                },
+            ))
+            .await
+            .unwrap();
+
+        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let minecart = report.world.probe_entity(10).unwrap();
+        assert_eq!(minecart.position.x, 1.75);
+        assert_eq!(minecart.position.y, 64.2);
+        assert_eq!(minecart.position.z, -2.75);
+        assert_eq!(minecart.delta_movement.x, 0.4);
+        assert_eq!(minecart.delta_movement.y, 0.0);
+        assert_eq!(minecart.delta_movement.z, -0.4);
+        assert_eq!(minecart.y_rot, 90.0);
+        assert_eq!(minecart.x_rot, 5.0);
+        assert_eq!(minecart.minecart_lerp_steps.len(), 2);
+
+        let non_minecart = report.world.probe_entity(20).unwrap();
+        assert_eq!(non_minecart.position.x, 1.0);
+        assert_eq!(non_minecart.position.y, 64.0);
+        assert_eq!(non_minecart.position.z, -2.0);
+        assert!(report.world.probe_entity(999).is_none());
+
+        assert_eq!(report.world_counters.entities_received, 2);
+        assert_eq!(report.world_counters.entities_tracked, 2);
+        assert_eq!(report.world_counters.minecart_moves_received, 3);
+        assert_eq!(report.world_counters.minecart_moves_applied, 1);
+        assert_eq!(report.world_counters.minecart_moves_ignored, 2);
+        assert_eq!(report.world_counters.minecart_lerp_steps_received, 4);
+        assert_eq!(report.world_counters.minecart_lerp_steps_tracked, 2);
     }
 
     #[tokio::test]
@@ -3975,6 +4052,34 @@ mod tests {
         AddEntity {
             entity_type_id,
             ..protocol_add_entity(id)
+        }
+    }
+
+    fn minecart_step(
+        position_x: f64,
+        position_y: f64,
+        position_z: f64,
+        movement_x: f64,
+        movement_y: f64,
+        movement_z: f64,
+        y_rot: f32,
+        x_rot: f32,
+        weight: f32,
+    ) -> MinecartStep {
+        MinecartStep {
+            position: ProtocolVec3d {
+                x: position_x,
+                y: position_y,
+                z: position_z,
+            },
+            movement: ProtocolVec3d {
+                x: movement_x,
+                y: movement_y,
+                z: movement_z,
+            },
+            y_rot,
+            x_rot,
+            weight,
         }
     }
 }
