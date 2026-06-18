@@ -121,6 +121,11 @@ const MERCHANT_TRADE_BUTTON_Y: i32 = 18;
 const MERCHANT_TRADE_BUTTON_WIDTH: i32 = 88;
 const MERCHANT_TRADE_BUTTON_HEIGHT: i32 = 20;
 const MERCHANT_TRADE_BUTTON_COUNT: i32 = 7;
+const MERCHANT_SCROLLER_X: i32 = 94;
+const MERCHANT_SCROLLER_Y: i32 = 18;
+const MERCHANT_SCROLLER_WIDTH: i32 = 6;
+const MERCHANT_SCROLLER_HEIGHT: i32 = 27;
+const MERCHANT_SCROLLER_FULL_HEIGHT: i32 = 139;
 const SHULKER_BOX_SCREEN_WIDTH: i32 = 176;
 const SHULKER_BOX_SCREEN_HEIGHT: i32 = 167;
 const SHULKER_BOX_SLOT_COUNT: i16 = 27;
@@ -1115,6 +1120,11 @@ pub(crate) fn handle_inventory_cursor_moved(
         return false;
     }
 
+    if input.merchant_trade_scrolling
+        && update_merchant_trade_scroll_from_cursor(input, world, cursor_position, surface_size)
+    {
+        return true;
+    }
     if input.stonecutter_recipe_scrolling
         && update_stonecutter_recipe_scroll_from_cursor(input, world, cursor_position, surface_size)
     {
@@ -1225,6 +1235,13 @@ pub(crate) fn handle_inventory_mouse_input(
         return true;
     }
     if maybe_start_stonecutter_recipe_scroll_drag(input, world, cursor_position, surface_size) {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if maybe_start_merchant_trade_scroll_drag(input, world, cursor_position, surface_size) {
         input.inventory_last_click_slot = None;
         input.inventory_last_click_button_num = None;
         input.inventory_last_click_at = None;
@@ -1405,6 +1422,7 @@ fn handle_inventory_mouse_released(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    input.merchant_trade_scrolling = false;
     input.stonecutter_recipe_scrolling = false;
     let Some(quick_craft_button_num) = input.inventory_quick_craft_button_num else {
         return true;
@@ -1795,6 +1813,22 @@ fn maybe_start_stonecutter_recipe_scroll_drag(
     true
 }
 
+fn maybe_start_merchant_trade_scroll_drag(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if !merchant_offers_can_scroll(world) {
+        return false;
+    }
+    if !merchant_scroller_track_at_position(world, cursor_position, surface_size) {
+        return false;
+    }
+    input.merchant_trade_scrolling = true;
+    true
+}
+
 fn maybe_scroll_merchant_trades(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -1822,6 +1856,22 @@ fn merchant_offers_can_scroll(world: &WorldStore) -> bool {
         .as_ref()
         .and_then(|container| container.merchant_offers.as_ref())
         .is_some_and(|offers| offers.offers.len() > MERCHANT_TRADE_BUTTON_COUNT as usize)
+}
+
+fn merchant_offer_count_and_scroll_offset(world: &WorldStore) -> Option<(usize, i32)> {
+    world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.merchant_offers.as_ref())
+        .map(|offers| (offers.offers.len(), offers.local_scroll_offset))
+}
+
+fn merchant_max_scroll_offset(offer_count: usize) -> i32 {
+    i32::try_from(offer_count)
+        .unwrap_or_default()
+        .saturating_sub(MERCHANT_TRADE_BUTTON_COUNT)
+        .max(0)
 }
 
 fn inventory_wheel_steps_from_scroll(
@@ -1940,6 +1990,74 @@ fn merchant_trade_at_position(
         }
     }
     None
+}
+
+fn merchant_scroller_track_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if !merchant_offers_can_scroll(world) {
+        return false;
+    }
+    let Some(layout) = inventory_screen_layout(world) else {
+        return false;
+    };
+    if layout.background != InventoryScreenBackground::Merchant {
+        return false;
+    }
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    x > f64::from(MERCHANT_SCROLLER_X)
+        && x < f64::from(MERCHANT_SCROLLER_X + MERCHANT_SCROLLER_WIDTH)
+        && y > f64::from(MERCHANT_SCROLLER_Y)
+        && y <= f64::from(MERCHANT_SCROLLER_Y + MERCHANT_SCROLLER_FULL_HEIGHT + 1)
+}
+
+fn update_merchant_trade_scroll_from_cursor(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some((offer_count, current_scroll_offset)) = merchant_offer_count_and_scroll_offset(world)
+    else {
+        input.merchant_trade_scrolling = false;
+        return false;
+    };
+    let max_scroll_offset = merchant_max_scroll_offset(offer_count);
+    if max_scroll_offset <= 0 {
+        input.merchant_trade_scrolling = false;
+        return false;
+    }
+    let Some(layout) = inventory_screen_layout(world) else {
+        input.merchant_trade_scrolling = false;
+        return false;
+    };
+    if layout.background != InventoryScreenBackground::Merchant {
+        input.merchant_trade_scrolling = false;
+        return false;
+    }
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (_, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let y = cursor.y - origin_y;
+    let drag_range = f64::from(MERCHANT_SCROLLER_FULL_HEIGHT - MERCHANT_SCROLLER_HEIGHT);
+    let scroll_offset =
+        (((y - f64::from(MERCHANT_SCROLLER_Y) - f64::from(MERCHANT_SCROLLER_HEIGHT) * 0.5)
+            / drag_range)
+            * f64::from(max_scroll_offset)
+            + 0.5) as i32;
+    let scroll_offset = scroll_offset.clamp(0, max_scroll_offset);
+    if scroll_offset != current_scroll_offset {
+        world.scroll_local_merchant_offers(scroll_offset - current_scroll_offset);
+    }
+    true
 }
 
 fn lectern_button_at_position(
@@ -4848,6 +4966,85 @@ mod tests {
                 .and_then(|container| container.merchant_offers.as_ref())
                 .map(|offers| offers.local_selected_offer_index),
             Some(4)
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn merchant_scroller_drag_updates_visible_trade_window() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: MERCHANT_MENU_TYPE_ID,
+            title: "Merchant".to_string(),
+        });
+        assert!(world.apply_merchant_offers(merchant_offers(7, 12)));
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(598.0, 296.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(input.merchant_trade_scrolling);
+
+        assert!(handle_inventory_cursor_moved(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Some(PhysicalPosition::new(598.0, 420.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(input.merchant_trade_scrolling);
+        assert_eq!(counters.select_trade_commands_queued, 0);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert_eq!(
+            world
+                .inventory()
+                .open_container
+                .as_ref()
+                .and_then(|container| container.merchant_offers.as_ref())
+                .map(|offers| offers.local_scroll_offset),
+            Some(5)
+        );
+        assert!(rx.try_recv().is_err());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Released,
+            Some(PhysicalPosition::new(598.0, 420.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(!input.merchant_trade_scrolling);
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(545.0, 300.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.select_trade_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectTrade(SelectTradeCommand { item: 5 })
         );
         assert!(rx.try_recv().is_err());
     }

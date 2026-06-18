@@ -605,6 +605,8 @@ When an agent does any of the following, update this file in the same slice:
       `ServerboundSelectTradePacket` for the current visible offer window.
     - MerchantMenu mouse wheel input updates the local trade-list scroll offset
       for offer lists longer than seven rows.
+    - MerchantMenu scroller drag updates the local trade-list scroll offset for
+      offer lists longer than seven rows.
     - MerchantMenu renders the current visible server-provided offer window with:
       - cost/result item icons
       - normal/out-of-stock trade arrows
@@ -697,13 +699,12 @@ When an agent does any of the following, update this file in the same slice:
         - result-slot pickup and quick-move paths are kept server-authoritative
           until:
           - payment slot routing from `MerchantOffer` costs
-          - result prediction
-          - input consumption
-          - trade sound/XP side effects
-        - deferred presentation parity work:
+        - result prediction
+        - input consumption
+        - trade sound/XP side effects
+      - deferred presentation parity work:
           - rendered generic button row backgrounds and hover/focus highlight
           - selected row state if a future vanilla source adds one
-          - scroller drag behavior
           - future trade XP result bar from payment/result prediction
           - component-aware cost predicate rendering
           - full trade stack decorations and hover tooltips

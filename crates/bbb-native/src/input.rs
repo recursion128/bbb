@@ -80,6 +80,7 @@ pub(crate) struct ClientInputState {
     stonecutter_recipe_scroll_row: i32,
     stonecutter_recipe_scroll_input_item_id: Option<i32>,
     stonecutter_recipe_scrolling: bool,
+    merchant_trade_scrolling: bool,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
@@ -129,6 +130,8 @@ impl ClientInputState {
         self.inventory_last_click_at = None;
         self.inventory_quick_craft_button_num = None;
         self.inventory_quick_craft_slots.clear();
+        self.merchant_trade_scrolling = false;
+        self.stonecutter_recipe_scrolling = false;
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
