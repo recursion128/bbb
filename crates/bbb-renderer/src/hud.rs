@@ -175,6 +175,9 @@ pub enum HudInventoryBackgroundTexture {
     Grindstone,
     GrindstoneError,
     Hopper,
+    Book,
+    PageBackward,
+    PageForward,
     ShulkerBox,
     Stonecutter,
     Villager,
@@ -900,6 +903,26 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_book_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_book_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_page_backward(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_page_backward = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_page_forward(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_page_forward = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_shulker_box_background(
         &mut self,
         width: u32,
@@ -1579,6 +1602,9 @@ impl Renderer {
             HudInventoryBackgroundTexture::Grindstone => self.hud_grindstone_background.as_ref(),
             HudInventoryBackgroundTexture::GrindstoneError => self.hud_grindstone_error.as_ref(),
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
+            HudInventoryBackgroundTexture::Book => self.hud_book_background.as_ref(),
+            HudInventoryBackgroundTexture::PageBackward => self.hud_page_backward.as_ref(),
+            HudInventoryBackgroundTexture::PageForward => self.hud_page_forward.as_ref(),
             HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
             HudInventoryBackgroundTexture::Stonecutter => self.hud_stonecutter_background.as_ref(),
             HudInventoryBackgroundTexture::Villager => self.hud_villager_background.as_ref(),

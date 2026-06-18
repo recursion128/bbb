@@ -340,6 +340,7 @@ When an agent does any of the following, update this file in the same slice:
         - crafting table
         - grindstone
         - hopper
+        - lectern
         - loom
         - merchant/villager
         - shulker box
@@ -521,6 +522,9 @@ When an agent does any of the following, update this file in the same slice:
       - GrindstoneMenu screens with official `grindstone.png` background and
         `container/grindstone/error` overlay sprite
       - HopperMenu screens with official `hopper.png`
+      - LecternMenu screens with official:
+        - `book.png` background
+        - backward/forward page button sprites
       - LoomMenu screens with official:
         - `loom.png` background
         - empty banner/dye/pattern slot sprites
@@ -534,6 +538,11 @@ When an agent does any of the following, update this file in the same slice:
         - `smithing.png` background
         - `container/smithing/error` overlay sprite
       - StonecutterMenu screens with official `stonecutter.png`
+    - LecternMenu page-button clicks queue vanilla container-button ids:
+      - `1` for previous page
+      - `2` for next page
+    - Lectern full book text, Done controls, and Take Book controls remain
+      follow-up screen presentation/control work.
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
       progress sprites:
       - lit-progress

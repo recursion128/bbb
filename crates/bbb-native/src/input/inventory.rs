@@ -38,6 +38,7 @@ const ENCHANTMENT_MENU_TYPE_ID: i32 = 13;
 const FURNACE_MENU_TYPE_ID: i32 = 14;
 const GRINDSTONE_MENU_TYPE_ID: i32 = 15;
 const HOPPER_MENU_TYPE_ID: i32 = 16;
+const LECTERN_MENU_TYPE_ID: i32 = 17;
 const LOOM_MENU_TYPE_ID: i32 = 18;
 const MERCHANT_MENU_TYPE_ID: i32 = 19;
 const SHULKER_BOX_MENU_TYPE_ID: i32 = 20;
@@ -91,6 +92,15 @@ const GRINDSTONE_SLOT_COUNT: i16 = 3;
 const HOPPER_SCREEN_WIDTH: i32 = 176;
 const HOPPER_SCREEN_HEIGHT: i32 = 133;
 const HOPPER_SLOT_COUNT: i16 = 5;
+const LECTERN_SCREEN_WIDTH: i32 = 192;
+const LECTERN_SCREEN_HEIGHT: i32 = 192;
+const LECTERN_BUTTON_PREV_PAGE: i32 = 1;
+const LECTERN_BUTTON_NEXT_PAGE: i32 = 2;
+const LECTERN_PAGE_BUTTON_Y: i32 = 157;
+const LECTERN_PAGE_BACK_BUTTON_X: i32 = 43;
+const LECTERN_PAGE_FORWARD_BUTTON_X: i32 = 116;
+const LECTERN_PAGE_BUTTON_WIDTH: i32 = 23;
+const LECTERN_PAGE_BUTTON_HEIGHT: i32 = 13;
 const LOOM_SCREEN_WIDTH: i32 = 176;
 const LOOM_SCREEN_HEIGHT: i32 = 166;
 const LOOM_SLOT_COUNT: i16 = 4;
@@ -131,6 +141,7 @@ pub(crate) enum InventoryScreenBackground {
     Furnace,
     Grindstone,
     Hopper,
+    Lectern,
     Loom,
     Merchant,
     ShulkerBox,
@@ -306,6 +317,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: HOPPER_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Hopper,
             slots: hopper_slot_layouts(),
+        });
+    }
+    if menu_type_id == LECTERN_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: LECTERN_SCREEN_WIDTH,
+            height: LECTERN_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Lectern,
+            slots: Vec::new(),
         });
     }
     if menu_type_id == LOOM_MENU_TYPE_ID {
@@ -1039,6 +1058,21 @@ pub(crate) fn handle_inventory_mouse_input(
         );
     }
     if button_num == 0
+        && maybe_queue_lectern_button_click(
+            world,
+            counters,
+            net_commands,
+            cursor_position,
+            surface_size,
+        )
+    {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if button_num == 0
         && maybe_queue_merchant_trade_click(
             world,
             counters,
@@ -1131,6 +1165,28 @@ pub(crate) fn handle_inventory_mouse_input(
         request.input,
     );
     local_inventory_apply_and_queue_click(world, counters, net_commands, request);
+    true
+}
+
+fn maybe_queue_lectern_button_click(
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(button_id) = lectern_button_at_position(world, cursor_position, surface_size) else {
+        return false;
+    };
+    let Some(container_id) = world
+        .inventory()
+        .open_container
+        .as_ref()
+        .map(|container| container.container_id)
+    else {
+        return false;
+    };
+    queue_container_button_click_command(counters, net_commands, container_id, button_id);
     true
 }
 
@@ -1677,6 +1733,37 @@ fn merchant_trade_at_position(
         {
             return Some(item);
         }
+    }
+    None
+}
+
+fn lectern_button_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<i32> {
+    let layout = inventory_screen_layout(world)?;
+    if layout.background != InventoryScreenBackground::Lectern {
+        return None;
+    }
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    if y < f64::from(LECTERN_PAGE_BUTTON_Y)
+        || y >= f64::from(LECTERN_PAGE_BUTTON_Y + LECTERN_PAGE_BUTTON_HEIGHT)
+    {
+        return None;
+    }
+    if x >= f64::from(LECTERN_PAGE_BACK_BUTTON_X)
+        && x < f64::from(LECTERN_PAGE_BACK_BUTTON_X + LECTERN_PAGE_BUTTON_WIDTH)
+    {
+        return Some(LECTERN_BUTTON_PREV_PAGE);
+    }
+    if x >= f64::from(LECTERN_PAGE_FORWARD_BUTTON_X)
+        && x < f64::from(LECTERN_PAGE_FORWARD_BUTTON_X + LECTERN_PAGE_BUTTON_WIDTH)
+    {
+        return Some(LECTERN_BUTTON_NEXT_PAGE);
     }
     None
 }
@@ -2465,6 +2552,23 @@ mod tests {
     }
 
     #[test]
+    fn lectern_layout_matches_vanilla_book_screen() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: LECTERN_MENU_TYPE_ID,
+            title: "Lectern".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 192);
+        assert_eq!(layout.height, 192);
+        assert_eq!(layout.background, InventoryScreenBackground::Lectern);
+        assert!(layout.slots.is_empty());
+    }
+
+    #[test]
     fn shulker_box_layout_matches_vanilla_menu() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -3114,6 +3218,34 @@ mod tests {
     }
 
     #[test]
+    fn lectern_hit_test_uses_book_screen_and_page_buttons() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: LECTERN_MENU_TYPE_ID,
+            title: "Lectern".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(545.0, 265.0)), size),
+            Some(InventoryClickTarget::EmptyPanel)
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(543.0, 264.0)), size),
+            Some(InventoryClickTarget::Outside)
+        );
+        assert_eq!(
+            lectern_button_at_position(&world, Some(PhysicalPosition::new(588.0, 422.0)), size),
+            Some(LECTERN_BUTTON_PREV_PAGE)
+        );
+        assert_eq!(
+            lectern_button_at_position(&world, Some(PhysicalPosition::new(661.0, 422.0)), size),
+            Some(LECTERN_BUTTON_NEXT_PAGE)
+        );
+    }
+
+    #[test]
     fn shulker_box_hit_test_uses_vanilla_slots() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -3418,6 +3550,42 @@ mod tests {
 
         assert_eq!(counters.container_button_click_commands_queued, 0);
         assert_eq!(counters.container_click_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn lectern_page_button_click_queues_container_button_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: LECTERN_MENU_TYPE_ID,
+            title: "Lectern".to_string(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(661.0, 422.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: LECTERN_BUTTON_NEXT_PAGE,
+            })
+        );
         assert!(rx.try_recv().is_err());
     }
 

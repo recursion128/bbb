@@ -449,6 +449,24 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         "minecraft:textures/gui/container/hopper",
     )?;
     renderer.upload_hud_hopper_background(hopper.width, hopper.height, &hopper.rgba)?;
+    let book = gui_texture(
+        roots,
+        "textures/gui/book.png",
+        "minecraft:textures/gui/book",
+    )?;
+    renderer.upload_hud_book_background(book.width, book.height, &book.rgba)?;
+    let page_backward = hud_sprite(&sprites, "widget/page_backward")?;
+    renderer.upload_hud_page_backward(
+        page_backward.width,
+        page_backward.height,
+        &page_backward.rgba,
+    )?;
+    let page_forward = hud_sprite(&sprites, "widget/page_forward")?;
+    renderer.upload_hud_page_forward(
+        page_forward.width,
+        page_forward.height,
+        &page_forward.rgba,
+    )?;
     let shulker_box = gui_texture(
         roots,
         "textures/gui/container/shulker_box.png",

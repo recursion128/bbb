@@ -648,6 +648,37 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 133.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::Lectern => {
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Book,
+                    0,
+                    0,
+                    192,
+                    192,
+                    [0.0, 0.0],
+                    [192.0 / 256.0, 192.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::PageBackward,
+                    43,
+                    157,
+                    23,
+                    13,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::PageForward,
+                    116,
+                    157,
+                    23,
+                    13,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        }
         InventoryScreenBackground::Loom => {
             let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Loom,
@@ -2620,6 +2651,54 @@ mod tests {
         assert_eq!((first_container.x, first_container.y), (44, 20));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 40).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 109));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_lectern_book_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 17,
+            title: "Lectern".to_string(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(screen.width, 192);
+        assert_eq!(screen.height, 192);
+        assert!(screen.slots.is_empty());
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Book,
+                    0,
+                    0,
+                    192,
+                    192,
+                    [0.0, 0.0],
+                    [192.0 / 256.0, 192.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::PageBackward,
+                    43,
+                    157,
+                    23,
+                    13,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::PageForward,
+                    116,
+                    157,
+                    23,
+                    13,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
     }
 
     #[test]
