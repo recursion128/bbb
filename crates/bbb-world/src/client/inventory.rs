@@ -813,6 +813,12 @@ impl WorldStore {
                 }
             }
         }
+        if container_id == INVENTORY_MENU_CONTAINER_ID
+            && request.slot_num == 0
+            && inventory_menu_result_was_taken(&slots_before, &slots_after)
+        {
+            apply_inventory_menu_result_take_side_effects(&mut slots_after);
+        }
         let changed_slots = changed_hashed_slots(&slots_before, &slots_after)?;
         let carried_item = hashed_stack_from_summary(&cursor_after)
             .ok_or(ContainerClickBuildError::UnhashableCarriedItem)?;
@@ -1082,6 +1088,48 @@ fn changed_hashed_slots(
         changed.insert(slot.slot, hashed);
     }
     Ok(changed)
+}
+
+fn inventory_menu_result_was_taken(before: &[ContainerSlot], after: &[ContainerSlot]) -> bool {
+    let Some(before_result) = container_slot_item(before, 0) else {
+        return false;
+    };
+    if item_stack_is_empty(before_result) {
+        return false;
+    }
+
+    let Some(after_result) = container_slot_item(after, 0) else {
+        return true;
+    };
+    if item_stack_is_empty(after_result) {
+        return true;
+    }
+    !same_item_same_components(before_result, after_result)
+        || after_result.count < before_result.count
+}
+
+fn apply_inventory_menu_result_take_side_effects(slots: &mut [ContainerSlot]) {
+    for slot_num in 1..=4 {
+        let Some(slot) = slots.iter_mut().find(|slot| slot.slot == slot_num) else {
+            continue;
+        };
+        if item_stack_is_empty(&slot.item) {
+            continue;
+        }
+        slot.item.count -= 1;
+        normalize_item_stack(&mut slot.item);
+        normalize_container_slot_selection(slot);
+    }
+}
+
+fn container_slot_item(
+    slots: &[ContainerSlot],
+    slot_num: i16,
+) -> Option<&ProtocolItemStackSummary> {
+    slots
+        .iter()
+        .find(|slot| slot.slot == slot_num)
+        .map(|slot| &slot.item)
 }
 
 fn apply_pickup_click_to_slots(
@@ -3919,6 +3967,102 @@ mod tests {
             ProtocolItemStackSummary::empty()
         );
         assert_eq!(player_slot_item(&store, 0), item_stack(42, 1));
+    }
+
+    #[test]
+    fn apply_local_container_pickup_result_consumes_crafting_inputs_once() {
+        let mut store = WorldStore::new();
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[0] = item_stack(90, 1);
+        items[1] = item_stack(42, 2);
+        items[2] = item_stack(43, 1);
+        items[4] = item_stack(44, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: INVENTORY_MENU_CONTAINER_ID,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(store.open_local_inventory());
+
+        let pickup = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+
+        assert_eq!(
+            pickup.changed_slots,
+            BTreeMap::from([
+                (0, ProtocolHashedStack::Empty),
+                (1, hashed_item_stack(42, 1)),
+                (2, ProtocolHashedStack::Empty),
+                (4, hashed_item_stack(44, 2)),
+            ])
+        );
+        assert_eq!(pickup.carried_item, hashed_item_stack(90, 1));
+        assert_eq!(
+            inventory_menu_slot_item(&store, 0),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+        assert_eq!(
+            inventory_menu_slot_item(&store, 2),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 4), item_stack(44, 2));
+        assert_eq!(store.inventory().cursor_item, item_stack(90, 1));
+    }
+
+    #[test]
+    fn apply_local_container_quick_move_result_consumes_crafting_inputs_once() {
+        let mut store = WorldStore::new();
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[0] = item_stack(90, 2);
+        items[1] = item_stack(42, 2);
+        items[2] = item_stack(43, 1);
+        items[4] = item_stack(44, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: INVENTORY_MENU_CONTAINER_ID,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(store.open_local_inventory());
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, ProtocolHashedStack::Empty),
+                (1, hashed_item_stack(42, 1)),
+                (2, ProtocolHashedStack::Empty),
+                (4, hashed_item_stack(44, 2)),
+                (44, hashed_item_stack(90, 2)),
+            ])
+        );
+        assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            inventory_menu_slot_item(&store, 0),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+        assert_eq!(
+            inventory_menu_slot_item(&store, 2),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(inventory_menu_slot_item(&store, 4), item_stack(44, 2));
+        assert_eq!(inventory_menu_slot_item(&store, 44), item_stack(90, 2));
+        assert_eq!(player_slot_item(&store, 8), item_stack(90, 2));
     }
 
     #[test]

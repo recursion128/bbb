@@ -267,8 +267,10 @@ update this file in the same slice.
       - hopper
       - shulker box
     - recipe book/creative variants
-    - remaining local quick-move parity:
-      - crafting result semantics for container `0`
+    - remaining local crafting result parity for container `0`:
+      - server-authored result recomputation from local 2x2 inputs
+      - repeated Shift-click crafting while the recomputed result stays the same
+      - recipe-specific remainder items
 - Evidence / boundary:
   - Movement:
     - Native movement projects world-computed `on_ground` and
@@ -340,6 +342,8 @@ update this file in the same slice.
       - routes Shift-click slots through a local `QUICK_MOVE` simulation for:
         - armor/offhand auto-equip from official item default equipment slots
         - main-inventory/hotbar/container-zero ranges
+        - single-take crafting result movement with vanilla-shaped input
+          consumption
       - routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation
       - routes hovered-slot number/F keys through a basic local `SWAP`
         simulation
