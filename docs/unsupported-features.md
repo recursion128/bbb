@@ -514,6 +514,8 @@ When an agent does any of the following, update this file in the same slice:
       - vanilla `AbstractFurnaceMenu` / `BrewingStandScreen` progress formulas
     - It queues basic left/right `PICKUP` container clicks for those supported
       fixed-slot screens.
+    - MerchantMenu visible trade-row clicks queue
+      `ServerboundSelectTradePacket` for the first seven server-provided offers.
     - It also queues Shift-click `QUICK_MOVE` container clicks for:
       - supported generic containers
       - `generic_3x3`
@@ -599,15 +601,14 @@ When an agent does any of the following, update this file in the same slice:
       - MerchantMenu:
         - result-slot pickup and quick-move paths are kept server-authoritative
           until:
-          - offer selection routing
           - payment slot routing from `MerchantOffer` costs
           - result prediction
           - input consumption
           - trade sound/XP side effects
         - deferred presentation parity work:
-          - trade offer list buttons
+          - rendered selected/highlighted trade offer list buttons
           - trade item icons and stack decorations
-          - scroller and drag behavior
+          - scroller, scroll offset, and drag behavior
           - out-of-stock/deprecated overlays
           - discount strikethrough
           - villager XP progress bar

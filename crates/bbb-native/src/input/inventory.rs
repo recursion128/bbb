@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
-use bbb_protocol::packets::{ContainerInput, ItemStackSummary};
+use bbb_protocol::packets::{ContainerInput, ItemStackSummary, SelectTradeCommand};
 use bbb_world::{ContainerClickBuildError, ContainerClickSlotRequest, WorldStore};
 use tokio::sync::mpsc;
 use winit::{
@@ -15,7 +15,7 @@ use super::{
     bundle::{handle_bundle_slot_hover_end, handle_bundle_slot_mouse_scroll},
     commands::{
         hotbar_slot_for_key, queue_container_button_click_command, queue_container_click_command,
-        queue_container_slot_state_changed_command,
+        queue_container_slot_state_changed_command, queue_select_trade_command,
     },
     ClientInputState,
 };
@@ -97,6 +97,11 @@ const LOOM_SLOT_COUNT: i16 = 4;
 const MERCHANT_SCREEN_WIDTH: i32 = 276;
 const MERCHANT_SCREEN_HEIGHT: i32 = 166;
 const MERCHANT_SLOT_COUNT: i16 = 3;
+const MERCHANT_TRADE_BUTTON_X: i32 = 5;
+const MERCHANT_TRADE_BUTTON_Y: i32 = 18;
+const MERCHANT_TRADE_BUTTON_WIDTH: i32 = 88;
+const MERCHANT_TRADE_BUTTON_HEIGHT: i32 = 20;
+const MERCHANT_TRADE_BUTTON_COUNT: i32 = 7;
 const SHULKER_BOX_SCREEN_WIDTH: i32 = 176;
 const SHULKER_BOX_SCREEN_HEIGHT: i32 = 167;
 const SHULKER_BOX_SLOT_COUNT: i16 = 27;
@@ -1034,6 +1039,21 @@ pub(crate) fn handle_inventory_mouse_input(
         );
     }
     if button_num == 0
+        && maybe_queue_merchant_trade_click(
+            world,
+            counters,
+            net_commands,
+            cursor_position,
+            surface_size,
+        )
+    {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if button_num == 0
         && maybe_queue_enchantment_button_click(
             world,
             counters,
@@ -1111,6 +1131,20 @@ pub(crate) fn handle_inventory_mouse_input(
         request.input,
     );
     local_inventory_apply_and_queue_click(world, counters, net_commands, request);
+    true
+}
+
+fn maybe_queue_merchant_trade_click(
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(item) = merchant_trade_at_position(world, cursor_position, surface_size) else {
+        return false;
+    };
+    queue_select_trade_command(counters, net_commands, SelectTradeCommand { item });
     true
 }
 
@@ -1533,6 +1567,43 @@ fn enchantment_button_at_position(
     None
 }
 
+fn merchant_trade_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<i32> {
+    let layout = inventory_screen_layout(world)?;
+    if layout.background != InventoryScreenBackground::Merchant {
+        return None;
+    }
+    let offer_count = world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.merchant_offers.as_ref())
+        .map(|offers| offers.offers.len())
+        .unwrap_or_default();
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    if x < f64::from(MERCHANT_TRADE_BUTTON_X)
+        || x >= f64::from(MERCHANT_TRADE_BUTTON_X + MERCHANT_TRADE_BUTTON_WIDTH)
+    {
+        return None;
+    }
+    for item in 0..MERCHANT_TRADE_BUTTON_COUNT {
+        let button_y = MERCHANT_TRADE_BUTTON_Y + item * MERCHANT_TRADE_BUTTON_HEIGHT;
+        if y >= f64::from(button_y)
+            && y < f64::from(button_y + MERCHANT_TRADE_BUTTON_HEIGHT)
+            && (item as usize) < offer_count
+        {
+            return Some(item);
+        }
+    }
+    None
+}
+
 fn inventory_screen_click_target(
     world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -1615,9 +1686,9 @@ mod tests {
     use bbb_protocol::packets::{
         ContainerButtonClick, ContainerClick, ContainerSetContent, ContainerSetData,
         ContainerSlotStateChanged, HashedComponentPatch, HashedItemStack, HashedStack,
-        IngredientSummary, ItemStackSummary, OpenScreen, RecipePropertySetSummary,
-        SelectBundleItem, SetCursorItem, SetPlayerInventory, SlotDisplaySummary,
-        StonecutterSelectableRecipeSummary, UpdateRecipes,
+        IngredientSummary, ItemCostSummary, ItemStackSummary, MerchantOffer, MerchantOffers,
+        OpenScreen, RecipePropertySetSummary, SelectBundleItem, SelectTradeCommand, SetCursorItem,
+        SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary, UpdateRecipes,
     };
 
     #[test]
@@ -3274,6 +3345,70 @@ mod tests {
     }
 
     #[test]
+    fn merchant_trade_row_click_queues_select_trade_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: MERCHANT_MENU_TYPE_ID,
+            title: "Merchant".to_string(),
+        });
+        assert!(world.apply_merchant_offers(merchant_offers(7, 4)));
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(545.0, 365.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.select_trade_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectTrade(SelectTradeCommand { item: 3 })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn merchant_trade_row_click_ignores_missing_offer() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: MERCHANT_MENU_TYPE_ID,
+            title: "Merchant".to_string(),
+        });
+        assert!(world.apply_merchant_offers(merchant_offers(7, 2)));
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(545.0, 365.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.select_trade_commands_queued, 0);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn generic_container_mouse_click_queues_pickup() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -4826,6 +4961,38 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn merchant_offers(container_id: i32, offer_count: usize) -> MerchantOffers {
+        MerchantOffers {
+            container_id,
+            offers: (0..offer_count)
+                .map(|index| MerchantOffer {
+                    buy_a: item_cost(42 + index as i32, 3),
+                    sell: item_stack(99 + index as i32, 1),
+                    buy_b: None,
+                    is_out_of_stock: false,
+                    uses: 1,
+                    max_uses: 12,
+                    xp: 8,
+                    special_price_diff: -2,
+                    price_multiplier: 0.05,
+                    demand: 6,
+                })
+                .collect(),
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: false,
+        }
+    }
+
+    fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {
+        ItemCostSummary {
+            item_id,
+            count,
+            component_predicate: Default::default(),
         }
     }
 
