@@ -25,12 +25,16 @@ const GENERIC_CONTAINER_ROW_HEIGHT: i32 = 18;
 const GENERIC_CONTAINER_FIRST_MENU_TYPE_ID: i32 = 0;
 const GENERIC_CONTAINER_LAST_MENU_TYPE_ID: i32 = 5;
 const GENERIC_3X3_MENU_TYPE_ID: i32 = 6;
+const HOPPER_MENU_TYPE_ID: i32 = 16;
 const GENERIC_CONTAINER_SLOT_COLUMNS: i32 = 9;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_SCREEN_WIDTH: i32 = 176;
 const GENERIC_3X3_SCREEN_HEIGHT: i32 = 166;
 const GENERIC_3X3_SLOT_COLUMNS: i32 = 3;
 const GENERIC_3X3_SLOT_COUNT: i16 = 9;
+const HOPPER_SCREEN_WIDTH: i32 = 176;
+const HOPPER_SCREEN_HEIGHT: i32 = 133;
+const HOPPER_SLOT_COUNT: i16 = 5;
 const SLOT_SIZE: f64 = 16.0;
 const SLOT_HOVER_MARGIN: f64 = 1.0;
 const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
@@ -40,6 +44,7 @@ pub(crate) enum InventoryScreenBackground {
     LocalInventory,
     Generic9xRows { rows: u8 },
     Generic3x3,
+    Hopper,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -139,6 +144,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             slots: generic_3x3_slot_layouts(),
         });
     }
+    if menu_type_id == HOPPER_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: HOPPER_SCREEN_WIDTH,
+            height: HOPPER_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Hopper,
+            slots: hopper_slot_layouts(),
+        });
+    }
     None
 }
 
@@ -209,6 +222,35 @@ fn generic_3x3_slot_layouts() -> Vec<InventorySlotLayout> {
             slot_id: GENERIC_3X3_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 142,
+        });
+    }
+
+    slots
+}
+
+fn hopper_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(HOPPER_SLOT_COUNT as usize + 36);
+    for x in 0..HOPPER_SLOT_COUNT {
+        slots.push(InventorySlotLayout {
+            slot_id: x,
+            x: 44 + i32::from(x) * 18,
+            y: 20,
+        });
+    }
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: HOPPER_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 51 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: HOPPER_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 109,
         });
     }
 
@@ -914,6 +956,55 @@ mod tests {
     }
 
     #[test]
+    fn hopper_layout_matches_vanilla_hopper_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 16,
+            title: "Hopper".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 133);
+        assert_eq!(layout.background, InventoryScreenBackground::Hopper);
+        assert_eq!(layout.slots.len(), 41);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 44,
+                y: 20,
+            }
+        );
+        assert_eq!(
+            layout.slots[4],
+            InventorySlotLayout {
+                slot_id: 4,
+                x: 116,
+                y: 20,
+            }
+        );
+        assert_eq!(
+            layout.slots[5],
+            InventorySlotLayout {
+                slot_id: 5,
+                x: 8,
+                y: 51,
+            }
+        );
+        assert_eq!(
+            layout.slots[40],
+            InventorySlotLayout {
+                slot_id: 40,
+                x: 152,
+                y: 109,
+            }
+        );
+    }
+
+    #[test]
     fn generic_container_hit_test_uses_vanilla_screen_height() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -962,6 +1053,30 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(704.0, 419.0)), size),
             Some(InventoryClickTarget::Slot(44))
+        );
+    }
+
+    #[test]
+    fn hopper_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 16,
+            title: "Hopper".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(604.0, 314.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(676.0, 314.0)), size),
+            Some(InventoryClickTarget::Slot(4))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(704.0, 403.0)), size),
+            Some(InventoryClickTarget::Slot(40))
         );
     }
 
@@ -1128,6 +1243,61 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, ItemStackSummary::empty());
         assert_eq!(slots[44].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn hopper_shift_click_queues_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 16,
+            title: "Hopper".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 41];
+        items[0] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(604.0, 314.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Empty),
+                    (40, HashedStack::Item(hashed_item(42, 3))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[40].item, item_stack(42, 3));
     }
 
     #[test]
