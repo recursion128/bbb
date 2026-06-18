@@ -522,6 +522,11 @@ When an agent does any of the following, update this file in the same slice:
       - GrindstoneMenu screens with official `grindstone.png` background and
         `container/grindstone/error` overlay sprite
       - HopperMenu screens with official `hopper.png`
+      - MountScreenOpen screens with official:
+        - `horse.png` background for horse-family mounts
+        - `nautilus.png` background for nautilus-family mounts
+        - generic mount equipment slot sprite
+        - horse chest-slot sprite clipped by `inventoryColumns`
       - LecternMenu screens with official:
         - `book.png` background
         - backward/forward page button sprites
@@ -543,6 +548,14 @@ When an agent does any of the following, update this file in the same slice:
       - `2` for next page
     - Lectern full book text, Done controls, and Take Book controls remain
       follow-up screen presentation/control work.
+    - MountScreenOpen opens a server-controlled container and hit-tests:
+      - saddle slot
+      - body armor slot
+      - horse-family chest slots from `inventoryColumns`
+      - player inventory slots
+      - hotbar slots
+    - Mount entity preview rendering, exact equipment-slot active hiding, and
+      saddle/body armor placeholder sprites remain follow-up presentation work.
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
       progress sprites:
       - lit-progress

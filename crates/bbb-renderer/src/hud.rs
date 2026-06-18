@@ -175,6 +175,10 @@ pub enum HudInventoryBackgroundTexture {
     Grindstone,
     GrindstoneError,
     Hopper,
+    Horse,
+    Nautilus,
+    MountSlot,
+    MountChestSlots,
     Book,
     PageBackward,
     PageForward,
@@ -903,6 +907,41 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_horse_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_horse_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_nautilus_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_nautilus_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_mount_slot(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_mount_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_mount_chest_slots(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_mount_chest_slots = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_book_background(
         &mut self,
         width: u32,
@@ -1602,6 +1641,10 @@ impl Renderer {
             HudInventoryBackgroundTexture::Grindstone => self.hud_grindstone_background.as_ref(),
             HudInventoryBackgroundTexture::GrindstoneError => self.hud_grindstone_error.as_ref(),
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
+            HudInventoryBackgroundTexture::Horse => self.hud_horse_background.as_ref(),
+            HudInventoryBackgroundTexture::Nautilus => self.hud_nautilus_background.as_ref(),
+            HudInventoryBackgroundTexture::MountSlot => self.hud_mount_slot.as_ref(),
+            HudInventoryBackgroundTexture::MountChestSlots => self.hud_mount_chest_slots.as_ref(),
             HudInventoryBackgroundTexture::Book => self.hud_book_background.as_ref(),
             HudInventoryBackgroundTexture::PageBackward => self.hud_page_backward.as_ref(),
             HudInventoryBackgroundTexture::PageForward => self.hud_page_forward.as_ref(),

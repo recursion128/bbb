@@ -3,7 +3,9 @@ use std::time::{Duration, Instant};
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{ContainerInput, ItemStackSummary, SelectTradeCommand};
-use bbb_world::{ContainerClickBuildError, ContainerClickSlotRequest, WorldStore};
+use bbb_world::{
+    ContainerClickBuildError, ContainerClickSlotRequest, MountInventoryKind, WorldStore,
+};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -92,6 +94,11 @@ const GRINDSTONE_SLOT_COUNT: i16 = 3;
 const HOPPER_SCREEN_WIDTH: i32 = 176;
 const HOPPER_SCREEN_HEIGHT: i32 = 133;
 const HOPPER_SLOT_COUNT: i16 = 5;
+const MOUNT_SCREEN_WIDTH: i32 = 176;
+const MOUNT_SCREEN_HEIGHT: i32 = 166;
+const MOUNT_EQUIPMENT_SLOT_COUNT: i16 = 2;
+const MOUNT_INVENTORY_ROWS: i32 = 3;
+const MOUNT_MAX_INVENTORY_COLUMNS: i32 = 5;
 const LECTERN_SCREEN_WIDTH: i32 = 192;
 const LECTERN_SCREEN_HEIGHT: i32 = 192;
 const LECTERN_BUTTON_PREV_PAGE: i32 = 1;
@@ -128,7 +135,9 @@ const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum InventoryScreenBackground {
     LocalInventory,
-    Generic9xRows { rows: u8 },
+    Generic9xRows {
+        rows: u8,
+    },
     Generic3x3,
     Anvil,
     Beacon,
@@ -141,6 +150,10 @@ pub(crate) enum InventoryScreenBackground {
     Furnace,
     Grindstone,
     Hopper,
+    Mount {
+        kind: MountInventoryKind,
+        inventory_columns: u8,
+    },
     Lectern,
     Loom,
     Merchant,
@@ -230,6 +243,22 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
     }
 
     let container = world.inventory().open_container.as_ref()?;
+    if let Some(mount) = container.mount {
+        let kind = world.open_mount_inventory_kind()?;
+        let inventory_columns = match kind {
+            MountInventoryKind::Horse => clamped_mount_inventory_columns(mount.inventory_columns),
+            MountInventoryKind::Nautilus => 0,
+        };
+        return Some(InventoryScreenLayout {
+            width: MOUNT_SCREEN_WIDTH,
+            height: MOUNT_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Mount {
+                kind,
+                inventory_columns,
+            },
+            slots: mount_inventory_slot_layouts(inventory_columns),
+        });
+    }
     let menu_type_id = container.menu_type_id?;
     if let Some(rows) = generic_container_rows(menu_type_id) {
         return Some(InventoryScreenLayout {
@@ -698,6 +727,58 @@ fn hopper_slot_layouts() -> Vec<InventorySlotLayout> {
             slot_id: HOPPER_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 109,
+        });
+    }
+
+    slots
+}
+
+fn clamped_mount_inventory_columns(inventory_columns: i32) -> u8 {
+    inventory_columns.clamp(0, MOUNT_MAX_INVENTORY_COLUMNS) as u8
+}
+
+fn mount_inventory_slot_layouts(inventory_columns: u8) -> Vec<InventorySlotLayout> {
+    let inventory_columns = i32::from(inventory_columns);
+    let mount_inventory_slot_count = inventory_columns * MOUNT_INVENTORY_ROWS;
+    let player_inventory_start =
+        MOUNT_EQUIPMENT_SLOT_COUNT + i16::try_from(mount_inventory_slot_count).unwrap_or_default();
+    let mut slots = Vec::with_capacity(
+        MOUNT_EQUIPMENT_SLOT_COUNT as usize + mount_inventory_slot_count as usize + 36,
+    );
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 8,
+        y: 18,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 8,
+        y: 36,
+    });
+    for y in 0..MOUNT_INVENTORY_ROWS {
+        for x in 0..inventory_columns {
+            slots.push(InventorySlotLayout {
+                slot_id: MOUNT_EQUIPMENT_SLOT_COUNT
+                    + i16::try_from(x + y * inventory_columns).unwrap_or_default(),
+                x: 80 + x * 18,
+                y: 18 + y * 18,
+            });
+        }
+    }
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: player_inventory_start + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: player_inventory_start + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
         });
     }
 
@@ -1848,12 +1929,14 @@ mod tests {
     use std::collections::BTreeMap;
 
     use bbb_protocol::packets::{
-        ContainerButtonClick, ContainerClick, ContainerSetContent, ContainerSetData,
+        AddEntity, ContainerButtonClick, ContainerClick, ContainerSetContent, ContainerSetData,
         ContainerSlotStateChanged, HashedComponentPatch, HashedItemStack, HashedStack,
         IngredientSummary, ItemCostSummary, ItemStackSummary, MerchantOffer, MerchantOffers,
-        OpenScreen, RecipePropertySetSummary, SelectBundleItem, SelectTradeCommand, SetCursorItem,
-        SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary, UpdateRecipes,
+        MountScreenOpen, OpenScreen, RecipePropertySetSummary, SelectBundleItem,
+        SelectTradeCommand, SetCursorItem, SetPlayerInventory, SlotDisplaySummary,
+        StonecutterSelectableRecipeSummary, UpdateRecipes, Vec3d,
     };
+    use uuid::Uuid;
 
     #[test]
     fn local_inventory_slot_layouts_match_vanilla_inventory_menu() {
@@ -2552,6 +2635,132 @@ mod tests {
     }
 
     #[test]
+    fn mount_horse_layout_matches_vanilla_horse_inventory_menu() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(add_entity_with_type(42, 66));
+        world.apply_mount_screen_open(MountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(
+            layout.background,
+            InventoryScreenBackground::Mount {
+                kind: MountInventoryKind::Horse,
+                inventory_columns: 5,
+            }
+        );
+        assert_eq!(layout.slots.len(), 53);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 8,
+                y: 18,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 8,
+                y: 36,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 80,
+                y: 18,
+            }
+        );
+        assert_eq!(
+            layout.slots[16],
+            InventorySlotLayout {
+                slot_id: 16,
+                x: 152,
+                y: 54,
+            }
+        );
+        assert_eq!(
+            layout.slots[17],
+            InventorySlotLayout {
+                slot_id: 17,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[52],
+            InventorySlotLayout {
+                slot_id: 52,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
+    fn mount_nautilus_layout_uses_equipment_and_player_slots_only() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(add_entity_with_type(42, 88));
+        world.apply_mount_screen_open(MountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(
+            layout.background,
+            InventoryScreenBackground::Mount {
+                kind: MountInventoryKind::Nautilus,
+                inventory_columns: 0,
+            }
+        );
+        assert_eq!(layout.slots.len(), 38);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 8,
+                y: 18,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 8,
+                y: 36,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[37],
+            InventorySlotLayout {
+                slot_id: 37,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn lectern_layout_matches_vanilla_book_screen() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -3218,6 +3427,31 @@ mod tests {
     }
 
     #[test]
+    fn mount_horse_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_add_entity(add_entity_with_type(42, 66));
+        world.apply_mount_screen_open(MountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(560.0, 295.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(704.0, 331.0)), size),
+            Some(InventoryClickTarget::Slot(16))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(52))
+        );
+    }
+
+    #[test]
     fn lectern_hit_test_uses_book_screen_and_page_buttons() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -3778,6 +4012,62 @@ mod tests {
         );
         assert_eq!(
             world.inventory().open_container.as_ref().unwrap().slots[0].item,
+            ItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn mount_horse_mouse_click_queues_pickup() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_add_entity(add_entity_with_type(42, 66));
+        world.apply_mount_screen_open(MountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut items = vec![ItemStackSummary::empty(); 53];
+        items[2] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(632.0, 295.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 2,
+                button_num: 0,
+                input: ContainerInput::Pickup,
+                changed_slots: [(2, HashedStack::Empty)].into(),
+                carried_item: HashedStack::Item(HashedItemStack {
+                    item_id: 42,
+                    count: 3,
+                    components: HashedComponentPatch::default(),
+                }),
+            })
+        );
+        assert_eq!(
+            world.inventory().open_container.as_ref().unwrap().slots[2].item,
             ItemStackSummary::empty()
         );
     }
@@ -5272,6 +5562,28 @@ mod tests {
                 display_type_id: 0,
                 raw_payload: Vec::new(),
             },
+        }
+    }
+
+    fn add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
+        AddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id,
+            position: Vec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: Vec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
         }
     }
 

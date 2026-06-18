@@ -449,6 +449,26 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         "minecraft:textures/gui/container/hopper",
     )?;
     renderer.upload_hud_hopper_background(hopper.width, hopper.height, &hopper.rgba)?;
+    let horse = gui_texture(
+        roots,
+        "textures/gui/container/horse.png",
+        "minecraft:textures/gui/container/horse",
+    )?;
+    renderer.upload_hud_horse_background(horse.width, horse.height, &horse.rgba)?;
+    let nautilus = gui_texture(
+        roots,
+        "textures/gui/container/nautilus.png",
+        "minecraft:textures/gui/container/nautilus",
+    )?;
+    renderer.upload_hud_nautilus_background(nautilus.width, nautilus.height, &nautilus.rgba)?;
+    let mount_slot = hud_sprite(&sprites, "container/slot")?;
+    renderer.upload_hud_mount_slot(mount_slot.width, mount_slot.height, &mount_slot.rgba)?;
+    let mount_chest_slots = hud_sprite(&sprites, "container/horse/chest_slots")?;
+    renderer.upload_hud_mount_chest_slots(
+        mount_chest_slots.width,
+        mount_chest_slots.height,
+        &mount_chest_slots.rgba,
+    )?;
     let book = gui_texture(
         roots,
         "textures/gui/book.png",

@@ -14,7 +14,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::WorldStore;
+use crate::{MountScreenState, WorldStore};
 
 const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
 const VANILLA_MENU_TYPE_SHULKER_BOX_ID: i32 = 20;
@@ -159,10 +159,18 @@ pub struct ContainerState {
     pub container_id: i32,
     pub menu_type_id: Option<i32>,
     pub title: Option<String>,
+    #[serde(default)]
+    pub mount: Option<MountScreenState>,
     pub state_id: i32,
     pub slots: Vec<ContainerSlot>,
     pub data_values: Vec<ContainerDataValue>,
     pub merchant_offers: Option<MerchantOffersState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MountInventoryKind {
+    Horse,
+    Nautilus,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -351,6 +359,7 @@ impl WorldStore {
             container_id: packet.container_id,
             menu_type_id: Some(packet.menu_type_id),
             title: Some(packet.title),
+            mount: None,
             state_id: existing.state_id,
             slots: existing.slots,
             data_values: existing.data_values,
@@ -386,6 +395,7 @@ impl WorldStore {
                 container_id,
                 menu_type_id: existing.menu_type_id,
                 title: existing.title,
+                mount: existing.mount,
                 state_id,
                 slots,
                 data_values: existing.data_values,
@@ -410,6 +420,7 @@ impl WorldStore {
             title: existing
                 .as_ref()
                 .and_then(|container| container.title.clone()),
+            mount: existing.as_ref().and_then(|container| container.mount),
             state_id,
             slots,
             data_values: existing
@@ -436,6 +447,31 @@ impl WorldStore {
         self.counters.merchant_offer_packets_applied += 1;
         self.counters.merchant_offers_tracked = offer_count;
         true
+    }
+
+    pub(crate) fn apply_mount_screen_open_container(&mut self, mount: MountScreenState) {
+        self.inventory.local_inventory_open = false;
+        self.inventory.local_quick_craft.reset();
+        let existing = self
+            .inventory
+            .open_container
+            .take()
+            .filter(|container| container.container_id == mount.container_id)
+            .unwrap_or_else(|| ContainerState {
+                container_id: mount.container_id,
+                ..ContainerState::default()
+            });
+        self.inventory.open_container = Some(ContainerState {
+            container_id: mount.container_id,
+            menu_type_id: None,
+            title: existing.title,
+            mount: Some(mount),
+            state_id: existing.state_id,
+            slots: existing.slots,
+            data_values: existing.data_values,
+            merchant_offers: None,
+        });
+        self.update_merchant_offer_count();
     }
 
     pub fn apply_container_set_slot(&mut self, packet: ProtocolContainerSetSlot) {
@@ -569,6 +605,18 @@ impl WorldStore {
             .data_values
             .iter()
             .find_map(|value| (value.id == id).then_some(value.value))
+    }
+
+    pub fn open_mount_inventory_kind(&self) -> Option<MountInventoryKind> {
+        let mount = self.inventory.open_container.as_ref()?.mount?;
+        let entity_type_id = self.entities.entity_type_id(mount.entity_id)?;
+        if crate::entities::is_vanilla_abstract_horse_type(entity_type_id) {
+            Some(MountInventoryKind::Horse)
+        } else if crate::entities::is_vanilla_abstract_nautilus_type(entity_type_id) {
+            Some(MountInventoryKind::Nautilus)
+        } else {
+            None
+        }
     }
 
     pub fn apply_local_select_bundle_item(

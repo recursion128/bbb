@@ -12,7 +12,7 @@ use bbb_renderer::{
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
     HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
-use bbb_world::{MerchantOfferState, MerchantOffersState, WorldStore};
+use bbb_world::{MerchantOfferState, MerchantOffersState, MountInventoryKind, WorldStore};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -647,6 +647,56 @@ fn hud_inventory_background_layers(
                 [0.0, 0.0],
                 [176.0 / 256.0, 133.0 / 256.0],
             )]
+        }
+        InventoryScreenBackground::Mount {
+            kind,
+            inventory_columns,
+        } => {
+            let mut layers = vec![
+                hud_inventory_background_layer(
+                    match kind {
+                        MountInventoryKind::Horse => HudInventoryBackgroundTexture::Horse,
+                        MountInventoryKind::Nautilus => HudInventoryBackgroundTexture::Nautilus,
+                    },
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountSlot,
+                    7,
+                    17,
+                    18,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountSlot,
+                    7,
+                    35,
+                    18,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ];
+            if inventory_columns > 0 {
+                let chest_width = u32::from(inventory_columns) * 18;
+                layers.push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountChestSlots,
+                    79,
+                    17,
+                    chest_width,
+                    54,
+                    [0.0, 0.0],
+                    [chest_width as f32 / 90.0, 1.0],
+                ));
+            }
+            layers
         }
         InventoryScreenBackground::Lectern => {
             vec![
@@ -2651,6 +2701,71 @@ mod tests {
         assert_eq!((first_container.x, first_container.y), (44, 20));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 40).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 109));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_mount_horse_layout() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(test_add_entity(42, 66));
+        world.apply_mount_screen_open(bbb_protocol::packets::MountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(16), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Horse,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountSlot,
+                    7,
+                    17,
+                    18,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountSlot,
+                    7,
+                    35,
+                    18,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountChestSlots,
+                    79,
+                    17,
+                    90,
+                    54,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(16));
+        assert_eq!(screen.slots.len(), 53);
+        let saddle = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((saddle.x, saddle.y), (8, 18));
+        let last_mount_slot = screen.slots.iter().find(|slot| slot.slot_id == 16).unwrap();
+        assert_eq!((last_mount_slot.x, last_mount_slot.y), (152, 54));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 52).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
     }
 
     #[test]

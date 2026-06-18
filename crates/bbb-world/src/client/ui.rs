@@ -97,11 +97,13 @@ impl WorldStore {
 
     pub fn apply_mount_screen_open(&mut self, packet: ProtocolMountScreenOpen) {
         self.counters.mount_screen_open_packets += 1;
-        self.client_ui.last_mount_screen = Some(MountScreenState {
+        let mount = MountScreenState {
             container_id: packet.container_id,
             inventory_columns: packet.inventory_columns,
             entity_id: packet.entity_id,
-        });
+        };
+        self.client_ui.last_mount_screen = Some(mount);
+        self.apply_mount_screen_open_container(mount);
     }
 
     pub fn apply_open_book(&mut self, packet: ProtocolOpenBook) {
@@ -300,6 +302,17 @@ mod tests {
         assert_eq!(
             store.last_mount_screen(),
             Some(&MountScreenState {
+                container_id: 11,
+                inventory_columns: 5,
+                entity_id: 42,
+            })
+        );
+        let open_container = store.inventory().open_container.as_ref().unwrap();
+        assert_eq!(open_container.container_id, 11);
+        assert_eq!(open_container.menu_type_id, None);
+        assert_eq!(
+            open_container.mount,
+            Some(MountScreenState {
                 container_id: 11,
                 inventory_columns: 5,
                 entity_id: 42,
