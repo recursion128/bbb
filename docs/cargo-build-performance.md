@@ -62,7 +62,10 @@ scripts/cargo-dev.sh test -p bbb-world <filter>
 scripts/cargo-dev.sh fast-test -p bbb-world <filter>
 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
 scripts/cargo-dev.sh timings --workspace --timings
+scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings
 scripts/cargo-dev.sh size
+scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD
+scripts/cargo-dev.sh sccache-status
 ```
 
 The script defaults to `CARGO_TARGET_DIR=/tmp/bbb-target-main`. Set
@@ -72,6 +75,36 @@ An explicit `CARGO_TARGET_DIR` still wins.
 
 `scripts/cargo-dev.sh gate` runs the same merge gate commands documented in
 this file; it is a convenience wrapper, not a weaker test path.
+
+`scripts/cargo-dev.sh timings-clean <target-suffix>` uses
+`/tmp/bbb-target-<target-suffix>` and refuses to run if that target already
+exists. Use it for disposable clean baselines where reusing a warm cache would
+invalidate the measurement.
+
+`scripts/cargo-dev.sh clean-target <target-suffix>` removes only targets under
+`/tmp/bbb-target-*`. It is for explicit periodic cleanup and disposable
+baselines, not end-of-slice worker cleanup.
+
+## Command Matrix
+
+Use these commands as the default local workflow:
+
+- Main focused test:
+  `scripts/cargo-dev.sh test -p <crate> <filter>`
+- Worker focused test:
+  `BBB_CARGO_TARGET_NAME=<domain> scripts/cargo-dev.sh test -p <crate> <filter>`
+- Daily fast focused test:
+  `scripts/cargo-dev.sh fast-test -p <crate> <filter>`
+- Warm full workspace timing:
+  `scripts/cargo-dev.sh timings --workspace --timings`
+- Clean full workspace baseline:
+  `scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings`
+- Target cache size:
+  `scripts/cargo-dev.sh size`
+- Disposable target cleanup:
+  `scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD`
+- Final merge gate:
+  `scripts/cargo-dev.sh gate`
 
 ## sccache
 
@@ -87,6 +120,7 @@ Use it explicitly when installed:
 ```sh
 RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
 BBB_USE_SCCACHE=1 scripts/cargo-dev.sh test -p bbb-world <filter>
+scripts/cargo-dev.sh sccache-status
 ```
 
 Record before/after timings before making `sccache` part of a default local
@@ -118,16 +152,62 @@ Warm full workspace timing:
 Clean full workspace timing should use a disposable external target:
 
 ```sh
-rm -rf /tmp/bbb-target-clean-baseline-YYYYMMDD
-/usr/bin/time -p env \
-  CARGO_TARGET_DIR=/tmp/bbb-target-clean-baseline-YYYYMMDD \
-  cargo test --workspace --timings
+scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings
 du -sh /tmp/bbb-target-clean-baseline-YYYYMMDD
 ```
 
 Remove disposable clean-baseline targets after recording the result if disk
 pressure matters. Do not remove stable `/tmp/bbb-target-*` caches after every
 slice.
+
+## Periodic Cleanup
+
+Use cache size, not slice boundaries, to decide cleanup:
+
+```sh
+scripts/cargo-dev.sh size
+```
+
+Remove disposable clean baselines after their numbers and timing report paths
+are recorded:
+
+```sh
+scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD
+```
+
+Clean long-lived targets such as `main`, `world`, `net`, and `renderer` only
+when disk pressure is real, when changing Rust toolchains or build profiles, or
+when a dependency feature experiment has made the cache misleadingly large.
+Expect the next focused or full test on that target to rebuild.
+
+## Baseline Template
+
+Record build-performance experiments in this shape:
+
+- Environment:
+  - Operating system.
+  - `cargo --version`.
+  - `rustc --version`.
+  - `scripts/cargo-dev.sh sccache-status` result.
+- Clean full workspace:
+  - Command.
+  - Wall time.
+  - Target size.
+  - Timing report path.
+  - Result.
+- Warm focused test:
+  - Command.
+  - Wall time.
+  - Result.
+- Warm full workspace:
+  - Command.
+  - Wall time.
+  - Target size.
+  - Result.
+- Notes:
+  - Top timing entries.
+  - Profile, dependency feature, or `sccache` changes being compared.
+  - Any cache removed after measurement.
 
 ## Baseline: 2026-06-18
 
