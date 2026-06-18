@@ -24,6 +24,7 @@ use super::{
 };
 
 const USE_ITEM_REPEAT_DELAY_TICKS: u8 = 4;
+const SPECTATOR_MOUSE_WHEEL_FLYING_SPEED_STEP: f32 = 0.005;
 
 pub(crate) fn handle_mouse_motion(input: &mut ClientInputState, delta: (f64, f64)) {
     if !input.focused {
@@ -410,15 +411,39 @@ pub(crate) fn handle_mouse_wheel(
         return;
     };
     if world.local_player_is_spectator() {
+        if wheel.y != 0 {
+            world.adjust_local_flying_speed(
+                wheel.y as f32 * SPECTATOR_MOUSE_WHEEL_FLYING_SPEED_STEP,
+            );
+        }
         return;
     }
     let current_slot = world.local_player().selected_hotbar_slot;
-    if let Some(slot) = hotbar_slot_for_scroll(wheel, current_slot) {
+    if let Some(slot) = hotbar_slot_for_scroll(wheel.primary(), current_slot) {
         select_hotbar_slot(counters, world, net_commands, slot);
     }
 }
 
-fn wheel_steps_from_scroll(input: &mut ClientInputState, delta: MouseScrollDelta) -> Option<i32> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct WheelSteps {
+    x: i32,
+    y: i32,
+}
+
+impl WheelSteps {
+    fn primary(self) -> i32 {
+        if self.y == 0 {
+            -self.x
+        } else {
+            self.y
+        }
+    }
+}
+
+fn wheel_steps_from_scroll(
+    input: &mut ClientInputState,
+    delta: MouseScrollDelta,
+) -> Option<WheelSteps> {
     let (x, y) = match delta {
         MouseScrollDelta::LineDelta(x, y) => (f64::from(x), f64::from(y)),
         MouseScrollDelta::PixelDelta(pos) => (pos.x, pos.y),
@@ -445,7 +470,10 @@ fn wheel_steps_from_scroll(input: &mut ClientInputState, delta: MouseScrollDelta
 
     input.scroll_accumulated_x -= f64::from(wheel_x);
     input.scroll_accumulated_y -= f64::from(wheel_y);
-    Some(if wheel_y == 0 { -wheel_x } else { wheel_y })
+    Some(WheelSteps {
+        x: wheel_x,
+        y: wheel_y,
+    })
 }
 
 fn scroll_signum(value: f64) -> f64 {
@@ -488,6 +516,17 @@ mod tests {
             param: 3.0,
         });
         assert!(world.local_player_is_spectator());
+    }
+
+    fn set_flying_abilities(world: &mut WorldStore, flying_speed: f32) {
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: false,
+            flying: true,
+            can_fly: true,
+            instabuild: false,
+            flying_speed,
+            walking_speed: 0.1,
+        });
     }
 
     #[test]
@@ -1852,6 +1891,63 @@ mod tests {
         );
 
         assert_eq!(world.local_player().selected_hotbar_slot, 4);
+        assert_eq!(counters.held_slot_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn spectator_mouse_wheel_adjusts_local_flying_speed_without_hotbar_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        assert!(world.set_local_selected_hotbar_slot(4));
+        set_local_spectator(&mut world);
+        set_flying_abilities(&mut world, 0.05);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 1.0),
+        );
+
+        assert_eq!(world.local_player().selected_hotbar_slot, 4);
+        assert_eq!(world.local_player().abilities.unwrap().flying_speed, 0.055);
+        assert_eq!(counters.held_slot_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn spectator_mouse_wheel_clamps_speed_and_ignores_horizontal_steps() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        set_local_spectator(&mut world);
+        set_flying_abilities(&mut world, 0.199);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 1.0),
+        );
+        assert_eq!(world.local_player().abilities.unwrap().flying_speed, 0.2);
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(1.0, 0.0),
+        );
+
+        assert_eq!(world.local_player().abilities.unwrap().flying_speed, 0.2);
         assert_eq!(counters.held_slot_commands_queued, 0);
         assert!(rx.try_recv().is_err());
     }

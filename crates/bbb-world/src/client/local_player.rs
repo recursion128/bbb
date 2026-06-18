@@ -229,6 +229,16 @@ impl WorldStore {
         true
     }
 
+    pub fn adjust_local_flying_speed(&mut self, delta: f32) -> bool {
+        let Some(abilities) = self.local_player.abilities.as_mut() else {
+            return false;
+        };
+        let speed = (abilities.flying_speed + delta).clamp(0.0, 0.2);
+        let changed = abilities.flying_speed != speed;
+        abilities.flying_speed = speed;
+        changed
+    }
+
     pub fn apply_player_health(&mut self, packet: ProtocolPlayerHealth) {
         self.counters.player_health_packets += 1;
         self.local_player.health = Some(LocalPlayerHealthState {
@@ -713,6 +723,29 @@ mod tests {
         assert!(store.set_local_flying(false));
         assert!(!store.local_player().abilities.unwrap().flying);
         assert_eq!(store.counters().player_abilities_packets, 2);
+    }
+
+    #[test]
+    fn local_flying_speed_adjusts_without_counting_server_packet() {
+        let mut store = WorldStore::new();
+
+        assert!(!store.adjust_local_flying_speed(0.005));
+
+        store.apply_player_abilities(ProtocolPlayerAbilities {
+            invulnerable: false,
+            flying: true,
+            can_fly: true,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+
+        assert!(store.adjust_local_flying_speed(0.005));
+        assert_eq!(store.local_player().abilities.unwrap().flying_speed, 0.055);
+        assert!(store.adjust_local_flying_speed(1.0));
+        assert_eq!(store.local_player().abilities.unwrap().flying_speed, 0.2);
+        assert!(!store.adjust_local_flying_speed(1.0));
+        assert_eq!(store.counters().player_abilities_packets, 1);
     }
 
     #[test]
