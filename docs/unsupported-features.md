@@ -402,6 +402,9 @@ When an agent does any of the following, update this file in the same slice:
       player has an elytra-equipped chest slot.
     - They queue `STOP_SLEEPING` player commands when wake-up input is pressed
       while the local player entity has sleeping pose metadata.
+    - Block-target right-click queues `ServerboundUseItemOnPacket` with:
+      - main hand when the selected hotbar slot is non-empty
+      - offhand when the selected hotbar slot is empty and offhand has an item
     - Chat entry paths:
       - send offline unsigned `ServerboundChatPacket` messages
       - request `ServerboundCommandSuggestionPacket` completions:

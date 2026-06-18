@@ -199,13 +199,8 @@ fn start_use_item(
         }
         Some(CrosshairTarget::Block(hit)) => {
             let sequence = world.next_local_prediction_sequence();
-            queue_use_item_on_command(
-                counters,
-                net_commands,
-                InteractionHand::MainHand,
-                hit,
-                sequence,
-            );
+            let hand = item_use_hand(world);
+            queue_use_item_on_command(counters, net_commands, hand, hit, sequence);
         }
         None => {
             if let Some(pose) = player_pose {
@@ -1186,11 +1181,54 @@ mod tests {
     }
 
     #[test]
-    fn right_mouse_press_on_block_starts_with_main_hand_when_offhand_has_item() {
+    fn right_mouse_press_on_block_uses_offhand_when_selected_hotbar_slot_is_empty() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_block();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOn {
+                hand: InteractionHand::OffHand,
+                hit: ProtocolBlockHitResult {
+                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                    direction: ProtocolDirection::North,
+                    cursor_x: 0.0,
+                    cursor_y: 0.62,
+                    cursor_z: 0.0,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn right_mouse_press_on_block_keeps_main_hand_when_both_hands_have_items() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
             slot: VANILLA_PLAYER_OFFHAND_SLOT,
             item: item_stack(99, 1),
