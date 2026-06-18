@@ -53,6 +53,14 @@ pub struct DataComponentPatchSummary {
     pub bundle_contents_items: Vec<ItemStackTemplateSummary>,
     #[serde(default)]
     pub bundle_contents_item_count: Option<usize>,
+    #[serde(default)]
+    pub enchantments: Vec<ItemEnchantmentSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemEnchantmentSummary {
+    pub holder_id: i32,
+    pub level: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -151,6 +159,9 @@ fn decode_typed_data_component_patch_summary(
             68 => {
                 summary.firework_explosion_colors = decode_firework_explosion(decoder)?;
             }
+            13 => {
+                summary.enchantments = decode_varint_map(decoder)?;
+            }
             _ => decode_data_component_value(decoder, type_id)?,
         }
         summary.added_type_ids.push(type_id);
@@ -199,7 +210,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
             decoder.read_var_i32()?;
         }
         // enchantments and stored_enchantments: map(enchantment holder id -> level).
-        13 | 42 => decode_varint_map(decoder)?,
+        13 | 42 => {
+            let _ = decode_varint_map(decoder)?;
+        }
         // can_place_on and can_break.
         14 | 15 => decode_adventure_mode_predicate(decoder)?,
         // attribute_modifiers.
@@ -399,13 +412,16 @@ fn decode_lore(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSummary>> {
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut entries = Vec::with_capacity(count);
     for _ in 0..count {
-        decoder.read_var_i32()?;
-        decoder.read_var_i32()?;
+        entries.push(ItemEnchantmentSummary {
+            holder_id: decoder.read_var_i32()?,
+            level: decoder.read_var_i32()?,
+        });
     }
-    Ok(())
+    Ok(entries)
 }
 
 fn decode_adventure_mode_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1109,6 +1125,51 @@ mod tests {
     }
 
     #[test]
+    fn decodes_enchantments_component_summary_in_wire_order() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(13);
+        payload.write_var_i32(3);
+        payload.write_var_i32(37);
+        payload.write_var_i32(4);
+        payload.write_var_i32(12);
+        payload.write_var_i32(1);
+        payload.write_var_i32(300);
+        payload.write_var_i32(5);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![13],
+                removed_type_ids: Vec::new(),
+                enchantments: vec![
+                    ItemEnchantmentSummary {
+                        holder_id: 37,
+                        level: 4,
+                    },
+                    ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    },
+                    ItemEnchantmentSummary {
+                        holder_id: 300,
+                        level: 5,
+                    },
+                ],
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_common_complex_data_components() {
         let mut payload = Encoder::new();
         payload.write_var_i32(4);
@@ -1154,6 +1215,16 @@ mod tests {
                 added: 4,
                 added_type_ids: vec![11, 13, 17, 18],
                 removed_type_ids: Vec::new(),
+                enchantments: vec![
+                    ItemEnchantmentSummary {
+                        holder_id: 5,
+                        level: 3,
+                    },
+                    ItemEnchantmentSummary {
+                        holder_id: 9,
+                        level: 1,
+                    },
+                ],
                 custom_model_data_colors: vec![0x112233, 0x445566],
                 ..DataComponentPatchSummary::default()
             }

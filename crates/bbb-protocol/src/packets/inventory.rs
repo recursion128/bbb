@@ -8,7 +8,9 @@ use crate::{
 
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
-pub use data_components::{DataComponentPatchSummary, ItemStackTemplateSummary};
+pub use data_components::{
+    DataComponentPatchSummary, ItemEnchantmentSummary, ItemStackTemplateSummary,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemStackSummary {

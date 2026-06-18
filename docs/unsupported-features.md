@@ -275,10 +275,6 @@ When an agent does any of the following, update this file in the same slice:
       - constructor-level mutations such as `InfestedBlock`
       - arbitrary helper/lambda evaluation not covered by the current parser
     - remaining vanilla player destroy-speed gaps:
-      - derive Efficiency `mining_efficiency` from item enchantment
-        components when the server has not supplied synced attributes
-      - derive Aqua Affinity `submerged_mining_speed` from item enchantment
-        components when the server has not supplied synced attributes
       - validate exact pose/fluid nuance beyond the current standing-eye
         water probe
     - collision-aware rollback position handling
@@ -484,6 +480,11 @@ When an agent does any of the following, update this file in the same slice:
       - `submerged_mining_speed` attribute id `29` when the local player's
         standing eye position is in water
       - airborne slowdown
+    - Vanilla Efficiency and Aqua Affinity affect destroy speed through
+      synced attributes, not local component fallback:
+      - Efficiency contributes to `mining_efficiency`.
+      - Aqua Affinity contributes to `submerged_mining_speed`.
+      - Native keeps `UpdateAttributes` as the authoritative path.
     - It tracks vanilla-shaped local destroy stages in canonical interaction
       state and clears them on completion/abort/restart.
     - It projects destroy progress to batched renderer-visible cube crack

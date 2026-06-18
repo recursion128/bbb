@@ -392,7 +392,9 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
-        BlockPos as ProtocolBlockPos, BlockUpdate, Direction as ProtocolDirection,
+        BlockPos as ProtocolBlockPos, BlockUpdate,
+        DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
+        Direction as ProtocolDirection, ItemEnchantmentSummary as ProtocolItemEnchantmentSummary,
         ItemStackSummary as ProtocolItemStackSummary, MobEffectFlags as ProtocolMobEffectFlags,
         SetPlayerInventory as ProtocolSetPlayerInventory,
         UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
@@ -402,11 +404,13 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        entities::VANILLA_ENTITY_TYPE_PLAYER_ID, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
-        LightData, PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+        entities::VANILLA_ENTITY_TYPE_PLAYER_ID, registries::RegistryPacketEntry, ChunkColumn,
+        ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
+        PalettedContainerData, WorldDimension,
     };
 
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+    const PLAYER_HEAD_EQUIPMENT_SLOT: i32 = 39;
 
     #[test]
     fn local_destroy_progress_uses_vanilla_hand_formula_for_known_blocks() {
@@ -561,6 +565,35 @@ mod tests {
     }
 
     #[test]
+    fn local_destroy_progress_does_not_infer_efficiency_without_synced_attribute() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 1);
+        attach_local_player_entity(&mut world, 123);
+        register_test_enchantments(&mut world);
+        world.set_default_item_mining_profiles(BTreeMap::from([(
+            42,
+            mining_profile(vec![mining_rule(
+                vec!["minecraft:stone"],
+                Some(4_000),
+                Some(true),
+            )]),
+        )]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: enchanted_item_stack(42, 1, vec![(1, 3)]),
+        });
+
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(88_889));
+
+        assert!(world.apply_update_attributes(attribute_update(
+            123,
+            VANILLA_ATTRIBUTE_MINING_EFFICIENCY_ID,
+            10.0,
+        )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(311_112));
+    }
+
+    #[test]
     fn local_destroy_progress_applies_airborne_slowdown() {
         let pos = BlockPos { x: 0, y: 1, z: 3 };
         let mut world = world_with_block(pos, 1);
@@ -585,6 +618,34 @@ mod tests {
             ..LocalPlayerPoseState::default()
         });
         set_block(&mut world, eye_pos, SOURCE_WATER_BLOCK_STATE_ID);
+
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(1_334));
+
+        assert!(world.apply_update_attributes(attribute_update(
+            123,
+            VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID,
+            1.0,
+        )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(6_667));
+    }
+
+    #[test]
+    fn local_destroy_progress_does_not_infer_aqua_affinity_without_synced_attribute() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let eye_pos = BlockPos { x: 0, y: 1, z: 0 };
+        let mut world = world_with_block(pos, 1);
+        attach_local_player_entity(&mut world, 123);
+        register_test_enchantments(&mut world);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 0.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        set_block(&mut world, eye_pos, SOURCE_WATER_BLOCK_STATE_ID);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_HEAD_EQUIPMENT_SLOT,
+            item: enchanted_item_stack(77, 1, vec![(0, 1)]),
+        });
 
         assert_eq!(world.local_destroy_progress_per_tick(pos), Some(1_334));
 
@@ -823,6 +884,35 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn enchanted_item_stack(
+        item_id: i32,
+        count: i32,
+        enchantments: Vec<(i32, i32)>,
+    ) -> ProtocolItemStackSummary {
+        ProtocolItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: ProtocolDataComponentPatchSummary {
+                enchantments: enchantments
+                    .into_iter()
+                    .map(|(holder_id, level)| ProtocolItemEnchantmentSummary { holder_id, level })
+                    .collect(),
+                ..ProtocolDataComponentPatchSummary::default()
+            },
+        }
+    }
+
+    fn register_test_enchantments(world: &mut WorldStore) {
+        world.record_registry_entries(
+            "minecraft:enchantment",
+            0,
+            vec![
+                RegistryPacketEntry::stub("minecraft:aqua_affinity"),
+                RegistryPacketEntry::stub("minecraft:efficiency"),
+            ],
+        );
     }
 
     fn mining_profile(rules: Vec<WorldItemMiningRule>) -> WorldItemMiningProfile {
