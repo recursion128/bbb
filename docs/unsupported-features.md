@@ -100,6 +100,8 @@ When an agent does any of the following, update this file in the same slice:
     - level chunk insert, block/section updates, chunk view, and chunk forgets
     - terrain light and biome updates
     - inventory, container, cursor, and merchant-offer updates
+    - entity position, metadata, equipment, attributes, status, link,
+      passenger, take-item, and remove updates
   - The final criterion:
     - every supported decoded packet stays aligned
 

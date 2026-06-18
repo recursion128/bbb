@@ -505,43 +505,46 @@ mod tests {
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
         AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary,
-        AdvancementSummary, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
-        BlockPos as ProtocolBlockPos, BlockUpdate, BossBarColor, BossBarOverlay, BossEvent,
-        BossEventFlags, BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound,
-        ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
-        ChunksBiomes, ClockUpdate, CommandSuggestion, CommandSuggestions, CommonPlayerSpawnInfo,
-        ContainerClose, ContainerSetContent, ContainerSetData, ContainerSetSlot, CookieRequest,
-        Cooldown, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
-        CustomPayloadBody, CustomReportDetails, DebugBlockValue, DebugChunkValue, DebugEntityValue,
-        DebugEvent, DebugSample, DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor,
-        EntityAnimation, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameEvent,
+        AdvancementSummary, AttributeModifier, AttributeSnapshot, AwardStats, BlockChangedAck,
+        BlockEntityData, BlockEvent, BlockPos as ProtocolBlockPos, BlockUpdate, BossBarColor,
+        BossBarOverlay, BossEvent, BossEventFlags, BossEventOperation, ChangeDifficulty,
+        ChatFormatting, ChatTypeBound, ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData,
+        ChunkPos as ProtocolChunkPos, ChunksBiomes, ClockUpdate, CommandSuggestion,
+        CommandSuggestions, CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent,
+        ContainerSetData, ContainerSetSlot, CookieRequest, Cooldown, CustomChatCompletions,
+        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
+        DamageEvent, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample,
+        DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor, EntityAnimation,
+        EntityDataValue, EntityDataValueKind, EntityPositionSync, EquipmentSlot,
+        EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameEvent,
         GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameTestHighlightPos,
         GameType, HurtAnimation, IngredientSummary, InitializeBorder, InteractionHand,
         ItemCostSummary, ItemStackSummary, LevelChunkBlockEntity, LevelChunkData,
         LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdate, LightUpdateData,
         MapColorPatch, MapDecoration, MapItemData, MerchantOffer, MerchantOffers, MessageSignature,
-        MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
-        PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime,
-        PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction,
+        MobEffectFlags, MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenScreen,
+        OpenSignEditor, PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin,
+        PlayTime, PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction,
         PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt,
         PlayerPositionUpdate, PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters,
         PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
         RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
         RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType,
-        ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, RotateHead,
-        ScoreboardDisplaySlot, SectionBlocksUpdate, SelectAdvancementsTab, ServerData,
-        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetBorderCenter,
-        SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
-        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetEntityMotion, SetHeldSlot, SetObjective,
-        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerInventory,
-        SetPlayerTeam, SetScore, SetSimulationDistance, ShowDialog, SignedMessageBody,
-        SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
-        StatUpdate, StonecutterSelectableRecipeSummary, StopSound, StoreCookie, TabList, TagQuery,
-        TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus, TickingState, TickingStep,
-        TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateRecipes,
-        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
-        WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop, ResourcePackPush,
+        ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot, SectionBlocksUpdate,
+        SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
+        ServerLinks, SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
+        SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
+        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
+        SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetObjectiveMethod,
+        SetObjectiveParameters, SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore,
+        SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
+        StopSound, StoreCookie, TabList, TagQuery, TakeItemEntity, TeamCollisionRule,
+        TeamVisibility, TeleportEntity, TestInstanceBlockStatus, TickingState, TickingStep,
+        TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateAttributes,
+        UpdateMobEffect, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -2119,6 +2122,297 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_applies_entity_state_packets_to_world() {
+        const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
+
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(123)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(456)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity_with_type(
+                300,
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+            )))
+            .await
+            .unwrap();
+
+        probe
+            .handle_play_packet(PlayClientbound::EntityPositionSync(EntityPositionSync {
+                id: 123,
+                position: ProtocolVec3d {
+                    x: 2.0,
+                    y: 65.0,
+                    z: -3.0,
+                },
+                delta_movement: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.25,
+                    z: 0.0,
+                },
+                y_rot: 180.0,
+                x_rot: 30.0,
+                on_ground: true,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::TeleportEntity(TeleportEntity {
+                id: 123,
+                position: ProtocolVec3d {
+                    x: 0.5,
+                    y: 70.0,
+                    z: -4.0,
+                },
+                delta_movement: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.2,
+                    z: 0.0,
+                },
+                y_rot: 10.0,
+                x_rot: -120.0,
+                relatives_mask: 0,
+                on_ground: true,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetEntityData(SetEntityData {
+                id: 123,
+                values: vec![
+                    EntityDataValue {
+                        data_id: 0,
+                        serializer_id: 0,
+                        value: EntityDataValueKind::Byte(0x20),
+                    },
+                    EntityDataValue {
+                        data_id: 2,
+                        serializer_id: 1,
+                        value: EntityDataValueKind::Int(301),
+                    },
+                ],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetEquipment(SetEquipment {
+                entity_id: 123,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::Head,
+                    item: item_stack(42, 1),
+                }],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::UpdateAttributes(UpdateAttributes {
+                entity_id: 123,
+                attributes: vec![AttributeSnapshot {
+                    attribute_id: 21,
+                    base: 20.0,
+                    modifiers: vec![AttributeModifier {
+                        id: "minecraft:health_bonus".to_string(),
+                        amount: 4.0,
+                        operation_id: 0,
+                    }],
+                }],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetEntityLink(SetEntityLink {
+                source_id: 123,
+                dest_id: 456,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetPassengers(SetPassengers {
+                vehicle_id: 123,
+                passenger_ids: vec![456],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetEntityData(SetEntityData {
+                id: 300,
+                values: vec![item_stack_entity_data(item_stack(99, 2))],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::TakeItemEntity(TakeItemEntity {
+                item_id: 300,
+                player_id: 123,
+                amount: 1,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::UpdateMobEffect(UpdateMobEffect {
+                entity_id: 123,
+                effect_id: 3,
+                amplifier: 1,
+                duration_ticks: 200,
+                flags: MobEffectFlags {
+                    raw: 0b0110,
+                    ambient: false,
+                    visible: true,
+                    show_icon: true,
+                    blend: false,
+                },
+            }))
+            .await
+            .unwrap();
+        assert_eq!(
+            probe.world.entity_effect(123, 3).unwrap().duration_ticks,
+            200
+        );
+        probe
+            .handle_play_packet(PlayClientbound::DamageEvent(DamageEvent {
+                entity_id: 123,
+                source_type_id: 5,
+                source_cause_id: 456,
+                source_direct_id: 300,
+                source_position: Some(ProtocolVec3d {
+                    x: 1.0,
+                    y: 2.0,
+                    z: 3.0,
+                }),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::RemoveMobEffect(RemoveMobEffect {
+                entity_id: 123,
+                effect_id: 3,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::RemoveEntities(RemoveEntities {
+                entity_ids: vec![456, 404],
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let entity = report.world.probe_entity(123).unwrap();
+        assert_eq!(entity.position.x, 0.5);
+        assert_eq!(entity.position.y, 70.0);
+        assert_eq!(entity.position.z, -4.0);
+        assert_eq!(entity.delta_movement.y, 0.2);
+        assert_eq!(entity.y_rot, 10.0);
+        assert_eq!(entity.x_rot, -90.0);
+        assert_eq!(entity.on_ground, Some(true));
+        assert_eq!(
+            entity.data_values,
+            vec![
+                EntityDataValue {
+                    data_id: 0,
+                    serializer_id: 0,
+                    value: EntityDataValueKind::Byte(0x20),
+                },
+                EntityDataValue {
+                    data_id: 2,
+                    serializer_id: 1,
+                    value: EntityDataValueKind::Int(301),
+                },
+            ]
+        );
+        assert_eq!(
+            entity.equipment,
+            vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: item_stack(42, 1),
+            }]
+        );
+        assert_eq!(
+            entity.attributes,
+            vec![AttributeSnapshot {
+                attribute_id: 21,
+                base: 20.0,
+                modifiers: vec![AttributeModifier {
+                    id: "minecraft:health_bonus".to_string(),
+                    amount: 4.0,
+                    operation_id: 0,
+                }],
+            }]
+        );
+        assert_eq!(entity.leash_holder_id, None);
+        assert!(entity.passengers.is_empty());
+        assert!(report.world.probe_entity(456).is_none());
+        assert_eq!(
+            report.world.probe_entity(300).unwrap().data_values,
+            vec![item_stack_entity_data(item_stack(99, 1))]
+        );
+        assert!(report.world.entity_effect(123, 3).is_none());
+        let damage = report.world.entity_last_damage(123).unwrap();
+        assert_eq!(damage.source_type_id, 5);
+        assert_eq!(damage.source_cause_id, 456);
+        assert_eq!(damage.source_direct_id, 300);
+        assert_eq!(
+            damage.source_position,
+            Some(ProtocolVec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            })
+        );
+
+        assert_eq!(report.world_counters.entities_received, 3);
+        assert_eq!(report.world_counters.entities_tracked, 2);
+        assert_eq!(report.world_counters.entity_position_syncs_received, 1);
+        assert_eq!(report.world_counters.entity_position_syncs_applied, 1);
+        assert_eq!(report.world_counters.entity_position_syncs_ignored, 0);
+        assert_eq!(report.world_counters.entity_teleports_received, 1);
+        assert_eq!(report.world_counters.entity_teleports_applied, 1);
+        assert_eq!(report.world_counters.entity_teleports_ignored, 0);
+        assert_eq!(report.world_counters.entity_data_updates_received, 2);
+        assert_eq!(report.world_counters.entity_data_values_received, 3);
+        assert_eq!(report.world_counters.entity_data_updates_applied, 2);
+        assert_eq!(report.world_counters.entity_data_updates_ignored, 0);
+        assert_eq!(report.world_counters.entity_equipment_updates_received, 1);
+        assert_eq!(report.world_counters.entity_equipment_slots_received, 1);
+        assert_eq!(report.world_counters.entity_equipment_updates_applied, 1);
+        assert_eq!(report.world_counters.entity_equipment_updates_ignored, 0);
+        assert_eq!(report.world_counters.entity_attribute_updates_received, 1);
+        assert_eq!(report.world_counters.entity_attributes_received, 1);
+        assert_eq!(report.world_counters.entity_attribute_updates_applied, 1);
+        assert_eq!(report.world_counters.entity_attribute_updates_ignored, 0);
+        assert_eq!(report.world_counters.entity_link_updates_received, 1);
+        assert_eq!(report.world_counters.entity_link_updates_applied, 1);
+        assert_eq!(report.world_counters.entity_link_updates_ignored, 0);
+        assert_eq!(report.world_counters.entity_passenger_updates_received, 1);
+        assert_eq!(report.world_counters.entity_passenger_ids_received, 1);
+        assert_eq!(report.world_counters.entity_passenger_updates_applied, 1);
+        assert_eq!(report.world_counters.entity_passenger_updates_ignored, 0);
+        assert_eq!(report.world_counters.take_item_entities_received, 1);
+        assert_eq!(report.world_counters.take_item_entities_applied, 1);
+        assert_eq!(report.world_counters.take_item_entities_ignored, 0);
+        assert_eq!(report.world_counters.item_entity_stack_shrinks, 1);
+        assert_eq!(report.world_counters.take_item_entities_removed, 0);
+        assert_eq!(report.world_counters.update_mob_effect_packets, 1);
+        assert_eq!(report.world_counters.update_mob_effects_ignored, 0);
+        assert_eq!(report.world_counters.remove_mob_effect_packets, 1);
+        assert_eq!(report.world_counters.remove_mob_effects_ignored, 0);
+        assert_eq!(report.world_counters.active_mob_effects_tracked, 0);
+        assert_eq!(report.world_counters.damage_event_packets, 1);
+        assert_eq!(report.world_counters.damage_events_applied, 1);
+        assert_eq!(report.world_counters.damage_events_ignored, 0);
+        assert_eq!(report.world_counters.entity_removes_received, 2);
+        assert_eq!(report.world_counters.entities_removed, 1);
+        assert_eq!(report.world_counters.entity_removes_ignored, 1);
+    }
+
+    #[tokio::test]
     async fn probe_projectile_power_updates_world_entity_state_and_counters() {
         const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 
@@ -3557,6 +3851,14 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn item_stack_entity_data(item: ItemStackSummary) -> EntityDataValue {
+        EntityDataValue {
+            data_id: 8,
+            serializer_id: 7,
+            value: EntityDataValueKind::ItemStack(item),
         }
     }
 
