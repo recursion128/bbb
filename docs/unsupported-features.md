@@ -250,7 +250,14 @@ update this file in the same slice.
     - full flying friction
     - vanilla movement send thresholds
   - Block destroy: close:
-    - full vanilla hardness/tool-sensitive progress
+    - complete official block hardness coverage beyond the current named subset
+    - remaining vanilla player destroy-speed modifiers:
+      - mining efficiency attribute / Efficiency enchantment
+      - Haste and Conduit Power
+      - Mining Fatigue
+      - block-break-speed attribute
+      - submerged-mining-speed attribute / Aqua Affinity
+      - airborne slowdown
     - collision-aware rollback position handling
     - hit effects
     - full model-shaped crack decals with vanilla crumbling blend/depth-bias
@@ -398,6 +405,16 @@ update this file in the same slice.
     - Native block destroy progress records the starting main-hand item
       signature and restarts the destroy sequence when the selected
       item/components change.
+    - Default item mining profiles are derived from official 26.1 item
+      declarations and block tags for vanilla tool-like items:
+      - pickaxe
+      - axe
+      - hoe
+      - shovel
+      - sword
+      - shears
+    - Local destroy progress applies the selected main-hand item profile through
+      vanilla-shaped mining speed and `correct_for_drops` rule order.
     - It tracks vanilla-shaped local destroy stages in canonical interaction
       state and clears them on completion/abort/restart.
     - It projects local stages and server `BlockDestruction` progress to batched

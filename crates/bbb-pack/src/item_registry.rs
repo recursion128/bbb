@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::{resources::ResourceLocation, PackRoots};
+use crate::{resources::ResourceLocation, tags::TagCatalog, PackRoots};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -19,6 +19,19 @@ pub enum ItemEquipmentSlot {
     Saddle,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemMiningRule {
+    pub block_names: Vec<String>,
+    pub mining_speed_thousandths: Option<u32>,
+    pub correct_for_drops: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ItemMiningProfile {
+    pub default_mining_speed_thousandths: u32,
+    pub rules: Vec<ItemMiningRule>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemRegistryCatalog {
     resource_ids: Vec<String>,
@@ -29,6 +42,8 @@ pub struct ItemRegistryCatalog {
     max_stack_size: BTreeMap<String, i32>,
     #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
+    #[serde(default)]
+    mining_profiles: BTreeMap<String, ItemMiningProfile>,
 }
 
 impl ItemRegistryCatalog {
@@ -46,12 +61,21 @@ impl ItemRegistryCatalog {
             .join("minecraft")
             .join("references")
             .join("ItemIds.java");
-        Self::load_from_java_sources(items_java, item_ids_java)
+        let block_tags = roots.load_tag_catalog("block").ok();
+        Self::load_from_java_sources_with_block_tags(items_java, item_ids_java, block_tags.as_ref())
     }
 
     pub fn load_from_java_sources(
         items_java: impl AsRef<Path>,
         item_ids_java: impl AsRef<Path>,
+    ) -> Result<Self> {
+        Self::load_from_java_sources_with_block_tags(items_java, item_ids_java, None)
+    }
+
+    pub fn load_from_java_sources_with_block_tags(
+        items_java: impl AsRef<Path>,
+        item_ids_java: impl AsRef<Path>,
+        block_tags: Option<&TagCatalog>,
     ) -> Result<Self> {
         let items_java = items_java.as_ref();
         let item_ids_java = item_ids_java.as_ref();
@@ -64,12 +88,21 @@ impl ItemRegistryCatalog {
         } else {
             BTreeMap::new()
         };
-        Self::from_items_java_source(&items_source, &item_id_constants)
+        Self::from_items_java_source_with_block_tags(&items_source, &item_id_constants, block_tags)
     }
 
+    #[cfg(test)]
     fn from_items_java_source(
         source: &str,
         item_id_constants: &BTreeMap<String, String>,
+    ) -> Result<Self> {
+        Self::from_items_java_source_with_block_tags(source, item_id_constants, None)
+    }
+
+    fn from_items_java_source_with_block_tags(
+        source: &str,
+        item_id_constants: &BTreeMap<String, String>,
+        block_tags: Option<&TagCatalog>,
     ) -> Result<Self> {
         let declaration = Regex::new(
             r#"(?s)public\s+static\s+final\s+(Item|WeatheringCopperItems)\s+([A-Z0-9_]+)\s*=\s*(.*?);"#,
@@ -78,6 +111,7 @@ impl ItemRegistryCatalog {
         let mut max_damage = BTreeMap::new();
         let mut max_stack_size = BTreeMap::new();
         let mut default_equipment_slots = BTreeMap::new();
+        let mut mining_profiles = BTreeMap::new();
         for capture in declaration.captures_iter(source) {
             let kind = capture.get(1).unwrap().as_str();
             let field = capture.get(2).unwrap().as_str();
@@ -85,6 +119,7 @@ impl ItemRegistryCatalog {
             let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
+            let mining_profile = mining_profile_for_declaration(expression, block_tags)?;
             if let Some(durability) = durability_for_declaration(expression)? {
                 for resource_id in &ids {
                     max_damage.insert(resource_id.clone(), durability);
@@ -94,6 +129,9 @@ impl ItemRegistryCatalog {
                 max_stack_size.insert(resource_id.clone(), stack_size);
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
+                }
+                if let Some(profile) = &mining_profile {
+                    mining_profiles.insert(resource_id.clone(), profile.clone());
                 }
             }
             resource_ids.extend(ids);
@@ -119,6 +157,7 @@ impl ItemRegistryCatalog {
             max_damage,
             max_stack_size,
             default_equipment_slots,
+            mining_profiles,
         })
     }
 
@@ -151,6 +190,11 @@ impl ItemRegistryCatalog {
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_equipment_slots.get(&resource_id).copied()
+    }
+
+    pub fn mining_profile(&self, resource_id: &str) -> Option<&ItemMiningProfile> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.mining_profiles.get(&resource_id)
     }
 
     pub fn len(&self) -> usize {
@@ -270,6 +314,9 @@ fn max_stack_size_for_declaration(expression: &str) -> Result<i32> {
         || expression.contains(".axe(")
         || expression.contains(".hoe(")
         || expression.contains(".shovel(")
+        || expression.contains("AxeItem(")
+        || expression.contains("HoeItem(")
+        || expression.contains("ShovelItem(")
         || expression.contains(".spear(")
         || expression.contains(".humanoidArmor(")
         || expression.contains(".wolfArmor(")
@@ -301,6 +348,182 @@ fn equipment_slot_for_declaration(expression: &str) -> Result<Option<ItemEquipme
     }
 
     Ok(None)
+}
+
+fn mining_profile_for_declaration(
+    expression: &str,
+    block_tags: Option<&TagCatalog>,
+) -> Result<Option<ItemMiningProfile>> {
+    let Some(block_tags) = block_tags else {
+        return Ok(None);
+    };
+
+    if let Some((tag_id, material)) = tool_mining_tag_and_material(expression)? {
+        let mut rules = Vec::new();
+        push_tag_rule(
+            &mut rules,
+            block_tags,
+            material_incorrect_for_drops_tag(&material)?,
+            None,
+            Some(false),
+        );
+        push_tag_rule(
+            &mut rules,
+            block_tags,
+            tag_id,
+            Some(material_speed_thousandths(&material)?),
+            Some(true),
+        );
+        return Ok(non_empty_mining_profile(rules));
+    }
+
+    if expression.contains(".sword(") {
+        let mut rules = Vec::new();
+        push_direct_rule(&mut rules, ["minecraft:cobweb"], Some(15_000), Some(true));
+        push_tag_rule(
+            &mut rules,
+            block_tags,
+            "minecraft:sword_instantly_mines",
+            Some(u32::MAX),
+            None,
+        );
+        push_tag_rule(
+            &mut rules,
+            block_tags,
+            "minecraft:sword_efficient",
+            Some(1_500),
+            None,
+        );
+        return Ok(non_empty_mining_profile(rules));
+    }
+
+    if expression.contains("ShearsItem.createToolProperties()") {
+        let mut rules = Vec::new();
+        push_direct_rule(&mut rules, ["minecraft:cobweb"], Some(15_000), Some(true));
+        push_tag_rule(
+            &mut rules,
+            block_tags,
+            "minecraft:leaves",
+            Some(15_000),
+            None,
+        );
+        push_tag_rule(&mut rules, block_tags, "minecraft:wool", Some(5_000), None);
+        push_direct_rule(
+            &mut rules,
+            ["minecraft:vine", "minecraft:glow_lichen"],
+            Some(2_000),
+            None,
+        );
+        return Ok(non_empty_mining_profile(rules));
+    }
+
+    Ok(None)
+}
+
+fn tool_mining_tag_and_material(expression: &str) -> Result<Option<(&'static str, String)>> {
+    for (tag_id, patterns) in [
+        (
+            "minecraft:mineable/pickaxe",
+            [
+                r#"\.pickaxe\(\s*ToolMaterial\.([A-Z_]+)"#,
+                r#"new\s+PickaxeItem\(\s*ToolMaterial\.([A-Z_]+)"#,
+            ],
+        ),
+        (
+            "minecraft:mineable/axe",
+            [
+                r#"\.axe\(\s*ToolMaterial\.([A-Z_]+)"#,
+                r#"new\s+AxeItem\(\s*ToolMaterial\.([A-Z_]+)"#,
+            ],
+        ),
+        (
+            "minecraft:mineable/hoe",
+            [
+                r#"\.hoe\(\s*ToolMaterial\.([A-Z_]+)"#,
+                r#"new\s+HoeItem\(\s*ToolMaterial\.([A-Z_]+)"#,
+            ],
+        ),
+        (
+            "minecraft:mineable/shovel",
+            [
+                r#"\.shovel\(\s*ToolMaterial\.([A-Z_]+)"#,
+                r#"new\s+ShovelItem\(\s*ToolMaterial\.([A-Z_]+)"#,
+            ],
+        ),
+    ] {
+        for pattern in patterns {
+            if let Some(material) = optional_capture(pattern, expression)? {
+                return Ok(Some((tag_id, material)));
+            }
+        }
+    }
+    Ok(None)
+}
+
+fn material_speed_thousandths(material: &str) -> Result<u32> {
+    match material {
+        "WOOD" => Ok(2_000),
+        "STONE" => Ok(4_000),
+        "COPPER" => Ok(5_000),
+        "IRON" => Ok(6_000),
+        "DIAMOND" => Ok(8_000),
+        "GOLD" => Ok(12_000),
+        "NETHERITE" => Ok(9_000),
+        _ => bail!("unsupported tool material ToolMaterial.{material}"),
+    }
+}
+
+fn material_incorrect_for_drops_tag(material: &str) -> Result<&'static str> {
+    match material {
+        "WOOD" => Ok("minecraft:incorrect_for_wooden_tool"),
+        "STONE" => Ok("minecraft:incorrect_for_stone_tool"),
+        "COPPER" => Ok("minecraft:incorrect_for_copper_tool"),
+        "IRON" => Ok("minecraft:incorrect_for_iron_tool"),
+        "DIAMOND" => Ok("minecraft:incorrect_for_diamond_tool"),
+        "GOLD" => Ok("minecraft:incorrect_for_gold_tool"),
+        "NETHERITE" => Ok("minecraft:incorrect_for_netherite_tool"),
+        _ => bail!("unsupported tool material ToolMaterial.{material}"),
+    }
+}
+
+fn push_tag_rule(
+    rules: &mut Vec<ItemMiningRule>,
+    block_tags: &TagCatalog,
+    tag_id: &str,
+    mining_speed_thousandths: Option<u32>,
+    correct_for_drops: Option<bool>,
+) {
+    let Some(block_names) = block_tags.values(tag_id) else {
+        return;
+    };
+    if block_names.is_empty() {
+        return;
+    }
+    rules.push(ItemMiningRule {
+        block_names: block_names.to_vec(),
+        mining_speed_thousandths,
+        correct_for_drops,
+    });
+}
+
+fn push_direct_rule<const N: usize>(
+    rules: &mut Vec<ItemMiningRule>,
+    block_names: [&str; N],
+    mining_speed_thousandths: Option<u32>,
+    correct_for_drops: Option<bool>,
+) {
+    rules.push(ItemMiningRule {
+        block_names: block_names.into_iter().map(str::to_string).collect(),
+        mining_speed_thousandths,
+        correct_for_drops,
+    });
+}
+
+fn non_empty_mining_profile(rules: Vec<ItemMiningRule>) -> Option<ItemMiningProfile> {
+    (!rules.is_empty()).then_some(ItemMiningProfile {
+        default_mining_speed_thousandths: 1_000,
+        rules,
+    })
 }
 
 fn equipment_slot_from_name(name: &str) -> Result<ItemEquipmentSlot> {
@@ -510,6 +733,82 @@ mod tests {
     }
 
     #[test]
+    fn item_registry_catalog_parses_default_mining_profiles() {
+        let source = r#"
+            public class Items {
+               public static final Item STONE_PICKAXE = registerItem("stone_pickaxe", new Item.Properties().pickaxe(ToolMaterial.STONE, 1.0F, -2.8F));
+               public static final Item IRON_SHOVEL = registerItem("iron_shovel", p -> new ShovelItem(ToolMaterial.IRON, 1.5F, -3.0F, p));
+               public static final Item WOODEN_SWORD = registerItem("wooden_sword", new Item.Properties().sword(ToolMaterial.WOOD, 3.0F, -2.4F));
+               public static final Item SHEARS = registerItem(
+                  "shears", ShearsItem::new, new Item.Properties().durability(238).component(DataComponents.TOOL, ShearsItem.createToolProperties())
+               );
+               public static final Item STONE = registerBlock(Blocks.STONE);
+            }
+        "#;
+        let block_tags = test_block_tags();
+
+        let catalog = ItemRegistryCatalog::from_items_java_source_with_block_tags(
+            source,
+            &BTreeMap::new(),
+            Some(&block_tags),
+        )
+        .unwrap();
+
+        let pickaxe = catalog.mining_profile("minecraft:stone_pickaxe").unwrap();
+        assert_eq!(pickaxe.default_mining_speed_thousandths, 1_000);
+        assert_eq!(pickaxe.rules.len(), 2);
+        assert_eq!(pickaxe.rules[0].correct_for_drops, Some(false));
+        assert_eq!(pickaxe.rules[0].mining_speed_thousandths, None);
+        assert!(pickaxe.rules[0]
+            .block_names
+            .contains(&"minecraft:obsidian".to_string()));
+        assert_eq!(pickaxe.rules[1].correct_for_drops, Some(true));
+        assert_eq!(pickaxe.rules[1].mining_speed_thousandths, Some(4_000));
+        assert!(pickaxe.rules[1]
+            .block_names
+            .contains(&"minecraft:stone".to_string()));
+
+        let shovel = catalog.mining_profile("minecraft:iron_shovel").unwrap();
+        assert_eq!(shovel.rules[1].mining_speed_thousandths, Some(6_000));
+        assert!(shovel.rules[1]
+            .block_names
+            .contains(&"minecraft:dirt".to_string()));
+
+        let sword = catalog.mining_profile("minecraft:wooden_sword").unwrap();
+        assert_eq!(
+            sword.rules[0].block_names,
+            vec!["minecraft:cobweb".to_string()]
+        );
+        assert_eq!(sword.rules[0].mining_speed_thousandths, Some(15_000));
+        assert_eq!(sword.rules[0].correct_for_drops, Some(true));
+        assert_eq!(sword.rules[1].mining_speed_thousandths, Some(u32::MAX));
+        assert!(sword.rules[2]
+            .block_names
+            .contains(&"minecraft:oak_leaves".to_string()));
+
+        let shears = catalog.mining_profile("minecraft:shears").unwrap();
+        assert_eq!(
+            shears.rules[0].block_names,
+            vec!["minecraft:cobweb".to_string()]
+        );
+        assert!(shears.rules[1]
+            .block_names
+            .contains(&"minecraft:oak_leaves".to_string()));
+        assert!(shears.rules[2]
+            .block_names
+            .contains(&"minecraft:white_wool".to_string()));
+        assert_eq!(
+            shears.rules[3].block_names,
+            vec![
+                "minecraft:vine".to_string(),
+                "minecraft:glow_lichen".to_string()
+            ]
+        );
+
+        assert!(catalog.mining_profile("minecraft:stone").is_none());
+    }
+
+    #[test]
     fn item_registry_catalog_loads_java_sources() {
         let root = unique_temp_dir("item-registry");
         let sources = root.join("sources").join(crate::MC_VERSION);
@@ -570,6 +869,11 @@ mod tests {
         assert_eq!(catalog.max_stack_size("minecraft:stone"), Some(64));
         assert_eq!(catalog.max_stack_size("minecraft:ender_pearl"), Some(16));
         assert_eq!(catalog.max_stack_size("minecraft:diamond_sword"), Some(1));
+        assert_eq!(catalog.max_stack_size("minecraft:diamond_shovel"), Some(1));
+        assert!(catalog
+            .mining_profile("minecraft:diamond_pickaxe")
+            .is_some());
+        assert!(catalog.mining_profile("minecraft:shears").is_some());
         assert_eq!(
             catalog.equipment_slot("minecraft:diamond_boots"),
             Some(ItemEquipmentSlot::Feet)
@@ -588,6 +892,75 @@ mod tests {
     fn write_file(path: &Path, contents: &str) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, contents).unwrap();
+    }
+
+    fn test_block_tags() -> TagCatalog {
+        use crate::tags::TagDefinition;
+
+        TagCatalog {
+            registry_path: "block".to_string(),
+            tags: BTreeMap::from([
+                (
+                    "minecraft:incorrect_for_stone_tool".to_string(),
+                    TagDefinition {
+                        id: "minecraft:incorrect_for_stone_tool".to_string(),
+                        values: vec!["minecraft:obsidian".to_string()],
+                    },
+                ),
+                (
+                    "minecraft:incorrect_for_iron_tool".to_string(),
+                    TagDefinition {
+                        id: "minecraft:incorrect_for_iron_tool".to_string(),
+                        values: vec!["minecraft:ancient_debris".to_string()],
+                    },
+                ),
+                (
+                    "minecraft:mineable/pickaxe".to_string(),
+                    TagDefinition {
+                        id: "minecraft:mineable/pickaxe".to_string(),
+                        values: vec![
+                            "minecraft:stone".to_string(),
+                            "minecraft:obsidian".to_string(),
+                        ],
+                    },
+                ),
+                (
+                    "minecraft:mineable/shovel".to_string(),
+                    TagDefinition {
+                        id: "minecraft:mineable/shovel".to_string(),
+                        values: vec!["minecraft:dirt".to_string()],
+                    },
+                ),
+                (
+                    "minecraft:sword_instantly_mines".to_string(),
+                    TagDefinition {
+                        id: "minecraft:sword_instantly_mines".to_string(),
+                        values: vec!["minecraft:bamboo_sapling".to_string()],
+                    },
+                ),
+                (
+                    "minecraft:sword_efficient".to_string(),
+                    TagDefinition {
+                        id: "minecraft:sword_efficient".to_string(),
+                        values: vec!["minecraft:oak_leaves".to_string()],
+                    },
+                ),
+                (
+                    "minecraft:leaves".to_string(),
+                    TagDefinition {
+                        id: "minecraft:leaves".to_string(),
+                        values: vec!["minecraft:oak_leaves".to_string()],
+                    },
+                ),
+                (
+                    "minecraft:wool".to_string(),
+                    TagDefinition {
+                        id: "minecraft:wool".to_string(),
+                        values: vec!["minecraft:white_wool".to_string()],
+                    },
+                ),
+            ]),
+        }
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {

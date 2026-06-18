@@ -33,7 +33,9 @@ pub use crate::client::local_player::{
     LocalPlayerHealthState, LocalPlayerInputState, LocalPlayerInteractionState,
     LocalPlayerLookAtState, LocalPlayerPoseState, LocalPlayerState,
 };
-pub use crate::client::local_player_destroy::LocalDestroyBlockFinished;
+pub use crate::client::local_player_destroy::{
+    LocalDestroyBlockFinished, WorldItemMiningProfile, WorldItemMiningRule,
+};
 pub use crate::client::player_info::{
     PlayerInfoEntryState, PlayerInfoProfileState, PlayerInfoState,
 };

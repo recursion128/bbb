@@ -4,13 +4,16 @@ use anyhow::{Context, Result};
 use bbb_pack::{
     AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, FurnaceFuelCatalog, ItemCuboidModel,
     ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
-    ItemEquipmentSlot as PackItemEquipmentSlot, ItemModelCatalog, ItemModelDefinition,
+    ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
+    ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
     ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage, TerrainColorMaps,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemStackSummary, ItemStackTemplateSummary,
 };
-use bbb_world::ItemEquipmentSlot as WorldItemEquipmentSlot;
+use bbb_world::{
+    ItemEquipmentSlot as WorldItemEquipmentSlot, WorldItemMiningProfile, WorldItemMiningRule,
+};
 
 mod icon_model;
 
@@ -201,6 +204,26 @@ impl NativeItemRuntime {
 
     pub(crate) fn item_equipment_slot_count(&self) -> usize {
         self.item_equipment_slots_by_protocol_id().len()
+    }
+
+    pub(crate) fn item_mining_profiles_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldItemMiningProfile> {
+        let mut profiles = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return profiles;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(profile) = registry.mining_profile(resource_id) else {
+                continue;
+            };
+            profiles.insert(protocol_id as i32, world_item_mining_profile(profile));
+        }
+        profiles
+    }
+
+    pub(crate) fn item_mining_profile_count(&self) -> usize {
+        self.item_mining_profiles_by_protocol_id().len()
     }
 
     pub(crate) fn furnace_fuel_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
@@ -414,6 +437,21 @@ fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentS
         PackItemEquipmentSlot::Head => WorldItemEquipmentSlot::Head,
         PackItemEquipmentSlot::Body => WorldItemEquipmentSlot::Body,
         PackItemEquipmentSlot::Saddle => WorldItemEquipmentSlot::Saddle,
+    }
+}
+
+fn world_item_mining_profile(profile: &PackItemMiningProfile) -> WorldItemMiningProfile {
+    WorldItemMiningProfile {
+        default_mining_speed_thousandths: profile.default_mining_speed_thousandths,
+        rules: profile.rules.iter().map(world_item_mining_rule).collect(),
+    }
+}
+
+fn world_item_mining_rule(rule: &PackItemMiningRule) -> WorldItemMiningRule {
+    WorldItemMiningRule {
+        block_names: rule.block_names.clone(),
+        mining_speed_thousandths: rule.mining_speed_thousandths,
+        correct_for_drops: rule.correct_for_drops,
     }
 }
 
@@ -942,6 +980,7 @@ mod tests {
         assert_eq!(runtime.item_definition_count(), 1);
         assert_eq!(runtime.item_registry_count(), 1);
         assert_eq!(runtime.item_equipment_slot_count(), 1);
+        assert_eq!(runtime.item_mining_profile_count(), 0);
         assert_eq!(
             runtime.item_equipment_slots_by_protocol_id(),
             BTreeMap::from([(0, WorldItemEquipmentSlot::Chest)])
@@ -995,6 +1034,41 @@ mod tests {
         assert_eq!(stack_icon.layers[1].tint, rgb_i32_tint(0x12_34_56));
 
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn native_item_runtime_converts_mining_profiles_for_world() {
+        let profile = PackItemMiningProfile {
+            default_mining_speed_thousandths: 1_000,
+            rules: vec![
+                PackItemMiningRule {
+                    block_names: vec!["minecraft:obsidian".to_string()],
+                    mining_speed_thousandths: None,
+                    correct_for_drops: Some(false),
+                },
+                PackItemMiningRule {
+                    block_names: vec!["minecraft:stone".to_string()],
+                    mining_speed_thousandths: Some(4_000),
+                    correct_for_drops: Some(true),
+                },
+            ],
+        };
+
+        let converted = world_item_mining_profile(&profile);
+
+        assert_eq!(converted.default_mining_speed_thousandths, 1_000);
+        assert_eq!(converted.rules.len(), 2);
+        assert_eq!(
+            converted.rules[0].block_names,
+            vec!["minecraft:obsidian".to_string()]
+        );
+        assert_eq!(converted.rules[0].correct_for_drops, Some(false));
+        assert_eq!(
+            converted.rules[1].block_names,
+            vec!["minecraft:stone".to_string()]
+        );
+        assert_eq!(converted.rules[1].mining_speed_thousandths, Some(4_000));
+        assert_eq!(converted.rules[1].correct_for_drops, Some(true));
     }
 
     #[test]
@@ -1404,7 +1478,9 @@ mod tests {
         assert_eq!(runtime.item_definition_count(), 1);
         assert_eq!(runtime.item_registry_count(), 0);
         assert_eq!(runtime.item_equipment_slot_count(), 0);
+        assert_eq!(runtime.item_mining_profile_count(), 0);
         assert!(runtime.item_equipment_slots_by_protocol_id().is_empty());
+        assert!(runtime.item_mining_profiles_by_protocol_id().is_empty());
         assert_eq!(runtime.texture_count(), 2);
         assert_eq!(runtime.icon_texture_count(), 1);
         assert!(!runtime.atlas_rgba().is_empty());

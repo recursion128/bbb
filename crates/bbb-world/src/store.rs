@@ -11,7 +11,7 @@ use crate::{
     ItemEquipmentSlot, LastMapColorPatchState, LevelEventRecord, LocalBlockPredictionState,
     LocalPlayerState, MapItemState, PlayerInfoState, ProjectilePowerUpdateState, RegistrySet,
     ScoreboardState, ServerPresentationState, WorldApplyDiagnosticsState, WorldBorderState,
-    WorldCounters, WorldDimension, WorldGameplayState, WorldLevelInfo,
+    WorldCounters, WorldDimension, WorldGameplayState, WorldItemMiningProfile, WorldLevelInfo,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -106,6 +106,8 @@ pub struct WorldStore {
     pub(crate) default_item_equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     #[serde(default)]
     pub(crate) furnace_fuel_item_ids: BTreeSet<i32>,
+    #[serde(default)]
+    pub(crate) default_item_mining_profiles: BTreeMap<i32, WorldItemMiningProfile>,
     #[serde(default)]
     pub(crate) apply_diagnostics: WorldApplyDiagnosticsState,
     pub(crate) counters: WorldCounters,

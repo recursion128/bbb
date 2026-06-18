@@ -1,4 +1,5 @@
 use bbb_protocol::packets::Direction as ProtocolDirection;
+use serde::{Deserialize, Serialize};
 
 use crate::{BlockPos, WorldStore};
 
@@ -12,7 +13,34 @@ pub struct LocalDestroyBlockFinished {
     pub sequence: i32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldItemMiningRule {
+    pub block_names: Vec<String>,
+    pub mining_speed_thousandths: Option<u32>,
+    pub correct_for_drops: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldItemMiningProfile {
+    pub default_mining_speed_thousandths: u32,
+    pub rules: Vec<WorldItemMiningRule>,
+}
+
 impl WorldStore {
+    pub fn set_default_item_mining_profiles(
+        &mut self,
+        profiles: std::collections::BTreeMap<i32, WorldItemMiningProfile>,
+    ) {
+        self.default_item_mining_profiles = profiles
+            .into_iter()
+            .filter(|(item_id, profile)| {
+                *item_id >= 0
+                    && profile.default_mining_speed_thousandths > 0
+                    && !profile.rules.is_empty()
+            })
+            .collect();
+    }
+
     pub fn set_local_destroy_delay_ticks(&mut self, ticks: u8) {
         self.local_player.interaction.destroy_delay_ticks = ticks;
     }
@@ -80,7 +108,35 @@ impl WorldStore {
             }
             Some(block_name) => block_name,
         };
-        local_destroy_progress_per_tick(block_name)
+        let hotbar_items = self.inventory.hotbar_items();
+        let selected_slot = usize::from(self.local_player.selected_hotbar_slot.min(8));
+        let item = &hotbar_items[selected_slot];
+        let mining_speed = self.local_destroy_mining_speed_thousandths(block_name, item);
+        let correct_for_drops = self.local_destroy_item_is_correct_for_drops(block_name, item);
+        local_destroy_progress_per_tick_with_tool(block_name, mining_speed, correct_for_drops)
+    }
+
+    fn local_destroy_mining_speed_thousandths(
+        &self,
+        block_name: &str,
+        item: &bbb_protocol::packets::ItemStackSummary,
+    ) -> u32 {
+        item.item_id
+            .filter(|_| item.count > 0)
+            .and_then(|item_id| self.default_item_mining_profiles.get(&item_id))
+            .map(|profile| item_mining_speed_thousandths(profile, block_name))
+            .unwrap_or(1_000)
+    }
+
+    fn local_destroy_item_is_correct_for_drops(
+        &self,
+        block_name: &str,
+        item: &bbb_protocol::packets::ItemStackSummary,
+    ) -> bool {
+        item.item_id
+            .filter(|_| item.count > 0)
+            .and_then(|item_id| self.default_item_mining_profiles.get(&item_id))
+            .is_some_and(|profile| item_is_correct_for_drops(profile, block_name))
     }
 }
 
@@ -90,22 +146,32 @@ struct LocalBlockDestroyProfile {
     requires_correct_tool: bool,
 }
 
+#[cfg(test)]
 fn local_destroy_progress_per_tick(block_name: &str) -> Option<u32> {
+    local_destroy_progress_per_tick_with_tool(block_name, 1_000, false)
+}
+
+fn local_destroy_progress_per_tick_with_tool(
+    block_name: &str,
+    mining_speed_thousandths: u32,
+    correct_for_drops: bool,
+) -> Option<u32> {
     let profile = local_block_destroy_profile(block_name)?;
     if profile.destroy_time_tenths == 0 {
         return Some(LOCAL_DESTROY_PROGRESS_SCALE);
     }
 
-    let modifier = if profile.requires_correct_tool {
-        100
+    let modifier = if !profile.requires_correct_tool || correct_for_drops {
+        30_u64
     } else {
-        30
+        100_u64
     };
-    let denominator = profile.destroy_time_tenths.saturating_mul(modifier);
-    Some(ceil_div(
-        LOCAL_DESTROY_PROGRESS_SCALE.saturating_mul(10),
-        denominator,
-    ))
+    let numerator =
+        u64::from(LOCAL_DESTROY_PROGRESS_SCALE).saturating_mul(u64::from(mining_speed_thousandths));
+    let denominator = u64::from(profile.destroy_time_tenths)
+        .saturating_mul(100)
+        .saturating_mul(modifier);
+    Some(ceil_div_u64(numerator, denominator).min(u64::from(u32::MAX)) as u32)
 }
 
 fn local_destroy_stage(progress: u32) -> Option<u8> {
@@ -159,11 +225,37 @@ fn local_block_destroy_profile(block_name: &str) -> Option<LocalBlockDestroyProf
     }
 }
 
-fn ceil_div(numerator: u32, denominator: u32) -> u32 {
+fn item_mining_speed_thousandths(profile: &WorldItemMiningProfile, block_name: &str) -> u32 {
+    profile
+        .rules
+        .iter()
+        .find_map(|rule| {
+            rule.mining_speed_thousandths
+                .filter(|_| mining_rule_matches(rule, block_name))
+        })
+        .unwrap_or(profile.default_mining_speed_thousandths)
+}
+
+fn item_is_correct_for_drops(profile: &WorldItemMiningProfile, block_name: &str) -> bool {
+    profile
+        .rules
+        .iter()
+        .find_map(|rule| {
+            rule.correct_for_drops
+                .filter(|_| mining_rule_matches(rule, block_name))
+        })
+        .unwrap_or(false)
+}
+
+fn mining_rule_matches(rule: &WorldItemMiningRule, block_name: &str) -> bool {
+    rule.block_names.iter().any(|name| name == block_name)
+}
+
+fn ceil_div_u64(numerator: u64, denominator: u64) -> u64 {
     if denominator == 0 {
         return 0;
     }
-    numerator / denominator + u32::from(numerator % denominator != 0)
+    numerator / denominator + u64::from(numerator % denominator != 0)
 }
 
 #[cfg(test)]
@@ -174,6 +266,7 @@ mod tests {
         ItemStackSummary as ProtocolItemStackSummary,
         SetPlayerInventory as ProtocolSetPlayerInventory,
     };
+    use std::collections::BTreeMap;
 
     use crate::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -199,6 +292,64 @@ mod tests {
             Some(1_000_000)
         );
         assert_eq!(local_destroy_progress_per_tick("minecraft:unknown"), None);
+    }
+
+    #[test]
+    fn local_destroy_progress_uses_selected_item_mining_profile() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 1);
+        assert_eq!(
+            world.probe_block(pos).unwrap().block_name.as_deref(),
+            Some("minecraft:stone")
+        );
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(6_667));
+
+        world.set_default_item_mining_profiles(BTreeMap::from([(
+            42,
+            mining_profile(vec![
+                mining_rule(vec!["minecraft:obsidian"], None, Some(false)),
+                mining_rule(vec!["minecraft:stone"], Some(4_000), Some(true)),
+            ]),
+        )]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(88_889));
+
+        world.set_default_item_mining_profiles(BTreeMap::from([(
+            42,
+            mining_profile(vec![
+                mining_rule(vec!["minecraft:stone"], None, Some(false)),
+                mining_rule(vec!["minecraft:stone"], Some(4_000), Some(true)),
+            ]),
+        )]));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(26_667));
+    }
+
+    #[test]
+    fn local_destroy_progress_uses_tool_speed_for_blocks_without_required_tool() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 9);
+        assert_eq!(
+            world.probe_block(pos).unwrap().block_name.as_deref(),
+            Some("minecraft:grass_block")
+        );
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(55_556));
+
+        world.set_default_item_mining_profiles(BTreeMap::from([(
+            43,
+            mining_profile(vec![mining_rule(
+                vec!["minecraft:grass_block"],
+                Some(6_000),
+                Some(true),
+            )]),
+        )]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(43, 1),
+        });
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(333_334));
     }
 
     #[test]
@@ -327,6 +478,25 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn mining_profile(rules: Vec<WorldItemMiningRule>) -> WorldItemMiningProfile {
+        WorldItemMiningProfile {
+            default_mining_speed_thousandths: 1_000,
+            rules,
+        }
+    }
+
+    fn mining_rule(
+        block_names: Vec<&str>,
+        mining_speed_thousandths: Option<u32>,
+        correct_for_drops: Option<bool>,
+    ) -> WorldItemMiningRule {
+        WorldItemMiningRule {
+            block_names: block_names.into_iter().map(str::to_string).collect(),
+            mining_speed_thousandths,
+            correct_for_drops,
         }
     }
 
