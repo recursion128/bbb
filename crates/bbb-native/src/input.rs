@@ -133,6 +133,7 @@ struct SignEditorInputState {
     signature: SignEditorInputSignature,
     lines: [String; 4],
     line: usize,
+    cursor: usize,
 }
 
 impl ClientInputState {
@@ -784,7 +785,7 @@ fn handle_sign_editor_text(
         return false;
     };
 
-    push_sign_line_text(&mut editor.lines[editor.line], text);
+    insert_sign_line_text(&mut editor.lines[editor.line], &mut editor.cursor, text);
     true
 }
 
@@ -808,17 +809,43 @@ fn handle_sign_editor_key(
         KeyCode::Escape => submit_sign_editor(input, counters, net_commands),
         KeyCode::ArrowUp => {
             if let Some(editor) = &mut input.sign_editor {
-                editor.line = (editor.line + 3) % editor.lines.len();
+                set_sign_editor_line(editor, (editor.line + 3) % editor.lines.len());
             }
         }
         KeyCode::ArrowDown | KeyCode::Enter | KeyCode::NumpadEnter => {
             if let Some(editor) = &mut input.sign_editor {
-                editor.line = (editor.line + 1) % editor.lines.len();
+                set_sign_editor_line(editor, (editor.line + 1) % editor.lines.len());
+            }
+        }
+        KeyCode::ArrowLeft => {
+            if let Some(editor) = &mut input.sign_editor {
+                editor.cursor = editor.cursor.saturating_sub(1);
+            }
+        }
+        KeyCode::ArrowRight => {
+            if let Some(editor) = &mut input.sign_editor {
+                editor.cursor =
+                    (editor.cursor + 1).min(sign_line_char_len(&editor.lines[editor.line]));
+            }
+        }
+        KeyCode::Home => {
+            if let Some(editor) = &mut input.sign_editor {
+                editor.cursor = 0;
+            }
+        }
+        KeyCode::End => {
+            if let Some(editor) = &mut input.sign_editor {
+                editor.cursor = sign_line_char_len(&editor.lines[editor.line]);
             }
         }
         KeyCode::Backspace => {
             if let Some(editor) = &mut input.sign_editor {
-                editor.lines[editor.line].pop();
+                remove_sign_char_before_cursor(&mut editor.lines[editor.line], &mut editor.cursor);
+            }
+        }
+        KeyCode::Delete => {
+            if let Some(editor) = &mut input.sign_editor {
+                remove_sign_char_at_cursor(&mut editor.lines[editor.line], editor.cursor);
             }
         }
         _ => {}
@@ -848,10 +875,13 @@ fn sync_sign_editor_input(
         return false;
     }
 
+    let lines = sign_editor_initial_lines(world);
+    let cursor = sign_line_char_len(&lines[0]);
     input.sign_editor = Some(SignEditorInputState {
         signature,
-        lines: sign_editor_initial_lines(world),
+        lines,
         line: 0,
+        cursor,
     });
     release_active_input(input, world, counters, net_commands);
     true
@@ -898,14 +928,22 @@ fn submit_sign_editor(
     );
 }
 
-fn push_sign_line_text(current: &mut String, text: &str) {
+fn set_sign_editor_line(editor: &mut SignEditorInputState, line: usize) {
+    editor.line = line;
+    editor.cursor = sign_line_char_len(&editor.lines[editor.line]);
+}
+
+fn insert_sign_line_text(current: &mut String, cursor: &mut usize, text: &str) {
+    *cursor = (*cursor).min(sign_line_char_len(current));
     let mut remaining = SIGN_LINE_MAX_LENGTH.saturating_sub(sign_line_len(current));
     for ch in text.chars().filter(|ch| is_sign_text_char(*ch)) {
         let len = ch.len_utf16();
         if len > remaining {
             break;
         }
-        current.push(ch);
+        let insert_at = sign_line_byte_index(current, *cursor);
+        current.insert(insert_at, ch);
+        *cursor += 1;
         remaining -= len;
     }
 }
@@ -916,6 +954,35 @@ fn is_sign_text_char(ch: char) -> bool {
 
 fn sign_line_len(text: &str) -> usize {
     text.encode_utf16().count()
+}
+
+fn sign_line_char_len(text: &str) -> usize {
+    text.chars().count()
+}
+
+fn sign_line_byte_index(text: &str, char_index: usize) -> usize {
+    text.char_indices()
+        .nth(char_index)
+        .map_or(text.len(), |(index, _)| index)
+}
+
+fn remove_sign_char_before_cursor(current: &mut String, cursor: &mut usize) {
+    if *cursor == 0 {
+        return;
+    }
+    let start = sign_line_byte_index(current, *cursor - 1);
+    let end = sign_line_byte_index(current, *cursor);
+    current.replace_range(start..end, "");
+    *cursor -= 1;
+}
+
+fn remove_sign_char_at_cursor(current: &mut String, cursor: usize) {
+    if cursor >= sign_line_char_len(current) {
+        return;
+    }
+    let start = sign_line_byte_index(current, cursor);
+    let end = sign_line_byte_index(current, cursor + 1);
+    current.replace_range(start..end, "");
 }
 
 fn player_input_from_state(input: &ClientInputState) -> PlayerInput {
