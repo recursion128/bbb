@@ -54,11 +54,8 @@ pub(crate) fn advance_player_input(
 
     if world.local_player_root_vehicle_id().is_some() {
         let input_state = input.local_player_input();
-        let before_pose = world.local_player_pose();
         if let Some(pose) = world.advance_local_player_look_input(input_state) {
-            if Some(pose) != before_pose {
-                maybe_queue_player_move_command(input, counters, net_commands, pose, now);
-            }
+            maybe_queue_passenger_rotation_command(input, counters, net_commands, pose, now);
         }
         maybe_queue_riding_jump_command(input, world, counters, net_commands, dt_seconds);
         let boat_report = world.advance_local_boat_vehicle_input(input_state, dt_seconds);
@@ -146,6 +143,40 @@ fn maybe_queue_boat_commands(
     input.last_paddle_boat_command_at = Some(now);
 }
 
+fn maybe_queue_passenger_rotation_command(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    pose: LocalPlayerPoseState,
+    now: Instant,
+) {
+    let Some(tx) = net_commands else {
+        return;
+    };
+    let elapsed_since_last = input
+        .last_move_command_at
+        .and_then(|last| now.checked_duration_since(last));
+    let command_due = elapsed_since_last.map_or(true, |elapsed| elapsed >= MOVE_COMMAND_INTERVAL);
+    if !command_due {
+        return;
+    }
+
+    let mut command_state = pose.position_state();
+    command_state.delta_movement = pose.delta_movement;
+    let command = NetCommand::MovePlayer(PlayerMoveCommand {
+        state: command_state,
+        on_ground: pose.on_ground,
+        horizontal_collision: pose.horizontal_collision,
+        force_position: false,
+        force_rotation_only: true,
+    });
+    if tx.try_send(command).is_ok() {
+        input.last_move_command_at = Some(now);
+        input.last_move_command_pose = Some(pose);
+        counters.player_move_commands_queued += 1;
+    }
+}
+
 fn paddle_boat_state_from_input(input: &ClientInputState) -> (bool, bool) {
     let left = (input.right && !input.left) || input.forward;
     let right = (input.left && !input.right) || input.forward;
@@ -223,6 +254,7 @@ fn maybe_queue_player_move_command(
         on_ground: pose.on_ground,
         horizontal_collision: pose.horizontal_collision,
         force_position,
+        force_rotation_only: false,
     });
     if tx.try_send(command).is_ok() {
         let mut remembered_pose = last_pose.unwrap_or(pose);
@@ -588,6 +620,7 @@ mod tests {
         assert_eq!(rotation_only.state.y_rot, 15.0);
         assert_eq!(rotation_only.state.x_rot, -2.5);
         assert!(!rotation_only.force_position);
+        assert!(!rotation_only.force_rotation_only);
         assert_eq!(counters.player_move_commands_queued, 2);
     }
 
@@ -618,7 +651,7 @@ mod tests {
 
     #[test]
     fn mounted_boat_input_queues_paddle_and_vehicle_move_instead_of_player_walk() {
-        let (tx, mut rx) = mpsc::channel(4);
+        let (tx, mut rx) = mpsc::channel(6);
         let commands = Some(tx);
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
@@ -628,6 +661,12 @@ mod tests {
         let mut counters = NetCounters::default();
 
         advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+        let first_rotation = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected passenger rotation command, got {other:?}"),
+        };
+        assert!(first_rotation.force_rotation_only);
+        assert_eq!(first_rotation.state.position, initial_pose.position);
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::PaddleBoat(PaddleBoat {
@@ -645,7 +684,7 @@ mod tests {
         assert_eq!(world.local_player_pose(), Some(initial_pose));
         assert_eq!(counters.paddle_boat_commands_queued, 1);
         assert_eq!(counters.move_vehicle_commands_queued, 1);
-        assert_eq!(counters.player_move_commands_queued, 0);
+        assert_eq!(counters.player_move_commands_queued, 1);
 
         input.left = false;
         input.forward = true;
@@ -665,6 +704,11 @@ mod tests {
             &commands,
             start + Duration::from_millis(50),
         );
+        let second_rotation = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected passenger rotation command, got {other:?}"),
+        };
+        assert!(second_rotation.force_rotation_only);
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::PaddleBoat(PaddleBoat {
@@ -679,7 +723,7 @@ mod tests {
         assert!(second_vehicle.position.z > first_vehicle.position.z);
         assert_eq!(counters.paddle_boat_commands_queued, 2);
         assert_eq!(counters.move_vehicle_commands_queued, 2);
-        assert_eq!(counters.player_move_commands_queued, 0);
+        assert_eq!(counters.player_move_commands_queued, 2);
     }
 
     #[test]
@@ -703,6 +747,7 @@ mod tests {
         assert_eq!(command.state.position, initial_pose.position);
         assert_eq!(command.state.y_rot, 12.0);
         assert_eq!(command.state.x_rot, -6.0);
+        assert!(command.force_rotation_only);
         assert_eq!(
             world.local_player_pose().unwrap().position,
             initial_pose.position
@@ -713,8 +758,8 @@ mod tests {
     }
 
     #[test]
-    fn mounted_non_boat_input_does_not_queue_paddle_or_vehicle_move() {
-        let (tx, mut rx) = mpsc::channel(1);
+    fn mounted_non_boat_input_queues_passenger_rotation_only() {
+        let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
@@ -725,16 +770,24 @@ mod tests {
 
         advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
 
+        let command = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected passenger rotation command, got {other:?}"),
+        };
+        assert!(command.force_rotation_only);
+        assert_eq!(command.state.position, initial_pose.position);
+        assert_eq!(command.state.y_rot, initial_pose.y_rot);
+        assert_eq!(command.state.x_rot, initial_pose.x_rot);
         assert!(rx.try_recv().is_err());
         assert_eq!(world.local_player_pose(), Some(initial_pose));
         assert_eq!(counters.paddle_boat_commands_queued, 0);
         assert_eq!(counters.move_vehicle_commands_queued, 0);
-        assert_eq!(counters.player_move_commands_queued, 0);
+        assert_eq!(counters.player_move_commands_queued, 1);
     }
 
     #[test]
     fn mounted_jumpable_vehicle_release_queues_riding_jump_command() {
-        let (tx, mut rx) = mpsc::channel(2);
+        let (tx, mut rx) = mpsc::channel(4);
         let commands = Some(tx);
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
@@ -743,6 +796,10 @@ mod tests {
         let mut counters = NetCounters::default();
 
         advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
         assert!(rx.try_recv().is_err());
 
         input.jump = false;
@@ -754,6 +811,10 @@ mod tests {
             start + Duration::from_millis(100),
         );
 
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
         let command = match rx.try_recv().unwrap() {
             NetCommand::PlayerCommand(command) => command,
             other => panic!("expected riding jump player command, got {other:?}"),
@@ -766,7 +827,7 @@ mod tests {
 
     #[test]
     fn mounted_non_jumpable_vehicle_release_does_not_queue_riding_jump() {
-        let (tx, mut rx) = mpsc::channel(1);
+        let (tx, mut rx) = mpsc::channel(3);
         let commands = Some(tx);
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
@@ -775,6 +836,10 @@ mod tests {
         let mut counters = NetCounters::default();
 
         advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
         input.jump = false;
         advance_player_input(
             &mut input,
@@ -784,6 +849,10 @@ mod tests {
             start + Duration::from_millis(100),
         );
 
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::MovePlayer(command) if command.force_rotation_only
+        ));
         assert!(rx.try_recv().is_err());
         assert_eq!(counters.player_command_commands_queued, 0);
     }

@@ -60,6 +60,7 @@ fn player_move_command_encodes_pos_rot_packet() {
         on_ground: true,
         horizontal_collision: true,
         force_position: false,
+        force_rotation_only: false,
     };
 
     let (packet_id, payload) = command.encode_packet_from(PlayerPositionState::default());
@@ -99,6 +100,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: true,
         horizontal_collision: false,
         force_position: false,
+        force_rotation_only: false,
     }
     .encode_packet_from(previous);
     assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS);
@@ -113,6 +115,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: false,
         horizontal_collision: true,
         force_position: false,
+        force_rotation_only: false,
     }
     .encode_packet_from(previous);
     assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_ROT);
@@ -130,6 +133,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: true,
         horizontal_collision: true,
         force_position: false,
+        force_rotation_only: false,
     }
     .encode_packet_from(previous);
     assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS_ROT);
@@ -140,6 +144,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: false,
         horizontal_collision: true,
         force_position: false,
+        force_rotation_only: false,
     }
     .encode_packet_from(previous);
     assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_STATUS_ONLY);
@@ -150,6 +155,7 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
         on_ground: false,
         horizontal_collision: true,
         force_position: true,
+        force_rotation_only: false,
     }
     .encode_packet_from(previous);
     assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_POS);
@@ -158,6 +164,30 @@ fn player_move_command_selects_vanilla_move_player_variant_from_previous_state()
     assert_eq!(decoder.read_f64().unwrap(), previous.position.y);
     assert_eq!(decoder.read_f64().unwrap(), previous.position.z);
     assert_eq!(decoder.read_u8().unwrap(), 0b10);
+    assert!(decoder.is_empty());
+
+    let (packet_id, payload) = PlayerMoveCommand {
+        state: PlayerPositionState {
+            position: Vec3d {
+                x: 99.0,
+                y: 100.0,
+                z: 101.0,
+            },
+            y_rot: 120.0,
+            x_rot: -10.0,
+            ..previous
+        },
+        on_ground: true,
+        horizontal_collision: false,
+        force_position: false,
+        force_rotation_only: true,
+    }
+    .encode_packet_from(previous);
+    assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_ROT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_f32().unwrap(), 120.0);
+    assert_eq!(decoder.read_f32().unwrap(), -10.0);
+    assert_eq!(decoder.read_u8().unwrap(), 0b01);
     assert!(decoder.is_empty());
 }
 
@@ -212,6 +242,7 @@ async fn send_player_move_command_selects_variant_and_updates_position_state() {
             on_ground: true,
             horizontal_collision: false,
             force_position: false,
+            force_rotation_only: false,
         },
         &mut player_position_state,
     )
@@ -219,6 +250,83 @@ async fn send_player_move_command_selects_variant_and_updates_position_state() {
     .unwrap();
 
     assert_eq!(player_position_state, next);
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_player_move_command_force_rotation_only_keeps_previous_position_state() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("move player rotation command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_ROT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f32().unwrap(), 45.0);
+        assert_eq!(decoder.read_f32().unwrap(), 12.0);
+        assert_eq!(decoder.read_u8().unwrap(), 0b10);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+    let mut player_position_state = PlayerPositionState {
+        position: Vec3d {
+            x: 1.25,
+            y: 64.5,
+            z: -8.75,
+        },
+        delta_movement: Vec3d::default(),
+        y_rot: 90.0,
+        x_rot: -15.0,
+    };
+
+    send_player_move_command(
+        &mut conn,
+        PlayerMoveCommand {
+            state: PlayerPositionState {
+                position: Vec3d {
+                    x: 99.0,
+                    y: 100.0,
+                    z: 101.0,
+                },
+                delta_movement: Vec3d {
+                    x: 0.25,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                y_rot: 45.0,
+                x_rot: 12.0,
+            },
+            on_ground: false,
+            horizontal_collision: true,
+            force_position: false,
+            force_rotation_only: true,
+        },
+        &mut player_position_state,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        player_position_state.position,
+        Vec3d {
+            x: 1.25,
+            y: 64.5,
+            z: -8.75,
+        }
+    );
+    assert_eq!(player_position_state.y_rot, 45.0);
+    assert_eq!(player_position_state.x_rot, 12.0);
+    assert_eq!(player_position_state.delta_movement.x, 0.25);
     server.await.unwrap();
 }
 

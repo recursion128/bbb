@@ -17,10 +17,20 @@ pub struct PlayerMoveCommand {
     pub horizontal_collision: bool,
     #[serde(default)]
     pub force_position: bool,
+    #[serde(default)]
+    pub force_rotation_only: bool,
 }
 
 impl PlayerMoveCommand {
     pub(crate) fn encode_packet_from(self, previous: PlayerPositionState) -> (i32, Vec<u8>) {
+        if self.force_rotation_only {
+            return packets::encode_play_move_player_rot(
+                self.state.y_rot,
+                self.state.x_rot,
+                self.on_ground,
+                self.horizontal_collision,
+            );
+        }
         let position_changed = self.force_position || self.state.position != previous.position;
         let rotation_changed =
             self.state.y_rot != previous.y_rot || self.state.x_rot != previous.x_rot;
@@ -53,6 +63,31 @@ impl PlayerMoveCommand {
                 self.horizontal_collision,
             ),
         }
+    }
+
+    pub(crate) fn apply_to_position_state(
+        self,
+        previous: PlayerPositionState,
+    ) -> PlayerPositionState {
+        let mut next = previous;
+        next.delta_movement = self.state.delta_movement;
+        if self.force_rotation_only {
+            next.y_rot = self.state.y_rot;
+            next.x_rot = self.state.x_rot;
+            return next;
+        }
+
+        let position_changed = self.force_position || self.state.position != previous.position;
+        let rotation_changed =
+            self.state.y_rot != previous.y_rot || self.state.x_rot != previous.x_rot;
+        if position_changed {
+            next.position = self.state.position;
+        }
+        if rotation_changed {
+            next.y_rot = self.state.y_rot;
+            next.x_rot = self.state.x_rot;
+        }
+        next
     }
 }
 

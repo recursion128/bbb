@@ -253,8 +253,8 @@ update this file in the same slice.
     - sneak pose details
     - the near-ground/fallDistance branch of sneak edge backoff
     - full flying friction
-    - remaining passenger/vehicle movement send edge cases beyond the
-      vanilla-shaped walking player packet thresholds
+    - remaining vehicle movement send edge cases beyond the vanilla-shaped
+      walking and passenger player packet thresholds
   - Block destroy: close:
     - remaining block destroy profile gaps outside the mechanically parsed
       `Blocks.java` property declarations:
@@ -347,6 +347,10 @@ update this file in the same slice.
         - rotation/status-only packets when only look or collision flags change
         - 20 tick position reminder that resets only when a position packet is
           sent
+      - vanilla-shaped passenger `MovePlayer.Rot` packets while mounted:
+        - sent on the local movement tick even when look did not change
+        - forced to the Rot-only packet variant instead of position/status
+          variants
   - Commands:
     - Existing input modules queue many serverbound packets, including
       vanilla-shaped boat/raft paddle-state packets from local mounted input.
