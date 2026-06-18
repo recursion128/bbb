@@ -13,8 +13,8 @@ use bbb_protocol::{
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTextLabel, HudInventoryTooltip, HudItemCountLabel, HudItemDurabilityBar,
-    HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip, HudItemCountLabel,
+    HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
 use bbb_world::{
     ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
@@ -89,6 +89,17 @@ const ENCHANTING_TABLE_OPTION_SPACING: i32 = 19;
 const ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_SIZE: u32 = 16;
+const ANVIL_COST_DATA_ID: i16 = 0;
+const ANVIL_RESULT_SLOT: i16 = 2;
+const ANVIL_TOO_EXPENSIVE_LEVEL_COST: i16 = 40;
+const ANVIL_RENAME_TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const ANVIL_COST_TEXT_COLOR: [f32; 4] = [128.0 / 255.0, 1.0, 32.0 / 255.0, 1.0];
+const ANVIL_COST_ERROR_TEXT_COLOR: [f32; 4] = [1.0, 96.0 / 255.0, 96.0 / 255.0, 1.0];
+const ANVIL_COST_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 79.0 / 255.0];
+const ANVIL_COST_LABEL_RIGHT: i32 = 168;
+const ANVIL_COST_LABEL_Y: i32 = 69;
+const ANVIL_COST_BACKGROUND_Y: i32 = 67;
+const ANVIL_COST_BACKGROUND_HEIGHT: u32 = 12;
 const MAP_ID_DATA_COMPONENT_TYPE_ID: i32 = 41;
 const CARTOGRAPHY_TABLE_MAP_SLOT: i16 = 0;
 const CARTOGRAPHY_TABLE_ADDITIONAL_SLOT: i16 = 1;
@@ -522,32 +533,95 @@ fn hud_inventory_screen_with_local_state(
             local_state.stonecutter_recipe_scroll_row,
             partial_tick,
         ),
-        text_labels: hud_inventory_text_labels(layout.background, &local_state),
+        text_labels: hud_inventory_text_labels(world, layout.background, &local_state),
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
         tooltip: hud_inventory_tooltip(item_runtime, hovered_slot_id, &layout.slots, container),
     })
 }
 
 fn hud_inventory_text_labels(
+    world: &WorldStore,
     background: InventoryScreenBackground,
     local_state: &InventoryHudLocalState,
 ) -> Vec<HudInventoryTextLabel> {
     match background {
-        InventoryScreenBackground::Anvil => local_state
-            .anvil_rename_text
-            .as_ref()
-            .filter(|text| !text.is_empty())
-            .map(|text| {
-                vec![HudInventoryTextLabel {
+        InventoryScreenBackground::Anvil => {
+            let mut labels = Vec::new();
+            if let Some(text) = local_state
+                .anvil_rename_text
+                .as_ref()
+                .filter(|text| !text.is_empty())
+            {
+                labels.push(HudInventoryTextLabel {
                     x: 62,
                     y: 24,
                     width: 103,
                     text: text.clone(),
-                }]
-            })
-            .unwrap_or_default(),
+                    tint: ANVIL_RENAME_TEXT_COLOR,
+                    background: None,
+                });
+            }
+            if let Some(label) = anvil_cost_text_label(world) {
+                labels.push(label);
+            }
+            labels
+        }
         _ => Vec::new(),
     }
+}
+
+fn anvil_cost_text_label(world: &WorldStore) -> Option<HudInventoryTextLabel> {
+    let cost = world.open_container_data_value(ANVIL_COST_DATA_ID)?;
+    if cost <= 0 {
+        return None;
+    }
+
+    let creative = world.gameplay().game_type == 1;
+    let (text, tint) = if cost >= ANVIL_TOO_EXPENSIVE_LEVEL_COST && !creative {
+        ("Too Expensive!".to_string(), ANVIL_COST_ERROR_TEXT_COLOR)
+    } else {
+        if !open_container_slot_has_item(world, ANVIL_RESULT_SLOT) {
+            return None;
+        }
+        let may_pickup = creative
+            || world
+                .local_player()
+                .experience
+                .is_some_and(|experience| experience.level >= i32::from(cost));
+        (
+            format!("Cost: {cost}"),
+            if may_pickup {
+                ANVIL_COST_TEXT_COLOR
+            } else {
+                ANVIL_COST_ERROR_TEXT_COLOR
+            },
+        )
+    };
+
+    let text_width = hud_ascii_approx_text_width(&text)?;
+    let x = ANVIL_COST_LABEL_RIGHT - 2 - i32::try_from(text_width).ok()?;
+    Some(HudInventoryTextLabel {
+        x,
+        y: ANVIL_COST_LABEL_Y,
+        width: text_width,
+        text,
+        tint,
+        background: Some(HudInventoryTextBackground {
+            x: x - 2,
+            y: ANVIL_COST_BACKGROUND_Y,
+            width: text_width.saturating_add(4),
+            height: ANVIL_COST_BACKGROUND_HEIGHT,
+            tint: ANVIL_COST_BACKGROUND_TINT,
+        }),
+    })
+}
+
+fn hud_ascii_approx_text_width(text: &str) -> Option<u32> {
+    let mut width = 0u32;
+    for ch in text.chars() {
+        width = width.checked_add(if ch == ' ' { 4 } else { 6 })?;
+    }
+    (width > 0).then_some(width)
 }
 
 fn hud_inventory_tooltip(
@@ -3532,6 +3606,105 @@ mod tests {
                 y: 24,
                 width: 103,
                 text: "Sharp Pick".to_string(),
+                tint: ANVIL_RENAME_TEXT_COLOR,
+                background: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_anvil_cost_label() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 8,
+            title: "Anvil".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 1);
+        items[2] = item_stack(42, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: ANVIL_COST_DATA_ID,
+            value: 7,
+        });
+        world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
+            progress: 0.0,
+            level: 8,
+            total: 0,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.text_labels,
+            vec![HudInventoryTextLabel {
+                x: 126,
+                y: ANVIL_COST_LABEL_Y,
+                width: 40,
+                text: "Cost: 7".to_string(),
+                tint: ANVIL_COST_TEXT_COLOR,
+                background: Some(HudInventoryTextBackground {
+                    x: 124,
+                    y: ANVIL_COST_BACKGROUND_Y,
+                    width: 44,
+                    height: ANVIL_COST_BACKGROUND_HEIGHT,
+                    tint: ANVIL_COST_BACKGROUND_TINT,
+                }),
+            }]
+        );
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_anvil_too_expensive_label() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 8,
+            title: "Anvil".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: ANVIL_COST_DATA_ID,
+            value: ANVIL_TOO_EXPENSIVE_LEVEL_COST,
+        });
+        world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
+            progress: 0.0,
+            level: 100,
+            total: 0,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.text_labels,
+            vec![HudInventoryTextLabel {
+                x: 84,
+                y: ANVIL_COST_LABEL_Y,
+                width: 82,
+                text: "Too Expensive!".to_string(),
+                tint: ANVIL_COST_ERROR_TEXT_COLOR,
+                background: Some(HudInventoryTextBackground {
+                    x: 82,
+                    y: ANVIL_COST_BACKGROUND_Y,
+                    width: 86,
+                    height: ANVIL_COST_BACKGROUND_HEIGHT,
+                    tint: ANVIL_COST_BACKGROUND_TINT,
+                }),
             }]
         );
     }

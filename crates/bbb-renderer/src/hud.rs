@@ -253,7 +253,16 @@ pub struct HudInventoryItem {
     pub icon: HudItemIcon,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudInventoryTextBackground {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub tint: [f32; 4],
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryTextLabel {
     /// Text x position relative to the centered inventory screen origin.
     pub x: i32,
@@ -261,6 +270,8 @@ pub struct HudInventoryTextLabel {
     pub y: i32,
     pub width: u32,
     pub text: String,
+    pub tint: [f32; 4],
+    pub background: Option<HudInventoryTextBackground>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1675,6 +1686,7 @@ impl Renderer {
             push_hud_inventory_text_labels(
                 &mut vertices,
                 &mut commands,
+                &self.hud_white_pixel,
                 self.hud_ascii_atlas.as_ref(),
                 &self.hud_ascii_glyphs,
                 surface_size,
@@ -2173,6 +2185,7 @@ fn push_hud_item_count_label<'a>(
 fn push_hud_inventory_text_labels<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
     ascii_atlas: Option<&'a HudSpriteGpu>,
     glyphs: &[HudAsciiGlyph; HUD_ASCII_GLYPH_COUNT],
     surface_size: PhysicalSize<u32>,
@@ -2182,11 +2195,33 @@ fn push_hud_inventory_text_labels<'a>(
         return;
     };
     for label in &screen.text_labels {
+        if let Some(background) = label.background {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                inventory_background_hud_rect(
+                    surface_size,
+                    screen.width,
+                    screen.height,
+                    background.x,
+                    background.y,
+                    background.width,
+                    background.height,
+                ),
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                background.tint,
+            );
+        }
         for shadow_offset in [1.0, 0.0] {
             let tint = if shadow_offset > 0.0 {
                 HUD_TEXT_SHADOW_TINT
             } else {
-                HUD_TINT_WHITE
+                label.tint
             };
             let mut pen_x = 0u32;
             for ch in label.text.chars() {
@@ -2419,15 +2454,42 @@ fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryIte
 fn sanitize_hud_inventory_text_label(
     label: HudInventoryTextLabel,
 ) -> Option<HudInventoryTextLabel> {
+    if !label.tint.iter().all(|component| component.is_finite()) {
+        return None;
+    }
     let x = label.x;
     let y = label.y;
     let width = label.width;
+    let tint = label.tint;
+    let background = label
+        .background
+        .and_then(sanitize_hud_inventory_text_background);
     let text = sanitize_hud_text_line(label.text)?;
     (width > 0).then_some(HudInventoryTextLabel {
         x,
         y,
         width: width.min(512),
         text,
+        tint: tint.map(|component| component.clamp(0.0, 1.0)),
+        background,
+    })
+}
+
+fn sanitize_hud_inventory_text_background(
+    background: HudInventoryTextBackground,
+) -> Option<HudInventoryTextBackground> {
+    if !background
+        .tint
+        .iter()
+        .all(|component| component.is_finite())
+    {
+        return None;
+    }
+    (background.width > 0 && background.height > 0).then_some(HudInventoryTextBackground {
+        width: background.width.min(512),
+        height: background.height.min(512),
+        tint: background.tint.map(|component| component.clamp(0.0, 1.0)),
+        ..background
     })
 }
 
@@ -2761,12 +2823,22 @@ mod tests {
                     y: 24,
                     width: 103,
                     text: "Name\u{0007}".to_string(),
+                    tint: [1.25, 0.5, -1.0, 1.0],
+                    background: Some(HudInventoryTextBackground {
+                        x: 60,
+                        y: 22,
+                        width: 120,
+                        height: 12,
+                        tint: [0.0, 0.0, 0.0, 1.5],
+                    }),
                 },
                 HudInventoryTextLabel {
                     x: 10,
                     y: 10,
                     width: 0,
                     text: "ignored".to_string(),
+                    tint: HUD_TINT_WHITE,
+                    background: None,
                 },
             ],
             hovered_slot_id: Some(7),
@@ -2822,6 +2894,14 @@ mod tests {
                 y: 24,
                 width: 103,
                 text: "Name".to_string(),
+                tint: [1.0, 0.5, 0.0, 1.0],
+                background: Some(HudInventoryTextBackground {
+                    x: 60,
+                    y: 22,
+                    width: 120,
+                    height: 12,
+                    tint: [0.0, 0.0, 0.0, 1.0],
+                }),
             }]
         );
         assert_eq!(

@@ -662,9 +662,10 @@ When an agent does any of the following, update this file in the same slice:
         - rename field text renders from native HUD text labels
         - rename input initializes from the default item hover name when item
           runtime assets are available
+        - XP cost and `Too Expensive!` labels render from server
+          `ContainerSetData` cost plus local game mode / experience state
         - quick-move and result-slot paths are kept server-authoritative until:
           - repair/enchantment result prediction
-          - XP cost
           - repair-cost component updates
           - material consumption
           - anvil damage side effects
