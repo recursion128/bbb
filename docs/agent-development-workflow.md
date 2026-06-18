@@ -28,19 +28,20 @@ configuration UI.
    - `../bbb-wt-renderer`
    - `../bbb-wt-world`
    - `../bbb-wt-protocol`
-6. Main agent gives each worker an exact write scope and a distinct
+6. Main agent gives each worker an exact write scope and a distinct external
    `CARGO_TARGET_DIR` when focused tests may run in parallel.
 7. Main agent keeps one critical-path task local while workers run.
 8. Workers edit only their assigned files, run focused tests, and report
    changed paths plus test results.
 9. Main agent reviews worker diffs and integrates them by patch, cherry-pick, or
    merge from temporary branches.
-10. Workers should remove their own worktree-local Cargo build output after
-   reporting, for example `rm -rf target` or the assigned `CARGO_TARGET_DIR`.
+10. Workers keep assigned external Cargo build caches after reporting unless
+   the slice explicitly marks the target as disposable or asks for disk cleanup.
 11. Main agent removes temporary worktrees and branches after the worker diff is
    either integrated or explicitly abandoned.
-12. Main agent resolves integration issues, runs `cargo fmt`,
-   `git diff --check`, and `cargo test --workspace`.
+12. Main agent resolves integration issues, runs `cargo fmt --check`,
+   `git diff --check`, and
+   `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`.
 13. Main agent commits with a normal commit after verification. It never cleans
    or rewrites git history unless explicitly instructed.
 
@@ -91,8 +92,15 @@ Every worker prompt must include:
   they create broad merge conflicts.
 - Worker branches are integration inputs. The main agent owns the final diff,
   final tests, and final commit.
-- Workers clean worktree-local Cargo outputs before they finish so temporary
-  `target` directories do not accumulate.
+- Agents should use external Cargo target directories rather than repo-local
+  `target` directories. The main worktree uses `/tmp/bbb-target-main`; common
+  worker targets are `/tmp/bbb-target-renderer`, `/tmp/bbb-target-world`, and
+  `/tmp/bbb-target-net`.
+- Do not delete assigned Cargo target caches after every slice. Clean them
+  periodically or when measuring a clean build, reclaiming disk, or abandoning a
+  disposable one-off target.
+- Repo-local `target` output remains ignored and should not be generated or
+  committed.
 - Delete or reuse temporary worktrees deliberately after integration so stale
   branches do not become an alternate source of truth.
 - Do not force-remove a dirty worker worktree until the main agent has reviewed
@@ -107,6 +115,48 @@ A slice is ready to commit only when:
 
 - The full diff matches the selected slice.
 - No unrelated file churn is present.
-- `cargo fmt` passes.
+- `cargo fmt --check` passes.
 - `git diff --check` passes.
-- `cargo test --workspace` passes, or any skipped command is explicitly justified.
+- `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace` passes, or any
+  skipped command is explicitly justified.
+
+## Cargo Workflow
+
+Use cached external target directories for daily work:
+
+```sh
+CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
+CARGO_TARGET_DIR=/tmp/bbb-target-world cargo test -p bbb-world <filter>
+CARGO_TARGET_DIR=/tmp/bbb-target-net cargo test -p bbb-net <filter>
+```
+
+Focused tests may use the opt-in `fast-test` profile when the goal is quick
+iteration and not final validation:
+
+```sh
+CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --profile fast-test -p bbb-world <filter>
+```
+
+The final merge gate remains the default profile:
+
+```sh
+cargo fmt --check
+git diff --check
+CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace
+```
+
+`sccache` is optional local tooling. Do not commit a mandatory Cargo
+`rustc-wrapper` setting because machines without `sccache` fail before
+compiling. If installed, use it explicitly:
+
+```sh
+RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
+```
+
+Before changing build profiles or cache policy, record:
+
+- clean full workspace test time
+- warm focused test time
+- warm full workspace test time
+- target directory disk usage
+- location of any `cargo build --timings` report

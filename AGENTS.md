@@ -58,11 +58,13 @@ committer.
    - `../bbb-wt-world`
    - `../bbb-wt-protocol`
 6. Give each worker worktree a temporary branch and, when tests may run in
-   parallel, a distinct `CARGO_TARGET_DIR` to avoid Cargo lock contention.
+   parallel, a distinct external `CARGO_TARGET_DIR` to avoid Cargo lock
+   contention and preserve build cache.
 7. Main agent integrates worker changes by reviewing diffs and using patch,
    cherry-pick, or merge from temporary branches. Main agent resolves API
    mismatches and reviews the full integrated diff.
-8. Workers remove their worktree-local Cargo build output after reporting.
+8. Workers keep assigned external Cargo build caches unless the slice explicitly
+   asks for cleanup or the cache is disposable.
 9. Main agent removes temporary worktrees and branches after their diffs are
    integrated or explicitly abandoned.
 10. Run formatting, diff checks, and tests.
@@ -74,6 +76,7 @@ Every worker prompt should include:
 
 - Working directory.
 - Temporary branch/worktree name when using a worker worktree.
+- `CARGO_TARGET_DIR` for focused tests when Cargo may run.
 - Exact owned files/modules.
 - Required behavior and authoritative vanilla facts.
 - Reminder that other agents may be editing concurrently.
@@ -91,8 +94,14 @@ Every worker prompt should include:
   or a single-worker task because concurrent edits are likely to conflict.
 - Worker branches are integration inputs, not final history. The main agent
   owns the final reviewed commit on `master`.
-- Workers should clean their own `target` or assigned `CARGO_TARGET_DIR` before
-  they finish.
+- Use external target directories for agent work. The main worktree should use
+  `/tmp/bbb-target-main`; workers should use stable per-domain directories such
+  as `/tmp/bbb-target-renderer`, `/tmp/bbb-target-world`, or
+  `/tmp/bbb-target-net`.
+- Do not delete assigned Cargo target caches after every slice. Clean them
+  periodically or when measuring a clean build, reclaiming disk, or abandoning a
+  disposable one-off target.
+- Repo-local `target` directories should still not be generated or committed.
 - Main agent should remove completed worker worktrees and temporary branches
   after integration.
 - Do not force-remove a dirty worker worktree until its diff has been reviewed
@@ -103,13 +112,15 @@ Every worker prompt should include:
 Before committing a slice, run:
 
 ```sh
-cargo fmt
+cargo fmt --check
 git diff --check
-cargo test --workspace
+CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace
 ```
 
 Focused crate tests are useful while developing, but the default merge gate is the full
 workspace test suite. If a command cannot run, state the reason and the residual risk.
+For daily focused tests, agents may use `cargo test --profile fast-test` with an
+assigned external `CARGO_TARGET_DIR`; this does not replace the merge gate.
 
 ## Implementation Guidance
 
