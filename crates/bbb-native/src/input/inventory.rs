@@ -4073,6 +4073,59 @@ mod tests {
     }
 
     #[test]
+    fn mount_horse_shift_click_queues_server_authoritative_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_add_entity(add_entity_with_type(42, 66));
+        world.apply_mount_screen_open(MountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut items = vec![ItemStackSummary::empty(); 53];
+        items[2] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(632.0, 295.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 2,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: BTreeMap::new(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        assert_eq!(
+            world.inventory().open_container.as_ref().unwrap().slots[2].item,
+            item_stack(42, 3)
+        );
+    }
+
+    #[test]
     fn furnace_mouse_click_queues_pickup() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);

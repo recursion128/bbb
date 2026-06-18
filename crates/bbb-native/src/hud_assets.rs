@@ -463,6 +463,31 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     renderer.upload_hud_nautilus_background(nautilus.width, nautilus.height, &nautilus.rgba)?;
     let mount_slot = hud_sprite(&sprites, "container/slot")?;
     renderer.upload_hud_mount_slot(mount_slot.width, mount_slot.height, &mount_slot.rgba)?;
+    let mount_saddle_slot = hud_sprite(&sprites, "container/slot/saddle")?;
+    renderer.upload_hud_mount_saddle_slot(
+        mount_saddle_slot.width,
+        mount_saddle_slot.height,
+        &mount_saddle_slot.rgba,
+    )?;
+    let mount_horse_armor_slot = hud_sprite(&sprites, "container/slot/horse_armor")?;
+    renderer.upload_hud_mount_horse_armor_slot(
+        mount_horse_armor_slot.width,
+        mount_horse_armor_slot.height,
+        &mount_horse_armor_slot.rgba,
+    )?;
+    let mount_llama_armor_slot = hud_sprite(&sprites, "container/slot/llama_armor")?;
+    renderer.upload_hud_mount_llama_armor_slot(
+        mount_llama_armor_slot.width,
+        mount_llama_armor_slot.height,
+        &mount_llama_armor_slot.rgba,
+    )?;
+    let mount_nautilus_armor_slot =
+        hud_sprite(&sprites, "container/slot/nautilus_armor_inventory")?;
+    renderer.upload_hud_mount_nautilus_armor_slot(
+        mount_nautilus_armor_slot.width,
+        mount_nautilus_armor_slot.height,
+        &mount_nautilus_armor_slot.rgba,
+    )?;
     let mount_chest_slots = hud_sprite(&sprites, "container/horse/chest_slots")?;
     renderer.upload_hud_mount_chest_slots(
         mount_chest_slots.width,

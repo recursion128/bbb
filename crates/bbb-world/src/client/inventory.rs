@@ -173,6 +173,13 @@ pub enum MountInventoryKind {
     Nautilus,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MountArmorSlotKind {
+    Horse,
+    Llama,
+    Nautilus,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InventoryState {
     pub player_slots: Vec<InventorySlot>,
@@ -614,6 +621,20 @@ impl WorldStore {
             Some(MountInventoryKind::Horse)
         } else if crate::entities::is_vanilla_abstract_nautilus_type(entity_type_id) {
             Some(MountInventoryKind::Nautilus)
+        } else {
+            None
+        }
+    }
+
+    pub fn open_mount_armor_slot_kind(&self) -> Option<MountArmorSlotKind> {
+        let mount = self.inventory.open_container.as_ref()?.mount?;
+        let entity_type_id = self.entities.entity_type_id(mount.entity_id)?;
+        if crate::entities::is_vanilla_abstract_nautilus_type(entity_type_id) {
+            Some(MountArmorSlotKind::Nautilus)
+        } else if crate::entities::is_vanilla_llama_type(entity_type_id) {
+            Some(MountArmorSlotKind::Llama)
+        } else if crate::entities::is_vanilla_abstract_horse_type(entity_type_id) {
+            Some(MountArmorSlotKind::Horse)
         } else {
             None
         }

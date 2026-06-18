@@ -178,6 +178,10 @@ pub enum HudInventoryBackgroundTexture {
     Horse,
     Nautilus,
     MountSlot,
+    MountSaddleSlot,
+    MountHorseArmorSlot,
+    MountLlamaArmorSlot,
+    MountNautilusArmorSlot,
     MountChestSlots,
     Book,
     PageBackward,
@@ -932,6 +936,46 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_mount_saddle_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_mount_saddle_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_mount_horse_armor_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_mount_horse_armor_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_mount_llama_armor_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_mount_llama_armor_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_mount_nautilus_armor_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_mount_nautilus_armor_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_mount_chest_slots(
         &mut self,
         width: u32,
@@ -1644,6 +1688,16 @@ impl Renderer {
             HudInventoryBackgroundTexture::Horse => self.hud_horse_background.as_ref(),
             HudInventoryBackgroundTexture::Nautilus => self.hud_nautilus_background.as_ref(),
             HudInventoryBackgroundTexture::MountSlot => self.hud_mount_slot.as_ref(),
+            HudInventoryBackgroundTexture::MountSaddleSlot => self.hud_mount_saddle_slot.as_ref(),
+            HudInventoryBackgroundTexture::MountHorseArmorSlot => {
+                self.hud_mount_horse_armor_slot.as_ref()
+            }
+            HudInventoryBackgroundTexture::MountLlamaArmorSlot => {
+                self.hud_mount_llama_armor_slot.as_ref()
+            }
+            HudInventoryBackgroundTexture::MountNautilusArmorSlot => {
+                self.hud_mount_nautilus_armor_slot.as_ref()
+            }
             HudInventoryBackgroundTexture::MountChestSlots => self.hud_mount_chest_slots.as_ref(),
             HudInventoryBackgroundTexture::Book => self.hud_book_background.as_ref(),
             HudInventoryBackgroundTexture::PageBackward => self.hud_page_backward.as_ref(),

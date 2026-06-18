@@ -526,6 +526,11 @@ When an agent does any of the following, update this file in the same slice:
         - `horse.png` background for horse-family mounts
         - `nautilus.png` background for nautilus-family mounts
         - generic mount equipment slot sprite
+        - saddle/body empty-slot sprites:
+          - `container/slot/saddle`
+          - `container/slot/horse_armor`
+          - `container/slot/llama_armor`
+          - `container/slot/nautilus_armor_inventory`
         - horse chest-slot sprite clipped by `inventoryColumns`
       - LecternMenu screens with official:
         - `book.png` background
@@ -554,8 +559,9 @@ When an agent does any of the following, update this file in the same slice:
       - horse-family chest slots from `inventoryColumns`
       - player inventory slots
       - hotbar slots
-    - Mount entity preview rendering, exact equipment-slot active hiding, and
-      saddle/body armor placeholder sprites remain follow-up presentation work.
+    - Mount Shift-click queues server-authoritative `QUICK_MOVE` clicks.
+    - Mount entity preview rendering and exact equipment-slot active hiding
+      remain follow-up presentation work.
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
       progress sprites:
       - lit-progress
