@@ -294,7 +294,6 @@ When an agent does any of the following, update this file in the same slice:
       - full fixed 20Hz survival physics
       - remaining vanilla voxel collision shapes
       - remaining fluid movement work beyond current still water/lava support:
-        - flow current vectors
         - water movement efficiency
         - Dolphin's Grace
         - swimming pose / sprint-swim camera and movement nuance
@@ -457,6 +456,17 @@ When an agent does any of the following, update this file in the same slice:
         - water sneak descent impulse `-0.04`
         - vanilla-shaped fluid gravity scaling
         - creative/spectator flying movement ignores fluid travel
+      - vanilla-shaped flow current push for local players affected by fluids:
+        - `FlowingFluid.getFlow` horizontal own-height gradients
+        - empty-neighbor falling-hole lookup with the vanilla `8/9` offset
+        - falling-fluid downward current against solid neighbor faces
+        - per-fluid accumulated current averaged for players
+        - low contact height `< 0.4` current scaling
+        - water current scale `0.014`
+        - normal lava current scale `0.0023333333333333335`
+        - Nether fast-lava current scale `0.007`
+        - vanilla minimum current push `0.0045` when horizontal velocity is
+          below `0.003`
       - vanilla-shaped walking player movement packet thresholds:
         - position delta squared greater than `(2.0E-4)^2`
         - rotation/status-only packets when only:

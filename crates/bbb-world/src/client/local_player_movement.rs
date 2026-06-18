@@ -44,6 +44,12 @@ const LOCAL_INPUT_LAVA_VERTICAL_DRAG: f64 = 0.8;
 const LOCAL_INPUT_LAVA_DEEP_DRAG: f64 = 0.5;
 const LOCAL_INPUT_FLUID_FALLING_GRAVITY_SCALE: f64 = 1.0 / 16.0;
 const LOCAL_INPUT_LAVA_GRAVITY_SCALE: f64 = 0.25;
+const LOCAL_INPUT_WATER_CURRENT_PUSH_PER_TICK: f64 = 0.014;
+const LOCAL_INPUT_LAVA_CURRENT_PUSH_PER_TICK: f64 = 0.0023333333333333335;
+const LOCAL_INPUT_FAST_LAVA_CURRENT_PUSH_PER_TICK: f64 = 0.007;
+const LOCAL_INPUT_FLUID_CURRENT_MIN_PUSH_PER_TICK: f64 = 0.0045;
+const LOCAL_INPUT_FLUID_CURRENT_MIN_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.003;
+const LOCAL_INPUT_FLUID_CURRENT_APPLY_THRESHOLD_SQUARED: f64 = 1.0e-5;
 const LOCAL_PLAYER_FLUID_JUMP_THRESHOLD: f64 = 0.4;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
@@ -226,6 +232,21 @@ fn advance_local_player_fluid_physics_step(
     initial_fluid_contact: LocalPlayerFluidContactState,
 ) -> LocalPlayerPoseState {
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
+    pose.delta_movement = local_player_velocity_with_fluid_current(
+        pose.delta_movement,
+        initial_fluid_contact.water_current,
+        initial_fluid_contact.water_current_count,
+        LOCAL_INPUT_WATER_CURRENT_PUSH_PER_TICK,
+        step_ticks,
+    );
+    pose.delta_movement = local_player_velocity_with_fluid_current(
+        pose.delta_movement,
+        initial_fluid_contact.lava_current,
+        initial_fluid_contact.lava_current_count,
+        local_player_lava_current_push_per_tick(world),
+        step_ticks,
+    );
+
     if input.focused && input.jump {
         pose.delta_movement.y += LOCAL_INPUT_LIQUID_JUMP_VELOCITY_PER_TICK * step_ticks;
     }
@@ -307,6 +328,54 @@ fn advance_local_player_fluid_physics_step(
     pose
 }
 
+fn local_player_velocity_with_fluid_current(
+    mut velocity: ProtocolVec3d,
+    accumulated_current: ProtocolVec3d,
+    current_count: u32,
+    push_per_tick: f64,
+    step_ticks: f64,
+) -> ProtocolVec3d {
+    if current_count == 0
+        || vec3_length_squared(accumulated_current)
+            < LOCAL_INPUT_FLUID_CURRENT_APPLY_THRESHOLD_SQUARED
+    {
+        return velocity;
+    }
+
+    let mut impulse = ProtocolVec3d {
+        x: accumulated_current.x / f64::from(current_count),
+        y: accumulated_current.y / f64::from(current_count),
+        z: accumulated_current.z / f64::from(current_count),
+    };
+    impulse = scale_vec3(impulse, push_per_tick * step_ticks);
+
+    let min_horizontal_velocity =
+        LOCAL_INPUT_FLUID_CURRENT_MIN_HORIZONTAL_VELOCITY_PER_TICK * step_ticks;
+    let min_push = LOCAL_INPUT_FLUID_CURRENT_MIN_PUSH_PER_TICK * step_ticks;
+    if velocity.x.abs() < min_horizontal_velocity
+        && velocity.z.abs() < min_horizontal_velocity
+        && vec3_length(impulse) < min_push
+    {
+        impulse = scale_vec3(normalized_vec3(impulse), min_push);
+    }
+
+    velocity.x += impulse.x;
+    velocity.y += impulse.y;
+    velocity.z += impulse.z;
+    velocity
+}
+
+fn local_player_lava_current_push_per_tick(world: &WorldStore) -> f64 {
+    if world.level_info().is_some_and(|level| {
+        level.dimension == "minecraft:the_nether"
+            || level.dimension_type_name.as_deref() == Some("minecraft:the_nether")
+    }) {
+        LOCAL_INPUT_FAST_LAVA_CURRENT_PUSH_PER_TICK
+    } else {
+        LOCAL_INPUT_LAVA_CURRENT_PUSH_PER_TICK
+    }
+}
+
 fn water_horizontal_drag(input: LocalPlayerInputState) -> f64 {
     if input.sprint {
         LOCAL_INPUT_SPRINTING_WATER_HORIZONTAL_DRAG
@@ -367,6 +436,31 @@ fn local_player_fluid_falling_adjusted_velocity(
         velocity.y - gravity_step
     };
     velocity
+}
+
+fn scale_vec3(vec: ProtocolVec3d, scale: f64) -> ProtocolVec3d {
+    ProtocolVec3d {
+        x: vec.x * scale,
+        y: vec.y * scale,
+        z: vec.z * scale,
+    }
+}
+
+fn normalized_vec3(vec: ProtocolVec3d) -> ProtocolVec3d {
+    let length = vec3_length(vec);
+    if length <= f64::EPSILON {
+        ProtocolVec3d::default()
+    } else {
+        scale_vec3(vec, 1.0 / length)
+    }
+}
+
+fn vec3_length(vec: ProtocolVec3d) -> f64 {
+    vec3_length_squared(vec).sqrt()
+}
+
+fn vec3_length_squared(vec: ProtocolVec3d) -> f64 {
+    vec.x * vec.x + vec.y * vec.y + vec.z * vec.z
 }
 
 fn clip_local_player_movement(
@@ -779,7 +873,7 @@ mod tests {
 
     use crate::{
         entities::VANILLA_ENTITY_TYPE_PLAYER_ID, ChunkColumn, ChunkSection, ChunkState, LightData,
-        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension, WorldLevelInfo,
     };
 
     const AIR_BLOCK_STATE_ID: i32 = 0;
@@ -832,6 +926,7 @@ mod tests {
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
     const SOURCE_LAVA_BLOCK_STATE_ID: i32 = 102;
+    const FLOWING_LAVA_LEVEL_3_BLOCK_STATE_ID: i32 = 105;
 
     #[test]
     fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
@@ -1710,6 +1805,32 @@ mod tests {
     }
 
     #[test]
+    fn local_player_in_flowing_water_applies_vanilla_current_before_drag() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 1, FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.514, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.0112, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
+    }
+
+    #[test]
     fn local_player_sprinting_in_water_uses_vanilla_sprint_drag_without_sinking_gravity() {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
@@ -1803,6 +1924,94 @@ mod tests {
 
         assert_f64_near(pose.position.z, 0.52, 0.000001);
         assert_f64_near(pose.delta_movement.z, 0.01, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_lava_current_uses_vanilla_minimum_push_before_drag() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 1, FLOWING_LAVA_LEVEL_3_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.5045, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.00225, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_lava_current_skips_minimum_push_when_already_moving() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 1, FLOWING_LAVA_LEVEL_3_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            delta_movement: vec3(0.01, 0.0, 0.0),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.x, 0.51, 0.000001);
+        assert_f64_near(pose.position.z, 0.5023333333333333, 0.000001);
+        assert_f64_near(pose.delta_movement.x, 0.005, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.0011666666666666668, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_nether_lava_current_uses_fast_lava_push() {
+        let mut world = flat_collision_world();
+        world.level = Some(WorldLevelInfo {
+            dimension: "minecraft:the_nether".to_string(),
+            dimension_type_id: 1,
+            dimension_type_name: Some("minecraft:the_nether".to_string()),
+            sea_level: 32,
+            is_debug: false,
+            is_flat: false,
+        });
+        set_test_block(&mut world, 0, 1, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 1, FLOWING_LAVA_LEVEL_3_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.507, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.0035, 0.000001);
         assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
     }
 

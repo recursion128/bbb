@@ -1,9 +1,15 @@
 use super::local_player::LocalPlayerPoseState;
 use super::local_player_collision::LocalPlayerBounds;
-use crate::{BlockPos, TerrainFluidKind, TerrainFluidState, WorldStore};
+use bbb_protocol::packets::Vec3d as ProtocolVec3d;
+
+use crate::{
+    BlockPos, BlockProbe, TerrainFluidKind, TerrainFluidState, TerrainMaterialClass, WorldStore,
+};
 
 const LOCAL_PLAYER_STANDING_EYE_HEIGHT: f64 = 1.62;
 const FLUID_INTERACTION_BOX_DEFLATE: f64 = 0.001;
+const FLUID_DOWNWARD_FLOW_WEIGHT: f64 = 6.0;
+const FLUID_FALLING_HEIGHT_OFFSET: f64 = 8.0 / 9.0;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(super) struct LocalPlayerFluidContactState {
@@ -11,6 +17,10 @@ pub(super) struct LocalPlayerFluidContactState {
     pub(super) lava_height: f64,
     pub(super) eye_in_water: bool,
     pub(super) eye_in_lava: bool,
+    pub(super) water_current: ProtocolVec3d,
+    pub(super) water_current_count: u32,
+    pub(super) lava_current: ProtocolVec3d,
+    pub(super) lava_current_count: u32,
 }
 
 impl LocalPlayerFluidContactState {
@@ -89,10 +99,18 @@ fn local_player_fluid_contact_in_bounds(
                     TerrainFluidKind::Water => {
                         contact.water_height = contact.water_height.max(height);
                         contact.eye_in_water |= eyes_inside;
+                        let flow = local_player_fluid_flow(world, pos, fluid)
+                            .scaled(fluid_contact_current_scale(contact.water_height));
+                        contact.water_current = contact.water_current.add(flow);
+                        contact.water_current_count += 1;
                     }
                     TerrainFluidKind::Lava => {
                         contact.lava_height = contact.lava_height.max(height);
                         contact.eye_in_lava |= eyes_inside;
+                        let flow = local_player_fluid_flow(world, pos, fluid)
+                            .scaled(fluid_contact_current_scale(contact.lava_height));
+                        contact.lava_current = contact.lava_current.add(flow);
+                        contact.lava_current_count += 1;
                     }
                 }
             }
@@ -100,6 +118,102 @@ fn local_player_fluid_contact_in_bounds(
     }
 
     contact
+}
+
+fn fluid_contact_current_scale(height: f64) -> f64 {
+    if height < 0.4 {
+        height
+    } else {
+        1.0
+    }
+}
+
+fn local_player_fluid_flow(
+    world: &WorldStore,
+    pos: BlockPos,
+    fluid: TerrainFluidState,
+) -> ProtocolVec3d {
+    let mut flow = ProtocolVec3d::default();
+    for direction in HorizontalDirection::ALL {
+        let neighbor_pos = direction.offset(pos);
+        let neighbor = world.probe_block(neighbor_pos);
+        let neighbor_fluid = neighbor.as_ref().and_then(|block| block.fluid);
+        if !affects_fluid_flow(fluid.kind, neighbor_fluid) {
+            continue;
+        }
+
+        let mut neighbor_height = neighbor_fluid
+            .filter(|neighbor| neighbor.kind == fluid.kind)
+            .map_or(0.0, TerrainFluidState::own_height);
+        let mut distance = 0.0;
+        if neighbor_height == 0.0 {
+            if !block_blocks_fluid_flow(neighbor.as_ref()) {
+                let below_neighbor_pos = BlockPos {
+                    x: neighbor_pos.x,
+                    y: neighbor_pos.y - 1,
+                    z: neighbor_pos.z,
+                };
+                let below_neighbor_fluid = world
+                    .probe_block(below_neighbor_pos)
+                    .and_then(|block| block.fluid);
+                if affects_fluid_flow(fluid.kind, below_neighbor_fluid) {
+                    neighbor_height = below_neighbor_fluid
+                        .filter(|neighbor| neighbor.kind == fluid.kind)
+                        .map_or(0.0, TerrainFluidState::own_height);
+                    if neighbor_height > 0.0 {
+                        distance =
+                            fluid.own_height() - (neighbor_height - FLUID_FALLING_HEIGHT_OFFSET);
+                    }
+                }
+            }
+        } else {
+            distance = fluid.own_height() - neighbor_height;
+        }
+
+        if distance != 0.0 {
+            flow.x += f64::from(direction.step_x) * distance;
+            flow.z += f64::from(direction.step_z) * distance;
+        }
+    }
+
+    flow = flow.normalized();
+    if fluid.falling
+        && HorizontalDirection::ALL.iter().any(|direction| {
+            let neighbor_pos = direction.offset(pos);
+            block_has_solid_flow_face(world.probe_block(neighbor_pos).as_ref())
+                || block_has_solid_flow_face(
+                    world
+                        .probe_block(BlockPos {
+                            x: neighbor_pos.x,
+                            y: neighbor_pos.y + 1,
+                            z: neighbor_pos.z,
+                        })
+                        .as_ref(),
+                )
+        })
+    {
+        flow.y -= FLUID_DOWNWARD_FLOW_WEIGHT;
+        flow = flow.normalized();
+    }
+
+    flow
+}
+
+fn affects_fluid_flow(kind: TerrainFluidKind, fluid: Option<TerrainFluidState>) -> bool {
+    fluid.map_or(true, |fluid| fluid.kind == kind)
+}
+
+fn block_blocks_fluid_flow(block: Option<&BlockProbe>) -> bool {
+    block.is_some_and(|block| {
+        matches!(
+            block.material,
+            TerrainMaterialClass::Opaque | TerrainMaterialClass::Translucent
+        ) || matches!(block.block_name.as_deref(), Some("minecraft:barrier"))
+    })
+}
+
+fn block_has_solid_flow_face(block: Option<&BlockProbe>) -> bool {
+    block_blocks_fluid_flow(block)
 }
 
 fn probe_fluid_height(world: &WorldStore, pos: BlockPos, fluid: TerrainFluidState) -> f64 {
@@ -120,6 +234,74 @@ fn probe_fluid_height(world: &WorldStore, pos: BlockPos, fluid: TerrainFluidStat
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct HorizontalDirection {
+    step_x: i32,
+    step_z: i32,
+}
+
+impl HorizontalDirection {
+    const ALL: [Self; 4] = [
+        Self {
+            step_x: 0,
+            step_z: -1,
+        },
+        Self {
+            step_x: 1,
+            step_z: 0,
+        },
+        Self {
+            step_x: 0,
+            step_z: 1,
+        },
+        Self {
+            step_x: -1,
+            step_z: 0,
+        },
+    ];
+
+    fn offset(self, pos: BlockPos) -> BlockPos {
+        BlockPos {
+            x: pos.x + self.step_x,
+            y: pos.y,
+            z: pos.z + self.step_z,
+        }
+    }
+}
+
+trait ProtocolVec3dExt {
+    fn add(self, other: ProtocolVec3d) -> ProtocolVec3d;
+    fn scaled(self, scale: f64) -> ProtocolVec3d;
+    fn normalized(self) -> ProtocolVec3d;
+}
+
+impl ProtocolVec3dExt for ProtocolVec3d {
+    fn add(self, other: ProtocolVec3d) -> ProtocolVec3d {
+        ProtocolVec3d {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
+    }
+
+    fn scaled(self, scale: f64) -> ProtocolVec3d {
+        ProtocolVec3d {
+            x: self.x * scale,
+            y: self.y * scale,
+            z: self.z * scale,
+        }
+    }
+
+    fn normalized(self) -> ProtocolVec3d {
+        let length = (self.x * self.x + self.y * self.y + self.z * self.z).sqrt();
+        if length <= f64::EPSILON {
+            ProtocolVec3d::default()
+        } else {
+            self.scaled(1.0 / length)
+        }
+    }
+}
+
 fn block_floor(value: f64) -> i32 {
     value.floor() as i32
 }
@@ -131,7 +313,6 @@ fn block_ceil(value: f64) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::Vec3d as ProtocolVec3d;
 
     use crate::{
         ChunkColumn, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -139,8 +320,11 @@ mod tests {
     };
 
     const AIR_BLOCK_STATE_ID: i32 = 0;
+    const STONE_BLOCK_STATE_ID: i32 = 1;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
+    const FLOWING_WATER_LEVEL_7_BLOCK_STATE_ID: i32 = 93;
+    const FALLING_WATER_LEVEL_8_BLOCK_STATE_ID: i32 = 94;
 
     #[test]
     fn probe_fluid_height_uses_own_height_without_same_fluid_above() {
@@ -234,6 +418,94 @@ mod tests {
         assert!(!contact.eye_in_water);
     }
 
+    #[test]
+    fn local_player_fluid_contact_accumulates_vanilla_shaped_flow_current() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 1 },
+            FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID,
+        );
+
+        let contact = local_player_fluid_contact(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 0.0, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(contact.water_current_count, 1);
+        assert_f64_near(contact.water_current.x, 0.0, 0.000001);
+        assert_f64_near(contact.water_current.y, 0.0, 0.000001);
+        assert_f64_near(contact.water_current.z, 1.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_fluid_contact_scales_current_when_fluid_height_is_low() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            FLOWING_WATER_LEVEL_7_BLOCK_STATE_ID,
+        );
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 1 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+
+        let contact = local_player_fluid_contact(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.0, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(contact.water_current_count, 1);
+        assert_f64_near(contact.water_height, 1.0 / 9.0, 0.000001);
+        assert_f64_near(contact.water_current.y, 0.0, 0.000001);
+        assert_f64_near(
+            (contact.water_current.x * contact.water_current.x
+                + contact.water_current.z * contact.water_current.z)
+                .sqrt(),
+            1.0 / 9.0,
+            0.000001,
+        );
+    }
+
+    #[test]
+    fn falling_fluid_current_points_down_when_against_solid_face() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 0, z: 0 },
+            FALLING_WATER_LEVEL_8_BLOCK_STATE_ID,
+        );
+        set_block(
+            &mut world,
+            BlockPos { x: 1, y: 0, z: 0 },
+            STONE_BLOCK_STATE_ID,
+        );
+
+        let contact = local_player_fluid_contact(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 0.0, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(contact.water_current_count, 1);
+        assert!(contact.water_current.y < -0.98);
+    }
+
     fn empty_world() -> WorldStore {
         let mut world = WorldStore::with_dimension(WorldDimension {
             min_y: 0,
@@ -289,5 +561,12 @@ mod tests {
 
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
         ProtocolVec3d { x, y, z }
+    }
+
+    fn assert_f64_near(actual: f64, expected: f64, epsilon: f64) {
+        assert!(
+            (actual - expected).abs() <= epsilon,
+            "expected {actual} to be within {epsilon} of {expected}"
+        );
     }
 }
