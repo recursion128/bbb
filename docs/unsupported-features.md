@@ -98,6 +98,7 @@ When an agent does any of the following, update this file in the same slice:
     - recipe access `UpdateRecipes` property-set and stonecutter updates
     - world border initialize/center/size/warning updates
     - level chunk insert, block/section updates, chunk view, and chunk forgets
+    - terrain light and biome updates
   - The final criterion:
     - every supported decoded packet stays aligned
 

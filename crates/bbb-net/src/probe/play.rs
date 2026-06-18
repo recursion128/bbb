@@ -508,16 +508,16 @@ mod tests {
         AdvancementSummary, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
         BlockPos as ProtocolBlockPos, BlockUpdate, BossBarColor, BossBarOverlay, BossEvent,
         BossEventFlags, BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound,
-        ChatTypeHolder, ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ClockUpdate,
-        CommandSuggestion, CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, Cooldown,
-        CustomChatCompletions, CustomChatCompletionsAction, CustomPayload, CustomPayloadBody,
-        CustomReportDetails, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent,
-        DebugSample, DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor,
+        ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
+        ChunksBiomes, ClockUpdate, CommandSuggestion, CommandSuggestions, CommonPlayerSpawnInfo,
+        CookieRequest, Cooldown, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
+        CustomPayloadBody, CustomReportDetails, DebugBlockValue, DebugChunkValue, DebugEntityValue,
+        DebugEvent, DebugSample, DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor,
         EntityAnimation, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameEvent,
         GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameTestHighlightPos,
         GameType, HurtAnimation, IngredientSummary, InitializeBorder, InteractionHand,
         LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
-        LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MessageSignature,
+        LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MessageSignature,
         MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenSignEditor,
         PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime,
         PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction,
@@ -1490,6 +1490,81 @@ mod tests {
         assert_eq!(report.world_counters.chunk_forgets_received, 1);
         assert_eq!(report.world_counters.chunks_forgotten, 1);
         assert_eq!(report.world_counters.chunk_forgets_ignored, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_light_and_biome_updates_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let chunk_pos = ChunkPos { x: 1, z: -2 };
+        let mut sky = vec![0; LIGHT_ARRAY_BYTES];
+        let mut block = vec![0; LIGHT_ARRAY_BYTES];
+        set_light_nibble(&mut sky, 0, 4);
+        set_light_nibble(&mut block, 0, 13);
+
+        probe
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(
+                synthetic_probe_level_chunk_packet(),
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::LightUpdate(LightUpdate {
+                chunk_x: chunk_pos.x,
+                chunk_z: chunk_pos.z,
+                light_data: LightUpdateData {
+                    sky_y_mask: vec![0b10],
+                    block_y_mask: vec![0b10],
+                    empty_sky_y_mask: Vec::new(),
+                    empty_block_y_mask: Vec::new(),
+                    sky_updates: vec![sky],
+                    block_updates: vec![block],
+                },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ChunksBiomes(ChunksBiomes {
+                chunks: vec![ChunkBiomeData {
+                    pos: ProtocolChunkPos {
+                        x: chunk_pos.x,
+                        z: chunk_pos.z,
+                    },
+                    raw_biomes: single_biome_payload(7),
+                }],
+            }))
+            .await
+            .unwrap();
+
+        let chunk = probe.world.probe_chunk(chunk_pos).unwrap();
+        assert_eq!(chunk.light.sky_y_mask, vec![0b10]);
+        assert_eq!(chunk.light.block_y_mask, vec![0b10]);
+        assert_eq!(chunk.light.sky_updates.len(), 1);
+        assert_eq!(chunk.light.block_updates.len(), 1);
+        assert_eq!(chunk.light.sky_updates[0][0] & 0x0f, 4);
+        assert_eq!(chunk.light.block_updates[0][0] & 0x0f, 13);
+        assert_eq!(
+            probe
+                .world
+                .probe_block(BlockPos {
+                    x: 16,
+                    y: -64,
+                    z: -32,
+                })
+                .unwrap()
+                .biome_id,
+            Some(7)
+        );
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.chunks_received, 1);
+        assert_eq!(report.world_counters.light_updates_received, 1);
+        assert_eq!(report.world_counters.light_updates_applied, 1);
+        assert_eq!(report.world_counters.light_updates_ignored, 0);
+        assert_eq!(report.world_counters.biome_updates_received, 1);
+        assert_eq!(report.world_counters.biome_updates_applied, 1);
+        assert_eq!(report.world_counters.biome_updates_ignored, 0);
     }
 
     #[tokio::test]
@@ -3306,6 +3381,8 @@ mod tests {
         (client, server)
     }
 
+    const LIGHT_ARRAY_BYTES: usize = 2048;
+
     fn synthetic_probe_level_chunk_packet() -> LevelChunkWithLight {
         let mut sections = Encoder::new();
         sections.write_i16(0);
@@ -3340,6 +3417,19 @@ mod tests {
                 block_updates: Vec::new(),
             },
         }
+    }
+
+    fn single_biome_payload(biome_id: i32) -> Vec<u8> {
+        let mut payload = Encoder::new();
+        payload.write_u8(0);
+        payload.write_var_i32(biome_id);
+        payload.into_inner()
+    }
+
+    fn set_light_nibble(layer: &mut [u8], nibble_index: usize, value: u8) {
+        let byte = layer.get_mut(nibble_index / 2).unwrap();
+        let shift = (nibble_index % 2) * 4;
+        *byte = (*byte & !(0x0f << shift)) | ((value & 0x0f) << shift);
     }
 
     fn protocol_play_login(player_id: i32) -> PlayLogin {
