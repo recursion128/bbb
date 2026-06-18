@@ -18,7 +18,8 @@ use super::{
     bundle::{handle_bundle_slot_hover_end, handle_bundle_slot_mouse_scroll},
     commands::{
         hotbar_slot_for_key, queue_container_button_click_command, queue_container_click_command,
-        queue_container_slot_state_changed_command, queue_select_trade_command,
+        queue_container_close_command, queue_container_slot_state_changed_command,
+        queue_select_trade_command,
     },
     ClientInputState,
 };
@@ -105,11 +106,17 @@ const LECTERN_SCREEN_WIDTH: i32 = 192;
 const LECTERN_SCREEN_HEIGHT: i32 = 192;
 const LECTERN_BUTTON_PREV_PAGE: i32 = 1;
 const LECTERN_BUTTON_NEXT_PAGE: i32 = 2;
+const LECTERN_BUTTON_TAKE_BOOK: i32 = 3;
 const LECTERN_PAGE_BUTTON_Y: i32 = 157;
 const LECTERN_PAGE_BACK_BUTTON_X: i32 = 43;
 const LECTERN_PAGE_FORWARD_BUTTON_X: i32 = 116;
 const LECTERN_PAGE_BUTTON_WIDTH: i32 = 23;
 const LECTERN_PAGE_BUTTON_HEIGHT: i32 = 13;
+const LECTERN_MENU_BUTTON_Y: i32 = 194;
+const LECTERN_MENU_DONE_BUTTON_X: i32 = -4;
+const LECTERN_MENU_TAKE_BOOK_BUTTON_X: i32 = 98;
+const LECTERN_MENU_BUTTON_WIDTH: i32 = 98;
+const LECTERN_MENU_BUTTON_HEIGHT: i32 = 20;
 const LOOM_SCREEN_WIDTH: i32 = 176;
 const LOOM_SCREEN_HEIGHT: i32 = 166;
 const LOOM_SLOT_COUNT: i16 = 4;
@@ -202,6 +209,12 @@ enum InventoryClickTarget {
     Slot(i16),
     EmptyPanel,
     Outside,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LecternClickTarget {
+    Done,
+    MenuButton(i32),
 }
 
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
@@ -1315,25 +1328,30 @@ pub(crate) fn handle_inventory_mouse_input(
 }
 
 fn maybe_queue_lectern_button_click(
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    let Some(button_id) = lectern_button_at_position(world, cursor_position, surface_size) else {
+    let Some(target) = lectern_button_at_position(world, cursor_position, surface_size) else {
         return false;
     };
-    let Some(container_id) = world
-        .inventory()
-        .open_container
-        .as_ref()
-        .map(|container| container.container_id)
-    else {
-        return false;
-    };
-    queue_container_button_click_command(counters, net_commands, container_id, button_id);
-    true
+    match target {
+        LecternClickTarget::Done => queue_container_close_command(counters, world, net_commands),
+        LecternClickTarget::MenuButton(button_id) => {
+            let Some(container_id) = world
+                .inventory()
+                .open_container
+                .as_ref()
+                .map(|container| container.container_id)
+            else {
+                return false;
+            };
+            queue_container_button_click_command(counters, net_commands, container_id, button_id);
+            true
+        }
+    }
 }
 
 fn maybe_queue_merchant_trade_click(
@@ -2064,7 +2082,7 @@ fn lectern_button_at_position(
     world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
-) -> Option<i32> {
+) -> Option<LecternClickTarget> {
     let layout = inventory_screen_layout(world)?;
     if layout.background != InventoryScreenBackground::Lectern {
         return None;
@@ -2073,6 +2091,21 @@ fn lectern_button_at_position(
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
     let x = cursor.x - origin_x;
     let y = cursor.y - origin_y;
+    if y >= f64::from(LECTERN_MENU_BUTTON_Y)
+        && y < f64::from(LECTERN_MENU_BUTTON_Y + LECTERN_MENU_BUTTON_HEIGHT)
+    {
+        if x >= f64::from(LECTERN_MENU_DONE_BUTTON_X)
+            && x < f64::from(LECTERN_MENU_DONE_BUTTON_X + LECTERN_MENU_BUTTON_WIDTH)
+        {
+            return Some(LecternClickTarget::Done);
+        }
+        if x >= f64::from(LECTERN_MENU_TAKE_BOOK_BUTTON_X)
+            && x < f64::from(LECTERN_MENU_TAKE_BOOK_BUTTON_X + LECTERN_MENU_BUTTON_WIDTH)
+        {
+            return Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_TAKE_BOOK));
+        }
+        return None;
+    }
     if y < f64::from(LECTERN_PAGE_BUTTON_Y)
         || y >= f64::from(LECTERN_PAGE_BUTTON_Y + LECTERN_PAGE_BUTTON_HEIGHT)
     {
@@ -2081,12 +2114,12 @@ fn lectern_button_at_position(
     if x >= f64::from(LECTERN_PAGE_BACK_BUTTON_X)
         && x < f64::from(LECTERN_PAGE_BACK_BUTTON_X + LECTERN_PAGE_BUTTON_WIDTH)
     {
-        return Some(LECTERN_BUTTON_PREV_PAGE);
+        return Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_PREV_PAGE));
     }
     if x >= f64::from(LECTERN_PAGE_FORWARD_BUTTON_X)
         && x < f64::from(LECTERN_PAGE_FORWARD_BUTTON_X + LECTERN_PAGE_BUTTON_WIDTH)
     {
-        return Some(LECTERN_BUTTON_NEXT_PAGE);
+        return Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_NEXT_PAGE));
     }
     None
 }
@@ -2335,12 +2368,13 @@ mod tests {
     use std::collections::BTreeMap;
 
     use bbb_protocol::packets::{
-        AddEntity, ContainerButtonClick, ContainerClick, ContainerSetContent, ContainerSetData,
-        ContainerSlotStateChanged, EntityDataValue, EntityDataValueKind, HashedComponentPatch,
-        HashedItemStack, HashedStack, IngredientSummary, ItemCostSummary, ItemStackSummary,
-        MerchantOffer, MerchantOffers, MountScreenOpen, OpenScreen, RecipePropertySetSummary,
-        SelectBundleItem, SelectTradeCommand, SetCursorItem, SetEntityData, SetPlayerInventory,
-        SlotDisplaySummary, StonecutterSelectableRecipeSummary, UpdateRecipes, Vec3d,
+        AddEntity, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
+        ContainerSetContent, ContainerSetData, ContainerSlotStateChanged, EntityDataValue,
+        EntityDataValueKind, HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary,
+        ItemCostSummary, ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen,
+        OpenScreen, RecipePropertySetSummary, SelectBundleItem, SelectTradeCommand, SetCursorItem,
+        SetEntityData, SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary,
+        UpdateRecipes, Vec3d,
     };
     use uuid::Uuid;
 
@@ -4050,11 +4084,19 @@ mod tests {
         );
         assert_eq!(
             lectern_button_at_position(&world, Some(PhysicalPosition::new(588.0, 422.0)), size),
-            Some(LECTERN_BUTTON_PREV_PAGE)
+            Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_PREV_PAGE))
         );
         assert_eq!(
             lectern_button_at_position(&world, Some(PhysicalPosition::new(661.0, 422.0)), size),
-            Some(LECTERN_BUTTON_NEXT_PAGE)
+            Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_NEXT_PAGE))
+        );
+        assert_eq!(
+            lectern_button_at_position(&world, Some(PhysicalPosition::new(560.0, 464.0)), size),
+            Some(LecternClickTarget::Done)
+        );
+        assert_eq!(
+            lectern_button_at_position(&world, Some(PhysicalPosition::new(660.0, 464.0)), size),
+            Some(LecternClickTarget::MenuButton(LECTERN_BUTTON_TAKE_BOOK))
         );
     }
 
@@ -4859,6 +4901,77 @@ mod tests {
                 button_id: LECTERN_BUTTON_NEXT_PAGE,
             })
         );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn lectern_done_button_queues_container_close_request() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: LECTERN_MENU_TYPE_ID,
+            title: "Lectern".to_string(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 464.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_close_commands_queued, 1);
+        assert_eq!(counters.container_button_click_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClose(ContainerCloseRequest { container_id: 7 })
+        );
+        assert!(world.inventory().open_container.is_none());
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn lectern_take_book_button_queues_container_button_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: LECTERN_MENU_TYPE_ID,
+            title: "Lectern".to_string(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(660.0, 464.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(counters.container_close_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: LECTERN_BUTTON_TAKE_BOOK,
+            })
+        );
+        assert!(world.inventory().open_container.is_some());
         assert!(rx.try_recv().is_err());
     }
 

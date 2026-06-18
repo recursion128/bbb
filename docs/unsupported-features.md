@@ -699,10 +699,10 @@ When an agent does any of the following, update this file in the same slice:
         - result-slot pickup and quick-move paths are kept server-authoritative
           until:
           - payment slot routing from `MerchantOffer` costs
-        - result prediction
-        - input consumption
-        - trade sound/XP side effects
-      - deferred presentation parity work:
+          - result prediction
+          - input consumption
+          - trade sound/XP side effects
+        - deferred presentation parity work:
           - rendered generic button row backgrounds and hover/focus highlight
           - selected row state if a future vanilla source adds one
           - future trade XP result bar from payment/result prediction
@@ -710,6 +710,11 @@ When an agent does any of the following, update this file in the same slice:
           - full trade stack decorations and hover tooltips
           - deprecated tooltip behavior
           - discount strikethrough
+      - LecternMenu:
+        - page buttons queue vanilla previous/next button ids.
+        - Done closes the active container.
+        - Take Book queues vanilla button id `3`.
+        - full book text rendering remains deferred presentation work.
       - shulker box
       - SmithingMenu:
         - quick-move paths are kept server-authoritative until:
