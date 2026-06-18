@@ -32,6 +32,7 @@ const TOOLTIP_TEXT_YELLOW: [f32; 4] = [1.0, 1.0, 85.0 / 255.0, 1.0];
 const TOOLTIP_TEXT_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEXT_LIGHT_PURPLE: [f32; 4] = [1.0, 85.0 / 255.0, 1.0, 1.0];
 const TOOLTIP_TEXT_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
+const TOOLTIP_TEXT_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0];
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct NativeItemTooltipLine {
@@ -317,6 +318,9 @@ impl NativeItemRuntime {
             text: hover_name_for_stack(&self.language, item_id, stack),
             tint: item_rarity_tint(item_rarity_for_stack(&stack.component_patch)),
         }];
+        if let Some(book) = &stack.component_patch.written_book {
+            push_written_book_tooltip_lines(&self.language, book, &mut lines);
+        }
         lines.extend(stack.component_patch.lore.iter().cloned().map(|text| {
             NativeItemTooltipLine {
                 text,
@@ -506,6 +510,34 @@ fn hover_name_for_stack(
         return name.clone();
     }
     localized_item_name(language, resource_id)
+}
+
+fn push_written_book_tooltip_lines(
+    language: &LanguageCatalog,
+    book: &bbb_protocol::packets::WrittenBookContentSummary,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if !book.author.trim().is_empty() {
+        lines.push(NativeItemTooltipLine {
+            text: translate_with_first_arg(language, "book.byAuthor", &book.author),
+            tint: TOOLTIP_TEXT_GRAY,
+        });
+    }
+    lines.push(NativeItemTooltipLine {
+        text: language
+            .get_or_key(&format!("book.generation.{}", book.generation))
+            .to_string(),
+        tint: TOOLTIP_TEXT_GRAY,
+    });
+}
+
+fn translate_with_first_arg(language: &LanguageCatalog, key: &str, arg: &str) -> String {
+    let template = language.get_or_key(key);
+    if template.contains("%1$s") {
+        template.replace("%1$s", arg)
+    } else {
+        template.replacen("%s", arg, 1)
+    }
 }
 
 fn item_rarity_for_stack(component_patch: &DataComponentPatchSummary) -> ItemRaritySummary {
@@ -1082,7 +1114,10 @@ mod tests {
         write_json(
             &assets.join("lang").join("en_us.json"),
             r#"{
-                "item.minecraft.test_combo": "Test Combo"
+                "item.minecraft.test_combo": "Test Combo",
+                "book.byAuthor": "by %1$s",
+                "book.generation.0": "Original",
+                "book.generation.2": "Copy of a copy"
             }"#,
         );
         write_json(
@@ -1216,10 +1251,36 @@ mod tests {
                         resolved: true,
                     }),
                     item_name: Some("Ignored Item Name".to_string()),
+                    lore: vec!["Book lore".to_string()],
                     ..DataComponentPatchSummary::default()
                 },
             }),
-            Some(vec![tooltip_line("Book Title", TOOLTIP_TEXT_WHITE)])
+            Some(vec![
+                tooltip_line("Book Title", TOOLTIP_TEXT_WHITE),
+                tooltip_line("by Alex", TOOLTIP_TEXT_GRAY),
+                tooltip_line("Original", TOOLTIP_TEXT_GRAY),
+                tooltip_line("Book lore", TOOLTIP_TEXT_DARK_PURPLE),
+            ])
+        );
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    written_book: Some(bbb_protocol::packets::WrittenBookContentSummary {
+                        title: "Copy".to_string(),
+                        author: "   ".to_string(),
+                        generation: 2,
+                        pages: Vec::new(),
+                        resolved: true,
+                    }),
+                    ..DataComponentPatchSummary::default()
+                },
+            }),
+            Some(vec![
+                tooltip_line("Copy", TOOLTIP_TEXT_WHITE),
+                tooltip_line("Copy of a copy", TOOLTIP_TEXT_GRAY),
+            ])
         );
         assert_eq!(
             runtime.tooltip_lines_for_stack(&ItemStackSummary {
