@@ -319,6 +319,9 @@ pub(crate) fn handle_key_input(
         }
         match code {
             KeyCode::KeyQ => {
+                if world.local_player_is_spectator() {
+                    return;
+                }
                 let drop_all = input.control_down();
                 let action = if drop_all {
                     PlayerActionKind::DropAllItems
@@ -333,6 +336,9 @@ pub(crate) fn handle_key_input(
                 return;
             }
             KeyCode::KeyF => {
+                if world.local_player_is_spectator() {
+                    return;
+                }
                 queue_zero_pos_player_action_command(
                     counters,
                     net_commands,

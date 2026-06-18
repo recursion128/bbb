@@ -311,6 +311,7 @@ When an agent does any of the following, update this file in the same slice:
       - The selected hotbar stack is locally predicted in canonical inventory
         state.
       - Main-hand swing is queued only when a non-empty stack was dropped.
+      - Spectator mode suppresses gameplay drop and swap-offhand actions.
   - Inventory:
     - Implement:
       - tooltips

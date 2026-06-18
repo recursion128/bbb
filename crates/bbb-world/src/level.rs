@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+const VANILLA_SPECTATOR_GAME_TYPE_ID: i32 = 3;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldDimension {
     pub min_y: i32,
@@ -338,6 +340,10 @@ impl WorldStore {
         &self.gameplay
     }
 
+    pub fn local_player_is_spectator(&self) -> bool {
+        self.gameplay.game_type == VANILLA_SPECTATOR_GAME_TYPE_ID
+    }
+
     pub fn world_time(&self) -> Option<&WorldTimeState> {
         self.world_time.as_ref()
     }
@@ -417,7 +423,7 @@ fn game_type_name(id: i32) -> &'static str {
     match canonical_game_type_id(id) {
         1 => "creative",
         2 => "adventure",
-        3 => "spectator",
+        VANILLA_SPECTATOR_GAME_TYPE_ID => "spectator",
         _ => "survival",
     }
 }
@@ -783,10 +789,12 @@ mod tests {
             enforces_secure_chat: true,
         });
 
+        assert!(!store.local_player_is_spectator());
         store.apply_game_event(ProtocolGameEvent {
             event_id: 3,
             param: 3.0,
         });
+        assert!(store.local_player_is_spectator());
         store.apply_game_event(ProtocolGameEvent {
             event_id: 11,
             param: 1.0,

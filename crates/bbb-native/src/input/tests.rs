@@ -4,7 +4,7 @@ use bbb_protocol::packets::{
     CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
     CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, FilterMask, FilterMaskKind,
-    HashedComponentPatch, HashedItemStack, HashedStack,
+    GameEvent as ProtocolGameEvent, HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
     OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAbilities,
     PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
@@ -205,6 +205,14 @@ fn equip_player_slot(world: &mut WorldStore, slot: i32, item_id: i32, count: i32
             component_patch: Default::default(),
         },
     });
+}
+
+fn set_local_spectator(world: &mut WorldStore) {
+    world.apply_game_event(ProtocolGameEvent {
+        event_id: 3,
+        param: 3.0,
+    });
+    assert!(world.local_player_is_spectator());
 }
 
 fn world_with_sleeping_local_player(player_id: i32) -> WorldStore {
@@ -1098,6 +1106,32 @@ fn control_drop_key_predicts_selected_stack_and_swings_when_non_empty() {
 }
 
 #[test]
+fn spectator_drop_key_does_not_drop_or_swing() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.control_left_down = true;
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    equip_player_slot(&mut world, 0, 42, 3);
+    set_local_spectator(&mut world);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyQ),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(test_player_slot_item(&world, 0), test_item_stack(42, 3));
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert_eq!(counters.swing_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn local_inventory_hovered_drop_key_queues_throw_one_container_click() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -1454,6 +1488,28 @@ fn swap_offhand_key_queues_swap_action() {
             sequence: 0,
         })
     );
+}
+
+#[test]
+fn spectator_swap_offhand_key_does_not_queue_action() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_local_spectator(&mut world);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyF),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_action_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]
