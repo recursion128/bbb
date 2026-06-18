@@ -9,7 +9,7 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryScreen, HudInventorySlot, HudItemCountLabel,
-    HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -46,6 +46,7 @@ const FURNACE_DEFAULT_LIT_DURATION: i16 = 200;
 const FURNACE_LIT_PROGRESS_SPRITE_SIZE: u32 = 14;
 const FURNACE_BURN_PROGRESS_SPRITE_WIDTH: u32 = 24;
 const FURNACE_BURN_PROGRESS_SPRITE_HEIGHT: u32 = 16;
+const ITEM_DURABILITY_BAR_MAX_WIDTH: i32 = 13;
 
 pub(crate) use control_requests::pump_control_net_requests;
 
@@ -555,6 +556,7 @@ fn hud_item_icon_for_stack(
             })
             .collect(),
         count_label: hud_item_count_label_for_stack(item),
+        durability_bar: hud_item_durability_bar_for_stack(item),
     })
 }
 
@@ -567,6 +569,58 @@ fn hud_item_count_label_for_stack(
 
 fn item_stack_is_empty(item: &bbb_protocol::packets::ItemStackSummary) -> bool {
     item.item_id.is_none() || item.count <= 0
+}
+
+fn hud_item_durability_bar_for_stack(
+    item: &bbb_protocol::packets::ItemStackSummary,
+) -> Option<HudItemDurabilityBar> {
+    if item_stack_is_empty(item) || item.component_patch.unbreakable {
+        return None;
+    }
+
+    let max_damage = item.component_patch.max_damage?;
+    if max_damage <= 0 {
+        return None;
+    }
+    let damage = item.component_patch.damage?.clamp(0, max_damage);
+    if damage <= 0 {
+        return None;
+    }
+
+    let width = (ITEM_DURABILITY_BAR_MAX_WIDTH as f32
+        - damage as f32 * ITEM_DURABILITY_BAR_MAX_WIDTH as f32 / max_damage as f32)
+        .round() as i32;
+    let health_percentage = ((max_damage - damage) as f32 / max_damage as f32).max(0.0);
+    Some(HudItemDurabilityBar::new(
+        width.clamp(0, ITEM_DURABILITY_BAR_MAX_WIDTH) as u32,
+        vanilla_hsv_to_rgb_unit(health_percentage / 3.0, 1.0, 1.0),
+    ))
+}
+
+fn vanilla_hsv_to_rgb_unit(hue: f32, saturation: f32, value: f32) -> [f32; 3] {
+    let h = ((hue * 6.0) as i32) % 6;
+    let f = hue * 6.0 - h as f32;
+    let p = value * (1.0 - saturation);
+    let q = value * (1.0 - f * saturation);
+    let t = value * (1.0 - (1.0 - f) * saturation);
+    let (red, green, blue) = match h {
+        0 => (value, t, p),
+        1 => (q, value, p),
+        2 => (p, value, t),
+        3 => (p, q, value),
+        4 => (t, p, value),
+        5 => (value, p, q),
+        _ => (value, t, p),
+    };
+    [
+        vanilla_hsv_color_component(red),
+        vanilla_hsv_color_component(green),
+        vanilla_hsv_color_component(blue),
+    ]
+}
+
+fn vanilla_hsv_color_component(component: f32) -> f32 {
+    ((component * 255.0) as i32).clamp(0, 255) as f32 / 255.0
 }
 
 fn advance_entity_client_animations(
@@ -1252,6 +1306,50 @@ mod tests {
     }
 
     #[test]
+    fn hud_item_durability_bar_follows_vanilla_damage_formula() {
+        assert_eq!(
+            hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, 25, false)),
+            Some(HudItemDurabilityBar::new(10, [127.0 / 255.0, 1.0, 0.0]))
+        );
+        assert_eq!(
+            hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, 100, false)),
+            Some(HudItemDurabilityBar::new(0, [1.0, 0.0, 0.0]))
+        );
+    }
+
+    #[test]
+    fn hud_item_durability_bar_requires_damageable_damaged_stack() {
+        assert_eq!(
+            hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, 0, false)),
+            None
+        );
+        assert_eq!(
+            hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, -5, false)),
+            None
+        );
+        assert_eq!(
+            hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 1, 100, 25, true)),
+            None
+        );
+        assert_eq!(
+            hud_item_durability_bar_for_stack(&item_stack_with_damage(42, 0, 100, 25, false)),
+            None
+        );
+        let mut missing_damage = item_stack(42, 1);
+        missing_damage.component_patch.max_damage = Some(100);
+        assert_eq!(hud_item_durability_bar_for_stack(&missing_damage), None);
+
+        let mut missing_max_damage = item_stack(42, 1);
+        missing_max_damage.component_patch.damage = Some(25);
+        assert_eq!(hud_item_durability_bar_for_stack(&missing_max_damage), None);
+
+        let mut non_damageable = item_stack_with_damage(42, 1, 0, 25, false);
+        assert_eq!(hud_item_durability_bar_for_stack(&non_damageable), None);
+        non_damageable.component_patch.max_damage = Some(-1);
+        assert_eq!(hud_item_durability_bar_for_stack(&non_damageable), None);
+    }
+
+    #[test]
     fn block_destroy_overlays_include_server_progress_and_keep_highest_per_position() {
         let mut world = WorldStore::new();
         let textures = destroy_stage_test_textures();
@@ -1511,5 +1609,19 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn item_stack_with_damage(
+        item_id: i32,
+        count: i32,
+        max_damage: i32,
+        damage: i32,
+        unbreakable: bool,
+    ) -> bbb_protocol::packets::ItemStackSummary {
+        let mut item = item_stack(item_id, count);
+        item.component_patch.max_damage = Some(max_damage);
+        item.component_patch.damage = Some(damage);
+        item.component_patch.unbreakable = unbreakable;
+        item
     }
 }

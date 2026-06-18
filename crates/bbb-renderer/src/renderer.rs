@@ -16,8 +16,8 @@ use crate::{
         write_terrain_atlas_mips_gpu, DepthTarget, TerrainAtlasGpu,
     },
     hud::{
-        create_hud_bind_group_layout, create_hud_pipeline, HudDigitGlyph, HudInventoryScreen,
-        HudItemIcon, HudSpriteGpu, HUD_HOTBAR_SLOTS,
+        create_hud_bind_group_layout, create_hud_pipeline, create_hud_sprite_gpu, HudDigitGlyph,
+        HudInventoryScreen, HudItemIcon, HudSpriteGpu, HUD_HOTBAR_SLOTS,
     },
     item_entities::{create_item_entity_pipeline, ItemEntityAtlasGpu, ItemEntityBillboard},
     particles::{create_particle_pipeline, ParticleAtlasGpu, ParticleRuntimeState},
@@ -45,6 +45,7 @@ pub struct Renderer {
     pub(super) selection_pipeline: wgpu::RenderPipeline,
     pub(super) hud_pipeline: wgpu::RenderPipeline,
     pub(super) hud_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) hud_white_pixel: HudSpriteGpu,
     pub(super) terrain_bind_group_layout: wgpu::BindGroupLayout,
     pub(super) camera_buffer: wgpu::Buffer,
     pub(super) terrain_atlas: TerrainAtlasGpu,
@@ -196,6 +197,14 @@ impl Renderer {
         let selection_pipeline =
             create_selection_pipeline(&device, format, &terrain_bind_group_layout);
         let hud_pipeline = create_hud_pipeline(&device, format, &hud_bind_group_layout);
+        let hud_white_pixel = create_hud_sprite_gpu(
+            &device,
+            &queue,
+            &hud_bind_group_layout,
+            1,
+            1,
+            &[255, 255, 255, 255],
+        )?;
 
         Ok(Self {
             surface,
@@ -218,6 +227,7 @@ impl Renderer {
             selection_pipeline,
             hud_pipeline,
             hud_bind_group_layout,
+            hud_white_pixel,
             terrain_bind_group_layout,
             camera_buffer,
             terrain_atlas,

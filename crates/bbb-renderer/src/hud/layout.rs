@@ -16,6 +16,8 @@ const HUD_FOOD_SPACING: f32 = 8.0;
 const HUD_INVENTORY_ITEM_SIZE: u32 = 16;
 const HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE: u32 = 24;
 const HUD_INVENTORY_SLOT_HIGHLIGHT_OFFSET: f32 = -4.0;
+const HUD_ITEM_DURABILITY_BAR_X_OFFSET: f32 = 2.0;
+const HUD_ITEM_DURABILITY_BAR_Y_OFFSET: f32 = 13.0;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct HudRect {
@@ -195,6 +197,15 @@ pub(super) fn hud_item_count_digit_hud_rect(
         y: item_rect.y + 9.0 + shadow_offset,
         width: glyph.width,
         height: glyph.height,
+    }
+}
+
+pub(super) fn hud_item_durability_bar_rect(item_rect: HudRect, width: u32, height: u32) -> HudRect {
+    HudRect {
+        x: item_rect.x + HUD_ITEM_DURABILITY_BAR_X_OFFSET,
+        y: item_rect.y + HUD_ITEM_DURABILITY_BAR_Y_OFFSET,
+        width,
+        height,
     }
 }
 
@@ -504,6 +515,25 @@ mod tests {
             (actual - expected).abs() <= 0.000001,
             "actual {actual} expected {expected}"
         );
+    }
+
+    #[test]
+    fn hud_item_durability_bar_rect_uses_vanilla_item_bar_position() {
+        let rect = hud_item_durability_bar_rect(
+            HudRect {
+                x: 10.0,
+                y: 20.0,
+                width: 16,
+                height: 16,
+            },
+            13,
+            2,
+        );
+
+        assert_eq!(rect.x, 12.0);
+        assert_eq!(rect.y, 33.0);
+        assert_eq!(rect.width, 13);
+        assert_eq!(rect.height, 2);
     }
 
     fn full_uv_rect() -> HudUvRect {

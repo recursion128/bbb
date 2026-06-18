@@ -310,7 +310,6 @@ When an agent does any of the following, update this file in the same slice:
     - Implement:
       - tooltips
       - item decorations:
-        - durability
         - cooldown
       - remaining dedicated server-opened menu layouts beyond:
         - `generic_9xN`
@@ -437,6 +436,11 @@ When an agent does any of the following, update this file in the same slice:
         - for local inventory item icons
         - using official 26.1 `font/ascii.png` digit glyphs
         - with vanilla item-count placement
+      - renders vanilla-shaped durability bars for item icons with
+        `damage` / `max_damage` component summaries:
+        - in the hotbar
+        - in local inventory screens
+        - in supported server-opened screens
       - updates cursor/slot state
       - fills `ServerboundContainerClickPacket(0)` changed-slot hashes
       - supports bundle wheel selection on hovered local inventory slots
