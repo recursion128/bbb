@@ -88,6 +88,7 @@ When an agent does any of the following, update this file in the same slice:
   - Probe and online paths now cover many packet families, including:
     - unsupported diagnostics
     - play -> configuration teardown
+    - custom payload brand/unknown presentation state
     - scoreboard objective/display/score/team updates
     - advancement update/select-tab state
     - recipe book add/remove/settings updates

@@ -510,31 +510,32 @@ mod tests {
         BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound, ChatTypeHolder,
         ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ClockUpdate, CommandSuggestion,
         CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, CustomChatCompletions,
-        CustomChatCompletionsAction, CustomReportDetails, DebugBlockValue, DebugChunkValue,
-        DebugEntityValue, DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor,
-        Explosion, FilterMask, FilterMaskKind, GameEvent, GameProfile, GameProfileProperty,
-        GameRuleValue, GameRuleValues, GameTestHighlightPos, GameType, IngredientSummary,
-        InteractionHand, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent,
-        LevelParticles, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
-        MessageSignature, MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook,
-        OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities,
-        PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoChatSession,
-        PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate,
-        PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters, PongResponse,
-        ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
-        RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
-        RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType, ResetScore,
-        ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, ScoreboardDisplaySlot,
-        SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
-        ServerLinks, SetCamera, SetDefaultSpawnPosition, SetDisplayObjective, SetHeldSlot,
-        SetObjective, SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerTeam,
-        SetScore, SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary,
-        SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
-        StonecutterSelectableRecipeSummary, StopSound, StoreCookie, TabList, TagQuery,
-        TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus, TickingState, TickingStep,
-        TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateRecipes,
-        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
-        WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
+        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
+        Difficulty, EntityAnchor, Explosion, FilterMask, FilterMaskKind, GameEvent, GameProfile,
+        GameProfileProperty, GameRuleValue, GameRuleValues, GameTestHighlightPos, GameType,
+        IngredientSummary, InteractionHand, LevelChunkBlockEntity, LevelChunkData,
+        LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdateData, MapColorPatch,
+        MapDecoration, MapItemData, MessageSignature, MountScreenOpen, MoveVehicle,
+        ObjectiveRenderType, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
+        PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth,
+        PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove,
+        PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate,
+        PlayerTeamMethod, PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd,
+        RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
+        RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
+        RecipePropertySetSummary, RemoteDebugSampleType, ResetScore, ResourcePackPop,
+        ResourcePackPush, ResourcePackResponseAction, ScoreboardDisplaySlot, SelectAdvancementsTab,
+        ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetHeldSlot, SetObjective,
+        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore,
+        SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
+        StopSound, StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility,
+        TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
+        Transfer, UpdateAdvancements, UpdateRecipes, Vec3d as ProtocolVec3d,
+        Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
+        WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -1457,6 +1458,47 @@ mod tests {
         assert_eq!(report.world_counters.server_link_packets, 1);
         assert_eq!(report.world_counters.server_links_tracked, 2);
         assert_eq!(report.world_counters.server_link_invalid_entries, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_play_custom_payload_updates_world_brand_and_unknown_payload() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::CustomPayload(CustomPayload {
+                id: "minecraft:brand".to_string(),
+                payload: CustomPayloadBody::Brand {
+                    brand: "vanilla".to_string(),
+                },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::CustomPayload(CustomPayload {
+                id: "example:diagnostic".to_string(),
+                payload: CustomPayloadBody::Unknown {
+                    raw_payload: vec![1, 2, 3, 4],
+                },
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world.server_brand(), Some("vanilla"));
+        assert_eq!(
+            report.world.last_custom_payload(),
+            Some(&bbb_world::CustomPayloadState {
+                id: "example:diagnostic".to_string(),
+                kind: "unknown".to_string(),
+                brand: None,
+                raw_payload_len: 4,
+            })
+        );
+        assert_eq!(report.world_counters.custom_payload_packets, 2);
+        assert_eq!(report.world_counters.custom_payload_brand_packets, 1);
+        assert_eq!(report.world_counters.custom_payload_unknown_packets, 1);
     }
 
     #[tokio::test]
