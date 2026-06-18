@@ -55,6 +55,10 @@ impl TerrainFluidState {
             falling,
         }
     }
+
+    pub fn own_height(self) -> f64 {
+        f64::from(self.amount) / 9.0
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -793,6 +797,22 @@ mod tests {
                 Some(TerrainFluidState::new(TerrainFluidKind::Water, 8, false))
             );
         }
+    }
+
+    #[test]
+    fn fluid_state_own_height_uses_vanilla_amount_over_nine() {
+        assert_eq!(
+            TerrainFluidState::new(TerrainFluidKind::Water, 8, false).own_height(),
+            8.0 / 9.0
+        );
+        assert_eq!(
+            TerrainFluidState::new(TerrainFluidKind::Water, 5, false).own_height(),
+            5.0 / 9.0
+        );
+        assert_eq!(
+            TerrainFluidState::new(TerrainFluidKind::Lava, 1, false).own_height(),
+            1.0 / 9.0
+        );
     }
 
     #[test]

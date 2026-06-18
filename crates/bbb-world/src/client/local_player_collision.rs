@@ -964,6 +964,41 @@ impl LocalPlayerBounds {
         }
     }
 
+    pub(super) fn deflated(self, amount: f64) -> Self {
+        Self {
+            min_x: self.min_x + amount,
+            min_y: self.min_y + amount,
+            min_z: self.min_z + amount,
+            max_x: self.max_x - amount,
+            max_y: self.max_y - amount,
+            max_z: self.max_z - amount,
+        }
+    }
+
+    pub(super) fn min_x(self) -> f64 {
+        self.min_x
+    }
+
+    pub(super) fn min_y(self) -> f64 {
+        self.min_y
+    }
+
+    pub(super) fn min_z(self) -> f64 {
+        self.min_z
+    }
+
+    pub(super) fn max_x(self) -> f64 {
+        self.max_x
+    }
+
+    pub(super) fn max_y(self) -> f64 {
+        self.max_y
+    }
+
+    pub(super) fn max_z(self) -> f64 {
+        self.max_z
+    }
+
     pub(super) fn edge_support_probe(self, min_height: f64) -> Self {
         Self {
             min_x: self.min_x + COLLISION_EPSILON,

@@ -4,6 +4,7 @@ use super::local_player::{LocalPlayerAbilitiesState, LocalPlayerInputState, Loca
 use super::local_player_collision::{
     local_player_collides, CollisionAxis as Axis, LocalPlayerBounds, COLLISION_EPSILON,
 };
+use super::local_player_fluid::local_player_fluid_contact;
 use crate::WorldStore;
 
 pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
@@ -153,7 +154,12 @@ fn advance_local_player_physics_step(
     let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
     let on_ground =
         vertical_collision && requested_y < 0.0 || local_player_supported(world, pose.position);
-    pose.fall_distance = next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground);
+    let fluid_contact = local_player_fluid_contact(world, pose);
+    pose.fall_distance = if fluid_contact.in_water() {
+        0.0
+    } else {
+        next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground)
+    };
 
     pose.delta_movement = ProtocolVec3d {
         x: movement.x / tick_span,
@@ -645,6 +651,8 @@ mod tests {
     const WAXED_COPPER_GRATE_BLOCK_STATE_ID: i32 = 27056;
     const LIGHTNING_ROD_UP_UNPOWERED_BLOCK_STATE_ID: i32 = 27562;
     const MUD_BLOCK_STATE_ID: i32 = 27922;
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+    const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
 
     #[test]
     fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
@@ -1437,6 +1445,60 @@ mod tests {
         assert_f64_near(landed.position.y, 1.0, 0.0005);
         assert!(landed.on_ground);
         assert_f64_near(landed.fall_distance, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_fall_distance_resets_when_touching_water_surface() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.95, 0.5),
+            delta_movement: vec3(0.0, -0.1, 0.0),
+            fall_distance: 0.4,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(!pose.on_ground);
+        assert_f64_near(pose.position.y, 1.85, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_fall_distance_does_not_reset_above_low_flowing_water_surface() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.7, 0.5),
+            delta_movement: vec3(0.0, -0.1, 0.0),
+            fall_distance: 0.4,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(!pose.on_ground);
+        assert_f64_near(pose.position.y, 1.6, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.5, 0.000001);
     }
 
     #[test]

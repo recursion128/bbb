@@ -1,11 +1,11 @@
 use bbb_protocol::packets::Direction as ProtocolDirection;
 use serde::{Deserialize, Serialize};
 
-use crate::{BlockPos, TerrainFluidKind, WorldStore};
+use super::local_player_fluid::local_player_eye_in_water;
+use crate::{BlockPos, WorldStore};
 
 const LOCAL_DESTROY_PROGRESS_SCALE: u32 = 1_000_000;
 pub(crate) const LOCAL_DESTROY_COMPLETION_DELAY_TICKS: u8 = 5;
-const LOCAL_PLAYER_STANDING_EYE_HEIGHT: f64 = 1.62;
 const VANILLA_ATTRIBUTE_BLOCK_BREAK_SPEED_ID: i32 = 5;
 const VANILLA_ATTRIBUTE_MINING_EFFICIENCY_ID: i32 = 20;
 const VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID: i32 = 29;
@@ -172,7 +172,7 @@ impl WorldStore {
         speed *= self
             .local_player_attribute_value(VANILLA_ATTRIBUTE_BLOCK_BREAK_SPEED_ID)
             .unwrap_or(1.0);
-        if self.local_player_is_eye_in_water() {
+        if local_player_eye_in_water(self) {
             speed *= self
                 .local_player_attribute_value(VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID)
                 .unwrap_or(0.2);
@@ -221,20 +221,6 @@ impl WorldStore {
         .into_iter()
         .filter_map(|effect_id| self.local_player_mob_effect_amplifier(effect_id))
         .max()
-    }
-
-    fn local_player_is_eye_in_water(&self) -> bool {
-        let Some(pose) = self.local_player().pose else {
-            return false;
-        };
-        let eye_pos = BlockPos {
-            x: pose.position.x.floor() as i32,
-            y: (pose.position.y + LOCAL_PLAYER_STANDING_EYE_HEIGHT).floor() as i32,
-            z: pose.position.z.floor() as i32,
-        };
-        self.probe_block(eye_pos)
-            .and_then(|block| block.fluid)
-            .is_some_and(|fluid| fluid.kind == TerrainFluidKind::Water)
     }
 }
 
@@ -410,6 +396,7 @@ mod tests {
     };
 
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
+    const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
     const PLAYER_HEAD_EQUIPMENT_SLOT: i32 = 39;
 
     #[test]
@@ -626,6 +613,22 @@ mod tests {
             VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID,
             1.0,
         )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(6_667));
+    }
+
+    #[test]
+    fn local_destroy_progress_does_not_apply_submerged_speed_below_low_water_surface() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let eye_pos = BlockPos { x: 0, y: 1, z: 0 };
+        let mut world = world_with_block(pos, 1);
+        attach_local_player_entity(&mut world, 123);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 0.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        set_block(&mut world, eye_pos, FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID);
+
         assert_eq!(world.local_destroy_progress_per_tick(pos), Some(6_667));
     }
 

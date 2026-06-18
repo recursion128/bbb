@@ -436,6 +436,12 @@ When an agent does any of the following, update this file in the same slice:
       - a basic vanilla-shaped sneak edge backoff
       - the vanilla near-ground `fallDistance < maxUpStep` branch of sneak edge
         backoff, backed by canonical local pose `fall_distance`
+      - vanilla-shaped local player fluid contact probing for water/lava
+        height and eye-in-fluid checks:
+        - `FlowingFluid` height uses `amount / 9.0`
+        - same-kind fluid above makes the lower fluid column full height
+        - the local player fluid interaction box is deflated by `0.001`
+      - water contact resets canonical local player `fall_distance`
       - vanilla-shaped walking player movement packet thresholds:
         - position delta squared greater than `(2.0E-4)^2`
         - rotation/status-only packets when only:
