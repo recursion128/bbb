@@ -729,10 +729,10 @@ When an agent does any of the following, update this file in the same slice:
         - decoded item-id recipe input routing
         - recipe grid wheel scroll and button clicks queue
           `ServerboundContainerButtonClickPacket`
+        - recipe option icons and enabled/disabled scroller sprites are rendered
+          from native HUD state
         - result-slot clicks kept server-authoritative until:
           - recipe result side effects are locally modeled
-        - recipe option icon rendering and active scroller rendering remain
-          follow-up presentation work
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including:
         - vanilla slot ranges
         - result-to-player transfer order

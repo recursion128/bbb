@@ -532,6 +532,39 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         stonecutter.height,
         &stonecutter.rgba,
     )?;
+    let stonecutter_scroller = hud_sprite(&sprites, "container/stonecutter/scroller")?;
+    renderer.upload_hud_stonecutter_scroller(
+        stonecutter_scroller.width,
+        stonecutter_scroller.height,
+        &stonecutter_scroller.rgba,
+    )?;
+    let stonecutter_scroller_disabled =
+        hud_sprite(&sprites, "container/stonecutter/scroller_disabled")?;
+    renderer.upload_hud_stonecutter_scroller_disabled(
+        stonecutter_scroller_disabled.width,
+        stonecutter_scroller_disabled.height,
+        &stonecutter_scroller_disabled.rgba,
+    )?;
+    let stonecutter_recipe_selected =
+        hud_sprite(&sprites, "container/stonecutter/recipe_selected")?;
+    renderer.upload_hud_stonecutter_recipe_selected(
+        stonecutter_recipe_selected.width,
+        stonecutter_recipe_selected.height,
+        &stonecutter_recipe_selected.rgba,
+    )?;
+    let stonecutter_recipe_highlighted =
+        hud_sprite(&sprites, "container/stonecutter/recipe_highlighted")?;
+    renderer.upload_hud_stonecutter_recipe_highlighted(
+        stonecutter_recipe_highlighted.width,
+        stonecutter_recipe_highlighted.height,
+        &stonecutter_recipe_highlighted.rgba,
+    )?;
+    let stonecutter_recipe = hud_sprite(&sprites, "container/stonecutter/recipe")?;
+    renderer.upload_hud_stonecutter_recipe(
+        stonecutter_recipe.width,
+        stonecutter_recipe.height,
+        &stonecutter_recipe.rgba,
+    )?;
     let villager = gui_texture(
         roots,
         "textures/gui/container/villager.png",

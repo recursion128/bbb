@@ -36,7 +36,8 @@ pub(crate) use commands::{
 };
 pub(crate) use inventory::{
     handle_inventory_cursor_moved, handle_inventory_key_input, handle_inventory_mouse_input,
-    handle_inventory_mouse_wheel, inventory_screen_layout, InventoryScreenBackground,
+    handle_inventory_mouse_wheel, inventory_screen_layout, sync_stonecutter_recipe_scroll_state,
+    InventoryScreenBackground,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -176,6 +177,10 @@ impl ClientInputState {
 
     pub(crate) fn inventory_hovered_slot(&self) -> Option<i16> {
         self.inventory_hovered_slot
+    }
+
+    pub(crate) fn stonecutter_recipe_scroll_row(&self) -> i32 {
+        self.stonecutter_recipe_scroll_row
     }
 
     fn advance_creative_flight_jump_trigger(&mut self, dt_seconds: f64) {

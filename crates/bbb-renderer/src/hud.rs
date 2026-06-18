@@ -188,6 +188,11 @@ pub enum HudInventoryBackgroundTexture {
     PageForward,
     ShulkerBox,
     Stonecutter,
+    StonecutterScroller,
+    StonecutterScrollerDisabled,
+    StonecutterRecipeSelected,
+    StonecutterRecipeHighlighted,
+    StonecutterRecipe,
     Villager,
     VillagerOutOfStock,
     VillagerExperienceBarBackground,
@@ -1026,6 +1031,57 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_stonecutter_scroller(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_stonecutter_scroller = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_stonecutter_scroller_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_stonecutter_scroller_disabled = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_stonecutter_recipe_selected(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_stonecutter_recipe_selected = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_stonecutter_recipe_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_stonecutter_recipe_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_stonecutter_recipe(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_stonecutter_recipe = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_villager_background(
         &mut self,
         width: u32,
@@ -1704,6 +1760,21 @@ impl Renderer {
             HudInventoryBackgroundTexture::PageForward => self.hud_page_forward.as_ref(),
             HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
             HudInventoryBackgroundTexture::Stonecutter => self.hud_stonecutter_background.as_ref(),
+            HudInventoryBackgroundTexture::StonecutterScroller => {
+                self.hud_stonecutter_scroller.as_ref()
+            }
+            HudInventoryBackgroundTexture::StonecutterScrollerDisabled => {
+                self.hud_stonecutter_scroller_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::StonecutterRecipeSelected => {
+                self.hud_stonecutter_recipe_selected.as_ref()
+            }
+            HudInventoryBackgroundTexture::StonecutterRecipeHighlighted => {
+                self.hud_stonecutter_recipe_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::StonecutterRecipe => {
+                self.hud_stonecutter_recipe.as_ref()
+            }
             HudInventoryBackgroundTexture::Villager => self.hud_villager_background.as_ref(),
             HudInventoryBackgroundTexture::VillagerOutOfStock => {
                 self.hud_villager_out_of_stock.as_ref()

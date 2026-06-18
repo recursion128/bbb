@@ -2106,6 +2106,13 @@ fn sync_stonecutter_recipe_scroll(input: &mut ClientInputState, world: &WorldSto
         input.stonecutter_recipe_scroll_row.clamp(0, max_scroll_row);
 }
 
+pub(crate) fn sync_stonecutter_recipe_scroll_state(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+) {
+    sync_stonecutter_recipe_scroll(input, world);
+}
+
 fn stonecutter_input_item_id(world: &WorldStore) -> Option<i32> {
     let container = world.inventory().open_container.as_ref()?;
     if container.menu_type_id != Some(STONECUTTER_MENU_TYPE_ID) {

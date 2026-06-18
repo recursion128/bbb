@@ -6,7 +6,10 @@ use std::{
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
-use bbb_protocol::packets::{ItemCostSummary, ItemStackSummary};
+use bbb_protocol::{
+    codec::Decoder,
+    packets::{ItemCostSummary, ItemStackSummary, SlotDisplaySummary},
+};
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
@@ -25,8 +28,8 @@ use crate::{
     entity_scene::entity_scene_outline_from_world_at_partial_tick,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
-        advance_using_item_at_partial_tick, inventory_screen_layout, ClientInputState,
-        InventoryScreenBackground,
+        advance_using_item_at_partial_tick, inventory_screen_layout,
+        sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
     },
     item_entities::item_entity_billboards_from_world,
     item_runtime::NativeItemRuntime,
@@ -102,6 +105,20 @@ const MERCHANT_XP_BAR_X: i32 = 136;
 const MERCHANT_XP_BAR_Y: i32 = 16;
 const MERCHANT_XP_BAR_WIDTH: u32 = 102;
 const MERCHANT_XP_BAR_HEIGHT: u32 = 5;
+const STONECUTTER_SELECTED_RECIPE_DATA_ID: i16 = 0;
+const STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT: usize = 12;
+const STONECUTTER_RECIPE_BUTTON_COLUMNS: i32 = 4;
+const STONECUTTER_RECIPE_BUTTON_ROWS: i32 = 3;
+const STONECUTTER_RECIPE_BUTTON_X: i32 = 52;
+const STONECUTTER_RECIPE_BUTTON_Y: i32 = 15;
+const STONECUTTER_RECIPE_BUTTON_WIDTH: u32 = 16;
+const STONECUTTER_RECIPE_BUTTON_HEIGHT: u32 = 18;
+const STONECUTTER_RECIPE_ITEM_Y_OFFSET: i32 = 1;
+const STONECUTTER_SCROLLER_X: i32 = 119;
+const STONECUTTER_SCROLLER_Y: i32 = 15;
+const STONECUTTER_SCROLLER_WIDTH: u32 = 12;
+const STONECUTTER_SCROLLER_HEIGHT: u32 = 15;
+const STONECUTTER_SCROLLER_MAX_OFFSET: i32 = 41;
 const VILLAGER_NEXT_LEVEL_XP_THRESHOLDS: [i32; 5] = [0, 10, 70, 150, 250];
 
 pub(crate) use control_requests::pump_control_net_requests;
@@ -221,10 +238,12 @@ pub(crate) fn pump_network_and_terrain(
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
     renderer.set_hud_hotbar_item_icons(hotbar_item_icons(world, item_runtime, entity_partial_tick));
-    renderer.set_hud_inventory_screen(hud_inventory_screen(
+    sync_stonecutter_recipe_scroll_state(input, world);
+    renderer.set_hud_inventory_screen(hud_inventory_screen_with_stonecutter_scroll_row(
         world,
         item_runtime,
         input.inventory_hovered_slot(),
+        Some(input.stonecutter_recipe_scroll_row()),
         entity_partial_tick,
     ));
     renderer.set_item_entity_billboards(item_entity_billboards_from_world(world, item_runtime));
@@ -335,6 +354,22 @@ fn hud_inventory_screen(
     hovered_slot_id: Option<i16>,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
+    hud_inventory_screen_with_stonecutter_scroll_row(
+        world,
+        item_runtime,
+        hovered_slot_id,
+        None,
+        partial_tick,
+    )
+}
+
+fn hud_inventory_screen_with_stonecutter_scroll_row(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    hovered_slot_id: Option<i16>,
+    stonecutter_recipe_scroll_row: Option<i32>,
+    partial_tick: f32,
+) -> Option<HudInventoryScreen> {
     let layout = inventory_screen_layout(world)?;
     let container = if world.local_inventory_is_open() {
         &world.inventory().inventory_menu
@@ -371,12 +406,17 @@ fn hud_inventory_screen(
     Some(HudInventoryScreen {
         width: u32::try_from(layout.width).unwrap_or_default(),
         height: u32::try_from(layout.height).unwrap_or_default(),
-        background_layers: hud_inventory_background_layers(world, layout.background),
+        background_layers: hud_inventory_background_layers(
+            world,
+            layout.background,
+            stonecutter_recipe_scroll_row,
+        ),
         slots,
         floating_items: hud_inventory_floating_items(
             world,
             item_runtime,
             layout.background,
+            stonecutter_recipe_scroll_row,
             partial_tick,
         ),
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
@@ -387,12 +427,19 @@ fn hud_inventory_floating_items(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     background: InventoryScreenBackground,
+    stonecutter_recipe_scroll_row: Option<i32>,
     partial_tick: f32,
 ) -> Vec<HudInventoryItem> {
     match background {
         InventoryScreenBackground::Merchant => {
             hud_merchant_trade_items(world, item_runtime, partial_tick)
         }
+        InventoryScreenBackground::Stonecutter => hud_stonecutter_recipe_items(
+            world,
+            item_runtime,
+            stonecutter_recipe_scroll_row.unwrap_or_default(),
+            partial_tick,
+        ),
         _ => Vec::new(),
     }
 }
@@ -400,6 +447,7 @@ fn hud_inventory_floating_items(
 fn hud_inventory_background_layers(
     world: &WorldStore,
     background: InventoryScreenBackground,
+    stonecutter_recipe_scroll_row: Option<i32>,
 ) -> Vec<HudInventoryBackgroundLayer> {
     match background {
         InventoryScreenBackground::LocalInventory => {
@@ -814,7 +862,7 @@ fn hud_inventory_background_layers(
             layers
         }
         InventoryScreenBackground::Stonecutter => {
-            vec![hud_inventory_background_layer(
+            let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Stonecutter,
                 0,
                 0,
@@ -822,7 +870,13 @@ fn hud_inventory_background_layers(
                 166,
                 [0.0, 0.0],
                 [176.0 / 256.0, 166.0 / 256.0],
-            )]
+            )];
+            push_stonecutter_recipe_layers(
+                world,
+                &mut layers,
+                stonecutter_recipe_scroll_row.unwrap_or_default(),
+            );
+            layers
         }
     }
 }
@@ -897,6 +951,211 @@ fn push_merchant_trade_item(
 ) {
     if let Some(icon) = hud_item_icon_for_stack(world, item_runtime, &item, None, partial_tick) {
         items.push(HudInventoryItem { x, y, icon });
+    }
+}
+
+fn hud_stonecutter_recipe_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    scroll_row: i32,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    let mut items = Vec::new();
+    for option in stonecutter_visible_recipe_option_stacks(world, scroll_row) {
+        if let Some(icon) =
+            hud_item_icon_for_stack(world, item_runtime, &option.stack, None, partial_tick)
+        {
+            items.push(HudInventoryItem {
+                x: option.x,
+                y: option.y,
+                icon,
+            });
+        }
+    }
+    items
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct StonecutterRecipeOptionStack {
+    x: i32,
+    y: i32,
+    stack: ItemStackSummary,
+}
+
+fn stonecutter_visible_recipe_option_stacks(
+    world: &WorldStore,
+    scroll_row: i32,
+) -> Vec<StonecutterRecipeOptionStack> {
+    let recipes = stonecutter_visible_recipes(world);
+    let start_index = stonecutter_recipe_start_index(recipes.len(), scroll_row).unwrap_or_default();
+    recipes
+        .into_iter()
+        .skip(start_index)
+        .take(STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT)
+        .enumerate()
+        .filter_map(|(position, recipe)| {
+            let stack = stonecutter_slot_display_item_stack(&recipe.option_display)?;
+            let column = position as i32 % STONECUTTER_RECIPE_BUTTON_COLUMNS;
+            let row = position as i32 / STONECUTTER_RECIPE_BUTTON_COLUMNS;
+            Some(StonecutterRecipeOptionStack {
+                x: STONECUTTER_RECIPE_BUTTON_X + column * STONECUTTER_RECIPE_BUTTON_WIDTH as i32,
+                y: STONECUTTER_RECIPE_BUTTON_Y
+                    + STONECUTTER_RECIPE_ITEM_Y_OFFSET
+                    + row * STONECUTTER_RECIPE_BUTTON_HEIGHT as i32,
+                stack,
+            })
+        })
+        .collect()
+}
+
+fn push_stonecutter_recipe_layers(
+    world: &WorldStore,
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    scroll_row: i32,
+) {
+    let visible_recipe_count = stonecutter_visible_recipes(world).len();
+    let can_scroll = visible_recipe_count > STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT;
+    layers.push(hud_inventory_background_layer(
+        if can_scroll {
+            HudInventoryBackgroundTexture::StonecutterScroller
+        } else {
+            HudInventoryBackgroundTexture::StonecutterScrollerDisabled
+        },
+        STONECUTTER_SCROLLER_X,
+        STONECUTTER_SCROLLER_Y
+            + if can_scroll {
+                stonecutter_scroller_offset(visible_recipe_count, scroll_row)
+            } else {
+                0
+            },
+        STONECUTTER_SCROLLER_WIDTH,
+        STONECUTTER_SCROLLER_HEIGHT,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
+
+    let Some(start_index) = stonecutter_recipe_start_index(visible_recipe_count, scroll_row) else {
+        return;
+    };
+    let selected_recipe = world
+        .open_container_data_value(STONECUTTER_SELECTED_RECIPE_DATA_ID)
+        .map(i32::from);
+    for position in 0..STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT {
+        let recipe_index = start_index + position;
+        if recipe_index >= visible_recipe_count {
+            break;
+        }
+        let column = position as i32 % STONECUTTER_RECIPE_BUTTON_COLUMNS;
+        let row = position as i32 / STONECUTTER_RECIPE_BUTTON_COLUMNS;
+        layers.push(hud_inventory_background_layer(
+            if selected_recipe == Some(recipe_index as i32) {
+                HudInventoryBackgroundTexture::StonecutterRecipeSelected
+            } else {
+                HudInventoryBackgroundTexture::StonecutterRecipe
+            },
+            STONECUTTER_RECIPE_BUTTON_X + column * STONECUTTER_RECIPE_BUTTON_WIDTH as i32,
+            STONECUTTER_RECIPE_BUTTON_Y + row * STONECUTTER_RECIPE_BUTTON_HEIGHT as i32,
+            STONECUTTER_RECIPE_BUTTON_WIDTH,
+            STONECUTTER_RECIPE_BUTTON_HEIGHT,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+}
+
+fn stonecutter_visible_recipes(
+    world: &WorldStore,
+) -> Vec<&bbb_protocol::packets::StonecutterSelectableRecipeSummary> {
+    let Some(input_item_id) = stonecutter_input_item_id(world) else {
+        return Vec::new();
+    };
+    world
+        .recipes()
+        .stonecutter_recipes
+        .iter()
+        .filter(|recipe| recipe.input.item_ids.contains(&input_item_id))
+        .collect()
+}
+
+fn stonecutter_input_item_id(world: &WorldStore) -> Option<i32> {
+    let item = world
+        .inventory()
+        .open_container
+        .as_ref()?
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 0)
+        .map(|slot| &slot.item)?;
+    if item_stack_is_empty(item) {
+        return None;
+    }
+    item.item_id
+}
+
+fn stonecutter_recipe_start_index(visible_recipe_count: usize, scroll_row: i32) -> Option<usize> {
+    if visible_recipe_count == 0 {
+        return None;
+    }
+    let row = stonecutter_clamped_recipe_scroll_row(visible_recipe_count, scroll_row);
+    usize::try_from(row * STONECUTTER_RECIPE_BUTTON_COLUMNS).ok()
+}
+
+fn stonecutter_clamped_recipe_scroll_row(visible_recipe_count: usize, scroll_row: i32) -> i32 {
+    scroll_row.clamp(0, stonecutter_recipe_max_scroll_row(visible_recipe_count))
+}
+
+fn stonecutter_recipe_max_scroll_row(visible_recipe_count: usize) -> i32 {
+    (stonecutter_recipe_row_count(visible_recipe_count) - STONECUTTER_RECIPE_BUTTON_ROWS).max(0)
+}
+
+fn stonecutter_recipe_row_count(visible_recipe_count: usize) -> i32 {
+    if visible_recipe_count == 0 {
+        0
+    } else {
+        ((visible_recipe_count as i32) + STONECUTTER_RECIPE_BUTTON_COLUMNS - 1)
+            / STONECUTTER_RECIPE_BUTTON_COLUMNS
+    }
+}
+
+fn stonecutter_scroller_offset(visible_recipe_count: usize, scroll_row: i32) -> i32 {
+    let max_scroll_row = stonecutter_recipe_max_scroll_row(visible_recipe_count);
+    if max_scroll_row <= 0 {
+        return 0;
+    }
+    let scroll_offs = stonecutter_clamped_recipe_scroll_row(visible_recipe_count, scroll_row)
+        as f32
+        / max_scroll_row as f32;
+    (STONECUTTER_SCROLLER_MAX_OFFSET as f32 * scroll_offs) as i32
+}
+
+fn stonecutter_slot_display_item_stack(display: &SlotDisplaySummary) -> Option<ItemStackSummary> {
+    let mut decoder = Decoder::new(&display.raw_payload);
+    let display_type_id = decoder.read_var_i32().ok()?;
+    if display_type_id != display.display_type_id {
+        return None;
+    }
+    match display_type_id {
+        4 => {
+            let item_id = decoder.read_var_i32().ok()?;
+            (item_id >= 0).then_some(ItemStackSummary {
+                item_id: Some(item_id),
+                count: 1,
+                component_patch: Default::default(),
+            })
+        }
+        5 => {
+            let item_id = decoder.read_var_i32().ok()?;
+            let count = decoder.read_var_i32().ok()?;
+            if item_id < 0 || count <= 0 {
+                return None;
+            }
+            Some(ItemStackSummary {
+                item_id: Some(item_id),
+                count,
+                component_patch: Default::default(),
+            })
+        }
+        _ => None,
     }
 }
 
@@ -3453,15 +3712,26 @@ mod tests {
         assert_eq!(screen.height, 166);
         assert_eq!(
             screen.background_layers,
-            vec![hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::Stonecutter,
-                0,
-                0,
-                176,
-                166,
-                [0.0, 0.0],
-                [176.0 / 256.0, 166.0 / 256.0],
-            )]
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Stonecutter,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::StonecutterScrollerDisabled,
+                    119,
+                    15,
+                    12,
+                    15,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
         );
         assert_eq!(screen.hovered_slot_id, Some(37));
         assert_eq!(screen.slots.len(), 38);
@@ -3471,6 +3741,113 @@ mod tests {
         assert_eq!((result.x, result.y), (143, 33));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 37).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_stonecutter_recipe_buttons_and_scroller() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 24,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 38];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_update_recipes(bbb_protocol::packets::UpdateRecipes {
+            property_sets: Vec::new(),
+            stonecutter_recipes: (0..16)
+                .map(|index| stonecutter_recipe_display(42, 100 + index, 1))
+                .collect(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 5,
+        });
+
+        let screen =
+            hud_inventory_screen_with_stonecutter_scroll_row(&world, None, None, Some(1), 0.0)
+                .unwrap();
+
+        assert_eq!(
+            screen.background_layers[1],
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::StonecutterScroller,
+                119,
+                56,
+                12,
+                15,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+        );
+        let recipe_layers: Vec<_> = screen
+            .background_layers
+            .iter()
+            .filter(|layer| {
+                matches!(
+                    layer.texture,
+                    HudInventoryBackgroundTexture::StonecutterRecipe
+                        | HudInventoryBackgroundTexture::StonecutterRecipeSelected
+                )
+            })
+            .collect();
+        assert_eq!(recipe_layers.len(), 12);
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::StonecutterRecipeSelected,
+                68,
+                15,
+                16,
+                18,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+
+        let option_stacks = stonecutter_visible_recipe_option_stacks(&world, 1);
+        assert_eq!(option_stacks.len(), 12);
+        assert_eq!(
+            option_stacks[0],
+            StonecutterRecipeOptionStack {
+                x: 52,
+                y: 16,
+                stack: item_stack(104, 1),
+            }
+        );
+        assert_eq!(
+            option_stacks[11],
+            StonecutterRecipeOptionStack {
+                x: 100,
+                y: 52,
+                stack: item_stack(115, 1),
+            }
+        );
+    }
+
+    #[test]
+    fn stonecutter_slot_display_item_stack_projects_direct_item_displays() {
+        assert_eq!(
+            stonecutter_slot_display_item_stack(&stonecutter_item_display(77)),
+            Some(item_stack(77, 1))
+        );
+        assert_eq!(
+            stonecutter_slot_display_item_stack(&stonecutter_item_stack_display(78, 3)),
+            Some(item_stack(78, 3))
+        );
+        assert_eq!(
+            stonecutter_slot_display_item_stack(&bbb_protocol::packets::SlotDisplaySummary {
+                display_type_id: 6,
+                raw_payload: vec![6, 4, b't', b'e', b's', b't'],
+            }),
+            None
+        );
     }
 
     #[test]
@@ -3880,6 +4257,46 @@ mod tests {
             item_id,
             count,
             component_predicate: Default::default(),
+        }
+    }
+
+    fn stonecutter_recipe_display(
+        input_item_id: i32,
+        result_item_id: i32,
+        result_count: i32,
+    ) -> bbb_protocol::packets::StonecutterSelectableRecipeSummary {
+        bbb_protocol::packets::StonecutterSelectableRecipeSummary {
+            input: bbb_protocol::packets::IngredientSummary {
+                tag: None,
+                item_ids: vec![input_item_id],
+            },
+            option_display: stonecutter_item_stack_display(result_item_id, result_count),
+        }
+    }
+
+    fn stonecutter_item_display(item_id: i32) -> bbb_protocol::packets::SlotDisplaySummary {
+        let mut raw_payload = Vec::new();
+        bbb_protocol::codec::write_var_i32_to(&mut raw_payload, 4);
+        bbb_protocol::codec::write_var_i32_to(&mut raw_payload, item_id);
+        bbb_protocol::packets::SlotDisplaySummary {
+            display_type_id: 4,
+            raw_payload,
+        }
+    }
+
+    fn stonecutter_item_stack_display(
+        item_id: i32,
+        count: i32,
+    ) -> bbb_protocol::packets::SlotDisplaySummary {
+        let mut raw_payload = Vec::new();
+        bbb_protocol::codec::write_var_i32_to(&mut raw_payload, 5);
+        bbb_protocol::codec::write_var_i32_to(&mut raw_payload, item_id);
+        bbb_protocol::codec::write_var_i32_to(&mut raw_payload, count);
+        bbb_protocol::codec::write_var_i32_to(&mut raw_payload, 0);
+        bbb_protocol::codec::write_var_i32_to(&mut raw_payload, 0);
+        bbb_protocol::packets::SlotDisplaySummary {
+            display_type_id: 5,
+            raw_payload,
         }
     }
 
