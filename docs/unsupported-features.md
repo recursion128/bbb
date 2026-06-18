@@ -1,7 +1,12 @@
 # Unsupported And Deferred Feature Ledger
 
-This is the project ledger for native Minecraft Java 26.1 features that are
-known to be unsupported, partial, diagnostic-only, or intentionally deferred.
+This is the project ledger for native Minecraft Java 26.1 features known to be:
+
+- unsupported
+- partial
+- diagnostic-only
+- intentionally deferred
+
 Each remaining item must have an owner, status, and next action before the
 rewrite can be considered complete.
 
@@ -13,12 +18,18 @@ When an agent does any of the following, update this file in the same slice:
 
 ## Status Key
 
-- `covered`: implemented for the currently claimed scope; keep future work
-  derived from the documented owner.
-- `partial`: some behavior exists, but vanilla parity is not complete.
-- `diagnostic`: unsupported input is intentionally reported, not implemented.
-- `deferred`: intentionally left for a later owner because the current runtime
-  surface is not ready.
+- `covered`:
+  - implemented for the currently claimed scope
+  - future work stays derived from the documented owner
+- `partial`:
+  - some behavior exists
+  - vanilla parity is not complete
+- `diagnostic`:
+  - unsupported input is intentionally reported
+  - unsupported input is not implemented
+- `deferred`:
+  - intentionally left for a later owner
+  - current runtime surface is not ready
 
 ## Ledger
 
@@ -86,19 +97,23 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action:
   - Continue moving client-observable state into `WorldStore`.
-  - Keep `NetCounters` for connection/runtime status and command queue
-    projections only.
+  - Keep `NetCounters` only for:
+    - connection/runtime status
+    - command queue projections
 - Evidence / boundary:
-  - The architecture plan still calls out removal of native-only `last_*`
-    snapshots where a world owner exists or should exist.
+  - The architecture plan still calls out removing native-only `last_*`
+    snapshots when:
+    - a world owner exists
+    - a world owner should exist
 
 ### Code Of Conduct Presentation
 
 - Owner: `bbb-world` + `bbb-native` + `bbb-renderer`
 - Status: `deferred`
 - Next action:
-  - Replace the native bitmap prompt with fuller vanilla screen/font rendering
-    when the renderer UI stack is mature.
+  - Replace the native bitmap prompt when the renderer UI stack is mature with:
+    - fuller vanilla screen rendering
+    - fuller vanilla font rendering
 - Evidence / boundary:
   - Canonical Code of Conduct UI state and control requests are covered.
   - Presentation parity is explicitly deferred in
@@ -110,8 +125,10 @@ When an agent does any of the following, update this file in the same slice:
 - Status: `partial`
 - Next action:
   - Validate any future `yRotA` source.
-  - Replace the debug target overlay with full entity model rendering and
-    interaction feedback when renderer entity presentation exists.
+  - Replace the debug target overlay when renderer entity presentation exists
+    with:
+    - full entity model rendering
+    - interaction feedback
 - Evidence / boundary:
   - `bbb-world` and `bbb-native` expose many verified pick bounds and
     interaction packets.
@@ -194,8 +211,9 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 - Status: `partial`
 - Next action:
-  - Continue validating audio behavior against vanilla without requiring an
-    audio device in unit tests:
+  - Continue validating audio behavior against vanilla.
+  - Keep unit tests independent of an audio device.
+  - Cover:
     - source/category mapping
     - spatial/entity-following sounds
     - stop semantics
@@ -269,12 +287,12 @@ When an agent does any of the following, update this file in the same slice:
       - full flying friction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
         walking and passenger player packet thresholds
-  - Block destroy: close:
-    - remaining block destroy profile gaps outside the mechanically parsed
-      `Blocks.java` property declarations:
+  - Block destroy:
+    - Close remaining block destroy profile gaps outside the mechanically
+      parsed `Blocks.java` property declarations:
       - constructor-level mutations such as `InfestedBlock`
       - arbitrary helper/lambda evaluation not covered by the current parser
-    - remaining vanilla player destroy-speed gaps:
+    - Close remaining vanilla player destroy-speed gaps:
       - validate exact pose/fluid nuance beyond the current standing-eye
         water probe
     - collision-aware rollback position handling
@@ -282,26 +300,29 @@ When an agent does any of the following, update this file in the same slice:
     - full model-shaped crack decals with vanilla crumbling blend/depth-bias
       behavior
     - any remaining `STOP_DESTROY_BLOCK` sequencing gaps
-  - Commands: continue adding focused command queue and encode tests for
-    missing flows:
-    - inventory
-    - interaction
-    - chat
-    - command
-  - Inventory: implement:
-    - tooltips
-    - item durability/cooldown decorations
-    - remaining dedicated server-opened menu layouts beyond:
-      - `generic_9xN`
-      - `generic_3x3`
-      - furnace/blast furnace/smoker
-      - crafting table
-      - hopper
-      - shulker box
-    - recipe book/creative variants
-    - remaining local crafting result parity for container `0`:
-      - server-authored result recomputation from local 2x2 inputs
-      - recipe-specific remainder items
+  - Commands:
+    - Continue adding focused command queue and encode tests for:
+      - inventory
+      - interaction
+      - chat
+      - command
+  - Inventory:
+    - Implement:
+      - tooltips
+      - item decorations:
+        - durability
+        - cooldown
+      - remaining dedicated server-opened menu layouts beyond:
+        - `generic_9xN`
+        - `generic_3x3`
+        - furnace/blast furnace/smoker
+        - crafting table
+        - hopper
+        - shulker box
+      - recipe book/creative variants
+      - remaining local crafting result parity for container `0`:
+        - server-authored result recomputation from local 2x2 inputs
+        - recipe-specific remainder items
 - Evidence / boundary:
   - Movement:
     - Native movement projects world-computed `on_ground` and
