@@ -319,6 +319,7 @@ When an agent does any of the following, update this file in the same slice:
         - grindstone
         - hopper
         - shulker box
+        - smithing table
         - stonecutter
       - recipe book/creative variants
       - remaining local crafting result parity for container `0`:
@@ -455,11 +456,15 @@ When an agent does any of the following, update this file in the same slice:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices
       - `generic_3x3` DispenserMenu screens with official `dispenser.png`
-      - CrafterMenu screens with official `crafter.png` background,
-        `container/crafter/disabled_slot`, and powered/unpowered redstone
-        sprites
-      - AnvilMenu screens with official `anvil.png` background,
-        `container/anvil/text_field`, `text_field_disabled`, and error sprites
+      - CrafterMenu screens with official:
+        - `crafter.png` background
+        - `container/crafter/disabled_slot`
+        - powered/unpowered redstone sprites
+      - AnvilMenu screens with official:
+        - `anvil.png` background
+        - `container/anvil/text_field`
+        - `text_field_disabled`
+        - error sprites
       - BrewingStandMenu screens with official `brewing_stand.png`
       - CraftingMenu screens with official `crafting_table.png`
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with official
@@ -468,6 +473,9 @@ When an agent does any of the following, update this file in the same slice:
         `container/grindstone/error` overlay sprite
       - HopperMenu screens with official `hopper.png`
       - ShulkerBoxMenu screens with official `shulker_box.png`
+      - SmithingMenu screens with official:
+        - `smithing.png` background
+        - `container/smithing/error` overlay sprite
       - StonecutterMenu screens with official `stonecutter.png`
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
       progress sprites:
@@ -485,32 +493,54 @@ When an agent does any of the following, update this file in the same slice:
     - It also queues Shift-click `QUICK_MOVE` container clicks for:
       - supported generic containers
       - `generic_3x3`
-      - AnvilMenu quick-move and result-slot paths are kept
-        server-authoritative until rename packet entry, repair/enchantment
-        result prediction, XP cost, repair-cost component updates, material
-        consumption, and anvil damage side effects are modeled
-      - CraftingMenu non-result slots, with result-slot clicks kept
-        server-authoritative until recipe recomputation and remainders are
-        locally modeled
+      - AnvilMenu:
+        - quick-move and result-slot paths are kept server-authoritative until:
+          - rename packet entry
+          - repair/enchantment result prediction
+          - XP cost
+          - repair-cost component updates
+          - material consumption
+          - anvil damage side effects
+      - CraftingMenu:
+        - non-result slots
+        - result-slot clicks kept server-authoritative until:
+          - recipe recomputation
+          - remainders are locally modeled
       - CrafterMenu grid/player inventory transfers:
         - vanilla slot ranges
         - disabled grid slots from `ContainerSetData`
         - result-preview slot 45 kept server-authoritative until crafter recipe
           preview and crafting side effects are locally modeled
-      - BrewingStandMenu quick-move paths are kept server-authoritative until
-        brewing fuel tags, potion bottle ids, ingredient parity, and
-        component-hashable potion stack prediction are modeled
-      - GrindstoneMenu player inventory/hotbar range movement when both input
-        slots are occupied; input/result-side paths are kept
-        server-authoritative until component-hashable grindstone item
-        prediction is modeled
+      - BrewingStandMenu:
+        - quick-move paths are kept server-authoritative until:
+          - brewing fuel tags
+          - potion bottle ids
+          - ingredient parity
+          - component-hashable potion stack prediction
+      - GrindstoneMenu:
+        - player inventory/hotbar range movement when both input slots are
+          occupied
+        - input/result-side paths are kept server-authoritative until:
+          - component-hashable grindstone item prediction
       - hopper
       - shulker box
-      - StonecutterMenu non-result slots, including:
+      - SmithingMenu:
+        - quick-move paths are kept server-authoritative until:
+          - smithing recipe property sets
+          - input slot routing
+          - result prediction
+          - input consumption
+          - level event side effects
+        - result-slot clicks are kept server-authoritative until smithing
+          `onTake` side effects are modeled
+        - armor stand preview, cycling empty-slot icons, and tooltips remain
+          deferred presentation parity work
+      - StonecutterMenu:
+        - non-result slots
         - vanilla slot ranges
         - decoded item-id recipe input routing
-        - result-slot clicks kept server-authoritative until recipe result
-          side effects are locally modeled
+        - result-slot clicks kept server-authoritative until:
+          - recipe result side effects are locally modeled
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including:
         - vanilla slot ranges
         - result-to-player transfer order
@@ -539,8 +569,18 @@ When an agent does any of the following, update this file in the same slice:
       - direct `strength` / `destroyTime` / `instabreak` chains
       - `requiresCorrectToolForDrops`
       - `ofLegacyCopy` / `ofFullCopy` inheritance
-      - common helper registrations for logs, stems, leaves, buttons, flower
-        pots, candles, beds, stained glass, shulker boxes, pistons, and stairs
+      - common helper registrations for:
+        - logs
+        - stems
+        - leaves
+        - buttons
+        - flower pots
+        - candles
+        - beds
+        - stained glass
+        - shulker boxes
+        - pistons
+        - stairs
     - Local destroy progress applies:
       - selected main-hand item profile
       - vanilla-shaped mining speed

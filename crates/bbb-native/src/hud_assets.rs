@@ -166,6 +166,18 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         smoker_burn_progress.height,
         &smoker_burn_progress.rgba,
     )?;
+    let smithing = gui_texture(
+        roots,
+        "textures/gui/container/smithing.png",
+        "minecraft:textures/gui/container/smithing",
+    )?;
+    renderer.upload_hud_smithing_background(smithing.width, smithing.height, &smithing.rgba)?;
+    let smithing_error = hud_sprite(&sprites, "container/smithing/error")?;
+    renderer.upload_hud_smithing_error(
+        smithing_error.width,
+        smithing_error.height,
+        &smithing_error.rgba,
+    )?;
     let brewing_stand = gui_texture(
         roots,
         "textures/gui/container/brewing_stand.png",

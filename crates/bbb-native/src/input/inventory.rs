@@ -37,6 +37,7 @@ const FURNACE_MENU_TYPE_ID: i32 = 14;
 const GRINDSTONE_MENU_TYPE_ID: i32 = 15;
 const HOPPER_MENU_TYPE_ID: i32 = 16;
 const SHULKER_BOX_MENU_TYPE_ID: i32 = 20;
+const SMITHING_MENU_TYPE_ID: i32 = 21;
 const SMOKER_MENU_TYPE_ID: i32 = 22;
 const STONECUTTER_MENU_TYPE_ID: i32 = 24;
 const GENERIC_CONTAINER_SLOT_COLUMNS: i32 = 9;
@@ -73,6 +74,9 @@ const HOPPER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_SCREEN_WIDTH: i32 = 176;
 const SHULKER_BOX_SCREEN_HEIGHT: i32 = 167;
 const SHULKER_BOX_SLOT_COUNT: i16 = 27;
+const SMITHING_SCREEN_WIDTH: i32 = 176;
+const SMITHING_SCREEN_HEIGHT: i32 = 166;
+const SMITHING_SLOT_COUNT: i16 = 4;
 const STONECUTTER_SCREEN_WIDTH: i32 = 176;
 const STONECUTTER_SCREEN_HEIGHT: i32 = 166;
 const STONECUTTER_SLOT_COUNT: i16 = 2;
@@ -94,6 +98,7 @@ pub(crate) enum InventoryScreenBackground {
     Grindstone,
     Hopper,
     ShulkerBox,
+    Smithing,
     Smoker,
     Stonecutter,
 }
@@ -257,6 +262,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: SHULKER_BOX_SCREEN_HEIGHT,
             background: InventoryScreenBackground::ShulkerBox,
             slots: shulker_box_slot_layouts(),
+        });
+    }
+    if menu_type_id == SMITHING_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: SMITHING_SCREEN_WIDTH,
+            height: SMITHING_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Smithing,
+            slots: smithing_slot_layouts(),
         });
     }
     if menu_type_id == STONECUTTER_MENU_TYPE_ID {
@@ -634,6 +647,48 @@ fn shulker_box_slot_layouts() -> Vec<InventorySlotLayout> {
     for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
         slots.push(InventorySlotLayout {
             slot_id: SHULKER_BOX_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
+        });
+    }
+
+    slots
+}
+
+fn smithing_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(SMITHING_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 8,
+        y: 48,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 26,
+        y: 48,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 2,
+        x: 44,
+        y: 48,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 3,
+        x: 98,
+        y: 48,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: SMITHING_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: SMITHING_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 142,
         });
@@ -1899,6 +1954,71 @@ mod tests {
     }
 
     #[test]
+    fn smithing_layout_matches_vanilla_item_combiner_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: SMITHING_MENU_TYPE_ID,
+            title: "Smithing".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(layout.background, InventoryScreenBackground::Smithing);
+        assert_eq!(layout.slots.len(), 40);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 8,
+                y: 48,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 26,
+                y: 48,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 44,
+                y: 48,
+            }
+        );
+        assert_eq!(
+            layout.slots[3],
+            InventorySlotLayout {
+                slot_id: 3,
+                x: 98,
+                y: 48,
+            }
+        );
+        assert_eq!(
+            layout.slots[4],
+            InventorySlotLayout {
+                slot_id: 4,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[39],
+            InventorySlotLayout {
+                slot_id: 39,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn stonecutter_layout_matches_vanilla_menu() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -2216,6 +2336,38 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
             Some(InventoryClickTarget::Slot(62))
+        );
+    }
+
+    #[test]
+    fn smithing_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: SMITHING_MENU_TYPE_ID,
+            title: "Smithing".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(568.0, 333.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(586.0, 333.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(604.0, 333.0)), size),
+            Some(InventoryClickTarget::Slot(2))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(658.0, 333.0)), size),
+            Some(InventoryClickTarget::Slot(3))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(39))
         );
     }
 

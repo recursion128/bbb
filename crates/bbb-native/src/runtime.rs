@@ -42,6 +42,7 @@ const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
 const CRAFTER_POWERED_DATA_ID: i16 = 9;
 const CRAFTER_DISABLED_SLOT_SPRITE_SIZE: u32 = 18;
 const CRAFTER_REDSTONE_SPRITE_SIZE: u32 = 16;
+const SMITHING_RECIPE_ERROR_DATA_ID: i16 = 0;
 const BREWING_STAND_BREW_TIME_DATA_ID: i16 = 0;
 const BREWING_STAND_FUEL_DATA_ID: i16 = 1;
 const BREWING_STAND_FUEL_LENGTH_SPRITE_WIDTH: u32 = 18;
@@ -519,6 +520,29 @@ fn hud_inventory_background_layers(
             }
             layers
         }
+        InventoryScreenBackground::Smithing => {
+            let mut layers = vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Smithing,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )];
+            if smithing_should_show_error(world) {
+                layers.push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::SmithingError,
+                    65,
+                    46,
+                    28,
+                    21,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ));
+            }
+            layers
+        }
         InventoryScreenBackground::Hopper => {
             vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Hopper,
@@ -717,6 +741,13 @@ fn grindstone_should_show_error(world: &WorldStore) -> bool {
         .find(|slot| slot.slot == 2)
         .is_some_and(|slot| !item_stack_is_empty(&slot.item));
     input_has_item && !result_has_item
+}
+
+fn smithing_should_show_error(world: &WorldStore) -> bool {
+    world
+        .open_container_data_value(SMITHING_RECIPE_ERROR_DATA_ID)
+        .unwrap_or_default()
+        > 0
 }
 
 fn push_furnace_progress_layers(
@@ -2022,6 +2053,98 @@ mod tests {
         assert_eq!((last_container.x, last_container.y), (152, 54));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 62).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_smithing_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 21,
+            title: "Smithing".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 40],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(39), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Smithing,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(39));
+        assert_eq!(screen.slots.len(), 40);
+        let template = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((template.x, template.y), (8, 48));
+        let base = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+        assert_eq!((base.x, base.y), (26, 48));
+        let additional = screen.slots.iter().find(|slot| slot.slot_id == 2).unwrap();
+        assert_eq!((additional.x, additional.y), (44, 48));
+        let result = screen.slots.iter().find(|slot| slot.slot_id == 3).unwrap();
+        assert_eq!((result.x, result.y), (98, 48));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 39).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_smithing_error_layer() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 21,
+            title: "Smithing".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 40],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 1,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Smithing,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::SmithingError,
+                    65,
+                    46,
+                    28,
+                    21,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
     }
 
     #[test]
