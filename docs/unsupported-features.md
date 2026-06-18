@@ -283,7 +283,6 @@ When an agent does any of the following, update this file in the same slice:
         - local Slow Falling gravity clamp
         - local Levitation vertical velocity targeting
       - sneak pose details
-      - the near-ground/fallDistance branch of sneak edge backoff
       - full flying friction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
         walking and passenger player packet thresholds
@@ -380,6 +379,8 @@ When an agent does any of the following, update this file in the same slice:
       - vanilla default 0.6 step-up onto bottom slabs/stairs and low ground
         shapes without auto-stepping full blocks
       - a basic vanilla-shaped sneak edge backoff
+      - the vanilla near-ground `fallDistance < maxUpStep` branch of sneak edge
+        backoff, backed by canonical local pose `fall_distance`
       - vanilla-shaped walking player movement packet thresholds:
         - position delta squared greater than `(2.0E-4)^2`
         - rotation/status-only packets when only:

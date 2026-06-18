@@ -153,6 +153,7 @@ fn advance_local_player_physics_step(
     let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
     let on_ground =
         vertical_collision && requested_y < 0.0 || local_player_supported(world, pose.position);
+    pose.fall_distance = next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground);
 
     pose.delta_movement = ProtocolVec3d {
         x: movement.x / tick_span,
@@ -279,7 +280,30 @@ fn should_back_off_from_edge(
         && input.sneak
         && !local_player_is_flying(world)
         && requested_y <= 0.0
-        && pose.on_ground
+        && local_player_is_above_ground(world, pose)
+}
+
+fn local_player_is_above_ground(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
+    pose.on_ground
+        || (pose.fall_distance < LOCAL_PLAYER_STEP_HEIGHT
+            && !local_player_can_fall_at_least(
+                world,
+                pose.position,
+                0.0,
+                0.0,
+                LOCAL_PLAYER_STEP_HEIGHT - pose.fall_distance,
+            ))
+}
+
+fn next_local_player_fall_distance(previous: f64, vertical_movement: f64, on_ground: bool) -> f64 {
+    if on_ground {
+        return 0.0;
+    }
+    if vertical_movement < 0.0 {
+        previous + -vertical_movement
+    } else {
+        previous
+    }
 }
 
 fn local_player_horizontal_speed(world: &WorldStore, input: LocalPlayerInputState) -> f64 {
@@ -1211,6 +1235,115 @@ mod tests {
         );
         assert!(pose.on_ground);
         assert!(!pose.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_sneak_backs_off_from_near_ground_edge_while_falling() {
+        let mut world = single_floor_block_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 1.25),
+            fall_distance: 0.2,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(
+            pose.position.z <= 1.3005,
+            "position was {:?}",
+            pose.position
+        );
+        assert_f64_near(pose.position.y, 1.2, 0.0005);
+        assert!(!pose.on_ground);
+        assert!(pose.fall_distance < LOCAL_PLAYER_STEP_HEIGHT);
+    }
+
+    #[test]
+    fn local_player_sneak_edge_backoff_stops_after_step_height_fall_distance() {
+        let mut world = single_floor_block_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.3, 1.25),
+            fall_distance: LOCAL_PLAYER_STEP_HEIGHT,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
+            * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
+            * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 1.25 + expected_step, 0.000001);
+        assert_eq!(pose.fall_distance, LOCAL_PLAYER_STEP_HEIGHT);
+    }
+
+    #[test]
+    fn local_player_fall_distance_accumulates_downward_motion_and_resets_on_ground() {
+        let mut world = flat_collision_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 2.0, 0.5),
+            delta_movement: vec3(0.0, -0.1, 0.0),
+            fall_distance: 0.2,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let falling = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(falling.position.y, 1.9, 0.000001);
+        assert_f64_near(falling.fall_distance, 0.3, 0.000001);
+        assert!(!falling.on_ground);
+
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.05, 0.5),
+            delta_movement: vec3(0.0, -0.1, 0.0),
+            fall_distance: falling.fall_distance,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let landed = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(landed.position.y, 1.0, 0.0005);
+        assert!(landed.on_ground);
+        assert_f64_near(landed.fall_distance, 0.0, 0.000001);
     }
 
     #[test]

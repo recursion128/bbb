@@ -127,6 +127,8 @@ pub struct LocalPlayerPoseState {
     pub on_ground: bool,
     #[serde(default)]
     pub horizontal_collision: bool,
+    #[serde(default)]
+    pub fall_distance: f64,
     pub y_rot: f32,
     pub x_rot: f32,
     pub last_teleport_id: i32,
@@ -162,6 +164,7 @@ impl LocalPlayerPoseState {
             delta_movement: state.delta_movement,
             on_ground: false,
             horizontal_collision: false,
+            fall_distance: 0.0,
             y_rot: state.y_rot,
             x_rot: state.x_rot,
             last_teleport_id,
