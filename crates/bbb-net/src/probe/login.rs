@@ -42,6 +42,7 @@ impl ProbeContext {
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Configuration;
                 self.seen_code_of_conduct = false;
+                self.world.clear_client_level();
 
                 let (id, payload) =
                     packets::encode_configuration_brand_custom_payload("bbb-native");
@@ -65,8 +66,8 @@ mod tests {
     use bbb_protocol::{
         codec::Decoder,
         packets::{
-            ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
-            CookieRequest, GameProfile,
+            AddEntity, ClientChatVisibility, ClientInformation, ClientMainHand,
+            ClientParticleStatus, CookieRequest, GameProfile, Vec3d as ProtocolVec3d,
         },
     };
     use bbb_world::ChunkPos;
@@ -118,6 +119,24 @@ mod tests {
             allows_listing: true,
             particle_status: ClientParticleStatus::Decreased,
         };
+        probe.world.apply_add_entity(AddEntity {
+            id: 55,
+            uuid: uuid::Uuid::from_u128(55),
+            entity_type_id: 7,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        probe.world.set_local_using_item(true);
+        assert_eq!(probe.world.entity_count(), 1);
+        assert!(probe.world.local_player().interaction.using_item);
 
         probe
             .handle_login_packet(LoginClientbound::LoginFinished {
@@ -168,6 +187,8 @@ mod tests {
         assert!(decoder.is_empty());
         assert_eq!(probe.state, ConnectionState::Configuration);
         assert!(!probe.seen_code_of_conduct);
+        assert_eq!(probe.world.entity_count(), 0);
+        assert!(!probe.world.local_player().interaction.using_item);
     }
 
     #[tokio::test]
