@@ -627,20 +627,23 @@ When an agent does any of the following, update this file in the same slice:
           - material consumption
           - anvil damage side effects
       - BeaconMenu:
+        - primary/secondary effect button grid renders official button sprites
+          and mob-effect icons.
+        - effect buttons track vanilla disabled and selected states from beacon
+          level data plus local primary/secondary selection.
+        - effect clicks update local primary/secondary selection.
         - confirm/cancel buttons render official sprites.
         - cancel closes the active container.
-        - confirm queues `ServerboundSetBeaconPacket` from the current
-          server-provided primary/secondary effects when payment and primary
-          effect data make the vanilla button active, then closes the container.
+        - confirm queues `ServerboundSetBeaconPacket` from the current local
+          primary/secondary selection when payment and primary selection make
+          the vanilla button active, then closes the container.
         - quick-move paths are kept server-authoritative until:
           - beacon payment item tag routing
           - max-stack-one payment slot prediction
           - payment consumption from `SetBeacon`
         - deferred presentation parity work:
-          - primary/secondary effect button grid
-          - effect icons
-          - effect selected/highlighted/disabled button states
           - confirm/cancel hover state
+          - effect highlighted hover state
           - labels/tooltips
       - CraftingMenu:
         - non-result slots

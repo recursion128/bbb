@@ -157,6 +157,12 @@ pub enum HudInventoryBackgroundTexture {
     BeaconButton,
     BeaconConfirm,
     BeaconCancel,
+    BeaconEffectSpeed,
+    BeaconEffectHaste,
+    BeaconEffectResistance,
+    BeaconEffectJumpBoost,
+    BeaconEffectStrength,
+    BeaconEffectRegeneration,
     BrewingStand,
     BrewingStandFuelLength,
     BrewingStandBrewProgress,
@@ -733,6 +739,66 @@ impl Renderer {
 
     pub fn upload_hud_beacon_cancel(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
         self.hud_beacon_cancel = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_effect_speed(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_effect_speed = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_effect_haste(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_effect_haste = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_effect_resistance(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_effect_resistance = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_effect_jump_boost(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_effect_jump_boost = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_effect_strength(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_effect_strength = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_effect_regeneration(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_effect_regeneration = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -1701,6 +1767,24 @@ impl Renderer {
             HudInventoryBackgroundTexture::BeaconButton => self.hud_beacon_button.as_ref(),
             HudInventoryBackgroundTexture::BeaconConfirm => self.hud_beacon_confirm.as_ref(),
             HudInventoryBackgroundTexture::BeaconCancel => self.hud_beacon_cancel.as_ref(),
+            HudInventoryBackgroundTexture::BeaconEffectSpeed => {
+                self.hud_beacon_effect_speed.as_ref()
+            }
+            HudInventoryBackgroundTexture::BeaconEffectHaste => {
+                self.hud_beacon_effect_haste.as_ref()
+            }
+            HudInventoryBackgroundTexture::BeaconEffectResistance => {
+                self.hud_beacon_effect_resistance.as_ref()
+            }
+            HudInventoryBackgroundTexture::BeaconEffectJumpBoost => {
+                self.hud_beacon_effect_jump_boost.as_ref()
+            }
+            HudInventoryBackgroundTexture::BeaconEffectStrength => {
+                self.hud_beacon_effect_strength.as_ref()
+            }
+            HudInventoryBackgroundTexture::BeaconEffectRegeneration => {
+                self.hud_beacon_effect_regeneration.as_ref()
+            }
             HudInventoryBackgroundTexture::BrewingStand => {
                 self.hud_brewing_stand_background.as_ref()
             }

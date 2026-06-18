@@ -327,6 +327,42 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         beacon_cancel.height,
         &beacon_cancel.rgba,
     )?;
+    let beacon_effect_speed = hud_sprite(&sprites, "mob_effect/speed")?;
+    renderer.upload_hud_beacon_effect_speed(
+        beacon_effect_speed.width,
+        beacon_effect_speed.height,
+        &beacon_effect_speed.rgba,
+    )?;
+    let beacon_effect_haste = hud_sprite(&sprites, "mob_effect/haste")?;
+    renderer.upload_hud_beacon_effect_haste(
+        beacon_effect_haste.width,
+        beacon_effect_haste.height,
+        &beacon_effect_haste.rgba,
+    )?;
+    let beacon_effect_resistance = hud_sprite(&sprites, "mob_effect/resistance")?;
+    renderer.upload_hud_beacon_effect_resistance(
+        beacon_effect_resistance.width,
+        beacon_effect_resistance.height,
+        &beacon_effect_resistance.rgba,
+    )?;
+    let beacon_effect_jump_boost = hud_sprite(&sprites, "mob_effect/jump_boost")?;
+    renderer.upload_hud_beacon_effect_jump_boost(
+        beacon_effect_jump_boost.width,
+        beacon_effect_jump_boost.height,
+        &beacon_effect_jump_boost.rgba,
+    )?;
+    let beacon_effect_strength = hud_sprite(&sprites, "mob_effect/strength")?;
+    renderer.upload_hud_beacon_effect_strength(
+        beacon_effect_strength.width,
+        beacon_effect_strength.height,
+        &beacon_effect_strength.rgba,
+    )?;
+    let beacon_effect_regeneration = hud_sprite(&sprites, "mob_effect/regeneration")?;
+    renderer.upload_hud_beacon_effect_regeneration(
+        beacon_effect_regeneration.width,
+        beacon_effect_regeneration.height,
+        &beacon_effect_regeneration.rgba,
+    )?;
     let furnace = gui_texture(
         roots,
         "textures/gui/container/furnace.png",

@@ -36,8 +36,8 @@ pub(crate) use commands::{
 };
 pub(crate) use inventory::{
     handle_inventory_cursor_moved, handle_inventory_key_input, handle_inventory_mouse_input,
-    handle_inventory_mouse_wheel, inventory_screen_layout, sync_stonecutter_recipe_scroll_state,
-    InventoryScreenBackground,
+    handle_inventory_mouse_wheel, inventory_screen_layout, sync_beacon_effect_selection_state,
+    sync_stonecutter_recipe_scroll_state, InventoryScreenBackground,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -80,6 +80,10 @@ pub(crate) struct ClientInputState {
     stonecutter_recipe_scroll_row: i32,
     stonecutter_recipe_scroll_input_item_id: Option<i32>,
     stonecutter_recipe_scrolling: bool,
+    beacon_effect_selection_container_id: Option<i32>,
+    beacon_effect_selection_dirty: bool,
+    beacon_primary_effect: Option<i32>,
+    beacon_secondary_effect: Option<i32>,
     merchant_trade_scrolling: bool,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
@@ -184,6 +188,10 @@ impl ClientInputState {
 
     pub(crate) fn stonecutter_recipe_scroll_row(&self) -> i32 {
         self.stonecutter_recipe_scroll_row
+    }
+
+    pub(crate) fn beacon_effect_selection(&self) -> (Option<i32>, Option<i32>) {
+        (self.beacon_primary_effect, self.beacon_secondary_effect)
     }
 
     fn advance_creative_flight_jump_trigger(&mut self, dt_seconds: f64) {

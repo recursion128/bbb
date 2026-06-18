@@ -69,8 +69,28 @@ const ANVIL_SLOT_COUNT: i16 = 3;
 const BEACON_SCREEN_WIDTH: i32 = 230;
 const BEACON_SCREEN_HEIGHT: i32 = 219;
 const BEACON_SLOT_COUNT: i16 = 1;
+const BEACON_LEVELS_DATA_ID: i16 = 0;
 const BEACON_PRIMARY_EFFECT_DATA_ID: i16 = 1;
 const BEACON_SECONDARY_EFFECT_DATA_ID: i16 = 2;
+const BEACON_EFFECT_BUTTON_SIZE: i32 = 22;
+const BEACON_EFFECT_BUTTON_SPACING: i32 = 24;
+const BEACON_PRIMARY_EFFECT_CENTER_X: i32 = 76;
+const BEACON_PRIMARY_EFFECT_Y: i32 = 22;
+const BEACON_PRIMARY_EFFECT_ROW_SPACING: i32 = 25;
+const BEACON_SECONDARY_EFFECT_CENTER_X: i32 = 167;
+const BEACON_SECONDARY_EFFECT_Y: i32 = 47;
+const BEACON_EFFECT_SPEED_ID: i32 = 0;
+const BEACON_EFFECT_HASTE_ID: i32 = 2;
+const BEACON_EFFECT_STRENGTH_ID: i32 = 4;
+const BEACON_EFFECT_JUMP_BOOST_ID: i32 = 7;
+const BEACON_EFFECT_REGENERATION_ID: i32 = 9;
+const BEACON_EFFECT_RESISTANCE_ID: i32 = 10;
+const BEACON_PRIMARY_EFFECT_ROWS: [&[i32]; 3] = [
+    &[BEACON_EFFECT_SPEED_ID, BEACON_EFFECT_HASTE_ID],
+    &[BEACON_EFFECT_RESISTANCE_ID, BEACON_EFFECT_JUMP_BOOST_ID],
+    &[BEACON_EFFECT_STRENGTH_ID],
+];
+const BEACON_SECONDARY_EFFECTS: &[i32] = &[BEACON_EFFECT_REGENERATION_ID];
 const BEACON_CONFIRM_BUTTON_X: i32 = 164;
 const BEACON_CANCEL_BUTTON_X: i32 = 190;
 const BEACON_ACTION_BUTTON_Y: i32 = 107;
@@ -227,6 +247,16 @@ enum LecternClickTarget {
 enum BeaconClickTarget {
     Confirm,
     Cancel,
+    Effect { primary: bool, effect_id: i32 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct BeaconEffectButton {
+    primary: bool,
+    tier: i16,
+    effect_id: i32,
+    x: i32,
+    y: i32,
 }
 
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
@@ -1217,6 +1247,7 @@ pub(crate) fn handle_inventory_mouse_input(
     }
     if button_num == 0
         && maybe_queue_beacon_button_click(
+            input,
             world,
             counters,
             net_commands,
@@ -1382,23 +1413,35 @@ fn maybe_queue_lectern_button_click(
 }
 
 fn maybe_queue_beacon_button_click(
+    input: &mut ClientInputState,
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    let Some(target) = beacon_button_at_position(world, cursor_position, surface_size) else {
+    sync_beacon_effect_selection(input, world);
+    let Some(target) = beacon_button_at_position(input, world, cursor_position, surface_size)
+    else {
         return false;
     };
     match target {
         BeaconClickTarget::Cancel => queue_container_close_command(counters, world, net_commands),
         BeaconClickTarget::Confirm => {
-            let Some(command) = beacon_set_command(world) else {
+            let Some(command) = beacon_set_command(input, world) else {
                 return false;
             };
             queue_set_beacon_command(counters, net_commands, command);
             queue_container_close_command(counters, world, net_commands)
+        }
+        BeaconClickTarget::Effect { primary, effect_id } => {
+            if primary {
+                input.beacon_primary_effect = Some(effect_id);
+            } else {
+                input.beacon_secondary_effect = Some(effect_id);
+            }
+            input.beacon_effect_selection_dirty = true;
+            true
         }
     }
 }
@@ -2174,6 +2217,7 @@ fn lectern_button_at_position(
 }
 
 fn beacon_button_at_position(
+    input: &ClientInputState,
     world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
@@ -2186,22 +2230,87 @@ fn beacon_button_at_position(
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
     let x = cursor.x - origin_x;
     let y = cursor.y - origin_y;
-    if y < f64::from(BEACON_ACTION_BUTTON_Y)
-        || y >= f64::from(BEACON_ACTION_BUTTON_Y + BEACON_ACTION_BUTTON_SIZE)
+
+    if y >= f64::from(BEACON_ACTION_BUTTON_Y)
+        && y < f64::from(BEACON_ACTION_BUTTON_Y + BEACON_ACTION_BUTTON_SIZE)
     {
+        if x >= f64::from(BEACON_CONFIRM_BUTTON_X)
+            && x < f64::from(BEACON_CONFIRM_BUTTON_X + BEACON_ACTION_BUTTON_SIZE)
+        {
+            return Some(BeaconClickTarget::Confirm);
+        }
+        if x >= f64::from(BEACON_CANCEL_BUTTON_X)
+            && x < f64::from(BEACON_CANCEL_BUTTON_X + BEACON_ACTION_BUTTON_SIZE)
+        {
+            return Some(BeaconClickTarget::Cancel);
+        }
         return None;
     }
-    if x >= f64::from(BEACON_CONFIRM_BUTTON_X)
-        && x < f64::from(BEACON_CONFIRM_BUTTON_X + BEACON_ACTION_BUTTON_SIZE)
-    {
-        return Some(BeaconClickTarget::Confirm);
-    }
-    if x >= f64::from(BEACON_CANCEL_BUTTON_X)
-        && x < f64::from(BEACON_CANCEL_BUTTON_X + BEACON_ACTION_BUTTON_SIZE)
-    {
-        return Some(BeaconClickTarget::Cancel);
+
+    let levels = beacon_levels(world);
+    for button in beacon_effect_buttons(input) {
+        if button.tier >= levels {
+            continue;
+        }
+        if x >= f64::from(button.x)
+            && x < f64::from(button.x + BEACON_EFFECT_BUTTON_SIZE)
+            && y >= f64::from(button.y)
+            && y < f64::from(button.y + BEACON_EFFECT_BUTTON_SIZE)
+        {
+            return Some(BeaconClickTarget::Effect {
+                primary: button.primary,
+                effect_id: button.effect_id,
+            });
+        }
     }
     None
+}
+
+fn beacon_effect_buttons(input: &ClientInputState) -> Vec<BeaconEffectButton> {
+    let mut buttons = Vec::with_capacity(7);
+    for (tier, effects) in BEACON_PRIMARY_EFFECT_ROWS.iter().enumerate() {
+        let total_width =
+            effects.len() as i32 * BEACON_EFFECT_BUTTON_SIZE + (effects.len() as i32 - 1) * 2;
+        for (column, effect_id) in effects.iter().enumerate() {
+            buttons.push(BeaconEffectButton {
+                primary: true,
+                tier: i16::try_from(tier).unwrap_or_default(),
+                effect_id: *effect_id,
+                x: BEACON_PRIMARY_EFFECT_CENTER_X
+                    + i32::try_from(column).unwrap_or_default() * BEACON_EFFECT_BUTTON_SPACING
+                    - total_width / 2,
+                y: BEACON_PRIMARY_EFFECT_Y
+                    + i32::try_from(tier).unwrap_or_default() * BEACON_PRIMARY_EFFECT_ROW_SPACING,
+            });
+        }
+    }
+
+    let count = BEACON_SECONDARY_EFFECTS.len() as i32 + 1;
+    let total_width = count * BEACON_EFFECT_BUTTON_SIZE + (count - 1) * 2;
+    for (column, effect_id) in BEACON_SECONDARY_EFFECTS.iter().enumerate() {
+        buttons.push(BeaconEffectButton {
+            primary: false,
+            tier: 3,
+            effect_id: *effect_id,
+            x: BEACON_SECONDARY_EFFECT_CENTER_X
+                + i32::try_from(column).unwrap_or_default() * BEACON_EFFECT_BUTTON_SPACING
+                - total_width / 2,
+            y: BEACON_SECONDARY_EFFECT_Y,
+        });
+    }
+    if let Some(effect_id) = input.beacon_primary_effect {
+        buttons.push(BeaconEffectButton {
+            primary: false,
+            tier: 3,
+            effect_id,
+            x: BEACON_SECONDARY_EFFECT_CENTER_X
+                + i32::try_from(BEACON_SECONDARY_EFFECTS.len()).unwrap_or_default()
+                    * BEACON_EFFECT_BUTTON_SPACING
+                - total_width / 2,
+            y: BEACON_SECONDARY_EFFECT_Y,
+        });
+    }
+    buttons
 }
 
 fn stonecutter_recipe_button_at_position(
@@ -2344,6 +2453,10 @@ pub(crate) fn sync_stonecutter_recipe_scroll_state(
     sync_stonecutter_recipe_scroll(input, world);
 }
 
+pub(crate) fn sync_beacon_effect_selection_state(input: &mut ClientInputState, world: &WorldStore) {
+    sync_beacon_effect_selection(input, world);
+}
+
 fn stonecutter_input_item_id(world: &WorldStore) -> Option<i32> {
     let container = world.inventory().open_container.as_ref()?;
     if container.menu_type_id != Some(STONECUTTER_MENU_TYPE_ID) {
@@ -2356,15 +2469,48 @@ fn stonecutter_input_item_id(world: &WorldStore) -> Option<i32> {
         .and_then(|slot| slot.item.item_id)
 }
 
-fn beacon_set_command(world: &WorldStore) -> Option<SetBeacon> {
+fn sync_beacon_effect_selection(input: &mut ClientInputState, world: &WorldStore) {
+    let Some(container) = world.inventory().open_container.as_ref() else {
+        input.beacon_effect_selection_container_id = None;
+        input.beacon_effect_selection_dirty = false;
+        input.beacon_primary_effect = None;
+        input.beacon_secondary_effect = None;
+        return;
+    };
+    if container.menu_type_id != Some(BEACON_MENU_TYPE_ID) {
+        input.beacon_effect_selection_container_id = None;
+        input.beacon_effect_selection_dirty = false;
+        input.beacon_primary_effect = None;
+        input.beacon_secondary_effect = None;
+        return;
+    }
+
+    if input.beacon_effect_selection_container_id != Some(container.container_id) {
+        input.beacon_effect_selection_container_id = Some(container.container_id);
+        input.beacon_effect_selection_dirty = false;
+    }
+    if !input.beacon_effect_selection_dirty {
+        input.beacon_primary_effect = beacon_data_effect_id(world, BEACON_PRIMARY_EFFECT_DATA_ID);
+        input.beacon_secondary_effect =
+            beacon_data_effect_id(world, BEACON_SECONDARY_EFFECT_DATA_ID);
+    }
+}
+
+fn beacon_set_command(input: &ClientInputState, world: &WorldStore) -> Option<SetBeacon> {
     if !inventory_slot_has_item(world, 0) {
         return None;
     }
-    let primary_effect = beacon_data_effect_id(world, BEACON_PRIMARY_EFFECT_DATA_ID)?;
+    let primary_effect = input.beacon_primary_effect?;
     Some(SetBeacon {
         primary_effect: Some(primary_effect),
-        secondary_effect: beacon_data_effect_id(world, BEACON_SECONDARY_EFFECT_DATA_ID),
+        secondary_effect: input.beacon_secondary_effect,
     })
+}
+
+fn beacon_levels(world: &WorldStore) -> i16 {
+    world
+        .open_container_data_value(BEACON_LEVELS_DATA_ID)
+        .unwrap_or_default()
 }
 
 fn beacon_data_effect_id(world: &WorldStore, data_id: i16) -> Option<i32> {
@@ -3945,12 +4091,19 @@ mod tests {
     #[test]
     fn beacon_hit_test_uses_vanilla_slots() {
         let size = PhysicalSize::new(1280, 720);
+        let mut input = ClientInputState::new(true);
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
             container_id: 7,
             menu_type_id: BEACON_MENU_TYPE_ID,
             title: "Beacon".to_string(),
         });
+        world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: BEACON_LEVELS_DATA_ID,
+            value: 4,
+        });
+        sync_beacon_effect_selection(&mut input, &world);
 
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(669.0, 369.0)), size),
@@ -3965,11 +4118,54 @@ mod tests {
             Some(InventoryClickTarget::Slot(36))
         );
         assert_eq!(
-            beacon_button_at_position(&world, Some(PhysicalPosition::new(700.0, 369.0)), size),
+            beacon_button_at_position(
+                &input,
+                &world,
+                Some(PhysicalPosition::new(590.0, 283.0)),
+                size
+            ),
+            Some(BeaconClickTarget::Effect {
+                primary: true,
+                effect_id: BEACON_EFFECT_SPEED_ID,
+            })
+        );
+        assert_eq!(
+            beacon_button_at_position(
+                &input,
+                &world,
+                Some(PhysicalPosition::new(680.0, 308.0)),
+                size
+            ),
+            Some(BeaconClickTarget::Effect {
+                primary: false,
+                effect_id: BEACON_EFFECT_REGENERATION_ID,
+            })
+        );
+        assert_eq!(
+            beacon_button_at_position(
+                &input,
+                &world,
+                Some(PhysicalPosition::new(704.0, 308.0)),
+                size
+            ),
+            None
+        );
+        assert_eq!(
+            beacon_button_at_position(
+                &input,
+                &world,
+                Some(PhysicalPosition::new(700.0, 369.0)),
+                size
+            ),
             Some(BeaconClickTarget::Confirm)
         );
         assert_eq!(
-            beacon_button_at_position(&world, Some(PhysicalPosition::new(726.0, 369.0)), size),
+            beacon_button_at_position(
+                &input,
+                &world,
+                Some(PhysicalPosition::new(726.0, 369.0)),
+                size
+            ),
             Some(BeaconClickTarget::Cancel)
         );
     }
@@ -5028,6 +5224,143 @@ mod tests {
             NetCommand::ContainerClose(ContainerCloseRequest { container_id: 7 })
         );
         assert!(world.inventory().open_container.is_none());
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn beacon_effect_clicks_update_local_selection_and_confirm_submits_it() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: BEACON_MENU_TYPE_ID,
+            title: "Beacon".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 37];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: BEACON_LEVELS_DATA_ID,
+            value: 4,
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(600.0, 333.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert_eq!(input.beacon_effect_selection(), (Some(4), None));
+        assert_eq!(counters.set_beacon_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(704.0, 308.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert_eq!(input.beacon_effect_selection(), (Some(4), Some(4)));
+        assert_eq!(counters.set_beacon_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(700.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.set_beacon_commands_queued, 1);
+        assert_eq!(counters.container_close_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetBeacon(SetBeacon {
+                primary_effect: Some(BEACON_EFFECT_STRENGTH_ID),
+                secondary_effect: Some(BEACON_EFFECT_STRENGTH_ID),
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClose(ContainerCloseRequest { container_id: 7 })
+        );
+        assert!(world.inventory().open_container.is_none());
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn beacon_effect_click_ignores_power_buttons_above_current_level() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: BEACON_MENU_TYPE_ID,
+            title: "Beacon".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 37];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: BEACON_LEVELS_DATA_ID,
+            value: 1,
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(600.0, 333.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert_eq!(input.beacon_effect_selection(), (None, None));
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(700.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.set_beacon_commands_queued, 0);
+        assert_eq!(counters.container_close_commands_queued, 0);
+        assert!(world.inventory().open_container.is_some());
         assert!(rx.try_recv().is_err());
     }
 
