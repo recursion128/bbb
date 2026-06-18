@@ -74,7 +74,8 @@ The script defaults to `CARGO_TARGET_DIR=/tmp/bbb-target-main`. Set
 An explicit `CARGO_TARGET_DIR` still wins.
 
 `scripts/cargo-dev.sh gate` runs the same merge gate commands documented in
-this file; it is a convenience wrapper, not a weaker test path.
+this file and always uses `/tmp/bbb-target-main`; it is a convenience wrapper,
+not a weaker test path.
 
 `scripts/cargo-dev.sh timings-clean <target-suffix>` uses
 `/tmp/bbb-target-<target-suffix>` and refuses to run if that target already

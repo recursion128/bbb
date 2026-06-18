@@ -121,6 +121,7 @@ case "$cmd" in
     exec /usr/bin/time -p cargo test "$@"
     ;;
   gate)
+    export CARGO_TARGET_DIR=/tmp/bbb-target-main
     cargo fmt --check
     git diff --check
     cargo test --workspace
