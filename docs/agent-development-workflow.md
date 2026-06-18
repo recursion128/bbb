@@ -122,6 +122,9 @@ A slice is ready to commit only when:
 
 ## Cargo Workflow
 
+See `docs/cargo-build-performance.md` for the current timing baseline,
+external target policy, and optional `sccache` workflow.
+
 Use cached external target directories for daily work:
 
 ```sh
@@ -129,6 +132,10 @@ CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
 CARGO_TARGET_DIR=/tmp/bbb-target-world cargo test -p bbb-world <filter>
 CARGO_TARGET_DIR=/tmp/bbb-target-net cargo test -p bbb-net <filter>
 ```
+
+Do not run parallel Cargo commands against the same `CARGO_TARGET_DIR`. Assign
+each worker a stable per-domain target directory so package and build locks do
+not serialize the work.
 
 Focused tests may use the opt-in `fast-test` profile when the goal is quick
 iteration and not final validation:
