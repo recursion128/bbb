@@ -337,3 +337,35 @@ Measured commands:
 The current data supports keeping stable external target caches for daily work.
 Do not add a repo-local mandatory `rustc-wrapper` until `sccache` is installed
 and measured against clean and warm focused workloads.
+
+## Warm Update: 2026-06-19 After Cartography Slice
+
+Environment:
+
+- `sccache` is still not installed on `PATH`.
+- Stable target caches found:
+  - `/tmp/bbb-target-main`: 11G.
+  - `/tmp/bbb-target-net`: 726M.
+- No clean target was created for this update. The slice did not change Cargo
+  profiles, dependencies, or cache policy.
+
+Measured commands:
+
+- Warm focused default:
+  `scripts/cargo-dev.sh test -p bbb-native cartography`
+  - Cargo compile: 0.09s.
+  - Wall time: 0.20s.
+  - Result: 6 tests passed.
+- Warm full workspace:
+  `scripts/cargo-dev.sh timings --workspace --timings`
+  - Cargo compile: 0.28s.
+  - Wall time: 3.20s.
+  - Target size: 11G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260618T203631338Z-14ffed61c5c1036c.html`
+
+The cartography merge gate rebuilt changed workspace crates before this warm
+update. That gate compiled in 38.85s and passed, which is expected for a warm
+incremental run after protocol and native runtime edits rather than a clean
+baseline.
