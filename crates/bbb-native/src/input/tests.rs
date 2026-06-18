@@ -9,7 +9,8 @@ use bbb_protocol::packets::{
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
     OpenScreen as ProtocolOpenScreen, OpenSignEditor, PaddleBoat, PlayLogin, PlayerAbilities,
     PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth, RenameItem,
-    SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData, SetPassengers,
+    SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
+    SetEntityData as ProtocolSetEntityData, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, SignUpdate, SignedMessageBody,
     Vec3d as ProtocolVec3d,
 };
@@ -1662,6 +1663,50 @@ fn server_opened_container_hovered_number_and_offhand_keys_queue_swap_clicks() {
 }
 
 #[test]
+fn server_opened_bundle_slot_swap_key_clears_selection_before_click() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.inventory_hovered_slot = Some(0);
+    let mut counters = NetCounters::default();
+    let mut world = generic_9x1_container_world(7, 12, Some((0, test_bundle_stack(42, 1, 3))));
+    assert!(world.apply_local_select_bundle_item(0, 1));
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit5),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.select_bundle_item_commands_queued, 1);
+    assert_eq!(counters.container_click_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SelectBundleItem(SelectBundleItem {
+            slot_id: 0,
+            selected_item_index: -1,
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClick(ContainerClick {
+            container_id: 7,
+            state_id: 12,
+            slot_num: 0,
+            button_num: 4,
+            input: ContainerInput::Swap,
+            changed_slots: [].into(),
+            carried_item: HashedStack::Empty,
+        })
+    );
+    assert_eq!(open_container_slot_bundle_selection(&world, 0), Some(-1));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn server_opened_container_swap_key_with_carried_item_is_consumed_without_packet() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
@@ -3149,6 +3194,16 @@ fn test_item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
     }
 }
 
+fn test_bundle_stack(
+    item_id: i32,
+    count: i32,
+    bundle_contents_item_count: usize,
+) -> ProtocolItemStackSummary {
+    let mut stack = test_item_stack(item_id, count);
+    stack.component_patch.bundle_contents_item_count = Some(bundle_contents_item_count);
+    stack
+}
+
 fn test_hashed_item_stack(item_id: i32, count: i32) -> HashedStack {
     HashedStack::Item(HashedItemStack {
         item_id,
@@ -3179,6 +3234,17 @@ fn generic_9x1_container_world(
         carried_item: ProtocolItemStackSummary::empty(),
     });
     world
+}
+
+fn open_container_slot_bundle_selection(world: &WorldStore, slot: i16) -> Option<i32> {
+    world
+        .inventory()
+        .open_container
+        .as_ref()?
+        .slots
+        .iter()
+        .find(|state| state.slot == slot)
+        .map(|state| state.local_selected_bundle_item_index)
 }
 
 fn anvil_container_world(

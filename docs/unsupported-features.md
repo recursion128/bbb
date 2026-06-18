@@ -278,6 +278,8 @@ When an agent does any of the following, update this file in the same slice:
   - Control pumping and native bundle mouse helpers:
     - update canonical state
     - queue `ServerboundSelectBundleItemPacket`
+    - clear selected bundle items before `QUICK_MOVE` and `SWAP`
+      container clicks
   - The GUI item icon runtime:
     - evaluates `minecraft:bundle/has_selected_item`
     - resolves `minecraft:bundle/selected_item` from the selected template
@@ -531,6 +533,8 @@ When an agent does any of the following, update this file in the same slice:
       - updates cursor/slot state
       - fills `ServerboundContainerClickPacket(0)` changed-slot hashes
       - supports bundle wheel selection on hovered local inventory slots
+      - clears selected bundle items before local and server-opened
+        `QUICK_MOVE` / `SWAP` container clicks
     - It renders and hit-tests supported server-opened screens:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices

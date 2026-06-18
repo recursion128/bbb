@@ -16,7 +16,9 @@ use winit::{
 };
 
 use super::{
-    bundle::{handle_bundle_slot_hover_end, handle_bundle_slot_mouse_scroll},
+    bundle::{
+        handle_bundle_slot_click, handle_bundle_slot_hover_end, handle_bundle_slot_mouse_scroll,
+    },
     commands::{
         hotbar_slot_for_key, queue_container_button_click_command, queue_container_click_command,
         queue_container_close_command, queue_container_slot_state_changed_command,
@@ -1764,6 +1766,13 @@ fn local_inventory_apply_and_queue_click(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     request: ContainerClickSlotRequest,
 ) -> bool {
+    handle_bundle_slot_click(
+        world,
+        counters,
+        net_commands,
+        i32::from(request.slot_num),
+        request.input,
+    );
     let click = if world.local_inventory_is_open()
         || matches!(
             request.input,
@@ -6849,7 +6858,7 @@ mod tests {
 
     #[test]
     fn non_local_quick_move_with_unhashable_prediction_falls_back_to_server_click() {
-        let (tx, mut rx) = mpsc::channel(1);
+        let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.shift_left_down = true;
@@ -6880,7 +6889,15 @@ mod tests {
             PhysicalSize::new(1280, 720),
         ));
 
+        assert_eq!(counters.select_bundle_item_commands_queued, 1);
         assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectBundleItem(SelectBundleItem {
+                slot_id: 1,
+                selected_item_index: -1,
+            })
+        );
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::ContainerClick(ContainerClick {
@@ -8173,6 +8190,63 @@ mod tests {
     }
 
     #[test]
+    fn shift_server_opened_bundle_slot_click_clears_selection_before_quick_move() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: GENERIC_CONTAINER_FIRST_MENU_TYPE_ID,
+            title: "Chest".to_string(),
+        });
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bundle_stack(42, 1, 3)],
+            carried_item: ItemStackSummary::empty(),
+        });
+        assert!(world.apply_local_select_bundle_item(0, 1));
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(568.0, 320.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.select_bundle_item_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectBundleItem(SelectBundleItem {
+                slot_id: 0,
+                selected_item_index: -1,
+            })
+        );
+        match rx.try_recv().unwrap() {
+            NetCommand::ContainerClick(click) => {
+                assert_eq!(click.container_id, 7);
+                assert_eq!(click.state_id, 12);
+                assert_eq!(click.slot_num, 0);
+                assert_eq!(click.button_num, 0);
+                assert_eq!(click.input, ContainerInput::QuickMove);
+                assert_eq!(click.changed_slots, [].into());
+                assert_eq!(click.carried_item, HashedStack::Empty);
+            }
+            command => panic!("expected container click command, got {command:?}"),
+        }
+        assert_eq!(open_container_slot_bundle_selection(&world, 0), Some(-1));
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn shift_inventory_outside_click_queues_pickup_not_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -8432,5 +8506,16 @@ mod tests {
             .find(|state| state.slot == slot)
             .map(|state| state.item.clone())
             .unwrap_or_else(ItemStackSummary::empty)
+    }
+
+    fn open_container_slot_bundle_selection(world: &WorldStore, slot: i16) -> Option<i32> {
+        world
+            .inventory()
+            .open_container
+            .as_ref()?
+            .slots
+            .iter()
+            .find(|state| state.slot == slot)
+            .map(|state| state.local_selected_bundle_item_index)
     }
 }
