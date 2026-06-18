@@ -96,6 +96,7 @@ When an agent does any of the following, update this file in the same slice:
     - advancement update/select-tab state
     - recipe book add/remove/settings updates
     - recipe access `UpdateRecipes` property-set and stonecutter updates
+    - world border initialize/center/size/warning updates
   - The final criterion:
     - every supported decoded packet stays aligned
 

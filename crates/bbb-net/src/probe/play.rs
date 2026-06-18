@@ -515,24 +515,26 @@ mod tests {
         DialogHolder, Difficulty, DisguisedChat, EntityAnchor, EntityAnimation, Explosion,
         FilterMask, FilterMaskKind, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
         GameRuleValues, GameTestHighlightPos, GameType, HurtAnimation, IngredientSummary,
-        InteractionHand, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent,
-        LevelParticles, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
-        MessageSignature, MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook,
-        OpenSignEditor, PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin,
-        PlayTime, PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction,
-        PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt,
-        PlayerPositionUpdate, PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters,
-        PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
-        RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
-        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType,
-        ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, RotateHead,
-        ScoreboardDisplaySlot, SelectAdvancementsTab, ServerData, ServerLinkEntry,
-        ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera, SetDefaultSpawnPosition,
-        SetDisplayObjective, SetEntityMotion, SetHeldSlot, SetObjective, SetObjectiveMethod,
-        SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore, SetSimulationDistance,
-        ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
-        SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
-        StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus,
+        InitializeBorder, InteractionHand, LevelChunkBlockEntity, LevelChunkData,
+        LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdateData, MapColorPatch,
+        MapDecoration, MapItemData, MessageSignature, MountScreenOpen, MoveVehicle,
+        ObjectiveRenderType, OpenBook, OpenSignEditor, PackedMessageSignature, ParticlePayload,
+        PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerExperience,
+        PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove,
+        PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate,
+        PlayerTeamMethod, PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd,
+        RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
+        RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
+        RecipePropertySetSummary, RemoteDebugSampleType, ResetScore, ResourcePackPop,
+        ResourcePackPush, ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot,
+        SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
+        ServerLinks, SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
+        SetBorderWarningDistance, SetCamera, SetDefaultSpawnPosition, SetDisplayObjective,
+        SetEntityMotion, SetHeldSlot, SetObjective, SetObjectiveMethod, SetObjectiveParameters,
+        SetPassengers, SetPlayerTeam, SetScore, SetSimulationDistance, ShowDialog,
+        SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder,
+        SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound, StoreCookie,
+        TabList, TagQuery, TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus,
         TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
         UpdateAdvancements, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
         WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
@@ -2358,6 +2360,96 @@ mod tests {
         assert_eq!(report.world_counters.game_event_packets, 5);
         assert_eq!(report.world_counters.ticking_state_packets, 1);
         assert_eq!(report.world_counters.ticking_step_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_world_border_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::InitializeBorder(InitializeBorder {
+                new_center_x: 1.0,
+                new_center_z: 2.0,
+                old_size: 100.0,
+                new_size: 200.0,
+                lerp_time: 30,
+                new_absolute_max_size: 500,
+                warning_blocks: 6,
+                warning_time: 7,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetBorderCenter(SetBorderCenter {
+                new_center_x: 3.0,
+                new_center_z: 4.0,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetBorderLerpSize(SetBorderLerpSize {
+                old_size: 200.0,
+                new_size: 300.0,
+                lerp_time: 50,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetBorderSize(SetBorderSize {
+                size: 250.0,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetBorderWarningDelay(
+                SetBorderWarningDelay { warning_delay: 9 },
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetBorderWarningDistance(
+                SetBorderWarningDistance { warning_blocks: 8 },
+            ))
+            .await
+            .unwrap();
+
+        let report = probe.finish(7, ChunkPos { x: 0, z: 0 });
+        let border = report.world.world_border();
+
+        assert_eq!(border.center_x, 3.0);
+        assert_eq!(border.center_z, 4.0);
+        assert_eq!(border.size, 250.0);
+        assert_eq!(border.lerp_target, 250.0);
+        assert_eq!(border.lerp_time, 0);
+        assert_eq!(border.absolute_max_size, 500);
+        assert_eq!(border.warning_blocks, 8);
+        assert_eq!(border.warning_time, 9);
+
+        assert_eq!(report.world_counters.world_border_initializes_received, 1);
+        assert_eq!(
+            report.world_counters.world_border_center_updates_received,
+            1
+        );
+        assert_eq!(
+            report
+                .world_counters
+                .world_border_lerp_size_updates_received,
+            1
+        );
+        assert_eq!(report.world_counters.world_border_size_updates_received, 1);
+        assert_eq!(
+            report
+                .world_counters
+                .world_border_warning_delay_updates_received,
+            1
+        );
+        assert_eq!(
+            report
+                .world_counters
+                .world_border_warning_distance_updates_received,
+            1
+        );
     }
 
     #[tokio::test]
