@@ -314,6 +314,7 @@ When an agent does any of the following, update this file in the same slice:
         - `generic_3x3`
         - furnace/blast furnace/smoker
         - crafting table
+        - grindstone
         - hopper
         - shulker box
         - stonecutter
@@ -455,6 +456,8 @@ When an agent does any of the following, update this file in the same slice:
       - CraftingMenu screens with official `crafting_table.png`
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with official
         furnace-family backgrounds
+      - GrindstoneMenu screens with official `grindstone.png` background and
+        `container/grindstone/error` overlay sprite
       - HopperMenu screens with official `hopper.png`
       - ShulkerBoxMenu screens with official `shulker_box.png`
       - StonecutterMenu screens with official `stonecutter.png`
@@ -473,6 +476,10 @@ When an agent does any of the following, update this file in the same slice:
       - CraftingMenu non-result slots, with result-slot clicks kept
         server-authoritative until recipe recomputation and remainders are
         locally modeled
+      - GrindstoneMenu player inventory/hotbar range movement when both input
+        slots are occupied; input/result-side paths are kept
+        server-authoritative until component-hashable grindstone item
+        prediction is modeled
       - hopper
       - shulker box
       - StonecutterMenu non-result slots, including:

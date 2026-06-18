@@ -124,6 +124,8 @@ pub enum HudInventoryBackgroundTexture {
     Smoker,
     SmokerLitProgress,
     SmokerBurnProgress,
+    Grindstone,
+    GrindstoneError,
     Hopper,
     ShulkerBox,
     Stonecutter,
@@ -344,6 +346,26 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_smoker_burn_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_grindstone_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_grindstone_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_grindstone_error(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_grindstone_error = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -848,6 +870,8 @@ impl Renderer {
             HudInventoryBackgroundTexture::SmokerBurnProgress => {
                 self.hud_smoker_burn_progress.as_ref()
             }
+            HudInventoryBackgroundTexture::Grindstone => self.hud_grindstone_background.as_ref(),
+            HudInventoryBackgroundTexture::GrindstoneError => self.hud_grindstone_error.as_ref(),
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
             HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
             HudInventoryBackgroundTexture::Stonecutter => self.hud_stonecutter_background.as_ref(),

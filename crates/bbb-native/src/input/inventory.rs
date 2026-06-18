@@ -28,6 +28,7 @@ const GENERIC_3X3_MENU_TYPE_ID: i32 = 6;
 const BLAST_FURNACE_MENU_TYPE_ID: i32 = 10;
 const CRAFTING_MENU_TYPE_ID: i32 = 12;
 const FURNACE_MENU_TYPE_ID: i32 = 14;
+const GRINDSTONE_MENU_TYPE_ID: i32 = 15;
 const HOPPER_MENU_TYPE_ID: i32 = 16;
 const SHULKER_BOX_MENU_TYPE_ID: i32 = 20;
 const SMOKER_MENU_TYPE_ID: i32 = 22;
@@ -45,6 +46,9 @@ const CRAFTING_SLOT_COUNT: i16 = 10;
 const FURNACE_SCREEN_WIDTH: i32 = 176;
 const FURNACE_SCREEN_HEIGHT: i32 = 166;
 const FURNACE_SLOT_COUNT: i16 = 3;
+const GRINDSTONE_SCREEN_WIDTH: i32 = 176;
+const GRINDSTONE_SCREEN_HEIGHT: i32 = 166;
+const GRINDSTONE_SLOT_COUNT: i16 = 3;
 const HOPPER_SCREEN_WIDTH: i32 = 176;
 const HOPPER_SCREEN_HEIGHT: i32 = 133;
 const HOPPER_SLOT_COUNT: i16 = 5;
@@ -66,6 +70,7 @@ pub(crate) enum InventoryScreenBackground {
     BlastFurnace,
     CraftingTable,
     Furnace,
+    Grindstone,
     Hopper,
     ShulkerBox,
     Smoker,
@@ -183,6 +188,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: FURNACE_SCREEN_HEIGHT,
             background,
             slots: furnace_slot_layouts(),
+        });
+    }
+    if menu_type_id == GRINDSTONE_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: GRINDSTONE_SCREEN_WIDTH,
+            height: GRINDSTONE_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Grindstone,
+            slots: grindstone_slot_layouts(),
         });
     }
     if menu_type_id == HOPPER_MENU_TYPE_ID {
@@ -388,6 +401,43 @@ fn furnace_slot_layouts() -> Vec<InventorySlotLayout> {
     for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
         slots.push(InventorySlotLayout {
             slot_id: FURNACE_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
+        });
+    }
+
+    slots
+}
+
+fn grindstone_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(GRINDSTONE_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 49,
+        y: 19,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 49,
+        y: 40,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 2,
+        x: 129,
+        y: 34,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: GRINDSTONE_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: GRINDSTONE_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 142,
         });
@@ -1292,6 +1342,63 @@ mod tests {
     }
 
     #[test]
+    fn grindstone_layout_matches_vanilla_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: GRINDSTONE_MENU_TYPE_ID,
+            title: "Grindstone".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(layout.background, InventoryScreenBackground::Grindstone);
+        assert_eq!(layout.slots.len(), 39);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 49,
+                y: 19,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 49,
+                y: 40,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 129,
+                y: 34,
+            }
+        );
+        assert_eq!(
+            layout.slots[3],
+            InventorySlotLayout {
+                slot_id: 3,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[38],
+            InventorySlotLayout {
+                slot_id: 38,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn hopper_layout_matches_vanilla_hopper_menu() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -1538,6 +1645,34 @@ mod tests {
         );
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(676.0, 320.0)), size),
+            Some(InventoryClickTarget::Slot(2))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(38))
+        );
+    }
+
+    #[test]
+    fn grindstone_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: GRINDSTONE_MENU_TYPE_ID,
+            title: "Grindstone".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(609.0, 304.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(609.0, 325.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(689.0, 319.0)), size),
             Some(InventoryClickTarget::Slot(2))
         );
         assert_eq!(
@@ -2005,6 +2140,167 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, item_stack(90, 1));
         assert_eq!(slots[1].item, item_stack(42, 1));
+    }
+
+    #[test]
+    fn grindstone_shift_click_player_to_input_queues_server_authoritative_click() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: GRINDSTONE_MENU_TYPE_ID,
+            title: "Grindstone".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[3] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(568.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 3,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: BTreeMap::new(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[3].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn grindstone_shift_click_player_range_queues_predicted_quick_move_when_inputs_full() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: GRINDSTONE_MENU_TYPE_ID,
+            title: "Grindstone".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[0] = item_stack(10, 1);
+        items[1] = item_stack(11, 1);
+        items[3] = item_stack(42, 3);
+        items[30] = item_stack(43, 4);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(568.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 13,
+                slot_num: 3,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (3, HashedStack::Empty),
+                    (31, HashedStack::Item(hashed_item(42, 3))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[3].item, ItemStackSummary::empty());
+        assert_eq!(slots[31].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn grindstone_shift_click_result_slot_queues_server_authoritative_click() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: GRINDSTONE_MENU_TYPE_ID,
+            title: "Grindstone".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 1);
+        items[2] = item_stack(90, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(689.0, 319.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 14,
+                slot_num: 2,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: BTreeMap::new(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(42, 1));
+        assert_eq!(slots[2].item, item_stack(90, 1));
     }
 
     #[test]

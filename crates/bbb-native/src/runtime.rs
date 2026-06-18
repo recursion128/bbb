@@ -418,6 +418,29 @@ fn hud_inventory_background_layers(
             );
             layers
         }
+        InventoryScreenBackground::Grindstone => {
+            let mut layers = vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Grindstone,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )];
+            if grindstone_should_show_error(world) {
+                layers.push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::GrindstoneError,
+                    92,
+                    31,
+                    28,
+                    21,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ));
+            }
+            layers
+        }
         InventoryScreenBackground::Hopper => {
             vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Hopper,
@@ -470,6 +493,25 @@ fn hud_inventory_background_layers(
             )]
         }
     }
+}
+
+fn grindstone_should_show_error(world: &WorldStore) -> bool {
+    let Some(container) = world.inventory().open_container.as_ref() else {
+        return false;
+    };
+    let input_has_item = [0, 1].into_iter().any(|slot_num| {
+        container
+            .slots
+            .iter()
+            .find(|slot| slot.slot == slot_num)
+            .is_some_and(|slot| !item_stack_is_empty(&slot.item))
+    });
+    let result_has_item = container
+        .slots
+        .iter()
+        .find(|slot| slot.slot == 2)
+        .is_some_and(|slot| !item_stack_is_empty(&slot.item));
+    input_has_item && !result_has_item
 }
 
 fn push_furnace_progress_layers(
@@ -1258,6 +1300,93 @@ mod tests {
                     16,
                     [0.0, 0.0],
                     [6.0 / 24.0, 1.0],
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_grindstone_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 15,
+            title: "Grindstone".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 39],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(38), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Grindstone,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(38));
+        assert_eq!(screen.slots.len(), 39);
+        let input = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((input.x, input.y), (49, 19));
+        let additional = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+        assert_eq!((additional.x, additional.y), (49, 40));
+        let result = screen.slots.iter().find(|slot| slot.slot_id == 2).unwrap();
+        assert_eq!((result.x, result.y), (129, 34));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 38).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_grindstone_error_layer() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 15,
+            title: "Grindstone".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Grindstone,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::GrindstoneError,
+                    92,
+                    31,
+                    28,
+                    21,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
                 ),
             ]
         );

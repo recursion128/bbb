@@ -122,6 +122,22 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         smoker_burn_progress.height,
         &smoker_burn_progress.rgba,
     )?;
+    let grindstone = gui_texture(
+        roots,
+        "textures/gui/container/grindstone.png",
+        "minecraft:textures/gui/container/grindstone",
+    )?;
+    renderer.upload_hud_grindstone_background(
+        grindstone.width,
+        grindstone.height,
+        &grindstone.rgba,
+    )?;
+    let grindstone_error = hud_sprite(&sprites, "container/grindstone/error")?;
+    renderer.upload_hud_grindstone_error(
+        grindstone_error.width,
+        grindstone_error.height,
+        &grindstone_error.rgba,
+    )?;
     let hopper = gui_texture(
         roots,
         "textures/gui/container/hopper.png",
@@ -203,6 +219,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         furnace = ?(furnace.width, furnace.height),
         blast_furnace = ?(blast_furnace.width, blast_furnace.height),
         smoker = ?(smoker.width, smoker.height),
+        grindstone = ?(grindstone.width, grindstone.height),
         stonecutter = ?(stonecutter.width, stonecutter.height),
         experience = ?(experience_background.width, experience_background.height),
         heart = ?(heart_full.width, heart_full.height),

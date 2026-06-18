@@ -24,6 +24,7 @@ const VANILLA_MENU_TYPE_GENERIC_3X3_ID: i32 = 6;
 const VANILLA_MENU_TYPE_BLAST_FURNACE_ID: i32 = 10;
 const VANILLA_MENU_TYPE_CRAFTING_ID: i32 = 12;
 const VANILLA_MENU_TYPE_FURNACE_ID: i32 = 14;
+const VANILLA_MENU_TYPE_GRINDSTONE_ID: i32 = 15;
 const VANILLA_MENU_TYPE_HOPPER_ID: i32 = 16;
 const VANILLA_MENU_TYPE_SMOKER_ID: i32 = 22;
 const VANILLA_MENU_TYPE_STONECUTTER_ID: i32 = 24;
@@ -44,6 +45,14 @@ const STONECUTTER_PLAYER_MAIN_END: i16 = 29;
 const STONECUTTER_HOTBAR_START: i16 = 29;
 const STONECUTTER_HOTBAR_END: i16 = 38;
 const STONECUTTER_TOTAL_SLOT_COUNT: i16 = 38;
+const GRINDSTONE_INPUT_SLOT: i16 = 0;
+const GRINDSTONE_ADDITIONAL_SLOT: i16 = 1;
+const GRINDSTONE_RESULT_SLOT: i16 = 2;
+const GRINDSTONE_PLAYER_MAIN_START: i16 = 3;
+const GRINDSTONE_PLAYER_MAIN_END: i16 = 30;
+const GRINDSTONE_HOTBAR_START: i16 = 30;
+const GRINDSTONE_HOTBAR_END: i16 = 39;
+const GRINDSTONE_TOTAL_SLOT_COUNT: i16 = 39;
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
@@ -780,6 +789,21 @@ impl WorldStore {
                             menu_type_id,
                             &self.recipes.property_sets,
                             &self.furnace_fuel_item_ids,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_GRINDSTONE_ID) {
+                        if grindstone_quick_move_requires_server_authority(
+                            &slots_after,
+                            request.slot_num,
+                        ) {
+                            return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                                ProtocolContainerInput::QuickMove,
+                            ));
+                        }
+                        apply_grindstone_menu_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_STONECUTTER_ID) {
@@ -1692,6 +1716,9 @@ fn menu_result_slot_requires_server_authority(menu_type_id: Option<i32>, slot_nu
             Some(VANILLA_MENU_TYPE_CRAFTING_ID),
             CRAFTING_MENU_RESULT_SLOT
         ) | (
+            Some(VANILLA_MENU_TYPE_GRINDSTONE_ID),
+            GRINDSTONE_RESULT_SLOT
+        ) | (
             Some(VANILLA_MENU_TYPE_STONECUTTER_ID),
             STONECUTTER_RESULT_SLOT
         )
@@ -2000,6 +2027,70 @@ fn apply_crafting_menu_quick_move_to_slots(
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
     }
+}
+
+fn apply_grindstone_menu_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !(0..GRINDSTONE_TOTAL_SLOT_COUNT).contains(&slot_num) || slot_num == GRINDSTONE_RESULT_SLOT {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let source_item = slots[source_index].item.clone();
+    let target = match slot_num {
+        slot if (GRINDSTONE_PLAYER_MAIN_START..GRINDSTONE_PLAYER_MAIN_END).contains(&slot) => {
+            Some((GRINDSTONE_HOTBAR_START, GRINDSTONE_HOTBAR_END, false))
+        }
+        slot if (GRINDSTONE_HOTBAR_START..GRINDSTONE_HOTBAR_END).contains(&slot) => Some((
+            GRINDSTONE_PLAYER_MAIN_START,
+            GRINDSTONE_PLAYER_MAIN_END,
+            false,
+        )),
+        _ => None,
+    };
+    let Some((start_slot, end_slot, backwards)) = target else {
+        return;
+    };
+
+    let mut moving = source_item;
+    if move_item_stack_to_slots(
+        container_id,
+        slots,
+        source_index,
+        &mut moving,
+        start_slot,
+        end_slot,
+        backwards,
+        default_item_max_stack_sizes,
+    ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn grindstone_quick_move_requires_server_authority(slots: &[ContainerSlot], slot_num: i16) -> bool {
+    if !(0..GRINDSTONE_TOTAL_SLOT_COUNT).contains(&slot_num) {
+        return false;
+    }
+    if matches!(
+        slot_num,
+        GRINDSTONE_INPUT_SLOT | GRINDSTONE_ADDITIONAL_SLOT | GRINDSTONE_RESULT_SLOT
+    ) {
+        return true;
+    }
+    let inputs_full = inventory_menu_slot_has_item(slots, GRINDSTONE_INPUT_SLOT)
+        && inventory_menu_slot_has_item(slots, GRINDSTONE_ADDITIONAL_SLOT);
+    !inputs_full
 }
 
 fn apply_stonecutter_menu_quick_move_to_slots(
@@ -4944,6 +5035,205 @@ mod tests {
         );
         assert_eq!(
             open_container_slot_item(&store, STONECUTTER_RESULT_SLOT),
+            item_stack(90, 1)
+        );
+    }
+
+    #[test]
+    fn apply_local_grindstone_input_quick_move_requires_server_authority() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
+            title: "Grindstone".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
+        items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let request = ContainerClickSlotRequest {
+            slot_num: GRINDSTONE_INPUT_SLOT,
+            button_num: 0,
+            input: ProtocolContainerInput::QuickMove,
+        };
+        assert_eq!(
+            store.apply_local_container_click_slot(request),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickMove
+            ))
+        );
+        let click = store.build_container_click_slot(request).unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_INPUT_SLOT),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_PLAYER_MAIN_START),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_grindstone_player_to_input_quick_move_requires_server_authority() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
+            title: "Grindstone".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
+        items[GRINDSTONE_PLAYER_MAIN_START as usize] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let request = ContainerClickSlotRequest {
+            slot_num: GRINDSTONE_PLAYER_MAIN_START,
+            button_num: 0,
+            input: ProtocolContainerInput::QuickMove,
+        };
+        assert_eq!(
+            store.apply_local_container_click_slot(request),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickMove
+            ))
+        );
+        let click = store.build_container_click_slot(request).unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_INPUT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_PLAYER_MAIN_START),
+            item_stack(42, 3)
+        );
+    }
+
+    #[test]
+    fn apply_local_grindstone_quick_move_moves_player_ranges_when_inputs_full() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
+            title: "Grindstone".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
+        items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(10, 1);
+        items[GRINDSTONE_ADDITIONAL_SLOT as usize] = item_stack(11, 1);
+        items[GRINDSTONE_PLAYER_MAIN_START as usize] = item_stack(42, 3);
+        items[GRINDSTONE_HOTBAR_START as usize] = item_stack(43, 4);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let main_to_hotbar = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: GRINDSTONE_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            main_to_hotbar.changed_slots,
+            BTreeMap::from([
+                (GRINDSTONE_PLAYER_MAIN_START, ProtocolHashedStack::Empty),
+                (GRINDSTONE_HOTBAR_START + 1, hashed_item_stack(42, 3)),
+            ])
+        );
+
+        let hotbar_to_main = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: GRINDSTONE_HOTBAR_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            hotbar_to_main.changed_slots,
+            BTreeMap::from([
+                (GRINDSTONE_PLAYER_MAIN_START, hashed_item_stack(43, 4)),
+                (GRINDSTONE_HOTBAR_START, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_PLAYER_MAIN_START),
+            item_stack(43, 4)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_HOTBAR_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_HOTBAR_START + 1),
+            item_stack(42, 3)
+        );
+    }
+
+    #[test]
+    fn apply_local_grindstone_result_pickup_and_quick_move_require_server_authority() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
+            title: "Grindstone".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
+        items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
+        items[GRINDSTONE_RESULT_SLOT as usize] = item_stack(90, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 16,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        for input in [
+            ProtocolContainerInput::Pickup,
+            ProtocolContainerInput::QuickMove,
+        ] {
+            assert_eq!(
+                store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: GRINDSTONE_RESULT_SLOT,
+                    button_num: 0,
+                    input,
+                }),
+                Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
+            );
+        }
+        let click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: GRINDSTONE_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_INPUT_SLOT),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_RESULT_SLOT),
             item_stack(90, 1)
         );
     }
