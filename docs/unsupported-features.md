@@ -325,7 +325,6 @@ When an agent does any of the following, update this file in the same slice:
       - preload existing sign text from canonical block entity state
       - renderer presentation for the vanilla sign edit screen
       - cursor-aware editing beyond append/backspace
-      - mouse/cursor capture parity while the sign edit screen is open
     - Gameplay Q/Ctrl+Q drop input now follows vanilla 26.1 modifier
       semantics:
       - Ctrl, not sprint, selects `DROP_ALL_ITEMS`.
@@ -479,6 +478,7 @@ When an agent does any of the following, update this file in the same slice:
       - edit four pending lines
       - cycle lines with vanilla-shaped up/down/confirmation keys
       - close by queueing `ServerboundSignUpdatePacket`
+      - release cursor capture and suppress gameplay mouse input while open
   - Inventory:
     - Native opens the ordinary local inventory as container `0`.
     - While the local inventory is open, it:

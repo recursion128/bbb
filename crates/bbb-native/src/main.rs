@@ -233,11 +233,12 @@ fn main() -> Result<()> {
                         return;
                     }
                     let container_open = world.open_container_id().is_some();
+                    let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
                     if matches!(event.state, ElementState::Pressed)
                         && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
                         && cursor_captured
                         && !input.command_entry_is_active()
-                        && !input.sign_editor_is_active_or_pending(&world)
+                        && !sign_editor_open
                         && !world_wants_cursor(&world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
@@ -249,7 +250,10 @@ fn main() -> Result<()> {
                         );
                         return;
                     }
-                    if !cursor_captured && !container_open {
+                    if sign_editor_open {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                    }
+                    if !cursor_captured && !container_open && !sign_editor_open {
                         return;
                     }
                     handle_key_input(
@@ -266,11 +270,15 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
+                    let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
                     if world_wants_cursor(&world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if !cursor_captured {
+                    if sign_editor_open {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                    }
+                    if !cursor_captured && !sign_editor_open {
                         return;
                     }
                     handle_text_input(
@@ -300,6 +308,10 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
+                    if input.sign_editor_is_active_or_pending(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
                     if world.open_container_id().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_inventory_mouse_input(
@@ -315,7 +327,7 @@ fn main() -> Result<()> {
                         return;
                     }
                     if matches!(state, ElementState::Pressed) && !cursor_captured {
-                        if world_wants_cursor(&world) {
+                        if runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, false);
                             return;
                         }
@@ -340,6 +352,10 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
+                    if input.sign_editor_is_active_or_pending(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
                     if world.open_container_id().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_inventory_mouse_wheel(
@@ -353,7 +369,7 @@ fn main() -> Result<()> {
                         );
                         return;
                     }
-                    if world_wants_cursor(&world) {
+                    if runtime_wants_cursor(&input, &world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
@@ -369,7 +385,9 @@ fn main() -> Result<()> {
                     );
                 }
                 WindowEvent::RedrawRequested => {
-                    if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                    if code_of_conduct_overlay.is_visible(&world)
+                        || runtime_wants_cursor(&input, &world)
+                    {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         release_active_input(
                             &mut input,
@@ -408,7 +426,9 @@ fn main() -> Result<()> {
                         &world,
                         code_of_conduct_acceptance.current_world_acceptance_matches(&world),
                     );
-                    if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                    if code_of_conduct_overlay.is_visible(&world)
+                        || runtime_wants_cursor(&input, &world)
+                    {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         release_active_input(
                             &mut input,
@@ -464,7 +484,9 @@ fn main() -> Result<()> {
                 event: DeviceEvent::MouseMotion { delta },
                 ..
             } => {
-                if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                if code_of_conduct_overlay.is_visible(&world)
+                    || runtime_wants_cursor(&input, &world)
+                {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     return;
                 }
@@ -487,7 +509,9 @@ fn main() -> Result<()> {
                     target.exit();
                     return;
                 }
-                if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                if code_of_conduct_overlay.is_visible(&world)
+                    || runtime_wants_cursor(&input, &world)
+                {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
                 }
@@ -520,7 +544,9 @@ fn main() -> Result<()> {
                     &world,
                     code_of_conduct_acceptance.current_world_acceptance_matches(&world),
                 );
-                if code_of_conduct_overlay.is_visible(&world) || world_wants_cursor(&world) {
+                if code_of_conduct_overlay.is_visible(&world)
+                    || runtime_wants_cursor(&input, &world)
+                {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
                 }
@@ -587,4 +613,29 @@ fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
 
 fn world_wants_cursor(world: &WorldStore) -> bool {
     world.open_container_id().is_some() || world.current_dialog().is_some()
+}
+
+fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
+    world_wants_cursor(world) || input.sign_editor_is_active_or_pending(world)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, OpenSignEditor};
+
+    #[test]
+    fn runtime_wants_cursor_for_pending_sign_editor() {
+        let input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+
+        assert!(!runtime_wants_cursor(&input, &world));
+
+        world.apply_open_sign_editor(OpenSignEditor {
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            is_front_text: true,
+        });
+
+        assert!(runtime_wants_cursor(&input, &world));
+    }
 }

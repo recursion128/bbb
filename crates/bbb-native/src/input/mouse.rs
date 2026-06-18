@@ -55,7 +55,7 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
     state: ElementState,
     entity_partial_tick: f32,
 ) {
-    if !input.focused {
+    if !input.focused || input.sign_editor_is_active_or_pending(world) {
         return;
     }
     let player_pose = world.local_player_pose();
@@ -155,7 +155,11 @@ pub(crate) fn advance_using_item_at_partial_tick(
     entity_partial_tick: f32,
     use_ticks: u32,
 ) {
-    if !input.focused || !input.use_item_held || use_ticks == 0 {
+    if !input.focused
+        || input.sign_editor_is_active_or_pending(world)
+        || !input.use_item_held
+        || use_ticks == 0
+    {
         return;
     }
 
@@ -272,7 +276,8 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     entity_partial_tick: f32,
     destroy_ticks: u32,
 ) {
-    if !input.focused || !input.destroy_block_held {
+    if !input.focused || input.sign_editor_is_active_or_pending(world) || !input.destroy_block_held
+    {
         return;
     }
     if local_player_attack_is_blocked(world) {
@@ -404,7 +409,7 @@ pub(crate) fn handle_mouse_wheel(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     delta: MouseScrollDelta,
 ) {
-    if !input.focused {
+    if !input.focused || input.sign_editor_is_active_or_pending(world) {
         return;
     }
     let Some(wheel) = wheel_steps_from_scroll(input, delta) else {
@@ -492,9 +497,10 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity, AttackEntity, BlockHitResult as ProtocolBlockHitResult,
         BlockPos as ProtocolBlockPos, BlockUpdate, GameEvent as ProtocolGameEvent, InteractEntity,
-        ItemStackSummary as ProtocolItemStackSummary, PickItemFromBlock, PickItemFromEntity,
-        PlayerAbilities, PlayerAction, SetPlayerInventory as ProtocolSetPlayerInventory, UseItem,
-        UseItemOn, Vec3d as ProtocolVec3d,
+        ItemStackSummary as ProtocolItemStackSummary, OpenSignEditor, PickItemFromBlock,
+        PickItemFromEntity, PlayerAbilities, PlayerAction,
+        SetPlayerInventory as ProtocolSetPlayerInventory, UseItem, UseItemOn,
+        Vec3d as ProtocolVec3d,
     };
     use bbb_world::{
         BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
@@ -583,6 +589,34 @@ mod tests {
         );
 
         assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn sign_editor_mouse_press_does_not_queue_gameplay_input() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.apply_open_sign_editor(OpenSignEditor {
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            is_front_text: true,
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.destroy_block_held);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.attack_entity_commands_queued, 0);
         assert!(rx.try_recv().is_err());
     }
 
@@ -1989,6 +2023,32 @@ mod tests {
         let mut input = ClientInputState::new(false);
         let mut world = WorldStore::new();
         assert!(world.set_local_selected_hotbar_slot(4));
+        let mut counters = NetCounters::default();
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 1.0),
+        );
+
+        assert_eq!(world.local_player().selected_hotbar_slot, 4);
+        assert_eq!(counters.held_slot_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn sign_editor_mouse_wheel_does_not_select_or_queue() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        assert!(world.set_local_selected_hotbar_slot(4));
+        world.apply_open_sign_editor(OpenSignEditor {
+            pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+            is_front_text: true,
+        });
         let mut counters = NetCounters::default();
 
         handle_mouse_wheel(
