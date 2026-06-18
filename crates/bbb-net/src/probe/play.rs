@@ -504,7 +504,8 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::packets::{
-        AddEntity, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
+        AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary,
+        AdvancementSummary, AwardStats, BlockChangedAck, BlockEntityData, BlockEvent,
         BlockPos as ProtocolBlockPos, BossBarColor, BossBarOverlay, BossEvent, BossEventFlags,
         BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound, ChatTypeHolder,
         ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ClockUpdate, CommandSuggestion,
@@ -524,15 +525,16 @@ mod tests {
         RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
         RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType, ResetScore,
         ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, ScoreboardDisplaySlot,
-        ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetHeldSlot, SetObjective,
-        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore,
-        SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
-        StopSound, StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility,
-        TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
-        Transfer, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData,
-        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
+        ServerLinks, SetCamera, SetDefaultSpawnPosition, SetDisplayObjective, SetHeldSlot,
+        SetObjective, SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerTeam,
+        SetScore, SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary,
+        SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        StonecutterSelectableRecipeSummary, StopSound, StoreCookie, TabList, TagQuery,
+        TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus, TickingState, TickingStep,
+        TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateRecipes,
+        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
+        WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -1888,6 +1890,82 @@ mod tests {
         assert_eq!(report.world_counters.recipe_book_entries_tracked, 2);
         assert_eq!(report.world_counters.recipe_book_highlights_tracked, 0);
         assert_eq!(report.world_counters.recipe_book_notifications_received, 2);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_advancement_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::UpdateAdvancements(UpdateAdvancements {
+                reset: true,
+                added: vec![AdvancementSummary {
+                    id: "minecraft:story/root".to_string(),
+                    parent: None,
+                    display: None,
+                    requirements: vec![vec!["mine_stone".to_string(), "get_log".to_string()]],
+                    sends_telemetry_event: true,
+                }],
+                removed: Vec::new(),
+                progress: vec![AdvancementProgressSummary {
+                    id: "minecraft:story/root".to_string(),
+                    criteria: vec![AdvancementCriterionProgressSummary {
+                        name: "mine_stone".to_string(),
+                        obtained_epoch_millis: Some(1_700_000_000_000),
+                    }],
+                }],
+                show_advancements: true,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SelectAdvancementsTab(
+                SelectAdvancementsTab {
+                    tab: Some("minecraft:story/root".to_string()),
+                },
+            ))
+            .await
+            .unwrap();
+
+        let report = probe.finish(3, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(
+            report.world.selected_advancements_tab(),
+            Some("minecraft:story/root")
+        );
+        assert!(report
+            .world
+            .advancements()
+            .advancements
+            .contains_key("minecraft:story/root"));
+        let progress = report
+            .world
+            .advancements()
+            .progress
+            .get("minecraft:story/root")
+            .unwrap();
+        assert_eq!(progress.criteria.len(), 2);
+
+        assert_eq!(report.world_counters.update_advancements_packets, 1);
+        assert_eq!(report.world_counters.update_advancements_reset_packets, 1);
+        assert_eq!(report.world_counters.update_advancements_show_packets, 1);
+        assert_eq!(report.world_counters.advancements_added_received, 1);
+        assert_eq!(report.world_counters.advancements_removed_received, 0);
+        assert_eq!(report.world_counters.advancements_adds_ignored, 0);
+        assert_eq!(report.world_counters.advancement_progress_received, 1);
+        assert_eq!(
+            report.world_counters.advancement_progress_updates_ignored,
+            0
+        );
+        assert_eq!(report.world_counters.advancements_tracked, 1);
+        assert_eq!(report.world_counters.advancement_roots_tracked, 1);
+        assert_eq!(report.world_counters.advancement_progress_tracked, 1);
+        assert_eq!(
+            report.world_counters.advancement_progress_criteria_tracked,
+            2
+        );
+        assert_eq!(report.world_counters.select_advancements_tab_packets, 1);
     }
 
     #[tokio::test]
