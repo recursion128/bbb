@@ -285,6 +285,48 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         enchanting_table_level_3_disabled.height,
         &enchanting_table_level_3_disabled.rgba,
     )?;
+    let beacon = gui_texture(
+        roots,
+        "textures/gui/container/beacon.png",
+        "minecraft:textures/gui/container/beacon",
+    )?;
+    renderer.upload_hud_beacon_background(beacon.width, beacon.height, &beacon.rgba)?;
+    let beacon_button_disabled = hud_sprite(&sprites, "container/beacon/button_disabled")?;
+    renderer.upload_hud_beacon_button_disabled(
+        beacon_button_disabled.width,
+        beacon_button_disabled.height,
+        &beacon_button_disabled.rgba,
+    )?;
+    let beacon_button_selected = hud_sprite(&sprites, "container/beacon/button_selected")?;
+    renderer.upload_hud_beacon_button_selected(
+        beacon_button_selected.width,
+        beacon_button_selected.height,
+        &beacon_button_selected.rgba,
+    )?;
+    let beacon_button_highlighted = hud_sprite(&sprites, "container/beacon/button_highlighted")?;
+    renderer.upload_hud_beacon_button_highlighted(
+        beacon_button_highlighted.width,
+        beacon_button_highlighted.height,
+        &beacon_button_highlighted.rgba,
+    )?;
+    let beacon_button = hud_sprite(&sprites, "container/beacon/button")?;
+    renderer.upload_hud_beacon_button(
+        beacon_button.width,
+        beacon_button.height,
+        &beacon_button.rgba,
+    )?;
+    let beacon_confirm = hud_sprite(&sprites, "container/beacon/confirm")?;
+    renderer.upload_hud_beacon_confirm(
+        beacon_confirm.width,
+        beacon_confirm.height,
+        &beacon_confirm.rgba,
+    )?;
+    let beacon_cancel = hud_sprite(&sprites, "container/beacon/cancel")?;
+    renderer.upload_hud_beacon_cancel(
+        beacon_cancel.width,
+        beacon_cancel.height,
+        &beacon_cancel.rgba,
+    )?;
     let furnace = gui_texture(
         roots,
         "textures/gui/container/furnace.png",
@@ -484,6 +526,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         crafter = ?(crafter.width, crafter.height),
         anvil = ?(anvil.width, anvil.height),
         enchanting_table = ?(enchanting_table.width, enchanting_table.height),
+        beacon = ?(beacon.width, beacon.height),
         furnace = ?(furnace.width, furnace.height),
         blast_furnace = ?(blast_furnace.width, blast_furnace.height),
         smoker = ?(smoker.width, smoker.height),

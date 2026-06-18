@@ -313,6 +313,7 @@ When an agent does any of the following, update this file in the same slice:
         - `generic_9xN`
         - `generic_3x3`
         - anvil
+        - beacon
         - brewing stand
         - cartography table
         - enchanting table
@@ -468,6 +469,10 @@ When an agent does any of the following, update this file in the same slice:
         - `container/anvil/text_field`
         - `text_field_disabled`
         - error sprites
+      - BeaconMenu screens with official:
+        - `beacon.png` background
+        - payment slot layout
+        - beacon button sprites loaded for future effect selection
       - BrewingStandMenu screens with official `brewing_stand.png`
       - CartographyTableMenu screens with official `cartography_table.png`
         background
@@ -515,6 +520,17 @@ When an agent does any of the following, update this file in the same slice:
           - repair-cost component updates
           - material consumption
           - anvil damage side effects
+      - BeaconMenu:
+        - quick-move paths are kept server-authoritative until:
+          - beacon payment item tag routing
+          - max-stack-one payment slot prediction
+          - payment consumption from `SetBeacon`
+        - deferred presentation parity work:
+          - primary/secondary effect button grid
+          - effect icons
+          - selected/highlighted/disabled button states
+          - confirm/cancel button behavior from in-game UI
+          - labels/tooltips
       - CraftingMenu:
         - non-result slots
         - result-slot clicks kept server-authoritative until:

@@ -150,6 +150,13 @@ pub enum HudInventoryBackgroundTexture {
     EnchantingTableLevel1Disabled,
     EnchantingTableLevel2Disabled,
     EnchantingTableLevel3Disabled,
+    Beacon,
+    BeaconButtonDisabled,
+    BeaconButtonSelected,
+    BeaconButtonHighlighted,
+    BeaconButton,
+    BeaconConfirm,
+    BeaconCancel,
     BrewingStand,
     BrewingStandFuelLength,
     BrewingStandBrewProgress,
@@ -629,6 +636,66 @@ impl Renderer {
     ) -> Result<()> {
         self.hud_enchanting_table_level_3_disabled =
             Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_button_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_button_disabled = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_button_selected(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_button_selected = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_button_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_button_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_button(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_beacon_button = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_confirm(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_beacon_confirm = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_beacon_cancel(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_beacon_cancel = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -1363,6 +1430,19 @@ impl Renderer {
             HudInventoryBackgroundTexture::EnchantingTableLevel3Disabled => {
                 self.hud_enchanting_table_level_3_disabled.as_ref()
             }
+            HudInventoryBackgroundTexture::Beacon => self.hud_beacon_background.as_ref(),
+            HudInventoryBackgroundTexture::BeaconButtonDisabled => {
+                self.hud_beacon_button_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::BeaconButtonSelected => {
+                self.hud_beacon_button_selected.as_ref()
+            }
+            HudInventoryBackgroundTexture::BeaconButtonHighlighted => {
+                self.hud_beacon_button_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::BeaconButton => self.hud_beacon_button.as_ref(),
+            HudInventoryBackgroundTexture::BeaconConfirm => self.hud_beacon_confirm.as_ref(),
+            HudInventoryBackgroundTexture::BeaconCancel => self.hud_beacon_cancel.as_ref(),
             HudInventoryBackgroundTexture::BrewingStand => {
                 self.hud_brewing_stand_background.as_ref()
             }

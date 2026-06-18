@@ -30,6 +30,7 @@ const GENERIC_CONTAINER_LAST_MENU_TYPE_ID: i32 = 5;
 const GENERIC_3X3_MENU_TYPE_ID: i32 = 6;
 const CRAFTER_MENU_TYPE_ID: i32 = 7;
 const ANVIL_MENU_TYPE_ID: i32 = 8;
+const BEACON_MENU_TYPE_ID: i32 = 9;
 const BLAST_FURNACE_MENU_TYPE_ID: i32 = 10;
 const BREWING_STAND_MENU_TYPE_ID: i32 = 11;
 const CRAFTING_MENU_TYPE_ID: i32 = 12;
@@ -58,6 +59,9 @@ const CRAFTER_TOTAL_SLOT_COUNT: i16 = 46;
 const ANVIL_SCREEN_WIDTH: i32 = 176;
 const ANVIL_SCREEN_HEIGHT: i32 = 166;
 const ANVIL_SLOT_COUNT: i16 = 3;
+const BEACON_SCREEN_WIDTH: i32 = 230;
+const BEACON_SCREEN_HEIGHT: i32 = 219;
+const BEACON_SLOT_COUNT: i16 = 1;
 const CARTOGRAPHY_TABLE_SCREEN_WIDTH: i32 = 176;
 const CARTOGRAPHY_TABLE_SCREEN_HEIGHT: i32 = 166;
 const CARTOGRAPHY_TABLE_SLOT_COUNT: i16 = 3;
@@ -108,6 +112,7 @@ pub(crate) enum InventoryScreenBackground {
     Generic9xRows { rows: u8 },
     Generic3x3,
     Anvil,
+    Beacon,
     BlastFurnace,
     BrewingStand,
     CartographyTable,
@@ -251,6 +256,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: ANVIL_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Anvil,
             slots: anvil_slot_layouts(),
+        });
+    }
+    if menu_type_id == BEACON_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: BEACON_SCREEN_WIDTH,
+            height: BEACON_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Beacon,
+            slots: beacon_slot_layouts(),
         });
     }
     if menu_type_id == BREWING_STAND_MENU_TYPE_ID {
@@ -545,6 +558,33 @@ fn enchantment_table_slot_layouts() -> Vec<InventorySlotLayout> {
             slot_id: ENCHANTMENT_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 142,
+        });
+    }
+
+    slots
+}
+
+fn beacon_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(BEACON_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 136,
+        y: 110,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: BEACON_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 36 + x * 18,
+                y: 137 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: BEACON_SLOT_COUNT + 27 + x as i16,
+            x: 36 + x * 18,
+            y: 195,
         });
     }
 
@@ -1932,6 +1972,47 @@ mod tests {
     }
 
     #[test]
+    fn beacon_layout_matches_vanilla_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: BEACON_MENU_TYPE_ID,
+            title: "Beacon".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 230);
+        assert_eq!(layout.height, 219);
+        assert_eq!(layout.background, InventoryScreenBackground::Beacon);
+        assert_eq!(layout.slots.len(), 37);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 136,
+                y: 110,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 36,
+                y: 137,
+            }
+        );
+        assert_eq!(
+            layout.slots[36],
+            InventorySlotLayout {
+                slot_id: 36,
+                x: 180,
+                y: 195,
+            }
+        );
+    }
+
+    #[test]
     fn brewing_stand_layout_matches_vanilla_menu() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -2638,6 +2719,30 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
             Some(InventoryClickTarget::Slot(38))
+        );
+    }
+
+    #[test]
+    fn beacon_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: BEACON_MENU_TYPE_ID,
+            title: "Beacon".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(669.0, 369.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(569.0, 396.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(713.0, 454.0)), size),
+            Some(InventoryClickTarget::Slot(36))
         );
     }
 

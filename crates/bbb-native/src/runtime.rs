@@ -474,6 +474,17 @@ fn hud_inventory_background_layers(
             }
             layers
         }
+        InventoryScreenBackground::Beacon => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Beacon,
+                0,
+                0,
+                230,
+                219,
+                [0.0, 0.0],
+                [230.0 / 256.0, 219.0 / 256.0],
+            )]
+        }
         InventoryScreenBackground::BrewingStand => {
             let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::BrewingStand,
@@ -1874,6 +1885,47 @@ mod tests {
         assert_eq!((result.x, result.y), (134, 47));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 38).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_beacon_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 9,
+            title: "Beacon".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 37],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(36), 0.0).unwrap();
+
+        assert_eq!(screen.width, 230);
+        assert_eq!(screen.height, 219);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Beacon,
+                0,
+                0,
+                230,
+                219,
+                [0.0, 0.0],
+                [230.0 / 256.0, 219.0 / 256.0],
+            )]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(36));
+        assert_eq!(screen.slots.len(), 37);
+        let payment = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((payment.x, payment.y), (136, 110));
+        let first_inventory = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+        assert_eq!((first_inventory.x, first_inventory.y), (36, 137));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 36).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (180, 195));
     }
 
     #[test]
