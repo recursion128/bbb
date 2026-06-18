@@ -215,12 +215,12 @@ Measured command:
 
 - Warm full workspace:
   `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace --timings`
-  - Cargo compile: 0.10s.
-  - Wall time: 2.78s.
-  - Target size: 7.8G.
+  - Cargo compile: 0.17s.
+  - Wall time: 3.01s.
+  - Target size: 8.9G.
   - Result: all tests passed.
   - Timing report:
-    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260618T164915003Z-14ffed61c5c1036c.html`
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260618T181448362Z-14ffed61c5c1036c.html`
 
 The increased target size is from retained external cache data, which is
 intentional for daily development. Reclaim it with explicit periodic cleanup,
