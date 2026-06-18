@@ -59,6 +59,18 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         "minecraft:textures/gui/container/furnace",
     )?;
     renderer.upload_hud_furnace_background(furnace.width, furnace.height, &furnace.rgba)?;
+    let furnace_lit_progress = hud_sprite(&sprites, "container/furnace/lit_progress")?;
+    renderer.upload_hud_furnace_lit_progress(
+        furnace_lit_progress.width,
+        furnace_lit_progress.height,
+        &furnace_lit_progress.rgba,
+    )?;
+    let furnace_burn_progress = hud_sprite(&sprites, "container/furnace/burn_progress")?;
+    renderer.upload_hud_furnace_burn_progress(
+        furnace_burn_progress.width,
+        furnace_burn_progress.height,
+        &furnace_burn_progress.rgba,
+    )?;
     let blast_furnace = gui_texture(
         roots,
         "textures/gui/container/blast_furnace.png",
@@ -69,12 +81,37 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         blast_furnace.height,
         &blast_furnace.rgba,
     )?;
+    let blast_furnace_lit_progress = hud_sprite(&sprites, "container/blast_furnace/lit_progress")?;
+    renderer.upload_hud_blast_furnace_lit_progress(
+        blast_furnace_lit_progress.width,
+        blast_furnace_lit_progress.height,
+        &blast_furnace_lit_progress.rgba,
+    )?;
+    let blast_furnace_burn_progress =
+        hud_sprite(&sprites, "container/blast_furnace/burn_progress")?;
+    renderer.upload_hud_blast_furnace_burn_progress(
+        blast_furnace_burn_progress.width,
+        blast_furnace_burn_progress.height,
+        &blast_furnace_burn_progress.rgba,
+    )?;
     let smoker = gui_texture(
         roots,
         "textures/gui/container/smoker.png",
         "minecraft:textures/gui/container/smoker",
     )?;
     renderer.upload_hud_smoker_background(smoker.width, smoker.height, &smoker.rgba)?;
+    let smoker_lit_progress = hud_sprite(&sprites, "container/smoker/lit_progress")?;
+    renderer.upload_hud_smoker_lit_progress(
+        smoker_lit_progress.width,
+        smoker_lit_progress.height,
+        &smoker_lit_progress.rgba,
+    )?;
+    let smoker_burn_progress = hud_sprite(&sprites, "container/smoker/burn_progress")?;
+    renderer.upload_hud_smoker_burn_progress(
+        smoker_burn_progress.width,
+        smoker_burn_progress.height,
+        &smoker_burn_progress.rgba,
+    )?;
     let hopper = gui_texture(
         roots,
         "textures/gui/container/hopper.png",

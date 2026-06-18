@@ -38,6 +38,14 @@ mod control_requests;
 mod events;
 
 const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
+const FURNACE_LIT_TIME_DATA_ID: i16 = 0;
+const FURNACE_LIT_DURATION_DATA_ID: i16 = 1;
+const FURNACE_COOKING_PROGRESS_DATA_ID: i16 = 2;
+const FURNACE_COOKING_TOTAL_TIME_DATA_ID: i16 = 3;
+const FURNACE_DEFAULT_LIT_DURATION: i16 = 200;
+const FURNACE_LIT_PROGRESS_SPRITE_SIZE: u32 = 14;
+const FURNACE_BURN_PROGRESS_SPRITE_WIDTH: u32 = 24;
+const FURNACE_BURN_PROGRESS_SPRITE_HEIGHT: u32 = 16;
 
 pub(crate) use control_requests::pump_control_net_requests;
 
@@ -298,13 +306,14 @@ fn hud_inventory_screen(
     Some(HudInventoryScreen {
         width: u32::try_from(layout.width).unwrap_or_default(),
         height: u32::try_from(layout.height).unwrap_or_default(),
-        background_layers: hud_inventory_background_layers(layout.background),
+        background_layers: hud_inventory_background_layers(world, layout.background),
         slots,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
     })
 }
 
 fn hud_inventory_background_layers(
+    world: &WorldStore,
     background: InventoryScreenBackground,
 ) -> Vec<HudInventoryBackgroundLayer> {
     match background {
@@ -354,7 +363,7 @@ fn hud_inventory_background_layers(
             )]
         }
         InventoryScreenBackground::BlastFurnace => {
-            vec![hud_inventory_background_layer(
+            let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::BlastFurnace,
                 0,
                 0,
@@ -362,10 +371,17 @@ fn hud_inventory_background_layers(
                 166,
                 [0.0, 0.0],
                 [176.0 / 256.0, 166.0 / 256.0],
-            )]
+            )];
+            push_furnace_progress_layers(
+                world,
+                &mut layers,
+                HudInventoryBackgroundTexture::BlastFurnaceLitProgress,
+                HudInventoryBackgroundTexture::BlastFurnaceBurnProgress,
+            );
+            layers
         }
         InventoryScreenBackground::Furnace => {
-            vec![hud_inventory_background_layer(
+            let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Furnace,
                 0,
                 0,
@@ -373,7 +389,14 @@ fn hud_inventory_background_layers(
                 166,
                 [0.0, 0.0],
                 [176.0 / 256.0, 166.0 / 256.0],
-            )]
+            )];
+            push_furnace_progress_layers(
+                world,
+                &mut layers,
+                HudInventoryBackgroundTexture::FurnaceLitProgress,
+                HudInventoryBackgroundTexture::FurnaceBurnProgress,
+            );
+            layers
         }
         InventoryScreenBackground::Hopper => {
             vec![hud_inventory_background_layer(
@@ -398,7 +421,7 @@ fn hud_inventory_background_layers(
             )]
         }
         InventoryScreenBackground::Smoker => {
-            vec![hud_inventory_background_layer(
+            let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Smoker,
                 0,
                 0,
@@ -406,8 +429,74 @@ fn hud_inventory_background_layers(
                 166,
                 [0.0, 0.0],
                 [176.0 / 256.0, 166.0 / 256.0],
-            )]
+            )];
+            push_furnace_progress_layers(
+                world,
+                &mut layers,
+                HudInventoryBackgroundTexture::SmokerLitProgress,
+                HudInventoryBackgroundTexture::SmokerBurnProgress,
+            );
+            layers
         }
+    }
+}
+
+fn push_furnace_progress_layers(
+    world: &WorldStore,
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    lit_texture: HudInventoryBackgroundTexture,
+    burn_texture: HudInventoryBackgroundTexture,
+) {
+    let lit_time = world
+        .open_container_data_value(FURNACE_LIT_TIME_DATA_ID)
+        .unwrap_or_default();
+    if lit_time > 0 {
+        let lit_duration = world
+            .open_container_data_value(FURNACE_LIT_DURATION_DATA_ID)
+            .filter(|duration| *duration != 0)
+            .unwrap_or(FURNACE_DEFAULT_LIT_DURATION);
+        let lit_progress = (f32::from(lit_time) / f32::from(lit_duration)).clamp(0.0, 1.0);
+        let lit_height = (lit_progress * 13.0).ceil() as u32 + 1;
+        let lit_offset = FURNACE_LIT_PROGRESS_SPRITE_SIZE - lit_height;
+        layers.push(hud_inventory_background_layer(
+            lit_texture,
+            56,
+            36 + i32::try_from(lit_offset).unwrap_or_default(),
+            FURNACE_LIT_PROGRESS_SPRITE_SIZE,
+            lit_height,
+            [
+                0.0,
+                lit_offset as f32 / FURNACE_LIT_PROGRESS_SPRITE_SIZE as f32,
+            ],
+            [1.0, 1.0],
+        ));
+    }
+
+    let burn_current = world
+        .open_container_data_value(FURNACE_COOKING_PROGRESS_DATA_ID)
+        .unwrap_or_default();
+    let burn_total = world
+        .open_container_data_value(FURNACE_COOKING_TOTAL_TIME_DATA_ID)
+        .unwrap_or_default();
+    let burn_progress = if burn_total != 0 && burn_current != 0 {
+        (f32::from(burn_current) / f32::from(burn_total)).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let burn_width = (burn_progress * FURNACE_BURN_PROGRESS_SPRITE_WIDTH as f32).ceil() as u32;
+    if burn_width > 0 {
+        layers.push(hud_inventory_background_layer(
+            burn_texture,
+            79,
+            34,
+            burn_width,
+            FURNACE_BURN_PROGRESS_SPRITE_HEIGHT,
+            [0.0, 0.0],
+            [
+                burn_width as f32 / FURNACE_BURN_PROGRESS_SPRITE_WIDTH as f32,
+                1.0,
+            ],
+        ));
     }
 }
 
@@ -943,6 +1032,77 @@ mod tests {
             let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 38).unwrap();
             assert_eq!((hotbar.x, hotbar.y), (152, 142));
         }
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_furnace_progress_layers() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 14,
+            title: "Furnace".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 39],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 50,
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 1,
+            value: 200,
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 2,
+            value: 25,
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 3,
+            value: 100,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None).unwrap();
+
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Furnace,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::FurnaceLitProgress,
+                    56,
+                    45,
+                    14,
+                    5,
+                    [0.0, 9.0 / 14.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::FurnaceBurnProgress,
+                    79,
+                    34,
+                    6,
+                    16,
+                    [0.0, 0.0],
+                    [6.0 / 24.0, 1.0],
+                ),
+            ]
+        );
     }
 
     #[test]

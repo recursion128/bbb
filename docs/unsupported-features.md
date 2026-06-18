@@ -43,9 +43,17 @@ update this file in the same slice.
     serverbound encoders against `<MC_CODE_ROOT>/sources/26.1/`.
   - Add focused encode/decode tests with each packet slice.
 - Evidence / boundary:
-  - `docs/full-native-rewrite-plan.md` phase 2 remains open until required
-    login, configuration, play, movement, inventory, chat, resource-pack,
-    interaction, and command suggestion paths are covered.
+  - `docs/full-native-rewrite-plan.md` phase 2 remains open until required paths
+    are covered:
+    - login
+    - configuration
+    - play
+    - movement
+    - inventory
+    - chat
+    - resource-pack
+    - interaction
+    - command suggestion
 
 ### Offline Probe And Online Dispatcher Parity
 
@@ -104,17 +112,23 @@ update this file in the same slice.
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
 - Status: `partial`
 - Next action:
-  - Implement remaining provider-specific behavior, light curves, particle
-    sorting, collision/player-coupled physics, particle limits/settings, atlas
-    mip animation, and terrain/item particle option rendering as separate
-    renderer slices.
+  - Implement remaining renderer slices for:
+    - provider-specific behavior
+    - light curves
+    - particle sorting
+    - collision/player-coupled physics
+    - particle limits/settings
+    - atlas mip animation
+    - terrain/item particle option rendering
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
-  - Current runtime drains level-particle spawn batches, advances CPU-side
-    common particles, samples vanilla-shaped size/color/age-size curves for the
-    common particle providers, uploads a stitched official particle atlas when
-    assets are available, and draws active particles as camera-facing textured
-    billboards.
+  - Current runtime:
+    - Drains level-particle spawn batches.
+    - Advances CPU-side common particles.
+    - Samples vanilla-shaped size/color/age-size curves for the common particle
+      providers.
+    - Uploads a stitched official particle atlas when assets are available.
+    - Draws active particles as camera-facing textured billboards.
   - Full vanilla provider behavior and presentation parity remain follow-up work
     in the plan.
 
@@ -123,18 +137,33 @@ update this file in the same slice.
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 - Status: `partial`
 - Next action:
-  - Replace the entity bounds and dropped-item icon proxies with full model,
-    equipment, skin, lighting, animation, culling, and ordering extraction from
-    canonical world and pack data.
-  - Implement vanilla dropped-item ground-context model rendering, bobbing,
-    Y spin, count-based multiple copies, and lighting as a follow-up.
+  - Replace the entity bounds and dropped-item icon proxies with full extraction
+    from canonical world and pack data:
+    - model
+    - equipment
+    - skin
+    - lighting
+    - animation
+    - culling
+    - ordering
+  - Implement vanilla dropped-item follow-up rendering:
+    - ground-context model rendering
+    - bobbing
+    - Y spin
+    - count-based multiple copies
+    - lighting
   - Continue HUD, overlay, screenshot, and interaction-feedback work with
     deterministic renderer tests or explicit manual comparison notes.
 - Evidence / boundary:
-  - Renderer draws terrain, HUD, particles, selection/block-destroy overlays,
-    crosshair entity target outlines, a basic hecs-derived entity bounds scene
-    proxy, and dropped item entities as camera-facing item-icon billboards from
-    canonical item entity stack metadata and the native item atlas.
+  - Renderer draws:
+    - terrain
+    - HUD
+    - particles
+    - selection/block-destroy overlays
+    - crosshair entity target outlines
+    - a basic hecs-derived entity bounds scene proxy
+    - dropped item entities as camera-facing item-icon billboards from canonical
+      item entity stack metadata and the native item atlas
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work.
 
@@ -189,39 +218,79 @@ update this file in the same slice.
 - Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 - Status: `partial`
 - Next action:
-  - Movement: extend the current basic AABB collision and gravity/jump slice to
-    full fixed 20Hz survival physics, remaining vanilla voxel collision shapes,
-    fluids, effects, sneak pose details, the near-ground/fallDistance branch of
-    sneak edge backoff, full flying friction, and vanilla movement send
-    thresholds.
-  - Block destroy: close full vanilla hardness/tool-sensitive progress,
-    collision-aware rollback position handling, hit effects, full model-shaped
-    crack decals with vanilla crumbling blend/depth-bias behavior, and any
-    remaining `STOP_DESTROY_BLOCK` sequencing gaps.
+  - Movement: extend the current basic AABB collision and gravity/jump slice to:
+    - full fixed 20Hz survival physics
+    - remaining vanilla voxel collision shapes
+    - fluids
+    - effects
+    - sneak pose details
+    - the near-ground/fallDistance branch of sneak edge backoff
+    - full flying friction
+    - vanilla movement send thresholds
+  - Block destroy: close:
+    - full vanilla hardness/tool-sensitive progress
+    - collision-aware rollback position handling
+    - hit effects
+    - full model-shaped crack decals with vanilla crumbling blend/depth-bias
+      behavior
+    - any remaining `STOP_DESTROY_BLOCK` sequencing gaps
   - Commands: continue adding focused command queue and encode tests for missing
     inventory, interaction, chat, and command flows.
-  - Inventory: implement tooltips, item durability/cooldown decorations,
-    furnace progress/flame indicators, remaining dedicated server-opened menu
-    layouts beyond `generic_9xN`, `generic_3x3`, furnace/blast furnace/smoker,
-    hopper, and shulker box, recipe book/creative variants, and fuller local
-    quick-move parity such as furnace input/fuel/result routing,
-    armor/offhand auto-equip, and crafting result semantics for container `0`.
+  - Inventory: implement:
+    - tooltips
+    - item durability/cooldown decorations
+    - remaining dedicated server-opened menu layouts beyond:
+      - `generic_9xN`
+      - `generic_3x3`
+      - furnace/blast furnace/smoker
+      - hopper
+      - shulker box
+    - recipe book/creative variants
+    - fuller local quick-move parity:
+      - furnace input/fuel/result routing
+      - armor/offhand auto-equip
+      - crafting result semantics for container `0`
 - Evidence / boundary:
   - Movement:
     - Native movement projects world-computed `on_ground` and
       `horizontal_collision` into serverbound move commands.
     - It clips local player movement with a basic AABB solver against simple
-      full-block terrain plus slab, stair, door, trapdoor, fence, fence gate,
-      bars/pane, wall, leaves, snow layer, flat carpet, chain, ladder, rod,
-      campfire, copper grate, chest, bed, cauldron, hopper, composter,
-      enchanting table, stonecutter, and anvil shapes.
-    - It applies basic gravity, starts jumps only from ground, applies local
-      player `movement_speed` / `sneaking_speed` attributes with the vanilla
-      default sneaking-speed reduction, supports basic abilities-driven flying
-      movement with no ordinary gravity plus jump/sneak vertical controls and
-      vanilla 0.6 Y-velocity damping, supports vanilla default 0.6 step-up onto
-      bottom slabs/stairs and low ground shapes without auto-stepping full
-      blocks, and applies a basic vanilla-shaped sneak edge backoff.
+      full-block terrain plus common non-full-block shapes:
+      - slab
+      - stair
+      - door
+      - trapdoor
+      - fence
+      - fence gate
+      - bars/pane
+      - wall
+      - leaves
+      - snow layer
+      - flat carpet
+      - chain
+      - ladder
+      - rod
+      - campfire
+      - copper grate
+      - chest
+      - bed
+      - cauldron
+      - hopper
+      - composter
+      - enchanting table
+      - stonecutter
+      - anvil
+    - It applies:
+      - basic gravity
+      - jumps only from ground
+      - local player `movement_speed` / `sneaking_speed` attributes with the
+        vanilla default sneaking-speed reduction
+      - basic abilities-driven flying movement with no ordinary gravity
+      - jump/sneak vertical controls while flying
+      - vanilla 0.6 Y-velocity damping while flying
+      - vanilla default 0.6 step-up onto bottom slabs/stairs and low ground
+        shapes without auto-stepping full blocks
+      - a basic vanilla-shaped sneak edge backoff
   - Commands:
     - Existing input modules queue many serverbound packets, including
       vanilla-shaped boat/raft paddle-state packets from local mounted input.
@@ -232,38 +301,50 @@ update this file in the same slice.
       player has an elytra-equipped chest slot.
     - They queue `STOP_SLEEPING` player commands when wake-up input is pressed
       while the local player entity has sleeping pose metadata.
-    - Chat entry paths send offline unsigned `ServerboundChatPacket` messages,
-      request `ServerboundCommandSuggestionPacket` completions with the leading
-      slash while typing slash commands, submit `ServerboundChatCommandPacket`
-      payloads without the leading slash, and queue explicit
-      `ServerboundClientCommandPacket` perform-respawn commands from
-      native/control input instead of auto-respawning on dead health.
+    - Chat entry paths:
+      - send offline unsigned `ServerboundChatPacket` messages
+      - request `ServerboundCommandSuggestionPacket` completions with the leading
+        slash while typing slash commands
+      - submit `ServerboundChatCommandPacket` payloads without the leading slash
+      - queue explicit `ServerboundClientCommandPacket` perform-respawn commands
+        from native/control input instead of auto-respawning on dead health
   - Inventory:
     - Native opens the ordinary local inventory as container `0`, releases cursor
       capture while it is open, and closes it with E/Esc by queueing
       `ServerboundContainerClosePacket(0)`.
-    - It renders the centered vanilla survival inventory background with item
-      icons and slot hover highlights, hit-tests the fixed container `0` slot
-      layout, routes left/right pickup and outside-drop clicks through a basic
-      local `PICKUP` simulation, routes Shift-click slots through a basic local
-      `QUICK_MOVE` simulation for main-inventory/hotbar/container-zero ranges,
-      routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation,
-      routes hovered-slot number/F keys through a basic local `SWAP` simulation,
-      routes rapid same-slot left double-clicks through a basic local
-      `PICKUP_ALL` simulation, and routes local left/right drag distribution
-      through vanilla-shaped `QUICK_CRAFT` start/add/end clicks for container
-      `0`.
-    - It renders stack count labels for hotbar and local inventory item icons
-      using official 26.1 `font/ascii.png` digit glyphs with vanilla item-count
-      placement, updates cursor/slot state, fills
-      `ServerboundContainerClickPacket(0)` changed-slot hashes, and supports
-      bundle wheel selection on hovered local inventory slots.
-    - It renders and hit-tests server-opened `generic_9x1` through
-      `generic_9x6` ChestMenu screens with official `generic_54.png` background
-      slices, `generic_3x3` DispenserMenu screens with official
-      `dispenser.png`, FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with
-      official furnace-family backgrounds, HopperMenu screens with official
-      `hopper.png`, and ShulkerBoxMenu screens with official `shulker_box.png`.
+    - For container `0`, it:
+      - renders the centered vanilla survival inventory background with item
+        icons and slot hover highlights
+      - hit-tests the fixed slot layout
+      - routes left/right pickup and outside-drop clicks through a basic local
+        `PICKUP` simulation
+      - routes Shift-click slots through a basic local `QUICK_MOVE` simulation
+        for main-inventory/hotbar/container-zero ranges
+      - routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation
+      - routes hovered-slot number/F keys through a basic local `SWAP`
+        simulation
+      - routes rapid same-slot left double-clicks through a basic local
+        `PICKUP_ALL` simulation
+      - routes local left/right drag distribution through vanilla-shaped
+        `QUICK_CRAFT` start/add/end clicks
+    - It also:
+      - renders stack count labels for hotbar and local inventory item icons
+        using official 26.1 `font/ascii.png` digit glyphs with vanilla item-count
+        placement
+      - updates cursor/slot state
+      - fills `ServerboundContainerClickPacket(0)` changed-slot hashes
+      - supports bundle wheel selection on hovered local inventory slots
+    - It renders and hit-tests supported server-opened screens:
+      - `generic_9x1` through `generic_9x6` ChestMenu screens with official
+        `generic_54.png` background slices
+      - `generic_3x3` DispenserMenu screens with official `dispenser.png`
+      - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with official
+        furnace-family backgrounds
+      - HopperMenu screens with official `hopper.png`
+      - ShulkerBoxMenu screens with official `shulker_box.png`
+    - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
+      lit-progress and burn-progress sprites from canonical `ContainerSetData`
+      values using vanilla `AbstractFurnaceMenu` progress formulas.
     - It queues basic left/right `PICKUP` container clicks for those supported
       fixed-slot screens.
     - It also queues Shift-click `QUICK_MOVE` container clicks for the supported
@@ -297,11 +378,13 @@ update this file in the same slice.
   - Implement signed chat/chat-command last-seen updates and any remaining
     vanilla last-seen message entries needed for outbound signed payloads.
 - Evidence / boundary:
-  - `ServerboundChatAckPacket` id 6 and VarInt `offset` encoding, offline
-    unsigned `ServerboundChatPacket` encoding/sending, `NetCommand::ChatAcknowledgement`
-    sending, canonical processed-signature offset tracking, online drain
-    queueing, and offline probe ack sending after vanilla's `offset > 64`
-    threshold are covered.
+  - Covered pieces:
+    - `ServerboundChatAckPacket` id 6 and VarInt `offset` encoding
+    - offline unsigned `ServerboundChatPacket` encoding/sending
+    - `NetCommand::ChatAcknowledgement` sending
+    - canonical processed-signature offset tracking
+    - online drain queueing
+    - offline probe ack sending after vanilla's `offset > 64` threshold
   - Full signed chat payload generation remains follow-up work.
 
 ### Manual Visual/Audio Comparisons
@@ -316,11 +399,14 @@ update this file in the same slice.
   - The project gate allows manual or screenshot/audio smoke checks outside
     normal unit tests, but they must be documented when required.
 
-Mounted boat input now has a basic locally authoritative path that updates
-local look while mounted, advances a simple root-boat transform from local input,
-and queues both paddle-state and `MoveVehicle` commands. Full vanilla boat
-physics, water/buoyancy/collision parity, and non-boat vehicle movement remain
-covered by the native input/movement ledger row above.
+Mounted boat input now has a basic locally authoritative path:
+
+- Updates local look while mounted.
+- Advances a simple root-boat transform from local input.
+- Queues both paddle-state and `MoveVehicle` commands.
+- Leaves full vanilla boat physics, water/buoyancy/collision parity, and
+  non-boat vehicle movement covered by the native input/movement ledger row
+  above.
 
 ## Update Rules
 

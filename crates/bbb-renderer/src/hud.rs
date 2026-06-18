@@ -92,8 +92,14 @@ pub enum HudInventoryBackgroundTexture {
     GenericContainer,
     Dispenser,
     Furnace,
+    FurnaceLitProgress,
+    FurnaceBurnProgress,
     BlastFurnace,
+    BlastFurnaceLitProgress,
+    BlastFurnaceBurnProgress,
     Smoker,
+    SmokerLitProgress,
+    SmokerBurnProgress,
     Hopper,
     ShulkerBox,
 }
@@ -226,6 +232,26 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_furnace_lit_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_furnace_lit_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_furnace_burn_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_furnace_burn_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_blast_furnace_background(
         &mut self,
         width: u32,
@@ -236,6 +262,26 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_blast_furnace_lit_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_blast_furnace_lit_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_blast_furnace_burn_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_blast_furnace_burn_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_smoker_background(
         &mut self,
         width: u32,
@@ -243,6 +289,26 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_smoker_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_smoker_lit_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_smoker_lit_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_smoker_burn_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_smoker_burn_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -680,10 +746,28 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::Dispenser => self.hud_dispenser_background.as_ref(),
             HudInventoryBackgroundTexture::Furnace => self.hud_furnace_background.as_ref(),
+            HudInventoryBackgroundTexture::FurnaceLitProgress => {
+                self.hud_furnace_lit_progress.as_ref()
+            }
+            HudInventoryBackgroundTexture::FurnaceBurnProgress => {
+                self.hud_furnace_burn_progress.as_ref()
+            }
             HudInventoryBackgroundTexture::BlastFurnace => {
                 self.hud_blast_furnace_background.as_ref()
             }
+            HudInventoryBackgroundTexture::BlastFurnaceLitProgress => {
+                self.hud_blast_furnace_lit_progress.as_ref()
+            }
+            HudInventoryBackgroundTexture::BlastFurnaceBurnProgress => {
+                self.hud_blast_furnace_burn_progress.as_ref()
+            }
             HudInventoryBackgroundTexture::Smoker => self.hud_smoker_background.as_ref(),
+            HudInventoryBackgroundTexture::SmokerLitProgress => {
+                self.hud_smoker_lit_progress.as_ref()
+            }
+            HudInventoryBackgroundTexture::SmokerBurnProgress => {
+                self.hud_smoker_burn_progress.as_ref()
+            }
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
             HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
         }

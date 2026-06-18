@@ -495,6 +495,15 @@ impl WorldStore {
             })
     }
 
+    pub fn open_container_data_value(&self, id: i16) -> Option<i16> {
+        self.inventory
+            .open_container
+            .as_ref()?
+            .data_values
+            .iter()
+            .find_map(|value| (value.id == id).then_some(value.value))
+    }
+
     pub fn apply_local_select_bundle_item(
         &mut self,
         slot_id: i32,
@@ -2002,6 +2011,8 @@ mod tests {
             container.data_values,
             vec![ContainerDataValue { id: 2, value: 10 }]
         );
+        assert_eq!(store.open_container_data_value(2), Some(10));
+        assert_eq!(store.open_container_data_value(3), None);
         assert_eq!(
             store.inventory().cursor_item,
             ProtocolItemStackSummary::empty()
@@ -2009,6 +2020,7 @@ mod tests {
 
         assert!(store.apply_container_close(ProtocolContainerClose { container_id: 7 }));
         assert!(store.inventory().open_container.is_none());
+        assert_eq!(store.open_container_data_value(2), None);
         assert!(!store.apply_container_close(ProtocolContainerClose { container_id: 99 }));
 
         assert_eq!(store.counters().inventory_slot_updates_received, 2);
