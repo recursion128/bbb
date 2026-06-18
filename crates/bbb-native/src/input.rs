@@ -37,7 +37,8 @@ pub(crate) use commands::{
 pub(crate) use inventory::{
     handle_inventory_cursor_moved, handle_inventory_key_input, handle_inventory_mouse_input,
     handle_inventory_mouse_wheel, inventory_screen_layout, sync_beacon_effect_selection_state,
-    sync_stonecutter_recipe_scroll_state, InventoryScreenBackground,
+    sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state,
+    InventoryScreenBackground,
 };
 pub(crate) use mouse::{
     advance_destroying_block_at_partial_tick, advance_using_item_at_partial_tick,
@@ -80,6 +81,11 @@ pub(crate) struct ClientInputState {
     stonecutter_recipe_scroll_row: i32,
     stonecutter_recipe_scroll_input_item_id: Option<i32>,
     stonecutter_recipe_scrolling: bool,
+    loom_pattern_scroll_row: i32,
+    loom_pattern_scrolling: bool,
+    loom_pattern_selection_container_id: Option<i32>,
+    loom_pattern_selection_dirty: bool,
+    loom_selected_pattern_index: Option<i32>,
     beacon_effect_selection_container_id: Option<i32>,
     beacon_effect_selection_dirty: bool,
     beacon_primary_effect: Option<i32>,
@@ -134,6 +140,7 @@ impl ClientInputState {
         self.inventory_last_click_at = None;
         self.inventory_quick_craft_button_num = None;
         self.inventory_quick_craft_slots.clear();
+        self.loom_pattern_scrolling = false;
         self.merchant_trade_scrolling = false;
         self.stonecutter_recipe_scrolling = false;
         self.chat_entry = None;
@@ -188,6 +195,14 @@ impl ClientInputState {
 
     pub(crate) fn stonecutter_recipe_scroll_row(&self) -> i32 {
         self.stonecutter_recipe_scroll_row
+    }
+
+    pub(crate) fn loom_pattern_scroll_row(&self) -> i32 {
+        self.loom_pattern_scroll_row
+    }
+
+    pub(crate) fn loom_selected_pattern_index(&self) -> Option<i32> {
+        self.loom_selected_pattern_index
     }
 
     pub(crate) fn beacon_effect_selection(&self) -> (Option<i32>, Option<i32>) {

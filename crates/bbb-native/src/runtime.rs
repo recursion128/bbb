@@ -29,8 +29,8 @@ use crate::{
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout,
-        sync_beacon_effect_selection_state, sync_stonecutter_recipe_scroll_state, ClientInputState,
-        InventoryScreenBackground,
+        sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
+        sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
     },
     item_entities::item_entity_billboards_from_world,
     item_runtime::NativeItemRuntime,
@@ -87,9 +87,21 @@ const ENCHANTING_TABLE_OPTION_SPACING: i32 = 19;
 const ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET: i32 = 1;
 const ENCHANTING_TABLE_LEVEL_ICON_SIZE: u32 = 16;
+const LOOM_MENU_TYPE_ID: i32 = 18;
 const LOOM_SLOT_SPRITE_SIZE: u32 = 16;
+const LOOM_SELECTED_PATTERN_DATA_ID: i16 = 0;
+const LOOM_PATTERN_BUTTON_X: i32 = 60;
+const LOOM_PATTERN_BUTTON_Y: i32 = 13;
+const LOOM_PATTERN_BUTTON_COLUMNS: i32 = 4;
+const LOOM_PATTERN_BUTTON_ROWS: i32 = 4;
+const LOOM_PATTERN_BUTTON_SIZE: u32 = 14;
 const LOOM_SCROLLER_WIDTH: u32 = 12;
 const LOOM_SCROLLER_HEIGHT: u32 = 15;
+const LOOM_SCROLLER_X: i32 = 119;
+const LOOM_SCROLLER_Y: i32 = 13;
+const LOOM_SCROLLER_MAX_OFFSET: i32 = 41;
+const LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT: i32 = 32;
+const LOOM_PATTERN_ITEM_PATTERN_COUNT: i32 = 1;
 const SMITHING_RECIPE_ERROR_DATA_ID: i16 = 0;
 const BREWING_STAND_BREW_TIME_DATA_ID: i16 = 0;
 const BREWING_STAND_FUEL_DATA_ID: i16 = 1;
@@ -157,6 +169,14 @@ struct BeaconEffectButton {
     effect_id: i32,
     x: i32,
     y: i32,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct InventoryHudLocalState {
+    stonecutter_recipe_scroll_row: Option<i32>,
+    beacon_effect_selection: Option<(Option<i32>, Option<i32>)>,
+    loom_pattern_scroll_row: Option<i32>,
+    loom_selected_pattern_index: Option<i32>,
 }
 
 pub(crate) use control_requests::pump_control_net_requests;
@@ -278,12 +298,17 @@ pub(crate) fn pump_network_and_terrain(
     renderer.set_hud_hotbar_item_icons(hotbar_item_icons(world, item_runtime, entity_partial_tick));
     sync_stonecutter_recipe_scroll_state(input, world);
     sync_beacon_effect_selection_state(input, world);
-    renderer.set_hud_inventory_screen(hud_inventory_screen_with_stonecutter_scroll_row(
+    sync_loom_pattern_state_for_hud(input, world);
+    renderer.set_hud_inventory_screen(hud_inventory_screen_with_local_state(
         world,
         item_runtime,
         input.inventory_hovered_slot(),
-        Some(input.stonecutter_recipe_scroll_row()),
-        Some(input.beacon_effect_selection()),
+        InventoryHudLocalState {
+            stonecutter_recipe_scroll_row: Some(input.stonecutter_recipe_scroll_row()),
+            beacon_effect_selection: Some(input.beacon_effect_selection()),
+            loom_pattern_scroll_row: Some(input.loom_pattern_scroll_row()),
+            loom_selected_pattern_index: input.loom_selected_pattern_index(),
+        },
         entity_partial_tick,
     ));
     renderer.set_item_entity_billboards(item_entity_billboards_from_world(world, item_runtime));
@@ -394,22 +419,20 @@ fn hud_inventory_screen(
     hovered_slot_id: Option<i16>,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
-    hud_inventory_screen_with_stonecutter_scroll_row(
+    hud_inventory_screen_with_local_state(
         world,
         item_runtime,
         hovered_slot_id,
-        None,
-        None,
+        InventoryHudLocalState::default(),
         partial_tick,
     )
 }
 
-fn hud_inventory_screen_with_stonecutter_scroll_row(
+fn hud_inventory_screen_with_local_state(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     hovered_slot_id: Option<i16>,
-    stonecutter_recipe_scroll_row: Option<i32>,
-    beacon_effect_selection: Option<(Option<i32>, Option<i32>)>,
+    local_state: InventoryHudLocalState,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
     let layout = inventory_screen_layout(world)?;
@@ -448,18 +471,13 @@ fn hud_inventory_screen_with_stonecutter_scroll_row(
     Some(HudInventoryScreen {
         width: u32::try_from(layout.width).unwrap_or_default(),
         height: u32::try_from(layout.height).unwrap_or_default(),
-        background_layers: hud_inventory_background_layers(
-            world,
-            layout.background,
-            stonecutter_recipe_scroll_row,
-            beacon_effect_selection,
-        ),
+        background_layers: hud_inventory_background_layers(world, layout.background, local_state),
         slots,
         floating_items: hud_inventory_floating_items(
             world,
             item_runtime,
             layout.background,
-            stonecutter_recipe_scroll_row,
+            local_state.stonecutter_recipe_scroll_row,
             partial_tick,
         ),
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
@@ -490,8 +508,7 @@ fn hud_inventory_floating_items(
 fn hud_inventory_background_layers(
     world: &WorldStore,
     background: InventoryScreenBackground,
-    stonecutter_recipe_scroll_row: Option<i32>,
-    beacon_effect_selection: Option<(Option<i32>, Option<i32>)>,
+    local_state: InventoryHudLocalState,
 ) -> Vec<HudInventoryBackgroundLayer> {
     match background {
         InventoryScreenBackground::LocalInventory => {
@@ -624,7 +641,8 @@ fn hud_inventory_background_layers(
                 [0.0, 0.0],
                 [230.0 / 256.0, 219.0 / 256.0],
             )];
-            let selection = beacon_effect_selection
+            let selection = local_state
+                .beacon_effect_selection
                 .unwrap_or_else(|| beacon_effect_selection_from_world(world));
             push_beacon_effect_button_layers(world, &mut layers, selection);
             push_beacon_action_button_layers(world, &mut layers, selection);
@@ -865,7 +883,12 @@ fn hud_inventory_background_layers(
                 [0.0, 0.0],
                 [176.0 / 256.0, 166.0 / 256.0],
             )];
-            push_loom_state_layers(world, &mut layers);
+            push_loom_state_layers(
+                world,
+                &mut layers,
+                local_state.loom_pattern_scroll_row.unwrap_or_default(),
+                local_state.loom_selected_pattern_index,
+            );
             layers
         }
         InventoryScreenBackground::Merchant => {
@@ -923,7 +946,9 @@ fn hud_inventory_background_layers(
             push_stonecutter_recipe_layers(
                 world,
                 &mut layers,
-                stonecutter_recipe_scroll_row.unwrap_or_default(),
+                local_state
+                    .stonecutter_recipe_scroll_row
+                    .unwrap_or_default(),
             );
             layers
         }
@@ -1581,7 +1606,12 @@ fn push_crafter_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBa
     ));
 }
 
-fn push_loom_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBackgroundLayer>) {
+fn push_loom_state_layers(
+    world: &WorldStore,
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    scroll_row: i32,
+    selected_pattern_index: Option<i32>,
+) {
     for (slot, texture, x, y) in [
         (0, HudInventoryBackgroundTexture::LoomBannerSlot, 13, 26),
         (1, HudInventoryBackgroundTexture::LoomDyeSlot, 33, 26),
@@ -1601,15 +1631,103 @@ fn push_loom_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBackg
         ));
     }
 
+    let selectable_count = loom_selectable_pattern_count(world);
+    let can_scroll = selectable_count
+        .is_some_and(|count| count > LOOM_PATTERN_BUTTON_COLUMNS * LOOM_PATTERN_BUTTON_ROWS);
     layers.push(hud_inventory_background_layer(
-        HudInventoryBackgroundTexture::LoomScrollerDisabled,
-        119,
-        13,
+        if can_scroll {
+            HudInventoryBackgroundTexture::LoomScroller
+        } else {
+            HudInventoryBackgroundTexture::LoomScrollerDisabled
+        },
+        LOOM_SCROLLER_X,
+        LOOM_SCROLLER_Y
+            + if let Some(count) = selectable_count {
+                loom_scroller_offset(count, scroll_row)
+            } else {
+                0
+            },
         LOOM_SCROLLER_WIDTH,
         LOOM_SCROLLER_HEIGHT,
         [0.0, 0.0],
         [1.0, 1.0],
     ));
+
+    let Some(selectable_count) = selectable_count else {
+        return;
+    };
+    let selected_pattern_index =
+        selected_pattern_index.or_else(|| loom_selected_pattern_index(world));
+    let start_index = loom_pattern_start_index(selectable_count, scroll_row).unwrap_or_default();
+    for position in 0..(LOOM_PATTERN_BUTTON_COLUMNS * LOOM_PATTERN_BUTTON_ROWS) {
+        let pattern_index = start_index + position;
+        if pattern_index >= selectable_count {
+            break;
+        }
+        let column = position % LOOM_PATTERN_BUTTON_COLUMNS;
+        let row = position / LOOM_PATTERN_BUTTON_COLUMNS;
+        layers.push(hud_inventory_background_layer(
+            if selected_pattern_index == Some(pattern_index) {
+                HudInventoryBackgroundTexture::LoomPatternSelected
+            } else {
+                HudInventoryBackgroundTexture::LoomPattern
+            },
+            LOOM_PATTERN_BUTTON_X + column * LOOM_PATTERN_BUTTON_SIZE as i32,
+            LOOM_PATTERN_BUTTON_Y + row * LOOM_PATTERN_BUTTON_SIZE as i32,
+            LOOM_PATTERN_BUTTON_SIZE,
+            LOOM_PATTERN_BUTTON_SIZE,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+}
+
+fn loom_selectable_pattern_count(world: &WorldStore) -> Option<i32> {
+    let container = world.inventory().open_container.as_ref()?;
+    if container.menu_type_id != Some(LOOM_MENU_TYPE_ID) {
+        return None;
+    }
+    if !open_container_slot_has_item(world, 0) || !open_container_slot_has_item(world, 1) {
+        return None;
+    }
+    if open_container_slot_has_item(world, 2) {
+        Some(LOOM_PATTERN_ITEM_PATTERN_COUNT)
+    } else {
+        Some(LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT)
+    }
+}
+
+fn loom_selected_pattern_index(world: &WorldStore) -> Option<i32> {
+    world
+        .open_container_data_value(LOOM_SELECTED_PATTERN_DATA_ID)
+        .and_then(|value| (value >= 0).then_some(i32::from(value)))
+}
+
+fn loom_pattern_start_index(selectable_count: i32, scroll_row: i32) -> Option<i32> {
+    if selectable_count <= 0 {
+        return None;
+    }
+    let max_scroll_row =
+        (loom_pattern_row_count(selectable_count) - LOOM_PATTERN_BUTTON_ROWS).max(0);
+    Some(scroll_row.clamp(0, max_scroll_row) * LOOM_PATTERN_BUTTON_COLUMNS)
+}
+
+fn loom_pattern_row_count(selectable_count: i32) -> i32 {
+    if selectable_count <= 0 {
+        0
+    } else {
+        (selectable_count + LOOM_PATTERN_BUTTON_COLUMNS - 1) / LOOM_PATTERN_BUTTON_COLUMNS
+    }
+}
+
+fn loom_scroller_offset(selectable_count: i32, scroll_row: i32) -> i32 {
+    let max_scroll_row =
+        (loom_pattern_row_count(selectable_count) - LOOM_PATTERN_BUTTON_ROWS).max(0);
+    if max_scroll_row <= 0 {
+        return 0;
+    }
+    let scroll_row = scroll_row.clamp(0, max_scroll_row);
+    ((scroll_row as f32 / max_scroll_row as f32) * LOOM_SCROLLER_MAX_OFFSET as f32) as i32
 }
 
 fn push_enchanting_table_state_layers(
@@ -2958,15 +3076,17 @@ mod tests {
             value: 4,
         });
 
-        let screen = hud_inventory_screen_with_stonecutter_scroll_row(
+        let screen = hud_inventory_screen_with_local_state(
             &world,
             None,
             None,
-            None,
-            Some((
-                Some(BEACON_EFFECT_STRENGTH_ID),
-                Some(BEACON_EFFECT_STRENGTH_ID),
-            )),
+            InventoryHudLocalState {
+                beacon_effect_selection: Some((
+                    Some(BEACON_EFFECT_STRENGTH_ID),
+                    Some(BEACON_EFFECT_STRENGTH_ID),
+                )),
+                ..InventoryHudLocalState::default()
+            },
             0.0,
         )
         .unwrap();
@@ -3829,6 +3949,84 @@ mod tests {
     }
 
     #[test]
+    fn hud_inventory_screen_projects_loom_pattern_grid_and_scroller() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 18,
+            title: "Loom".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 40];
+        items[0] = item_stack(42, 1);
+        items[1] = item_stack(43, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen_with_local_state(
+            &world,
+            None,
+            None,
+            InventoryHudLocalState {
+                loom_pattern_scroll_row: Some(2),
+                loom_selected_pattern_index: Some(10),
+                ..InventoryHudLocalState::default()
+            },
+            0.0,
+        )
+        .unwrap();
+
+        assert_eq!(screen.background_layers.len(), 19);
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::LoomScroller,
+                119,
+                33,
+                12,
+                15,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::LoomPattern,
+                60,
+                13,
+                14,
+                14,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::LoomPatternSelected,
+                88,
+                13,
+                14,
+                14,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::LoomPattern,
+                102,
+                55,
+                14,
+                14,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+    }
+
+    #[test]
     fn hud_inventory_screen_projects_merchant_layout() {
         let mut world = WorldStore::new();
         world.apply_open_screen(bbb_protocol::packets::OpenScreen {
@@ -4217,12 +4415,14 @@ mod tests {
             value: 5,
         });
 
-        let screen = hud_inventory_screen_with_stonecutter_scroll_row(
+        let screen = hud_inventory_screen_with_local_state(
             &world,
             None,
             None,
-            Some(1),
-            None,
+            InventoryHudLocalState {
+                stonecutter_recipe_scroll_row: Some(1),
+                ..InventoryHudLocalState::default()
+            },
             0.0,
         )
         .unwrap();

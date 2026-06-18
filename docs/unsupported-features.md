@@ -693,16 +693,26 @@ When an agent does any of the following, update this file in the same slice:
           - component-hashable grindstone item prediction
       - hopper
       - LoomMenu:
+        - selectable pattern grid renders official pattern button sprites when
+          banner and dye slots are populated:
+          - 32 vanilla no-item-required patterns when the pattern slot is empty
+          - one selectable pattern when a vanilla pattern item is present
+        - pattern clicks queue `ServerboundContainerButtonClickPacket` with the
+          vanilla selectable pattern index.
+        - pattern grid mouse wheel input and scroller drag update the local
+          visible pattern window.
+        - selected pattern buttons and active/disabled scroller state render
+          from native HUD state.
         - quick-move and result-slot paths are kept server-authoritative until:
           - banner/dye/pattern item routing
-          - selectable banner pattern state
+          - component-aware selectable banner pattern state
           - result prediction
           - input consumption
           - take-result sound side effects
         - deferred presentation parity work:
-          - selectable pattern grid
-          - selected/highlighted pattern buttons
-          - active scroller
+          - pattern-item component/tag lists beyond the single-pattern vanilla
+            items
+          - highlighted pattern buttons
           - banner preview
           - max-pattern error overlay
       - MerchantMenu:

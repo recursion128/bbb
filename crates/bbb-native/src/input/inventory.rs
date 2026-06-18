@@ -146,6 +146,20 @@ const LECTERN_MENU_BUTTON_HEIGHT: i32 = 20;
 const LOOM_SCREEN_WIDTH: i32 = 176;
 const LOOM_SCREEN_HEIGHT: i32 = 166;
 const LOOM_SLOT_COUNT: i16 = 4;
+const LOOM_SELECTED_PATTERN_DATA_ID: i16 = 0;
+const LOOM_PATTERN_BUTTON_X: i32 = 60;
+const LOOM_PATTERN_BUTTON_Y: i32 = 13;
+const LOOM_PATTERN_BUTTON_COLUMNS: i32 = 4;
+const LOOM_PATTERN_BUTTON_ROWS: i32 = 4;
+const LOOM_PATTERN_BUTTON_SIZE: i32 = 14;
+const LOOM_SCROLLER_X: i32 = 119;
+const LOOM_SCROLLER_CLICK_Y: i32 = 9;
+const LOOM_SCROLLER_DRAG_Y: i32 = 13;
+const LOOM_SCROLLER_WIDTH: i32 = 12;
+const LOOM_SCROLLER_HEIGHT: i32 = 15;
+const LOOM_SCROLLER_FULL_HEIGHT: i32 = 56;
+const LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT: i32 = 32;
+const LOOM_PATTERN_ITEM_PATTERN_COUNT: i32 = 1;
 const MERCHANT_SCREEN_WIDTH: i32 = 276;
 const MERCHANT_SCREEN_HEIGHT: i32 = 166;
 const MERCHANT_SLOT_COUNT: i16 = 3;
@@ -248,6 +262,11 @@ enum BeaconClickTarget {
     Confirm,
     Cancel,
     Effect { primary: bool, effect_id: i32 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LoomClickTarget {
+    Pattern(i32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1185,6 +1204,11 @@ pub(crate) fn handle_inventory_cursor_moved(
     {
         return true;
     }
+    if input.loom_pattern_scrolling
+        && update_loom_pattern_scroll_from_cursor(input, world, cursor_position, surface_size)
+    {
+        return true;
+    }
     let hovered = inventory_screen_hovered_slot(world, cursor_position, surface_size);
     if input.inventory_hovered_slot != hovered {
         if let Some(previous) = input.inventory_hovered_slot {
@@ -1291,6 +1315,20 @@ pub(crate) fn handle_inventory_mouse_input(
         local_inventory_clear_quick_craft(input);
         return true;
     }
+    if maybe_queue_loom_pattern_click(
+        input,
+        world,
+        counters,
+        net_commands,
+        cursor_position,
+        surface_size,
+    ) {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
     if maybe_queue_stonecutter_recipe_click(
         input,
         world,
@@ -1299,6 +1337,13 @@ pub(crate) fn handle_inventory_mouse_input(
         cursor_position,
         surface_size,
     ) {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if maybe_start_loom_pattern_scroll_drag(input, world, cursor_position, surface_size) {
         input.inventory_last_click_slot = None;
         input.inventory_last_click_button_num = None;
         input.inventory_last_click_at = None;
@@ -1491,6 +1536,35 @@ fn maybe_queue_enchantment_button_click(
     true
 }
 
+fn maybe_queue_loom_pattern_click(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    sync_loom_pattern_state(input, world);
+    let start_index = input.loom_pattern_scroll_row * LOOM_PATTERN_BUTTON_COLUMNS;
+    let Some(LoomClickTarget::Pattern(button_id)) =
+        loom_click_target_at_position(world, start_index, cursor_position, surface_size)
+    else {
+        return false;
+    };
+    let Some(container_id) = world
+        .inventory()
+        .open_container
+        .as_ref()
+        .map(|container| container.container_id)
+    else {
+        return false;
+    };
+    input.loom_selected_pattern_index = Some(button_id);
+    input.loom_pattern_selection_dirty = true;
+    queue_container_button_click_command(counters, net_commands, container_id, button_id);
+    true
+}
+
 fn maybe_queue_stonecutter_recipe_click(
     input: &mut ClientInputState,
     world: &WorldStore,
@@ -1534,6 +1608,7 @@ fn handle_inventory_mouse_released(
 ) -> bool {
     input.merchant_trade_scrolling = false;
     input.stonecutter_recipe_scrolling = false;
+    input.loom_pattern_scrolling = false;
     let Some(quick_craft_button_num) = input.inventory_quick_craft_button_num else {
         return true;
     };
@@ -1871,6 +1946,9 @@ pub(crate) fn handle_inventory_mouse_wheel(
     if maybe_scroll_stonecutter_recipes(input, world, &delta) {
         return true;
     }
+    if maybe_scroll_loom_patterns(input, world, &delta) {
+        return true;
+    }
     if maybe_scroll_merchant_trades(input, world, &delta) {
         return true;
     }
@@ -1906,6 +1984,25 @@ fn maybe_scroll_stonecutter_recipes(
     true
 }
 
+fn maybe_scroll_loom_patterns(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    delta: &MouseScrollDelta,
+) -> bool {
+    sync_loom_pattern_scroll(input, world);
+    let Some(max_scroll_row) = loom_pattern_max_scroll_row(world) else {
+        return false;
+    };
+    if max_scroll_row <= 0 {
+        return false;
+    }
+    if let Some(wheel) = inventory_wheel_steps_from_scroll(input, delta) {
+        input.loom_pattern_scroll_row =
+            (input.loom_pattern_scroll_row - wheel).clamp(0, max_scroll_row);
+    }
+    true
+}
+
 fn maybe_start_stonecutter_recipe_scroll_drag(
     input: &mut ClientInputState,
     world: &WorldStore,
@@ -1920,6 +2017,23 @@ fn maybe_start_stonecutter_recipe_scroll_drag(
         return false;
     }
     input.stonecutter_recipe_scrolling = true;
+    true
+}
+
+fn maybe_start_loom_pattern_scroll_drag(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    sync_loom_pattern_scroll(input, world);
+    if loom_pattern_max_scroll_row(world).unwrap_or_default() <= 0 {
+        return false;
+    }
+    if !loom_scroller_at_position(world, cursor_position, surface_size) {
+        return false;
+    }
+    input.loom_pattern_scrolling = true;
     true
 }
 
@@ -2064,6 +2178,36 @@ fn enchantment_button_at_position(
     None
 }
 
+fn loom_click_target_at_position(
+    world: &WorldStore,
+    start_index: i32,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<LoomClickTarget> {
+    let selectable_count = loom_selectable_pattern_count(world)?;
+    if selectable_count <= 0 {
+        return None;
+    }
+    let layout = inventory_screen_layout(world)?;
+    if layout.background != InventoryScreenBackground::Loom {
+        return None;
+    }
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x - f64::from(LOOM_PATTERN_BUTTON_X);
+    let y = cursor.y - origin_y - f64::from(LOOM_PATTERN_BUTTON_Y);
+    if x < 0.0 || y < 0.0 {
+        return None;
+    }
+    let column = (x / f64::from(LOOM_PATTERN_BUTTON_SIZE)) as i32;
+    let row = (y / f64::from(LOOM_PATTERN_BUTTON_SIZE)) as i32;
+    if column >= LOOM_PATTERN_BUTTON_COLUMNS || row >= LOOM_PATTERN_BUTTON_ROWS {
+        return None;
+    }
+    let button_id = start_index + row * LOOM_PATTERN_BUTTON_COLUMNS + column;
+    (button_id < selectable_count).then_some(LoomClickTarget::Pattern(button_id))
+}
+
 fn merchant_trade_at_position(
     world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -2128,6 +2272,32 @@ fn merchant_scroller_track_at_position(
         && y <= f64::from(MERCHANT_SCROLLER_Y + MERCHANT_SCROLLER_FULL_HEIGHT + 1)
 }
 
+fn loom_scroller_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if loom_pattern_max_scroll_row(world).unwrap_or_default() <= 0 {
+        return false;
+    }
+    let Some(layout) = inventory_screen_layout(world) else {
+        return false;
+    };
+    if layout.background != InventoryScreenBackground::Loom {
+        return false;
+    }
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    x >= f64::from(LOOM_SCROLLER_X)
+        && x < f64::from(LOOM_SCROLLER_X + LOOM_SCROLLER_WIDTH)
+        && y >= f64::from(LOOM_SCROLLER_CLICK_Y)
+        && y < f64::from(LOOM_SCROLLER_CLICK_Y + LOOM_SCROLLER_FULL_HEIGHT)
+}
+
 fn update_merchant_trade_scroll_from_cursor(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -2167,6 +2337,43 @@ fn update_merchant_trade_scroll_from_cursor(
     if scroll_offset != current_scroll_offset {
         world.scroll_local_merchant_offers(scroll_offset - current_scroll_offset);
     }
+    true
+}
+
+fn update_loom_pattern_scroll_from_cursor(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    sync_loom_pattern_scroll(input, world);
+    let Some(max_scroll_row) = loom_pattern_max_scroll_row(world) else {
+        input.loom_pattern_scrolling = false;
+        return false;
+    };
+    if max_scroll_row <= 0 {
+        input.loom_pattern_scrolling = false;
+        return false;
+    }
+    let Some(layout) = inventory_screen_layout(world) else {
+        input.loom_pattern_scrolling = false;
+        return false;
+    };
+    if layout.background != InventoryScreenBackground::Loom {
+        input.loom_pattern_scrolling = false;
+        return false;
+    }
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (_, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let y = cursor.y - origin_y;
+    let drag_range = f64::from(LOOM_SCROLLER_FULL_HEIGHT - LOOM_SCROLLER_HEIGHT);
+    let scroll_offs =
+        ((y - f64::from(LOOM_SCROLLER_DRAG_Y) - f64::from(LOOM_SCROLLER_HEIGHT) * 0.5)
+            / drag_range)
+            .clamp(0.0, 1.0);
+    input.loom_pattern_scroll_row = (scroll_offs * f64::from(max_scroll_row) + 0.5) as i32;
     true
 }
 
@@ -2425,12 +2632,40 @@ fn stonecutter_recipe_max_scroll_row(world: &WorldStore) -> Option<i32> {
     Some((stonecutter_recipe_row_count(visible_recipes) - STONECUTTER_RECIPE_BUTTON_ROWS).max(0))
 }
 
+fn loom_pattern_max_scroll_row(world: &WorldStore) -> Option<i32> {
+    let selectable_count = loom_selectable_pattern_count(world)?;
+    Some((loom_pattern_row_count(selectable_count) - LOOM_PATTERN_BUTTON_ROWS).max(0))
+}
+
+fn loom_selectable_pattern_count(world: &WorldStore) -> Option<i32> {
+    let container = world.inventory().open_container.as_ref()?;
+    if container.menu_type_id != Some(LOOM_MENU_TYPE_ID) {
+        return None;
+    }
+    if !inventory_slot_has_item(world, 0) || !inventory_slot_has_item(world, 1) {
+        return Some(0);
+    }
+    if inventory_slot_has_item(world, 2) {
+        Some(LOOM_PATTERN_ITEM_PATTERN_COUNT)
+    } else {
+        Some(LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT)
+    }
+}
+
 fn stonecutter_recipe_row_count(visible_recipes: i32) -> i32 {
     if visible_recipes <= 0 {
         0
     } else {
         (visible_recipes + STONECUTTER_RECIPE_BUTTON_COLUMNS - 1)
             / STONECUTTER_RECIPE_BUTTON_COLUMNS
+    }
+}
+
+fn loom_pattern_row_count(selectable_count: i32) -> i32 {
+    if selectable_count <= 0 {
+        0
+    } else {
+        (selectable_count + LOOM_PATTERN_BUTTON_COLUMNS - 1) / LOOM_PATTERN_BUTTON_COLUMNS
     }
 }
 
@@ -2446,11 +2681,61 @@ fn sync_stonecutter_recipe_scroll(input: &mut ClientInputState, world: &WorldSto
         input.stonecutter_recipe_scroll_row.clamp(0, max_scroll_row);
 }
 
+fn sync_loom_pattern_scroll(input: &mut ClientInputState, world: &WorldStore) {
+    let max_scroll_row = loom_pattern_max_scroll_row(world).unwrap_or_default();
+    input.loom_pattern_scroll_row = input.loom_pattern_scroll_row.clamp(0, max_scroll_row);
+    if max_scroll_row <= 0 {
+        input.loom_pattern_scrolling = false;
+    }
+}
+
+fn sync_loom_pattern_state(input: &mut ClientInputState, world: &WorldStore) {
+    let Some(container) = world.inventory().open_container.as_ref() else {
+        input.loom_pattern_selection_container_id = None;
+        input.loom_pattern_selection_dirty = false;
+        input.loom_selected_pattern_index = None;
+        input.loom_pattern_scroll_row = 0;
+        input.loom_pattern_scrolling = false;
+        return;
+    };
+    if container.menu_type_id != Some(LOOM_MENU_TYPE_ID) {
+        input.loom_pattern_selection_container_id = None;
+        input.loom_pattern_selection_dirty = false;
+        input.loom_selected_pattern_index = None;
+        input.loom_pattern_scroll_row = 0;
+        input.loom_pattern_scrolling = false;
+        return;
+    }
+
+    if input.loom_pattern_selection_container_id != Some(container.container_id) {
+        input.loom_pattern_selection_container_id = Some(container.container_id);
+        input.loom_pattern_selection_dirty = false;
+    }
+    if !input.loom_pattern_selection_dirty {
+        input.loom_selected_pattern_index = world
+            .open_container_data_value(LOOM_SELECTED_PATTERN_DATA_ID)
+            .and_then(|value| (value >= 0).then_some(i32::from(value)));
+    }
+    let selectable_count = loom_selectable_pattern_count(world).unwrap_or_default();
+    if input
+        .loom_selected_pattern_index
+        .is_some_and(|index| index < 0 || index >= selectable_count)
+    {
+        input.loom_selected_pattern_index = None;
+        input.loom_pattern_selection_dirty = false;
+    }
+    sync_loom_pattern_scroll(input, world);
+}
+
 pub(crate) fn sync_stonecutter_recipe_scroll_state(
     input: &mut ClientInputState,
     world: &WorldStore,
 ) {
     sync_stonecutter_recipe_scroll(input, world);
+}
+
+pub(crate) fn sync_loom_pattern_state_for_hud(input: &mut ClientInputState, world: &WorldStore) {
+    sync_loom_pattern_state(input, world);
 }
 
 pub(crate) fn sync_beacon_effect_selection_state(input: &mut ClientInputState, world: &WorldStore) {
@@ -4433,6 +4718,15 @@ mod tests {
             menu_type_id: LOOM_MENU_TYPE_ID,
             title: "Loom".to_string(),
         });
+        let mut items = vec![ItemStackSummary::empty(); 40];
+        items[0] = item_stack(42, 1);
+        items[1] = item_stack(43, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
 
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(573.0, 311.0)), size),
@@ -4454,6 +4748,170 @@ mod tests {
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
             Some(InventoryClickTarget::Slot(39))
         );
+        assert_eq!(
+            loom_click_target_at_position(
+                &world,
+                0,
+                Some(PhysicalPosition::new(620.0, 296.0)),
+                size
+            ),
+            Some(LoomClickTarget::Pattern(0))
+        );
+        assert_eq!(
+            loom_click_target_at_position(
+                &world,
+                0,
+                Some(PhysicalPosition::new(661.0, 339.0)),
+                size
+            ),
+            Some(LoomClickTarget::Pattern(15))
+        );
+        assert!(loom_scroller_at_position(
+            &world,
+            Some(PhysicalPosition::new(674.0, 300.0)),
+            size
+        ));
+    }
+
+    #[test]
+    fn loom_pattern_click_queues_container_button_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = loom_world_with_banner_and_dye();
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(632.0, 310.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(input.loom_selected_pattern_index(), Some(5));
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 5,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn loom_pattern_scroll_changes_visible_button_indices() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = loom_world_with_banner_and_dye();
+
+        assert!(handle_inventory_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, -2.0),
+            Some(PhysicalPosition::new(620.0, 296.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert_eq!(input.loom_pattern_scroll_row(), 2);
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(620.0, 296.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(input.loom_selected_pattern_index(), Some(8));
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 8,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn loom_scroller_drag_updates_visible_button_indices() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = loom_world_with_banner_and_dye();
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(674.0, 290.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(input.loom_pattern_scrolling);
+        assert_eq!(input.loom_pattern_scroll_row(), 0);
+
+        assert!(handle_inventory_cursor_moved(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Some(PhysicalPosition::new(674.0, 328.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(input.loom_pattern_scrolling);
+        assert_eq!(input.loom_pattern_scroll_row(), 3);
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Released,
+            Some(PhysicalPosition::new(674.0, 328.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(!input.loom_pattern_scrolling);
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(620.0, 296.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(input.loom_selected_pattern_index(), Some(12));
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 12,
+            })
+        );
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
@@ -7418,6 +7876,25 @@ mod tests {
                 raw_payload: Vec::new(),
             },
         }
+    }
+
+    fn loom_world_with_banner_and_dye() -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: LOOM_MENU_TYPE_ID,
+            title: "Loom".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 40];
+        items[0] = item_stack(42, 1);
+        items[1] = item_stack(43, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+        world
     }
 
     fn add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
