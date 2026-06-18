@@ -395,3 +395,33 @@ Measured command:
 This confirms the current external-target workflow keeps a post-slice warm full
 workspace gate in the low single-digit seconds once incremental rebuild work is
 complete. Keep `sccache` optional until it is installed and measured locally.
+
+## Warm Update: 2026-06-19 After Bundle Click Slice
+
+Environment:
+
+- `sccache` is still not installed on `PATH`.
+- Stable target caches found:
+  - `/tmp/bbb-target-main`: 12G.
+  - `/tmp/bbb-target-net`: 726M.
+  - `/tmp/bbb-target-world`: 609M.
+- No clean target was created for this update. The slice did not change Cargo
+  profiles, dependencies, or cache policy.
+
+Measured commands:
+
+- Warm focused default:
+  `scripts/cargo-dev.sh test -p bbb-native bundle --quiet`
+  - Wall time: 0.22s.
+  - Result: 19 tests passed.
+- Warm full workspace:
+  `scripts/cargo-dev.sh timings --workspace --timings --quiet`
+  - Wall time: 3.06s.
+  - Target size: 12G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260618T214641126Z-14ffed61c5c1036c.html`
+
+Running two focused tests concurrently against `/tmp/bbb-target-main` showed
+Cargo package/build lock waits. Keep worker tests on distinct external target
+directories when parallelism matters.
