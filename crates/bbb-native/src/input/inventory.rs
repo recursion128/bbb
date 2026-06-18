@@ -1518,6 +1518,9 @@ pub(crate) fn handle_inventory_mouse_wheel(
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
+    if maybe_scroll_merchant_trades(input, world, &delta) {
+        return true;
+    }
     if let Some(slot) = inventory_screen_hovered_slot(world, cursor_position, surface_size) {
         handle_bundle_slot_mouse_scroll(
             input,
@@ -1529,6 +1532,78 @@ pub(crate) fn handle_inventory_mouse_wheel(
         );
     }
     true
+}
+
+fn maybe_scroll_merchant_trades(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    delta: &MouseScrollDelta,
+) -> bool {
+    if !matches!(
+        inventory_screen_layout(world).map(|layout| layout.background),
+        Some(InventoryScreenBackground::Merchant)
+    ) {
+        return false;
+    }
+    if !merchant_offers_can_scroll(world) {
+        return false;
+    }
+    if let Some(wheel) = inventory_wheel_steps_from_scroll(input, delta) {
+        world.scroll_local_merchant_offers(-wheel);
+    }
+    true
+}
+
+fn merchant_offers_can_scroll(world: &WorldStore) -> bool {
+    world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.merchant_offers.as_ref())
+        .is_some_and(|offers| offers.offers.len() > MERCHANT_TRADE_BUTTON_COUNT as usize)
+}
+
+fn inventory_wheel_steps_from_scroll(
+    input: &mut ClientInputState,
+    delta: &MouseScrollDelta,
+) -> Option<i32> {
+    let (x, y) = match delta {
+        MouseScrollDelta::LineDelta(x, y) => (f64::from(*x), f64::from(*y)),
+        MouseScrollDelta::PixelDelta(pos) => (pos.x, pos.y),
+    };
+
+    if input.scroll_accumulated_x != 0.0
+        && scroll_signum(x) != scroll_signum(input.scroll_accumulated_x)
+    {
+        input.scroll_accumulated_x = 0.0;
+    }
+    if input.scroll_accumulated_y != 0.0
+        && scroll_signum(y) != scroll_signum(input.scroll_accumulated_y)
+    {
+        input.scroll_accumulated_y = 0.0;
+    }
+
+    input.scroll_accumulated_x += x;
+    input.scroll_accumulated_y += y;
+    let wheel_x = input.scroll_accumulated_x as i32;
+    let wheel_y = input.scroll_accumulated_y as i32;
+    if wheel_x == 0 && wheel_y == 0 {
+        return None;
+    }
+
+    input.scroll_accumulated_x -= f64::from(wheel_x);
+    input.scroll_accumulated_y -= f64::from(wheel_y);
+    Some(if wheel_y == 0 { -wheel_x } else { wheel_y })
+}
+
+fn scroll_signum(value: f64) -> f64 {
+    if value > 0.0 {
+        1.0
+    } else if value < 0.0 {
+        -1.0
+    } else {
+        0.0
+    }
 }
 
 fn inventory_screen_hovered_slot(
@@ -1577,12 +1652,12 @@ fn merchant_trade_at_position(
     if layout.background != InventoryScreenBackground::Merchant {
         return None;
     }
-    let offer_count = world
+    let (offer_count, scroll_offset) = world
         .inventory()
         .open_container
         .as_ref()
         .and_then(|container| container.merchant_offers.as_ref())
-        .map(|offers| offers.offers.len())
+        .map(|offers| (offers.offers.len(), offers.local_scroll_offset))
         .unwrap_or_default();
     let cursor = cursor_position?;
     let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
@@ -1593,11 +1668,12 @@ fn merchant_trade_at_position(
     {
         return None;
     }
-    for item in 0..MERCHANT_TRADE_BUTTON_COUNT {
-        let button_y = MERCHANT_TRADE_BUTTON_Y + item * MERCHANT_TRADE_BUTTON_HEIGHT;
+    for row in 0..MERCHANT_TRADE_BUTTON_COUNT {
+        let button_y = MERCHANT_TRADE_BUTTON_Y + row * MERCHANT_TRADE_BUTTON_HEIGHT;
+        let item = scroll_offset + row;
         if y >= f64::from(button_y)
             && y < f64::from(button_y + MERCHANT_TRADE_BUTTON_HEIGHT)
-            && (item as usize) < offer_count
+            && usize::try_from(item).is_ok_and(|item| item < offer_count)
         {
             return Some(item);
         }
@@ -3384,6 +3460,71 @@ mod tests {
                 .and_then(|container| container.merchant_offers.as_ref())
                 .map(|offers| offers.local_selected_offer_index),
             Some(3)
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn merchant_mouse_wheel_scrolls_visible_trade_window() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: MERCHANT_MENU_TYPE_ID,
+            title: "Merchant".to_string(),
+        });
+        assert!(world.apply_merchant_offers(merchant_offers(7, 8)));
+
+        assert!(handle_inventory_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, -1.0),
+            Some(PhysicalPosition::new(545.0, 365.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.select_trade_commands_queued, 0);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert_eq!(
+            world
+                .inventory()
+                .open_container
+                .as_ref()
+                .and_then(|container| container.merchant_offers.as_ref())
+                .map(|offers| offers.local_scroll_offset),
+            Some(1)
+        );
+        assert!(rx.try_recv().is_err());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(545.0, 365.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.select_trade_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SelectTrade(SelectTradeCommand { item: 4 })
+        );
+        assert_eq!(
+            world
+                .inventory()
+                .open_container
+                .as_ref()
+                .and_then(|container| container.merchant_offers.as_ref())
+                .map(|offers| offers.local_selected_offer_index),
+            Some(4)
         );
         assert!(rx.try_recv().is_err());
     }

@@ -70,6 +70,7 @@ const ANVIL_RESULT_SLOT: i16 = 2;
 const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
 const LOOM_RESULT_SLOT: i16 = 3;
 const MERCHANT_RESULT_SLOT: i16 = 2;
+const MERCHANT_VISIBLE_OFFER_COUNT: usize = 7;
 const SMITHING_RESULT_SLOT: i16 = 3;
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
@@ -187,6 +188,8 @@ pub struct MerchantOffersState {
     pub can_restock: bool,
     #[serde(default)]
     pub local_selected_offer_index: i32,
+    #[serde(default)]
+    pub local_scroll_offset: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -698,6 +701,24 @@ impl WorldStore {
             return false;
         }
         offers.local_selected_offer_index = index;
+        true
+    }
+
+    pub fn scroll_local_merchant_offers(&mut self, delta: i32) -> bool {
+        let Some(offers) = self
+            .inventory
+            .open_container
+            .as_mut()
+            .and_then(|container| container.merchant_offers.as_mut())
+        else {
+            return false;
+        };
+        let max_scroll_offset = merchant_max_scroll_offset(offers.offers.len());
+        if max_scroll_offset <= 0 {
+            return false;
+        }
+        offers.local_scroll_offset =
+            (offers.local_scroll_offset + delta).clamp(0, max_scroll_offset);
         true
     }
 
@@ -2753,8 +2774,16 @@ impl MerchantOffersState {
             show_progress: packet.show_progress,
             can_restock: packet.can_restock,
             local_selected_offer_index: 0,
+            local_scroll_offset: 0,
         }
     }
+}
+
+fn merchant_max_scroll_offset(offer_count: usize) -> i32 {
+    offer_count
+        .saturating_sub(MERCHANT_VISIBLE_OFFER_COUNT)
+        .try_into()
+        .unwrap_or(i32::MAX)
 }
 
 impl MerchantOfferState {
@@ -3399,6 +3428,7 @@ mod tests {
         assert!(offers.show_progress);
         assert!(!offers.can_restock);
         assert_eq!(offers.local_selected_offer_index, 0);
+        assert_eq!(offers.local_scroll_offset, 0);
         assert_eq!(offers.offers[0].buy_a, item_cost(42, 3));
         assert_eq!(offers.offers[0].sell, item_stack(99, 1));
         assert!(store.set_local_merchant_selected_offer(1));
@@ -3431,6 +3461,49 @@ mod tests {
         assert_eq!(store.counters().container_close_updates_applied, 1);
         assert_eq!(store.counters().container_close_updates_ignored, 0);
         assert_eq!(store.counters().merchant_offers_tracked, 0);
+    }
+
+    #[test]
+    fn merchant_offer_scroll_offset_clamps_to_visible_window() {
+        let mut store = WorldStore::new();
+        assert!(!store.scroll_local_merchant_offers(1));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+            title: "Merchant".to_string(),
+        });
+        assert!(store.apply_merchant_offers(merchant_offers(7, 8)));
+
+        assert!(store.scroll_local_merchant_offers(1));
+        assert_eq!(
+            store
+                .inventory()
+                .open_container
+                .as_ref()
+                .and_then(|container| container.merchant_offers.as_ref())
+                .map(|offers| offers.local_scroll_offset),
+            Some(1)
+        );
+        assert!(store.scroll_local_merchant_offers(1));
+        assert_eq!(
+            store
+                .inventory()
+                .open_container
+                .as_ref()
+                .and_then(|container| container.merchant_offers.as_ref())
+                .map(|offers| offers.local_scroll_offset),
+            Some(1)
+        );
+        assert!(store.scroll_local_merchant_offers(-1));
+        assert_eq!(
+            store
+                .inventory()
+                .open_container
+                .as_ref()
+                .and_then(|container| container.merchant_offers.as_ref())
+                .map(|offers| offers.local_scroll_offset),
+            Some(0)
+        );
     }
 
     #[test]

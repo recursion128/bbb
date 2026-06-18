@@ -726,9 +726,11 @@ fn hud_merchant_trade_items(
         return Vec::new();
     };
     let mut items = Vec::new();
+    let scroll_offset = merchant_scroll_offset(offers);
     for (row, offer) in offers
         .offers
         .iter()
+        .skip(scroll_offset)
         .take(MERCHANT_VISIBLE_OFFER_COUNT)
         .enumerate()
     {
@@ -791,6 +793,7 @@ fn push_merchant_trade_layers(world: &WorldStore, layers: &mut Vec<HudInventoryB
     for (row, offer) in offers
         .offers
         .iter()
+        .skip(merchant_scroll_offset(offers))
         .take(MERCHANT_VISIBLE_OFFER_COUNT)
         .enumerate()
     {
@@ -816,7 +819,7 @@ fn push_merchant_trade_layers(world: &WorldStore, layers: &mut Vec<HudInventoryB
             HudInventoryBackgroundTexture::VillagerScrollerDisabled
         },
         MERCHANT_SCROLLER_X,
-        MERCHANT_SCROLLER_Y + merchant_scroller_offset(offers, 0),
+        MERCHANT_SCROLLER_Y + merchant_scroller_offset(offers, offers.local_scroll_offset),
         MERCHANT_SCROLLER_WIDTH,
         MERCHANT_SCROLLER_HEIGHT,
         [0.0, 0.0],
@@ -871,6 +874,16 @@ fn merchant_selected_offer(offers: &MerchantOffersState) -> Option<&MerchantOffe
     usize::try_from(offers.local_selected_offer_index)
         .ok()
         .and_then(|index| offers.offers.get(index))
+}
+
+fn merchant_scroll_offset(offers: &MerchantOffersState) -> usize {
+    let max_scroll_offset = offers
+        .offers
+        .len()
+        .saturating_sub(MERCHANT_VISIBLE_OFFER_COUNT);
+    usize::try_from(offers.local_scroll_offset)
+        .unwrap_or_default()
+        .min(max_scroll_offset)
 }
 
 fn merchant_offer_cost_a_stack(world: &WorldStore, offer: &MerchantOfferState) -> ItemStackSummary {
@@ -2793,8 +2806,9 @@ mod tests {
             items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 39],
             carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
         });
-        assert!(world.apply_merchant_offers(merchant_offers(7, 8, Some(1))));
-        assert!(world.set_local_merchant_selected_offer(1));
+        assert!(world.apply_merchant_offers(merchant_offers(7, 8, Some(2))));
+        assert!(world.set_local_merchant_selected_offer(2));
+        assert!(world.scroll_local_merchant_offers(1));
 
         let screen = hud_inventory_screen(&world, None, Some(38), 0.0).unwrap();
 
@@ -2842,7 +2856,7 @@ mod tests {
             .contains(&hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::VillagerScroller,
                 94,
-                18,
+                131,
                 6,
                 27,
                 [0.0, 0.0],

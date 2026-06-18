@@ -515,11 +515,13 @@ When an agent does any of the following, update this file in the same slice:
     - It queues basic left/right `PICKUP` container clicks for those supported
       fixed-slot screens.
     - MerchantMenu visible trade-row clicks queue
-      `ServerboundSelectTradePacket` for the first seven server-provided offers.
-    - MerchantMenu renders the first seven server-provided offers with:
+      `ServerboundSelectTradePacket` for the current visible offer window.
+    - MerchantMenu mouse wheel input updates the local trade-list scroll offset
+      for offer lists longer than seven rows.
+    - MerchantMenu renders the current visible server-provided offer window with:
       - cost/result item icons
       - normal/out-of-stock trade arrows
-      - enabled/disabled scroller sprite at the initial scroll offset
+      - enabled/disabled scroller sprite at the current local scroll offset
       - selected-offer out-of-stock overlay
       - current villager XP bar
     - It also queues Shift-click `QUICK_MOVE` container clicks for:
@@ -614,7 +616,7 @@ When an agent does any of the following, update this file in the same slice:
         - deferred presentation parity work:
           - rendered generic button row backgrounds and hover/focus highlight
           - selected row state if a future vanilla source adds one
-          - scroll offset, mouse wheel, and drag behavior
+          - scroller drag behavior
           - future trade XP result bar from payment/result prediction
           - component-aware cost predicate rendering
           - full trade stack decorations and hover tooltips
