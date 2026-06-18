@@ -30,9 +30,10 @@ update this file in the same slice.
   - Then either implement protocol decode plus world/runtime handling, or record
     why it is runtime-only.
 - Evidence / boundary:
-  - Unknown login/config/play packets preserve `packet_id` and `len`.
-  - They emit `NetEvent::UnsupportedPacket` and project into `NetCounters` /
-    `ProbeReport`.
+  - Unknown login/config/play packets:
+    - preserve `packet_id` and `len`
+    - emit `NetEvent::UnsupportedPacket`
+    - project into `NetCounters` / `ProbeReport`
 
 ### Protocol Coverage For Remaining Required 26.1 Packet Families
 
@@ -111,7 +112,8 @@ update this file in the same slice.
   - `bbb-world` and `bbb-native` expose many verified pick bounds and
     interaction packets.
   - Native projects the current crosshair entity pick target into a
-    renderer-visible wire outline using the same pick AABB as raycast selection.
+    renderer-visible wire outline.
+  - The outline uses the same pick AABB as raycast selection.
 
 ### Particle Runtime Vanilla Parity
 
@@ -172,8 +174,9 @@ update this file in the same slice.
     - selection/block-destroy overlays
     - crosshair entity target outlines
     - a basic hecs-derived entity bounds scene proxy
-    - dropped item entities as camera-facing item-icon billboards from canonical
-      item entity stack metadata and the native item atlas
+    - dropped item entities as camera-facing item-icon billboards from:
+      - canonical item entity stack metadata
+      - the native item atlas
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work.
 
@@ -225,10 +228,12 @@ update this file in the same slice.
     selected index.
   - `bbb-protocol` preserves bundle item-template summaries.
   - `bbb-world` stores the local selected index per inventory/container slot.
-  - Control pumping and native bundle mouse helpers update canonical state before
-    queueing `ServerboundSelectBundleItemPacket`.
-  - The GUI item icon runtime evaluates `minecraft:bundle/has_selected_item` and
-    resolves `minecraft:bundle/selected_item` from the selected template.
+  - Control pumping and native bundle mouse helpers:
+    - update canonical state
+    - queue `ServerboundSelectBundleItemPacket`
+  - The GUI item icon runtime:
+    - evaluates `minecraft:bundle/has_selected_item`
+    - resolves `minecraft:bundle/selected_item` from the selected template
 
 ### Native Input, Movement, Interaction, Inventory, And Command Flows
 
@@ -330,9 +335,10 @@ update this file in the same slice.
       - queue explicit `ServerboundClientCommandPacket` perform-respawn commands
         from native/control input instead of auto-respawning on dead health
   - Inventory:
-    - Native opens the ordinary local inventory as container `0`, releases cursor
-      capture while it is open, and closes it with E/Esc by queueing
-      `ServerboundContainerClosePacket(0)`.
+    - Native opens the ordinary local inventory as container `0`.
+    - While the local inventory is open, it:
+      - releases cursor capture
+      - closes with E/Esc by queueing `ServerboundContainerClosePacket(0)`
     - For container `0`, it:
       - renders the centered vanilla survival inventory background with item
         icons and slot hover highlights
@@ -367,8 +373,12 @@ update this file in the same slice.
       - HopperMenu screens with official `hopper.png`
       - ShulkerBoxMenu screens with official `shulker_box.png`
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
-      lit-progress and burn-progress sprites from canonical `ContainerSetData`
-      values using vanilla `AbstractFurnaceMenu` progress formulas.
+      progress sprites:
+      - lit-progress
+      - burn-progress
+    - Those progress sprites use:
+      - canonical `ContainerSetData` values
+      - vanilla `AbstractFurnaceMenu` progress formulas
     - It queues basic left/right `PICKUP` container clicks for those supported
       fixed-slot screens.
     - It also queues Shift-click `QUICK_MOVE` container clicks for:
@@ -391,14 +401,19 @@ update this file in the same slice.
     - It tracks vanilla-shaped local destroy stages in canonical interaction
       state and clears them on completion/abort/restart.
     - It projects local stages and server `BlockDestruction` progress to batched
-      renderer-visible cube crack overlays using official `destroy_stage_0..9`
-      block atlas textures, keeps the highest stage when multiple overlays target
-      one block position, and expires server destruction entries after the
-      vanilla-shaped 400 render tick window.
-    - It predicts the locally destroyed block to air or a legacy water/lava state
-      before queuing stop/instant destroy packets, defers server block updates
-      into pending prediction state, and reconciles those predictions on
-      `BlockChangedAck`.
+      renderer-visible cube crack overlays:
+      - using official `destroy_stage_0..9` block atlas textures
+      - keeping the highest stage when multiple overlays target one block
+        position
+      - expiring server destruction entries after the vanilla-shaped 400 render
+        tick window
+    - It predicts the locally destroyed block before queuing stop/instant destroy
+      packets:
+      - to air
+      - to a legacy water/lava state
+    - It reconciles local block-destroy predictions by:
+      - deferring server block updates into pending prediction state
+      - resolving predictions on `BlockChangedAck`
   - Completion requires full vanilla movement and these flows to work through
     encoded serverbound packets end to end.
 
