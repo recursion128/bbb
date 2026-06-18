@@ -438,6 +438,9 @@ fn maybe_toggle_creative_flight(
     before: PlayerInput,
     after: PlayerInput,
 ) -> bool {
+    if world.local_player_is_spectator() {
+        return false;
+    }
     if !after.jump || before.jump || !world.local_player().abilities.is_some_and(|a| a.can_fly) {
         return false;
     }

@@ -319,6 +319,9 @@ When an agent does any of the following, update this file in the same slice:
         wheel input adjusts local flying speed when the Spectator GUI menu is
         inactive. Full Spectator GUI selection/menu behavior remains follow-up
         presentation/control work.
+      - Spectator mode automatically enables local flying when server-synced
+        abilities allow flight, and jump double-tap does not toggle spectator
+        flying off.
       - Spectator right-click without a target does not send `UseItem`.
       - Spectator right-click on a block sends main-hand `UseItemOn` even when
         offhand would be preferred for non-spectator item use.

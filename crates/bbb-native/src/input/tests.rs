@@ -2137,6 +2137,50 @@ fn jump_key_double_tap_without_can_fly_only_queues_player_input() {
 }
 
 #[test]
+fn spectator_jump_key_double_tap_does_not_toggle_flying_off() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    set_local_spectator(&mut world);
+    set_player_abilities(&mut world, true, true);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Space),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 3);
+    assert_eq!(counters.player_abilities_commands_queued, 0);
+    assert!(world.local_player().abilities.unwrap().flying);
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn creative_flight_jump_trigger_expires_after_vanilla_window() {
     let (tx, mut rx) = mpsc::channel(6);
     let commands = Some(tx);

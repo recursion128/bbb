@@ -8,7 +8,8 @@ use tokio::sync::mpsc;
 
 use super::{
     commands::{
-        queue_paddle_boat_command, queue_player_command_action, queue_vehicle_move_command,
+        queue_paddle_boat_command, queue_player_abilities_command, queue_player_command_action,
+        queue_vehicle_move_command,
     },
     ClientInputState,
 };
@@ -52,6 +53,7 @@ pub(crate) fn advance_player_input(
         .min(0.25);
     input.last_step = Some(now);
     input.advance_creative_flight_jump_trigger(dt_seconds);
+    maybe_enable_spectator_flying(counters, world, net_commands);
 
     if world.local_player_root_vehicle_id().is_some() {
         let input_state = input.local_player_input();
@@ -78,6 +80,23 @@ pub(crate) fn advance_player_input(
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
+}
+
+fn maybe_enable_spectator_flying(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) -> bool {
+    if !world.local_player_is_spectator() {
+        return false;
+    }
+    let Some(abilities) = world.local_player().abilities else {
+        return false;
+    };
+    if !abilities.can_fly || abilities.flying {
+        return false;
+    }
+    queue_player_abilities_command(counters, world, net_commands, true)
 }
 
 fn maybe_queue_riding_jump_command(
@@ -294,8 +313,8 @@ fn position_delta_squared(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, CommonPlayerSpawnInfo, PaddleBoat, PlayLogin, SetPassengers,
-        Vec3d as ProtocolVec3d,
+        AddEntity, CommonPlayerSpawnInfo, GameEvent as ProtocolGameEvent, PaddleBoat, PlayLogin,
+        PlayerAbilities, PlayerAbilitiesCommand, SetPassengers, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -377,6 +396,66 @@ mod tests {
         let world_pose = world.local_player_pose().unwrap();
         assert_f64_near(world_pose.position.z, second.state.position.z, 0.000001);
         assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
+    fn advance_player_input_enables_spectator_flying_when_server_allows() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.apply_game_event(ProtocolGameEvent {
+            event_id: 3,
+            param: 3.0,
+        });
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: true,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+
+        assert!(world.local_player().abilities.unwrap().flying);
+        assert_eq!(counters.player_abilities_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAbilities(PlayerAbilitiesCommand { flying: true })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn advance_player_input_does_not_enable_spectator_flying_without_permission() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.apply_game_event(ProtocolGameEvent {
+            event_id: 3,
+            param: 3.0,
+        });
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: false,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+
+        assert!(!world.local_player().abilities.unwrap().flying);
+        assert_eq!(counters.player_abilities_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
