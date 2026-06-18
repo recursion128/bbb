@@ -318,6 +318,7 @@ When an agent does any of the following, update this file in the same slice:
       - Spectator hotbar number keys and wheel do not send held-slot packets;
         full Spectator GUI selection and wheel speed/menu behavior remains
         follow-up presentation/control work.
+      - Spectator right-click without a target does not send `UseItem`.
   - Inventory:
     - Implement:
       - tooltips

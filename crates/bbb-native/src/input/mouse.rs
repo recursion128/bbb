@@ -207,6 +207,9 @@ fn start_use_item(
     {
         return false;
     }
+    if world.local_player_is_spectator() && camera_target.is_none() {
+        return false;
+    }
 
     input.use_item_repeat_delay_ticks = USE_ITEM_REPEAT_DELAY_TICKS;
     match camera_target {
@@ -663,6 +666,47 @@ mod tests {
                 x_rot: -20.0,
             })
         );
+    }
+
+    #[test]
+    fn spectator_right_mouse_press_without_target_does_not_use_item() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            y_rot: 45.0,
+            x_rot: -20.0,
+            ..LocalPlayerPoseState::default()
+        });
+        set_local_spectator(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(input.use_item_held);
+        assert_eq!(input.use_item_repeat_delay_ticks, 0);
+        assert!(!world.local_player().interaction.using_item);
+        assert_eq!(counters.use_item_commands_queued, 0);
+
+        advance_using_item_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            4,
+        );
+
+        assert_eq!(counters.use_item_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
