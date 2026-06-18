@@ -121,6 +121,8 @@ Focused crate tests are useful while developing, but the default merge gate is t
 workspace test suite. If a command cannot run, state the reason and the residual risk.
 For daily focused tests, agents may use `cargo test --profile fast-test` with an
 assigned external `CARGO_TARGET_DIR`; this does not replace the merge gate.
+Agents may use `scripts/cargo-dev.sh` for focused tests, fast-test, timings,
+target-size inspection, and the same final gate commands.
 
 ## Implementation Guidance
 

@@ -133,6 +133,13 @@ CARGO_TARGET_DIR=/tmp/bbb-target-world cargo test -p bbb-world <filter>
 CARGO_TARGET_DIR=/tmp/bbb-target-net cargo test -p bbb-net <filter>
 ```
 
+Agents may use the helper script for the same workflow:
+
+```sh
+scripts/cargo-dev.sh test -p bbb-world <filter>
+BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
+```
+
 Do not run parallel Cargo commands against the same `CARGO_TARGET_DIR`. Assign
 each worker a stable per-domain target directory so package and build locks do
 not serialize the work.
@@ -142,6 +149,7 @@ iteration and not final validation:
 
 ```sh
 CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --profile fast-test -p bbb-world <filter>
+scripts/cargo-dev.sh fast-test -p bbb-world <filter>
 ```
 
 The final merge gate remains the default profile:
@@ -152,12 +160,16 @@ git diff --check
 CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace
 ```
 
+`scripts/cargo-dev.sh gate` is allowed as a convenience wrapper because it runs
+the same gate commands with the main external target directory.
+
 `sccache` is optional local tooling. Do not commit a mandatory Cargo
 `rustc-wrapper` setting because machines without `sccache` fail before
 compiling. If installed, use it explicitly:
 
 ```sh
 RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
+BBB_USE_SCCACHE=1 scripts/cargo-dev.sh test -p bbb-world <filter>
 ```
 
 Before changing build profiles or cache policy, record:

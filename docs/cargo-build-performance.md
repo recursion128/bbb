@@ -52,6 +52,27 @@ prompts.
 Repo-local `target` stays ignored and should not be generated during normal
 agent work.
 
+## Helper Script
+
+Use `scripts/cargo-dev.sh` to avoid retyping target-cache commands during
+focused development:
+
+```sh
+scripts/cargo-dev.sh test -p bbb-world <filter>
+scripts/cargo-dev.sh fast-test -p bbb-world <filter>
+BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
+scripts/cargo-dev.sh timings --workspace --timings
+scripts/cargo-dev.sh size
+```
+
+The script defaults to `CARGO_TARGET_DIR=/tmp/bbb-target-main`. Set
+`BBB_CARGO_TARGET_NAME=renderer`, `world`, or `net` to use
+`/tmp/bbb-target-renderer`, `/tmp/bbb-target-world`, or `/tmp/bbb-target-net`.
+An explicit `CARGO_TARGET_DIR` still wins.
+
+`scripts/cargo-dev.sh gate` runs the same merge gate commands documented in
+this file; it is a convenience wrapper, not a weaker test path.
+
 ## sccache
 
 `sccache` is useful for repeated dependency and workspace crate compilation
@@ -65,6 +86,7 @@ Use it explicitly when installed:
 
 ```sh
 RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
+BBB_USE_SCCACHE=1 scripts/cargo-dev.sh test -p bbb-world <filter>
 ```
 
 Record before/after timings before making `sccache` part of a default local
