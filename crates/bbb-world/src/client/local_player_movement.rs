@@ -11,12 +11,16 @@ pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
 pub(super) const LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 
 const VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID: i32 = 22;
+const VANILLA_ATTRIBUTE_GRAVITY_ID: i32 = 14;
 const VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID: i32 = 15;
 const VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID: i32 = 26;
 const VANILLA_MOB_EFFECT_SPEED_ID: i32 = 0;
 const VANILLA_MOB_EFFECT_SLOWNESS_ID: i32 = 1;
 const VANILLA_MOB_EFFECT_JUMP_BOOST_ID: i32 = 7;
+const VANILLA_MOB_EFFECT_LEVITATION_ID: i32 = 24;
+const VANILLA_MOB_EFFECT_SLOW_FALLING_ID: i32 = 27;
 const LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE: f64 = 0.1;
+const LOCAL_INPUT_DEFAULT_GRAVITY_ATTRIBUTE: f64 = 0.08;
 const LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE: f64 = 0.42;
 const LOCAL_INPUT_DEFAULT_FLYING_SPEED_ATTRIBUTE: f64 = 0.05;
 const LOCAL_INPUT_DEFAULT_FLY_SPEED_BLOCKS_PER_SECOND: f64 = 10.89;
@@ -27,7 +31,6 @@ const LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER: f64 = 0.3;
 const LOCAL_INPUT_FLY_VERTICAL_SPEED_MULTIPLIER: f64 = 3.0;
 const LOCAL_INPUT_FLY_VERTICAL_DAMPING: f64 = 0.6;
 const LOCAL_PHYSICS_TICK_SECONDS: f64 = 0.05;
-const LOCAL_GRAVITY_PER_TICK: f64 = 0.08;
 const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
@@ -36,6 +39,8 @@ const COLLISION_CLIP_STEPS: usize = 12;
 const SPEED_EFFECT_MOVEMENT_SPEED_MULTIPLIER: f64 = 0.2;
 const SLOWNESS_EFFECT_MOVEMENT_SPEED_MULTIPLIER: f64 = -0.15;
 const JUMP_BOOST_VELOCITY_PER_LEVEL: f64 = 0.1;
+const LEVITATION_TARGET_VELOCITY_PER_LEVEL: f64 = 0.05;
+const LEVITATION_APPROACH_FACTOR_PER_TICK: f64 = 0.2;
 const VANILLA_SPEED_EFFECT_MODIFIER_ID: &str = "minecraft:effect.speed";
 const VANILLA_SLOWNESS_EFFECT_MODIFIER_ID: &str = "minecraft:effect.slowness";
 
@@ -171,8 +176,8 @@ fn advance_local_player_physics_step(
     } else if on_ground || vertical_collision {
         pose.delta_movement.y = 0.0;
     } else {
-        pose.delta_movement.y = (pose.delta_movement.y - LOCAL_GRAVITY_PER_TICK * step_ticks)
-            * LOCAL_VERTICAL_FRICTION.powf(step_ticks);
+        pose.delta_movement.y =
+            local_player_airborne_vertical_velocity(world, pose.delta_movement.y, step_ticks);
     }
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
@@ -333,6 +338,34 @@ fn local_player_jump_velocity(world: &WorldStore) -> f64 {
         velocity += amplified_effect_amount(amplifier, JUMP_BOOST_VELOCITY_PER_LEVEL);
     }
     velocity
+}
+
+fn local_player_airborne_vertical_velocity(
+    world: &WorldStore,
+    current_velocity: f64,
+    step_ticks: f64,
+) -> f64 {
+    let mut velocity = current_velocity;
+    if let Some(amplifier) = local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_LEVITATION_ID)
+    {
+        let target = amplified_effect_amount(amplifier, LEVITATION_TARGET_VELOCITY_PER_LEVEL);
+        velocity += (target - velocity) * LEVITATION_APPROACH_FACTOR_PER_TICK * step_ticks;
+    } else {
+        velocity -= local_player_effective_gravity_per_tick(world, current_velocity) * step_ticks;
+    }
+    velocity * LOCAL_VERTICAL_FRICTION.powf(step_ticks)
+}
+
+fn local_player_effective_gravity_per_tick(world: &WorldStore, current_velocity: f64) -> f64 {
+    let gravity = local_player_attribute_value(world, VANILLA_ATTRIBUTE_GRAVITY_ID)
+        .unwrap_or(LOCAL_INPUT_DEFAULT_GRAVITY_ATTRIBUTE);
+    if current_velocity <= 0.0
+        && local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_SLOW_FALLING_ID).is_some()
+    {
+        gravity.min(0.01)
+    } else {
+        gravity
+    }
 }
 
 fn local_player_flying_horizontal_speed(
@@ -624,6 +657,100 @@ mod tests {
         assert!(pose.on_ground);
         assert!(!pose.horizontal_collision);
         assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_gravity_attribute_scales_airborne_fall_velocity() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_GRAVITY_ID,
+                base: 0.04,
+                modifiers: Vec::new(),
+            }],
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 3.0, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.0392, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_slow_falling_clamps_downward_gravity() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_SLOW_FALLING_ID,
+            0,
+        )));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 0.5),
+            delta_movement: vec3(0.0, -0.08, 0.0),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 2.92, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.0882, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_levitation_moves_vertical_velocity_toward_effect_target() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_LEVITATION_ID,
+            1,
+        )));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 3.0, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.0196, 0.000001);
+        assert!(!pose.on_ground);
     }
 
     #[test]

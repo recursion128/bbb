@@ -245,9 +245,11 @@ update this file in the same slice.
   - Movement: extend the current basic AABB collision and gravity/jump slice to:
     - full fixed 20Hz survival physics
     - remaining vanilla voxel collision shapes
-    - fluids and remaining status-effect movement cases beyond:
+    - fluids and remaining status-effect movement cases beyond local support for:
       - local Speed/Slowness movement-speed modifiers
       - local Jump Boost jump impulse
+      - local Slow Falling gravity clamp
+      - local Levitation vertical velocity targeting
     - sneak pose details
     - the near-ground/fallDistance branch of sneak edge backoff
     - full flying friction
@@ -320,7 +322,7 @@ update this file in the same slice.
       - stonecutter
       - anvil
     - It applies:
-      - basic gravity
+      - synced local player `gravity` attribute id `14` and basic gravity
       - jumps only from ground
       - local player `movement_speed` / `sneaking_speed` attributes with the
         vanilla default sneaking-speed reduction
@@ -329,6 +331,10 @@ update this file in the same slice.
         `amplifier + 1`
       - synced local player Jump Boost effect id `7` as a jump impulse bonus
         of `0.1 * (amplifier + 1)`
+      - synced local player Slow Falling effect id `27` as the vanilla falling
+        gravity clamp
+      - synced local player Levitation effect id `24` as the vanilla vertical
+        velocity target
       - basic abilities-driven flying movement with no ordinary gravity
       - jump/sneak vertical controls while flying
       - vanilla 0.6 Y-velocity damping while flying
