@@ -308,7 +308,20 @@ pub(crate) fn handle_key_input(
                 return;
             }
             KeyCode::KeyE => {
-                world.open_local_inventory();
+                if world
+                    .local_player_server_controlled_inventory_vehicle_id()
+                    .is_some()
+                {
+                    queue_player_command_action(
+                        counters,
+                        world,
+                        net_commands,
+                        PlayerCommandAction::OpenInventory,
+                        0,
+                    );
+                } else {
+                    world.open_local_inventory();
+                }
                 return;
             }
             KeyCode::KeyT => {

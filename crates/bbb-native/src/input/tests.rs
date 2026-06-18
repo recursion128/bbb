@@ -16,6 +16,7 @@ use bbb_world::{BlockPos, LocalPlayerPoseState, WorldStore};
 use uuid::Uuid;
 
 const VANILLA_26_1_ELYTRA_ITEM_ID: i32 = 14;
+const VANILLA_26_1_OAK_CHEST_BOAT_ENTITY_TYPE_ID: i32 = 90;
 const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
 const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 const VANILLA_ENTITY_DATA_POSE_ID: u8 = 6;
@@ -80,11 +81,15 @@ fn world_with_local_player_id(player_id: i32) -> WorldStore {
 }
 
 fn world_with_local_boat(player_id: i32) -> WorldStore {
+    world_with_local_vehicle(player_id, 10, VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID)
+}
+
+fn world_with_local_vehicle(player_id: i32, vehicle_id: i32, entity_type_id: i32) -> WorldStore {
     let mut world = world_with_local_player_id(player_id);
     world.apply_add_entity(AddEntity {
-        id: 10,
-        uuid: Uuid::from_u128(10),
-        entity_type_id: VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID,
+        id: vehicle_id,
+        uuid: Uuid::from_u128(vehicle_id as u128),
+        entity_type_id,
         position: ProtocolVec3d {
             x: 0.0,
             y: 64.0,
@@ -97,7 +102,7 @@ fn world_with_local_boat(player_id: i32) -> WorldStore {
         data: 0,
     });
     assert!(world.apply_set_passengers(SetPassengers {
-        vehicle_id: 10,
+        vehicle_id,
         passenger_ids: vec![player_id],
     }));
     world
@@ -1456,6 +1461,36 @@ fn inventory_key_opens_local_inventory_without_player_command() {
     assert_eq!(world.open_container_id(), Some(0));
     assert_eq!(counters.player_command_commands_queued, 0);
     assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn inventory_key_on_server_controlled_mount_queues_open_inventory_command() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_vehicle(77, 10, VANILLA_26_1_OAK_CHEST_BOAT_ENTITY_TYPE_ID);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyE),
+        ElementState::Pressed,
+    );
+
+    assert!(!world.local_inventory_is_open());
+    assert_eq!(world.open_container_id(), None);
+    assert_eq!(counters.player_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::OpenInventory,
+            data: 0,
+        })
+    );
 }
 
 #[test]

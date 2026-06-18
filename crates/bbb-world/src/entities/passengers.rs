@@ -7,10 +7,16 @@ use crate::{LocalPlayerInputState, WorldStore};
 use super::{
     is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
-    VehicleMoveReport, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
-    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+    VehicleMoveReport, VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID,
+    VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID, VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID,
+    VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, VANILLA_ENTITY_TYPE_CAMEL_ID,
+    VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID,
+    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+    VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+    VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+    VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+    VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+    VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
     VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
 };
 
@@ -213,6 +219,14 @@ impl WorldStore {
             .map(|_| vehicle_id)
     }
 
+    pub fn local_player_server_controlled_inventory_vehicle_id(&self) -> Option<i32> {
+        let vehicle_id = self.local_player_vehicle_id?;
+        self.entities
+            .entity_type_id(vehicle_id)
+            .filter(|entity_type_id| is_vanilla_custom_inventory_screen_type(*entity_type_id))
+            .map(|_| vehicle_id)
+    }
+
     pub(crate) fn clear_local_player_mount(&mut self, local_player_id: i32) {
         self.local_player_vehicle_id = None;
         self.entities.for_each_mount_mut(|entity_id, mount| {
@@ -280,4 +294,21 @@ fn is_vanilla_player_rideable_jumping_type(entity_type_id: i32) -> bool {
             | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
             | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID
     )
+}
+
+fn is_vanilla_custom_inventory_screen_type(entity_type_id: i32) -> bool {
+    is_vanilla_player_rideable_jumping_type(entity_type_id)
+        || matches!(
+            entity_type_id,
+            VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID
+                | VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID
+                | VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID
+                | VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID
+                | VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID
+                | VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID
+                | VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID
+                | VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID
+                | VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID
+                | VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID
+        )
 }

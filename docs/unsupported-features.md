@@ -403,6 +403,12 @@ When an agent does any of the following, update this file in the same slice:
       player has an elytra-equipped chest slot.
     - They queue `STOP_SLEEPING` player commands when wake-up input is pressed
       while the local player entity has sleeping pose metadata.
+    - They queue `OPEN_INVENTORY` player commands instead of opening local
+      inventory when the local player is riding a vanilla
+      `HasCustomInventoryScreen` vehicle:
+      - `AbstractHorse`
+      - `AbstractNautilus`
+      - `AbstractChestBoat`
     - Block-target right-click queues `ServerboundUseItemOnPacket` with:
       - main hand when the selected hotbar slot is non-empty
       - offhand when the selected hotbar slot is empty and offhand has an item
