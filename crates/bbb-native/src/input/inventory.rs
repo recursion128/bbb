@@ -6,8 +6,7 @@ use bbb_protocol::packets::{
     ContainerInput, ItemStackSummary, RenameItem, SelectTradeCommand, SetBeacon,
 };
 use bbb_world::{
-    ContainerClickBuildError, ContainerClickSlotRequest, MountEquipmentSlotVisibility,
-    MountInventoryKind, WorldStore,
+    ContainerClickSlotRequest, MountEquipmentSlotVisibility, MountInventoryKind, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -1760,9 +1759,7 @@ fn local_inventory_apply_and_queue_click(
         ) {
         match world.apply_local_container_click_slot(request) {
             Ok(click) => click,
-            Err(ContainerClickBuildError::UnsupportedLocalClickInput(_))
-                if !world.local_inventory_is_open() =>
-            {
+            Err(_) if !world.local_inventory_is_open() => {
                 let Ok(click) = world.build_container_click_slot(request) else {
                     return false;
                 };
@@ -6796,6 +6793,57 @@ mod tests {
     }
 
     #[test]
+    fn non_local_quick_move_with_unhashable_prediction_falls_back_to_server_click() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: CRAFTING_MENU_TYPE_ID,
+            title: "Crafting".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 46];
+        items[1] = bundle_stack(42, 3, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(590.0, 302.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 1,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: BTreeMap::new(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[1].item, bundle_stack(42, 3, 1));
+        assert_eq!(slots[10].item, ItemStackSummary::empty());
+    }
+
+    #[test]
     fn crafting_table_shift_click_result_slot_queues_server_authoritative_click() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -7272,6 +7320,61 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, item_stack(42, 1));
         assert_eq!(slots[1].item, item_stack(90, 1));
+    }
+
+    #[test]
+    fn cartography_table_shift_click_additional_slot_queues_predicted_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: CARTOGRAPHY_TABLE_MENU_TYPE_ID,
+            title: "Cartography Table".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[1] = item_stack(43, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(575.0, 337.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 1,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (1, HashedStack::Empty),
+                    (3, HashedStack::Item(hashed_item(43, 3))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[1].item, ItemStackSummary::empty());
+        assert_eq!(slots[3].item, item_stack(43, 3));
     }
 
     #[test]

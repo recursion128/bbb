@@ -682,8 +682,12 @@ When an agent does any of the following, update this file in the same slice:
           - ingredient parity
           - component-hashable potion stack prediction
       - CartographyTableMenu:
-        - quick-move and result-slot paths are kept server-authoritative until:
+        - shift-click from the additional slot back to the player inventory is
+          locally predicted when the stack has no component hash requirements.
+        - result-slot and remaining quick-move paths are kept
+          server-authoritative until:
           - full cartography input item/tag routing
+          - hashed component patch support for map-id stacks
           - local result stack prediction
           - input consumption
           - take-result sound side effects
