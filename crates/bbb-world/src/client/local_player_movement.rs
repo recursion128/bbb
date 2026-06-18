@@ -11,8 +11,13 @@ pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
 pub(super) const LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 
 const VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID: i32 = 22;
+const VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID: i32 = 15;
 const VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID: i32 = 26;
+const VANILLA_MOB_EFFECT_SPEED_ID: i32 = 0;
+const VANILLA_MOB_EFFECT_SLOWNESS_ID: i32 = 1;
+const VANILLA_MOB_EFFECT_JUMP_BOOST_ID: i32 = 7;
 const LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE: f64 = 0.1;
+const LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE: f64 = 0.42;
 const LOCAL_INPUT_DEFAULT_FLYING_SPEED_ATTRIBUTE: f64 = 0.05;
 const LOCAL_INPUT_DEFAULT_FLY_SPEED_BLOCKS_PER_SECOND: f64 = 10.89;
 const LOCAL_INPUT_SPRINT_SPEED_MULTIPLIER: f64 =
@@ -23,12 +28,16 @@ const LOCAL_INPUT_FLY_VERTICAL_SPEED_MULTIPLIER: f64 = 3.0;
 const LOCAL_INPUT_FLY_VERTICAL_DAMPING: f64 = 0.6;
 const LOCAL_PHYSICS_TICK_SECONDS: f64 = 0.05;
 const LOCAL_GRAVITY_PER_TICK: f64 = 0.08;
-const LOCAL_JUMP_VELOCITY_PER_TICK: f64 = 0.42;
 const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
 const EDGE_BACKOFF_STEP: f64 = 0.05;
 const COLLISION_CLIP_STEPS: usize = 12;
+const SPEED_EFFECT_MOVEMENT_SPEED_MULTIPLIER: f64 = 0.2;
+const SLOWNESS_EFFECT_MOVEMENT_SPEED_MULTIPLIER: f64 = -0.15;
+const JUMP_BOOST_VELOCITY_PER_LEVEL: f64 = 0.1;
+const VANILLA_SPEED_EFFECT_MODIFIER_ID: &str = "minecraft:effect.speed";
+const VANILLA_SLOWNESS_EFFECT_MODIFIER_ID: &str = "minecraft:effect.slowness";
 
 pub(super) fn integrate_local_player_input_pose(
     world: &WorldStore,
@@ -93,7 +102,10 @@ fn advance_local_player_physics_step(
 
     let flying = local_player_flying_abilities(world);
     if flying.is_none() && input.focused && input.jump && pose.on_ground {
-        pose.delta_movement.y = pose.delta_movement.y.max(LOCAL_JUMP_VELOCITY_PER_TICK);
+        let jump_velocity = local_player_jump_velocity(world);
+        if jump_velocity > 1.0e-5 {
+            pose.delta_movement.y = pose.delta_movement.y.max(jump_velocity);
+        }
     }
 
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
@@ -270,11 +282,8 @@ fn local_player_horizontal_speed(world: &WorldStore, input: LocalPlayerInputStat
         return local_player_flying_horizontal_speed(abilities, input);
     }
 
-    let movement_speed_scale =
-        local_player_attribute_value(world, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)
-            .unwrap_or(LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE)
-            .max(0.0)
-            / LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE;
+    let movement_speed_scale = local_player_movement_speed_attribute_value(world)
+        / LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE;
     let mut speed = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * movement_speed_scale;
     if input.sprint {
         speed *= LOCAL_INPUT_SPRINT_SPEED_MULTIPLIER;
@@ -285,6 +294,45 @@ fn local_player_horizontal_speed(world: &WorldStore, input: LocalPlayerInputStat
             .clamp(0.0, 1.0);
     }
     speed
+}
+
+fn local_player_movement_speed_attribute_value(world: &WorldStore) -> f64 {
+    let mut speed = local_player_attribute_value(world, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)
+        .unwrap_or(LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE);
+    if !local_player_attribute_has_modifier(
+        world,
+        VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        VANILLA_SPEED_EFFECT_MODIFIER_ID,
+    ) {
+        speed *= local_player_effect_total_multiplier(
+            world,
+            VANILLA_MOB_EFFECT_SPEED_ID,
+            SPEED_EFFECT_MOVEMENT_SPEED_MULTIPLIER,
+        );
+    }
+    if !local_player_attribute_has_modifier(
+        world,
+        VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        VANILLA_SLOWNESS_EFFECT_MODIFIER_ID,
+    ) {
+        speed *= local_player_effect_total_multiplier(
+            world,
+            VANILLA_MOB_EFFECT_SLOWNESS_ID,
+            SLOWNESS_EFFECT_MOVEMENT_SPEED_MULTIPLIER,
+        );
+    }
+    speed.max(0.0)
+}
+
+fn local_player_jump_velocity(world: &WorldStore) -> f64 {
+    let mut velocity = local_player_attribute_value(world, VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID)
+        .unwrap_or(LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE)
+        .max(0.0);
+    if let Some(amplifier) = local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_JUMP_BOOST_ID)
+    {
+        velocity += amplified_effect_amount(amplifier, JUMP_BOOST_VELOCITY_PER_LEVEL);
+    }
+    velocity
 }
 
 fn local_player_flying_horizontal_speed(
@@ -304,6 +352,39 @@ fn local_player_attribute_value(world: &WorldStore, attribute_id: i32) -> Option
     world
         .local_player_id
         .and_then(|id| world.entities.attribute_value(id, attribute_id))
+}
+
+fn local_player_attribute_has_modifier(
+    world: &WorldStore,
+    attribute_id: i32,
+    modifier_id: &str,
+) -> bool {
+    world.local_player_id.is_some_and(|id| {
+        world
+            .entities
+            .attribute_has_modifier(id, attribute_id, modifier_id)
+    })
+}
+
+fn local_player_effect_amplifier(world: &WorldStore, effect_id: i32) -> Option<i32> {
+    world
+        .local_player_id
+        .and_then(|id| world.entity_effect(id, effect_id))
+        .map(|effect| effect.amplifier)
+}
+
+fn local_player_effect_total_multiplier(
+    world: &WorldStore,
+    effect_id: i32,
+    amount_per_level: f64,
+) -> f64 {
+    local_player_effect_amplifier(world, effect_id)
+        .map(|amplifier| 1.0 + amplified_effect_amount(amplifier, amount_per_level))
+        .unwrap_or(1.0)
+}
+
+fn amplified_effect_amount(amplifier: i32, amount_per_level: f64) -> f64 {
+    amount_per_level * (f64::from(amplifier) + 1.0)
 }
 
 fn local_player_flying_abilities(world: &WorldStore) -> Option<LocalPlayerAbilitiesState> {
@@ -449,8 +530,9 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
-        UpdateAttributes as ProtocolUpdateAttributes,
+        AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
+        AttributeSnapshot as ProtocolAttributeSnapshot, MobEffectFlags as ProtocolMobEffectFlags,
+        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
     };
     use uuid::Uuid;
 
@@ -1309,6 +1391,62 @@ mod tests {
     }
 
     #[test]
+    fn local_player_speed_and_slowness_effects_scale_horizontal_movement() {
+        let mut speed_world = flat_collision_world();
+        attach_local_player_entity(&mut speed_world, 123);
+        assert!(speed_world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_SPEED_ID,
+            1,
+        )));
+        let speed_pose =
+            advance_forward_from_standard_start(&mut speed_world, LOCAL_PHYSICS_TICK_SECONDS);
+        let speed_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 1.4 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(speed_pose.position.z, 0.5 + speed_step, 0.000001);
+        assert_f64_near(speed_pose.delta_movement.z, speed_step, 0.000001);
+
+        let mut slowness_world = flat_collision_world();
+        attach_local_player_entity(&mut slowness_world, 124);
+        assert!(slowness_world.apply_update_mob_effect(mob_effect(
+            124,
+            VANILLA_MOB_EFFECT_SLOWNESS_ID,
+            0,
+        )));
+        let slowness_pose =
+            advance_forward_from_standard_start(&mut slowness_world, LOCAL_PHYSICS_TICK_SECONDS);
+        let slowness_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.85 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(slowness_pose.position.z, 0.5 + slowness_step, 0.000001);
+        assert_f64_near(slowness_pose.delta_movement.z, slowness_step, 0.000001);
+    }
+
+    #[test]
+    fn local_player_speed_effect_does_not_double_apply_synced_attribute_modifier() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                base: LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE,
+                modifiers: vec![ProtocolAttributeModifier {
+                    id: VANILLA_SPEED_EFFECT_MODIFIER_ID.to_string(),
+                    amount: 0.4,
+                    operation_id: 2,
+                }],
+            }],
+        }));
+        assert!(world.apply_update_mob_effect(mob_effect(123, VANILLA_MOB_EFFECT_SPEED_ID, 1,)));
+
+        let pose = advance_forward_from_standard_start(&mut world, LOCAL_PHYSICS_TICK_SECONDS);
+        let expected_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 1.4 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
     fn local_player_sneak_uses_sneaking_speed_attribute_when_present() {
         let mut world = flat_collision_world();
         attach_local_player_entity(&mut world, 123);
@@ -1343,6 +1481,45 @@ mod tests {
         assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
         assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
         assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_jump_uses_jump_strength_attribute_and_jump_boost_effect() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID,
+                base: 0.5,
+                modifiers: Vec::new(),
+            }],
+        }));
+        assert!(world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
+            1,
+        )));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.7, 0.000001);
+        assert!(!pose.on_ground);
+        assert!(pose.delta_movement.y > 0.0);
     }
 
     #[test]
@@ -1456,6 +1633,16 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         });
+    }
+
+    fn mob_effect(entity_id: i32, effect_id: i32, amplifier: i32) -> ProtocolUpdateMobEffect {
+        ProtocolUpdateMobEffect {
+            entity_id,
+            effect_id,
+            amplifier,
+            duration_ticks: 200,
+            flags: ProtocolMobEffectFlags::default(),
+        }
     }
 
     fn apply_flying_abilities(world: &mut WorldStore, flying_speed: f32) {

@@ -245,8 +245,9 @@ update this file in the same slice.
   - Movement: extend the current basic AABB collision and gravity/jump slice to:
     - full fixed 20Hz survival physics
     - remaining vanilla voxel collision shapes
-    - fluids
-    - effects
+    - fluids and remaining status-effect movement cases beyond:
+      - local Speed/Slowness movement-speed modifiers
+      - local Jump Boost jump impulse
     - sneak pose details
     - the near-ground/fallDistance branch of sneak edge backoff
     - full flying friction
@@ -323,6 +324,11 @@ update this file in the same slice.
       - jumps only from ground
       - local player `movement_speed` / `sneaking_speed` attributes with the
         vanilla default sneaking-speed reduction
+      - synced local player Speed effect id `0` and Slowness effect id `1`
+        as `movement_speed` `ADD_MULTIPLIED_TOTAL` modifiers scaled by
+        `amplifier + 1`
+      - synced local player Jump Boost effect id `7` as a jump impulse bonus
+        of `0.1 * (amplifier + 1)`
       - basic abilities-driven flying movement with no ordinary gravity
       - jump/sneak vertical controls while flying
       - vanilla 0.6 Y-velocity damping while flying

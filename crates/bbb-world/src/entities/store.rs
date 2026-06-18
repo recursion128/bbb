@@ -207,6 +207,30 @@ impl EntityStore {
             .map(vanilla_attribute_value)
     }
 
+    pub(crate) fn attribute_has_modifier(
+        &self,
+        id: i32,
+        attribute_id: i32,
+        modifier_id: &str,
+    ) -> bool {
+        let Some(entity) = self.by_protocol_id.get(&id).copied() else {
+            return false;
+        };
+        let Ok(attributes) = self.ecs.get::<&EntityAttributes>(entity) else {
+            return false;
+        };
+        attributes
+            .attributes
+            .iter()
+            .find(|attribute| attribute.attribute_id == attribute_id)
+            .is_some_and(|attribute| {
+                attribute
+                    .modifiers
+                    .iter()
+                    .any(|modifier| modifier.id == modifier_id)
+            })
+    }
+
     pub(crate) fn transform_state(&self, id: i32) -> Option<EntityTransformState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         self.transform_state_for_entity(entity)
