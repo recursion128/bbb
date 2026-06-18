@@ -67,6 +67,9 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
     };
     match (button, state) {
         (MouseButton::Left, ElementState::Pressed) => {
+            if local_player_attack_is_blocked(world) {
+                return;
+            }
             input.destroy_block_held = true;
             match camera_target {
                 Some(CrosshairTarget::Entity(hit)) => {
@@ -240,6 +243,9 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     if !input.focused || !input.destroy_block_held {
         return;
     }
+    if local_player_attack_is_blocked(world) {
+        return;
+    }
     if world.tick_local_destroy_delay() {
         return;
     }
@@ -353,6 +359,10 @@ fn local_player_instabuild(world: &WorldStore) -> bool {
         .local_player()
         .abilities
         .is_some_and(|abilities| abilities.instabuild)
+}
+
+fn local_player_attack_is_blocked(world: &WorldStore) -> bool {
+    world.local_player().interaction.using_item
 }
 
 pub(crate) fn handle_mouse_wheel(
@@ -655,6 +665,31 @@ mod tests {
     }
 
     #[test]
+    fn left_mouse_press_while_using_item_does_not_attack_or_swing() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        world.set_local_using_item(true);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.destroy_block_held);
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(counters.attack_entity_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn left_mouse_press_on_block_queues_start_destroy_and_swing() {
         let (tx, mut rx) = mpsc::channel(2);
         let commands = Some(tx);
@@ -695,6 +730,31 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
         );
+    }
+
+    #[test]
+    fn left_mouse_press_while_using_item_does_not_start_destroy() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.set_local_using_item(true);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.destroy_block_held);
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
@@ -744,6 +804,37 @@ mod tests {
                 sequence: 1,
             })
         );
+    }
+
+    #[test]
+    fn held_left_mouse_while_using_item_does_not_continue_or_abort_destroy() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        let old_pos = BlockPos { x: 2, y: 65, z: -3 };
+        world.set_local_destroying_block_hit(old_pos, ProtocolDirection::South);
+        world.set_local_using_item(true);
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            1.0,
+            1,
+        );
+
+        assert!(input.destroy_block_held);
+        assert!(world.local_player().interaction.using_item);
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(old_pos)
+        );
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

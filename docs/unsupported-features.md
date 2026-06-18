@@ -715,6 +715,8 @@ When an agent does any of the following, update this file in the same slice:
       - Native keeps `UpdateAttributes` as the authoritative path.
     - It tracks vanilla-shaped local destroy stages in canonical interaction
       state and clears them on completion/abort/restart.
+    - Left-click attack and block destroy input is suppressed while canonical
+      local `using_item` is active.
     - It projects destroy progress to batched renderer-visible cube crack
       overlays from:
       - local stages
