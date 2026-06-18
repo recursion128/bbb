@@ -53,6 +53,16 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         "minecraft:textures/gui/container/dispenser",
     )?;
     renderer.upload_hud_dispenser_background(dispenser.width, dispenser.height, &dispenser.rgba)?;
+    let crafting_table = gui_texture(
+        roots,
+        "textures/gui/container/crafting_table.png",
+        "minecraft:textures/gui/container/crafting_table",
+    )?;
+    renderer.upload_hud_crafting_table_background(
+        crafting_table.width,
+        crafting_table.height,
+        &crafting_table.rgba,
+    )?;
     let furnace = gui_texture(
         roots,
         "textures/gui/container/furnace.png",

@@ -362,6 +362,17 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 166.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::CraftingTable => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::CraftingTable,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        }
         InventoryScreenBackground::BlastFurnace => {
             let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::BlastFurnace,
@@ -978,6 +989,47 @@ mod tests {
         let first_container = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
         assert_eq!((first_container.x, first_container.y), (62, 17));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 44).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_crafting_table_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 12,
+            title: "Crafting".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 46],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(45)).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::CraftingTable,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(45));
+        assert_eq!(screen.slots.len(), 46);
+        let result = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((result.x, result.y), (124, 35));
+        let first_grid = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+        assert_eq!((first_grid.x, first_grid.y), (30, 17));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
     }
 

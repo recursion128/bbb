@@ -21,11 +21,20 @@ const VANILLA_MENU_TYPE_GENERIC_9X1_ID: i32 = 0;
 const VANILLA_MENU_TYPE_GENERIC_9X6_ID: i32 = 5;
 const VANILLA_MENU_TYPE_GENERIC_3X3_ID: i32 = 6;
 const VANILLA_MENU_TYPE_BLAST_FURNACE_ID: i32 = 10;
+const VANILLA_MENU_TYPE_CRAFTING_ID: i32 = 12;
 const VANILLA_MENU_TYPE_FURNACE_ID: i32 = 14;
 const VANILLA_MENU_TYPE_HOPPER_ID: i32 = 16;
 const VANILLA_MENU_TYPE_SMOKER_ID: i32 = 22;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_CONTAINER_SLOT_COUNT: i16 = 9;
+const CRAFTING_MENU_RESULT_SLOT: i16 = 0;
+const CRAFTING_MENU_CRAFT_SLOT_START: i16 = 1;
+const CRAFTING_MENU_CRAFT_SLOT_END: i16 = 10;
+const CRAFTING_MENU_PLAYER_MAIN_START: i16 = 10;
+const CRAFTING_MENU_PLAYER_MAIN_END: i16 = 37;
+const CRAFTING_MENU_HOTBAR_START: i16 = 37;
+const CRAFTING_MENU_HOTBAR_END: i16 = 46;
+const CRAFTING_MENU_TOTAL_SLOT_COUNT: i16 = 46;
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
@@ -689,6 +698,17 @@ impl WorldStore {
         let mut slots_after = slots_before.clone();
         let mut cursor_after = self.inventory.cursor_item.clone();
         let mut quick_craft_after = self.inventory.local_quick_craft.clone();
+        if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTING_ID)
+            && request.slot_num == CRAFTING_MENU_RESULT_SLOT
+            && matches!(
+                request.input,
+                ProtocolContainerInput::Pickup | ProtocolContainerInput::QuickMove
+            )
+        {
+            return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                request.input,
+            ));
+        }
         if request.input != ProtocolContainerInput::QuickCraft && quick_craft_after.is_active() {
             quick_craft_after.reset();
         } else {
@@ -735,6 +755,13 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             container_slot_count,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTING_ID) {
+                        apply_crafting_menu_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if furnace_family_menu_type(menu_type_id).is_some() {
@@ -1869,6 +1896,77 @@ fn apply_generic_container_quick_move_to_slots(
         backwards,
         default_item_max_stack_sizes,
     ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn apply_crafting_menu_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if slot_num <= CRAFTING_MENU_RESULT_SLOT || slot_num >= CRAFTING_MENU_TOTAL_SLOT_COUNT {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let mut moving = slots[source_index].item.clone();
+    let moved = if (CRAFTING_MENU_PLAYER_MAIN_START..CRAFTING_MENU_HOTBAR_END).contains(&slot_num) {
+        move_item_stack_to_slots(
+            container_id,
+            slots,
+            source_index,
+            &mut moving,
+            CRAFTING_MENU_CRAFT_SLOT_START,
+            CRAFTING_MENU_CRAFT_SLOT_END,
+            false,
+            default_item_max_stack_sizes,
+        ) || if (CRAFTING_MENU_PLAYER_MAIN_START..CRAFTING_MENU_PLAYER_MAIN_END).contains(&slot_num)
+        {
+            move_item_stack_to_slots(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                CRAFTING_MENU_HOTBAR_START,
+                CRAFTING_MENU_HOTBAR_END,
+                false,
+                default_item_max_stack_sizes,
+            )
+        } else {
+            move_item_stack_to_slots(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                CRAFTING_MENU_PLAYER_MAIN_START,
+                CRAFTING_MENU_PLAYER_MAIN_END,
+                false,
+                default_item_max_stack_sizes,
+            )
+        }
+    } else {
+        move_item_stack_to_slots(
+            container_id,
+            slots,
+            source_index,
+            &mut moving,
+            CRAFTING_MENU_PLAYER_MAIN_START,
+            CRAFTING_MENU_HOTBAR_END,
+            false,
+            default_item_max_stack_sizes,
+        )
+    };
+
+    if moved {
         normalize_item_stack(&mut moving);
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
@@ -4410,6 +4508,138 @@ mod tests {
         let slots = &store.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, item_stack(42, 3));
         assert_eq!(slots[9].item, ProtocolItemStackSummary::empty());
+    }
+
+    #[test]
+    fn apply_local_crafting_menu_quick_move_moves_grid_to_player_forward() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+            title: "Crafting".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[1] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 1,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(quick_move.container_id, 7);
+        assert_eq!(quick_move.state_id, 12);
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (1, ProtocolHashedStack::Empty),
+                (10, hashed_item_stack(42, 3))
+            ])
+        );
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[1].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[10].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn apply_local_crafting_menu_quick_move_moves_player_to_grid_then_between_player_ranges() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+            title: "Crafting".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[10] = item_stack(42, 3);
+        items[37] = item_stack(43, 4);
+        for slot in 1..10 {
+            items[slot] = item_stack(90 + slot as i32, 1);
+        }
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let main_to_hotbar = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 10,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            main_to_hotbar.changed_slots,
+            BTreeMap::from([
+                (10, ProtocolHashedStack::Empty),
+                (38, hashed_item_stack(42, 3))
+            ])
+        );
+
+        let hotbar_to_main = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 37,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            hotbar_to_main.changed_slots,
+            BTreeMap::from([
+                (10, hashed_item_stack(43, 4)),
+                (37, ProtocolHashedStack::Empty)
+            ])
+        );
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[10].item, item_stack(43, 4));
+        assert_eq!(slots[37].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[38].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn apply_local_crafting_menu_result_quick_move_requires_server_authority() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
+            title: "Crafting".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[0] = item_stack(90, 1);
+        items[1] = item_stack(42, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        let request = ContainerClickSlotRequest {
+            slot_num: 0,
+            button_num: 0,
+            input: ProtocolContainerInput::QuickMove,
+        };
+
+        assert_eq!(
+            store.apply_local_container_click_slot(request),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickMove
+            ))
+        );
+        let click = store.build_container_click_slot(request).unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(90, 1));
+        assert_eq!(slots[1].item, item_stack(42, 1));
     }
 
     #[test]

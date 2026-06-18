@@ -295,6 +295,7 @@ When an agent does any of the following, update this file in the same slice:
       - `generic_9xN`
       - `generic_3x3`
       - furnace/blast furnace/smoker
+      - crafting table
       - hopper
       - shulker box
     - recipe book/creative variants
@@ -422,6 +423,7 @@ When an agent does any of the following, update this file in the same slice:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices
       - `generic_3x3` DispenserMenu screens with official `dispenser.png`
+      - CraftingMenu screens with official `crafting_table.png`
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with official
         furnace-family backgrounds
       - HopperMenu screens with official `hopper.png`
@@ -438,6 +440,9 @@ When an agent does any of the following, update this file in the same slice:
     - It also queues Shift-click `QUICK_MOVE` container clicks for:
       - supported generic containers
       - `generic_3x3`
+      - CraftingMenu non-result slots, with result-slot clicks kept
+        server-authoritative until recipe recomputation and remainders are
+        locally modeled
       - hopper
       - shulker box
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including:
