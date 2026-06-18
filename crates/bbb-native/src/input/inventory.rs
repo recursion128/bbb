@@ -14,7 +14,7 @@ use winit::{
 use super::{
     bundle::{handle_bundle_slot_hover_end, handle_bundle_slot_mouse_scroll},
     commands::{
-        hotbar_slot_for_key, queue_container_click_command,
+        hotbar_slot_for_key, queue_container_button_click_command, queue_container_click_command,
         queue_container_slot_state_changed_command,
     },
     ClientInputState,
@@ -33,6 +33,7 @@ const ANVIL_MENU_TYPE_ID: i32 = 8;
 const BLAST_FURNACE_MENU_TYPE_ID: i32 = 10;
 const BREWING_STAND_MENU_TYPE_ID: i32 = 11;
 const CRAFTING_MENU_TYPE_ID: i32 = 12;
+const ENCHANTMENT_MENU_TYPE_ID: i32 = 13;
 const FURNACE_MENU_TYPE_ID: i32 = 14;
 const GRINDSTONE_MENU_TYPE_ID: i32 = 15;
 const HOPPER_MENU_TYPE_ID: i32 = 16;
@@ -67,6 +68,15 @@ const CRAFTING_SCREEN_WIDTH: i32 = 176;
 const CRAFTING_SCREEN_HEIGHT: i32 = 166;
 const CRAFTING_GRID_SLOT_COLUMNS: i32 = 3;
 const CRAFTING_SLOT_COUNT: i16 = 10;
+const ENCHANTMENT_SCREEN_WIDTH: i32 = 176;
+const ENCHANTMENT_SCREEN_HEIGHT: i32 = 166;
+const ENCHANTMENT_SLOT_COUNT: i16 = 2;
+const ENCHANTMENT_BUTTON_X: i32 = 60;
+const ENCHANTMENT_BUTTON_Y: i32 = 14;
+const ENCHANTMENT_BUTTON_WIDTH: i32 = 108;
+const ENCHANTMENT_BUTTON_HEIGHT: i32 = 19;
+const ENCHANTMENT_BUTTON_SPACING: i32 = 19;
+const ENCHANTMENT_BUTTON_COUNT: i32 = 3;
 const FURNACE_SCREEN_WIDTH: i32 = 176;
 const FURNACE_SCREEN_HEIGHT: i32 = 166;
 const FURNACE_SLOT_COUNT: i16 = 3;
@@ -103,6 +113,7 @@ pub(crate) enum InventoryScreenBackground {
     CartographyTable,
     CraftingTable,
     Crafter,
+    EnchantmentTable,
     Furnace,
     Grindstone,
     Hopper,
@@ -224,6 +235,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: CRAFTING_SCREEN_HEIGHT,
             background: InventoryScreenBackground::CraftingTable,
             slots: crafting_table_slot_layouts(),
+        });
+    }
+    if menu_type_id == ENCHANTMENT_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: ENCHANTMENT_SCREEN_WIDTH,
+            height: ENCHANTMENT_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::EnchantmentTable,
+            slots: enchantment_table_slot_layouts(),
         });
     }
     if menu_type_id == ANVIL_MENU_TYPE_ID {
@@ -492,6 +511,38 @@ fn anvil_slot_layouts() -> Vec<InventorySlotLayout> {
     for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
         slots.push(InventorySlotLayout {
             slot_id: ANVIL_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
+        });
+    }
+
+    slots
+}
+
+fn enchantment_table_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(ENCHANTMENT_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 15,
+        y: 47,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 35,
+        y: 47,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: ENCHANTMENT_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: ENCHANTMENT_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 142,
         });
@@ -892,6 +943,21 @@ pub(crate) fn handle_inventory_mouse_input(
             surface_size,
         );
     }
+    if button_num == 0
+        && maybe_queue_enchantment_button_click(
+            world,
+            counters,
+            net_commands,
+            cursor_position,
+            surface_size,
+        )
+    {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
 
     let click_target = inventory_screen_click_target(world, cursor_position, surface_size);
     let now = Instant::now();
@@ -955,6 +1021,36 @@ pub(crate) fn handle_inventory_mouse_input(
         request.input,
     );
     local_inventory_apply_and_queue_click(world, counters, net_commands, request);
+    true
+}
+
+fn maybe_queue_enchantment_button_click(
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(button_id) = enchantment_button_at_position(world, cursor_position, surface_size)
+    else {
+        return false;
+    };
+    if world
+        .open_container_data_value(button_id as i16)
+        .unwrap_or_default()
+        <= 0
+    {
+        return false;
+    }
+    let Some(container_id) = world
+        .inventory()
+        .open_container
+        .as_ref()
+        .map(|container| container.container_id)
+    else {
+        return false;
+    };
+    queue_container_button_click_command(counters, net_commands, container_id, button_id);
     true
 }
 
@@ -1321,6 +1417,32 @@ fn inventory_screen_hovered_slot(
     }
 }
 
+fn enchantment_button_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<i32> {
+    let layout = inventory_screen_layout(world)?;
+    if layout.background != InventoryScreenBackground::EnchantmentTable {
+        return None;
+    }
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    for button_id in 0..ENCHANTMENT_BUTTON_COUNT {
+        let button_y = ENCHANTMENT_BUTTON_Y + button_id * ENCHANTMENT_BUTTON_SPACING;
+        if x >= f64::from(ENCHANTMENT_BUTTON_X)
+            && x < f64::from(ENCHANTMENT_BUTTON_X + ENCHANTMENT_BUTTON_WIDTH)
+            && y >= f64::from(button_y)
+            && y < f64::from(button_y + ENCHANTMENT_BUTTON_HEIGHT)
+        {
+            return Some(button_id);
+        }
+    }
+    None
+}
+
 fn inventory_screen_click_target(
     world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -1401,10 +1523,11 @@ mod tests {
     use std::collections::BTreeMap;
 
     use bbb_protocol::packets::{
-        ContainerClick, ContainerSetContent, ContainerSlotStateChanged, HashedComponentPatch,
-        HashedItemStack, HashedStack, IngredientSummary, ItemStackSummary, OpenScreen,
-        RecipePropertySetSummary, SelectBundleItem, SetCursorItem, SetPlayerInventory,
-        SlotDisplaySummary, StonecutterSelectableRecipeSummary, UpdateRecipes,
+        ContainerButtonClick, ContainerClick, ContainerSetContent, ContainerSetData,
+        ContainerSlotStateChanged, HashedComponentPatch, HashedItemStack, HashedStack,
+        IngredientSummary, ItemStackSummary, OpenScreen, RecipePropertySetSummary,
+        SelectBundleItem, SetCursorItem, SetPlayerInventory, SlotDisplaySummary,
+        StonecutterSelectableRecipeSummary, UpdateRecipes,
     };
 
     #[test]
@@ -1693,6 +1816,58 @@ mod tests {
             layout.slots[45],
             InventorySlotLayout {
                 slot_id: 45,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
+    fn enchantment_table_layout_matches_vanilla_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: ENCHANTMENT_MENU_TYPE_ID,
+            title: "Enchanting Table".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(
+            layout.background,
+            InventoryScreenBackground::EnchantmentTable
+        );
+        assert_eq!(layout.slots.len(), 38);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 15,
+                y: 47,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 35,
+                y: 47,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[37],
+            InventorySlotLayout {
+                slot_id: 37,
                 x: 152,
                 y: 142,
             }
@@ -2407,6 +2582,38 @@ mod tests {
     }
 
     #[test]
+    fn enchantment_table_hit_test_uses_vanilla_slots_and_buttons() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: ENCHANTMENT_MENU_TYPE_ID,
+            title: "Enchanting Table".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(575.0, 332.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(595.0, 332.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(37))
+        );
+        assert_eq!(
+            enchantment_button_at_position(&world, Some(PhysicalPosition::new(620.0, 296.0)), size),
+            Some(0)
+        );
+        assert_eq!(
+            enchantment_button_at_position(&world, Some(PhysicalPosition::new(620.0, 334.0)), size),
+            Some(2)
+        );
+    }
+
+    #[test]
     fn anvil_hit_test_uses_vanilla_slots() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -2739,6 +2946,87 @@ mod tests {
             })
         );
         assert_eq!(world.open_container_data_value(0), None);
+    }
+
+    #[test]
+    fn enchantment_table_option_click_queues_button_command_when_cost_is_available() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: ENCHANTMENT_MENU_TYPE_ID,
+            title: "Enchanting Table".to_string(),
+        });
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![ItemStackSummary::empty(); 38],
+            carried_item: ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: 2,
+            value: 30,
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(620.0, 334.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 2,
+            })
+        );
+        assert_eq!(counters.container_click_commands_queued, 0);
+    }
+
+    #[test]
+    fn enchantment_table_option_click_ignores_zero_cost_buttons() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: ENCHANTMENT_MENU_TYPE_ID,
+            title: "Enchanting Table".to_string(),
+        });
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![ItemStackSummary::empty(); 38],
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(620.0, 296.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_button_click_commands_queued, 0);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

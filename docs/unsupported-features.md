@@ -315,6 +315,7 @@ When an agent does any of the following, update this file in the same slice:
         - anvil
         - brewing stand
         - cartography table
+        - enchanting table
         - furnace/blast furnace/smoker
         - crafting table
         - grindstone
@@ -471,6 +472,11 @@ When an agent does any of the following, update this file in the same slice:
       - CartographyTableMenu screens with official `cartography_table.png`
         background
       - CraftingMenu screens with official `crafting_table.png`
+      - EnchantmentMenu screens with official:
+        - `enchanting_table.png` background
+        - empty lapis slot sprite
+        - enchantment option slot sprites
+        - level cost sprites
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with official
         furnace-family backgrounds
       - GrindstoneMenu screens with official `grindstone.png` background and
@@ -519,6 +525,20 @@ When an agent does any of the following, update this file in the same slice:
         - disabled grid slots from `ContainerSetData`
         - result-preview slot 45 kept server-authoritative until crafter recipe
           preview and crafting side effects are locally modeled
+      - EnchantmentMenu:
+        - option button clicks queue `ServerboundContainerButtonClickPacket`
+          when the server-provided option cost is nonzero
+        - quick-move paths are kept server-authoritative until:
+          - lapis routing
+          - enchantable-item checks
+          - single-item movement into the enchantment input
+          - enchantment result side effects
+        - deferred presentation parity work:
+          - animated book model
+          - enchanting glyph text
+          - cost text
+          - XP/lapis disabled coloring
+          - hover tooltips
       - BrewingStandMenu:
         - quick-move paths are kept server-authoritative until:
           - brewing fuel tags

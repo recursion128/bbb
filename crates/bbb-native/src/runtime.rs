@@ -42,6 +42,16 @@ const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
 const CRAFTER_POWERED_DATA_ID: i16 = 9;
 const CRAFTER_DISABLED_SLOT_SPRITE_SIZE: u32 = 18;
 const CRAFTER_REDSTONE_SPRITE_SIZE: u32 = 16;
+const ENCHANTING_TABLE_LAPIS_SLOT_SPRITE_SIZE: u32 = 16;
+const ENCHANTING_TABLE_OPTION_COUNT: i16 = 3;
+const ENCHANTING_TABLE_OPTION_X: i32 = 60;
+const ENCHANTING_TABLE_OPTION_Y: i32 = 14;
+const ENCHANTING_TABLE_OPTION_WIDTH: u32 = 108;
+const ENCHANTING_TABLE_OPTION_HEIGHT: u32 = 19;
+const ENCHANTING_TABLE_OPTION_SPACING: i32 = 19;
+const ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET: i32 = 1;
+const ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET: i32 = 1;
+const ENCHANTING_TABLE_LEVEL_ICON_SIZE: u32 = 16;
 const LOOM_SLOT_SPRITE_SIZE: u32 = 16;
 const LOOM_SCROLLER_WIDTH: u32 = 12;
 const LOOM_SCROLLER_HEIGHT: u32 = 15;
@@ -400,6 +410,19 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 166.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::EnchantmentTable => {
+            let mut layers = vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::EnchantingTable,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )];
+            push_enchanting_table_state_layers(world, &mut layers);
+            layers
+        }
         InventoryScreenBackground::Crafter => {
             let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Crafter,
@@ -695,6 +718,78 @@ fn push_loom_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBackg
         [0.0, 0.0],
         [1.0, 1.0],
     ));
+}
+
+fn push_enchanting_table_state_layers(
+    world: &WorldStore,
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+) {
+    if open_container_slot_has_item(world, 1) {
+        for slot in enchanting_table_option_layers(world) {
+            layers.push(slot);
+        }
+        return;
+    }
+    layers.push(hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::EnchantingTableLapisSlot,
+        35,
+        47,
+        ENCHANTING_TABLE_LAPIS_SLOT_SPRITE_SIZE,
+        ENCHANTING_TABLE_LAPIS_SLOT_SPRITE_SIZE,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
+    for slot in enchanting_table_option_layers(world) {
+        layers.push(slot);
+    }
+}
+
+fn enchanting_table_option_layers(world: &WorldStore) -> Vec<HudInventoryBackgroundLayer> {
+    let mut layers = Vec::with_capacity((ENCHANTING_TABLE_OPTION_COUNT as usize) * 2);
+    for index in 0..ENCHANTING_TABLE_OPTION_COUNT {
+        let y = ENCHANTING_TABLE_OPTION_Y + i32::from(index) * ENCHANTING_TABLE_OPTION_SPACING;
+        let cost = world.open_container_data_value(index).unwrap_or_default();
+        if cost <= 0 {
+            layers.push(hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled,
+                ENCHANTING_TABLE_OPTION_X,
+                y,
+                ENCHANTING_TABLE_OPTION_WIDTH,
+                ENCHANTING_TABLE_OPTION_HEIGHT,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ));
+            continue;
+        }
+
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlot,
+            ENCHANTING_TABLE_OPTION_X,
+            y,
+            ENCHANTING_TABLE_OPTION_WIDTH,
+            ENCHANTING_TABLE_OPTION_HEIGHT,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+        layers.push(hud_inventory_background_layer(
+            enchanting_table_level_texture(index),
+            ENCHANTING_TABLE_OPTION_X + ENCHANTING_TABLE_LEVEL_ICON_X_OFFSET,
+            y + ENCHANTING_TABLE_LEVEL_ICON_Y_OFFSET,
+            ENCHANTING_TABLE_LEVEL_ICON_SIZE,
+            ENCHANTING_TABLE_LEVEL_ICON_SIZE,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+    layers
+}
+
+fn enchanting_table_level_texture(index: i16) -> HudInventoryBackgroundTexture {
+    match index {
+        0 => HudInventoryBackgroundTexture::EnchantingTableLevel1,
+        1 => HudInventoryBackgroundTexture::EnchantingTableLevel2,
+        _ => HudInventoryBackgroundTexture::EnchantingTableLevel3,
+    }
 }
 
 fn anvil_should_show_error(world: &WorldStore) -> bool {
@@ -1600,6 +1695,131 @@ mod tests {
         assert_eq!((first_grid.x, first_grid.y), (30, 17));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_enchanting_table_layout_and_lapis_slot_layer() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 13,
+            title: "Enchanting Table".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 38],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(37), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::EnchantingTable,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::EnchantingTableLapisSlot,
+                    35,
+                    47,
+                    16,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled,
+                    60,
+                    14,
+                    108,
+                    19,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled,
+                    60,
+                    33,
+                    108,
+                    19,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled,
+                    60,
+                    52,
+                    108,
+                    19,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(37));
+        assert_eq!(screen.slots.len(), 38);
+        let item = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((item.x, item.y), (15, 47));
+        let lapis = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+        assert_eq!((lapis.x, lapis.y), (35, 47));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 37).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 13,
+            title: "Enchanting Table".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 38],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 1,
+            value: 12,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlot,
+                60,
+                33,
+                108,
+                19,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::EnchantingTableLevel2,
+                61,
+                34,
+                16,
+                16,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
     }
 
     #[test]

@@ -139,6 +139,17 @@ pub enum HudInventoryBackgroundTexture {
     AnvilTextField,
     AnvilTextFieldDisabled,
     AnvilError,
+    EnchantingTable,
+    EnchantingTableLapisSlot,
+    EnchantingTableEnchantmentSlotDisabled,
+    EnchantingTableEnchantmentSlotHighlighted,
+    EnchantingTableEnchantmentSlot,
+    EnchantingTableLevel1,
+    EnchantingTableLevel2,
+    EnchantingTableLevel3,
+    EnchantingTableLevel1Disabled,
+    EnchantingTableLevel2Disabled,
+    EnchantingTableLevel3Disabled,
     BrewingStand,
     BrewingStandFuelLength,
     BrewingStandBrewProgress,
@@ -502,6 +513,122 @@ impl Renderer {
 
     pub fn upload_hud_anvil_error(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
         self.hud_anvil_error = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_lapis_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_lapis_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_enchantment_slot_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_enchantment_slot_disabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_enchantment_slot_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_enchantment_slot_highlighted =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_enchantment_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_enchantment_slot =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_level_1(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_level_1 = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_level_2(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_level_2 = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_level_3(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_level_3 = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_level_1_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_level_1_disabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_level_2_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_level_2_disabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_enchanting_table_level_3_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_enchanting_table_level_3_disabled =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -1203,6 +1330,39 @@ impl Renderer {
                 self.hud_anvil_text_field_disabled.as_ref()
             }
             HudInventoryBackgroundTexture::AnvilError => self.hud_anvil_error.as_ref(),
+            HudInventoryBackgroundTexture::EnchantingTable => {
+                self.hud_enchanting_table_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableLapisSlot => {
+                self.hud_enchanting_table_lapis_slot.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotDisabled => {
+                self.hud_enchanting_table_enchantment_slot_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlotHighlighted => self
+                .hud_enchanting_table_enchantment_slot_highlighted
+                .as_ref(),
+            HudInventoryBackgroundTexture::EnchantingTableEnchantmentSlot => {
+                self.hud_enchanting_table_enchantment_slot.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableLevel1 => {
+                self.hud_enchanting_table_level_1.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableLevel2 => {
+                self.hud_enchanting_table_level_2.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableLevel3 => {
+                self.hud_enchanting_table_level_3.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableLevel1Disabled => {
+                self.hud_enchanting_table_level_1_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableLevel2Disabled => {
+                self.hud_enchanting_table_level_2_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::EnchantingTableLevel3Disabled => {
+                self.hud_enchanting_table_level_3_disabled.as_ref()
+            }
             HudInventoryBackgroundTexture::BrewingStand => {
                 self.hud_brewing_stand_background.as_ref()
             }

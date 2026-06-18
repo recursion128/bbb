@@ -205,6 +205,86 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
     )?;
     let anvil_error = hud_sprite(&sprites, "container/anvil/error")?;
     renderer.upload_hud_anvil_error(anvil_error.width, anvil_error.height, &anvil_error.rgba)?;
+    let enchanting_table = gui_texture(
+        roots,
+        "textures/gui/container/enchanting_table.png",
+        "minecraft:textures/gui/container/enchanting_table",
+    )?;
+    renderer.upload_hud_enchanting_table_background(
+        enchanting_table.width,
+        enchanting_table.height,
+        &enchanting_table.rgba,
+    )?;
+    let enchanting_table_lapis_slot = hud_sprite(&sprites, "container/slot/lapis_lazuli")?;
+    renderer.upload_hud_enchanting_table_lapis_slot(
+        enchanting_table_lapis_slot.width,
+        enchanting_table_lapis_slot.height,
+        &enchanting_table_lapis_slot.rgba,
+    )?;
+    let enchanting_table_enchantment_slot_disabled = hud_sprite(
+        &sprites,
+        "container/enchanting_table/enchantment_slot_disabled",
+    )?;
+    renderer.upload_hud_enchanting_table_enchantment_slot_disabled(
+        enchanting_table_enchantment_slot_disabled.width,
+        enchanting_table_enchantment_slot_disabled.height,
+        &enchanting_table_enchantment_slot_disabled.rgba,
+    )?;
+    let enchanting_table_enchantment_slot_highlighted = hud_sprite(
+        &sprites,
+        "container/enchanting_table/enchantment_slot_highlighted",
+    )?;
+    renderer.upload_hud_enchanting_table_enchantment_slot_highlighted(
+        enchanting_table_enchantment_slot_highlighted.width,
+        enchanting_table_enchantment_slot_highlighted.height,
+        &enchanting_table_enchantment_slot_highlighted.rgba,
+    )?;
+    let enchanting_table_enchantment_slot =
+        hud_sprite(&sprites, "container/enchanting_table/enchantment_slot")?;
+    renderer.upload_hud_enchanting_table_enchantment_slot(
+        enchanting_table_enchantment_slot.width,
+        enchanting_table_enchantment_slot.height,
+        &enchanting_table_enchantment_slot.rgba,
+    )?;
+    let enchanting_table_level_1 = hud_sprite(&sprites, "container/enchanting_table/level_1")?;
+    renderer.upload_hud_enchanting_table_level_1(
+        enchanting_table_level_1.width,
+        enchanting_table_level_1.height,
+        &enchanting_table_level_1.rgba,
+    )?;
+    let enchanting_table_level_2 = hud_sprite(&sprites, "container/enchanting_table/level_2")?;
+    renderer.upload_hud_enchanting_table_level_2(
+        enchanting_table_level_2.width,
+        enchanting_table_level_2.height,
+        &enchanting_table_level_2.rgba,
+    )?;
+    let enchanting_table_level_3 = hud_sprite(&sprites, "container/enchanting_table/level_3")?;
+    renderer.upload_hud_enchanting_table_level_3(
+        enchanting_table_level_3.width,
+        enchanting_table_level_3.height,
+        &enchanting_table_level_3.rgba,
+    )?;
+    let enchanting_table_level_1_disabled =
+        hud_sprite(&sprites, "container/enchanting_table/level_1_disabled")?;
+    renderer.upload_hud_enchanting_table_level_1_disabled(
+        enchanting_table_level_1_disabled.width,
+        enchanting_table_level_1_disabled.height,
+        &enchanting_table_level_1_disabled.rgba,
+    )?;
+    let enchanting_table_level_2_disabled =
+        hud_sprite(&sprites, "container/enchanting_table/level_2_disabled")?;
+    renderer.upload_hud_enchanting_table_level_2_disabled(
+        enchanting_table_level_2_disabled.width,
+        enchanting_table_level_2_disabled.height,
+        &enchanting_table_level_2_disabled.rgba,
+    )?;
+    let enchanting_table_level_3_disabled =
+        hud_sprite(&sprites, "container/enchanting_table/level_3_disabled")?;
+    renderer.upload_hud_enchanting_table_level_3_disabled(
+        enchanting_table_level_3_disabled.width,
+        enchanting_table_level_3_disabled.height,
+        &enchanting_table_level_3_disabled.rgba,
+    )?;
     let furnace = gui_texture(
         roots,
         "textures/gui/container/furnace.png",
@@ -403,6 +483,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         loom = ?(loom.width, loom.height),
         crafter = ?(crafter.width, crafter.height),
         anvil = ?(anvil.width, anvil.height),
+        enchanting_table = ?(enchanting_table.width, enchanting_table.height),
         furnace = ?(furnace.width, furnace.height),
         blast_furnace = ?(blast_furnace.width, blast_furnace.height),
         smoker = ?(smoker.width, smoker.height),

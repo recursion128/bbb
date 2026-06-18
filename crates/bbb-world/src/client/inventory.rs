@@ -26,6 +26,7 @@ const VANILLA_MENU_TYPE_ANVIL_ID: i32 = 8;
 const VANILLA_MENU_TYPE_BLAST_FURNACE_ID: i32 = 10;
 const VANILLA_MENU_TYPE_BREWING_STAND_ID: i32 = 11;
 const VANILLA_MENU_TYPE_CRAFTING_ID: i32 = 12;
+const VANILLA_MENU_TYPE_ENCHANTMENT_ID: i32 = 13;
 const VANILLA_MENU_TYPE_FURNACE_ID: i32 = 14;
 const VANILLA_MENU_TYPE_GRINDSTONE_ID: i32 = 15;
 const VANILLA_MENU_TYPE_HOPPER_ID: i32 = 16;
@@ -807,6 +808,10 @@ impl WorldStore {
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_ANVIL_ID) {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::QuickMove,
+                        ));
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_ENCHANTMENT_ID) {
                         return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                             ProtocolContainerInput::QuickMove,
                         ));
@@ -5227,6 +5232,53 @@ mod tests {
             item_stack(90, 1)
         );
         assert_eq!(open_container_slot_item(&store, 31), item_stack(45, 3));
+    }
+
+    #[test]
+    fn apply_local_enchantment_quick_move_requires_server_authority() {
+        const ENCHANTMENT_TOTAL_SLOT_COUNT: usize = 38;
+
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
+            title: "Enchanting Table".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT];
+        items[0] = item_stack(42, 1);
+        items[1] = item_stack(43, 3);
+        items[29] = item_stack(44, 2);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        for slot_num in [0, 1, 29] {
+            assert_eq!(
+                store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num,
+                    button_num: 0,
+                    input: ProtocolContainerInput::QuickMove,
+                }),
+                Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                    ProtocolContainerInput::QuickMove
+                ))
+            );
+        }
+        let click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 29,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 1));
+        assert_eq!(open_container_slot_item(&store, 1), item_stack(43, 3));
+        assert_eq!(open_container_slot_item(&store, 29), item_stack(44, 2));
     }
 
     #[test]
