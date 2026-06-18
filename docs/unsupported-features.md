@@ -90,6 +90,7 @@ When an agent does any of the following, update this file in the same slice:
     - play -> configuration teardown
     - scoreboard objective/display/score/team updates
     - recipe book add/remove/settings updates
+    - recipe access `UpdateRecipes` property-set and stonecutter updates
   - The final criterion:
     - every supported decoded packet stays aligned
 

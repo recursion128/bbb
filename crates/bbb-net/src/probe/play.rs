@@ -522,16 +522,17 @@ mod tests {
         PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters, PongResponse,
         ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
         RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
-        RecipeDisplayType, RemoteDebugSampleType, ResetScore, ResourcePackPop, ResourcePackPush,
-        ResourcePackResponseAction, ScoreboardDisplaySlot, ServerData, ServerLinkEntry,
-        ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera, SetDefaultSpawnPosition,
-        SetDisplayObjective, SetHeldSlot, SetObjective, SetObjectiveMethod, SetObjectiveParameters,
-        SetPassengers, SetPlayerTeam, SetScore, SetSimulationDistance, ShowDialog,
-        SignedMessageBody, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType, ResetScore,
+        ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, ScoreboardDisplaySlot,
+        ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetHeldSlot, SetObjective,
+        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore,
+        SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
+        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
         StopSound, StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility,
         TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
-        Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
-        WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        Transfer, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData,
+        WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -1887,6 +1888,67 @@ mod tests {
         assert_eq!(report.world_counters.recipe_book_entries_tracked, 2);
         assert_eq!(report.world_counters.recipe_book_highlights_tracked, 0);
         assert_eq!(report.world_counters.recipe_book_notifications_received, 2);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_update_recipes_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::UpdateRecipes(UpdateRecipes {
+                property_sets: vec![
+                    RecipePropertySetSummary {
+                        key: "minecraft:furnace_input".to_string(),
+                        item_ids: vec![42, 43],
+                    },
+                    RecipePropertySetSummary {
+                        key: "minecraft:smithing_base".to_string(),
+                        item_ids: vec![99],
+                    },
+                ],
+                stonecutter_recipes: vec![StonecutterSelectableRecipeSummary {
+                    input: IngredientSummary {
+                        tag: None,
+                        item_ids: vec![11, 12],
+                    },
+                    option_display: SlotDisplaySummary {
+                        display_type_id: 4,
+                        raw_payload: vec![4, 77],
+                    },
+                }],
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+        let recipes = report.world.recipes();
+
+        assert_eq!(
+            recipes.property_sets.get("minecraft:furnace_input"),
+            Some(&vec![42, 43])
+        );
+        assert_eq!(
+            recipes.property_sets.get("minecraft:smithing_base"),
+            Some(&vec![99])
+        );
+        assert_eq!(recipes.stonecutter_recipes.len(), 1);
+        assert_eq!(recipes.stonecutter_recipes[0].input.item_ids, vec![11, 12]);
+        assert_eq!(
+            recipes.stonecutter_recipes[0]
+                .option_display
+                .display_type_id,
+            4
+        );
+        assert_eq!(
+            recipes.stonecutter_recipes[0].option_display.raw_payload,
+            vec![4, 77]
+        );
+
+        assert_eq!(report.world_counters.update_recipes_packets, 1);
+        assert_eq!(report.world_counters.recipe_property_sets_tracked, 2);
+        assert_eq!(report.world_counters.recipe_property_set_items_tracked, 3);
+        assert_eq!(report.world_counters.stonecutter_recipes_tracked, 1);
     }
 
     #[tokio::test]
