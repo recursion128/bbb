@@ -25,6 +25,7 @@ const GENERIC_CONTAINER_ROW_HEIGHT: i32 = 18;
 const GENERIC_CONTAINER_FIRST_MENU_TYPE_ID: i32 = 0;
 const GENERIC_CONTAINER_LAST_MENU_TYPE_ID: i32 = 5;
 const GENERIC_3X3_MENU_TYPE_ID: i32 = 6;
+const ANVIL_MENU_TYPE_ID: i32 = 8;
 const BLAST_FURNACE_MENU_TYPE_ID: i32 = 10;
 const BREWING_STAND_MENU_TYPE_ID: i32 = 11;
 const CRAFTING_MENU_TYPE_ID: i32 = 12;
@@ -40,6 +41,9 @@ const GENERIC_3X3_SCREEN_WIDTH: i32 = 176;
 const GENERIC_3X3_SCREEN_HEIGHT: i32 = 166;
 const GENERIC_3X3_SLOT_COLUMNS: i32 = 3;
 const GENERIC_3X3_SLOT_COUNT: i16 = 9;
+const ANVIL_SCREEN_WIDTH: i32 = 176;
+const ANVIL_SCREEN_HEIGHT: i32 = 166;
+const ANVIL_SLOT_COUNT: i16 = 3;
 const BREWING_STAND_SCREEN_WIDTH: i32 = 176;
 const BREWING_STAND_SCREEN_HEIGHT: i32 = 166;
 const BREWING_STAND_SLOT_COUNT: i16 = 5;
@@ -71,6 +75,7 @@ pub(crate) enum InventoryScreenBackground {
     LocalInventory,
     Generic9xRows { rows: u8 },
     Generic3x3,
+    Anvil,
     BlastFurnace,
     BrewingStand,
     CraftingTable,
@@ -185,6 +190,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: CRAFTING_SCREEN_HEIGHT,
             background: InventoryScreenBackground::CraftingTable,
             slots: crafting_table_slot_layouts(),
+        });
+    }
+    if menu_type_id == ANVIL_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: ANVIL_SCREEN_WIDTH,
+            height: ANVIL_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Anvil,
+            slots: anvil_slot_layouts(),
         });
     }
     if menu_type_id == BREWING_STAND_MENU_TYPE_ID {
@@ -348,6 +361,43 @@ fn crafting_table_slot_layouts() -> Vec<InventorySlotLayout> {
     for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
         slots.push(InventorySlotLayout {
             slot_id: CRAFTING_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
+        });
+    }
+
+    slots
+}
+
+fn anvil_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(ANVIL_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 27,
+        y: 47,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 76,
+        y: 47,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 2,
+        x: 134,
+        y: 47,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: ANVIL_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: ANVIL_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 142,
         });
@@ -1327,6 +1377,63 @@ mod tests {
     }
 
     #[test]
+    fn anvil_layout_matches_vanilla_item_combiner_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: ANVIL_MENU_TYPE_ID,
+            title: "Anvil".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(layout.background, InventoryScreenBackground::Anvil);
+        assert_eq!(layout.slots.len(), 39);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 27,
+                y: 47,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 76,
+                y: 47,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 134,
+                y: 47,
+            }
+        );
+        assert_eq!(
+            layout.slots[3],
+            InventorySlotLayout {
+                slot_id: 3,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[38],
+            InventorySlotLayout {
+                slot_id: 38,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn brewing_stand_layout_matches_vanilla_menu() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -1755,6 +1862,34 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
             Some(InventoryClickTarget::Slot(45))
+        );
+    }
+
+    #[test]
+    fn anvil_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: ANVIL_MENU_TYPE_ID,
+            title: "Anvil".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(587.0, 332.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(636.0, 332.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(694.0, 332.0)), size),
+            Some(InventoryClickTarget::Slot(2))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(38))
         );
     }
 
@@ -2305,6 +2440,56 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, item_stack(90, 1));
         assert_eq!(slots[1].item, item_stack(42, 1));
+    }
+
+    #[test]
+    fn anvil_shift_click_queues_server_authoritative_click() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: ANVIL_MENU_TYPE_ID,
+            title: "Anvil".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[30] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 427.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 30,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: BTreeMap::new(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[30].item, item_stack(42, 3));
     }
 
     #[test]

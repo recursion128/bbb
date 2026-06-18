@@ -312,6 +312,7 @@ When an agent does any of the following, update this file in the same slice:
       - remaining dedicated server-opened menu layouts beyond:
         - `generic_9xN`
         - `generic_3x3`
+        - anvil
         - brewing stand
         - furnace/blast furnace/smoker
         - crafting table
@@ -454,6 +455,8 @@ When an agent does any of the following, update this file in the same slice:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices
       - `generic_3x3` DispenserMenu screens with official `dispenser.png`
+      - AnvilMenu screens with official `anvil.png` background,
+        `container/anvil/text_field`, `text_field_disabled`, and error sprites
       - BrewingStandMenu screens with official `brewing_stand.png`
       - CraftingMenu screens with official `crafting_table.png`
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with official
@@ -479,6 +482,10 @@ When an agent does any of the following, update this file in the same slice:
     - It also queues Shift-click `QUICK_MOVE` container clicks for:
       - supported generic containers
       - `generic_3x3`
+      - AnvilMenu quick-move and result-slot paths are kept
+        server-authoritative until rename packet entry, repair/enchantment
+        result prediction, XP cost, repair-cost component updates, material
+        consumption, and anvil damage side effects are modeled
       - CraftingMenu non-result slots, with result-slot clicks kept
         server-authoritative until recipe recomputation and remainders are
         locally modeled

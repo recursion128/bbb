@@ -115,6 +115,10 @@ pub enum HudInventoryBackgroundTexture {
     GenericContainer,
     Dispenser,
     CraftingTable,
+    Anvil,
+    AnvilTextField,
+    AnvilTextFieldDisabled,
+    AnvilError,
     BrewingStand,
     BrewingStandFuelLength,
     BrewingStandBrewProgress,
@@ -260,6 +264,41 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_crafting_table_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_anvil_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_anvil_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_anvil_text_field(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_anvil_text_field = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_anvil_text_field_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_anvil_text_field_disabled = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_anvil_error(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_anvil_error = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -891,6 +930,12 @@ impl Renderer {
             HudInventoryBackgroundTexture::CraftingTable => {
                 self.hud_crafting_table_background.as_ref()
             }
+            HudInventoryBackgroundTexture::Anvil => self.hud_anvil_background.as_ref(),
+            HudInventoryBackgroundTexture::AnvilTextField => self.hud_anvil_text_field.as_ref(),
+            HudInventoryBackgroundTexture::AnvilTextFieldDisabled => {
+                self.hud_anvil_text_field_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::AnvilError => self.hud_anvil_error.as_ref(),
             HudInventoryBackgroundTexture::BrewingStand => {
                 self.hud_brewing_stand_background.as_ref()
             }

@@ -63,6 +63,26 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         crafting_table.height,
         &crafting_table.rgba,
     )?;
+    let anvil = gui_texture(
+        roots,
+        "textures/gui/container/anvil.png",
+        "minecraft:textures/gui/container/anvil",
+    )?;
+    renderer.upload_hud_anvil_background(anvil.width, anvil.height, &anvil.rgba)?;
+    let anvil_text_field = hud_sprite(&sprites, "container/anvil/text_field")?;
+    renderer.upload_hud_anvil_text_field(
+        anvil_text_field.width,
+        anvil_text_field.height,
+        &anvil_text_field.rgba,
+    )?;
+    let anvil_text_field_disabled = hud_sprite(&sprites, "container/anvil/text_field_disabled")?;
+    renderer.upload_hud_anvil_text_field_disabled(
+        anvil_text_field_disabled.width,
+        anvil_text_field_disabled.height,
+        &anvil_text_field_disabled.rgba,
+    )?;
+    let anvil_error = hud_sprite(&sprites, "container/anvil/error")?;
+    renderer.upload_hud_anvil_error(anvil_error.width, anvil_error.height, &anvil_error.rgba)?;
     let furnace = gui_texture(
         roots,
         "textures/gui/container/furnace.png",
@@ -245,6 +265,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         hotbar = ?(hotbar.width, hotbar.height),
         inventory = ?(inventory.width, inventory.height),
         generic_container = ?(generic_container.width, generic_container.height),
+        anvil = ?(anvil.width, anvil.height),
         furnace = ?(furnace.width, furnace.height),
         blast_furnace = ?(blast_furnace.width, blast_furnace.height),
         smoker = ?(smoker.width, smoker.height),

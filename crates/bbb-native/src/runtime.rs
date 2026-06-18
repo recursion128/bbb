@@ -392,6 +392,44 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 166.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::Anvil => {
+            let mut layers = vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Anvil,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    if anvil_input_slot_has_item(world) {
+                        HudInventoryBackgroundTexture::AnvilTextField
+                    } else {
+                        HudInventoryBackgroundTexture::AnvilTextFieldDisabled
+                    },
+                    59,
+                    20,
+                    110,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ];
+            if anvil_should_show_error(world) {
+                layers.push(hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::AnvilError,
+                    99,
+                    45,
+                    28,
+                    21,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ));
+            }
+            layers
+        }
         InventoryScreenBackground::BrewingStand => {
             let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::BrewingStand,
@@ -516,6 +554,24 @@ fn hud_inventory_background_layers(
             )]
         }
     }
+}
+
+fn anvil_input_slot_has_item(world: &WorldStore) -> bool {
+    open_container_slot_has_item(world, 0)
+}
+
+fn anvil_should_show_error(world: &WorldStore) -> bool {
+    (open_container_slot_has_item(world, 0) || open_container_slot_has_item(world, 1))
+        && !open_container_slot_has_item(world, 2)
+}
+
+fn open_container_slot_has_item(world: &WorldStore, slot_num: i16) -> bool {
+    world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.slots.iter().find(|slot| slot.slot == slot_num))
+        .is_some_and(|slot| !item_stack_is_empty(&slot.item))
 }
 
 fn push_brewing_stand_progress_layers(
@@ -1273,6 +1329,113 @@ mod tests {
         assert_eq!((first_grid.x, first_grid.y), (30, 17));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_anvil_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 8,
+            title: "Anvil".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 39],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(38), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Anvil,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::AnvilTextFieldDisabled,
+                    59,
+                    20,
+                    110,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(38));
+        assert_eq!(screen.slots.len(), 39);
+        let input = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((input.x, input.y), (27, 47));
+        let additional = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+        assert_eq!((additional.x, additional.y), (76, 47));
+        let result = screen.slots.iter().find(|slot| slot.slot_id == 2).unwrap();
+        assert_eq!((result.x, result.y), (134, 47));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 38).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_anvil_text_field_and_error_layers() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 8,
+            title: "Anvil".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Anvil,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::AnvilTextField,
+                    59,
+                    20,
+                    110,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::AnvilError,
+                    99,
+                    45,
+                    28,
+                    21,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
     }
 
     #[test]
