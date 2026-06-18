@@ -210,8 +210,10 @@ update this file in the same slice.
   - Keep resource-pack precedence/filter tests close to loaders.
 - Evidence / boundary:
   - Loaders report unsupported atlas/item declarations.
-  - Sounds, generated vanilla fallback, and resource-pack filters are covered for
-    current audio use.
+  - Current audio use is covered by:
+    - sounds
+    - generated vanilla fallback
+    - resource-pack filters
 
 ### Bundle Selected-Item Icon State
 
@@ -339,8 +341,9 @@ update this file in the same slice.
       while the local player entity has sleeping pose metadata.
     - Chat entry paths:
       - send offline unsigned `ServerboundChatPacket` messages
-      - request `ServerboundCommandSuggestionPacket` completions with the leading
-        slash while typing slash commands
+      - request `ServerboundCommandSuggestionPacket` completions:
+        - with the leading slash
+        - while typing slash commands
       - submit `ServerboundChatCommandPacket` payloads without the leading slash
       - queue explicit `ServerboundClientCommandPacket` perform-respawn commands
         from native/control input instead of auto-respawning on dead health
@@ -368,9 +371,11 @@ update this file in the same slice.
       - routes local left/right drag distribution through vanilla-shaped
         `QUICK_CRAFT` start/add/end clicks
     - It also:
-      - renders stack count labels for hotbar and local inventory item icons
-        using official 26.1 `font/ascii.png` digit glyphs with vanilla item-count
-        placement
+      - renders stack count labels:
+        - for hotbar item icons
+        - for local inventory item icons
+        - using official 26.1 `font/ascii.png` digit glyphs
+        - with vanilla item-count placement
       - updates cursor/slot state
       - fills `ServerboundContainerClickPacket(0)` changed-slot hashes
       - supports bundle wheel selection on hovered local inventory slots
@@ -434,10 +439,12 @@ update this file in the same slice.
         position
       - expiring server destruction entries after the vanilla-shaped 400 render
         tick window
-    - It predicts the locally destroyed block before queuing stop/instant destroy
-      packets:
-      - to air
-      - to a legacy water/lava state
+    - It predicts the locally destroyed block before queuing:
+      - stop destroy packets
+      - instant destroy packets
+    - Prediction targets:
+      - air
+      - legacy water/lava state
     - It reconciles local block-destroy predictions by:
       - deferring server block updates into pending prediction state
       - resolving predictions on `BlockChangedAck`
