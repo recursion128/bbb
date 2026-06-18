@@ -1,7 +1,9 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use bbb_protocol::packets::{self, PlayClientbound};
+use tokio::sync::oneshot;
 
 use crate::{
+    driver::send_chat_acknowledgement,
     event_stream::{emit, EventStreamContext},
     resource_pack::response_action_for_push,
     types::{ConnectionState, NetEvent},
@@ -160,12 +162,21 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::PlaceGhostRecipe(update)).await?;
             }
             PlayClientbound::StartConfiguration => {
-                let (id, payload) = packets::encode_play_configuration_acknowledged();
-                self.conn.send_packet(id, &payload).await?;
-                self.state = ConnectionState::Configuration;
-                self.play_tick = None;
-                self.seen_code_of_conduct = false;
-                emit(&self.events, NetEvent::StateChanged { state: self.state }).await?;
+                let (ack_tx, ack_rx) = oneshot::channel();
+                emit(
+                    &self.events,
+                    NetEvent::StartConfiguration {
+                        pending_chat_acknowledgement: ack_tx,
+                    },
+                )
+                .await?;
+                if let Some(command) = ack_rx
+                    .await
+                    .context("chat acknowledgement flush dropped during play reconfiguration")?
+                {
+                    send_chat_acknowledgement(&mut self.conn, command).await?;
+                }
+                self.acknowledge_start_configuration().await?;
             }
             PlayClientbound::StoreCookie(cookie) => {
                 let key = cookie.key;
@@ -501,5 +512,14 @@ impl EventStreamContext {
             }
         }
         Ok(())
+    }
+
+    async fn acknowledge_start_configuration(&mut self) -> Result<()> {
+        let (id, payload) = packets::encode_play_configuration_acknowledged();
+        self.conn.send_packet(id, &payload).await?;
+        self.state = ConnectionState::Configuration;
+        self.play_tick = None;
+        self.seen_code_of_conduct = false;
+        emit(&self.events, NetEvent::StateChanged { state: self.state }).await
     }
 }

@@ -522,6 +522,50 @@ fn configuration_state_change_clears_client_level_state() {
 }
 
 #[test]
+fn start_configuration_flushes_pending_chat_acknowledgement_before_clearing_level() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let (ack_tx, mut ack_rx) = tokio::sync::oneshot::channel();
+    tx.try_send(NetEvent::StartConfiguration {
+        pending_chat_acknowledgement: ack_tx,
+    })
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    assert_eq!(
+        world.apply_player_chat(player_chat_with_signature(
+            0,
+            MessageSignature {
+                bytes: vec![7; 256],
+            },
+        )),
+        None
+    );
+    world.apply_add_entity(protocol_add_entity(55));
+    world.set_local_using_item(true);
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(
+        ack_rx.try_recv().unwrap(),
+        Some(bbb_protocol::packets::ChatAcknowledgement { offset: 1 })
+    );
+    assert_eq!(world.entity_count(), 0);
+    assert_eq!(
+        world.local_player(),
+        &bbb_world::LocalPlayerState::default()
+    );
+    assert_eq!(
+        world.counters().player_chat_acknowledgement_pending_offset,
+        0
+    );
+    assert_eq!(world.counters().player_chat_acknowledgement_packets, 1);
+}
+
+#[test]
 fn transfer_event_updates_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Transfer(bbb_protocol::packets::Transfer {

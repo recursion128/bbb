@@ -161,6 +161,10 @@ impl ProbeContext {
                 self.conn.send_packet(id, &payload).await?;
             }
             PlayClientbound::StartConfiguration => {
+                if let Some(command) = self.world.take_pending_player_chat_acknowledgement() {
+                    let (id, payload) = packets::encode_play_chat_acknowledgement(command);
+                    self.conn.send_packet(id, &payload).await?;
+                }
                 let (id, payload) = packets::encode_play_configuration_acknowledged();
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Configuration;
@@ -1117,6 +1121,54 @@ mod tests {
             "Fresh configuration rules."
         );
         assert_eq!(probe.world.counters().code_of_conduct_packets, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_start_configuration_flushes_pending_chat_acknowledgement_first() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Play;
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerChat(
+                protocol_player_chat_with_signature(
+                    0,
+                    MessageSignature {
+                        bytes: vec![9; 256],
+                    },
+                ),
+            ))
+            .await
+            .unwrap();
+
+        probe
+            .handle_play_packet(PlayClientbound::StartConfiguration)
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("chat acknowledgement should be sent first")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_ACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("configuration acknowledgement should be sent second")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONFIGURATION_ACKNOWLEDGED);
+        assert!(payload.is_empty());
+        assert_eq!(probe.state, ConnectionState::Configuration);
+        assert_eq!(
+            probe
+                .world
+                .counters()
+                .player_chat_acknowledgement_pending_offset,
+            0
+        );
     }
 
     #[tokio::test]

@@ -24,10 +24,11 @@ use bbb_protocol::packets::{
     Transfer, UpdateAdvancements, UpdateAttributes, UpdateEnabledFeatures, UpdateMobEffect,
     UpdateRecipes, UpdateTags,
 };
+use tokio::sync::oneshot;
 
 use super::ConnectionState;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum NetEvent {
     Connected,
     Disconnected {
@@ -35,6 +36,10 @@ pub enum NetEvent {
     },
     StateChanged {
         state: ConnectionState,
+    },
+    StartConfiguration {
+        pending_chat_acknowledgement:
+            oneshot::Sender<Option<bbb_protocol::packets::ChatAcknowledgement>>,
     },
     CompressionSet {
         threshold: i32,

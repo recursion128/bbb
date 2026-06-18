@@ -152,7 +152,7 @@ mod tests {
     use bbb_protocol::{
         codec::Decoder,
         ids,
-        packets::{GameProfile, LoginClientbound, PlayClientbound},
+        packets::{ChatAcknowledgement, GameProfile, LoginClientbound, PlayClientbound},
     };
     use bbb_world::code_of_conduct_text_hash;
     use bytes::BytesMut;
@@ -1089,7 +1089,7 @@ mod tests {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
-        let mut stream = EventStreamContext {
+        let stream = EventStreamContext {
             conn: client,
             events: events_tx,
             commands: commands_rx,
@@ -1104,10 +1104,29 @@ mod tests {
             client_information: packets::ClientInformation::default(),
         };
 
-        stream
-            .handle_play_packet(PlayClientbound::StartConfiguration)
+        let stream_task = tokio::spawn(async move {
+            let mut stream = stream;
+            stream
+                .handle_play_packet(PlayClientbound::StartConfiguration)
+                .await
+                .unwrap();
+            stream
+        });
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
             .await
+            .expect("start-configuration event should be emitted")
             .unwrap();
+        match event {
+            NetEvent::StartConfiguration {
+                pending_chat_acknowledgement,
+            } => {
+                pending_chat_acknowledgement
+                    .send(None)
+                    .expect("start-configuration handler should wait for reply");
+            }
+            other => panic!("expected start-configuration event, got {other:?}"),
+        }
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
@@ -1115,6 +1134,10 @@ mod tests {
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_CONFIGURATION_ACKNOWLEDGED);
         assert!(payload.is_empty());
+        let mut stream = timeout(Duration::from_secs(1), stream_task)
+            .await
+            .expect("start-configuration task should finish")
+            .unwrap();
         assert_eq!(stream.state, ConnectionState::Configuration);
         assert!(stream.play_tick.is_none());
         assert!(!stream.seen_code_of_conduct);
@@ -1143,6 +1166,84 @@ mod tests {
         assert!(matches!(
             event,
             NetEvent::CodeOfConduct { text } if text == "Fresh configuration rules."
+        ));
+    }
+
+    #[tokio::test]
+    async fn play_start_configuration_flushes_pending_chat_acknowledgement_first() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: Some(crate::connection::play_tick_interval()),
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: true,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let stream_task = tokio::spawn(async move {
+            let mut stream = stream;
+            stream
+                .handle_play_packet(PlayClientbound::StartConfiguration)
+                .await
+                .unwrap();
+            stream
+        });
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("start-configuration event should be emitted")
+            .unwrap();
+        match event {
+            NetEvent::StartConfiguration {
+                pending_chat_acknowledgement,
+            } => {
+                pending_chat_acknowledgement
+                    .send(Some(ChatAcknowledgement { offset: 1 }))
+                    .expect("start-configuration handler should wait for reply");
+            }
+            other => panic!("expected start-configuration event, got {other:?}"),
+        }
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("chat acknowledgement should be sent first")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CHAT_ACK);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("configuration acknowledgement should be sent second")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_CONFIGURATION_ACKNOWLEDGED);
+        assert!(payload.is_empty());
+
+        let stream = timeout(Duration::from_secs(1), stream_task)
+            .await
+            .expect("start-configuration task should finish")
+            .unwrap();
+        assert_eq!(stream.state, ConnectionState::Configuration);
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("state-changed event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::StateChanged {
+                state: ConnectionState::Configuration
+            }
         ));
     }
 

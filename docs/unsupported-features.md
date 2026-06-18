@@ -742,6 +742,8 @@ When an agent does any of the following, update this file in the same slice:
     - canonical processed-signature offset tracking
     - online drain queueing
     - offline probe ack sending after vanilla's `offset > 64` threshold
+    - play -> configuration re-entry flushes pending signed-chat
+      acknowledgement before `ServerboundConfigurationAcknowledgedPacket`
   - Full signed chat payload generation remains follow-up work.
 
 ### Manual Visual/Audio Comparisons

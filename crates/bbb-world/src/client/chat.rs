@@ -243,6 +243,20 @@ impl WorldStore {
         &self.client_chat
     }
 
+    pub fn take_pending_player_chat_acknowledgement(
+        &mut self,
+    ) -> Option<ProtocolChatAcknowledgement> {
+        let offset = self.client_chat.acknowledgement.pending_offset;
+        if offset <= 0 {
+            return None;
+        }
+
+        self.client_chat.acknowledgement.pending_offset = 0;
+        self.counters.player_chat_acknowledgement_packets += 1;
+        refresh_chat_counters(self);
+        Some(ProtocolChatAcknowledgement { offset })
+    }
+
     fn record_processed_player_chat_signature(
         &mut self,
         signature: &ProtocolMessageSignature,
@@ -446,6 +460,27 @@ mod tests {
             1
         );
         assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+    }
+
+    #[test]
+    fn take_pending_player_chat_acknowledgement_drains_below_threshold_offset() {
+        let mut store = WorldStore::new();
+        assert_eq!(
+            store.apply_player_chat(player_chat_with_signature(0, signature(11))),
+            None
+        );
+
+        assert_eq!(
+            store.take_pending_player_chat_acknowledgement(),
+            Some(ProtocolChatAcknowledgement { offset: 1 })
+        );
+        assert_eq!(
+            store.counters().player_chat_acknowledgement_pending_offset,
+            0
+        );
+        assert_eq!(store.counters().player_chat_acknowledgement_packets, 1);
+        assert_eq!(store.take_pending_player_chat_acknowledgement(), None);
+        assert_eq!(store.counters().player_chat_acknowledgement_packets, 1);
     }
 
     #[test]

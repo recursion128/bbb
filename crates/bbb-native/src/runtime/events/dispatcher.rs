@@ -57,6 +57,13 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         apply_control_projection_event(&event, counters);
 
         match event {
+            NetEvent::StartConfiguration {
+                pending_chat_acknowledgement,
+            } => {
+                let command = world.take_pending_player_chat_acknowledgement();
+                let _ = pending_chat_acknowledgement.send(command);
+                world.clear_client_level();
+            }
             NetEvent::StateChanged {
                 state: ConnectionState::Configuration,
             } => {
