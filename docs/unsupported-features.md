@@ -319,6 +319,8 @@ When an agent does any of the following, update this file in the same slice:
         full Spectator GUI selection and wheel speed/menu behavior remains
         follow-up presentation/control work.
       - Spectator right-click without a target does not send `UseItem`.
+      - Spectator right-click on a block sends main-hand `UseItemOn` even when
+        offhand would be preferred for non-spectator item use.
   - Inventory:
     - Implement:
       - tooltips

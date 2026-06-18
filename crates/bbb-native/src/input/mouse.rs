@@ -225,7 +225,7 @@ fn start_use_item(
         }
         Some(CrosshairTarget::Block(hit)) => {
             let sequence = world.next_local_prediction_sequence();
-            let hand = item_use_hand(world);
+            let hand = block_use_hand(world);
             queue_use_item_on_command(counters, net_commands, hand, hit, sequence);
         }
         None => {
@@ -252,6 +252,14 @@ fn item_use_hand(world: &WorldStore) -> InteractionHand {
         InteractionHand::OffHand
     } else {
         InteractionHand::MainHand
+    }
+}
+
+fn block_use_hand(world: &WorldStore) -> InteractionHand {
+    if world.local_player_is_spectator() {
+        InteractionHand::MainHand
+    } else {
+        item_use_hand(world)
     }
 }
 
@@ -1427,6 +1435,49 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::UseItemOn(UseItemOn {
                 hand: InteractionHand::OffHand,
+                hit: ProtocolBlockHitResult {
+                    pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                    direction: ProtocolDirection::North,
+                    cursor_x: 0.0,
+                    cursor_y: 0.62,
+                    cursor_z: 0.0,
+                    inside: false,
+                    world_border_hit: false,
+                },
+                sequence: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn spectator_right_mouse_press_on_block_keeps_main_hand_when_hotbar_is_empty() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        set_local_spectator(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(!world.local_player().interaction.using_item);
+        assert!(input.use_item_held);
+        assert_eq!(counters.use_item_on_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::UseItemOn(UseItemOn {
+                hand: InteractionHand::MainHand,
                 hit: ProtocolBlockHitResult {
                     pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
                     direction: ProtocolDirection::North,
