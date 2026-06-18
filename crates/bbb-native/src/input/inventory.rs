@@ -1135,7 +1135,7 @@ pub(crate) fn handle_inventory_mouse_input(
 }
 
 fn maybe_queue_merchant_trade_click(
-    world: &WorldStore,
+    world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -1144,6 +1144,7 @@ fn maybe_queue_merchant_trade_click(
     let Some(item) = merchant_trade_at_position(world, cursor_position, surface_size) else {
         return false;
     };
+    world.set_local_merchant_selected_offer(item);
     queue_select_trade_command(counters, net_commands, SelectTradeCommand { item });
     true
 }
@@ -3374,6 +3375,15 @@ mod tests {
         assert_eq!(
             rx.try_recv().unwrap(),
             NetCommand::SelectTrade(SelectTradeCommand { item: 3 })
+        );
+        assert_eq!(
+            world
+                .inventory()
+                .open_container
+                .as_ref()
+                .and_then(|container| container.merchant_offers.as_ref())
+                .map(|offers| offers.local_selected_offer_index),
+            Some(3)
         );
         assert!(rx.try_recv().is_err());
     }

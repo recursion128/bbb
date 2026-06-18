@@ -516,6 +516,12 @@ When an agent does any of the following, update this file in the same slice:
       fixed-slot screens.
     - MerchantMenu visible trade-row clicks queue
       `ServerboundSelectTradePacket` for the first seven server-provided offers.
+    - MerchantMenu renders the first seven server-provided offers with:
+      - cost/result item icons
+      - normal/out-of-stock trade arrows
+      - enabled/disabled scroller sprite at the initial scroll offset
+      - selected-offer out-of-stock overlay
+      - current villager XP bar
     - It also queues Shift-click `QUICK_MOVE` container clicks for:
       - supported generic containers
       - `generic_3x3`
@@ -606,13 +612,14 @@ When an agent does any of the following, update this file in the same slice:
           - input consumption
           - trade sound/XP side effects
         - deferred presentation parity work:
-          - rendered selected/highlighted trade offer list buttons
-          - trade item icons and stack decorations
-          - scroller, scroll offset, and drag behavior
-          - out-of-stock/deprecated overlays
+          - rendered generic button row backgrounds and hover/focus highlight
+          - selected row state if a future vanilla source adds one
+          - scroll offset, mouse wheel, and drag behavior
+          - future trade XP result bar from payment/result prediction
+          - component-aware cost predicate rendering
+          - full trade stack decorations and hover tooltips
+          - deprecated tooltip behavior
           - discount strikethrough
-          - villager XP progress bar
-          - item hover tooltips
       - shulker box
       - SmithingMenu:
         - quick-move paths are kept server-authoritative until:

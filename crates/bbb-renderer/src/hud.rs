@@ -213,12 +213,23 @@ pub struct HudInventorySlot {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct HudInventoryItem {
+    /// Item icon x position relative to the centered inventory screen origin.
+    pub x: i32,
+    /// Item icon y position relative to the centered inventory screen origin.
+    pub y: i32,
+    pub icon: HudItemIcon,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryScreen {
     pub width: u32,
     pub height: u32,
     pub background_layers: Vec<HudInventoryBackgroundLayer>,
     /// Slots for the currently open inventory container.
     pub slots: Vec<HudInventorySlot>,
+    /// Item icons drawn by the inventory screen that are not container slots.
+    pub floating_items: Vec<HudInventoryItem>,
     pub hovered_slot_id: Option<u16>,
 }
 
@@ -1191,41 +1202,16 @@ impl Renderer {
             for (slot, icon) in self.hud_hotbar_item_icons.iter().enumerate() {
                 if let Some(icon) = icon {
                     let item_rect = hotbar_item_hud_rect(surface_size, slot);
-                    for layer in &icon.layers {
-                        push_hud_draw_with_uv_and_tint(
-                            &mut vertices,
-                            &mut commands,
-                            atlas,
-                            surface_size,
-                            item_rect,
-                            layer.uv,
-                            layer.tint,
-                        );
-                    }
-                    push_hud_item_durability_bar(
+                    push_hud_item_icon(
                         &mut vertices,
                         &mut commands,
+                        atlas,
                         &self.hud_white_pixel,
-                        surface_size,
-                        item_rect,
-                        icon.durability_bar.as_ref(),
-                    );
-                    push_hud_item_cooldown(
-                        &mut vertices,
-                        &mut commands,
-                        &self.hud_white_pixel,
-                        surface_size,
-                        item_rect,
-                        icon.cooldown_progress,
-                    );
-                    push_hud_item_count_label(
-                        &mut vertices,
-                        &mut commands,
                         self.hud_digit_atlas.as_ref(),
                         &self.hud_digit_glyphs,
                         surface_size,
                         item_rect,
-                        icon.count_label.as_ref(),
+                        icon,
                     );
                 }
             }
@@ -1379,43 +1365,38 @@ impl Renderer {
                             slot.x,
                             slot.y,
                         );
-                        for layer in &icon.layers {
-                            push_hud_draw_with_uv_and_tint(
-                                &mut vertices,
-                                &mut commands,
-                                atlas,
-                                surface_size,
-                                item_rect,
-                                layer.uv,
-                                layer.tint,
-                            );
-                        }
-                        push_hud_item_durability_bar(
+                        push_hud_item_icon(
                             &mut vertices,
                             &mut commands,
+                            atlas,
                             &self.hud_white_pixel,
-                            surface_size,
-                            item_rect,
-                            icon.durability_bar.as_ref(),
-                        );
-                        push_hud_item_cooldown(
-                            &mut vertices,
-                            &mut commands,
-                            &self.hud_white_pixel,
-                            surface_size,
-                            item_rect,
-                            icon.cooldown_progress,
-                        );
-                        push_hud_item_count_label(
-                            &mut vertices,
-                            &mut commands,
                             self.hud_digit_atlas.as_ref(),
                             &self.hud_digit_glyphs,
                             surface_size,
                             item_rect,
-                            icon.count_label.as_ref(),
+                            icon,
                         );
                     }
+                }
+                for item in &screen.floating_items {
+                    let item_rect = inventory_slot_item_hud_rect(
+                        surface_size,
+                        screen.width,
+                        screen.height,
+                        item.x,
+                        item.y,
+                    );
+                    push_hud_item_icon(
+                        &mut vertices,
+                        &mut commands,
+                        atlas,
+                        &self.hud_white_pixel,
+                        self.hud_digit_atlas.as_ref(),
+                        &self.hud_digit_glyphs,
+                        surface_size,
+                        item_rect,
+                        &item.icon,
+                    );
                 }
             }
 
@@ -1685,6 +1666,55 @@ fn push_hud_draw_with_uv_and_tint<'a>(
     commands.push(HudDrawCommand { sprite, start, end });
 }
 
+fn push_hud_item_icon<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    item_atlas: &'a HudSpriteGpu,
+    white_pixel: &'a HudSpriteGpu,
+    digit_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &[HudDigitGlyph; 10],
+    surface_size: PhysicalSize<u32>,
+    item_rect: HudRect,
+    icon: &HudItemIcon,
+) {
+    for layer in &icon.layers {
+        push_hud_draw_with_uv_and_tint(
+            vertices,
+            commands,
+            item_atlas,
+            surface_size,
+            item_rect,
+            layer.uv,
+            layer.tint,
+        );
+    }
+    push_hud_item_durability_bar(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        item_rect,
+        icon.durability_bar.as_ref(),
+    );
+    push_hud_item_cooldown(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        item_rect,
+        icon.cooldown_progress,
+    );
+    push_hud_item_count_label(
+        vertices,
+        commands,
+        digit_atlas,
+        glyphs,
+        surface_size,
+        item_rect,
+        icon.count_label.as_ref(),
+    );
+}
+
 fn push_hud_item_durability_bar<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -1844,6 +1874,11 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
             .into_iter()
             .map(sanitize_hud_inventory_slot)
             .collect(),
+        floating_items: screen
+            .floating_items
+            .into_iter()
+            .filter_map(sanitize_hud_inventory_item)
+            .collect(),
         hovered_slot_id: screen.hovered_slot_id,
     }
 }
@@ -1862,6 +1897,14 @@ fn sanitize_hud_inventory_slot(slot: HudInventorySlot) -> HudInventorySlot {
         y: slot.y,
         icon: slot.icon.and_then(sanitize_hud_item_icon),
     }
+}
+
+fn sanitize_hud_inventory_item(item: HudInventoryItem) -> Option<HudInventoryItem> {
+    Some(HudInventoryItem {
+        x: item.x,
+        y: item.y,
+        icon: sanitize_hud_item_icon(item.icon)?,
+    })
 }
 
 fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
@@ -2155,6 +2198,7 @@ mod tests {
                     icon: None,
                 },
             ],
+            floating_items: Vec::new(),
             hovered_slot_id: Some(7),
         });
 
@@ -2191,5 +2235,69 @@ mod tests {
         assert_eq!(screen.slots[1].icon, None);
         assert_eq!(screen.slots[2].slot_id, 7);
         assert_eq!(screen.slots[2].icon, None);
+    }
+
+    #[test]
+    fn sanitize_hud_inventory_screen_keeps_sanitized_floating_items() {
+        let screen = sanitize_hud_inventory_screen(HudInventoryScreen {
+            width: 176,
+            height: 166,
+            background_layers: Vec::new(),
+            slots: Vec::new(),
+            floating_items: vec![
+                HudInventoryItem {
+                    x: 33,
+                    y: 19,
+                    icon: HudItemIcon {
+                        layers: vec![HudIconLayer::new(
+                            HudUvRect {
+                                min: [1.25, 0.75],
+                                max: [-0.5, 0.25],
+                            },
+                            [1.25, 0.5, -1.0, 1.0],
+                        )],
+                        count_label: Some(HudItemCountLabel::new("12")),
+                        durability_bar: Some(HudItemDurabilityBar::new(99, [0.25, 2.0, -1.0])),
+                        cooldown_progress: Some(1.5),
+                    },
+                },
+                HudInventoryItem {
+                    x: 51,
+                    y: 19,
+                    icon: HudItemIcon {
+                        layers: vec![HudIconLayer::new(
+                            HudUvRect {
+                                min: [0.0, f32::NAN],
+                                max: [1.0, 1.0],
+                            },
+                            [1.0, 1.0, 1.0, 1.0],
+                        )],
+                        count_label: Some(HudItemCountLabel::new("64")),
+                        durability_bar: None,
+                        cooldown_progress: None,
+                    },
+                },
+            ],
+            hovered_slot_id: None,
+        });
+
+        assert_eq!(screen.floating_items.len(), 1);
+        assert_eq!(screen.floating_items[0].x, 33);
+        assert_eq!(screen.floating_items[0].y, 19);
+        assert_eq!(
+            screen.floating_items[0].icon,
+            HudItemIcon {
+                layers: vec![HudIconLayer::new(
+                    HudUvRect {
+                        min: [0.0, 0.25],
+                        max: [1.0, 0.75],
+                    },
+                    [1.0, 0.5, 0.0, 1.0],
+                )],
+                count_label: Some(HudItemCountLabel::new("12")),
+                durability_bar: Some(HudItemDurabilityBar::new(13, [0.25, 1.0, 0.0])),
+                cooldown_progress: Some(1.0),
+            }
+        );
     }
 }

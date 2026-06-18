@@ -185,6 +185,8 @@ pub struct MerchantOffersState {
     pub villager_xp: i32,
     pub show_progress: bool,
     pub can_restock: bool,
+    #[serde(default)]
+    pub local_selected_offer_index: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -670,6 +672,33 @@ impl WorldStore {
             .filter(|(item_id, size)| *item_id >= 0 && *size > 0)
             .map(|(item_id, size)| (item_id, clamp_vanilla_item_max_stack_size(size)))
             .collect();
+    }
+
+    pub fn item_max_stack_size_for_protocol_id(&self, item_id: i32) -> i32 {
+        self.default_item_max_stack_sizes
+            .get(&item_id)
+            .copied()
+            .map(clamp_vanilla_item_max_stack_size)
+            .unwrap_or(VANILLA_DEFAULT_MAX_STACK_SIZE)
+    }
+
+    pub fn set_local_merchant_selected_offer(&mut self, index: i32) -> bool {
+        let Some(offers) = self
+            .inventory
+            .open_container
+            .as_mut()
+            .and_then(|container| container.merchant_offers.as_mut())
+        else {
+            return false;
+        };
+        let Ok(index_usize) = usize::try_from(index) else {
+            return false;
+        };
+        if index_usize >= offers.offers.len() {
+            return false;
+        }
+        offers.local_selected_offer_index = index;
+        true
     }
 
     pub fn set_furnace_fuel_item_ids(&mut self, item_ids: BTreeSet<i32>) {
@@ -2723,6 +2752,7 @@ impl MerchantOffersState {
             villager_xp: packet.villager_xp,
             show_progress: packet.show_progress,
             can_restock: packet.can_restock,
+            local_selected_offer_index: 0,
         }
     }
 }
@@ -3368,8 +3398,21 @@ mod tests {
         assert_eq!(offers.villager_xp, 120);
         assert!(offers.show_progress);
         assert!(!offers.can_restock);
+        assert_eq!(offers.local_selected_offer_index, 0);
         assert_eq!(offers.offers[0].buy_a, item_cost(42, 3));
         assert_eq!(offers.offers[0].sell, item_stack(99, 1));
+        assert!(store.set_local_merchant_selected_offer(1));
+        assert!(!store.set_local_merchant_selected_offer(2));
+        assert!(!store.set_local_merchant_selected_offer(-1));
+        assert_eq!(
+            store
+                .inventory()
+                .open_container
+                .as_ref()
+                .and_then(|container| container.merchant_offers.as_ref())
+                .map(|offers| offers.local_selected_offer_index),
+            Some(1)
+        );
 
         assert_eq!(store.counters().merchant_offer_packets_received, 4);
         assert_eq!(store.counters().merchant_offer_packets_applied, 1);

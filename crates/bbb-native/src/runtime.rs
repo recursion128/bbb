@@ -6,12 +6,13 @@ use std::{
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
+use bbb_protocol::packets::{ItemCostSummary, ItemStackSummary};
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
-    HudInventoryBackgroundTexture, HudInventoryScreen, HudInventorySlot, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
+    HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
-use bbb_world::WorldStore;
+use bbb_world::{MerchantOfferState, MerchantOffersState, WorldStore};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -75,6 +76,31 @@ const FURNACE_LIT_PROGRESS_SPRITE_SIZE: u32 = 14;
 const FURNACE_BURN_PROGRESS_SPRITE_WIDTH: u32 = 24;
 const FURNACE_BURN_PROGRESS_SPRITE_HEIGHT: u32 = 16;
 const ITEM_DURABILITY_BAR_MAX_WIDTH: i32 = 13;
+const MERCHANT_VISIBLE_OFFER_COUNT: usize = 7;
+const MERCHANT_TRADE_COST_A_X: i32 = 10;
+const MERCHANT_TRADE_COST_B_X: i32 = 40;
+const MERCHANT_TRADE_RESULT_X: i32 = 73;
+const MERCHANT_TRADE_ITEM_Y: i32 = 19;
+const MERCHANT_TRADE_ROW_HEIGHT: i32 = 20;
+const MERCHANT_TRADE_ARROW_X: i32 = 60;
+const MERCHANT_TRADE_ARROW_Y: i32 = 22;
+const MERCHANT_TRADE_ARROW_WIDTH: u32 = 10;
+const MERCHANT_TRADE_ARROW_HEIGHT: u32 = 9;
+const MERCHANT_SCROLLER_X: i32 = 94;
+const MERCHANT_SCROLLER_Y: i32 = 18;
+const MERCHANT_SCROLLER_WIDTH: u32 = 6;
+const MERCHANT_SCROLLER_HEIGHT: u32 = 27;
+const MERCHANT_SCROLLER_TRACK_HEIGHT: i32 = 139;
+const MERCHANT_SCROLLER_MAX_OFFSET: i32 = 113;
+const MERCHANT_OUT_OF_STOCK_X: i32 = 182;
+const MERCHANT_OUT_OF_STOCK_Y: i32 = 35;
+const MERCHANT_OUT_OF_STOCK_WIDTH: u32 = 28;
+const MERCHANT_OUT_OF_STOCK_HEIGHT: u32 = 21;
+const MERCHANT_XP_BAR_X: i32 = 136;
+const MERCHANT_XP_BAR_Y: i32 = 16;
+const MERCHANT_XP_BAR_WIDTH: u32 = 102;
+const MERCHANT_XP_BAR_HEIGHT: u32 = 5;
+const VILLAGER_NEXT_LEVEL_XP_THRESHOLDS: [i32; 5] = [0, 10, 70, 150, 250];
 
 pub(crate) use control_requests::pump_control_net_requests;
 
@@ -345,8 +371,28 @@ fn hud_inventory_screen(
         height: u32::try_from(layout.height).unwrap_or_default(),
         background_layers: hud_inventory_background_layers(world, layout.background),
         slots,
+        floating_items: hud_inventory_floating_items(
+            world,
+            item_runtime,
+            layout.background,
+            partial_tick,
+        ),
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
     })
+}
+
+fn hud_inventory_floating_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    background: InventoryScreenBackground,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    match background {
+        InventoryScreenBackground::Merchant => {
+            hud_merchant_trade_items(world, item_runtime, partial_tick)
+        }
+        _ => Vec::new(),
+    }
 }
 
 fn hud_inventory_background_layers(
@@ -616,7 +662,7 @@ fn hud_inventory_background_layers(
             layers
         }
         InventoryScreenBackground::Merchant => {
-            vec![hud_inventory_background_layer(
+            let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Villager,
                 0,
                 0,
@@ -624,7 +670,9 @@ fn hud_inventory_background_layers(
                 166,
                 [0.0, 0.0],
                 [276.0 / 512.0, 166.0 / 256.0],
-            )]
+            )];
+            push_merchant_trade_layers(world, &mut layers);
+            layers
         }
         InventoryScreenBackground::ShulkerBox => {
             vec![hud_inventory_background_layer(
@@ -667,6 +715,211 @@ fn hud_inventory_background_layers(
             )]
         }
     }
+}
+
+fn hud_merchant_trade_items(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    partial_tick: f32,
+) -> Vec<HudInventoryItem> {
+    let Some(offers) = merchant_offers_state(world) else {
+        return Vec::new();
+    };
+    let mut items = Vec::new();
+    for (row, offer) in offers
+        .offers
+        .iter()
+        .take(MERCHANT_VISIBLE_OFFER_COUNT)
+        .enumerate()
+    {
+        let row_y = MERCHANT_TRADE_ITEM_Y + row as i32 * MERCHANT_TRADE_ROW_HEIGHT;
+        push_merchant_trade_item(
+            world,
+            item_runtime,
+            partial_tick,
+            &mut items,
+            MERCHANT_TRADE_COST_A_X,
+            row_y,
+            merchant_offer_cost_a_stack(world, offer),
+        );
+        if let Some(cost_b) = offer.buy_b.as_ref() {
+            push_merchant_trade_item(
+                world,
+                item_runtime,
+                partial_tick,
+                &mut items,
+                MERCHANT_TRADE_COST_B_X,
+                row_y,
+                item_cost_stack(cost_b, cost_b.count),
+            );
+        }
+        push_merchant_trade_item(
+            world,
+            item_runtime,
+            partial_tick,
+            &mut items,
+            MERCHANT_TRADE_RESULT_X,
+            row_y,
+            offer.sell.clone(),
+        );
+    }
+    items
+}
+
+fn push_merchant_trade_item(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    partial_tick: f32,
+    items: &mut Vec<HudInventoryItem>,
+    x: i32,
+    y: i32,
+    item: ItemStackSummary,
+) {
+    if let Some(icon) = hud_item_icon_for_stack(world, item_runtime, &item, None, partial_tick) {
+        items.push(HudInventoryItem { x, y, icon });
+    }
+}
+
+fn push_merchant_trade_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBackgroundLayer>) {
+    let Some(offers) = merchant_offers_state(world) else {
+        return;
+    };
+    if offers.offers.is_empty() {
+        return;
+    }
+
+    for (row, offer) in offers
+        .offers
+        .iter()
+        .take(MERCHANT_VISIBLE_OFFER_COUNT)
+        .enumerate()
+    {
+        layers.push(hud_inventory_background_layer(
+            if offer.is_out_of_stock {
+                HudInventoryBackgroundTexture::VillagerTradeArrowOutOfStock
+            } else {
+                HudInventoryBackgroundTexture::VillagerTradeArrow
+            },
+            MERCHANT_TRADE_ARROW_X,
+            MERCHANT_TRADE_ARROW_Y + row as i32 * MERCHANT_TRADE_ROW_HEIGHT,
+            MERCHANT_TRADE_ARROW_WIDTH,
+            MERCHANT_TRADE_ARROW_HEIGHT,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+
+    layers.push(hud_inventory_background_layer(
+        if offers.offers.len() > MERCHANT_VISIBLE_OFFER_COUNT {
+            HudInventoryBackgroundTexture::VillagerScroller
+        } else {
+            HudInventoryBackgroundTexture::VillagerScrollerDisabled
+        },
+        MERCHANT_SCROLLER_X,
+        MERCHANT_SCROLLER_Y + merchant_scroller_offset(offers, 0),
+        MERCHANT_SCROLLER_WIDTH,
+        MERCHANT_SCROLLER_HEIGHT,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
+
+    if merchant_selected_offer(offers).is_some_and(|offer| offer.is_out_of_stock) {
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::VillagerOutOfStock,
+            MERCHANT_OUT_OF_STOCK_X,
+            MERCHANT_OUT_OF_STOCK_Y,
+            MERCHANT_OUT_OF_STOCK_WIDTH,
+            MERCHANT_OUT_OF_STOCK_HEIGHT,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+
+    if offers.show_progress && offers.villager_level < 5 {
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::VillagerExperienceBarBackground,
+            MERCHANT_XP_BAR_X,
+            MERCHANT_XP_BAR_Y,
+            MERCHANT_XP_BAR_WIDTH,
+            MERCHANT_XP_BAR_HEIGHT,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+        if let Some(current_width) = merchant_xp_current_width(offers) {
+            layers.push(hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::VillagerExperienceBarCurrent,
+                MERCHANT_XP_BAR_X,
+                MERCHANT_XP_BAR_Y,
+                current_width,
+                MERCHANT_XP_BAR_HEIGHT,
+                [0.0, 0.0],
+                [current_width as f32 / MERCHANT_XP_BAR_WIDTH as f32, 1.0],
+            ));
+        }
+    }
+}
+
+fn merchant_offers_state(world: &WorldStore) -> Option<&MerchantOffersState> {
+    world
+        .inventory()
+        .open_container
+        .as_ref()
+        .and_then(|container| container.merchant_offers.as_ref())
+}
+
+fn merchant_selected_offer(offers: &MerchantOffersState) -> Option<&MerchantOfferState> {
+    usize::try_from(offers.local_selected_offer_index)
+        .ok()
+        .and_then(|index| offers.offers.get(index))
+}
+
+fn merchant_offer_cost_a_stack(world: &WorldStore, offer: &MerchantOfferState) -> ItemStackSummary {
+    let max_stack_size = world.item_max_stack_size_for_protocol_id(offer.buy_a.item_id);
+    let demand_diff = (offer.buy_a.count as f32 * offer.demand as f32 * offer.price_multiplier)
+        .floor()
+        .max(0.0) as i32;
+    let count =
+        (offer.buy_a.count + demand_diff + offer.special_price_diff).clamp(1, max_stack_size);
+    item_cost_stack(&offer.buy_a, count)
+}
+
+fn item_cost_stack(cost: &ItemCostSummary, count: i32) -> ItemStackSummary {
+    ItemStackSummary {
+        item_id: Some(cost.item_id),
+        count,
+        component_patch: Default::default(),
+    }
+}
+
+fn merchant_scroller_offset(offers: &MerchantOffersState, scroll_offset: i32) -> i32 {
+    let steps = offers.offers.len() as i32 + 1 - MERCHANT_VISIBLE_OFFER_COUNT as i32;
+    if steps <= 1 {
+        return 0;
+    }
+    let left_over = MERCHANT_SCROLLER_TRACK_HEIGHT
+        - (MERCHANT_SCROLLER_HEIGHT as i32 + (steps - 1) * MERCHANT_SCROLLER_TRACK_HEIGHT / steps);
+    let step_height = 1 + left_over / steps + MERCHANT_SCROLLER_TRACK_HEIGHT / steps;
+    let scroller_offset = (scroll_offset * step_height).min(MERCHANT_SCROLLER_MAX_OFFSET);
+    if scroll_offset == steps - 1 {
+        MERCHANT_SCROLLER_MAX_OFFSET
+    } else {
+        scroller_offset
+    }
+}
+
+fn merchant_xp_current_width(offers: &MerchantOffersState) -> Option<u32> {
+    let level = usize::try_from(offers.villager_level).ok()?;
+    if !(1..5).contains(&level) {
+        return None;
+    }
+    let min_xp = VILLAGER_NEXT_LEVEL_XP_THRESHOLDS[level - 1];
+    let max_xp = VILLAGER_NEXT_LEVEL_XP_THRESHOLDS[level];
+    if offers.villager_xp < min_xp || max_xp <= min_xp {
+        return None;
+    }
+    let multiplier = MERCHANT_XP_BAR_WIDTH as f32 / (max_xp - min_xp) as f32;
+    let width = (multiplier * (offers.villager_xp - min_xp) as f32).floor() as u32;
+    Some(width.min(MERCHANT_XP_BAR_WIDTH))
 }
 
 fn anvil_input_slot_has_item(world: &WorldStore) -> bool {
@@ -1240,6 +1493,7 @@ pub(crate) fn publish_snapshot(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::packets::{MerchantOffer, MerchantOffers};
     use bbb_world::LocalPlayerPoseState;
 
     #[test]
@@ -2512,6 +2766,7 @@ mod tests {
         );
         assert_eq!(screen.hovered_slot_id, Some(38));
         assert_eq!(screen.slots.len(), 39);
+        assert!(screen.floating_items.is_empty());
         let payment_a = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
         assert_eq!((payment_a.x, payment_a.y), (136, 37));
         let payment_b = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
@@ -2522,6 +2777,133 @@ mod tests {
         assert_eq!((first_inventory.x, first_inventory.y), (108, 84));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 38).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (252, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_merchant_trade_layers() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 19,
+            title: "Merchant".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 39],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        assert!(world.apply_merchant_offers(merchant_offers(7, 8, Some(1))));
+        assert!(world.set_local_merchant_selected_offer(1));
+
+        let screen = hud_inventory_screen(&world, None, Some(38), 0.0).unwrap();
+
+        assert_eq!(screen.width, 276);
+        assert_eq!(screen.height, 166);
+        assert!(screen.floating_items.is_empty());
+        assert_eq!(
+            screen.background_layers[0],
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Villager,
+                0,
+                0,
+                276,
+                166,
+                [0.0, 0.0],
+                [276.0 / 512.0, 166.0 / 256.0],
+            )
+        );
+        assert_eq!(
+            screen.background_layers[1],
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::VillagerTradeArrow,
+                60,
+                22,
+                10,
+                9,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+        );
+        assert_eq!(
+            screen.background_layers[2],
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::VillagerTradeArrowOutOfStock,
+                60,
+                42,
+                10,
+                9,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )
+        );
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::VillagerScroller,
+                94,
+                18,
+                6,
+                27,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::VillagerOutOfStock,
+                182,
+                35,
+                28,
+                21,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::VillagerExperienceBarBackground,
+                136,
+                16,
+                102,
+                5,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::VillagerExperienceBarCurrent,
+                136,
+                16,
+                63,
+                5,
+                [0.0, 0.0],
+                [63.0 / 102.0, 1.0],
+            )));
+    }
+
+    #[test]
+    fn merchant_offer_cost_a_stack_uses_vanilla_modified_cost_count() {
+        let mut world = WorldStore::new();
+        world.set_default_item_max_stack_sizes(std::collections::BTreeMap::from([(42, 16)]));
+        let offer = bbb_world::MerchantOfferState {
+            buy_a: item_cost(42, 10),
+            sell: item_stack(99, 1),
+            buy_b: None,
+            is_out_of_stock: false,
+            uses: 0,
+            max_uses: 12,
+            xp: 8,
+            special_price_diff: 5,
+            price_multiplier: 0.5,
+            demand: 2,
+        };
+
+        assert_eq!(
+            merchant_offer_cost_a_stack(&world, &offer),
+            item_stack(42, 16)
+        );
     }
 
     #[test]
@@ -3059,6 +3441,46 @@ mod tests {
             data_id,
             serializer_id: 8,
             value: bbb_protocol::packets::EntityDataValueKind::Boolean(value),
+        }
+    }
+
+    fn merchant_offers(
+        container_id: i32,
+        offer_count: usize,
+        out_of_stock_index: Option<usize>,
+    ) -> MerchantOffers {
+        MerchantOffers {
+            container_id,
+            offers: (0..offer_count)
+                .map(|index| MerchantOffer {
+                    buy_a: item_cost(42 + index as i32, 3),
+                    sell: item_stack(99 + index as i32, 1),
+                    buy_b: (index % 2 == 0).then(|| item_cost(52 + index as i32, 2)),
+                    is_out_of_stock: out_of_stock_index == Some(index),
+                    uses: if out_of_stock_index == Some(index) {
+                        12
+                    } else {
+                        1
+                    },
+                    max_uses: 12,
+                    xp: 8,
+                    special_price_diff: -2,
+                    price_multiplier: 0.05,
+                    demand: 6,
+                })
+                .collect(),
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: true,
+        }
+    }
+
+    fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {
+        ItemCostSummary {
+            item_id,
+            count,
+            component_predicate: Default::default(),
         }
     }
 
