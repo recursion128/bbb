@@ -319,6 +319,7 @@ When an agent does any of the following, update this file in the same slice:
         - crafting table
         - grindstone
         - hopper
+        - loom
         - shulker box
         - smithing table
         - stonecutter
@@ -475,6 +476,10 @@ When an agent does any of the following, update this file in the same slice:
       - GrindstoneMenu screens with official `grindstone.png` background and
         `container/grindstone/error` overlay sprite
       - HopperMenu screens with official `hopper.png`
+      - LoomMenu screens with official:
+        - `loom.png` background
+        - empty banner/dye/pattern slot sprites
+        - disabled scroller sprite
       - ShulkerBoxMenu screens with official `shulker_box.png`
       - SmithingMenu screens with official:
         - `smithing.png` background
@@ -526,15 +531,30 @@ When an agent does any of the following, update this file in the same slice:
           - result prediction
           - input consumption
           - take-result sound side effects
-        - map preview, duplicated/scaled/locked overlays, and error overlays
-          remain deferred presentation parity work until canonical map render
-          state is projected into the inventory HUD
+        - deferred presentation parity work until canonical map render state
+          is projected into the inventory HUD:
+          - map preview
+          - duplicated/scaled/locked overlays
+          - error overlays
       - GrindstoneMenu:
         - player inventory/hotbar range movement when both input slots are
           occupied
         - input/result-side paths are kept server-authoritative until:
           - component-hashable grindstone item prediction
       - hopper
+      - LoomMenu:
+        - quick-move and result-slot paths are kept server-authoritative until:
+          - banner/dye/pattern item routing
+          - selectable banner pattern state
+          - result prediction
+          - input consumption
+          - take-result sound side effects
+        - deferred presentation parity work:
+          - selectable pattern grid
+          - selected/highlighted pattern buttons
+          - active scroller
+          - banner preview
+          - max-pattern error overlay
       - shulker box
       - SmithingMenu:
         - quick-move paths are kept server-authoritative until:
@@ -545,8 +565,10 @@ When an agent does any of the following, update this file in the same slice:
           - level event side effects
         - result-slot clicks are kept server-authoritative until smithing
           `onTake` side effects are modeled
-        - armor stand preview, cycling empty-slot icons, and tooltips remain
-          deferred presentation parity work
+        - deferred presentation parity work:
+          - armor stand preview
+          - cycling empty-slot icons
+          - tooltips
       - StonecutterMenu:
         - non-result slots
         - vanilla slot ranges

@@ -121,6 +121,16 @@ pub enum HudInventoryBackgroundTexture {
     CartographyTableDuplicatedMap,
     CartographyTableMap,
     CartographyTableLocked,
+    Loom,
+    LoomBannerSlot,
+    LoomDyeSlot,
+    LoomPatternSlot,
+    LoomScroller,
+    LoomScrollerDisabled,
+    LoomPatternSelected,
+    LoomPatternHighlighted,
+    LoomPattern,
+    LoomError,
     Crafter,
     CrafterDisabledSlot,
     CrafterPoweredRedstone,
@@ -337,6 +347,86 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_cartography_table_locked = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_loom_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_banner_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_loom_banner_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_dye_slot(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_loom_dye_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_pattern_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_loom_pattern_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_scroller(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_loom_scroller = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_scroller_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_loom_scroller_disabled = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_pattern_selected(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_loom_pattern_selected = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_pattern_highlighted(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_loom_pattern_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_pattern(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_loom_pattern = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_loom_error(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+        self.hud_loom_error = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -1081,6 +1171,22 @@ impl Renderer {
             HudInventoryBackgroundTexture::CartographyTableLocked => {
                 self.hud_cartography_table_locked.as_ref()
             }
+            HudInventoryBackgroundTexture::Loom => self.hud_loom_background.as_ref(),
+            HudInventoryBackgroundTexture::LoomBannerSlot => self.hud_loom_banner_slot.as_ref(),
+            HudInventoryBackgroundTexture::LoomDyeSlot => self.hud_loom_dye_slot.as_ref(),
+            HudInventoryBackgroundTexture::LoomPatternSlot => self.hud_loom_pattern_slot.as_ref(),
+            HudInventoryBackgroundTexture::LoomScroller => self.hud_loom_scroller.as_ref(),
+            HudInventoryBackgroundTexture::LoomScrollerDisabled => {
+                self.hud_loom_scroller_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::LoomPatternSelected => {
+                self.hud_loom_pattern_selected.as_ref()
+            }
+            HudInventoryBackgroundTexture::LoomPatternHighlighted => {
+                self.hud_loom_pattern_highlighted.as_ref()
+            }
+            HudInventoryBackgroundTexture::LoomPattern => self.hud_loom_pattern.as_ref(),
+            HudInventoryBackgroundTexture::LoomError => self.hud_loom_error.as_ref(),
             HudInventoryBackgroundTexture::Crafter => self.hud_crafter_background.as_ref(),
             HudInventoryBackgroundTexture::CrafterDisabledSlot => {
                 self.hud_crafter_disabled_slot.as_ref()

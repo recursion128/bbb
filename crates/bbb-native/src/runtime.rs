@@ -42,6 +42,9 @@ const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
 const CRAFTER_POWERED_DATA_ID: i16 = 9;
 const CRAFTER_DISABLED_SLOT_SPRITE_SIZE: u32 = 18;
 const CRAFTER_REDSTONE_SPRITE_SIZE: u32 = 16;
+const LOOM_SLOT_SPRITE_SIZE: u32 = 16;
+const LOOM_SCROLLER_WIDTH: u32 = 12;
+const LOOM_SCROLLER_HEIGHT: u32 = 15;
 const SMITHING_RECIPE_ERROR_DATA_ID: i16 = 0;
 const BREWING_STAND_BREW_TIME_DATA_ID: i16 = 0;
 const BREWING_STAND_FUEL_DATA_ID: i16 = 1;
@@ -565,6 +568,19 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 133.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::Loom => {
+            let mut layers = vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Loom,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )];
+            push_loom_state_layers(world, &mut layers);
+            layers
+        }
         InventoryScreenBackground::ShulkerBox => {
             vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::ShulkerBox,
@@ -645,6 +661,37 @@ fn push_crafter_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBa
         35,
         CRAFTER_REDSTONE_SPRITE_SIZE,
         CRAFTER_REDSTONE_SPRITE_SIZE,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
+}
+
+fn push_loom_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBackgroundLayer>) {
+    for (slot, texture, x, y) in [
+        (0, HudInventoryBackgroundTexture::LoomBannerSlot, 13, 26),
+        (1, HudInventoryBackgroundTexture::LoomDyeSlot, 33, 26),
+        (2, HudInventoryBackgroundTexture::LoomPatternSlot, 23, 45),
+    ] {
+        if open_container_slot_has_item(world, slot) {
+            continue;
+        }
+        layers.push(hud_inventory_background_layer(
+            texture,
+            x,
+            y,
+            LOOM_SLOT_SPRITE_SIZE,
+            LOOM_SLOT_SPRITE_SIZE,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+
+    layers.push(hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::LoomScrollerDisabled,
+        119,
+        13,
+        LOOM_SCROLLER_WIDTH,
+        LOOM_SCROLLER_HEIGHT,
         [0.0, 0.0],
         [1.0, 1.0],
     ));
@@ -2063,6 +2110,89 @@ mod tests {
         let last_container = screen.slots.iter().find(|slot| slot.slot_id == 26).unwrap();
         assert_eq!((last_container.x, last_container.y), (152, 54));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 62).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_loom_layout_and_empty_slot_layers() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 18,
+            title: "Loom".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 40],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(39), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Loom,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::LoomBannerSlot,
+                    13,
+                    26,
+                    16,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::LoomDyeSlot,
+                    33,
+                    26,
+                    16,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::LoomPatternSlot,
+                    23,
+                    45,
+                    16,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::LoomScrollerDisabled,
+                    119,
+                    13,
+                    12,
+                    15,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(39));
+        assert_eq!(screen.slots.len(), 40);
+        let banner = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((banner.x, banner.y), (13, 26));
+        let dye = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+        assert_eq!((dye.x, dye.y), (33, 26));
+        let pattern = screen.slots.iter().find(|slot| slot.slot_id == 2).unwrap();
+        assert_eq!((pattern.x, pattern.y), (23, 45));
+        let result = screen.slots.iter().find(|slot| slot.slot_id == 3).unwrap();
+        assert_eq!((result.x, result.y), (143, 57));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 39).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
     }
 

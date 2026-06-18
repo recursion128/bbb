@@ -105,6 +105,62 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         cartography_table_locked.height,
         &cartography_table_locked.rgba,
     )?;
+    let loom = gui_texture(
+        roots,
+        "textures/gui/container/loom.png",
+        "minecraft:textures/gui/container/loom",
+    )?;
+    renderer.upload_hud_loom_background(loom.width, loom.height, &loom.rgba)?;
+    let loom_banner_slot = hud_sprite(&sprites, "container/slot/banner")?;
+    renderer.upload_hud_loom_banner_slot(
+        loom_banner_slot.width,
+        loom_banner_slot.height,
+        &loom_banner_slot.rgba,
+    )?;
+    let loom_dye_slot = hud_sprite(&sprites, "container/slot/dye")?;
+    renderer.upload_hud_loom_dye_slot(
+        loom_dye_slot.width,
+        loom_dye_slot.height,
+        &loom_dye_slot.rgba,
+    )?;
+    let loom_pattern_slot = hud_sprite(&sprites, "container/slot/banner_pattern")?;
+    renderer.upload_hud_loom_pattern_slot(
+        loom_pattern_slot.width,
+        loom_pattern_slot.height,
+        &loom_pattern_slot.rgba,
+    )?;
+    let loom_scroller = hud_sprite(&sprites, "container/loom/scroller")?;
+    renderer.upload_hud_loom_scroller(
+        loom_scroller.width,
+        loom_scroller.height,
+        &loom_scroller.rgba,
+    )?;
+    let loom_scroller_disabled = hud_sprite(&sprites, "container/loom/scroller_disabled")?;
+    renderer.upload_hud_loom_scroller_disabled(
+        loom_scroller_disabled.width,
+        loom_scroller_disabled.height,
+        &loom_scroller_disabled.rgba,
+    )?;
+    let loom_pattern_selected = hud_sprite(&sprites, "container/loom/pattern_selected")?;
+    renderer.upload_hud_loom_pattern_selected(
+        loom_pattern_selected.width,
+        loom_pattern_selected.height,
+        &loom_pattern_selected.rgba,
+    )?;
+    let loom_pattern_highlighted = hud_sprite(&sprites, "container/loom/pattern_highlighted")?;
+    renderer.upload_hud_loom_pattern_highlighted(
+        loom_pattern_highlighted.width,
+        loom_pattern_highlighted.height,
+        &loom_pattern_highlighted.rgba,
+    )?;
+    let loom_pattern = hud_sprite(&sprites, "container/loom/pattern")?;
+    renderer.upload_hud_loom_pattern(
+        loom_pattern.width,
+        loom_pattern.height,
+        &loom_pattern.rgba,
+    )?;
+    let loom_error = hud_sprite(&sprites, "container/loom/error")?;
+    renderer.upload_hud_loom_error(loom_error.width, loom_error.height, &loom_error.rgba)?;
     let crafter = gui_texture(
         roots,
         "textures/gui/container/crafter.png",
@@ -344,6 +400,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         inventory = ?(inventory.width, inventory.height),
         generic_container = ?(generic_container.width, generic_container.height),
         cartography_table = ?(cartography_table.width, cartography_table.height),
+        loom = ?(loom.width, loom.height),
         crafter = ?(crafter.width, crafter.height),
         anvil = ?(anvil.width, anvil.height),
         furnace = ?(furnace.width, furnace.height),
