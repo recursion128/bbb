@@ -1,6 +1,8 @@
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
-use bbb_protocol::packets::{Direction as ProtocolDirection, InteractionHand, PlayerActionKind};
+use bbb_protocol::packets::{
+    Direction as ProtocolDirection, InteractionHand, PlayerActionKind, SpectateEntity,
+};
 use bbb_world::{LocalDestroyBlockFinished, WorldStore};
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
@@ -14,8 +16,9 @@ use super::{
     commands::{
         hotbar_slot_for_scroll, queue_attack_entity_command, queue_interact_entity_command,
         queue_pick_item_from_block_command, queue_pick_item_from_entity_command,
-        queue_player_action_command, queue_swing_command, queue_use_item_command,
-        queue_use_item_on_command, queue_zero_pos_player_action_command, select_hotbar_slot,
+        queue_player_action_command, queue_spectate_entity_command, queue_swing_command,
+        queue_use_item_command, queue_use_item_on_command, queue_zero_pos_player_action_command,
+        select_hotbar_slot,
     },
     ClientInputState,
 };
@@ -68,6 +71,18 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
     match (button, state) {
         (MouseButton::Left, ElementState::Pressed) => {
             if local_player_attack_is_blocked(world) {
+                return;
+            }
+            if world.local_player_is_spectator() {
+                if let Some(CrosshairTarget::Entity(hit)) = camera_target {
+                    queue_spectate_entity_command(
+                        counters,
+                        net_commands,
+                        SpectateEntity {
+                            entity_id: hit.entity_id,
+                        },
+                    );
+                }
                 return;
             }
             input.destroy_block_held = true;
@@ -429,7 +444,7 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AddEntity, AttackEntity, BlockHitResult as ProtocolBlockHitResult,
-        BlockPos as ProtocolBlockPos, BlockUpdate, InteractEntity,
+        BlockPos as ProtocolBlockPos, BlockUpdate, GameEvent as ProtocolGameEvent, InteractEntity,
         ItemStackSummary as ProtocolItemStackSummary, PickItemFromBlock, PickItemFromEntity,
         PlayerAbilities, PlayerAction, SetPlayerInventory as ProtocolSetPlayerInventory, UseItem,
         UseItemOn, Vec3d as ProtocolVec3d,
@@ -447,6 +462,14 @@ mod tests {
     const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
     const VANILLA_PLAYER_OFFHAND_SLOT: i32 = 40;
+
+    fn set_local_spectator(world: &mut WorldStore) {
+        world.apply_game_event(ProtocolGameEvent {
+            event_id: 3,
+            param: 3.0,
+        });
+        assert!(world.local_player_is_spectator());
+    }
 
     #[test]
     fn left_mouse_press_queues_main_hand_swing() {
@@ -665,6 +688,36 @@ mod tests {
     }
 
     #[test]
+    fn spectator_left_mouse_press_on_entity_queues_spectate_only() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        set_local_spectator(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.destroy_block_held);
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(counters.spectate_entity_commands_queued, 1);
+        assert_eq!(counters.attack_entity_commands_queued, 0);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SpectateEntity(SpectateEntity { entity_id: 123 })
+        );
+    }
+
+    #[test]
     fn left_mouse_press_while_using_item_does_not_attack_or_swing() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -730,6 +783,32 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
         );
+    }
+
+    #[test]
+    fn spectator_left_mouse_press_on_block_does_not_start_destroy_or_swing() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        set_local_spectator(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.destroy_block_held);
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(counters.spectate_entity_commands_queued, 0);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

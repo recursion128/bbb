@@ -312,6 +312,8 @@ When an agent does any of the following, update this file in the same slice:
         state.
       - Main-hand swing is queued only when a non-empty stack was dropped.
       - Spectator mode suppresses gameplay drop and swap-offhand actions.
+      - Spectator left-click on an entity queues `SpectateEntity`; spectator
+        left-click on blocks does not attack, destroy, or swing.
   - Inventory:
     - Implement:
       - tooltips
