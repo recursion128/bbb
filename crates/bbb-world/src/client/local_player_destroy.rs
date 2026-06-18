@@ -1,10 +1,17 @@
 use bbb_protocol::packets::Direction as ProtocolDirection;
 use serde::{Deserialize, Serialize};
 
-use crate::{BlockPos, WorldStore};
+use crate::{BlockPos, TerrainFluidKind, WorldStore};
 
 const LOCAL_DESTROY_PROGRESS_SCALE: u32 = 1_000_000;
 pub(crate) const LOCAL_DESTROY_COMPLETION_DELAY_TICKS: u8 = 5;
+const LOCAL_PLAYER_STANDING_EYE_HEIGHT: f64 = 1.62;
+const VANILLA_ATTRIBUTE_BLOCK_BREAK_SPEED_ID: i32 = 5;
+const VANILLA_ATTRIBUTE_MINING_EFFICIENCY_ID: i32 = 20;
+const VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID: i32 = 29;
+const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
+const VANILLA_MOB_EFFECT_MINING_FATIGUE_ID: i32 = 3;
+const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalDestroyBlockFinished {
@@ -127,13 +134,15 @@ impl WorldStore {
         let hotbar_items = self.inventory.hotbar_items();
         let selected_slot = usize::from(self.local_player.selected_hotbar_slot.min(8));
         let item = &hotbar_items[selected_slot];
-        let mining_speed = self.local_destroy_mining_speed_thousandths(block_name, item);
+        let mining_speed = self.local_destroy_player_mining_speed_thousandths(
+            self.local_destroy_item_mining_speed_thousandths(block_name, item),
+        );
         let correct_for_drops = self.local_destroy_item_is_correct_for_drops(block_name, item);
         let block_profile = self.local_block_destroy_profile(block_name)?;
         local_destroy_progress_per_tick_with_tool(block_profile, mining_speed, correct_for_drops)
     }
 
-    fn local_destroy_mining_speed_thousandths(
+    fn local_destroy_item_mining_speed_thousandths(
         &self,
         block_name: &str,
         item: &bbb_protocol::packets::ItemStackSummary,
@@ -143,6 +152,36 @@ impl WorldStore {
             .and_then(|item_id| self.default_item_mining_profiles.get(&item_id))
             .map(|profile| item_mining_speed_thousandths(profile, block_name))
             .unwrap_or(1_000)
+    }
+
+    fn local_destroy_player_mining_speed_thousandths(&self, base_speed_thousandths: u32) -> u32 {
+        let mut speed = f64::from(base_speed_thousandths) / 1_000.0;
+        if speed > 1.0 {
+            speed += self
+                .local_player_attribute_value(VANILLA_ATTRIBUTE_MINING_EFFICIENCY_ID)
+                .unwrap_or(0.0);
+        }
+        if let Some(amplifier) = self.local_player_dig_speed_amplifier() {
+            speed *= 1.0 + f64::from(amplifier.saturating_add(1)) * 0.2;
+        }
+        if let Some(fatigue) =
+            self.local_player_mob_effect_amplifier(VANILLA_MOB_EFFECT_MINING_FATIGUE_ID)
+        {
+            speed *= mining_fatigue_scale(fatigue);
+        }
+        speed *= self
+            .local_player_attribute_value(VANILLA_ATTRIBUTE_BLOCK_BREAK_SPEED_ID)
+            .unwrap_or(1.0);
+        if self.local_player_is_eye_in_water() {
+            speed *= self
+                .local_player_attribute_value(VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID)
+                .unwrap_or(0.2);
+        }
+        if self.local_player().pose.is_some_and(|pose| !pose.on_ground) {
+            speed /= 5.0;
+        }
+
+        mining_speed_thousandths_from_float(speed)
     }
 
     fn local_destroy_item_is_correct_for_drops(
@@ -161,6 +200,41 @@ impl WorldStore {
             .get(block_name)
             .map(LocalBlockDestroyProfile::from)
             .or_else(|| fallback_local_block_destroy_profile(block_name))
+    }
+
+    fn local_player_attribute_value(&self, attribute_id: i32) -> Option<f64> {
+        self.local_player_id
+            .and_then(|id| self.entities.attribute_value(id, attribute_id))
+    }
+
+    fn local_player_mob_effect_amplifier(&self, effect_id: i32) -> Option<i32> {
+        self.local_player_id
+            .and_then(|id| self.entity_effect(id, effect_id))
+            .map(|effect| effect.amplifier)
+    }
+
+    fn local_player_dig_speed_amplifier(&self) -> Option<i32> {
+        [
+            VANILLA_MOB_EFFECT_HASTE_ID,
+            VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
+        ]
+        .into_iter()
+        .filter_map(|effect_id| self.local_player_mob_effect_amplifier(effect_id))
+        .max()
+    }
+
+    fn local_player_is_eye_in_water(&self) -> bool {
+        let Some(pose) = self.local_player().pose else {
+            return false;
+        };
+        let eye_pos = BlockPos {
+            x: pose.position.x.floor() as i32,
+            y: (pose.position.y + LOCAL_PLAYER_STANDING_EYE_HEIGHT).floor() as i32,
+            z: pose.position.z.floor() as i32,
+        };
+        self.probe_block(eye_pos)
+            .and_then(|block| block.fluid)
+            .is_some_and(|fluid| fluid.kind == TerrainFluidKind::Water)
     }
 }
 
@@ -289,6 +363,22 @@ fn mining_rule_matches(rule: &WorldItemMiningRule, block_name: &str) -> bool {
     rule.block_names.iter().any(|name| name == block_name)
 }
 
+fn mining_fatigue_scale(amplifier: i32) -> f64 {
+    match amplifier {
+        i32::MIN..=0 => 0.3,
+        1 => 0.09,
+        2 => 0.0027,
+        _ => 0.00081,
+    }
+}
+
+fn mining_speed_thousandths_from_float(speed: f64) -> u32 {
+    if !speed.is_finite() || speed <= 0.0 {
+        return 0;
+    }
+    (speed * 1_000.0).round().min(f64::from(u32::MAX)) as u32
+}
+
 fn ceil_div_u64(numerator: u64, denominator: u64) -> u64 {
     if denominator == 0 {
         return 0;
@@ -298,18 +388,25 @@ fn ceil_div_u64(numerator: u64, denominator: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use super::super::local_player::LocalPlayerPoseState;
     use super::*;
     use bbb_protocol::packets::{
+        AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
         BlockPos as ProtocolBlockPos, BlockUpdate, Direction as ProtocolDirection,
-        ItemStackSummary as ProtocolItemStackSummary,
+        ItemStackSummary as ProtocolItemStackSummary, MobEffectFlags as ProtocolMobEffectFlags,
         SetPlayerInventory as ProtocolSetPlayerInventory,
+        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
+        Vec3d as ProtocolVec3d,
     };
     use std::collections::BTreeMap;
+    use uuid::Uuid;
 
     use crate::{
-        ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
-        PalettedContainerData, WorldDimension,
+        entities::VANILLA_ENTITY_TYPE_PLAYER_ID, ChunkColumn, ChunkPos, ChunkSection, ChunkState,
+        LightData, PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
     };
+
+    const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 
     #[test]
     fn local_destroy_progress_uses_vanilla_hand_formula_for_known_blocks() {
@@ -388,6 +485,115 @@ mod tests {
             item: item_stack(43, 1),
         });
         assert_eq!(world.local_destroy_progress_per_tick(pos), Some(333_334));
+    }
+
+    #[test]
+    fn local_destroy_progress_applies_dig_speed_mob_effects() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 1);
+        attach_local_player_entity(&mut world, 123);
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(6_667));
+
+        assert!(world.apply_update_mob_effect(mob_effect(123, VANILLA_MOB_EFFECT_HASTE_ID, 1,)));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(9_334));
+
+        assert!(world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_CONDUIT_POWER_ID,
+            2,
+        )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(10_667));
+    }
+
+    #[test]
+    fn local_destroy_progress_applies_mining_fatigue() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 1);
+        attach_local_player_entity(&mut world, 123);
+
+        assert!(world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
+            0,
+        )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(2_000));
+
+        assert!(world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
+            1,
+        )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(600));
+    }
+
+    #[test]
+    fn local_destroy_progress_applies_synced_mining_attributes() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 1);
+        attach_local_player_entity(&mut world, 123);
+        world.set_default_item_mining_profiles(BTreeMap::from([(
+            42,
+            mining_profile(vec![mining_rule(
+                vec!["minecraft:stone"],
+                Some(4_000),
+                Some(true),
+            )]),
+        )]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(88_889));
+
+        assert!(world.apply_update_attributes(attribute_update(
+            123,
+            VANILLA_ATTRIBUTE_MINING_EFFICIENCY_ID,
+            5.0,
+        )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(200_000));
+
+        assert!(world.apply_update_attributes(attribute_update(
+            123,
+            VANILLA_ATTRIBUTE_BLOCK_BREAK_SPEED_ID,
+            0.5,
+        )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(100_000));
+    }
+
+    #[test]
+    fn local_destroy_progress_applies_airborne_slowdown() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let mut world = world_with_block(pos, 1);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(1_334));
+    }
+
+    #[test]
+    fn local_destroy_progress_applies_submerged_mining_speed() {
+        let pos = BlockPos { x: 0, y: 1, z: 3 };
+        let eye_pos = BlockPos { x: 0, y: 1, z: 0 };
+        let mut world = world_with_block(pos, 1);
+        attach_local_player_entity(&mut world, 123);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 0.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        set_block(&mut world, eye_pos, SOURCE_WATER_BLOCK_STATE_ID);
+
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(1_334));
+
+        assert!(world.apply_update_attributes(attribute_update(
+            123,
+            VANILLA_ATTRIBUTE_SUBMERGED_MINING_SPEED_ID,
+            1.0,
+        )));
+        assert_eq!(world.local_destroy_progress_per_tick(pos), Some(6_667));
     }
 
     #[test]
@@ -556,6 +762,11 @@ mod tests {
             block_entities: Vec::new(),
             light: LightData::default(),
         });
+        set_block(&mut world, pos, block_state_id);
+        world
+    }
+
+    fn set_block(world: &mut WorldStore, pos: BlockPos, block_state_id: i32) {
         assert!(world.apply_block_update(BlockUpdate {
             pos: ProtocolBlockPos {
                 x: pos.x,
@@ -564,7 +775,46 @@ mod tests {
             },
             block_state_id,
         }));
-        world
+    }
+
+    fn attach_local_player_entity(world: &mut WorldStore, id: i32) {
+        world.local_player_id = Some(id);
+        world.apply_add_entity(ProtocolAddEntity {
+            id,
+            uuid: Uuid::from_u128(0x12345678123456781234567812345678),
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+    }
+
+    fn attribute_update(entity_id: i32, attribute_id: i32, base: f64) -> ProtocolUpdateAttributes {
+        ProtocolUpdateAttributes {
+            entity_id,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id,
+                base,
+                modifiers: Vec::new(),
+            }],
+        }
+    }
+
+    fn mob_effect(entity_id: i32, effect_id: i32, amplifier: i32) -> ProtocolUpdateMobEffect {
+        ProtocolUpdateMobEffect {
+            entity_id,
+            effect_id,
+            amplifier,
+            duration_ticks: 200,
+            flags: ProtocolMobEffectFlags::default(),
+        }
+    }
+
+    fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
+        ProtocolVec3d { x, y, z }
     }
 
     fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {

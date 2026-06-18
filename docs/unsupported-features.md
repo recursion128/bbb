@@ -256,13 +256,13 @@ update this file in the same slice.
       `Blocks.java` property declarations:
       - constructor-level mutations such as `InfestedBlock`
       - arbitrary helper/lambda evaluation not covered by the current parser
-    - remaining vanilla player destroy-speed modifiers:
-      - mining efficiency attribute / Efficiency enchantment
-      - Haste and Conduit Power
-      - Mining Fatigue
-      - block-break-speed attribute
-      - submerged-mining-speed attribute / Aqua Affinity
-      - airborne slowdown
+    - remaining vanilla player destroy-speed gaps:
+      - derive Efficiency `mining_efficiency` from item enchantment
+        components when the server has not supplied synced attributes
+      - derive Aqua Affinity `submerged_mining_speed` from item enchantment
+        components when the server has not supplied synced attributes
+      - validate exact pose/fluid nuance beyond the current standing-eye
+        water probe
     - collision-aware rollback position handling
     - hit effects
     - full model-shaped crack decals with vanilla crumbling blend/depth-bias
@@ -430,6 +430,15 @@ update this file in the same slice.
         pots, candles, beds, stained glass, shulker boxes, pistons, and stairs
     - Local destroy progress applies the selected main-hand item profile through
       vanilla-shaped mining speed and `correct_for_drops` rule order.
+    - It applies synced local player destroy-speed state:
+      - `mining_efficiency` attribute id `20` when item speed is above `1`
+      - Haste effect id `2` and Conduit Power effect id `28`, using the max
+        amplifier
+      - Mining Fatigue effect id `3` with vanilla scale
+      - `block_break_speed` attribute id `5`
+      - `submerged_mining_speed` attribute id `29` when the local player's
+        standing eye position is in water
+      - airborne slowdown
     - It tracks vanilla-shaped local destroy stages in canonical interaction
       state and clears them on completion/abort/restart.
     - It projects local stages and server `BlockDestruction` progress to batched

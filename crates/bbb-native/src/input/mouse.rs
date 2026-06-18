@@ -1604,7 +1604,10 @@ mod tests {
             min_y: 0,
             height: 16,
         });
-        world.set_local_player_pose(LocalPlayerPoseState::default());
+        world.set_local_player_pose(LocalPlayerPoseState {
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
         world.insert_decoded_chunk(ChunkColumn {
             pos: ChunkPos { x: 0, z: 0 },
             state: ChunkState::Decoded,
