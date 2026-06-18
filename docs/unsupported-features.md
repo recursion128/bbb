@@ -615,7 +615,8 @@ When an agent does any of the following, update this file in the same slice:
       - `2` for next page
     - LecternMenu Done closes the active container.
     - LecternMenu Take Book queues vanilla container-button id `3`.
-    - Lectern full book text remains follow-up screen presentation work.
+    - LecternMenu renders the current book page as basic ASCII text from
+      decoded writable/written book item components and server page data.
     - MountScreenOpen opens a server-controlled container and hit-tests:
       - saddle slot
       - body armor slot
@@ -785,7 +786,11 @@ When an agent does any of the following, update this file in the same slice:
         - page buttons queue vanilla previous/next button ids.
         - Done closes the active container.
         - Take Book queues vanilla button id `3`.
-        - full book text rendering remains deferred presentation work.
+        - current page text renders from decoded book components.
+        - deferred presentation parity work:
+          - rich text styles and click events
+          - exact vanilla font wrapping
+          - text filtering toggle behavior
       - shulker box
       - SmithingMenu:
         - quick-move paths are kept server-authoritative until:

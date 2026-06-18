@@ -63,12 +63,25 @@ pub struct DataComponentPatchSummary {
     pub map_id: Option<i32>,
     #[serde(default)]
     pub map_post_processing: Option<MapPostProcessingSummary>,
+    #[serde(default)]
+    pub writable_book_pages: Vec<String>,
+    #[serde(default)]
+    pub written_book: Option<WrittenBookContentSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemEnchantmentSummary {
     pub holder_id: i32,
     pub level: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WrittenBookContentSummary {
+    pub title: String,
+    pub author: String,
+    pub generation: i32,
+    pub pages: Vec<String>,
+    pub resolved: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -188,6 +201,12 @@ fn decode_typed_data_component_patch_summary(
             48 => {
                 summary.map_post_processing = Some(decode_map_post_processing(decoder)?);
             }
+            54 => {
+                summary.writable_book_pages = decode_writable_book_content(decoder)?;
+            }
+            55 => {
+                summary.written_book = Some(decode_written_book_content(decoder)?);
+            }
             _ => decode_data_component_value(decoder, type_id)?,
         }
         summary.added_type_ids.push(type_id);
@@ -295,8 +314,12 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         // suspicious_stew_effects.
         53 => decode_suspicious_stew_effects(decoder)?,
         // writable_book_content and written_book_content.
-        54 => decode_writable_book_content(decoder)?,
-        55 => decode_written_book_content(decoder)?,
+        54 => {
+            let _ = decode_writable_book_content(decoder)?;
+        }
+        55 => {
+            let _ = decode_written_book_content(decoder)?;
+        }
         // trim.
         56 => decode_armor_trim(decoder)?,
         // entity_data and block_entity_data.
@@ -1035,37 +1058,49 @@ fn decode_mob_effect_details(decoder: &mut Decoder<'_>, depth: usize) -> Result<
     Ok(())
 }
 
-fn decode_writable_book_content(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_writable_book_content(decoder: &mut Decoder<'_>) -> Result<Vec<String>> {
     let pages = read_bounded_len(decoder, MAX_BOOK_PAGES)?;
+    let mut out = Vec::with_capacity(pages);
     for _ in 0..pages {
-        decode_filterable_string(decoder, MAX_WRITABLE_BOOK_PAGE_CHARS)?;
+        out.push(decode_filterable_string(
+            decoder,
+            MAX_WRITABLE_BOOK_PAGE_CHARS,
+        )?);
     }
-    Ok(())
+    Ok(out)
 }
 
-fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_filterable_string(decoder, MAX_WRITTEN_BOOK_TITLE_CHARS)?;
-    decoder.read_string(MAX_STRING_CHARS)?;
-    decoder.read_var_i32()?;
+fn decode_written_book_content(decoder: &mut Decoder<'_>) -> Result<WrittenBookContentSummary> {
+    let title = decode_filterable_string(decoder, MAX_WRITTEN_BOOK_TITLE_CHARS)?;
+    let author = decoder.read_string(MAX_STRING_CHARS)?;
+    let generation = decoder.read_var_i32()?;
     let pages = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
+    let mut out = Vec::with_capacity(pages);
     for _ in 0..pages {
-        decode_filterable_component(decoder)?;
+        out.push(decode_filterable_component(decoder)?);
     }
-    decoder.read_bool()?;
-    Ok(())
+    let resolved = decoder.read_bool()?;
+    Ok(WrittenBookContentSummary {
+        title,
+        author,
+        generation,
+        pages: out,
+        resolved,
+    })
 }
 
-fn decode_filterable_string(decoder: &mut Decoder<'_>, max_chars: usize) -> Result<()> {
-    decoder.read_string(max_chars)?;
-    decode_optional_string(decoder, max_chars)
+fn decode_filterable_string(decoder: &mut Decoder<'_>, max_chars: usize) -> Result<String> {
+    let raw = decoder.read_string(max_chars)?;
+    decode_optional_string(decoder, max_chars)?;
+    Ok(raw)
 }
 
-fn decode_filterable_component(decoder: &mut Decoder<'_>) -> Result<()> {
-    decode_component_summary_from_decoder(decoder)?;
+fn decode_filterable_component(decoder: &mut Decoder<'_>) -> Result<String> {
+    let raw = decode_component_summary_from_decoder(decoder)?;
     if decoder.read_bool()? {
         decode_component_summary_from_decoder(decoder)?;
     }
-    Ok(())
+    Ok(raw)
 }
 
 fn decode_optional_component(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1805,12 +1840,67 @@ mod tests {
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
                 potion_custom_color: Some(0x778899),
                 firework_explosion_colors: vec![0x010203, 0x040506],
+                writable_book_pages: vec!["raw page".to_string()],
+                written_book: Some(WrittenBookContentSummary {
+                    title: "Title".to_string(),
+                    author: "Author".to_string(),
+                    generation: 1,
+                    pages: vec!["Page".to_string()],
+                    resolved: true,
+                }),
                 bundle_contents_items: vec![ItemStackTemplateSummary {
                     item_id: 52,
                     count: 3,
                     component_patch: DataComponentPatchSummary::default(),
                 }],
                 bundle_contents_item_count: Some(1),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_book_content_component_summaries() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(54);
+        payload.write_var_i32(2);
+        write_filterable_string(&mut payload, "first page", None);
+        write_filterable_string(&mut payload, "second raw", Some("second filtered"));
+
+        payload.write_var_i32(55);
+        write_filterable_string(&mut payload, "Guide", None);
+        payload.write_string("Alex");
+        payload.write_var_i32(2);
+        payload.write_var_i32(2);
+        payload.write_bytes(&nbt_string_root("Chapter one"));
+        payload.write_bool(false);
+        payload.write_bytes(&nbt_string_root("Raw chapter two"));
+        payload.write_bool(true);
+        payload.write_bytes(&nbt_string_root("Filtered chapter two"));
+        payload.write_bool(true);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![54, 55],
+                removed_type_ids: Vec::new(),
+                writable_book_pages: vec!["first page".to_string(), "second raw".to_string()],
+                written_book: Some(WrittenBookContentSummary {
+                    title: "Guide".to_string(),
+                    author: "Alex".to_string(),
+                    generation: 2,
+                    pages: vec!["Chapter one".to_string(), "Raw chapter two".to_string()],
+                    resolved: true,
+                }),
                 ..DataComponentPatchSummary::default()
             }
         );

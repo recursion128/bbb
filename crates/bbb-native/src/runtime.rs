@@ -94,6 +94,14 @@ const ENCHANTING_TABLE_COST_TEXT_Y_OFFSET: i32 = 23;
 const ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR: [f32; 4] = [128.0 / 255.0, 1.0, 32.0 / 255.0, 1.0];
 const ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR: [f32; 4] =
     [64.0 / 255.0, 127.0 / 255.0, 16.0 / 255.0, 1.0];
+const BOOK_PAGE_INDICATOR_X_RIGHT: i32 = 148;
+const BOOK_PAGE_INDICATOR_Y: i32 = 16;
+const BOOK_PAGE_TEXT_X: i32 = 36;
+const BOOK_PAGE_TEXT_Y: i32 = 30;
+const BOOK_PAGE_TEXT_WIDTH: u32 = 114;
+const BOOK_PAGE_TEXT_HEIGHT: u32 = 128;
+const BOOK_PAGE_LINE_HEIGHT: i32 = 9;
+const BOOK_TEXT_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const ANVIL_COST_DATA_ID: i16 = 0;
 const ANVIL_RESULT_SLOT: i16 = 2;
 const ANVIL_TOO_EXPENSIVE_LEVEL_COST: i16 = 40;
@@ -564,6 +572,7 @@ fn hud_inventory_text_labels(
                     text: text.clone(),
                     tint: ANVIL_RENAME_TEXT_COLOR,
                     background: None,
+                    shadow: false,
                 });
             }
             if let Some(label) = anvil_cost_text_label(world) {
@@ -572,8 +581,107 @@ fn hud_inventory_text_labels(
             labels
         }
         InventoryScreenBackground::EnchantmentTable => enchanting_table_cost_text_labels(world),
+        InventoryScreenBackground::Lectern => lectern_book_text_labels(world),
         _ => Vec::new(),
     }
+}
+
+fn lectern_book_text_labels(world: &WorldStore) -> Vec<HudInventoryTextLabel> {
+    let pages = lectern_book_pages(world);
+    let page_count = pages.len();
+    let current_page = lectern_current_page(world, page_count);
+    let mut labels = Vec::new();
+
+    let page_indicator = format!("Page {} of {}", current_page + 1, page_count.max(1));
+    if let Some(width) = hud_ascii_approx_text_width(&page_indicator) {
+        if let Ok(width_i32) = i32::try_from(width) {
+            labels.push(HudInventoryTextLabel {
+                x: BOOK_PAGE_INDICATOR_X_RIGHT - width_i32,
+                y: BOOK_PAGE_INDICATOR_Y,
+                width,
+                text: page_indicator,
+                tint: BOOK_TEXT_COLOR,
+                background: None,
+                shadow: false,
+            });
+        }
+    }
+
+    if let Some(page) = pages.get(current_page) {
+        for (line_index, line) in lectern_book_page_lines(page).into_iter().enumerate() {
+            let Some(text) = line else {
+                continue;
+            };
+            labels.push(HudInventoryTextLabel {
+                x: BOOK_PAGE_TEXT_X,
+                y: BOOK_PAGE_TEXT_Y + line_index as i32 * BOOK_PAGE_LINE_HEIGHT,
+                width: BOOK_PAGE_TEXT_WIDTH,
+                text,
+                tint: BOOK_TEXT_COLOR,
+                background: None,
+                shadow: false,
+            });
+        }
+    }
+
+    labels
+}
+
+fn lectern_book_pages(world: &WorldStore) -> Vec<String> {
+    let Some(book) = open_container_slot_item(world, 0) else {
+        return Vec::new();
+    };
+    if let Some(written) = &book.component_patch.written_book {
+        return written.pages.clone();
+    }
+    book.component_patch.writable_book_pages.clone()
+}
+
+fn lectern_current_page(world: &WorldStore, page_count: usize) -> usize {
+    if page_count == 0 {
+        return 0;
+    }
+    let page = world
+        .open_container_data_value(0)
+        .map(i32::from)
+        .unwrap_or_default();
+    usize::try_from(page.clamp(0, page_count.saturating_sub(1) as i32)).unwrap_or_default()
+}
+
+fn lectern_book_page_lines(page: &str) -> Vec<Option<String>> {
+    let max_lines =
+        usize::try_from(BOOK_PAGE_TEXT_HEIGHT / BOOK_PAGE_LINE_HEIGHT as u32).unwrap_or_default();
+    let mut lines = Vec::new();
+    for paragraph in page.split('\n') {
+        if lines.len() >= max_lines {
+            break;
+        }
+        if paragraph.is_empty() {
+            lines.push(None);
+            continue;
+        }
+        let mut current = String::new();
+        let mut width = 0u32;
+        for ch in paragraph.chars().filter(|ch| !ch.is_control()) {
+            let advance = hud_ascii_approx_char_width(ch);
+            if !current.is_empty() && width.saturating_add(advance) > BOOK_PAGE_TEXT_WIDTH {
+                lines.push(Some(current.trim_end().to_string()));
+                if lines.len() >= max_lines {
+                    current.clear();
+                    break;
+                }
+                current.clear();
+                width = 0;
+            }
+            current.push(ch);
+            width = width.saturating_add(advance);
+        }
+        if lines.len() < max_lines && !current.is_empty() {
+            lines.push(Some(current.trim_end().to_string()));
+        }
+    }
+    lines.truncate(max_lines);
+    lines
 }
 
 fn enchanting_table_cost_text_labels(world: &WorldStore) -> Vec<HudInventoryTextLabel> {
@@ -602,6 +710,7 @@ fn enchanting_table_cost_text_labels(world: &WorldStore) -> Vec<HudInventoryText
                 ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR
             },
             background: None,
+            shadow: false,
         });
     }
     labels
@@ -650,15 +759,24 @@ fn anvil_cost_text_label(world: &WorldStore) -> Option<HudInventoryTextLabel> {
             height: ANVIL_COST_BACKGROUND_HEIGHT,
             tint: ANVIL_COST_BACKGROUND_TINT,
         }),
+        shadow: false,
     })
 }
 
 fn hud_ascii_approx_text_width(text: &str) -> Option<u32> {
     let mut width = 0u32;
     for ch in text.chars() {
-        width = width.checked_add(if ch == ' ' { 4 } else { 6 })?;
+        width = width.checked_add(hud_ascii_approx_char_width(ch))?;
     }
     (width > 0).then_some(width)
+}
+
+fn hud_ascii_approx_char_width(ch: char) -> u32 {
+    if ch == ' ' {
+        4
+    } else {
+        6
+    }
 }
 
 fn hud_inventory_tooltip(
@@ -3277,6 +3395,7 @@ mod tests {
                 text: "12".to_string(),
                 tint: ENCHANTING_TABLE_COST_TEXT_ENABLED_COLOR,
                 background: None,
+                shadow: false,
             }]
         );
     }
@@ -3341,6 +3460,7 @@ mod tests {
                 text: "30".to_string(),
                 tint: ENCHANTING_TABLE_COST_TEXT_DISABLED_COLOR,
                 background: None,
+                shadow: false,
             }]
         );
     }
@@ -3752,6 +3872,7 @@ mod tests {
                 text: "Sharp Pick".to_string(),
                 tint: ANVIL_RENAME_TEXT_COLOR,
                 background: None,
+                shadow: false,
             }]
         );
     }
@@ -3801,6 +3922,7 @@ mod tests {
                     height: ANVIL_COST_BACKGROUND_HEIGHT,
                     tint: ANVIL_COST_BACKGROUND_TINT,
                 }),
+                shadow: false,
             }]
         );
     }
@@ -3849,6 +3971,7 @@ mod tests {
                     height: ANVIL_COST_BACKGROUND_HEIGHT,
                     tint: ANVIL_COST_BACKGROUND_TINT,
                 }),
+                shadow: false,
             }]
         );
     }
@@ -4471,6 +4594,74 @@ mod tests {
                     [0.0, 0.0],
                     [1.0, 1.0],
                 ),
+            ]
+        );
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_lectern_current_page_text() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 17,
+            title: "Lectern".to_string(),
+        });
+        let mut book = item_stack(42, 1);
+        book.component_patch.written_book =
+            Some(bbb_protocol::packets::WrittenBookContentSummary {
+                title: "Guide".to_string(),
+                author: "Alex".to_string(),
+                generation: 0,
+                pages: vec![
+                    "First page".to_string(),
+                    "Second page\nLine two".to_string(),
+                ],
+                resolved: true,
+            });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![book],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 1,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.text_labels,
+            vec![
+                HudInventoryTextLabel {
+                    x: 88,
+                    y: BOOK_PAGE_INDICATOR_Y,
+                    width: 60,
+                    text: "Page 2 of 2".to_string(),
+                    tint: BOOK_TEXT_COLOR,
+                    background: None,
+                    shadow: false,
+                },
+                HudInventoryTextLabel {
+                    x: BOOK_PAGE_TEXT_X,
+                    y: BOOK_PAGE_TEXT_Y,
+                    width: BOOK_PAGE_TEXT_WIDTH,
+                    text: "Second page".to_string(),
+                    tint: BOOK_TEXT_COLOR,
+                    background: None,
+                    shadow: false,
+                },
+                HudInventoryTextLabel {
+                    x: BOOK_PAGE_TEXT_X,
+                    y: BOOK_PAGE_TEXT_Y + BOOK_PAGE_LINE_HEIGHT,
+                    width: BOOK_PAGE_TEXT_WIDTH,
+                    text: "Line two".to_string(),
+                    tint: BOOK_TEXT_COLOR,
+                    background: None,
+                    shadow: false,
+                },
             ]
         );
     }

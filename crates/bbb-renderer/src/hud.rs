@@ -272,6 +272,7 @@ pub struct HudInventoryTextLabel {
     pub text: String,
     pub tint: [f32; 4],
     pub background: Option<HudInventoryTextBackground>,
+    pub shadow: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2217,12 +2218,12 @@ fn push_hud_inventory_text_labels<'a>(
                 background.tint,
             );
         }
-        for shadow_offset in [1.0, 0.0] {
-            let tint = if shadow_offset > 0.0 {
-                HUD_TEXT_SHADOW_TINT
-            } else {
-                label.tint
-            };
+        for (shadow_offset, tint) in label
+            .shadow
+            .then_some((1.0, HUD_TEXT_SHADOW_TINT))
+            .into_iter()
+            .chain(std::iter::once((0.0, label.tint)))
+        {
             let mut pen_x = 0u32;
             for ch in label.text.chars() {
                 let glyph = hud_ascii_glyph(ch, glyphs);
@@ -2472,6 +2473,7 @@ fn sanitize_hud_inventory_text_label(
         text,
         tint: tint.map(|component| component.clamp(0.0, 1.0)),
         background,
+        shadow: label.shadow,
     })
 }
 
@@ -2831,6 +2833,7 @@ mod tests {
                         height: 12,
                         tint: [0.0, 0.0, 0.0, 1.5],
                     }),
+                    shadow: false,
                 },
                 HudInventoryTextLabel {
                     x: 10,
@@ -2839,6 +2842,7 @@ mod tests {
                     text: "ignored".to_string(),
                     tint: HUD_TINT_WHITE,
                     background: None,
+                    shadow: true,
                 },
             ],
             hovered_slot_id: Some(7),
@@ -2902,6 +2906,7 @@ mod tests {
                     height: 12,
                     tint: [0.0, 0.0, 0.0, 1.0],
                 }),
+                shadow: false,
             }]
         );
         assert_eq!(
