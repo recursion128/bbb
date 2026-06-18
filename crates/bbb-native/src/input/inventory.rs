@@ -881,7 +881,8 @@ mod tests {
 
     use bbb_protocol::packets::{
         ContainerClick, ContainerSetContent, HashedComponentPatch, HashedItemStack, HashedStack,
-        ItemStackSummary, OpenScreen, SelectBundleItem, SetCursorItem, SetPlayerInventory,
+        ItemStackSummary, OpenScreen, RecipePropertySetSummary, SelectBundleItem, SetCursorItem,
+        SetPlayerInventory, UpdateRecipes,
     };
 
     #[test]
@@ -1471,6 +1472,68 @@ mod tests {
             world.inventory().open_container.as_ref().unwrap().slots[0].item,
             ItemStackSummary::empty()
         );
+    }
+
+    #[test]
+    fn furnace_shift_click_queues_quick_move_to_input_slot() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_update_recipes(UpdateRecipes {
+            property_sets: vec![RecipePropertySetSummary {
+                key: "minecraft:furnace_input".to_string(),
+                item_ids: vec![42],
+            }],
+            stonecutter_recipes: Vec::new(),
+        });
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: FURNACE_MENU_TYPE_ID,
+            title: "Furnace".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[3] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 361.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 3,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Item(hashed_item(42, 3))),
+                    (3, HashedStack::Empty),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(42, 3));
+        assert_eq!(slots[3].item, ItemStackSummary::empty());
     }
 
     #[test]

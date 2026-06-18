@@ -11,7 +11,7 @@ use bbb_protocol::packets::{
     SetPlayerInventory as ProtocolSetPlayerInventory,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::WorldStore;
 
@@ -20,9 +20,13 @@ const VANILLA_MENU_TYPE_SHULKER_BOX_ID: i32 = 20;
 const VANILLA_MENU_TYPE_GENERIC_9X1_ID: i32 = 0;
 const VANILLA_MENU_TYPE_GENERIC_9X6_ID: i32 = 5;
 const VANILLA_MENU_TYPE_GENERIC_3X3_ID: i32 = 6;
+const VANILLA_MENU_TYPE_BLAST_FURNACE_ID: i32 = 10;
+const VANILLA_MENU_TYPE_FURNACE_ID: i32 = 14;
 const VANILLA_MENU_TYPE_HOPPER_ID: i32 = 16;
+const VANILLA_MENU_TYPE_SMOKER_ID: i32 = 22;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_CONTAINER_SLOT_COUNT: i16 = 9;
+const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
 const GENERIC_CONTAINER_PLAYER_SLOT_COUNT: i16 = 36;
@@ -610,6 +614,13 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_furnace_fuel_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.furnace_fuel_item_ids = item_ids
+            .into_iter()
+            .filter(|item_id| *item_id >= 0)
+            .collect();
+    }
+
     pub fn build_container_click_slot(
         &self,
         request: ContainerClickSlotRequest,
@@ -693,6 +704,16 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             container_slot_count,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else if furnace_family_menu_type(menu_type_id).is_some() {
+                        apply_furnace_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            menu_type_id,
+                            &self.recipes.property_sets,
+                            &self.furnace_fuel_item_ids,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if let Some(container_slot_count) =
@@ -1512,6 +1533,17 @@ fn shulker_box_container_slot_count(menu_type_id: Option<i32>) -> Option<i16> {
         .then_some(SHULKER_BOX_CONTAINER_SLOT_COUNT)
 }
 
+fn furnace_family_menu_type(menu_type_id: Option<i32>) -> Option<i32> {
+    let menu_type_id = menu_type_id?;
+    matches!(
+        menu_type_id,
+        VANILLA_MENU_TYPE_BLAST_FURNACE_ID
+            | VANILLA_MENU_TYPE_FURNACE_ID
+            | VANILLA_MENU_TYPE_SMOKER_ID
+    )
+    .then_some(menu_type_id)
+}
+
 fn apply_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
@@ -1533,6 +1565,60 @@ fn apply_quick_move_to_slots(
     };
 
     let mut moving = slots[source_index].item.clone();
+    if move_item_stack_to_slots(
+        container_id,
+        slots,
+        source_index,
+        &mut moving,
+        start_slot,
+        end_slot,
+        backwards,
+        default_item_max_stack_sizes,
+    ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn apply_furnace_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    menu_type_id: Option<i32>,
+    recipe_property_sets: &BTreeMap<String, Vec<i32>>,
+    furnace_fuel_item_ids: &BTreeSet<i32>,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if slot_num < 0
+        || slot_num >= FURNACE_CONTAINER_SLOT_COUNT + GENERIC_CONTAINER_PLAYER_SLOT_COUNT
+    {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let source_item = slots[source_index].item.clone();
+    let target = match slot_num {
+        2 => Some((3, 39, true)),
+        0 | 1 => Some((3, 39, false)),
+        3..=38 if furnace_can_smelt(menu_type_id, &source_item, recipe_property_sets) => {
+            Some((0, 1, false))
+        }
+        3..=38 if furnace_is_fuel(&source_item, furnace_fuel_item_ids) => Some((1, 2, false)),
+        3..=29 => Some((30, 39, false)),
+        30..=38 => Some((3, 30, false)),
+        _ => None,
+    };
+    let Some((start_slot, end_slot, backwards)) = target else {
+        return;
+    };
+
+    let mut moving = source_item;
     if move_item_stack_to_slots(
         container_id,
         slots,
@@ -1590,6 +1676,40 @@ fn apply_generic_container_quick_move_to_slots(
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
     }
+}
+
+fn furnace_can_smelt(
+    menu_type_id: Option<i32>,
+    stack: &ProtocolItemStackSummary,
+    recipe_property_sets: &BTreeMap<String, Vec<i32>>,
+) -> bool {
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    let Some(property_set) = furnace_input_property_set(menu_type_id) else {
+        return false;
+    };
+    recipe_property_sets
+        .get(property_set)
+        .is_some_and(|items| items.contains(&item_id))
+}
+
+fn furnace_input_property_set(menu_type_id: Option<i32>) -> Option<&'static str> {
+    match menu_type_id {
+        Some(VANILLA_MENU_TYPE_BLAST_FURNACE_ID) => Some("minecraft:blast_furnace_input"),
+        Some(VANILLA_MENU_TYPE_FURNACE_ID) => Some("minecraft:furnace_input"),
+        Some(VANILLA_MENU_TYPE_SMOKER_ID) => Some("minecraft:smoker_input"),
+        _ => None,
+    }
+}
+
+fn furnace_is_fuel(
+    stack: &ProtocolItemStackSummary,
+    furnace_fuel_item_ids: &BTreeSet<i32>,
+) -> bool {
+    stack
+        .item_id
+        .is_some_and(|item_id| furnace_fuel_item_ids.contains(&item_id))
 }
 
 fn inventory_menu_quick_move_target_range(slot_num: i16) -> Option<(i16, i16, bool)> {
@@ -1932,6 +2052,7 @@ impl MerchantOfferState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::packets::{RecipePropertySetSummary, UpdateRecipes as ProtocolUpdateRecipes};
 
     #[test]
     fn tracks_player_inventory_and_container_state() {
@@ -3902,6 +4023,273 @@ mod tests {
     }
 
     #[test]
+    fn apply_local_furnace_quick_move_moves_result_to_player_reverse() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
+            title: "Furnace".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 39];
+        items[2] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 2,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(quick_move.container_id, 7);
+        assert_eq!(quick_move.state_id, 12);
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (2, ProtocolHashedStack::Empty),
+                (38, hashed_item_stack(42, 3)),
+            ])
+        );
+        assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, 2),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(open_container_slot_item(&store, 38), item_stack(42, 3));
+    }
+
+    #[test]
+    fn apply_local_furnace_quick_move_routes_input_and_fuel_to_furnace_slots() {
+        let mut store = WorldStore::new();
+        store.apply_update_recipes(update_recipes(vec![("minecraft:furnace_input", vec![42])]));
+        store.set_furnace_fuel_item_ids(BTreeSet::from([43]));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
+            title: "Furnace".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 39];
+        items[3] = item_stack(42, 3);
+        items[30] = item_stack(43, 2);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let input_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 3,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        let fuel_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 30,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            input_move.changed_slots,
+            BTreeMap::from([
+                (0, hashed_item_stack(42, 3)),
+                (3, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(
+            fuel_move.changed_slots,
+            BTreeMap::from([
+                (1, hashed_item_stack(43, 2)),
+                (30, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 3));
+        assert_eq!(open_container_slot_item(&store, 1), item_stack(43, 2));
+        assert_eq!(
+            open_container_slot_item(&store, 3),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, 30),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_furnace_quick_move_uses_menu_specific_input_property_set() {
+        let mut store = WorldStore::new();
+        store.apply_update_recipes(update_recipes(vec![("minecraft:furnace_input", vec![42])]));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
+            title: "Blast Furnace".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 39];
+        items[3] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let fallback_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 3,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            fallback_move.changed_slots,
+            BTreeMap::from([
+                (3, ProtocolHashedStack::Empty),
+                (30, hashed_item_stack(42, 3)),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, 0),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(open_container_slot_item(&store, 30), item_stack(42, 3));
+
+        store.apply_update_recipes(update_recipes(vec![(
+            "minecraft:blast_furnace_input",
+            vec![42],
+        )]));
+        store.apply_container_set_slot(ProtocolContainerSetSlot {
+            container_id: 7,
+            state_id: 13,
+            slot: 30,
+            item: item_stack(42, 3),
+        });
+
+        let blast_input_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 30,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            blast_input_move.changed_slots,
+            BTreeMap::from([
+                (0, hashed_item_stack(42, 3)),
+                (30, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 3));
+        assert_eq!(
+            open_container_slot_item(&store, 30),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_furnace_quick_move_prioritizes_input_over_fuel() {
+        let mut store = WorldStore::new();
+        store.apply_update_recipes(update_recipes(vec![("minecraft:smoker_input", vec![42])]));
+        store.set_furnace_fuel_item_ids(BTreeSet::from([42]));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_SMOKER_ID,
+            title: "Smoker".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 39];
+        items[30] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 30,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, hashed_item_stack(42, 3)),
+                (30, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 3));
+        assert_eq!(
+            open_container_slot_item(&store, 1),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_furnace_quick_move_moves_input_and_fuel_slots_to_player_forward() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
+            title: "Furnace".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 3);
+        items[1] = item_stack(43, 2);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let input_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        let fuel_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 1,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            input_move.changed_slots,
+            BTreeMap::from([
+                (0, ProtocolHashedStack::Empty),
+                (3, hashed_item_stack(42, 3)),
+            ])
+        );
+        assert_eq!(
+            fuel_move.changed_slots,
+            BTreeMap::from([
+                (1, ProtocolHashedStack::Empty),
+                (4, hashed_item_stack(43, 2)),
+            ])
+        );
+        assert_eq!(open_container_slot_item(&store, 3), item_stack(42, 3));
+        assert_eq!(open_container_slot_item(&store, 4), item_stack(43, 2));
+    }
+
+    #[test]
     fn apply_local_container_quick_move_rejects_non_inventory_menu() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
@@ -4270,6 +4658,19 @@ mod tests {
         }
     }
 
+    fn update_recipes(property_sets: Vec<(&str, Vec<i32>)>) -> ProtocolUpdateRecipes {
+        ProtocolUpdateRecipes {
+            property_sets: property_sets
+                .into_iter()
+                .map(|(key, item_ids)| RecipePropertySetSummary {
+                    key: key.to_string(),
+                    item_ids,
+                })
+                .collect(),
+            stonecutter_recipes: Vec::new(),
+        }
+    }
+
     fn item_stack_with_component_summary(
         item_id: i32,
         count: i32,
@@ -4315,6 +4716,19 @@ mod tests {
         store
             .inventory()
             .inventory_menu
+            .slots
+            .iter()
+            .find(|state| state.slot == slot)
+            .map(|state| state.item.clone())
+            .unwrap_or_else(ProtocolItemStackSummary::empty)
+    }
+
+    fn open_container_slot_item(store: &WorldStore, slot: i16) -> ProtocolItemStackSummary {
+        store
+            .inventory()
+            .open_container
+            .as_ref()
+            .unwrap()
             .slots
             .iter()
             .find(|state| state.slot == slot)

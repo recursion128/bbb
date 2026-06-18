@@ -3,6 +3,7 @@ mod atlas_sources;
 mod block_models;
 mod colors;
 mod exports;
+mod furnace_fuels;
 mod image;
 mod item_cuboid_models;
 mod item_models;

@@ -247,7 +247,6 @@ update this file in the same slice.
       - shulker box
     - recipe book/creative variants
     - fuller local quick-move parity:
-      - furnace input/fuel/result routing
       - armor/offhand auto-equip
       - crafting result semantics for container `0`
 - Evidence / boundary:
@@ -347,8 +346,14 @@ update this file in the same slice.
       values using vanilla `AbstractFurnaceMenu` progress formulas.
     - It queues basic left/right `PICKUP` container clicks for those supported
       fixed-slot screens.
-    - It also queues Shift-click `QUICK_MOVE` container clicks for the supported
-      generic container, `generic_3x3`, hopper, and shulker box screens.
+    - It also queues Shift-click `QUICK_MOVE` container clicks for:
+      - supported generic containers
+      - `generic_3x3`
+      - hopper
+      - shulker box
+      - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including vanilla slot ranges,
+        result-to-player transfer order, recipe-property-set input routing, and
+        official `FuelValues` fuel routing when vanilla assets are loaded
     - Control/native can still build a basic `ServerboundContainerClickPacket`
       from the active container id, state id, slot id, and cursor item for
       server-opened containers when the carried stack is hash-safe.

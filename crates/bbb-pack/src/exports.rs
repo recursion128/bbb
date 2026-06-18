@@ -9,6 +9,7 @@ pub use crate::block_models::{
 pub use crate::colors::{
     BiomeColorCatalog, BiomeColorProfile, ColorMapImage, GrassColorModifier, TerrainColorMaps,
 };
+pub use crate::furnace_fuels::FurnaceFuelCatalog;
 pub use crate::item_cuboid_models::{
     ItemCuboidModel, ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTexture,
     ItemCuboidTextureImageCatalog, ItemCuboidTextureImageSet, ITEM_CUBOID_TEXTURE_ATLASES,

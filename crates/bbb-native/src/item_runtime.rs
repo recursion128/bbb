@@ -2,9 +2,10 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::{Context, Result};
 use bbb_pack::{
-    AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, ItemCuboidModel, ItemCuboidModelCatalog,
-    ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemModelCatalog, ItemModelDefinition,
-    ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage, TerrainColorMaps,
+    AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, FurnaceFuelCatalog, ItemCuboidModel,
+    ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog, ItemModelCatalog,
+    ItemModelDefinition, ItemRegistryCatalog, ItemTintSource, PackRoots, SpriteImage,
+    TerrainColorMaps,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemStackSummary, ItemStackTemplateSummary,
@@ -29,6 +30,7 @@ pub(crate) struct NativeItemRuntime {
     resolved_model_count: usize,
     missing_model_ids: BTreeSet<String>,
     missing_texture_ids: BTreeSet<String>,
+    furnace_fuel_item_ids: BTreeSet<i32>,
     item_icon_models: HashMap<String, ItemIconModel>,
     registry: Option<ItemRegistryCatalog>,
     textures: ItemTextureState,
@@ -52,6 +54,18 @@ impl NativeItemRuntime {
                 err
             })
             .ok();
+        let furnace_fuel_item_ids = registry
+            .as_ref()
+            .and_then(|registry| {
+                FurnaceFuelCatalog::load(roots, registry)
+                    .map(|catalog| catalog.protocol_ids(registry))
+                    .map_err(|err| {
+                        tracing::warn!(?err, "continuing without native furnace fuel catalog");
+                        err
+                    })
+                    .ok()
+            })
+            .unwrap_or_default();
         let colormaps = roots
             .load_terrain_colormaps()
             .context("load terrain colormaps for item tints")
@@ -66,6 +80,7 @@ impl NativeItemRuntime {
             texture_images,
             registry,
             colormaps,
+            furnace_fuel_item_ids,
         )
     }
 
@@ -75,6 +90,7 @@ impl NativeItemRuntime {
         texture_images: ItemCuboidTextureImageCatalog,
         registry: Option<ItemRegistryCatalog>,
         colormaps: Option<TerrainColorMaps>,
+        furnace_fuel_item_ids: BTreeSet<i32>,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
         let mut item_icon_model_refs = HashMap::new();
@@ -137,6 +153,7 @@ impl NativeItemRuntime {
             resolved_model_count,
             missing_model_ids,
             missing_texture_ids,
+            furnace_fuel_item_ids,
             item_icon_models,
             registry,
             textures,
@@ -163,6 +180,14 @@ impl NativeItemRuntime {
             sizes.insert(protocol_id as i32, size);
         }
         sizes
+    }
+
+    pub(crate) fn furnace_fuel_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.furnace_fuel_item_ids.clone()
+    }
+
+    pub(crate) fn furnace_fuel_item_count(&self) -> usize {
+        self.furnace_fuel_item_ids.len()
     }
 
     pub(crate) fn resolved_model_count(&self) -> usize {
