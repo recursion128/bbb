@@ -1,8 +1,8 @@
 use bbb_protocol::packets::{
     ChatAcknowledgement as ProtocolChatAcknowledgement, ChatTypeHolder as ProtocolChatTypeHolder,
     DeleteChat as ProtocolDeleteChat, DisguisedChat as ProtocolDisguisedChat,
-    FilterMaskKind as ProtocolFilterMaskKind, MessageSignature as ProtocolMessageSignature,
-    PackedMessageSignature, PlayerChat,
+    FilterMaskKind as ProtocolFilterMaskKind, LastSeenMessagesUpdate,
+    MessageSignature as ProtocolMessageSignature, PackedMessageSignature, PlayerChat,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::WorldStore;
 
 const SIGNATURE_CACHE_CAPACITY: usize = 128;
+const LAST_SEEN_MESSAGES_TRACKER_CAPACITY: usize = 20;
 const CHAT_ACKNOWLEDGEMENT_OFFSET_THRESHOLD: i32 = 64;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +21,8 @@ pub struct ClientChatState {
     pub signature_cache: Vec<Option<ChatSignatureState>>,
     #[serde(default)]
     pub acknowledgement: ChatAcknowledgementState,
+    #[serde(default)]
+    pub last_seen_messages: LastSeenMessagesTrackerState,
 }
 
 impl Default for ClientChatState {
@@ -30,6 +33,7 @@ impl Default for ClientChatState {
             expected_player_chat_global_index: 0,
             signature_cache: vec![None; SIGNATURE_CACHE_CAPACITY],
             acknowledgement: ChatAcknowledgementState::default(),
+            last_seen_messages: LastSeenMessagesTrackerState::default(),
         }
     }
 }
@@ -81,6 +85,27 @@ pub struct ChatSignatureState {
 pub struct ChatAcknowledgementState {
     pub pending_offset: i32,
     pub last_processed_signature: Option<ProcessedChatSignatureState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LastSeenMessagesTrackerState {
+    pub entries: Vec<Option<LastSeenTrackedMessageState>>,
+    pub tail: usize,
+}
+
+impl Default for LastSeenMessagesTrackerState {
+    fn default() -> Self {
+        Self {
+            entries: vec![None; LAST_SEEN_MESSAGES_TRACKER_CAPACITY],
+            tail: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LastSeenTrackedMessageState {
+    pub signature: ProcessedChatSignatureState,
+    pub pending: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -171,10 +196,10 @@ impl WorldStore {
         if packet.unsigned_content.is_some() {
             self.counters.player_chat_unsigned_content_packets += 1;
         }
-        let acknowledgement = packet
-            .signature
-            .as_ref()
-            .and_then(|signature| self.record_processed_player_chat_signature(signature));
+        let was_shown = packet.filter_mask.kind != ProtocolFilterMaskKind::FullyFiltered;
+        let acknowledgement = packet.signature.as_ref().and_then(|signature| {
+            self.record_processed_player_chat_signature(signature, was_shown)
+        });
         match packet.filter_mask.kind {
             ProtocolFilterMaskKind::FullyFiltered => {
                 self.counters.player_chat_fully_filtered_packets += 1;
@@ -225,6 +250,9 @@ impl WorldStore {
 
     pub fn apply_delete_chat(&mut self, packet: ProtocolDeleteChat) {
         self.counters.delete_chat_packets += 1;
+        if let Some(signature) = packet.message_signature.full_signature.as_ref() {
+            self.ignore_pending_last_seen_message(&processed_chat_signature_state(signature));
+        }
         let signature =
             resolve_packed_signature(&self.client_chat.signature_cache, &packet.message_signature);
         if signature.is_none() {
@@ -257,9 +285,43 @@ impl WorldStore {
         Some(ProtocolChatAcknowledgement { offset })
     }
 
+    pub fn take_last_seen_messages_update_for_outbound_chat(&mut self) -> LastSeenMessagesUpdate {
+        let offset = self.client_chat.acknowledgement.pending_offset;
+        self.client_chat.acknowledgement.pending_offset = 0;
+
+        let mut acknowledged = 0_u32;
+        let mut checksum = 1_i32;
+        let len = self.client_chat.last_seen_messages.entries.len();
+        if len == 0 {
+            refresh_chat_counters(self);
+            return LastSeenMessagesUpdate {
+                offset,
+                ..LastSeenMessagesUpdate::default()
+            };
+        }
+        for i in 0..len {
+            let index = (self.client_chat.last_seen_messages.tail + i) % len;
+            if let Some(entry) = self.client_chat.last_seen_messages.entries[index].as_mut() {
+                acknowledged |= 1 << i;
+                checksum = checksum
+                    .wrapping_mul(31)
+                    .wrapping_add(entry.signature.checksum);
+                entry.pending = false;
+            }
+        }
+
+        refresh_chat_counters(self);
+        LastSeenMessagesUpdate {
+            offset,
+            acknowledged,
+            checksum: last_seen_checksum_byte(checksum),
+        }
+    }
+
     fn record_processed_player_chat_signature(
         &mut self,
         signature: &ProtocolMessageSignature,
+        was_shown: bool,
     ) -> Option<ProtocolChatAcknowledgement> {
         let processed_signature = processed_chat_signature_state(signature);
         if self
@@ -272,6 +334,7 @@ impl WorldStore {
             return None;
         }
 
+        self.add_last_seen_tracked_message(processed_signature.clone(), was_shown);
         self.client_chat.acknowledgement.last_processed_signature = Some(processed_signature);
         self.client_chat.acknowledgement.pending_offset = self
             .client_chat
@@ -286,6 +349,37 @@ impl WorldStore {
             Some(ProtocolChatAcknowledgement { offset })
         } else {
             None
+        }
+    }
+
+    fn add_last_seen_tracked_message(
+        &mut self,
+        signature: ProcessedChatSignatureState,
+        was_shown: bool,
+    ) {
+        let len = self.client_chat.last_seen_messages.entries.len();
+        if len == 0 {
+            self.client_chat.last_seen_messages = LastSeenMessagesTrackerState::default();
+        }
+        let len = self.client_chat.last_seen_messages.entries.len();
+        let index = self.client_chat.last_seen_messages.tail % len;
+        self.client_chat.last_seen_messages.tail = (index + 1) % len;
+        self.client_chat.last_seen_messages.entries[index] =
+            was_shown.then_some(LastSeenTrackedMessageState {
+                signature,
+                pending: true,
+            });
+    }
+
+    fn ignore_pending_last_seen_message(&mut self, signature: &ProcessedChatSignatureState) {
+        for entry in &mut self.client_chat.last_seen_messages.entries.iter_mut() {
+            if entry
+                .as_ref()
+                .is_some_and(|entry| entry.pending && &entry.signature == signature)
+            {
+                *entry = None;
+                break;
+            }
         }
     }
 }
@@ -338,6 +432,15 @@ fn processed_chat_signature_state(
     ProcessedChatSignatureState {
         checksum: signature.checksum(),
         bytes: signature.bytes.clone(),
+    }
+}
+
+fn last_seen_checksum_byte(checksum: i32) -> u8 {
+    let checksum = checksum as u8;
+    if checksum == 0 {
+        1
+    } else {
+        checksum
     }
 }
 
@@ -460,6 +563,13 @@ mod tests {
             1
         );
         assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+
+        let update = store.take_last_seen_messages_update_for_outbound_chat();
+        assert_eq!(update.offset, 1);
+        assert_eq!(
+            update.acknowledged,
+            1 << (LAST_SEEN_MESSAGES_TRACKER_CAPACITY - 1)
+        );
     }
 
     #[test]
@@ -481,6 +591,119 @@ mod tests {
         assert_eq!(store.counters().player_chat_acknowledgement_packets, 1);
         assert_eq!(store.take_pending_player_chat_acknowledgement(), None);
         assert_eq!(store.counters().player_chat_acknowledgement_packets, 1);
+    }
+
+    #[test]
+    fn outbound_chat_last_seen_update_uses_tail_order_before_ring_is_full() {
+        let mut store = WorldStore::new();
+        let seen = signature(12);
+        assert_eq!(
+            store.apply_player_chat(player_chat_with_signature(0, seen.clone())),
+            None
+        );
+
+        let update = store.take_last_seen_messages_update_for_outbound_chat();
+
+        assert_eq!(update.offset, 1);
+        assert_eq!(
+            update.acknowledged,
+            1 << (LAST_SEEN_MESSAGES_TRACKER_CAPACITY - 1)
+        );
+        assert_eq!(
+            update.checksum,
+            last_seen_checksum_byte(1_i32.wrapping_mul(31).wrapping_add(seen.checksum()))
+        );
+        assert_eq!(
+            store.counters().player_chat_acknowledgement_pending_offset,
+            0
+        );
+
+        let second = store.take_last_seen_messages_update_for_outbound_chat();
+        assert_eq!(second.offset, 0);
+        assert_eq!(
+            second.acknowledged,
+            1 << (LAST_SEEN_MESSAGES_TRACKER_CAPACITY - 1)
+        );
+        assert_eq!(second.checksum, update.checksum);
+    }
+
+    #[test]
+    fn outbound_chat_last_seen_update_offsets_fully_filtered_messages_without_ack_bit() {
+        let mut store = WorldStore::new();
+        assert_eq!(
+            store.apply_player_chat(player_chat_with_signature_and_filter(
+                0,
+                signature(13),
+                FilterMaskKind::FullyFiltered,
+            )),
+            None
+        );
+
+        let update = store.take_last_seen_messages_update_for_outbound_chat();
+
+        assert_eq!(update.offset, 1);
+        assert_eq!(update.acknowledged, 0);
+        assert_eq!(update.checksum, LastSeenMessagesUpdate::default().checksum);
+        assert_eq!(
+            store.counters().player_chat_acknowledgement_pending_offset,
+            0
+        );
+    }
+
+    #[test]
+    fn delete_chat_ignores_pending_full_signature_for_last_seen_updates() {
+        let mut store = WorldStore::new();
+        let deleted = signature(14);
+        assert_eq!(
+            store.apply_player_chat(player_chat_with_signature(0, deleted.clone())),
+            None
+        );
+
+        store.apply_delete_chat(ProtocolDeleteChat {
+            message_signature: PackedMessageSignature {
+                cache_id: None,
+                full_signature: Some(deleted),
+            },
+        });
+        let update = store.take_last_seen_messages_update_for_outbound_chat();
+
+        assert_eq!(update.offset, 1);
+        assert_eq!(update.acknowledged, 0);
+        assert_eq!(update.checksum, LastSeenMessagesUpdate::default().checksum);
+    }
+
+    #[test]
+    fn outbound_chat_last_seen_update_uses_vanilla_ring_order() {
+        let mut store = WorldStore::new();
+        let mut expected_checksum = 1_i32;
+
+        for index in 0..21 {
+            let seen = signature(index as u8);
+            if index > 0 {
+                expected_checksum = expected_checksum
+                    .wrapping_mul(31)
+                    .wrapping_add(seen.checksum());
+            }
+            assert_eq!(
+                store.apply_player_chat(player_chat_with_signature(index, seen)),
+                None
+            );
+        }
+
+        let update = store.take_last_seen_messages_update_for_outbound_chat();
+
+        assert_eq!(update.offset, 21);
+        assert_eq!(
+            update.acknowledged,
+            (1 << LAST_SEEN_MESSAGES_TRACKER_CAPACITY) - 1
+        );
+        assert_eq!(update.checksum, last_seen_checksum_byte(expected_checksum));
+    }
+
+    #[test]
+    fn last_seen_checksum_byte_never_returns_zero() {
+        assert_eq!(last_seen_checksum_byte(0), 1);
+        assert_eq!(last_seen_checksum_byte(256), 1);
     }
 
     #[test]
@@ -606,6 +829,12 @@ mod tests {
             .signature_cache
             .iter()
             .all(Option::is_none));
+        assert!(store
+            .client_chat()
+            .last_seen_messages
+            .entries
+            .iter()
+            .all(Option::is_none));
         assert_eq!(store.client_chat().acknowledgement.pending_offset, 0);
         assert!(store
             .client_chat()
@@ -627,6 +856,14 @@ mod tests {
     }
 
     fn player_chat_with_signature(global_index: i32, signature: MessageSignature) -> PlayerChat {
+        player_chat_with_signature_and_filter(global_index, signature, FilterMaskKind::PassThrough)
+    }
+
+    fn player_chat_with_signature_and_filter(
+        global_index: i32,
+        signature: MessageSignature,
+        filter_kind: FilterMaskKind,
+    ) -> PlayerChat {
         PlayerChat {
             global_index,
             sender: Uuid::from_u128(1),
@@ -640,7 +877,7 @@ mod tests {
             },
             unsigned_content: None,
             filter_mask: FilterMask {
-                kind: FilterMaskKind::PassThrough,
+                kind: filter_kind,
                 mask_words: Vec::new(),
             },
             chat_type: chat_type("Alice"),

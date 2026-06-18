@@ -453,7 +453,9 @@ fn handle_chat_entry_key(
     }
 
     match code {
-        KeyCode::Enter | KeyCode::NumpadEnter => submit_chat_entry(input, counters, net_commands),
+        KeyCode::Enter | KeyCode::NumpadEnter => {
+            submit_chat_entry(input, counters, world, net_commands)
+        }
         KeyCode::Escape => input.chat_entry = None,
         KeyCode::Tab => {
             apply_latest_command_suggestion(input, world);
@@ -528,6 +530,7 @@ fn apply_command_suggestion_text(
 fn submit_chat_entry(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
     let Some(entry) = input.chat_entry.take() else {
@@ -537,7 +540,7 @@ fn submit_chat_entry(
         let Some(message) = normalize_chat_entry(&entry.text) else {
             return;
         };
-        queue_chat_message_command(counters, net_commands, message);
+        queue_chat_message_command(counters, world, net_commands, message);
         return;
     };
     queue_chat_command(counters, net_commands, command);

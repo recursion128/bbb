@@ -1492,6 +1492,34 @@ fn encodes_unsigned_chat_message_packet() {
 }
 
 #[test]
+fn encodes_chat_message_last_seen_update_bitset_little_endian() {
+    let (id, payload) = encode_play_chat_message(&ChatMessage {
+        message: "hello".to_string(),
+        timestamp_millis: 1_717_986_918_300,
+        salt: 0x0102_0304_0506_0708,
+        last_seen_messages: LastSeenMessagesUpdate {
+            offset: 3,
+            acknowledged: (1 << 0) | (1 << 8) | (1 << 19),
+            checksum: 0x7f,
+        },
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_CHAT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_string(256).unwrap(), "hello");
+    assert_eq!(decoder.read_i64().unwrap(), 1_717_986_918_300);
+    assert_eq!(decoder.read_i64().unwrap(), 0x0102_0304_0506_0708);
+    assert!(!decoder.read_bool().unwrap());
+    assert_eq!(decoder.read_var_i32().unwrap(), 3);
+    assert_eq!(
+        decoder.read_exact(3, "last seen bitset").unwrap(),
+        &[0x01, 0x01, 0x08]
+    );
+    assert_eq!(decoder.read_u8().unwrap(), 0x7f);
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_entity_interaction_packets() {
     let (id, payload) = encode_play_attack_entity(AttackEntity { entity_id: 123 });
     assert_eq!(id, ids::play::SERVERBOUND_ATTACK);

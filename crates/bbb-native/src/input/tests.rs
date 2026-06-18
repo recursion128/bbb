@@ -3,12 +3,14 @@ use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, ChatCommand, CommandSuggestion,
     CommandSuggestionRequest, CommandSuggestions, CommonPlayerSpawnInfo, ContainerClick,
     ContainerCloseRequest, ContainerInput, EntityDataValue as ProtocolEntityDataValue,
-    EntityDataValueKind, HashedComponentPatch, HashedItemStack, HashedStack,
-    ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate,
-    OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction, PlayerCommand,
-    PlayerHealth, SetCursorItem as ProtocolSetCursorItem, SetEntityData as ProtocolSetEntityData,
-    SetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
+    EntityDataValueKind, FilterMask, FilterMaskKind, HashedComponentPatch, HashedItemStack,
+    HashedStack, ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate,
+    MessageSignature, OpenScreen as ProtocolOpenScreen, PaddleBoat, PlayLogin, PlayerAction,
+    PlayerChat, PlayerCommand, PlayerHealth, SetCursorItem as ProtocolSetCursorItem,
+    SetEntityData as ProtocolSetEntityData, SetPassengers,
+    SetPlayerInventory as ProtocolSetPlayerInventory, SignedMessageBody, Vec3d as ProtocolVec3d,
 };
+use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_world::{BlockPos, LocalPlayerPoseState, WorldStore};
 use uuid::Uuid;
 
@@ -98,6 +100,31 @@ fn world_with_local_boat(player_id: i32) -> WorldStore {
         passenger_ids: vec![player_id],
     }));
     world
+}
+
+fn player_chat_with_signature(global_index: i32, signature: MessageSignature) -> PlayerChat {
+    PlayerChat {
+        global_index,
+        sender: Uuid::from_u128(0x1234),
+        index: global_index,
+        signature: Some(signature),
+        body: SignedMessageBody {
+            content: format!("message {global_index}"),
+            timestamp_millis: i64::from(global_index),
+            salt: i64::from(global_index) + 1,
+            last_seen: Vec::new(),
+        },
+        unsigned_content: None,
+        filter_mask: FilterMask {
+            kind: FilterMaskKind::PassThrough,
+            mask_words: Vec::new(),
+        },
+        chat_type: ChatTypeBound {
+            chat_type: ChatTypeHolder::Registry { id: 0 },
+            name: "Alice".to_string(),
+            target_name: None,
+        },
+    }
 }
 
 fn set_local_player_on_ground(world: &mut WorldStore, on_ground: bool) {
@@ -365,6 +392,57 @@ fn chat_key_opens_chat_entry_and_submits_unsigned_message() {
         command => panic!("expected chat message command, got {command:?}"),
     }
     assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn chat_key_submits_message_with_pending_last_seen_update() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let _ = world.apply_player_chat(player_chat_with_signature(
+        0,
+        MessageSignature {
+            bytes: vec![12; 256],
+        },
+    ));
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "t");
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "reply");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    match rx.try_recv().unwrap() {
+        NetCommand::ChatMessage(packet) => {
+            assert_eq!(packet.message, "reply");
+            assert_eq!(packet.last_seen_messages.offset, 1);
+            assert_eq!(packet.last_seen_messages.acknowledged, 1 << 19);
+            assert_ne!(
+                packet.last_seen_messages.checksum,
+                LastSeenMessagesUpdate::default().checksum
+            );
+        }
+        command => panic!("expected chat message command, got {command:?}"),
+    }
+    assert_eq!(
+        world.counters().player_chat_acknowledgement_pending_offset,
+        0
+    );
 }
 
 #[test]

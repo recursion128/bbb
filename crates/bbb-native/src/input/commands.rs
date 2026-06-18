@@ -439,13 +439,15 @@ pub(crate) fn queue_chat_command(
 
 pub(crate) fn queue_chat_message_command(
     counters: &mut NetCounters,
+    world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     message: impl Into<String>,
 ) {
     if let Some(tx) = net_commands {
         let message = message.into();
         let (timestamp_millis, salt) = unsigned_chat_clock_fields(&message);
-        let packet = ChatMessage::unsigned(message, timestamp_millis, salt);
+        let mut packet = ChatMessage::unsigned(message, timestamp_millis, salt);
+        packet.last_seen_messages = world.take_last_seen_messages_update_for_outbound_chat();
         if tx.try_send(NetCommand::ChatMessage(packet)).is_ok() {
             counters.chat_message_commands_queued += 1;
         }
@@ -799,8 +801,9 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
 
-        queue_chat_message_command(&mut counters, &commands, "hello world");
+        queue_chat_message_command(&mut counters, &mut world, &commands, "hello world");
 
         assert_eq!(counters.chat_message_commands_queued, 1);
         match rx.try_recv().unwrap() {

@@ -732,8 +732,11 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
 - Status: `partial`
 - Next action:
-  - Implement signed chat/chat-command last-seen updates and any remaining
-    vanilla last-seen message entries needed for outbound signed payloads.
+  - Implement remaining signed chat payload production:
+    - `ServerboundChatPacket` signatures
+    - `ServerboundChatCommandSignedPacket` for commands with signable arguments
+    - argument signatures
+    - session/key handling if offline-compatible servers require it
 - Evidence / boundary:
   - Covered pieces:
     - `ServerboundChatAckPacket` id 6 and VarInt `offset` encoding
@@ -744,6 +747,14 @@ When an agent does any of the following, update this file in the same slice:
     - offline probe ack sending after vanilla's `offset > 64` threshold
     - play -> configuration re-entry flushes pending signed-chat
       acknowledgement before `ServerboundConfigurationAcknowledgedPacket`
+    - canonical outbound last-seen tracker for unsigned chat messages:
+      - 20-entry vanilla ring order
+      - offset clearing
+      - fixed 20-bit acknowledgement bitset
+      - checksum byte
+      - full-signature pending delete ignore
+    - native normal chat submission consumes the canonical last-seen update
+    - slash commands keep vanilla string-only `ServerboundChatCommandPacket`
   - Full signed chat payload generation remains follow-up work.
 
 ### Manual Visual/Audio Comparisons
