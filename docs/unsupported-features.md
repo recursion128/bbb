@@ -39,8 +39,13 @@ update this file in the same slice.
 - Owner: `bbb-protocol`
 - Status: `partial`
 - Next action:
-  - Continue auditing packet ids, field order, nullability, enum ordinals, and
-    serverbound encoders against `<MC_CODE_ROOT>/sources/26.1/`.
+  - Continue auditing protocol details against
+    `<MC_CODE_ROOT>/sources/26.1/`:
+    - packet ids
+    - field order
+    - nullability
+    - enum ordinals
+    - serverbound encoders
   - Add focused encode/decode tests with each packet slice.
 - Evidence / boundary:
   - `docs/full-native-rewrite-plan.md` phase 2 remains open until required paths
@@ -65,8 +70,9 @@ update this file in the same slice.
   - Prefer shared semantics or focused paired tests when probe and online
     handling differ.
 - Evidence / boundary:
-  - Probe and online paths now cover many packet families, including unsupported
-    diagnostics and play -> configuration teardown.
+  - Probe and online paths now cover many packet families, including:
+    - unsupported diagnostics
+    - play -> configuration teardown
   - The final criterion requires every supported decoded packet to stay aligned.
 
 ### Native-Owned Business Snapshots
@@ -152,8 +158,12 @@ update this file in the same slice.
     - Y spin
     - count-based multiple copies
     - lighting
-  - Continue HUD, overlay, screenshot, and interaction-feedback work with
-    deterministic renderer tests or explicit manual comparison notes.
+  - Continue renderer presentation work with deterministic tests or explicit
+    manual comparison notes:
+    - HUD
+    - overlays
+    - screenshots
+    - interaction feedback
 - Evidence / boundary:
   - Renderer draws:
     - terrain
@@ -172,9 +182,12 @@ update this file in the same slice.
 - Owner: `bbb-audio` + `bbb-native` + `bbb-pack` + `bbb-world`
 - Status: `partial`
 - Next action:
-  - Continue validating source/category mapping, spatial/entity-following
-    sounds, stop semantics, and device/runtime diagnostics against vanilla
-    behavior without requiring an audio device in unit tests.
+  - Continue validating audio behavior against vanilla without requiring an
+    audio device in unit tests:
+    - source/category mapping
+    - spatial/entity-following sounds
+    - stop semantics
+    - device/runtime diagnostics
 - Evidence / boundary:
   - `bbb-audio` has Kira-backed command/runtime boundaries and pack-driven sound
     lookup.
@@ -185,8 +198,12 @@ update this file in the same slice.
 - Owner: `bbb-pack`
 - Status: `partial`
 - Next action:
-  - Implement unsupported atlas, item model, item tint, and registry declaration
-    shapes as official assets or resource packs require them.
+  - Implement unsupported declaration shapes as official assets or resource
+    packs require them:
+    - atlas
+    - item model
+    - item tint
+    - registry declaration
   - Keep resource-pack precedence/filter tests close to loaders.
 - Evidence / boundary:
   - Loaders report unsupported atlas/item declarations.
@@ -234,8 +251,12 @@ update this file in the same slice.
     - full model-shaped crack decals with vanilla crumbling blend/depth-bias
       behavior
     - any remaining `STOP_DESTROY_BLOCK` sequencing gaps
-  - Commands: continue adding focused command queue and encode tests for missing
-    inventory, interaction, chat, and command flows.
+  - Commands: continue adding focused command queue and encode tests for
+    missing flows:
+    - inventory
+    - interaction
+    - chat
+    - command
   - Inventory: implement:
     - tooltips
     - item durability/cooldown decorations
@@ -351,9 +372,11 @@ update this file in the same slice.
       - `generic_3x3`
       - hopper
       - shulker box
-      - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including vanilla slot ranges,
-        result-to-player transfer order, recipe-property-set input routing, and
-        official `FuelValues` fuel routing when vanilla assets are loaded
+      - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including:
+        - vanilla slot ranges
+        - result-to-player transfer order
+        - recipe-property-set input routing
+        - official `FuelValues` fuel routing when vanilla assets are loaded
     - Control/native can still build a basic `ServerboundContainerClickPacket`
       from the active container id, state id, slot id, and cursor item for
       server-opened containers when the carried stack is hash-safe.
@@ -397,9 +420,13 @@ update this file in the same slice.
 - Owner: relevant runtime owner
 - Status: `deferred`
 - Next action:
-  - Whenever visual or audio behavior cannot be proven by automated tests, record
-    the vanilla source path, asset path, screenshot, smoke test, or manual
-    comparison required to close the slice.
+  - Whenever visual or audio behavior cannot be proven by automated tests,
+    record the required proof to close the slice:
+    - vanilla source path
+    - asset path
+    - screenshot
+    - smoke test
+    - manual comparison
 - Evidence / boundary:
   - The project gate allows manual or screenshot/audio smoke checks outside
     normal unit tests, but they must be documented when required.
@@ -409,9 +436,10 @@ Mounted boat input now has a basic locally authoritative path:
 - Updates local look while mounted.
 - Advances a simple root-boat transform from local input.
 - Queues both paddle-state and `MoveVehicle` commands.
-- Leaves full vanilla boat physics, water/buoyancy/collision parity, and
-  non-boat vehicle movement covered by the native input/movement ledger row
-  above.
+- Leaves the following covered by the native input/movement ledger row above:
+  - full vanilla boat physics
+  - water/buoyancy/collision parity
+  - non-boat vehicle movement
 
 ## Update Rules
 
