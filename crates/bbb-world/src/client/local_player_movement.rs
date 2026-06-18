@@ -611,12 +611,15 @@ mod tests {
     const SNOW_6_LAYERS_BLOCK_STATE_ID: i32 = 6924;
     const CACTUS_AGE_0_BLOCK_STATE_ID: i32 = 6929;
     const SOUL_SAND_BLOCK_STATE_ID: i32 = 6998;
+    const CAKE_BITES_0_BLOCK_STATE_ID: i32 = 7027;
+    const CAKE_BITES_3_BLOCK_STATE_ID: i32 = 7030;
     const OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID: i32 = 5666;
     const OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7121;
     const STONE_PRESSURE_PLATE_BLOCK_STATE_ID: i32 = 6796;
     const OAK_NORTH_FENCE_BLOCK_STATE_ID: i32 = 6988;
     const OAK_CLOSED_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8653;
     const OAK_OPEN_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8651;
+    const LILY_PAD_BLOCK_STATE_ID: i32 = 8920;
     const GLASS_NORTH_PANE_BLOCK_STATE_ID: i32 = 8323;
     const WHITE_CARPET_BLOCK_STATE_ID: i32 = 12896;
     const COBBLESTONE_NORTH_EAST_WALL_BLOCK_STATE_ID: i32 = 10236;
@@ -942,6 +945,8 @@ mod tests {
             ("dirt path", DIRT_PATH_BLOCK_STATE_ID, 1.9375),
             ("soul sand", SOUL_SAND_BLOCK_STATE_ID, 1.875),
             ("mud", MUD_BLOCK_STATE_ID, 1.875),
+            ("cake", CAKE_BITES_0_BLOCK_STATE_ID, 1.5),
+            ("lily pad", LILY_PAD_BLOCK_STATE_ID, 1.09375),
         ];
 
         for (name, block_state_id, expected_y) in cases {
@@ -967,6 +972,31 @@ mod tests {
             assert!(pose.on_ground, "{name}");
             assert!(!pose.horizontal_collision, "{name}");
         }
+    }
+
+    #[test]
+    fn local_player_respects_cake_bite_collision_width() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, CAKE_BITES_3_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.1, 3.0, 1.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                2.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.on_ground);
+        assert!(!pose.horizontal_collision);
     }
 
     #[test]

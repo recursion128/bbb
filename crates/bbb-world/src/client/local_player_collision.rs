@@ -83,6 +83,12 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
         if is_campfire_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::CAMPFIRE));
         }
+        if block_name == "minecraft:cake" {
+            return cake_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:lily_pad" {
+            return Some(BlockCollisionShape::single(BlockCollisionBox::LILY_PAD));
+        }
         if is_cactus_or_honey_block_name(block_name) {
             return Some(BlockCollisionShape::single(
                 BlockCollisionBox::CENTERED_14PX_COLUMN_15PX_HIGH,
@@ -428,6 +434,17 @@ fn rod_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCol
     Some(BlockCollisionShape::single(
         BlockCollisionBox::centered_axis(axis, 4.0),
     ))
+}
+
+fn cake_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let bites = properties.get("bites")?.parse::<u8>().ok()?;
+    if bites > 6 {
+        return None;
+    }
+    Some(BlockCollisionShape::single(BlockCollisionBox::from_pixels(
+        [1.0 + f64::from(bites) * 2.0, 0.0, 1.0],
+        [15.0, 8.0, 15.0],
+    )))
 }
 
 fn door_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
@@ -1136,6 +1153,14 @@ impl BlockCollisionBox {
         min_z: PX,
         max_x: 15.0 * PX,
         max_y: 15.0 * PX,
+        max_z: 15.0 * PX,
+    };
+    const LILY_PAD: Self = Self {
+        min_x: PX,
+        min_y: 0.0,
+        min_z: PX,
+        max_x: 15.0 * PX,
+        max_y: 1.5 * PX,
         max_z: 15.0 * PX,
     };
     const CHEST_SINGLE: Self = Self {
