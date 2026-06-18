@@ -305,3 +305,35 @@ Measured command:
 The increased target size is from retained external cache data, which is
 intentional for daily development. Reclaim it with explicit periodic cleanup,
 not after each slice or worker run.
+
+## Warm Update: 2026-06-19 After Lectern Slice
+
+Environment:
+
+- `sccache` is still not installed on `PATH`.
+- Stable target caches found:
+  - `/tmp/bbb-target-main`: 10G.
+  - `/tmp/bbb-target-net`: 726M.
+- No clean target was created for this update. The clean full-workspace baseline
+  remains the 2026-06-18 disposable-target measurement above because this slice
+  did not change Cargo profiles, dependencies, or cache policy.
+
+Measured commands:
+
+- Warm focused default:
+  `scripts/cargo-dev.sh test -p bbb-native lectern`
+  - Cargo compile: 0.11s.
+  - Wall time: 0.28s.
+  - Result: 9 tests passed.
+- Warm full workspace:
+  `scripts/cargo-dev.sh timings --workspace --timings`
+  - Cargo compile: 0.10s.
+  - Wall time: 3.03s.
+  - Target size: 10G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260618T194434598Z-14ffed61c5c1036c.html`
+
+The current data supports keeping stable external target caches for daily work.
+Do not add a repo-local mandatory `rustc-wrapper` until `sccache` is installed
+and measured against clean and warm focused workloads.
