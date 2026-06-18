@@ -78,6 +78,7 @@ pub(crate) struct ClientInputState {
     inventory_quick_craft_slots: Vec<i16>,
     stonecutter_recipe_scroll_row: i32,
     stonecutter_recipe_scroll_input_item_id: Option<i32>,
+    stonecutter_recipe_scrolling: bool,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,

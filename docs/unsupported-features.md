@@ -731,8 +731,8 @@ When an agent does any of the following, update this file in the same slice:
           `ServerboundContainerButtonClickPacket`
         - result-slot clicks kept server-authoritative until:
           - recipe result side effects are locally modeled
-        - recipe option icon rendering, active scroller rendering, and
-          scroller-drag state remain follow-up presentation/control work
+        - recipe option icon rendering and active scroller rendering remain
+          follow-up presentation work
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including:
         - vanilla slot ranges
         - result-to-player transfer order

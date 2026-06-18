@@ -136,6 +136,12 @@ const STONECUTTER_RECIPE_BUTTON_COLUMNS: i32 = 4;
 const STONECUTTER_RECIPE_BUTTON_ROWS: i32 = 3;
 const STONECUTTER_RECIPE_BUTTON_WIDTH: i32 = 16;
 const STONECUTTER_RECIPE_BUTTON_HEIGHT: i32 = 18;
+const STONECUTTER_SCROLLER_X: i32 = 119;
+const STONECUTTER_SCROLLER_CLICK_Y: i32 = 9;
+const STONECUTTER_SCROLLER_DRAG_Y: i32 = 14;
+const STONECUTTER_SCROLLER_WIDTH: i32 = 12;
+const STONECUTTER_SCROLLER_HEIGHT: i32 = 15;
+const STONECUTTER_SCROLLER_FULL_HEIGHT: i32 = 54;
 const SLOT_SIZE: f64 = 16.0;
 const SLOT_HOVER_MARGIN: f64 = 1.0;
 const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
@@ -1109,6 +1115,11 @@ pub(crate) fn handle_inventory_cursor_moved(
         return false;
     }
 
+    if input.stonecutter_recipe_scrolling
+        && update_stonecutter_recipe_scroll_from_cursor(input, world, cursor_position, surface_size)
+    {
+        return true;
+    }
     let hovered = inventory_screen_hovered_slot(world, cursor_position, surface_size);
     if input.inventory_hovered_slot != hovered {
         if let Some(previous) = input.inventory_hovered_slot {
@@ -1207,6 +1218,13 @@ pub(crate) fn handle_inventory_mouse_input(
         cursor_position,
         surface_size,
     ) {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if maybe_start_stonecutter_recipe_scroll_drag(input, world, cursor_position, surface_size) {
         input.inventory_last_click_slot = None;
         input.inventory_last_click_button_num = None;
         input.inventory_last_click_at = None;
@@ -1387,6 +1405,7 @@ fn handle_inventory_mouse_released(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    input.stonecutter_recipe_scrolling = false;
     let Some(quick_craft_button_num) = input.inventory_quick_craft_button_num else {
         return true;
     };
@@ -1759,6 +1778,23 @@ fn maybe_scroll_stonecutter_recipes(
     true
 }
 
+fn maybe_start_stonecutter_recipe_scroll_drag(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    sync_stonecutter_recipe_scroll(input, world);
+    if stonecutter_recipe_max_scroll_row(world).unwrap_or_default() <= 0 {
+        return false;
+    }
+    if !stonecutter_scroller_at_position(world, cursor_position, surface_size) {
+        return false;
+    }
+    input.stonecutter_recipe_scrolling = true;
+    true
+}
+
 fn maybe_scroll_merchant_trades(
     input: &mut ClientInputState,
     world: &mut WorldStore,
@@ -1966,6 +2002,67 @@ fn stonecutter_recipe_button_at_position(
     Some(button_id)
 }
 
+fn stonecutter_scroller_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(layout) = inventory_screen_layout(world) else {
+        return false;
+    };
+    if layout.background != InventoryScreenBackground::Stonecutter {
+        return false;
+    }
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    x >= f64::from(STONECUTTER_SCROLLER_X)
+        && x < f64::from(STONECUTTER_SCROLLER_X + STONECUTTER_SCROLLER_WIDTH)
+        && y >= f64::from(STONECUTTER_SCROLLER_CLICK_Y)
+        && y < f64::from(STONECUTTER_SCROLLER_CLICK_Y + STONECUTTER_SCROLLER_FULL_HEIGHT)
+}
+
+fn update_stonecutter_recipe_scroll_from_cursor(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    sync_stonecutter_recipe_scroll(input, world);
+    let Some(max_scroll_row) = stonecutter_recipe_max_scroll_row(world) else {
+        input.stonecutter_recipe_scrolling = false;
+        return false;
+    };
+    if max_scroll_row <= 0 {
+        input.stonecutter_recipe_scrolling = false;
+        return false;
+    }
+    let Some(layout) = inventory_screen_layout(world) else {
+        input.stonecutter_recipe_scrolling = false;
+        return false;
+    };
+    if layout.background != InventoryScreenBackground::Stonecutter {
+        input.stonecutter_recipe_scrolling = false;
+        return false;
+    }
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (_, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let y = cursor.y - origin_y;
+    let drag_range = f64::from(STONECUTTER_SCROLLER_FULL_HEIGHT - STONECUTTER_SCROLLER_HEIGHT);
+    let scroll_offs = ((y
+        - f64::from(STONECUTTER_SCROLLER_DRAG_Y)
+        - f64::from(STONECUTTER_SCROLLER_HEIGHT) * 0.5)
+        / drag_range)
+        .clamp(0.0, 1.0);
+    input.stonecutter_recipe_scroll_row = (scroll_offs * f64::from(max_scroll_row) + 0.5) as i32;
+    true
+}
+
 fn stonecutter_visible_recipe_count(world: &WorldStore) -> Option<i32> {
     let input_item_id = stonecutter_input_item_id(world)?;
     Some(stonecutter_visible_recipe_count_for_input(
@@ -2002,6 +2099,7 @@ fn sync_stonecutter_recipe_scroll(input: &mut ClientInputState, world: &WorldSto
     if input.stonecutter_recipe_scroll_input_item_id != input_item_id {
         input.stonecutter_recipe_scroll_input_item_id = input_item_id;
         input.stonecutter_recipe_scroll_row = 0;
+        input.stonecutter_recipe_scrolling = false;
     }
     let max_scroll_row = stonecutter_recipe_max_scroll_row(world).unwrap_or_default();
     input.stonecutter_recipe_scroll_row =
@@ -4189,6 +4287,92 @@ mod tests {
             PhysicalSize::new(1280, 720),
         ));
         assert_eq!(input.stonecutter_recipe_scroll_row, 2);
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(628.0, 336.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 17,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn stonecutter_scroller_drag_updates_recipe_grid_button_index() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_update_recipes(UpdateRecipes {
+            property_sets: Vec::new(),
+            stonecutter_recipes: (0..25).map(|_| stonecutter_recipe(vec![42])).collect(),
+        });
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: STONECUTTER_MENU_TYPE_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 38];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(676.0, 300.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(input.stonecutter_recipe_scrolling);
+        assert_eq!(input.stonecutter_recipe_scroll_row, 0);
+
+        assert!(handle_inventory_cursor_moved(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Some(PhysicalPosition::new(676.0, 318.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(input.stonecutter_recipe_scrolling);
+        assert_eq!(input.stonecutter_recipe_scroll_row, 2);
+        assert_eq!(counters.container_button_click_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Released,
+            Some(PhysicalPosition::new(676.0, 318.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert!(!input.stonecutter_recipe_scrolling);
 
         assert!(handle_inventory_mouse_input(
             &mut input,
