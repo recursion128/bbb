@@ -11,13 +11,14 @@ pub(super) use self::gpu::{create_hud_bind_group_layout, create_hud_pipeline, Hu
 use self::layout::{
     centered_hud_rect, experience_bar_hud_rect, food_hud_rect, heart_hud_rect, hotbar_hud_rect,
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_experience_progress_width, hud_food_fill,
-    hud_heart_fill, hud_quad_vertices, inventory_background_hud_rect,
-    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
-    HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
+    hud_heart_fill, hud_item_count_digit_hud_rect, hud_quad_vertices,
+    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
+    HudIconFill, HudRect, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
 };
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
 const HUD_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const HUD_TEXT_SHADOW_TINT: [f32; 4] = [0.25, 0.25, 0.25, 1.0];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HudUvRect {
@@ -40,12 +41,47 @@ impl HudIconLayer {
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudItemIcon {
     pub layers: Vec<HudIconLayer>,
+    pub count_label: Option<HudItemCountLabel>,
 }
 
 impl HudItemIcon {
     pub fn single(uv: HudUvRect) -> Self {
         Self {
             layers: vec![HudIconLayer::new(uv, HUD_TINT_WHITE)],
+            count_label: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudItemCountLabel {
+    pub text: String,
+}
+
+impl HudItemCountLabel {
+    pub fn new(text: impl Into<String>) -> Self {
+        Self { text: text.into() }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HudDigitGlyph {
+    pub uv: HudUvRect,
+    pub width: u32,
+    pub height: u32,
+    pub advance: u32,
+}
+
+impl Default for HudDigitGlyph {
+    fn default() -> Self {
+        Self {
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            width: 0,
+            height: 0,
+            advance: 0,
         }
     }
 }
@@ -108,6 +144,18 @@ impl Renderer {
 
     pub fn upload_hud_item_atlas(&mut self, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
         self.hud_item_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_digit_atlas(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        glyphs: [HudDigitGlyph; 10],
+    ) -> Result<()> {
+        self.hud_digit_atlas = Some(self.upload_hud_sprite(width, height, rgba)?);
+        self.hud_digit_glyphs = glyphs;
         Ok(())
     }
 
@@ -297,17 +345,27 @@ impl Renderer {
         if let Some(atlas) = &self.hud_item_atlas {
             for (slot, icon) in self.hud_hotbar_item_icons.iter().enumerate() {
                 if let Some(icon) = icon {
+                    let item_rect = hotbar_item_hud_rect(surface_size, slot);
                     for layer in &icon.layers {
                         push_hud_draw_with_uv_and_tint(
                             &mut vertices,
                             &mut commands,
                             atlas,
                             surface_size,
-                            hotbar_item_hud_rect(surface_size, slot),
+                            item_rect,
                             layer.uv,
                             layer.tint,
                         );
                     }
+                    push_hud_item_count_label(
+                        &mut vertices,
+                        &mut commands,
+                        self.hud_digit_atlas.as_ref(),
+                        &self.hud_digit_glyphs,
+                        surface_size,
+                        item_rect,
+                        icon.count_label.as_ref(),
+                    );
                 }
             }
         }
@@ -440,17 +498,27 @@ impl Renderer {
             if let Some(atlas) = &self.hud_item_atlas {
                 for slot in &screen.slots {
                     if let Some(icon) = &slot.icon {
+                        let item_rect = inventory_slot_item_hud_rect(surface_size, slot.x, slot.y);
                         for layer in &icon.layers {
                             push_hud_draw_with_uv_and_tint(
                                 &mut vertices,
                                 &mut commands,
                                 atlas,
                                 surface_size,
-                                inventory_slot_item_hud_rect(surface_size, slot.x, slot.y),
+                                item_rect,
                                 layer.uv,
                                 layer.tint,
                             );
                         }
+                        push_hud_item_count_label(
+                            &mut vertices,
+                            &mut commands,
+                            self.hud_digit_atlas.as_ref(),
+                            &self.hud_digit_glyphs,
+                            surface_size,
+                            item_rect,
+                            icon.count_label.as_ref(),
+                        );
                     }
                 }
             }
@@ -535,6 +603,58 @@ fn push_hud_draw_with_uv_and_tint<'a>(
     commands.push(HudDrawCommand { sprite, start, end });
 }
 
+fn push_hud_item_count_label<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    digit_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &[HudDigitGlyph; 10],
+    surface_size: PhysicalSize<u32>,
+    item_rect: HudRect,
+    label: Option<&HudItemCountLabel>,
+) {
+    let (Some(digit_atlas), Some(label)) = (digit_atlas, label) else {
+        return;
+    };
+    let Some(text_width) = hud_digit_text_width(&label.text, glyphs) else {
+        return;
+    };
+
+    for shadow_offset in [1.0, 0.0] {
+        let tint = if shadow_offset > 0.0 {
+            HUD_TEXT_SHADOW_TINT
+        } else {
+            HUD_TINT_WHITE
+        };
+        let mut pen_x = 0;
+        for digit in label.text.bytes() {
+            let glyph = glyphs[(digit - b'0') as usize];
+            let rect =
+                hud_item_count_digit_hud_rect(item_rect, text_width, pen_x, shadow_offset, glyph);
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                digit_atlas,
+                surface_size,
+                rect,
+                glyph.uv,
+                tint,
+            );
+            pen_x += glyph.advance;
+        }
+    }
+}
+
+fn hud_digit_text_width(text: &str, glyphs: &[HudDigitGlyph; 10]) -> Option<u32> {
+    let mut width = 0u32;
+    for digit in text.bytes() {
+        if !digit.is_ascii_digit() {
+            return None;
+        }
+        width = width.checked_add(glyphs[(digit - b'0') as usize].advance)?;
+    }
+    (width > 0).then_some(width)
+}
+
 fn sanitize_hud_uv_rect(rect: HudUvRect) -> Option<HudUvRect> {
     let components = [rect.min[0], rect.min[1], rect.max[0], rect.max[1]];
     if !components.iter().all(|component| component.is_finite()) {
@@ -581,7 +701,10 @@ fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
         .into_iter()
         .filter_map(sanitize_hud_icon_layer)
         .collect::<Vec<_>>();
-    (!layers.is_empty()).then_some(HudItemIcon { layers })
+    (!layers.is_empty()).then_some(HudItemIcon {
+        layers,
+        count_label: icon.count_label.and_then(sanitize_hud_item_count_label),
+    })
 }
 
 fn sanitize_hud_icon_layer(layer: HudIconLayer) -> Option<HudIconLayer> {
@@ -592,6 +715,12 @@ fn sanitize_hud_icon_layer(layer: HudIconLayer) -> Option<HudIconLayer> {
         uv: sanitize_hud_uv_rect(layer.uv)?,
         tint: layer.tint.map(|component| component.clamp(0.0, 1.0)),
     })
+}
+
+fn sanitize_hud_item_count_label(label: HudItemCountLabel) -> Option<HudItemCountLabel> {
+    let text = label.text;
+    (!text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit()))
+        .then_some(HudItemCountLabel { text })
 }
 
 #[cfg(test)]
@@ -646,6 +775,7 @@ mod tests {
                     },
                     HUD_TINT_WHITE,
                 )],
+                count_label: None,
             }
         );
 
@@ -676,10 +806,12 @@ mod tests {
         );
         let icon = sanitize_hud_item_icon(HudItemIcon {
             layers: vec![first, second],
+            count_label: Some(HudItemCountLabel::new("64")),
         })
         .expect("valid icon layers should remain");
 
         assert_eq!(icon.layers.len(), 2);
+        assert_eq!(icon.count_label, Some(HudItemCountLabel::new("64")));
         assert_eq!(icon.layers[0].uv.min, [0.0, 0.0]);
         assert_eq!(icon.layers[0].uv.max, [0.25, 0.25]);
         assert_eq!(icon.layers[0].tint, [0.0, 0.25, 1.0, 1.0]);
@@ -714,10 +846,12 @@ mod tests {
                     [1.0, 1.0, 1.0, 1.0],
                 ),
             ],
+            count_label: Some(HudItemCountLabel::new("1x")),
         })
         .expect("one valid layer should remain");
 
         assert_eq!(icon.layers.len(), 1);
+        assert_eq!(icon.count_label, None);
         assert_eq!(icon.layers[0].uv.min, [0.25, 0.25]);
         assert_eq!(icon.layers[0].uv.max, [0.75, 0.75]);
 
@@ -730,9 +864,21 @@ mod tests {
                     },
                     [1.0, 1.0, 1.0, 1.0],
                 )],
+                count_label: Some(HudItemCountLabel::new("64")),
             }),
             None
         );
+    }
+
+    #[test]
+    fn hud_digit_text_width_uses_digit_advances_only() {
+        let mut glyphs = [HudDigitGlyph::default(); 10];
+        glyphs[4].advance = 6;
+        glyphs[6].advance = 6;
+
+        assert_eq!(hud_digit_text_width("64", &glyphs), Some(12));
+        assert_eq!(hud_digit_text_width("1x", &glyphs), None);
+        assert_eq!(hud_digit_text_width("", &glyphs), None);
     }
 
     #[test]
@@ -751,6 +897,7 @@ mod tests {
                             },
                             [1.5, 0.25, -1.0, 1.0],
                         )],
+                        count_label: Some(HudItemCountLabel::new("64")),
                     }),
                 },
                 HudInventorySlot {
@@ -765,6 +912,7 @@ mod tests {
                             },
                             [1.0, 1.0, 1.0, 1.0],
                         )],
+                        count_label: Some(HudItemCountLabel::new("bad")),
                     }),
                 },
                 HudInventorySlot {
@@ -792,6 +940,7 @@ mod tests {
                     },
                     [1.0, 0.25, 0.0, 1.0],
                 )],
+                count_label: Some(HudItemCountLabel::new("64")),
             })
         );
         assert_eq!(screen.slots[1].slot_id, 6);

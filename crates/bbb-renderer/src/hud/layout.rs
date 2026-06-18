@@ -1,6 +1,6 @@
 use winit::dpi::PhysicalSize;
 
-use super::{HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
+use super::{HudDigitGlyph, HudUvRect, HudVertex, HUD_HOTBAR_SLOTS};
 
 const HUD_HOTBAR_WIDTH: u32 = 182;
 const HUD_HOTBAR_HEIGHT: u32 = 22;
@@ -174,6 +174,21 @@ pub(super) fn inventory_slot_highlight_hud_rect(
         y: y + slot_y as f32 + HUD_INVENTORY_SLOT_HIGHLIGHT_OFFSET,
         width: HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE,
         height: HUD_INVENTORY_SLOT_HIGHLIGHT_SIZE,
+    }
+}
+
+pub(super) fn hud_item_count_digit_hud_rect(
+    item_rect: HudRect,
+    text_width: u32,
+    pen_x: u32,
+    shadow_offset: f32,
+    glyph: HudDigitGlyph,
+) -> HudRect {
+    HudRect {
+        x: item_rect.x + 17.0 - text_width as f32 + pen_x as f32 + shadow_offset,
+        y: item_rect.y + 9.0 + shadow_offset,
+        width: glyph.width,
+        height: glyph.height,
     }
 }
 
@@ -413,6 +428,28 @@ mod tests {
         assert_eq!(highlight.y, 357.0);
         assert_eq!(highlight.width, 24);
         assert_eq!(highlight.height, 24);
+    }
+
+    #[test]
+    fn hud_item_count_digit_rect_uses_vanilla_item_count_position() {
+        let surface_size = PhysicalSize::new(1280, 720);
+        let item = hotbar_item_hud_rect(surface_size, 0);
+        let glyph = HudDigitGlyph {
+            width: 8,
+            height: 8,
+            advance: 6,
+            ..HudDigitGlyph::default()
+        };
+
+        let digit = hud_item_count_digit_hud_rect(item, 12, 0, 0.0, glyph);
+        assert_eq!(digit.x, 557.0);
+        assert_eq!(digit.y, 710.0);
+        assert_eq!(digit.width, 8);
+        assert_eq!(digit.height, 8);
+
+        let shadow = hud_item_count_digit_hud_rect(item, 12, 6, 1.0, glyph);
+        assert_eq!(shadow.x, 564.0);
+        assert_eq!(shadow.y, 711.0);
     }
 
     #[test]

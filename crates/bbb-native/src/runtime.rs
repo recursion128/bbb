@@ -8,7 +8,7 @@ use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
 use bbb_net::{NetCommand, NetEvent};
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryScreen,
-    HudInventorySlot, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    HudInventorySlot, HudItemCountLabel, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
 };
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
@@ -318,7 +318,19 @@ fn hud_item_icon_for_stack(
                 )
             })
             .collect(),
+        count_label: hud_item_count_label_for_stack(item),
     })
+}
+
+fn hud_item_count_label_for_stack(
+    item: &bbb_protocol::packets::ItemStackSummary,
+) -> Option<HudItemCountLabel> {
+    (!item_stack_is_empty(item) && item.count != 1)
+        .then(|| HudItemCountLabel::new(item.count.to_string()))
+}
+
+fn item_stack_is_empty(item: &bbb_protocol::packets::ItemStackSummary) -> bool {
+    item.item_id.is_none() || item.count <= 0
 }
 
 fn advance_entity_client_animations(
@@ -640,6 +652,20 @@ mod tests {
     }
 
     #[test]
+    fn hud_item_count_label_follows_vanilla_stack_count_rule() {
+        assert_eq!(
+            hud_item_count_label_for_stack(&item_stack(42, 64)),
+            Some(HudItemCountLabel::new("64"))
+        );
+        assert_eq!(hud_item_count_label_for_stack(&item_stack(42, 1)), None);
+        assert_eq!(hud_item_count_label_for_stack(&item_stack(42, 0)), None);
+        assert_eq!(
+            hud_item_count_label_for_stack(&bbb_protocol::packets::ItemStackSummary::empty()),
+            None
+        );
+    }
+
+    #[test]
     fn block_destroy_overlays_include_server_progress_and_keep_highest_per_position() {
         let mut world = WorldStore::new();
         let textures = destroy_stage_test_textures();
@@ -890,6 +916,14 @@ mod tests {
             data_id,
             serializer_id: 8,
             value: bbb_protocol::packets::EntityDataValueKind::Boolean(value),
+        }
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> bbb_protocol::packets::ItemStackSummary {
+        bbb_protocol::packets::ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
         }
     }
 }
