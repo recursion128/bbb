@@ -59,12 +59,23 @@ pub struct DataComponentPatchSummary {
     pub bundle_contents_item_count: Option<usize>,
     #[serde(default)]
     pub enchantments: Vec<ItemEnchantmentSummary>,
+    #[serde(default)]
+    pub map_id: Option<i32>,
+    #[serde(default)]
+    pub map_post_processing: Option<MapPostProcessingSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemEnchantmentSummary {
     pub holder_id: i32,
     pub level: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MapPostProcessingSummary {
+    Lock,
+    Scale,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -171,6 +182,12 @@ fn decode_typed_data_component_patch_summary(
             13 => {
                 summary.enchantments = decode_varint_map(decoder)?;
             }
+            41 => {
+                summary.map_id = Some(decoder.read_var_i32()?);
+            }
+            48 => {
+                summary.map_post_processing = Some(decode_map_post_processing(decoder)?);
+            }
             _ => decode_data_component_value(decoder, type_id)?,
         }
         summary.added_type_ids.push(type_id);
@@ -212,11 +229,15 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         10 | 35 | 71 => {
             decode_identifier(decoder)?;
         }
-        // rarity, dye, map_post_processing, animal variant enums, collars,
+        // rarity, dye, animal variant enums, collars,
         // tropical fish colors, sheep_color, shulker_color.
-        12 | 43 | 48 | 73 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 91 | 92 | 101 | 103 | 104 | 107
-        | 108 | 109 => {
+        12 | 43 | 73 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 91 | 92 | 101 | 103 | 104 | 107 | 108
+        | 109 => {
             decoder.read_var_i32()?;
+        }
+        // map_post_processing uses ByIdMap.OutOfBoundsStrategy.ZERO.
+        48 => {
+            let _ = decode_map_post_processing(decoder)?;
         }
         // enchantments and stored_enchantments: map(enchantment holder id -> level).
         13 | 42 => {
@@ -438,6 +459,13 @@ fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSum
         });
     }
     Ok(entries)
+}
+
+fn decode_map_post_processing(decoder: &mut Decoder<'_>) -> Result<MapPostProcessingSummary> {
+    Ok(match decoder.read_var_i32()? {
+        1 => MapPostProcessingSummary::Scale,
+        _ => MapPostProcessingSummary::Lock,
+    })
 }
 
 fn decode_adventure_mode_predicate(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1200,6 +1228,55 @@ mod tests {
                 ],
                 ..DataComponentPatchSummary::default()
             }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_map_component_summary_values() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(2);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(41);
+        payload.write_var_i32(123);
+        payload.write_var_i32(48);
+        payload.write_var_i32(1);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 2,
+                added_type_ids: vec![41, 48],
+                removed_type_ids: Vec::new(),
+                map_id: Some(123),
+                map_post_processing: Some(MapPostProcessingSummary::Scale),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_map_post_processing_out_of_bounds_as_lock() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(48);
+        payload.write_var_i32(99);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch.map_post_processing,
+            Some(MapPostProcessingSummary::Lock)
         );
         assert!(decoder.is_empty());
     }

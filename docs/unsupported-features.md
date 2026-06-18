@@ -532,8 +532,13 @@ When an agent does any of the following, update this file in the same slice:
         - confirm/cancel button sprites
         - beacon effect button sprites loaded for future effect selection
       - BrewingStandMenu screens with official `brewing_stand.png`
-      - CartographyTableMenu screens with official `cartography_table.png`
-        background
+      - CartographyTableMenu screens with official:
+        - `cartography_table.png` background
+        - result map sprite
+        - scaled-map sprite
+        - duplicated-map sprites
+        - locked-map overlay sprite
+        - invalid-transform error sprite
       - CraftingMenu screens with official `crafting_table.png`
       - EnchantmentMenu screens with official:
         - `enchanting_table.png` background
@@ -678,15 +683,19 @@ When an agent does any of the following, update this file in the same slice:
           - component-hashable potion stack prediction
       - CartographyTableMenu:
         - quick-move and result-slot paths are kept server-authoritative until:
-          - map item component routing
-          - result prediction
+          - full cartography input item/tag routing
+          - local result stack prediction
           - input consumption
           - take-result sound side effects
-        - deferred presentation parity work until canonical map render state
-          is projected into the inventory HUD:
-          - map preview
-          - duplicated/scaled/locked overlays
-          - error overlays
+        - result-state sprites are projected from:
+          - input map id components
+          - result-slot map post-processing components
+          - known paper/map/glass-pane additional inputs
+          - known native map locked/scale state
+        - deferred presentation parity work:
+          - live map pixels and decorations in the preview area
+          - invalid-transform prediction when item runtime or map state is not
+            available
       - GrindstoneMenu:
         - player inventory/hotbar range movement when both input slots are
           occupied
