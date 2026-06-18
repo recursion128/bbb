@@ -4,7 +4,7 @@ use super::local_player::{LocalPlayerAbilitiesState, LocalPlayerInputState, Loca
 use super::local_player_collision::{
     local_player_collides, CollisionAxis as Axis, LocalPlayerBounds, COLLISION_EPSILON,
 };
-use super::local_player_fluid::local_player_fluid_contact;
+use super::local_player_fluid::{local_player_fluid_contact, LocalPlayerFluidContactState};
 use crate::WorldStore;
 
 pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
@@ -33,6 +33,18 @@ const LOCAL_INPUT_FLY_VERTICAL_SPEED_MULTIPLIER: f64 = 3.0;
 const LOCAL_INPUT_FLY_VERTICAL_DAMPING: f64 = 0.6;
 const LOCAL_PHYSICS_TICK_SECONDS: f64 = 0.05;
 const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
+const LOCAL_INPUT_FLUID_SPEED_PER_TICK: f64 = 0.02;
+const LOCAL_INPUT_LIQUID_JUMP_VELOCITY_PER_TICK: f64 = 0.04;
+const LOCAL_INPUT_WATER_SNEAK_DESCEND_VELOCITY_PER_TICK: f64 = 0.04;
+const LOCAL_INPUT_WATER_HORIZONTAL_DRAG: f64 = 0.8;
+const LOCAL_INPUT_SPRINTING_WATER_HORIZONTAL_DRAG: f64 = 0.9;
+const LOCAL_INPUT_WATER_VERTICAL_DRAG: f64 = 0.8;
+const LOCAL_INPUT_LAVA_HORIZONTAL_DRAG: f64 = 0.5;
+const LOCAL_INPUT_LAVA_VERTICAL_DRAG: f64 = 0.8;
+const LOCAL_INPUT_LAVA_DEEP_DRAG: f64 = 0.5;
+const LOCAL_INPUT_FLUID_FALLING_GRAVITY_SCALE: f64 = 1.0 / 16.0;
+const LOCAL_INPUT_LAVA_GRAVITY_SCALE: f64 = 0.25;
+const LOCAL_PLAYER_FLUID_JUMP_THRESHOLD: f64 = 0.4;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
 const EDGE_BACKOFF_STEP: f64 = 0.05;
@@ -94,7 +106,6 @@ fn advance_local_player_physics_step(
     } else {
         0.0
     };
-    let speed = local_player_horizontal_speed(world, input);
     let yaw = f64::from(pose.y_rot).to_radians();
     let forward = (-yaw.sin(), yaw.cos());
     let right = (-yaw.cos(), -yaw.sin());
@@ -107,6 +118,19 @@ fn advance_local_player_physics_step(
     }
 
     let flying = local_player_flying_abilities(world);
+    let initial_fluid_contact = local_player_fluid_contact(world, pose);
+    if flying.is_none() && (initial_fluid_contact.in_water() || initial_fluid_contact.in_lava()) {
+        return advance_local_player_fluid_physics_step(
+            world,
+            pose,
+            input,
+            step_seconds,
+            move_x,
+            move_z,
+            initial_fluid_contact,
+        );
+    }
+
     if flying.is_none() && input.focused && input.jump && pose.on_ground {
         let jump_velocity = local_player_jump_velocity(world);
         if jump_velocity > 1.0e-5 {
@@ -115,6 +139,7 @@ fn advance_local_player_physics_step(
     }
 
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
+    let speed = local_player_horizontal_speed(world, input);
     let mut requested_x = move_x * speed * step_seconds;
     let requested_y = match flying {
         Some(abilities) => {
@@ -189,6 +214,159 @@ fn advance_local_player_physics_step(
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
     pose
+}
+
+fn advance_local_player_fluid_physics_step(
+    world: &WorldStore,
+    mut pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+    step_seconds: f64,
+    move_x: f64,
+    move_z: f64,
+    initial_fluid_contact: LocalPlayerFluidContactState,
+) -> LocalPlayerPoseState {
+    let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
+    if input.focused && input.jump {
+        pose.delta_movement.y += LOCAL_INPUT_LIQUID_JUMP_VELOCITY_PER_TICK * step_ticks;
+    }
+    if input.focused && input.sneak && initial_fluid_contact.in_water() {
+        pose.delta_movement.y -= LOCAL_INPUT_WATER_SNEAK_DESCEND_VELOCITY_PER_TICK * step_ticks;
+    }
+
+    pose.delta_movement.x += move_x * LOCAL_INPUT_FLUID_SPEED_PER_TICK * step_ticks;
+    pose.delta_movement.z += move_z * LOCAL_INPUT_FLUID_SPEED_PER_TICK * step_ticks;
+    let is_falling = pose.delta_movement.y <= 0.0;
+    let requested_x = pose.delta_movement.x * step_ticks;
+    let requested_y = pose.delta_movement.y * step_ticks;
+    let requested_z = pose.delta_movement.z * step_ticks;
+    let movement = clip_local_player_movement_without_step(
+        world,
+        pose.position,
+        requested_x,
+        requested_y,
+        requested_z,
+    );
+    pose.position.x += movement.x;
+    pose.position.y += movement.y;
+    pose.position.z += movement.z;
+
+    let tick_span = step_ticks.max(f64::EPSILON);
+    let horizontal_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON
+        || (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
+    let on_ground =
+        vertical_collision && requested_y < 0.0 || local_player_supported(world, pose.position);
+    let fluid_contact = local_player_fluid_contact(world, pose);
+    pose.fall_distance = if fluid_contact.in_water() {
+        0.0
+    } else {
+        next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground)
+    };
+
+    pose.delta_movement = ProtocolVec3d {
+        x: movement.x / tick_span,
+        y: movement.y / tick_span,
+        z: movement.z / tick_span,
+    };
+    if horizontal_collision {
+        if (movement.x - requested_x).abs() > COLLISION_EPSILON {
+            pose.delta_movement.x = 0.0;
+        }
+        if (movement.z - requested_z).abs() > COLLISION_EPSILON {
+            pose.delta_movement.z = 0.0;
+        }
+    }
+    if vertical_collision {
+        pose.delta_movement.y = 0.0;
+    }
+
+    if initial_fluid_contact.in_water() {
+        pose.delta_movement.x *= water_horizontal_drag(input).powf(step_ticks);
+        pose.delta_movement.y *= LOCAL_INPUT_WATER_VERTICAL_DRAG.powf(step_ticks);
+        pose.delta_movement.z *= water_horizontal_drag(input).powf(step_ticks);
+        pose.delta_movement = local_player_fluid_falling_adjusted_velocity(
+            world,
+            pose.delta_movement,
+            is_falling,
+            input.sprint,
+            step_ticks,
+        );
+    } else {
+        pose.delta_movement = local_player_lava_velocity_after_travel(
+            world,
+            pose.delta_movement,
+            initial_fluid_contact.lava_height,
+            is_falling,
+            input.sprint,
+            step_ticks,
+        );
+    }
+
+    pose.on_ground = on_ground;
+    pose.horizontal_collision = horizontal_collision;
+    pose
+}
+
+fn water_horizontal_drag(input: LocalPlayerInputState) -> f64 {
+    if input.sprint {
+        LOCAL_INPUT_SPRINTING_WATER_HORIZONTAL_DRAG
+    } else {
+        LOCAL_INPUT_WATER_HORIZONTAL_DRAG
+    }
+}
+
+fn local_player_lava_velocity_after_travel(
+    world: &WorldStore,
+    mut velocity: ProtocolVec3d,
+    lava_height: f64,
+    is_falling: bool,
+    sprinting: bool,
+    step_ticks: f64,
+) -> ProtocolVec3d {
+    if lava_height <= LOCAL_PLAYER_FLUID_JUMP_THRESHOLD {
+        velocity.x *= LOCAL_INPUT_LAVA_HORIZONTAL_DRAG.powf(step_ticks);
+        velocity.y *= LOCAL_INPUT_LAVA_VERTICAL_DRAG.powf(step_ticks);
+        velocity.z *= LOCAL_INPUT_LAVA_HORIZONTAL_DRAG.powf(step_ticks);
+        velocity = local_player_fluid_falling_adjusted_velocity(
+            world, velocity, is_falling, sprinting, step_ticks,
+        );
+    } else {
+        velocity.x *= LOCAL_INPUT_LAVA_DEEP_DRAG.powf(step_ticks);
+        velocity.y *= LOCAL_INPUT_LAVA_DEEP_DRAG.powf(step_ticks);
+        velocity.z *= LOCAL_INPUT_LAVA_DEEP_DRAG.powf(step_ticks);
+    }
+
+    velocity.y -= local_player_effective_gravity_per_tick(world, velocity.y)
+        * LOCAL_INPUT_LAVA_GRAVITY_SCALE
+        * step_ticks;
+    velocity
+}
+
+fn local_player_fluid_falling_adjusted_velocity(
+    world: &WorldStore,
+    mut velocity: ProtocolVec3d,
+    is_falling: bool,
+    sprinting: bool,
+    step_ticks: f64,
+) -> ProtocolVec3d {
+    if sprinting {
+        return velocity;
+    }
+    let gravity_step = local_player_effective_gravity_per_tick(world, velocity.y)
+        * LOCAL_INPUT_FLUID_FALLING_GRAVITY_SCALE
+        * step_ticks;
+    if gravity_step == 0.0 {
+        return velocity;
+    }
+    velocity.y = if is_falling
+        && (velocity.y - 0.005 * step_ticks).abs() >= 0.003 * step_ticks
+        && (velocity.y - gravity_step).abs() < 0.003 * step_ticks
+    {
+        -0.003 * step_ticks
+    } else {
+        velocity.y - gravity_step
+    };
+    velocity
 }
 
 fn clip_local_player_movement(
@@ -653,6 +831,7 @@ mod tests {
     const MUD_BLOCK_STATE_ID: i32 = 27922;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
+    const SOURCE_LAVA_BLOCK_STATE_ID: i32 = 102;
 
     #[test]
     fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
@@ -1499,6 +1678,161 @@ mod tests {
         assert!(!pose.on_ground);
         assert_f64_near(pose.position.y, 1.6, 0.000001);
         assert_f64_near(pose.fall_distance, 0.5, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_water_uses_fluid_relative_acceleration_and_drag() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            fall_distance: 0.4,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.016, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_sprinting_in_water_uses_vanilla_sprint_drag_without_sinking_gravity() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.018, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_jump_and_sneak_in_water_apply_liquid_vertical_impulses() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let upward = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(upward.position.y, 1.14, 0.000001);
+        assert_f64_near(upward.delta_movement.y, 0.027, 0.000001);
+
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+        let downward = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(downward.position.y, 1.06, 0.000001);
+        assert_f64_near(downward.delta_movement.y, -0.037, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_lava_uses_lava_drag_and_gravity() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.01, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
+    }
+
+    #[test]
+    fn local_player_flying_in_water_uses_flying_movement_not_fluid_travel() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        apply_flying_abilities(&mut world, 0.05);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step =
+            LOCAL_INPUT_DEFAULT_FLY_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
     }
 
     #[test]

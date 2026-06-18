@@ -17,6 +17,10 @@ impl LocalPlayerFluidContactState {
     pub(super) fn in_water(self) -> bool {
         self.water_height > 0.0
     }
+
+    pub(super) fn in_lava(self) -> bool {
+        self.lava_height > 0.0
+    }
 }
 
 pub(super) fn local_player_fluid_contact(

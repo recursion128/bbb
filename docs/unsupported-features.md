@@ -293,7 +293,13 @@ When an agent does any of the following, update this file in the same slice:
     - Extend the current basic AABB collision and gravity/jump slice to cover:
       - full fixed 20Hz survival physics
       - remaining vanilla voxel collision shapes
-      - fluids
+      - remaining fluid movement work beyond current still water/lava support:
+        - flow current vectors
+        - water movement efficiency
+        - Dolphin's Grace
+        - swimming pose / sprint-swim camera and movement nuance
+        - jump-out-of-fluid collision assist
+        - bubble column behavior
       - remaining status-effect movement cases beyond local support for:
         - local Speed/Slowness movement-speed modifiers
         - local Jump Boost jump impulse
@@ -442,6 +448,15 @@ When an agent does any of the following, update this file in the same slice:
         - same-kind fluid above makes the lower fluid column full height
         - the local player fluid interaction box is deflated by `0.001`
       - water contact resets canonical local player `fall_distance`
+      - basic still-fluid travel for local players affected by fluids:
+        - water and lava `moveRelative(0.02)` acceleration
+        - water drag `0.8`
+        - sprinting-water drag `0.9`
+        - lava drag `0.5`
+        - liquid jump impulse `+0.04`
+        - water sneak descent impulse `-0.04`
+        - vanilla-shaped fluid gravity scaling
+        - creative/spectator flying movement ignores fluid travel
       - vanilla-shaped walking player movement packet thresholds:
         - position delta squared greater than `(2.0E-4)^2`
         - rotation/status-only packets when only:
