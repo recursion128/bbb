@@ -528,7 +528,8 @@ When an agent does any of the following, update this file in the same slice:
       - BeaconMenu screens with official:
         - `beacon.png` background
         - payment slot layout
-        - beacon button sprites loaded for future effect selection
+        - confirm/cancel button sprites
+        - beacon effect button sprites loaded for future effect selection
       - BrewingStandMenu screens with official `brewing_stand.png`
       - CartographyTableMenu screens with official `cartography_table.png`
         background
@@ -572,8 +573,9 @@ When an agent does any of the following, update this file in the same slice:
     - LecternMenu page-button clicks queue vanilla container-button ids:
       - `1` for previous page
       - `2` for next page
-    - Lectern full book text, Done controls, and Take Book controls remain
-      follow-up screen presentation/control work.
+    - LecternMenu Done closes the active container.
+    - LecternMenu Take Book queues vanilla container-button id `3`.
+    - Lectern full book text remains follow-up screen presentation work.
     - MountScreenOpen opens a server-controlled container and hit-tests:
       - saddle slot
       - body armor slot
@@ -625,6 +627,11 @@ When an agent does any of the following, update this file in the same slice:
           - material consumption
           - anvil damage side effects
       - BeaconMenu:
+        - confirm/cancel buttons render official sprites.
+        - cancel closes the active container.
+        - confirm queues `ServerboundSetBeaconPacket` from the current
+          server-provided primary/secondary effects when payment and primary
+          effect data make the vanilla button active, then closes the container.
         - quick-move paths are kept server-authoritative until:
           - beacon payment item tag routing
           - max-stack-one payment slot prediction
@@ -632,8 +639,8 @@ When an agent does any of the following, update this file in the same slice:
         - deferred presentation parity work:
           - primary/secondary effect button grid
           - effect icons
-          - selected/highlighted/disabled button states
-          - confirm/cancel button behavior from in-game UI
+          - effect selected/highlighted/disabled button states
+          - confirm/cancel hover state
           - labels/tooltips
       - CraftingMenu:
         - non-result slots

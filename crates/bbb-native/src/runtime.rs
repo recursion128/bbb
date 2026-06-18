@@ -48,6 +48,13 @@ const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
 const CRAFTER_POWERED_DATA_ID: i16 = 9;
 const CRAFTER_DISABLED_SLOT_SPRITE_SIZE: u32 = 18;
 const CRAFTER_REDSTONE_SPRITE_SIZE: u32 = 16;
+const BEACON_PRIMARY_EFFECT_DATA_ID: i16 = 1;
+const BEACON_CONFIRM_BUTTON_X: i32 = 164;
+const BEACON_CANCEL_BUTTON_X: i32 = 190;
+const BEACON_ACTION_BUTTON_Y: i32 = 107;
+const BEACON_ACTION_BUTTON_SIZE: u32 = 22;
+const BEACON_ACTION_ICON_OFFSET: i32 = 2;
+const BEACON_ACTION_ICON_SIZE: u32 = 18;
 const ENCHANTING_TABLE_LAPIS_SLOT_SPRITE_SIZE: u32 = 16;
 const ENCHANTING_TABLE_OPTION_COUNT: i16 = 3;
 const ENCHANTING_TABLE_OPTION_X: i32 = 60;
@@ -571,7 +578,7 @@ fn hud_inventory_background_layers(
             layers
         }
         InventoryScreenBackground::Beacon => {
-            vec![hud_inventory_background_layer(
+            let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::Beacon,
                 0,
                 0,
@@ -579,7 +586,9 @@ fn hud_inventory_background_layers(
                 219,
                 [0.0, 0.0],
                 [230.0 / 256.0, 219.0 / 256.0],
-            )]
+            )];
+            push_beacon_action_button_layers(world, &mut layers);
+            layers
         }
         InventoryScreenBackground::BrewingStand => {
             let mut layers = vec![hud_inventory_background_layer(
@@ -1314,6 +1323,62 @@ fn merchant_xp_current_width(offers: &MerchantOffersState) -> Option<u32> {
 
 fn anvil_input_slot_has_item(world: &WorldStore) -> bool {
     open_container_slot_has_item(world, 0)
+}
+
+fn push_beacon_action_button_layers(
+    world: &WorldStore,
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+) {
+    let confirm_texture = if beacon_confirm_button_is_active(world) {
+        HudInventoryBackgroundTexture::BeaconButton
+    } else {
+        HudInventoryBackgroundTexture::BeaconButtonDisabled
+    };
+    push_beacon_action_button_layer(
+        layers,
+        confirm_texture,
+        HudInventoryBackgroundTexture::BeaconConfirm,
+        BEACON_CONFIRM_BUTTON_X,
+    );
+    push_beacon_action_button_layer(
+        layers,
+        HudInventoryBackgroundTexture::BeaconButton,
+        HudInventoryBackgroundTexture::BeaconCancel,
+        BEACON_CANCEL_BUTTON_X,
+    );
+}
+
+fn push_beacon_action_button_layer(
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+    button_texture: HudInventoryBackgroundTexture,
+    icon_texture: HudInventoryBackgroundTexture,
+    x: i32,
+) {
+    layers.push(hud_inventory_background_layer(
+        button_texture,
+        x,
+        BEACON_ACTION_BUTTON_Y,
+        BEACON_ACTION_BUTTON_SIZE,
+        BEACON_ACTION_BUTTON_SIZE,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
+    layers.push(hud_inventory_background_layer(
+        icon_texture,
+        x + BEACON_ACTION_ICON_OFFSET,
+        BEACON_ACTION_BUTTON_Y + BEACON_ACTION_ICON_OFFSET,
+        BEACON_ACTION_ICON_SIZE,
+        BEACON_ACTION_ICON_SIZE,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
+}
+
+fn beacon_confirm_button_is_active(world: &WorldStore) -> bool {
+    open_container_slot_has_item(world, 0)
+        && world
+            .open_container_data_value(BEACON_PRIMARY_EFFECT_DATA_ID)
+            .is_some_and(|value| value > 0)
 }
 
 fn push_crafter_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBackgroundLayer>) {
@@ -2563,15 +2628,53 @@ mod tests {
         assert_eq!(screen.height, 219);
         assert_eq!(
             screen.background_layers,
-            vec![hud_inventory_background_layer(
-                HudInventoryBackgroundTexture::Beacon,
-                0,
-                0,
-                230,
-                219,
-                [0.0, 0.0],
-                [230.0 / 256.0, 219.0 / 256.0],
-            )]
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Beacon,
+                    0,
+                    0,
+                    230,
+                    219,
+                    [0.0, 0.0],
+                    [230.0 / 256.0, 219.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::BeaconButtonDisabled,
+                    164,
+                    107,
+                    22,
+                    22,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::BeaconConfirm,
+                    166,
+                    109,
+                    18,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::BeaconButton,
+                    190,
+                    107,
+                    22,
+                    22,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::BeaconCancel,
+                    192,
+                    109,
+                    18,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
         );
         assert_eq!(screen.hovered_slot_id, Some(36));
         assert_eq!(screen.slots.len(), 37);
@@ -2581,6 +2684,54 @@ mod tests {
         assert_eq!((first_inventory.x, first_inventory.y), (36, 137));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 36).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (180, 195));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_active_beacon_confirm_button() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 9,
+            title: "Beacon".to_string(),
+        });
+        let mut items = vec![bbb_protocol::packets::ItemStackSummary::empty(); 37];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: BEACON_PRIMARY_EFFECT_DATA_ID,
+            value: 5,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert!(screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::BeaconButton,
+                164,
+                107,
+                22,
+                22,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
+        assert!(!screen
+            .background_layers
+            .contains(&hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::BeaconButtonDisabled,
+                164,
+                107,
+                22,
+                22,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            )));
     }
 
     #[test]

@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
-use bbb_protocol::packets::{ContainerInput, ItemStackSummary, SelectTradeCommand};
+use bbb_protocol::packets::{ContainerInput, ItemStackSummary, SelectTradeCommand, SetBeacon};
 use bbb_world::{
     ContainerClickBuildError, ContainerClickSlotRequest, MountEquipmentSlotVisibility,
     MountInventoryKind, WorldStore,
@@ -19,7 +19,7 @@ use super::{
     commands::{
         hotbar_slot_for_key, queue_container_button_click_command, queue_container_click_command,
         queue_container_close_command, queue_container_slot_state_changed_command,
-        queue_select_trade_command,
+        queue_select_trade_command, queue_set_beacon_command,
     },
     ClientInputState,
 };
@@ -69,6 +69,12 @@ const ANVIL_SLOT_COUNT: i16 = 3;
 const BEACON_SCREEN_WIDTH: i32 = 230;
 const BEACON_SCREEN_HEIGHT: i32 = 219;
 const BEACON_SLOT_COUNT: i16 = 1;
+const BEACON_PRIMARY_EFFECT_DATA_ID: i16 = 1;
+const BEACON_SECONDARY_EFFECT_DATA_ID: i16 = 2;
+const BEACON_CONFIRM_BUTTON_X: i32 = 164;
+const BEACON_CANCEL_BUTTON_X: i32 = 190;
+const BEACON_ACTION_BUTTON_Y: i32 = 107;
+const BEACON_ACTION_BUTTON_SIZE: i32 = 22;
 const CARTOGRAPHY_TABLE_SCREEN_WIDTH: i32 = 176;
 const CARTOGRAPHY_TABLE_SCREEN_HEIGHT: i32 = 166;
 const CARTOGRAPHY_TABLE_SLOT_COUNT: i16 = 3;
@@ -215,6 +221,12 @@ enum InventoryClickTarget {
 enum LecternClickTarget {
     Done,
     MenuButton(i32),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BeaconClickTarget {
+    Confirm,
+    Cancel,
 }
 
 pub(crate) fn local_inventory_slot_layouts() -> Vec<InventorySlotLayout> {
@@ -1204,6 +1216,21 @@ pub(crate) fn handle_inventory_mouse_input(
         return true;
     }
     if button_num == 0
+        && maybe_queue_beacon_button_click(
+            world,
+            counters,
+            net_commands,
+            cursor_position,
+            surface_size,
+        )
+    {
+        input.inventory_last_click_slot = None;
+        input.inventory_last_click_button_num = None;
+        input.inventory_last_click_at = None;
+        local_inventory_clear_quick_craft(input);
+        return true;
+    }
+    if button_num == 0
         && maybe_queue_merchant_trade_click(
             world,
             counters,
@@ -1350,6 +1377,28 @@ fn maybe_queue_lectern_button_click(
             };
             queue_container_button_click_command(counters, net_commands, container_id, button_id);
             true
+        }
+    }
+}
+
+fn maybe_queue_beacon_button_click(
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    let Some(target) = beacon_button_at_position(world, cursor_position, surface_size) else {
+        return false;
+    };
+    match target {
+        BeaconClickTarget::Cancel => queue_container_close_command(counters, world, net_commands),
+        BeaconClickTarget::Confirm => {
+            let Some(command) = beacon_set_command(world) else {
+                return false;
+            };
+            queue_set_beacon_command(counters, net_commands, command);
+            queue_container_close_command(counters, world, net_commands)
         }
     }
 }
@@ -2124,6 +2173,37 @@ fn lectern_button_at_position(
     None
 }
 
+fn beacon_button_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<BeaconClickTarget> {
+    let layout = inventory_screen_layout(world)?;
+    if layout.background != InventoryScreenBackground::Beacon {
+        return None;
+    }
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = inventory_screen_origin(surface_size, &layout);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    if y < f64::from(BEACON_ACTION_BUTTON_Y)
+        || y >= f64::from(BEACON_ACTION_BUTTON_Y + BEACON_ACTION_BUTTON_SIZE)
+    {
+        return None;
+    }
+    if x >= f64::from(BEACON_CONFIRM_BUTTON_X)
+        && x < f64::from(BEACON_CONFIRM_BUTTON_X + BEACON_ACTION_BUTTON_SIZE)
+    {
+        return Some(BeaconClickTarget::Confirm);
+    }
+    if x >= f64::from(BEACON_CANCEL_BUTTON_X)
+        && x < f64::from(BEACON_CANCEL_BUTTON_X + BEACON_ACTION_BUTTON_SIZE)
+    {
+        return Some(BeaconClickTarget::Cancel);
+    }
+    None
+}
+
 fn stonecutter_recipe_button_at_position(
     world: &WorldStore,
     start_index: i32,
@@ -2276,6 +2356,22 @@ fn stonecutter_input_item_id(world: &WorldStore) -> Option<i32> {
         .and_then(|slot| slot.item.item_id)
 }
 
+fn beacon_set_command(world: &WorldStore) -> Option<SetBeacon> {
+    if !inventory_slot_has_item(world, 0) {
+        return None;
+    }
+    let primary_effect = beacon_data_effect_id(world, BEACON_PRIMARY_EFFECT_DATA_ID)?;
+    Some(SetBeacon {
+        primary_effect: Some(primary_effect),
+        secondary_effect: beacon_data_effect_id(world, BEACON_SECONDARY_EFFECT_DATA_ID),
+    })
+}
+
+fn beacon_data_effect_id(world: &WorldStore, data_id: i16) -> Option<i32> {
+    let value = world.open_container_data_value(data_id)?;
+    (value > 0).then_some(i32::from(value) - 1)
+}
+
 fn inventory_screen_click_target(
     world: &WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
@@ -2372,9 +2468,9 @@ mod tests {
         ContainerSetContent, ContainerSetData, ContainerSlotStateChanged, EntityDataValue,
         EntityDataValueKind, HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary,
         ItemCostSummary, ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen,
-        OpenScreen, RecipePropertySetSummary, SelectBundleItem, SelectTradeCommand, SetCursorItem,
-        SetEntityData, SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary,
-        UpdateRecipes, Vec3d,
+        OpenScreen, RecipePropertySetSummary, SelectBundleItem, SelectTradeCommand, SetBeacon,
+        SetCursorItem, SetEntityData, SetPlayerInventory, SlotDisplaySummary,
+        StonecutterSelectableRecipeSummary, UpdateRecipes, Vec3d,
     };
     use uuid::Uuid;
 
@@ -3868,6 +3964,14 @@ mod tests {
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(713.0, 454.0)), size),
             Some(InventoryClickTarget::Slot(36))
         );
+        assert_eq!(
+            beacon_button_at_position(&world, Some(PhysicalPosition::new(700.0, 369.0)), size),
+            Some(BeaconClickTarget::Confirm)
+        );
+        assert_eq!(
+            beacon_button_at_position(&world, Some(PhysicalPosition::new(726.0, 369.0)), size),
+            Some(BeaconClickTarget::Cancel)
+        );
     }
 
     #[test]
@@ -4865,6 +4969,140 @@ mod tests {
 
         assert_eq!(counters.container_button_click_commands_queued, 0);
         assert_eq!(counters.container_click_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn beacon_confirm_click_queues_set_beacon_then_close_when_active() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: BEACON_MENU_TYPE_ID,
+            title: "Beacon".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 37];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: BEACON_PRIMARY_EFFECT_DATA_ID,
+            value: 5,
+        });
+        world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: BEACON_SECONDARY_EFFECT_DATA_ID,
+            value: 8,
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(700.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.set_beacon_commands_queued, 1);
+        assert_eq!(counters.container_close_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetBeacon(SetBeacon {
+                primary_effect: Some(4),
+                secondary_effect: Some(7),
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClose(ContainerCloseRequest { container_id: 7 })
+        );
+        assert!(world.inventory().open_container.is_none());
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn beacon_confirm_click_ignores_disabled_button_without_payment() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: BEACON_MENU_TYPE_ID,
+            title: "Beacon".to_string(),
+        });
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![ItemStackSummary::empty(); 37],
+            carried_item: ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: BEACON_PRIMARY_EFFECT_DATA_ID,
+            value: 5,
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(700.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.set_beacon_commands_queued, 0);
+        assert_eq!(counters.container_close_commands_queued, 0);
+        assert!(world.inventory().open_container.is_some());
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn beacon_cancel_click_queues_container_close_request() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: BEACON_MENU_TYPE_ID,
+            title: "Beacon".to_string(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(726.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_close_commands_queued, 1);
+        assert_eq!(counters.set_beacon_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClose(ContainerCloseRequest { container_id: 7 })
+        );
+        assert!(world.inventory().open_container.is_none());
         assert!(rx.try_recv().is_err());
     }
 
