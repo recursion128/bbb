@@ -75,6 +75,7 @@ pub(crate) struct ClientInputState {
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
     last_move_command_at: Option<Instant>,
+    last_move_position_command_at: Option<Instant>,
     last_move_command_pose: Option<LocalPlayerPoseState>,
     last_paddle_boat_command_at: Option<Instant>,
     riding_jump_charge_seconds: Option<f64>,

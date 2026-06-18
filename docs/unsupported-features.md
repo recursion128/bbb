@@ -253,7 +253,8 @@ update this file in the same slice.
     - sneak pose details
     - the near-ground/fallDistance branch of sneak edge backoff
     - full flying friction
-    - vanilla movement send thresholds
+    - remaining passenger/vehicle movement send edge cases beyond the
+      vanilla-shaped walking player packet thresholds
   - Block destroy: close:
     - remaining block destroy profile gaps outside the mechanically parsed
       `Blocks.java` property declarations:
@@ -341,6 +342,11 @@ update this file in the same slice.
       - vanilla default 0.6 step-up onto bottom slabs/stairs and low ground
         shapes without auto-stepping full blocks
       - a basic vanilla-shaped sneak edge backoff
+      - vanilla-shaped walking player movement packet thresholds:
+        - position delta squared greater than `(2.0E-4)^2`
+        - rotation/status-only packets when only look or collision flags change
+        - 20 tick position reminder that resets only when a position packet is
+          sent
   - Commands:
     - Existing input modules queue many serverbound packets, including
       vanilla-shaped boat/raft paddle-state packets from local mounted input.

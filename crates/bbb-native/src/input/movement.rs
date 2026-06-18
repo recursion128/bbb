@@ -185,7 +185,9 @@ fn maybe_queue_player_move_command(
 
     let last_pose = input.last_move_command_pose;
     let force_position = last_pose.is_some()
-        && elapsed_since_last
+        && input
+            .last_move_position_command_at
+            .and_then(|last| now.checked_duration_since(last))
             .is_some_and(|elapsed| elapsed >= MOVE_COMMAND_POSITION_REMINDER_INTERVAL);
     let (send_position, send_rotation) = match last_pose {
         Some(last_pose) => {
@@ -237,6 +239,9 @@ fn maybe_queue_player_move_command(
         remembered_pose.last_teleport_id = pose.last_teleport_id;
 
         input.last_move_command_at = Some(now);
+        if send_position {
+            input.last_move_position_command_at = Some(now);
+        }
         input.last_move_command_pose = Some(remembered_pose);
         counters.player_move_commands_queued += 1;
     }
@@ -383,6 +388,73 @@ mod tests {
         assert!(reminder.force_position);
         assert_eq!(reminder.state, first.state);
         assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
+    fn move_command_position_reminder_is_not_reset_by_rotation_only_commands() {
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut pose = LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        };
+
+        maybe_queue_player_move_command(&mut input, &mut counters, &commands, pose, start);
+        let first = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected move command, got {other:?}"),
+        };
+        assert!(!first.force_position);
+
+        for tick in 1..20 {
+            pose.y_rot = tick as f32;
+            maybe_queue_player_move_command(
+                &mut input,
+                &mut counters,
+                &commands,
+                pose,
+                start + MOVE_COMMAND_INTERVAL * tick,
+            );
+            let rotation_only = match rx.try_recv().unwrap() {
+                NetCommand::MovePlayer(command) => command,
+                other => panic!("expected move command, got {other:?}"),
+            };
+            assert_eq!(rotation_only.state.position, first.state.position);
+            assert!(!rotation_only.force_position, "tick {tick}");
+        }
+
+        pose.y_rot = 20.0;
+        maybe_queue_player_move_command(
+            &mut input,
+            &mut counters,
+            &commands,
+            pose,
+            start + MOVE_COMMAND_POSITION_REMINDER_INTERVAL,
+        );
+        let reminder = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected move command, got {other:?}"),
+        };
+        assert!(reminder.force_position);
+        assert_eq!(reminder.state.position, first.state.position);
+
+        pose.y_rot = 21.0;
+        maybe_queue_player_move_command(
+            &mut input,
+            &mut counters,
+            &commands,
+            pose,
+            start + MOVE_COMMAND_POSITION_REMINDER_INTERVAL + MOVE_COMMAND_INTERVAL,
+        );
+        let rotation_after_reminder = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected move command, got {other:?}"),
+        };
+        assert!(!rotation_after_reminder.force_position);
+        assert_eq!(counters.player_move_commands_queued, 22);
     }
 
     #[test]
