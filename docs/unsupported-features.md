@@ -90,6 +90,7 @@ When an agent does any of the following, update this file in the same slice:
     - play -> configuration teardown
     - custom payload brand/unknown presentation state
     - item cooldown add/remove state
+    - delete/disguised chat state
     - scoreboard objective/display/score/team updates
     - advancement update/select-tab state
     - recipe book add/remove/settings updates

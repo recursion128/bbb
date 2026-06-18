@@ -511,15 +511,15 @@ mod tests {
         ChunkHeightmapData, ChunkPos as ProtocolChunkPos, ClockUpdate, CommandSuggestion,
         CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, Cooldown, CustomChatCompletions,
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
-        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DialogHolder,
-        Difficulty, EntityAnchor, Explosion, FilterMask, FilterMaskKind, GameEvent, GameProfile,
-        GameProfileProperty, GameRuleValue, GameRuleValues, GameTestHighlightPos, GameType,
-        IngredientSummary, InteractionHand, LevelChunkBlockEntity, LevelChunkData,
-        LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdateData, MapColorPatch,
-        MapDecoration, MapItemData, MessageSignature, MountScreenOpen, MoveVehicle,
-        ObjectiveRenderType, OpenBook, OpenSignEditor, ParticlePayload, PlaceGhostRecipe,
-        PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth,
-        PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove,
+        DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat,
+        DialogHolder, Difficulty, DisguisedChat, EntityAnchor, Explosion, FilterMask,
+        FilterMaskKind, GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues,
+        GameTestHighlightPos, GameType, IngredientSummary, InteractionHand, LevelChunkBlockEntity,
+        LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdateData,
+        MapColorPatch, MapDecoration, MapItemData, MessageSignature, MountScreenOpen, MoveVehicle,
+        ObjectiveRenderType, OpenBook, OpenSignEditor, PackedMessageSignature, ParticlePayload,
+        PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerExperience,
+        PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove,
         PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate,
         PlayerTeamMethod, PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd,
         RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
@@ -1148,6 +1148,73 @@ mod tests {
             probe.world.counters().player_chat_acknowledgement_packets,
             1
         );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_delete_and_disguised_chat_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let signature = MessageSignature {
+            bytes: vec![9; 256],
+        };
+        let expected_signature_checksum = signature.checksum();
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerChat(
+                protocol_player_chat_with_signature(0, signature),
+            ))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::DeleteChat(DeleteChat {
+                message_signature: PackedMessageSignature {
+                    cache_id: Some(0),
+                    full_signature: None,
+                },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::DisguisedChat(DisguisedChat {
+                message: "server notice".to_string(),
+                chat_type: ChatTypeBound {
+                    chat_type: ChatTypeHolder::Registry { id: 0 },
+                    name: "Server".to_string(),
+                    target_name: None,
+                },
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(3, ChunkPos { x: 0, z: 0 });
+        let chat = report.world.client_chat();
+
+        assert_eq!(chat.messages.len(), 2);
+        assert_eq!(chat.deleted_messages.len(), 1);
+        assert_eq!(chat.messages[0].kind, bbb_world::ChatMessageKind::Player);
+        assert_eq!(chat.messages[0].content, "message 0");
+        assert_eq!(chat.messages[1].kind, bbb_world::ChatMessageKind::Disguised);
+        assert_eq!(chat.messages[1].content, "server notice");
+        assert_eq!(chat.messages[1].sender_name, "Server");
+
+        let deleted = &chat.deleted_messages[0];
+        assert_eq!(deleted.cache_id, Some(0));
+        assert!(deleted.resolved);
+        assert_eq!(
+            deleted
+                .signature
+                .as_ref()
+                .map(|signature| signature.checksum),
+            Some(expected_signature_checksum)
+        );
+
+        assert_eq!(report.world_counters.player_chat_packets, 1);
+        assert_eq!(report.world_counters.delete_chat_packets, 1);
+        assert_eq!(report.world_counters.disguised_chat_packets, 1);
+        assert_eq!(report.world_counters.chat_messages_tracked, 2);
+        assert_eq!(report.world_counters.deleted_chat_messages_tracked, 1);
+        assert_eq!(report.world_counters.chat_signature_cache_entries, 1);
+        assert_eq!(report.world_counters.chat_unknown_packed_signatures, 0);
     }
 
     #[tokio::test]
