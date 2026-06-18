@@ -138,6 +138,16 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         shulker_box.height,
         &shulker_box.rgba,
     )?;
+    let stonecutter = gui_texture(
+        roots,
+        "textures/gui/container/stonecutter.png",
+        "minecraft:textures/gui/container/stonecutter",
+    )?;
+    renderer.upload_hud_stonecutter_background(
+        stonecutter.width,
+        stonecutter.height,
+        &stonecutter.rgba,
+    )?;
     let slot_highlight_back = hud_sprite(&sprites, "container/slot_highlight_back")?;
     renderer.upload_hud_slot_highlight_back(
         slot_highlight_back.width,
@@ -193,6 +203,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         furnace = ?(furnace.width, furnace.height),
         blast_furnace = ?(blast_furnace.width, blast_furnace.height),
         smoker = ?(smoker.width, smoker.height),
+        stonecutter = ?(stonecutter.width, stonecutter.height),
         experience = ?(experience_background.width, experience_background.height),
         heart = ?(heart_full.width, heart_full.height),
         food = ?(food_full.width, food_full.height),

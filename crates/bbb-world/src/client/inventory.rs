@@ -9,6 +9,7 @@ use bbb_protocol::packets::{
     MerchantOffer as ProtocolMerchantOffer, MerchantOffers as ProtocolMerchantOffers,
     OpenScreen as ProtocolOpenScreen, SetCursorItem as ProtocolSetCursorItem,
     SetPlayerInventory as ProtocolSetPlayerInventory,
+    StonecutterSelectableRecipeSummary as ProtocolStonecutterSelectableRecipeSummary,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -25,6 +26,7 @@ const VANILLA_MENU_TYPE_CRAFTING_ID: i32 = 12;
 const VANILLA_MENU_TYPE_FURNACE_ID: i32 = 14;
 const VANILLA_MENU_TYPE_HOPPER_ID: i32 = 16;
 const VANILLA_MENU_TYPE_SMOKER_ID: i32 = 22;
+const VANILLA_MENU_TYPE_STONECUTTER_ID: i32 = 24;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_CONTAINER_SLOT_COUNT: i16 = 9;
 const CRAFTING_MENU_RESULT_SLOT: i16 = 0;
@@ -35,6 +37,13 @@ const CRAFTING_MENU_PLAYER_MAIN_END: i16 = 37;
 const CRAFTING_MENU_HOTBAR_START: i16 = 37;
 const CRAFTING_MENU_HOTBAR_END: i16 = 46;
 const CRAFTING_MENU_TOTAL_SLOT_COUNT: i16 = 46;
+const STONECUTTER_INPUT_SLOT: i16 = 0;
+const STONECUTTER_RESULT_SLOT: i16 = 1;
+const STONECUTTER_PLAYER_MAIN_START: i16 = 2;
+const STONECUTTER_PLAYER_MAIN_END: i16 = 29;
+const STONECUTTER_HOTBAR_START: i16 = 29;
+const STONECUTTER_HOTBAR_END: i16 = 38;
+const STONECUTTER_TOTAL_SLOT_COUNT: i16 = 38;
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
@@ -698,8 +707,7 @@ impl WorldStore {
         let mut slots_after = slots_before.clone();
         let mut cursor_after = self.inventory.cursor_item.clone();
         let mut quick_craft_after = self.inventory.local_quick_craft.clone();
-        if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTING_ID)
-            && request.slot_num == CRAFTING_MENU_RESULT_SLOT
+        if menu_result_slot_requires_server_authority(menu_type_id, request.slot_num)
             && matches!(
                 request.input,
                 ProtocolContainerInput::Pickup | ProtocolContainerInput::QuickMove
@@ -772,6 +780,14 @@ impl WorldStore {
                             menu_type_id,
                             &self.recipes.property_sets,
                             &self.furnace_fuel_item_ids,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_STONECUTTER_ID) {
+                        apply_stonecutter_menu_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            &self.recipes.stonecutter_recipes,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if let Some(container_slot_count) =
@@ -1669,6 +1685,19 @@ fn shulker_box_container_slot_count(menu_type_id: Option<i32>) -> Option<i16> {
         .then_some(SHULKER_BOX_CONTAINER_SLOT_COUNT)
 }
 
+fn menu_result_slot_requires_server_authority(menu_type_id: Option<i32>, slot_num: i16) -> bool {
+    matches!(
+        (menu_type_id, slot_num),
+        (
+            Some(VANILLA_MENU_TYPE_CRAFTING_ID),
+            CRAFTING_MENU_RESULT_SLOT
+        ) | (
+            Some(VANILLA_MENU_TYPE_STONECUTTER_ID),
+            STONECUTTER_RESULT_SLOT
+        )
+    )
+}
+
 fn furnace_family_menu_type(menu_type_id: Option<i32>) -> Option<i32> {
     let menu_type_id = menu_type_id?;
     matches!(
@@ -1971,6 +2000,77 @@ fn apply_crafting_menu_quick_move_to_slots(
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
     }
+}
+
+fn apply_stonecutter_menu_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    stonecutter_recipes: &[ProtocolStonecutterSelectableRecipeSummary],
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !(0..STONECUTTER_TOTAL_SLOT_COUNT).contains(&slot_num) || slot_num == STONECUTTER_RESULT_SLOT
+    {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let source_item = slots[source_index].item.clone();
+    let target = match slot_num {
+        STONECUTTER_INPUT_SLOT => {
+            Some((STONECUTTER_PLAYER_MAIN_START, STONECUTTER_HOTBAR_END, false))
+        }
+        slot if (STONECUTTER_PLAYER_MAIN_START..STONECUTTER_HOTBAR_END).contains(&slot)
+            && stonecutter_accepts_input(&source_item, stonecutter_recipes) =>
+        {
+            Some((STONECUTTER_INPUT_SLOT, STONECUTTER_RESULT_SLOT, false))
+        }
+        slot if (STONECUTTER_PLAYER_MAIN_START..STONECUTTER_PLAYER_MAIN_END).contains(&slot) => {
+            Some((STONECUTTER_HOTBAR_START, STONECUTTER_HOTBAR_END, false))
+        }
+        slot if (STONECUTTER_HOTBAR_START..STONECUTTER_HOTBAR_END).contains(&slot) => Some((
+            STONECUTTER_PLAYER_MAIN_START,
+            STONECUTTER_PLAYER_MAIN_END,
+            false,
+        )),
+        _ => None,
+    };
+    let Some((start_slot, end_slot, backwards)) = target else {
+        return;
+    };
+
+    let mut moving = source_item;
+    if move_item_stack_to_slots(
+        container_id,
+        slots,
+        source_index,
+        &mut moving,
+        start_slot,
+        end_slot,
+        backwards,
+        default_item_max_stack_sizes,
+    ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn stonecutter_accepts_input(
+    stack: &ProtocolItemStackSummary,
+    stonecutter_recipes: &[ProtocolStonecutterSelectableRecipeSummary],
+) -> bool {
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    stonecutter_recipes
+        .iter()
+        .any(|recipe| recipe.input.item_ids.contains(&item_id))
 }
 
 fn furnace_can_smelt(
@@ -2403,7 +2503,10 @@ impl MerchantOfferState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{RecipePropertySetSummary, UpdateRecipes as ProtocolUpdateRecipes};
+    use bbb_protocol::packets::{
+        IngredientSummary, RecipePropertySetSummary, SlotDisplaySummary,
+        StonecutterSelectableRecipeSummary, UpdateRecipes as ProtocolUpdateRecipes,
+    };
 
     #[test]
     fn tracks_player_inventory_and_container_state() {
@@ -4643,6 +4746,209 @@ mod tests {
     }
 
     #[test]
+    fn apply_local_stonecutter_quick_move_moves_input_slot_to_player_forward() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
+        items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: STONECUTTER_INPUT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (STONECUTTER_INPUT_SLOT, ProtocolHashedStack::Empty),
+                (STONECUTTER_PLAYER_MAIN_START, hashed_item_stack(42, 3)),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_INPUT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_PLAYER_MAIN_START),
+            item_stack(42, 3)
+        );
+    }
+
+    #[test]
+    fn apply_local_stonecutter_quick_move_moves_player_main_and_hotbar_ranges() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
+        items[STONECUTTER_PLAYER_MAIN_START as usize] = item_stack(42, 3);
+        items[STONECUTTER_HOTBAR_START as usize] = item_stack(43, 4);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let main_to_hotbar = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: STONECUTTER_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            main_to_hotbar.changed_slots,
+            BTreeMap::from([
+                (STONECUTTER_PLAYER_MAIN_START, ProtocolHashedStack::Empty),
+                (STONECUTTER_HOTBAR_START + 1, hashed_item_stack(42, 3)),
+            ])
+        );
+
+        let hotbar_to_main = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: STONECUTTER_HOTBAR_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            hotbar_to_main.changed_slots,
+            BTreeMap::from([
+                (STONECUTTER_PLAYER_MAIN_START, hashed_item_stack(43, 4)),
+                (STONECUTTER_HOTBAR_START, ProtocolHashedStack::Empty),
+            ])
+        );
+
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_PLAYER_MAIN_START),
+            item_stack(43, 4)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_HOTBAR_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_HOTBAR_START + 1),
+            item_stack(42, 3)
+        );
+    }
+
+    #[test]
+    fn apply_local_stonecutter_quick_move_routes_valid_recipe_input_to_input_slot() {
+        let mut store = WorldStore::new();
+        store.apply_update_recipes(update_stonecutter_recipes(vec![stonecutter_recipe(vec![
+            42, 43,
+        ])]));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
+        items[STONECUTTER_PLAYER_MAIN_START as usize] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: STONECUTTER_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (STONECUTTER_INPUT_SLOT, hashed_item_stack(42, 3)),
+                (STONECUTTER_PLAYER_MAIN_START, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_INPUT_SLOT),
+            item_stack(42, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_PLAYER_MAIN_START),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_stonecutter_result_pickup_and_quick_move_require_server_authority() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
+        items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 1);
+        items[STONECUTTER_RESULT_SLOT as usize] = item_stack(90, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 15,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        for input in [
+            ProtocolContainerInput::Pickup,
+            ProtocolContainerInput::QuickMove,
+        ] {
+            assert_eq!(
+                store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: STONECUTTER_RESULT_SLOT,
+                    button_num: 0,
+                    input,
+                }),
+                Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
+            );
+        }
+        let click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: STONECUTTER_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_INPUT_SLOT),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_RESULT_SLOT),
+            item_stack(90, 1)
+        );
+    }
+
+    #[test]
     fn apply_local_hopper_quick_move_moves_hopper_to_player_reverse() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
@@ -5444,6 +5750,28 @@ mod tests {
                 })
                 .collect(),
             stonecutter_recipes: Vec::new(),
+        }
+    }
+
+    fn update_stonecutter_recipes(
+        stonecutter_recipes: Vec<StonecutterSelectableRecipeSummary>,
+    ) -> ProtocolUpdateRecipes {
+        ProtocolUpdateRecipes {
+            property_sets: Vec::new(),
+            stonecutter_recipes,
+        }
+    }
+
+    fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary {
+        StonecutterSelectableRecipeSummary {
+            input: IngredientSummary {
+                tag: None,
+                item_ids,
+            },
+            option_display: SlotDisplaySummary {
+                display_type_id: 0,
+                raw_payload: Vec::new(),
+            },
         }
     }
 

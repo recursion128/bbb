@@ -316,6 +316,7 @@ When an agent does any of the following, update this file in the same slice:
         - crafting table
         - hopper
         - shulker box
+        - stonecutter
       - recipe book/creative variants
       - remaining local crafting result parity for container `0`:
         - server-authored result recomputation from local 2x2 inputs
@@ -456,6 +457,7 @@ When an agent does any of the following, update this file in the same slice:
         furnace-family backgrounds
       - HopperMenu screens with official `hopper.png`
       - ShulkerBoxMenu screens with official `shulker_box.png`
+      - StonecutterMenu screens with official `stonecutter.png`
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
       progress sprites:
       - lit-progress
@@ -473,6 +475,11 @@ When an agent does any of the following, update this file in the same slice:
         locally modeled
       - hopper
       - shulker box
+      - StonecutterMenu non-result slots, including:
+        - vanilla slot ranges
+        - decoded item-id recipe input routing
+        - result-slot clicks kept server-authoritative until recipe result
+          side effects are locally modeled
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including:
         - vanilla slot ranges
         - result-to-player transfer order

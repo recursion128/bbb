@@ -126,6 +126,7 @@ pub enum HudInventoryBackgroundTexture {
     SmokerBurnProgress,
     Hopper,
     ShulkerBox,
+    Stonecutter,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -363,6 +364,16 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_shulker_box_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_stonecutter_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_stonecutter_background = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -839,6 +850,7 @@ impl Renderer {
             }
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
             HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
+            HudInventoryBackgroundTexture::Stonecutter => self.hud_stonecutter_background.as_ref(),
         }
     }
 }

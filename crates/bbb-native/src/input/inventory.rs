@@ -31,6 +31,7 @@ const FURNACE_MENU_TYPE_ID: i32 = 14;
 const HOPPER_MENU_TYPE_ID: i32 = 16;
 const SHULKER_BOX_MENU_TYPE_ID: i32 = 20;
 const SMOKER_MENU_TYPE_ID: i32 = 22;
+const STONECUTTER_MENU_TYPE_ID: i32 = 24;
 const GENERIC_CONTAINER_SLOT_COLUMNS: i32 = 9;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_SCREEN_WIDTH: i32 = 176;
@@ -50,6 +51,9 @@ const HOPPER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_SCREEN_WIDTH: i32 = 176;
 const SHULKER_BOX_SCREEN_HEIGHT: i32 = 167;
 const SHULKER_BOX_SLOT_COUNT: i16 = 27;
+const STONECUTTER_SCREEN_WIDTH: i32 = 176;
+const STONECUTTER_SCREEN_HEIGHT: i32 = 166;
+const STONECUTTER_SLOT_COUNT: i16 = 2;
 const SLOT_SIZE: f64 = 16.0;
 const SLOT_HOVER_MARGIN: f64 = 1.0;
 const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
@@ -65,6 +69,7 @@ pub(crate) enum InventoryScreenBackground {
     Hopper,
     ShulkerBox,
     Smoker,
+    Stonecutter,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,6 +199,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: SHULKER_BOX_SCREEN_HEIGHT,
             background: InventoryScreenBackground::ShulkerBox,
             slots: shulker_box_slot_layouts(),
+        });
+    }
+    if menu_type_id == STONECUTTER_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: STONECUTTER_SCREEN_WIDTH,
+            height: STONECUTTER_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Stonecutter,
+            slots: stonecutter_slot_layouts(),
         });
     }
     None
@@ -406,6 +419,38 @@ fn shulker_box_slot_layouts() -> Vec<InventorySlotLayout> {
     for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
         slots.push(InventorySlotLayout {
             slot_id: SHULKER_BOX_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
+        });
+    }
+
+    slots
+}
+
+fn stonecutter_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(STONECUTTER_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 20,
+        y: 33,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 143,
+        y: 33,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: STONECUTTER_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: STONECUTTER_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 142,
         });
@@ -931,8 +976,9 @@ mod tests {
 
     use bbb_protocol::packets::{
         ContainerClick, ContainerSetContent, HashedComponentPatch, HashedItemStack, HashedStack,
-        ItemStackSummary, OpenScreen, RecipePropertySetSummary, SelectBundleItem, SetCursorItem,
-        SetPlayerInventory, UpdateRecipes,
+        IngredientSummary, ItemStackSummary, OpenScreen, RecipePropertySetSummary,
+        SelectBundleItem, SetCursorItem, SetPlayerInventory, SlotDisplaySummary,
+        StonecutterSelectableRecipeSummary, UpdateRecipes,
     };
 
     #[test]
@@ -1344,6 +1390,55 @@ mod tests {
     }
 
     #[test]
+    fn stonecutter_layout_matches_vanilla_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: STONECUTTER_MENU_TYPE_ID,
+            title: "Stonecutter".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(layout.background, InventoryScreenBackground::Stonecutter);
+        assert_eq!(layout.slots.len(), 38);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 20,
+                y: 33,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 143,
+                y: 33,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[37],
+            InventorySlotLayout {
+                slot_id: 37,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn generic_container_hit_test_uses_vanilla_screen_height() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -1496,6 +1591,30 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
             Some(InventoryClickTarget::Slot(62))
+        );
+    }
+
+    #[test]
+    fn stonecutter_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: STONECUTTER_MENU_TYPE_ID,
+            title: "Stonecutter".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(580.0, 318.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(703.0, 318.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(37))
         );
     }
 
@@ -1886,6 +2005,172 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, item_stack(90, 1));
         assert_eq!(slots[1].item, item_stack(42, 1));
+    }
+
+    #[test]
+    fn stonecutter_shift_click_input_slot_queues_predicted_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: STONECUTTER_MENU_TYPE_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 38];
+        items[0] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(580.0, 318.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Empty),
+                    (2, HashedStack::Item(hashed_item(42, 3))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[2].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn stonecutter_shift_click_valid_recipe_input_queues_predicted_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_update_recipes(UpdateRecipes {
+            property_sets: Vec::new(),
+            stonecutter_recipes: vec![stonecutter_recipe(vec![42])],
+        });
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: STONECUTTER_MENU_TYPE_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 38];
+        items[2] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(568.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 13,
+                slot_num: 2,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Item(hashed_item(42, 3))),
+                    (2, HashedStack::Empty),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(42, 3));
+        assert_eq!(slots[2].item, ItemStackSummary::empty());
+    }
+
+    #[test]
+    fn stonecutter_shift_click_result_slot_queues_server_authoritative_click() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: STONECUTTER_MENU_TYPE_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 38];
+        items[0] = item_stack(42, 1);
+        items[1] = item_stack(90, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(703.0, 318.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 14,
+                slot_num: 1,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: BTreeMap::new(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(42, 1));
+        assert_eq!(slots[1].item, item_stack(90, 1));
     }
 
     #[test]
@@ -2605,6 +2890,19 @@ mod tests {
                 selected_item_index: 2,
             })
         );
+    }
+
+    fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary {
+        StonecutterSelectableRecipeSummary {
+            input: IngredientSummary {
+                tag: None,
+                item_ids,
+            },
+            option_display: SlotDisplaySummary {
+                display_type_id: 0,
+                raw_payload: Vec::new(),
+            },
+        }
     }
 
     fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {

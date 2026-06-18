@@ -458,6 +458,17 @@ fn hud_inventory_background_layers(
             );
             layers
         }
+        InventoryScreenBackground::Stonecutter => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Stonecutter,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        }
     }
 }
 
@@ -1329,6 +1340,47 @@ mod tests {
         let last_container = screen.slots.iter().find(|slot| slot.slot_id == 26).unwrap();
         assert_eq!((last_container.x, last_container.y), (152, 54));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 62).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_stonecutter_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 24,
+            title: "Stonecutter".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 38],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(37), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Stonecutter,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(37));
+        assert_eq!(screen.slots.len(), 38);
+        let input = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((input.x, input.y), (20, 33));
+        let result = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
+        assert_eq!((result.x, result.y), (143, 33));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 37).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
     }
 
