@@ -136,6 +136,7 @@ pub(crate) fn pump_network_and_terrain(
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
     let entity_partial_tick = client_animation_ticks.entity_partial_tick(now);
     advance_block_destruction_render_ticks(world, advanced_ticks);
+    world.advance_item_cooldowns(advanced_ticks);
     renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
     advance_destroying_block_at_partial_tick(
@@ -163,11 +164,12 @@ pub(crate) fn pump_network_and_terrain(
             .map(|experience| experience.progress),
     );
     renderer.set_hud_selected_slot(local_player.selected_hotbar_slot);
-    renderer.set_hud_hotbar_item_icons(hotbar_item_icons(world, item_runtime));
+    renderer.set_hud_hotbar_item_icons(hotbar_item_icons(world, item_runtime, entity_partial_tick));
     renderer.set_hud_inventory_screen(hud_inventory_screen(
         world,
         item_runtime,
         input.inventory_hovered_slot(),
+        entity_partial_tick,
     ));
     renderer.set_item_entity_billboards(item_entity_billboards_from_world(world, item_runtime));
     let camera_pose = camera_pose_from_world(world);
@@ -255,13 +257,16 @@ fn merge_block_destroy_stage(
 fn hotbar_item_icons(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
+    partial_tick: f32,
 ) -> [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] {
     let mut icons = std::array::from_fn(|_| None);
     for (slot_index, item) in world.inventory().hotbar_item_states().iter().enumerate() {
         icons[slot_index] = hud_item_icon_for_stack(
+            world,
             item_runtime,
             &item.item,
             item.local_selected_bundle_item_index(),
+            partial_tick,
         );
     }
 
@@ -272,6 +277,7 @@ fn hud_inventory_screen(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     hovered_slot_id: Option<i16>,
+    partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
     let layout = inventory_screen_layout(world)?;
     let container = if world.local_inventory_is_open() {
@@ -294,10 +300,12 @@ fn hud_inventory_screen(
                 y: layout.y,
                 icon: inventory_slot.and_then(|slot| {
                     hud_item_icon_for_stack(
+                        world,
                         item_runtime,
                         &slot.item,
                         (slot.local_selected_bundle_item_index >= 0)
                             .then_some(slot.local_selected_bundle_item_index),
+                        partial_tick,
                     )
                 }),
             }
@@ -535,9 +543,11 @@ fn hud_inventory_background_layer(
 }
 
 fn hud_item_icon_for_stack(
+    world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     item: &bbb_protocol::packets::ItemStackSummary,
     local_selected_bundle_item_index: Option<i32>,
+    partial_tick: f32,
 ) -> Option<HudItemIcon> {
     let icon = item_runtime?
         .icon_for_stack_with_bundle_selected_item(item, local_selected_bundle_item_index)?;
@@ -557,6 +567,12 @@ fn hud_item_icon_for_stack(
             .collect(),
         count_label: hud_item_count_label_for_stack(item),
         durability_bar: hud_item_durability_bar_for_stack(item),
+        cooldown_progress: hud_item_cooldown_progress_for_stack(
+            world,
+            item_runtime,
+            item,
+            partial_tick,
+        ),
     })
 }
 
@@ -569,6 +585,31 @@ fn hud_item_count_label_for_stack(
 
 fn item_stack_is_empty(item: &bbb_protocol::packets::ItemStackSummary) -> bool {
     item.item_id.is_none() || item.count <= 0
+}
+
+fn hud_item_cooldown_progress_for_stack(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &bbb_protocol::packets::ItemStackSummary,
+    partial_tick: f32,
+) -> Option<f32> {
+    let cooldown_group = item_cooldown_group(item_runtime, item)?;
+    let progress = world.item_cooldown_percent(&cooldown_group, partial_tick);
+    (progress > 0.0).then_some(progress)
+}
+
+fn item_cooldown_group(
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &bbb_protocol::packets::ItemStackSummary,
+) -> Option<String> {
+    if item_stack_is_empty(item) {
+        return None;
+    }
+    if let Some(group) = item.component_patch.use_cooldown_group.as_ref() {
+        return Some(group.clone());
+    }
+    let item_id = item_runtime?.item_resource_id_for_protocol_id(item.item_id?)?;
+    Some(item_id.to_string())
 }
 
 fn hud_item_durability_bar_for_stack(
@@ -916,7 +957,7 @@ mod tests {
     #[test]
     fn hud_inventory_screen_projects_open_local_inventory_layout() {
         let mut world = WorldStore::new();
-        assert_eq!(hud_inventory_screen(&world, None, Some(36)), None);
+        assert_eq!(hud_inventory_screen(&world, None, Some(36), 0.0), None);
 
         world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
             slot: 0,
@@ -928,7 +969,7 @@ mod tests {
         });
         assert!(world.open_local_inventory());
 
-        let screen = hud_inventory_screen(&world, None, Some(36)).unwrap();
+        let screen = hud_inventory_screen(&world, None, Some(36), 0.0).unwrap();
 
         assert_eq!(screen.width, 176);
         assert_eq!(screen.height, 166);
@@ -970,7 +1011,7 @@ mod tests {
             carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
         });
 
-        let screen = hud_inventory_screen(&world, None, Some(89)).unwrap();
+        let screen = hud_inventory_screen(&world, None, Some(89), 0.0).unwrap();
 
         assert_eq!(screen.width, 176);
         assert_eq!(screen.height, 222);
@@ -1022,7 +1063,7 @@ mod tests {
             carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
         });
 
-        let screen = hud_inventory_screen(&world, None, Some(44)).unwrap();
+        let screen = hud_inventory_screen(&world, None, Some(44), 0.0).unwrap();
 
         assert_eq!(screen.width, 176);
         assert_eq!(screen.height, 166);
@@ -1061,7 +1102,7 @@ mod tests {
             carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
         });
 
-        let screen = hud_inventory_screen(&world, None, Some(45)).unwrap();
+        let screen = hud_inventory_screen(&world, None, Some(45), 0.0).unwrap();
 
         assert_eq!(screen.width, 176);
         assert_eq!(screen.height, 166);
@@ -1111,7 +1152,7 @@ mod tests {
                 carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
             });
 
-            let screen = hud_inventory_screen(&world, None, Some(38)).unwrap();
+            let screen = hud_inventory_screen(&world, None, Some(38), 0.0).unwrap();
 
             assert_eq!(screen.width, 176);
             assert_eq!(screen.height, 166);
@@ -1175,7 +1216,7 @@ mod tests {
             value: 100,
         });
 
-        let screen = hud_inventory_screen(&world, None, None).unwrap();
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
 
         assert_eq!(
             screen.background_layers,
@@ -1226,7 +1267,7 @@ mod tests {
             carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
         });
 
-        let screen = hud_inventory_screen(&world, None, Some(40)).unwrap();
+        let screen = hud_inventory_screen(&world, None, Some(40), 0.0).unwrap();
 
         assert_eq!(screen.width, 176);
         assert_eq!(screen.height, 133);
@@ -1265,7 +1306,7 @@ mod tests {
             carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
         });
 
-        let screen = hud_inventory_screen(&world, None, Some(62)).unwrap();
+        let screen = hud_inventory_screen(&world, None, Some(62), 0.0).unwrap();
 
         assert_eq!(screen.width, 176);
         assert_eq!(screen.height, 167);
@@ -1302,6 +1343,56 @@ mod tests {
         assert_eq!(
             hud_item_count_label_for_stack(&bbb_protocol::packets::ItemStackSummary::empty()),
             None
+        );
+    }
+
+    #[test]
+    fn hud_item_cooldown_progress_uses_world_cooldown_group_state() {
+        let mut world = WorldStore::new();
+        world.apply_cooldown(bbb_protocol::packets::Cooldown {
+            cooldown_group: "minecraft:ender_pearl".to_string(),
+            duration: 20,
+        });
+        world.advance_item_cooldowns(5);
+        let mut stack = item_stack(42, 1);
+        stack.component_patch.use_cooldown_group = Some("minecraft:ender_pearl".to_string());
+
+        assert_eq!(
+            hud_item_cooldown_progress_for_stack(&world, None, &stack, 0.5),
+            Some(0.725)
+        );
+        assert_eq!(
+            hud_item_cooldown_progress_for_stack(&world, None, &stack, 1.5),
+            Some(0.7)
+        );
+
+        stack.component_patch.use_cooldown_group = Some("minecraft:wind_charge".to_string());
+        assert_eq!(
+            hud_item_cooldown_progress_for_stack(&world, None, &stack, 0.0),
+            None
+        );
+        assert_eq!(
+            hud_item_cooldown_progress_for_stack(
+                &world,
+                None,
+                &bbb_protocol::packets::ItemStackSummary::empty(),
+                0.0
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn item_cooldown_group_requires_runtime_for_default_item_group() {
+        let stack = item_stack(42, 1);
+        assert_eq!(item_cooldown_group(None, &stack), None);
+
+        let mut explicit_group = stack;
+        explicit_group.component_patch.use_cooldown_group =
+            Some("minecraft:custom_group".to_string());
+        assert_eq!(
+            item_cooldown_group(None, &explicit_group),
+            Some("minecraft:custom_group".to_string())
         );
     }
 

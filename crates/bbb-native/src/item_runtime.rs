@@ -278,6 +278,10 @@ impl NativeItemRuntime {
         )
     }
 
+    pub(crate) fn item_resource_id_for_protocol_id(&self, protocol_id: i32) -> Option<&str> {
+        self.registry.as_ref()?.resource_id(protocol_id)
+    }
+
     #[cfg(test)]
     pub(crate) fn icon_uv_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasUvRect> {
         self.icon_for_protocol_id(protocol_id)

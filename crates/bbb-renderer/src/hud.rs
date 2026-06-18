@@ -12,9 +12,10 @@ pub(super) use self::gpu::{
 use self::layout::{
     centered_hud_rect, experience_bar_hud_rect, food_hud_rect, heart_hud_rect, hotbar_hud_rect,
     hotbar_item_hud_rect, hotbar_selection_hud_rect, hud_experience_progress_width, hud_food_fill,
-    hud_heart_fill, hud_item_count_digit_hud_rect, hud_item_durability_bar_rect, hud_quad_vertices,
-    inventory_background_hud_rect, inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect,
-    HudIconFill, HudRect, HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
+    hud_heart_fill, hud_item_cooldown_rect, hud_item_count_digit_hud_rect,
+    hud_item_durability_bar_rect, hud_quad_vertices, inventory_background_hud_rect,
+    inventory_slot_highlight_hud_rect, inventory_slot_item_hud_rect, HudIconFill, HudRect,
+    HUD_FOOD_ICONS_PER_ROW, HUD_HEARTS_PER_ROW,
 };
 
 pub const HUD_HOTBAR_SLOTS: usize = 9;
@@ -24,6 +25,7 @@ const HUD_ITEM_BAR_BACKGROUND_TINT: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 const HUD_ITEM_BAR_BACKGROUND_WIDTH: u32 = 13;
 const HUD_ITEM_BAR_BACKGROUND_HEIGHT: u32 = 2;
 const HUD_ITEM_BAR_FOREGROUND_HEIGHT: u32 = 1;
+const HUD_ITEM_COOLDOWN_TINT: [f32; 4] = [1.0, 1.0, 1.0, 127.0 / 255.0];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HudUvRect {
@@ -48,6 +50,7 @@ pub struct HudItemIcon {
     pub layers: Vec<HudIconLayer>,
     pub count_label: Option<HudItemCountLabel>,
     pub durability_bar: Option<HudItemDurabilityBar>,
+    pub cooldown_progress: Option<f32>,
 }
 
 impl HudItemIcon {
@@ -56,6 +59,7 @@ impl HudItemIcon {
             layers: vec![HudIconLayer::new(uv, HUD_TINT_WHITE)],
             count_label: None,
             durability_bar: None,
+            cooldown_progress: None,
         }
     }
 }
@@ -558,6 +562,14 @@ impl Renderer {
                         item_rect,
                         icon.durability_bar.as_ref(),
                     );
+                    push_hud_item_cooldown(
+                        &mut vertices,
+                        &mut commands,
+                        &self.hud_white_pixel,
+                        surface_size,
+                        item_rect,
+                        icon.cooldown_progress,
+                    );
                     push_hud_item_count_label(
                         &mut vertices,
                         &mut commands,
@@ -737,6 +749,14 @@ impl Renderer {
                             surface_size,
                             item_rect,
                             icon.durability_bar.as_ref(),
+                        );
+                        push_hud_item_cooldown(
+                            &mut vertices,
+                            &mut commands,
+                            &self.hud_white_pixel,
+                            surface_size,
+                            item_rect,
+                            icon.cooldown_progress,
                         );
                         push_hud_item_count_label(
                             &mut vertices,
@@ -923,6 +943,34 @@ fn push_hud_item_durability_bar<'a>(
     );
 }
 
+fn push_hud_item_cooldown<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    surface_size: PhysicalSize<u32>,
+    item_rect: HudRect,
+    progress: Option<f32>,
+) {
+    let Some(progress) = progress else {
+        return;
+    };
+    let Some(rect) = hud_item_cooldown_rect(item_rect, progress) else {
+        return;
+    };
+    push_hud_draw_with_uv_and_tint(
+        vertices,
+        commands,
+        white_pixel,
+        surface_size,
+        rect,
+        HudUvRect {
+            min: [0.0, 0.0],
+            max: [1.0, 1.0],
+        },
+        HUD_ITEM_COOLDOWN_TINT,
+    );
+}
+
 fn push_hud_item_count_label<'a>(
     vertices: &mut Vec<HudVertex>,
     commands: &mut Vec<HudDrawCommand<'a>>,
@@ -1041,6 +1089,7 @@ fn sanitize_hud_item_icon(icon: HudItemIcon) -> Option<HudItemIcon> {
         durability_bar: icon
             .durability_bar
             .and_then(sanitize_hud_item_durability_bar),
+        cooldown_progress: sanitize_hud_item_cooldown_progress(icon.cooldown_progress),
     })
 }
 
@@ -1068,6 +1117,11 @@ fn sanitize_hud_item_durability_bar(bar: HudItemDurabilityBar) -> Option<HudItem
         width: bar.width.min(HUD_ITEM_BAR_BACKGROUND_WIDTH),
         color: bar.color.map(|component| component.clamp(0.0, 1.0)),
     })
+}
+
+fn sanitize_hud_item_cooldown_progress(progress: Option<f32>) -> Option<f32> {
+    let progress = progress?;
+    progress.is_finite().then_some(progress.clamp(0.0, 1.0))
 }
 
 #[cfg(test)]
@@ -1124,6 +1178,7 @@ mod tests {
                 )],
                 count_label: None,
                 durability_bar: None,
+                cooldown_progress: None,
             }
         );
 
@@ -1156,6 +1211,7 @@ mod tests {
             layers: vec![first, second],
             count_label: Some(HudItemCountLabel::new("64")),
             durability_bar: Some(HudItemDurabilityBar::new(99, [-1.0, 0.5, 1.5])),
+            cooldown_progress: Some(1.5),
         })
         .expect("valid icon layers should remain");
 
@@ -1165,6 +1221,7 @@ mod tests {
             icon.durability_bar,
             Some(HudItemDurabilityBar::new(13, [0.0, 0.5, 1.0]))
         );
+        assert_eq!(icon.cooldown_progress, Some(1.0));
         assert_eq!(icon.layers[0].uv.min, [0.0, 0.0]);
         assert_eq!(icon.layers[0].uv.max, [0.25, 0.25]);
         assert_eq!(icon.layers[0].tint, [0.0, 0.25, 1.0, 1.0]);
@@ -1201,12 +1258,14 @@ mod tests {
             ],
             count_label: Some(HudItemCountLabel::new("1x")),
             durability_bar: Some(HudItemDurabilityBar::new(10, [1.0, f32::NAN, 0.0])),
+            cooldown_progress: Some(f32::NAN),
         })
         .expect("one valid layer should remain");
 
         assert_eq!(icon.layers.len(), 1);
         assert_eq!(icon.count_label, None);
         assert_eq!(icon.durability_bar, None);
+        assert_eq!(icon.cooldown_progress, None);
         assert_eq!(icon.layers[0].uv.min, [0.25, 0.25]);
         assert_eq!(icon.layers[0].uv.max, [0.75, 0.75]);
 
@@ -1221,6 +1280,7 @@ mod tests {
                 )],
                 count_label: Some(HudItemCountLabel::new("64")),
                 durability_bar: None,
+                cooldown_progress: None,
             }),
             None
         );
@@ -1281,6 +1341,7 @@ mod tests {
                         )],
                         count_label: Some(HudItemCountLabel::new("64")),
                         durability_bar: Some(HudItemDurabilityBar::new(99, [-1.0, 0.5, 1.5])),
+                        cooldown_progress: Some(1.5),
                     }),
                 },
                 HudInventorySlot {
@@ -1297,6 +1358,7 @@ mod tests {
                         )],
                         count_label: Some(HudItemCountLabel::new("bad")),
                         durability_bar: None,
+                        cooldown_progress: Some(f32::INFINITY),
                     }),
                 },
                 HudInventorySlot {
@@ -1335,6 +1397,7 @@ mod tests {
                 )],
                 count_label: Some(HudItemCountLabel::new("64")),
                 durability_bar: Some(HudItemDurabilityBar::new(13, [0.0, 0.5, 1.0])),
+                cooldown_progress: Some(1.0),
             })
         );
         assert_eq!(screen.slots[1].slot_id, 6);

@@ -40,6 +40,10 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub unbreakable: bool,
     #[serde(default)]
+    pub use_cooldown_ticks: Option<i32>,
+    #[serde(default)]
+    pub use_cooldown_group: Option<String>,
+    #[serde(default)]
     pub custom_model_data_colors: Vec<i32>,
     #[serde(default)]
     pub dyed_color: Option<i32>,
@@ -138,6 +142,11 @@ fn decode_typed_data_component_patch_summary(
             }
             4 => {
                 summary.unbreakable = true;
+            }
+            26 => {
+                let cooldown = decode_use_cooldown_summary(decoder)?;
+                summary.use_cooldown_ticks = Some(cooldown.ticks);
+                summary.use_cooldown_group = cooldown.cooldown_group;
             }
             17 => {
                 summary.custom_model_data_colors = decode_custom_model_data(decoder)?;
@@ -354,6 +363,13 @@ fn decode_optional_identifier(decoder: &mut Decoder<'_>) -> Result<()> {
         decode_identifier(decoder)?;
     }
     Ok(())
+}
+
+fn decode_optional_identifier_value(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
+    if decoder.read_bool()? {
+        return read_resource_location(decoder).map(Some);
+    }
+    Ok(None)
 }
 
 fn decode_optional_i32_value(decoder: &mut Decoder<'_>) -> Result<Option<i32>> {
@@ -648,6 +664,19 @@ fn decode_tool(decoder: &mut Decoder<'_>) -> Result<()> {
 fn decode_use_cooldown(decoder: &mut Decoder<'_>) -> Result<()> {
     decoder.read_f32()?;
     decode_optional_identifier(decoder)
+}
+
+struct UseCooldownSummary {
+    ticks: i32,
+    cooldown_group: Option<String>,
+}
+
+fn decode_use_cooldown_summary(decoder: &mut Decoder<'_>) -> Result<UseCooldownSummary> {
+    let seconds = decoder.read_f32()?;
+    Ok(UseCooldownSummary {
+        ticks: (seconds * 20.0) as i32,
+        cooldown_group: decode_optional_identifier_value(decoder)?,
+    })
 }
 
 fn decode_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1087,7 +1116,7 @@ mod tests {
     #[test]
     fn decodes_supported_data_component_patch_values() {
         let mut payload = Encoder::new();
-        payload.write_var_i32(7);
+        payload.write_var_i32(8);
         payload.write_var_i32(2);
         payload.write_var_i32(1);
         payload.write_var_i32(64);
@@ -1102,6 +1131,10 @@ mod tests {
         payload.write_string("minecraft:diamond_sword");
         payload.write_var_i32(21);
         payload.write_bool(true);
+        payload.write_var_i32(26);
+        payload.write_f32(1.5);
+        payload.write_bool(true);
+        payload.write_string("minecraft:ender_pearl");
         payload.write_var_i32(3);
         payload.write_var_i32(12);
 
@@ -1111,13 +1144,15 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: 7,
-                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21],
+                added: 8,
+                added_type_ids: vec![1, 2, 3, 4, 6, 10, 21, 26],
                 removed_type_ids: vec![3, 12],
                 max_stack_size: Some(64),
                 max_damage: Some(432),
                 damage: Some(431),
                 unbreakable: true,
+                use_cooldown_ticks: Some(30),
+                use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -1689,6 +1724,8 @@ mod tests {
                 removed_type_ids: Vec::new(),
                 dyed_color: Some(0x112233),
                 map_color: Some(0x445566),
+                use_cooldown_ticks: Some(25),
+                use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
                 potion_custom_color: Some(0x778899),
                 firework_explosion_colors: vec![0x010203, 0x040506],
                 bundle_contents_items: vec![ItemStackTemplateSummary {

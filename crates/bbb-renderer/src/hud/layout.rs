@@ -209,6 +209,21 @@ pub(super) fn hud_item_durability_bar_rect(item_rect: HudRect, width: u32, heigh
     }
 }
 
+pub(super) fn hud_item_cooldown_rect(item_rect: HudRect, progress: f32) -> Option<HudRect> {
+    let progress = progress.clamp(0.0, 1.0);
+    if progress <= 0.0 {
+        return None;
+    }
+    let top_offset = (HUD_INVENTORY_ITEM_SIZE as f32 * (1.0 - progress)).floor();
+    let height = (HUD_INVENTORY_ITEM_SIZE as f32 * progress).ceil() as u32;
+    (height > 0).then_some(HudRect {
+        x: item_rect.x,
+        y: item_rect.y + top_offset,
+        width: HUD_INVENTORY_ITEM_SIZE,
+        height,
+    })
+}
+
 fn inventory_screen_origin(
     surface_size: PhysicalSize<u32>,
     screen_width: u32,
@@ -534,6 +549,29 @@ mod tests {
         assert_eq!(rect.y, 33.0);
         assert_eq!(rect.width, 13);
         assert_eq!(rect.height, 2);
+    }
+
+    #[test]
+    fn hud_item_cooldown_rect_uses_vanilla_fill_position() {
+        let item = HudRect {
+            x: 10.0,
+            y: 20.0,
+            width: 16,
+            height: 16,
+        };
+
+        assert!(hud_item_cooldown_rect(item, 0.0).is_none());
+        assert!(hud_item_cooldown_rect(item, -1.0).is_none());
+        let partial = hud_item_cooldown_rect(item, 0.5).unwrap();
+        assert_eq!(partial.x, 10.0);
+        assert_eq!(partial.y, 28.0);
+        assert_eq!(partial.width, 16);
+        assert_eq!(partial.height, 8);
+        let clamped = hud_item_cooldown_rect(item, 2.0).unwrap();
+        assert_eq!(clamped.x, 10.0);
+        assert_eq!(clamped.y, 20.0);
+        assert_eq!(clamped.width, 16);
+        assert_eq!(clamped.height, 16);
     }
 
     fn full_uv_rect() -> HudUvRect {

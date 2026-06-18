@@ -309,8 +309,6 @@ When an agent does any of the following, update this file in the same slice:
   - Inventory:
     - Implement:
       - tooltips
-      - item decorations:
-        - cooldown
       - remaining dedicated server-opened menu layouts beyond:
         - `generic_9xN`
         - `generic_3x3`
@@ -438,6 +436,11 @@ When an agent does any of the following, update this file in the same slice:
         - with vanilla item-count placement
       - renders vanilla-shaped durability bars for item icons with
         `damage` / `max_damage` component summaries:
+        - in the hotbar
+        - in local inventory screens
+        - in supported server-opened screens
+      - renders vanilla-shaped cooldown overlays for item icons from canonical
+        cooldown groups and client tick progress:
         - in the hotbar
         - in local inventory screens
         - in supported server-opened screens

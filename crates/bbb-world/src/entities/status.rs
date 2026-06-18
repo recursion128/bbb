@@ -15,6 +15,18 @@ use super::dimensions::vanilla_living_entity_type;
 pub struct ItemCooldownState {
     pub cooldown_group: String,
     pub duration: i32,
+    #[serde(default)]
+    pub remaining_ticks: i32,
+}
+
+impl ItemCooldownState {
+    pub fn percent(&self, partial_tick: f32) -> f32 {
+        if self.duration <= 0 {
+            return 0.0;
+        }
+        let remaining = self.remaining_ticks as f32 - partial_tick.clamp(0.0, 1.0);
+        (remaining / self.duration as f32).clamp(0.0, 1.0)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,10 +84,27 @@ impl WorldStore {
                 ItemCooldownState {
                     cooldown_group: packet.cooldown_group,
                     duration: packet.duration,
+                    remaining_ticks: packet.duration,
                 },
             );
         }
         self.update_cooldown_count();
+    }
+
+    pub fn advance_item_cooldowns(&mut self, ticks: u32) -> usize {
+        if ticks == 0 || self.cooldowns.is_empty() {
+            return 0;
+        }
+        let ticks = i32::try_from(ticks).unwrap_or(i32::MAX);
+        for cooldown in self.cooldowns.values_mut() {
+            cooldown.remaining_ticks = cooldown.remaining_ticks.saturating_sub(ticks);
+        }
+        let before = self.cooldowns.len();
+        self.cooldowns
+            .retain(|_, cooldown| cooldown.remaining_ticks > 0 && cooldown.duration > 0);
+        let removed = before.saturating_sub(self.cooldowns.len());
+        self.update_cooldown_count();
+        removed
     }
 
     pub fn apply_update_mob_effect(&mut self, packet: ProtocolUpdateMobEffect) -> bool {
@@ -148,6 +177,12 @@ impl WorldStore {
         self.cooldowns.get(cooldown_group)
     }
 
+    pub fn item_cooldown_percent(&self, cooldown_group: &str, partial_tick: f32) -> f32 {
+        self.cooldown(cooldown_group)
+            .map(|cooldown| cooldown.percent(partial_tick))
+            .unwrap_or(0.0)
+    }
+
     pub fn entity_effects(&self, entity_id: i32) -> Option<BTreeMap<i32, MobEffectState>> {
         self.entities
             .mob_effects(entity_id)
@@ -195,6 +230,11 @@ mod tests {
 
         let cooldown = store.cooldown("minecraft:ender_pearl").unwrap();
         assert_eq!(cooldown.duration, 20);
+        assert_eq!(cooldown.remaining_ticks, 20);
+        assert_eq!(
+            store.item_cooldown_percent("minecraft:ender_pearl", 0.0),
+            1.0
+        );
         assert_eq!(store.cooldowns().len(), 1);
         assert_eq!(store.counters().cooldown_packets, 1);
         assert_eq!(store.counters().cooldowns_tracked, 1);
@@ -206,6 +246,39 @@ mod tests {
 
         assert!(store.cooldown("minecraft:ender_pearl").is_none());
         assert_eq!(store.counters().cooldown_packets, 2);
+        assert_eq!(store.counters().cooldowns_tracked, 0);
+    }
+
+    #[test]
+    fn cooldowns_advance_with_client_ticks_and_report_vanilla_percent() {
+        let mut store = WorldStore::new();
+        store.apply_cooldown(ProtocolCooldown {
+            cooldown_group: "minecraft:ender_pearl".to_string(),
+            duration: 20,
+        });
+
+        assert_eq!(store.advance_item_cooldowns(5), 0);
+        let cooldown = store.cooldown("minecraft:ender_pearl").unwrap();
+        assert_eq!(cooldown.remaining_ticks, 15);
+        assert_eq!(cooldown.percent(0.0), 0.75);
+        assert_eq!(cooldown.percent(0.5), 0.725);
+        assert_eq!(
+            store.item_cooldown_percent("minecraft:ender_pearl", 1.0),
+            0.7
+        );
+        assert_eq!(store.counters().cooldowns_tracked, 1);
+
+        assert_eq!(store.advance_item_cooldowns(14), 0);
+        assert_eq!(
+            store.item_cooldown_percent("minecraft:ender_pearl", 0.0),
+            0.05
+        );
+        assert_eq!(store.advance_item_cooldowns(1), 1);
+        assert!(store.cooldown("minecraft:ender_pearl").is_none());
+        assert_eq!(
+            store.item_cooldown_percent("minecraft:ender_pearl", 0.0),
+            0.0
+        );
         assert_eq!(store.counters().cooldowns_tracked, 0);
     }
 
