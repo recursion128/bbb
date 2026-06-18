@@ -512,30 +512,30 @@ mod tests {
         CommandSuggestions, CommonPlayerSpawnInfo, CookieRequest, Cooldown, CustomChatCompletions,
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
         DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample, DeleteChat,
-        DialogHolder, Difficulty, DisguisedChat, EntityAnchor, Explosion, FilterMask,
-        FilterMaskKind, GameEvent, GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues,
-        GameTestHighlightPos, GameType, IngredientSummary, InteractionHand, LevelChunkBlockEntity,
-        LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdateData,
-        MapColorPatch, MapDecoration, MapItemData, MessageSignature, MountScreenOpen, MoveVehicle,
-        ObjectiveRenderType, OpenBook, OpenSignEditor, PackedMessageSignature, ParticlePayload,
-        PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat, PlayerExperience,
-        PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove,
-        PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate, PlayerRotationUpdate,
-        PlayerTeamMethod, PlayerTeamParameters, PongResponse, ProjectilePower, RecipeBookAdd,
-        RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings, RecipeBookTypeSettings,
-        RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary, RecipeDisplayType,
-        RecipePropertySetSummary, RemoteDebugSampleType, ResetScore, ResourcePackPop,
-        ResourcePackPush, ResourcePackResponseAction, ScoreboardDisplaySlot, SelectAdvancementsTab,
-        ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetHeldSlot, SetObjective,
-        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore,
-        SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
-        StopSound, StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility,
-        TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
-        Transfer, UpdateAdvancements, UpdateRecipes, Vec3d as ProtocolVec3d,
-        Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        DialogHolder, Difficulty, DisguisedChat, EntityAnchor, EntityAnimation, Explosion,
+        FilterMask, FilterMaskKind, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
+        GameRuleValues, GameTestHighlightPos, GameType, HurtAnimation, IngredientSummary,
+        InteractionHand, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent,
+        LevelParticles, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
+        MessageSignature, MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook,
+        OpenSignEditor, PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin,
+        PlayTime, PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction,
+        PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt,
+        PlayerPositionUpdate, PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters,
+        PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
+        RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
+        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType,
+        ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction, RotateHead,
+        ScoreboardDisplaySlot, SelectAdvancementsTab, ServerData, ServerLinkEntry,
+        ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera, SetDefaultSpawnPosition,
+        SetDisplayObjective, SetEntityMotion, SetHeldSlot, SetObjective, SetObjectiveMethod,
+        SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore, SetSimulationDistance,
+        ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
+        SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
+        StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus,
+        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
+        UpdateAdvancements, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -1736,6 +1736,74 @@ mod tests {
         assert_eq!(report.world_counters.vehicle_moves_applied, 1);
         assert_eq!(report.world_counters.vehicle_moves_acked, 1);
         assert_eq!(report.world_counters.vehicle_moves_snapped, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_entity_motion_and_transient_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(123)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetEntityMotion(SetEntityMotion {
+                id: 123,
+                delta_movement: ProtocolVec3d {
+                    x: 0.1,
+                    y: 0.0,
+                    z: -0.1,
+                },
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::RotateHead(RotateHead {
+                id: 123,
+                y_head_rot: 90.0,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::EntityAnimation(EntityAnimation {
+                id: 123,
+                action: 3,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::HurtAnimation(HurtAnimation {
+                id: 123,
+                yaw: 45.5,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let entity = report.world.probe_entity(123).unwrap();
+
+        assert_eq!(entity.delta_movement.x, 0.1);
+        assert_eq!(entity.delta_movement.y, 0.0);
+        assert_eq!(entity.delta_movement.z, -0.1);
+        assert_eq!(entity.y_head_rot, 90.0);
+        assert_eq!(entity.last_animation_action, Some(3));
+        assert_eq!(entity.last_hurt_yaw, Some(45.5));
+
+        assert_eq!(report.world_counters.entities_received, 1);
+        assert_eq!(report.world_counters.entities_tracked, 1);
+        assert_eq!(report.world_counters.entity_motion_updates_received, 1);
+        assert_eq!(report.world_counters.entity_motion_updates_applied, 1);
+        assert_eq!(report.world_counters.entity_motion_updates_ignored, 0);
+        assert_eq!(report.world_counters.entity_head_rotations_received, 1);
+        assert_eq!(report.world_counters.entity_head_rotations_applied, 1);
+        assert_eq!(report.world_counters.entity_head_rotations_ignored, 0);
+        assert_eq!(report.world_counters.entity_animation_updates_received, 1);
+        assert_eq!(report.world_counters.entity_animation_updates_applied, 1);
+        assert_eq!(report.world_counters.entity_animation_updates_ignored, 0);
+        assert_eq!(report.world_counters.entity_hurt_animations_received, 1);
+        assert_eq!(report.world_counters.entity_hurt_animations_applied, 1);
+        assert_eq!(report.world_counters.entity_hurt_animations_ignored, 0);
     }
 
     #[tokio::test]
