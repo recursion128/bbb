@@ -512,25 +512,26 @@ mod tests {
         CustomChatCompletionsAction, CustomReportDetails, DebugBlockValue, DebugChunkValue,
         DebugEntityValue, DebugEvent, DebugSample, DialogHolder, Difficulty, EntityAnchor,
         Explosion, FilterMask, FilterMaskKind, GameEvent, GameProfile, GameProfileProperty,
-        GameRuleValue, GameRuleValues, GameTestHighlightPos, GameType, InteractionHand,
-        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
-        LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MessageSignature,
-        MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenSignEditor,
-        ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat,
-        PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry,
-        PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate,
+        GameRuleValue, GameRuleValues, GameTestHighlightPos, GameType, IngredientSummary,
+        InteractionHand, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent,
+        LevelParticles, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
+        MessageSignature, MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook,
+        OpenSignEditor, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities,
+        PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoChatSession,
+        PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate,
         PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters, PongResponse,
-        ProjectilePower, RecipeDisplayType, RemoteDebugSampleType, ResetScore, ResourcePackPop,
-        ResourcePackPush, ResourcePackResponseAction, ScoreboardDisplaySlot, ServerData,
-        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetHeldSlot, SetObjective,
-        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore,
-        SetSimulationDistance, ShowDialog, SignedMessageBody, SoundEntityEvent, SoundEvent,
-        SoundEventHolder, SoundSource, StatUpdate, StopSound, StoreCookie, TabList, TagQuery,
-        TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus, TickingState, TickingStep,
-        TrackedWaypoint, TrackedWaypointPacket, Transfer, Vec3d as ProtocolVec3d,
-        Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-        WaypointVec3i,
+        ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
+        RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
+        RecipeDisplayType, RemoteDebugSampleType, ResetScore, ResourcePackPop, ResourcePackPush,
+        ResourcePackResponseAction, ScoreboardDisplaySlot, ServerData, ServerLinkEntry,
+        ServerLinkKnownType, ServerLinkType, ServerLinks, SetCamera, SetDefaultSpawnPosition,
+        SetDisplayObjective, SetHeldSlot, SetObjective, SetObjectiveMethod, SetObjectiveParameters,
+        SetPassengers, SetPlayerTeam, SetScore, SetSimulationDistance, ShowDialog,
+        SignedMessageBody, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource, StatUpdate,
+        StopSound, StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility,
+        TestInstanceBlockStatus, TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket,
+        Transfer, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
+        WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -1814,6 +1815,81 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_applies_recipe_book_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        let settings = RecipeBookSettings {
+            crafting: RecipeBookTypeSettings {
+                open: true,
+                filtering: false,
+            },
+            furnace: RecipeBookTypeSettings {
+                open: false,
+                filtering: true,
+            },
+            blast_furnace: RecipeBookTypeSettings {
+                open: true,
+                filtering: true,
+            },
+            smoker: RecipeBookTypeSettings {
+                open: false,
+                filtering: false,
+            },
+        };
+
+        probe
+            .handle_play_packet(PlayClientbound::RecipeBookAdd(RecipeBookAdd {
+                replace: true,
+                entries: vec![
+                    probe_recipe_entry(7, true, true),
+                    probe_recipe_entry(8, false, false),
+                ],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::RecipeBookAdd(RecipeBookAdd {
+                replace: false,
+                entries: vec![probe_recipe_entry(9, true, false)],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::RecipeBookRemove(RecipeBookRemove {
+                recipe_ids: vec![RecipeDisplayId { index: 7 }],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::RecipeBookSettings(settings))
+            .await
+            .unwrap();
+
+        let report = probe.finish(5, ChunkPos { x: 0, z: 0 });
+        let recipe_book = report.world.recipe_book();
+
+        assert!(!recipe_book.known.contains_key(&7));
+        assert_eq!(recipe_book.known.get(&8).unwrap().category_id, 18);
+        assert_eq!(recipe_book.known.get(&9).unwrap().category_id, 19);
+        assert!(recipe_book.highlights.is_empty());
+        assert_eq!(recipe_book.notification_ids, vec![9]);
+        assert_eq!(recipe_book.settings, settings);
+
+        assert_eq!(report.world_counters.recipe_book_add_packets, 2);
+        assert_eq!(report.world_counters.recipe_book_replace_packets, 1);
+        assert_eq!(report.world_counters.recipe_book_remove_packets, 1);
+        assert_eq!(report.world_counters.recipe_book_settings_packets, 1);
+        assert_eq!(report.world_counters.recipe_book_entries_received, 3);
+        assert_eq!(
+            report.world_counters.recipe_book_removed_entries_received,
+            1
+        );
+        assert_eq!(report.world_counters.recipe_book_entries_tracked, 2);
+        assert_eq!(report.world_counters.recipe_book_highlights_tracked, 0);
+        assert_eq!(report.world_counters.recipe_book_notifications_received, 2);
+    }
+
+    #[tokio::test]
     async fn probe_applies_world_time_weather_and_ticking_to_world() {
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
@@ -2618,6 +2694,27 @@ mod tests {
         assert_eq!(report.last_unsupported_packet_id, Some(0x7e));
         assert_eq!(report.last_unsupported_packet_len, Some(9));
         assert_eq!(report.world_counters.play_logins_received, 0);
+    }
+
+    fn probe_recipe_entry(id: i32, notification: bool, highlight: bool) -> RecipeBookAddEntry {
+        RecipeBookAddEntry {
+            contents: RecipeDisplayEntry {
+                id: RecipeDisplayId { index: id },
+                display: RecipeDisplaySummary {
+                    display_type: RecipeDisplayType::Stonecutter,
+                    raw_body: vec![3, id as u8],
+                },
+                group: None,
+                category_id: id + 10,
+                crafting_requirements: Some(vec![IngredientSummary {
+                    tag: None,
+                    item_ids: vec![40 + id],
+                }]),
+            },
+            flags: (u8::from(notification)) | (u8::from(highlight) << 1),
+            notification,
+            highlight,
+        }
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {

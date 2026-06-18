@@ -89,6 +89,7 @@ When an agent does any of the following, update this file in the same slice:
     - unsupported diagnostics
     - play -> configuration teardown
     - scoreboard objective/display/score/team updates
+    - recipe book add/remove/settings updates
   - The final criterion:
     - every supported decoded packet stays aligned
 
