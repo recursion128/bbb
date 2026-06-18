@@ -46,6 +46,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub lore: Vec<String>,
     #[serde(default)]
+    pub rarity: Option<ItemRaritySummary>,
+    #[serde(default)]
     pub use_cooldown_ticks: Option<i32>,
     #[serde(default)]
     pub use_cooldown_group: Option<String>,
@@ -88,6 +90,15 @@ pub struct WrittenBookContentSummary {
     pub generation: i32,
     pub pages: Vec<String>,
     pub resolved: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemRaritySummary {
+    Common,
+    Uncommon,
+    Rare,
+    Epic,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -182,6 +193,9 @@ fn decode_typed_data_component_patch_summary(
             11 => {
                 summary.lore = decode_lore(decoder)?;
             }
+            12 => {
+                summary.rarity = Some(decode_item_rarity(decoder)?);
+            }
             26 => {
                 let cooldown = decode_use_cooldown_summary(decoder)?;
                 summary.use_cooldown_ticks = Some(cooldown.ticks);
@@ -265,9 +279,13 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
         10 | 35 | 71 => {
             decode_identifier(decoder)?;
         }
-        // rarity, dye, animal variant enums, collars,
+        // rarity uses ByIdMap.OutOfBoundsStrategy.ZERO.
+        12 => {
+            let _ = decode_item_rarity(decoder)?;
+        }
+        // dye, animal variant enums, collars,
         // tropical fish colors, sheep_color, shulker_color.
-        12 | 43 | 73 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 91 | 92 | 101 | 103 | 104 | 107 | 108
+        43 | 73 | 84 | 85 | 86 | 87 | 88 | 89 | 90 | 91 | 92 | 101 | 103 | 104 | 107 | 108
         | 109 => {
             decoder.read_var_i32()?;
         }
@@ -488,6 +506,15 @@ fn decode_lore(decoder: &mut Decoder<'_>) -> Result<Vec<String>> {
         lines.push(decode_component_summary_from_decoder(decoder)?);
     }
     Ok(lines)
+}
+
+fn decode_item_rarity(decoder: &mut Decoder<'_>) -> Result<ItemRaritySummary> {
+    Ok(match decoder.read_var_i32()? {
+        1 => ItemRaritySummary::Uncommon,
+        2 => ItemRaritySummary::Rare,
+        3 => ItemRaritySummary::Epic,
+        _ => ItemRaritySummary::Common,
+    })
 }
 
 fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSummary>> {
@@ -1244,7 +1271,7 @@ mod tests {
     #[test]
     fn decodes_hover_text_component_summaries() {
         let mut payload = Encoder::new();
-        payload.write_var_i32(3);
+        payload.write_var_i32(4);
         payload.write_var_i32(0);
 
         payload.write_var_i32(6);
@@ -1255,6 +1282,8 @@ mod tests {
         payload.write_var_i32(2);
         payload.write_bytes(&nbt_string_root("Lore one"));
         payload.write_bytes(&nbt_string_root("Lore two"));
+        payload.write_var_i32(12);
+        payload.write_var_i32(2);
 
         let payload = payload.into_inner();
         let mut decoder = Decoder::new(&payload);
@@ -1263,12 +1292,39 @@ mod tests {
         assert_eq!(
             patch,
             DataComponentPatchSummary {
-                added: 3,
-                added_type_ids: vec![6, 9, 11],
+                added: 4,
+                added_type_ids: vec![6, 9, 11, 12],
                 removed_type_ids: Vec::new(),
                 custom_name: Some("Custom Name".to_string()),
                 item_name: Some("Item Name".to_string()),
                 lore: vec!["Lore one".to_string(), "Lore two".to_string()],
+                rarity: Some(ItemRaritySummary::Rare),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_item_rarity_out_of_bounds_as_common() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(12);
+        payload.write_var_i32(99);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![12],
+                removed_type_ids: Vec::new(),
+                rarity: Some(ItemRaritySummary::Common),
                 ..DataComponentPatchSummary::default()
             }
         );

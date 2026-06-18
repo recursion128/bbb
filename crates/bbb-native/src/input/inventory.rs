@@ -2039,6 +2039,7 @@ fn anvil_initial_rename_text(
     item_runtime
         .and_then(|runtime| runtime.tooltip_lines_for_stack(input))
         .and_then(|lines| lines.into_iter().next())
+        .map(|line| line.text)
         .unwrap_or_default()
 }
 

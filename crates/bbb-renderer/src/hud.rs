@@ -275,14 +275,20 @@ pub struct HudInventoryTextLabel {
     pub shadow: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct HudInventoryTooltipLine {
+    pub text: String,
+    pub tint: [f32; 4],
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryTooltip {
     pub slot_id: u16,
     /// Tooltip anchor x position relative to the centered inventory screen origin.
     pub x: i32,
     /// Tooltip anchor y position relative to the centered inventory screen origin.
     pub y: i32,
-    pub lines: Vec<String>,
+    pub lines: Vec<HudInventoryTooltipLine>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -2277,7 +2283,7 @@ fn push_hud_inventory_tooltip<'a>(
     let Some(text_width) = tooltip
         .lines
         .iter()
-        .filter_map(|line| hud_ascii_text_width(line, glyphs))
+        .filter_map(|line| hud_ascii_text_width(&line.text, glyphs))
         .max()
     else {
         return;
@@ -2305,14 +2311,14 @@ fn push_hud_inventory_tooltip<'a>(
     );
 
     for shadow_offset in [1.0, 0.0] {
-        let tint = if shadow_offset > 0.0 {
-            HUD_TEXT_SHADOW_TINT
-        } else {
-            HUD_TINT_WHITE
-        };
         for (line_index, line) in tooltip.lines.iter().enumerate() {
+            let tint = if shadow_offset > 0.0 {
+                HUD_TEXT_SHADOW_TINT
+            } else {
+                line.tint
+            };
             let mut pen_x = 0;
-            for ch in line.chars() {
+            for ch in line.text.chars() {
                 let glyph = hud_ascii_glyph(ch, glyphs);
                 if glyph.width > 0 && glyph.height > 0 {
                     push_hud_draw_with_uv_and_tint(
@@ -2499,10 +2505,22 @@ fn sanitize_hud_inventory_tooltip(tooltip: HudInventoryTooltip) -> Option<HudInv
     let lines = tooltip
         .lines
         .into_iter()
-        .filter_map(sanitize_hud_text_line)
+        .filter_map(sanitize_hud_inventory_tooltip_line)
         .take(16)
         .collect::<Vec<_>>();
     (!lines.is_empty()).then_some(HudInventoryTooltip { lines, ..tooltip })
+}
+
+fn sanitize_hud_inventory_tooltip_line(
+    line: HudInventoryTooltipLine,
+) -> Option<HudInventoryTooltipLine> {
+    if !line.tint.iter().all(|component| component.is_finite()) {
+        return None;
+    }
+    Some(HudInventoryTooltipLine {
+        text: sanitize_hud_text_line(line.text)?,
+        tint: line.tint.map(|component| component.clamp(0.0, 1.0)),
+    })
 }
 
 fn sanitize_hud_text_line(line: String) -> Option<String> {
@@ -2851,9 +2869,18 @@ mod tests {
                 x: 8,
                 y: 84,
                 lines: vec![
-                    "Diamond Sword".to_string(),
-                    String::new(),
-                    "Attack\u{0007}Damage".to_string(),
+                    HudInventoryTooltipLine {
+                        text: "Diamond Sword".to_string(),
+                        tint: [1.5, 1.0, 0.5, 1.0],
+                    },
+                    HudInventoryTooltipLine {
+                        text: String::new(),
+                        tint: HUD_TINT_WHITE,
+                    },
+                    HudInventoryTooltipLine {
+                        text: "Attack\u{0007}Damage".to_string(),
+                        tint: [0.25, 0.5, 0.75, 2.0],
+                    },
                 ],
             }),
         });
@@ -2915,7 +2942,16 @@ mod tests {
                 slot_id: 5,
                 x: 8,
                 y: 84,
-                lines: vec!["Diamond Sword".to_string(), "AttackDamage".to_string()],
+                lines: vec![
+                    HudInventoryTooltipLine {
+                        text: "Diamond Sword".to_string(),
+                        tint: [1.0, 1.0, 0.5, 1.0],
+                    },
+                    HudInventoryTooltipLine {
+                        text: "AttackDamage".to_string(),
+                        tint: [0.25, 0.5, 0.75, 1.0],
+                    },
+                ],
             })
         );
     }

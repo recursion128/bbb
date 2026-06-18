@@ -10,7 +10,7 @@ use bbb_pack::{
     DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
-    DataComponentPatchSummary, ItemStackSummary, ItemStackTemplateSummary,
+    DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
 };
 use bbb_world::{
     ItemEquipmentSlot as WorldItemEquipmentSlot, WorldItemMiningProfile, WorldItemMiningRule,
@@ -27,6 +27,17 @@ const ITEM_GENERATED_MAX_LAYERS: usize = 5;
 const ITEM_ICON_RECURSION_LIMIT: usize = 16;
 const MISSING_TEXTURE_ID: &str = "minecraft:missingno";
 const ITEM_TINT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const TOOLTIP_TEXT_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+const TOOLTIP_TEXT_YELLOW: [f32; 4] = [1.0, 1.0, 85.0 / 255.0, 1.0];
+const TOOLTIP_TEXT_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
+const TOOLTIP_TEXT_LIGHT_PURPLE: [f32; 4] = [1.0, 85.0 / 255.0, 1.0, 1.0];
+const TOOLTIP_TEXT_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct NativeItemTooltipLine {
+    pub(crate) text: String,
+    pub(crate) tint: [f32; 4],
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct NativeItemRuntime {
@@ -294,13 +305,24 @@ impl NativeItemRuntime {
         self.registry.as_ref()?.resource_id(protocol_id)
     }
 
-    pub(crate) fn tooltip_lines_for_stack(&self, stack: &ItemStackSummary) -> Option<Vec<String>> {
+    pub(crate) fn tooltip_lines_for_stack(
+        &self,
+        stack: &ItemStackSummary,
+    ) -> Option<Vec<NativeItemTooltipLine>> {
         if item_stack_is_empty(stack) {
             return None;
         }
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
-        let mut lines = vec![hover_name_for_stack(&self.language, item_id, stack)];
-        lines.extend(stack.component_patch.lore.iter().cloned());
+        let mut lines = vec![NativeItemTooltipLine {
+            text: hover_name_for_stack(&self.language, item_id, stack),
+            tint: item_rarity_tint(item_rarity_for_stack(&stack.component_patch)),
+        }];
+        lines.extend(stack.component_patch.lore.iter().cloned().map(|text| {
+            NativeItemTooltipLine {
+                text,
+                tint: TOOLTIP_TEXT_DARK_PURPLE,
+            }
+        }));
         Some(lines)
     }
 
@@ -484,6 +506,27 @@ fn hover_name_for_stack(
         return name.clone();
     }
     localized_item_name(language, resource_id)
+}
+
+fn item_rarity_for_stack(component_patch: &DataComponentPatchSummary) -> ItemRaritySummary {
+    let base = component_patch.rarity.unwrap_or(ItemRaritySummary::Common);
+    if component_patch.enchantments.is_empty() {
+        return base;
+    }
+    match base {
+        ItemRaritySummary::Common | ItemRaritySummary::Uncommon => ItemRaritySummary::Rare,
+        ItemRaritySummary::Rare => ItemRaritySummary::Epic,
+        ItemRaritySummary::Epic => ItemRaritySummary::Epic,
+    }
+}
+
+fn item_rarity_tint(rarity: ItemRaritySummary) -> [f32; 4] {
+    match rarity {
+        ItemRaritySummary::Common => TOOLTIP_TEXT_WHITE,
+        ItemRaritySummary::Uncommon => TOOLTIP_TEXT_YELLOW,
+        ItemRaritySummary::Rare => TOOLTIP_TEXT_AQUA,
+        ItemRaritySummary::Epic => TOOLTIP_TEXT_LIGHT_PURPLE,
+    }
 }
 
 fn description_key(prefix: &str, resource_id: &str) -> String {
@@ -902,6 +945,13 @@ mod tests {
 
     static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
 
+    fn tooltip_line(text: &str, tint: [f32; 4]) -> NativeItemTooltipLine {
+        NativeItemTooltipLine {
+            text: text.to_string(),
+            tint,
+        }
+    }
+
     #[test]
     fn item_texture_state_indexes_textures_and_uses_missing_fallback() {
         let missing = SpriteImage::new("minecraft:missingno", 1, 1, vec![0, 0, 0, 255]).unwrap();
@@ -1126,7 +1176,7 @@ mod tests {
                 count: 1,
                 component_patch: DataComponentPatchSummary::default(),
             }),
-            Some(vec!["Test Combo".to_string()])
+            Some(vec![tooltip_line("Test Combo", TOOLTIP_TEXT_WHITE)])
         );
         assert_eq!(
             runtime.tooltip_lines_for_stack(&ItemStackSummary {
@@ -1148,9 +1198,9 @@ mod tests {
                 },
             }),
             Some(vec![
-                "Custom Pick".to_string(),
-                "First lore".to_string(),
-                "Second lore".to_string()
+                tooltip_line("Custom Pick", TOOLTIP_TEXT_WHITE),
+                tooltip_line("First lore", TOOLTIP_TEXT_DARK_PURPLE),
+                tooltip_line("Second lore", TOOLTIP_TEXT_DARK_PURPLE),
             ])
         );
         assert_eq!(
@@ -1169,7 +1219,7 @@ mod tests {
                     ..DataComponentPatchSummary::default()
                 },
             }),
-            Some(vec!["Book Title".to_string()])
+            Some(vec![tooltip_line("Book Title", TOOLTIP_TEXT_WHITE)])
         );
         assert_eq!(
             runtime.tooltip_lines_for_stack(&ItemStackSummary {
@@ -1177,10 +1227,48 @@ mod tests {
                 count: 1,
                 component_patch: DataComponentPatchSummary {
                     item_name: Some("Component Item Name".to_string()),
+                    rarity: Some(ItemRaritySummary::Uncommon),
                     ..DataComponentPatchSummary::default()
                 },
             }),
-            Some(vec!["Component Item Name".to_string()])
+            Some(vec![tooltip_line(
+                "Component Item Name",
+                TOOLTIP_TEXT_YELLOW
+            )])
+        );
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    item_name: Some("Enchanted Item".to_string()),
+                    enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 7,
+                        level: 1,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                },
+            }),
+            Some(vec![tooltip_line("Enchanted Item", TOOLTIP_TEXT_AQUA)])
+        );
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    item_name: Some("Rare Enchanted Item".to_string()),
+                    rarity: Some(ItemRaritySummary::Rare),
+                    enchantments: vec![bbb_protocol::packets::ItemEnchantmentSummary {
+                        holder_id: 7,
+                        level: 1,
+                    }],
+                    ..DataComponentPatchSummary::default()
+                },
+            }),
+            Some(vec![tooltip_line(
+                "Rare Enchanted Item",
+                TOOLTIP_TEXT_LIGHT_PURPLE
+            )])
         );
 
         let stack_icon = runtime

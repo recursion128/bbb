@@ -13,8 +13,9 @@ use bbb_protocol::{
 use bbb_renderer::{
     BlockDestroyOverlay, CameraPose, ClearColor, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,
-    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip, HudItemCountLabel,
-    HudItemDurabilityBar, HudItemIcon, HudUvRect, HUD_HOTBAR_SLOTS,
+    HudInventoryTextBackground, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudItemCountLabel, HudItemDurabilityBar, HudItemIcon, HudUvRect,
+    HUD_HOTBAR_SLOTS,
 };
 use bbb_world::{
     ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
@@ -795,7 +796,13 @@ fn hud_inventory_tooltip(
         slot_id: u16::try_from(slot_id).ok()?,
         x: layout.x,
         y: layout.y,
-        lines,
+        lines: lines
+            .into_iter()
+            .map(|line| HudInventoryTooltipLine {
+                text: line.text,
+                tint: line.tint,
+            })
+            .collect(),
     })
 }
 
@@ -2750,6 +2757,17 @@ mod tests {
     use bbb_protocol::packets::{MerchantOffer, MerchantOffers};
     use bbb_world::LocalPlayerPoseState;
 
+    const TOOLTIP_TEST_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+    const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
+    const TOOLTIP_TEST_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
+
+    fn tooltip_line(text: &str, tint: [f32; 4]) -> HudInventoryTooltipLine {
+        HudInventoryTooltipLine {
+            text: text.to_string(),
+            tint,
+        }
+    }
+
     #[test]
     fn camera_pose_uses_standing_eye_height() {
         let mut world = WorldStore::new();
@@ -2990,12 +3008,13 @@ mod tests {
                 slot_id: 36,
                 x: 8,
                 y: 142,
-                lines: vec!["Test Combo".to_string()],
+                lines: vec![tooltip_line("Test Combo", TOOLTIP_TEST_WHITE)],
             })
         );
 
         let mut custom_stack = item_stack(0, 1);
         custom_stack.component_patch.custom_name = Some("Custom Combo".to_string());
+        custom_stack.component_patch.rarity = Some(bbb_protocol::packets::ItemRaritySummary::Rare);
         custom_stack.component_patch.lore =
             vec!["First lore".to_string(), "Second lore".to_string()];
         world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
@@ -3011,9 +3030,9 @@ mod tests {
                 x: 8,
                 y: 142,
                 lines: vec![
-                    "Custom Combo".to_string(),
-                    "First lore".to_string(),
-                    "Second lore".to_string()
+                    tooltip_line("Custom Combo", TOOLTIP_TEST_AQUA),
+                    tooltip_line("First lore", TOOLTIP_TEST_DARK_PURPLE),
+                    tooltip_line("Second lore", TOOLTIP_TEST_DARK_PURPLE),
                 ],
             })
         );

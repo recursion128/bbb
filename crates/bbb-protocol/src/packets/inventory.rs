@@ -9,7 +9,7 @@ use crate::{
 const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
-    DataComponentPatchSummary, ItemEnchantmentSummary, ItemStackTemplateSummary,
+    DataComponentPatchSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
     MapPostProcessingSummary, WrittenBookContentSummary,
 };
 
