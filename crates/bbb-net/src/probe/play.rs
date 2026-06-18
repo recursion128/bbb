@@ -532,7 +532,7 @@ mod tests {
         codec::{Decoder, Encoder},
         ids,
     };
-    use bbb_world::{BlockPos, ChunkPos};
+    use bbb_world::{BlockPos, ChunkPos, LocalPlayerPoseState};
     use bytes::BytesMut;
     use std::{collections::BTreeMap, time::Duration};
     use tokio::net::TcpListener;
@@ -937,6 +937,14 @@ mod tests {
     async fn probe_applies_visual_effect_packets_to_world() {
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
+        probe.world.set_local_player_pose(LocalPlayerPoseState {
+            delta_movement: ProtocolVec3d {
+                x: 0.5,
+                y: -0.25,
+                z: 1.0,
+            },
+            ..LocalPlayerPoseState::default()
+        });
 
         probe
             .handle_play_packet(PlayClientbound::Explosion(Explosion {
@@ -1000,6 +1008,14 @@ mod tests {
                 }),
                 raw_effect_payload_len: 4,
             })
+        );
+        assert_eq!(
+            report.world.local_player_pose().unwrap().delta_movement,
+            ProtocolVec3d {
+                x: 0.75,
+                y: -0.75,
+                z: 2.5,
+            }
         );
         assert_eq!(report.world_counters.level_particles_packets, 1);
         assert_eq!(

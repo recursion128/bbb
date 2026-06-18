@@ -419,8 +419,9 @@ Target ownership:
   GPU resources are renderer runtime state, not canonical world state.
 - `bbb-renderer` owns actual particle creation, culling, settings, distance
   limits, GPU buffers, lifetime ticking, and future vanilla presentation parity.
-- Local-player knockback from explosion is a gameplay/client movement semantic
-  and should be handled by local-player or movement systems if implemented.
+- Local-player knockback from explosion is a gameplay/client movement semantic;
+  `bbb-world` applies finite knockback to canonical local-player delta movement
+  while visual explosion presentation remains renderer-owned.
 
 Do not mix visual effect state with audio state. Do not put projectile gameplay
 updates into effect modules.

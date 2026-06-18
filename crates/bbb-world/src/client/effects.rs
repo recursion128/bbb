@@ -38,6 +38,15 @@ pub struct LevelParticlesEventState {
 impl WorldStore {
     pub fn apply_explosion(&mut self, packet: ProtocolExplosion) -> ExplosionEventState {
         self.counters.explosion_packets += 1;
+        if let (Some(knockback), Some(pose)) =
+            (packet.player_knockback, self.local_player.pose.as_mut())
+        {
+            if vec3_is_finite(knockback) {
+                pose.delta_movement.x += knockback.x;
+                pose.delta_movement.y += knockback.y;
+                pose.delta_movement.z += knockback.z;
+            }
+        }
         let state = ExplosionEventState {
             center: packet.center,
             radius: packet.radius,
@@ -81,9 +90,14 @@ impl WorldStore {
     }
 }
 
+fn vec3_is_finite(vec: ProtocolVec3d) -> bool {
+    vec.x.is_finite() && vec.y.is_finite() && vec.z.is_finite()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::LocalPlayerPoseState;
     use bbb_protocol::packets::ParticlePayload;
 
     #[test]
@@ -170,5 +184,56 @@ mod tests {
         let counters = store.counters();
         assert_eq!(counters.explosion_packets, 1);
         assert_eq!(counters.level_particles_packets, 1);
+    }
+
+    #[test]
+    fn explosion_knockback_adds_to_local_player_delta_movement() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            delta_movement: vec3(0.5, -0.25, 1.0),
+            ..LocalPlayerPoseState::default()
+        });
+
+        store.apply_explosion(explosion_with_knockback(Some(vec3(0.25, 0.5, -1.5))));
+
+        assert_eq!(
+            store.local_player_pose().unwrap().delta_movement,
+            vec3(0.75, 0.25, -0.5)
+        );
+    }
+
+    #[test]
+    fn explosion_without_finite_knockback_does_not_change_local_player_delta_movement() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            delta_movement: vec3(0.5, -0.25, 1.0),
+            ..LocalPlayerPoseState::default()
+        });
+
+        store.apply_explosion(explosion_with_knockback(None));
+        assert_eq!(
+            store.local_player_pose().unwrap().delta_movement,
+            vec3(0.5, -0.25, 1.0)
+        );
+
+        store.apply_explosion(explosion_with_knockback(Some(vec3(f64::NAN, 1.0, 1.0))));
+        assert_eq!(
+            store.local_player_pose().unwrap().delta_movement,
+            vec3(0.5, -0.25, 1.0)
+        );
+    }
+
+    fn explosion_with_knockback(player_knockback: Option<ProtocolVec3d>) -> ProtocolExplosion {
+        ProtocolExplosion {
+            center: vec3(1.0, 2.0, 3.0),
+            radius: 4.5,
+            block_count: 7,
+            player_knockback,
+            raw_effect_payload: Vec::new(),
+        }
+    }
+
+    fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
+        ProtocolVec3d { x, y, z }
     }
 }

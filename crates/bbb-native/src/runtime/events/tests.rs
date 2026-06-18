@@ -40,7 +40,7 @@ use bbb_protocol::packets::{
     Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
     WaypointVec3i,
 };
-use bbb_world::{BlockPos, ChunkPos, RegistryPacketEntry, WorldStore};
+use bbb_world::{BlockPos, ChunkPos, LocalPlayerPoseState, RegistryPacketEntry, WorldStore};
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
 use uuid::Uuid;
@@ -2716,6 +2716,14 @@ fn world_effect_events_update_world_counters() {
     }))
     .unwrap();
     let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        delta_movement: ProtocolVec3d {
+            x: 0.5,
+            y: -0.25,
+            z: 1.0,
+        },
+        ..LocalPlayerPoseState::default()
+    });
     let mut counters = NetCounters::default();
 
     assert_eq!(
@@ -2740,6 +2748,14 @@ fn world_effect_events_update_world_counters() {
             }),
             raw_effect_payload_len: 4,
         })
+    );
+    assert_eq!(
+        world.local_player_pose().unwrap().delta_movement,
+        ProtocolVec3d {
+            x: 0.75,
+            y: -0.75,
+            z: 2.5,
+        }
     );
     assert_eq!(world.counters().level_particles_packets, 1);
     assert_eq!(
