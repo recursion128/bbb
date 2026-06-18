@@ -63,6 +63,48 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         crafting_table.height,
         &crafting_table.rgba,
     )?;
+    let cartography_table = gui_texture(
+        roots,
+        "textures/gui/container/cartography_table.png",
+        "minecraft:textures/gui/container/cartography_table",
+    )?;
+    renderer.upload_hud_cartography_table_background(
+        cartography_table.width,
+        cartography_table.height,
+        &cartography_table.rgba,
+    )?;
+    let cartography_table_error = hud_sprite(&sprites, "container/cartography_table/error")?;
+    renderer.upload_hud_cartography_table_error(
+        cartography_table_error.width,
+        cartography_table_error.height,
+        &cartography_table_error.rgba,
+    )?;
+    let cartography_table_scaled_map =
+        hud_sprite(&sprites, "container/cartography_table/scaled_map")?;
+    renderer.upload_hud_cartography_table_scaled_map(
+        cartography_table_scaled_map.width,
+        cartography_table_scaled_map.height,
+        &cartography_table_scaled_map.rgba,
+    )?;
+    let cartography_table_duplicated_map =
+        hud_sprite(&sprites, "container/cartography_table/duplicated_map")?;
+    renderer.upload_hud_cartography_table_duplicated_map(
+        cartography_table_duplicated_map.width,
+        cartography_table_duplicated_map.height,
+        &cartography_table_duplicated_map.rgba,
+    )?;
+    let cartography_table_map = hud_sprite(&sprites, "container/cartography_table/map")?;
+    renderer.upload_hud_cartography_table_map(
+        cartography_table_map.width,
+        cartography_table_map.height,
+        &cartography_table_map.rgba,
+    )?;
+    let cartography_table_locked = hud_sprite(&sprites, "container/cartography_table/locked")?;
+    renderer.upload_hud_cartography_table_locked(
+        cartography_table_locked.width,
+        cartography_table_locked.height,
+        &cartography_table_locked.rgba,
+    )?;
     let crafter = gui_texture(
         roots,
         "textures/gui/container/crafter.png",
@@ -301,6 +343,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         hotbar = ?(hotbar.width, hotbar.height),
         inventory = ?(inventory.width, inventory.height),
         generic_container = ?(generic_container.width, generic_container.height),
+        cartography_table = ?(cartography_table.width, cartography_table.height),
         crafter = ?(crafter.width, crafter.height),
         anvil = ?(anvil.width, anvil.height),
         furnace = ?(furnace.width, furnace.height),

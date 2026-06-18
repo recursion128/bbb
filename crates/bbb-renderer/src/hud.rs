@@ -115,6 +115,12 @@ pub enum HudInventoryBackgroundTexture {
     GenericContainer,
     Dispenser,
     CraftingTable,
+    CartographyTable,
+    CartographyTableError,
+    CartographyTableScaledMap,
+    CartographyTableDuplicatedMap,
+    CartographyTableMap,
+    CartographyTableLocked,
     Crafter,
     CrafterDisabledSlot,
     CrafterPoweredRedstone,
@@ -270,6 +276,67 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_crafting_table_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_cartography_table_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_cartography_table_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_cartography_table_error(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_cartography_table_error = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_cartography_table_scaled_map(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_cartography_table_scaled_map = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_cartography_table_duplicated_map(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_cartography_table_duplicated_map =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_cartography_table_map(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_cartography_table_map = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_cartography_table_locked(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_cartography_table_locked = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -995,6 +1062,24 @@ impl Renderer {
             HudInventoryBackgroundTexture::Dispenser => self.hud_dispenser_background.as_ref(),
             HudInventoryBackgroundTexture::CraftingTable => {
                 self.hud_crafting_table_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::CartographyTable => {
+                self.hud_cartography_table_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::CartographyTableError => {
+                self.hud_cartography_table_error.as_ref()
+            }
+            HudInventoryBackgroundTexture::CartographyTableScaledMap => {
+                self.hud_cartography_table_scaled_map.as_ref()
+            }
+            HudInventoryBackgroundTexture::CartographyTableDuplicatedMap => {
+                self.hud_cartography_table_duplicated_map.as_ref()
+            }
+            HudInventoryBackgroundTexture::CartographyTableMap => {
+                self.hud_cartography_table_map.as_ref()
+            }
+            HudInventoryBackgroundTexture::CartographyTableLocked => {
+                self.hud_cartography_table_locked.as_ref()
             }
             HudInventoryBackgroundTexture::Crafter => self.hud_crafter_background.as_ref(),
             HudInventoryBackgroundTexture::CrafterDisabledSlot => {

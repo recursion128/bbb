@@ -314,6 +314,7 @@ When an agent does any of the following, update this file in the same slice:
         - `generic_3x3`
         - anvil
         - brewing stand
+        - cartography table
         - furnace/blast furnace/smoker
         - crafting table
         - grindstone
@@ -466,6 +467,8 @@ When an agent does any of the following, update this file in the same slice:
         - `text_field_disabled`
         - error sprites
       - BrewingStandMenu screens with official `brewing_stand.png`
+      - CartographyTableMenu screens with official `cartography_table.png`
+        background
       - CraftingMenu screens with official `crafting_table.png`
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with official
         furnace-family backgrounds
@@ -517,6 +520,15 @@ When an agent does any of the following, update this file in the same slice:
           - potion bottle ids
           - ingredient parity
           - component-hashable potion stack prediction
+      - CartographyTableMenu:
+        - quick-move and result-slot paths are kept server-authoritative until:
+          - map item component routing
+          - result prediction
+          - input consumption
+          - take-result sound side effects
+        - map preview, duplicated/scaled/locked overlays, and error overlays
+          remain deferred presentation parity work until canonical map render
+          state is projected into the inventory HUD
       - GrindstoneMenu:
         - player inventory/hotbar range movement when both input slots are
           occupied

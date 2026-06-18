@@ -39,6 +39,7 @@ const HOPPER_MENU_TYPE_ID: i32 = 16;
 const SHULKER_BOX_MENU_TYPE_ID: i32 = 20;
 const SMITHING_MENU_TYPE_ID: i32 = 21;
 const SMOKER_MENU_TYPE_ID: i32 = 22;
+const CARTOGRAPHY_TABLE_MENU_TYPE_ID: i32 = 23;
 const STONECUTTER_MENU_TYPE_ID: i32 = 24;
 const GENERIC_CONTAINER_SLOT_COLUMNS: i32 = 9;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
@@ -55,6 +56,9 @@ const CRAFTER_TOTAL_SLOT_COUNT: i16 = 46;
 const ANVIL_SCREEN_WIDTH: i32 = 176;
 const ANVIL_SCREEN_HEIGHT: i32 = 166;
 const ANVIL_SLOT_COUNT: i16 = 3;
+const CARTOGRAPHY_TABLE_SCREEN_WIDTH: i32 = 176;
+const CARTOGRAPHY_TABLE_SCREEN_HEIGHT: i32 = 166;
+const CARTOGRAPHY_TABLE_SLOT_COUNT: i16 = 3;
 const BREWING_STAND_SCREEN_WIDTH: i32 = 176;
 const BREWING_STAND_SCREEN_HEIGHT: i32 = 166;
 const BREWING_STAND_SLOT_COUNT: i16 = 5;
@@ -92,6 +96,7 @@ pub(crate) enum InventoryScreenBackground {
     Anvil,
     BlastFurnace,
     BrewingStand,
+    CartographyTable,
     CraftingTable,
     Crafter,
     Furnace,
@@ -270,6 +275,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: SMITHING_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Smithing,
             slots: smithing_slot_layouts(),
+        });
+    }
+    if menu_type_id == CARTOGRAPHY_TABLE_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: CARTOGRAPHY_TABLE_SCREEN_WIDTH,
+            height: CARTOGRAPHY_TABLE_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::CartographyTable,
+            slots: cartography_table_slot_layouts(),
         });
     }
     if menu_type_id == STONECUTTER_MENU_TYPE_ID {
@@ -647,6 +660,44 @@ fn shulker_box_slot_layouts() -> Vec<InventorySlotLayout> {
     for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
         slots.push(InventorySlotLayout {
             slot_id: SHULKER_BOX_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
+        });
+    }
+
+    slots
+}
+
+fn cartography_table_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(CARTOGRAPHY_TABLE_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 15,
+        y: 15,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 15,
+        y: 52,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 2,
+        x: 145,
+        y: 39,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: CARTOGRAPHY_TABLE_SLOT_COUNT
+                    + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: CARTOGRAPHY_TABLE_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
             y: 142,
         });
@@ -2019,6 +2070,66 @@ mod tests {
     }
 
     #[test]
+    fn cartography_table_layout_matches_vanilla_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: CARTOGRAPHY_TABLE_MENU_TYPE_ID,
+            title: "Cartography Table".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(
+            layout.background,
+            InventoryScreenBackground::CartographyTable
+        );
+        assert_eq!(layout.slots.len(), 39);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 15,
+                y: 15,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 15,
+                y: 52,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 145,
+                y: 39,
+            }
+        );
+        assert_eq!(
+            layout.slots[3],
+            InventorySlotLayout {
+                slot_id: 3,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[38],
+            InventorySlotLayout {
+                slot_id: 38,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn stonecutter_layout_matches_vanilla_menu() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -2368,6 +2479,34 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
             Some(InventoryClickTarget::Slot(39))
+        );
+    }
+
+    #[test]
+    fn cartography_table_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: CARTOGRAPHY_TABLE_MENU_TYPE_ID,
+            title: "Cartography Table".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(575.0, 300.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(575.0, 337.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(705.0, 324.0)), size),
+            Some(InventoryClickTarget::Slot(2))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(38))
         );
     }
 

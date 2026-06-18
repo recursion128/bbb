@@ -31,6 +31,7 @@ const VANILLA_MENU_TYPE_GRINDSTONE_ID: i32 = 15;
 const VANILLA_MENU_TYPE_HOPPER_ID: i32 = 16;
 const VANILLA_MENU_TYPE_SMITHING_ID: i32 = 21;
 const VANILLA_MENU_TYPE_SMOKER_ID: i32 = 22;
+const VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID: i32 = 23;
 const VANILLA_MENU_TYPE_STONECUTTER_ID: i32 = 24;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_CONTAINER_SLOT_COUNT: i16 = 9;
@@ -63,6 +64,7 @@ const GRINDSTONE_HOTBAR_START: i16 = 30;
 const GRINDSTONE_HOTBAR_END: i16 = 39;
 const GRINDSTONE_TOTAL_SLOT_COUNT: i16 = 39;
 const ANVIL_RESULT_SLOT: i16 = 2;
+const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
 const SMITHING_RESULT_SLOT: i16 = 3;
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
@@ -836,6 +838,10 @@ impl WorldStore {
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_SMITHING_ID) {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::QuickMove,
+                        ));
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID) {
                         return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                             ProtocolContainerInput::QuickMove,
                         ));
@@ -1749,6 +1755,10 @@ fn menu_result_slot_requires_server_authority(menu_type_id: Option<i32>, slot_nu
             | (
                 Some(VANILLA_MENU_TYPE_CRAFTING_ID),
                 CRAFTING_MENU_RESULT_SLOT
+            )
+            | (
+                Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID),
+                CARTOGRAPHY_TABLE_RESULT_SLOT
             )
             | (Some(VANILLA_MENU_TYPE_CRAFTER_ID), CRAFTER_RESULT_SLOT)
             | (
@@ -5206,6 +5216,69 @@ mod tests {
             item_stack(90, 1)
         );
         assert_eq!(open_container_slot_item(&store, 31), item_stack(43, 3));
+    }
+
+    #[test]
+    fn apply_local_cartography_table_result_and_quick_move_require_server_authority() {
+        const CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT: usize = 39;
+
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            title: "Cartography Table".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT];
+        items[0] = item_stack(42, 1);
+        items[1] = item_stack(43, 1);
+        items[CARTOGRAPHY_TABLE_RESULT_SLOT as usize] = item_stack(90, 1);
+        items[30] = item_stack(44, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        for input in [
+            ProtocolContainerInput::Pickup,
+            ProtocolContainerInput::QuickMove,
+        ] {
+            assert_eq!(
+                store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: CARTOGRAPHY_TABLE_RESULT_SLOT,
+                    button_num: 0,
+                    input,
+                }),
+                Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
+            );
+        }
+        assert_eq!(
+            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 30,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            }),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickMove
+            ))
+        );
+        let click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 30,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 1));
+        assert_eq!(open_container_slot_item(&store, 1), item_stack(43, 1));
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_RESULT_SLOT),
+            item_stack(90, 1)
+        );
+        assert_eq!(open_container_slot_item(&store, 30), item_stack(44, 3));
     }
 
     #[test]
