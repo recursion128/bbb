@@ -950,6 +950,7 @@ fn drop_key_queues_drop_item_action() {
     );
 
     assert_eq!(counters.player_action_commands_queued, 1);
+    assert_eq!(counters.swing_commands_queued, 0);
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::PlayerAction(PlayerAction {
@@ -959,10 +960,41 @@ fn drop_key_queues_drop_item_action() {
             sequence: 0,
         })
     );
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]
 fn control_drop_key_queues_drop_all_items_action() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.control_left_down = true;
+    let mut counters = NetCounters::default();
+
+    handle_key_input_without_world(
+        &mut input,
+        &mut counters,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyQ),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_action_commands_queued, 1);
+    assert_eq!(counters.swing_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerAction(PlayerAction {
+            action: PlayerActionKind::DropAllItems,
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            direction: ProtocolDirection::Down,
+            sequence: 0,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sprint_drop_key_still_queues_drop_item_action() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
@@ -981,11 +1013,87 @@ fn control_drop_key_queues_drop_all_items_action() {
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::PlayerAction(PlayerAction {
+            action: PlayerActionKind::DropItem,
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            direction: ProtocolDirection::Down,
+            sequence: 0,
+        })
+    );
+}
+
+#[test]
+fn drop_key_predicts_one_selected_item_and_swings_when_non_empty() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    equip_player_slot(&mut world, 0, 42, 3);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyQ),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(test_player_slot_item(&world, 0), test_item_stack(42, 2));
+    assert_eq!(counters.player_action_commands_queued, 1);
+    assert_eq!(counters.swing_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerAction(PlayerAction {
+            action: PlayerActionKind::DropItem,
+            pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+            direction: ProtocolDirection::Down,
+            sequence: 0,
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::Swing(InteractionHand::MainHand)
+    );
+}
+
+#[test]
+fn control_drop_key_predicts_selected_stack_and_swings_when_non_empty() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.control_left_down = true;
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    equip_player_slot(&mut world, 0, 42, 3);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyQ),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        test_player_slot_item(&world, 0),
+        ProtocolItemStackSummary::empty()
+    );
+    assert_eq!(counters.player_action_commands_queued, 1);
+    assert_eq!(counters.swing_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerAction(PlayerAction {
             action: PlayerActionKind::DropAllItems,
             pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
             direction: ProtocolDirection::Down,
             sequence: 0,
         })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::Swing(InteractionHand::MainHand)
     );
 }
 

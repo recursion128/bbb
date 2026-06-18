@@ -305,6 +305,12 @@ When an agent does any of the following, update this file in the same slice:
       - interaction
       - chat
       - command
+    - Gameplay Q/Ctrl+Q drop input now follows vanilla 26.1 modifier
+      semantics:
+      - Ctrl, not sprint, selects `DROP_ALL_ITEMS`.
+      - The selected hotbar stack is locally predicted in canonical inventory
+        state.
+      - Main-hand swing is queued only when a non-empty stack was dropped.
   - Inventory:
     - Implement:
       - tooltips

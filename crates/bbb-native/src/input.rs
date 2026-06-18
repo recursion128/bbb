@@ -3,7 +3,8 @@ use std::time::Instant;
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
-    Direction as ProtocolDirection, PlayerActionKind, PlayerCommandAction, PlayerInput,
+    Direction as ProtocolDirection, InteractionHand, PlayerActionKind, PlayerCommandAction,
+    PlayerInput,
 };
 use bbb_world::{LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
@@ -318,12 +319,17 @@ pub(crate) fn handle_key_input(
         }
         match code {
             KeyCode::KeyQ => {
-                let action = if input.sprint {
+                let drop_all = input.control_down();
+                let action = if drop_all {
                     PlayerActionKind::DropAllItems
                 } else {
                     PlayerActionKind::DropItem
                 };
+                let dropped_item = world.drop_local_selected_hotbar_item(drop_all);
                 queue_zero_pos_player_action_command(counters, net_commands, action);
+                if dropped_item {
+                    queue_swing_command(counters, net_commands, InteractionHand::MainHand);
+                }
                 return;
             }
             KeyCode::KeyF => {

@@ -658,6 +658,30 @@ impl WorldStore {
                 .is_some_and(item_stack_is_non_empty)
     }
 
+    pub fn drop_local_selected_hotbar_item(&mut self, all: bool) -> bool {
+        let selected_slot = self.local_player.selected_hotbar_slot;
+        if selected_slot > 8 {
+            return false;
+        }
+
+        let selected_slot = i32::from(selected_slot);
+        let mut selected = self.player_inventory_slot(selected_slot);
+        if item_stack_is_empty(&selected.item) {
+            return false;
+        }
+
+        if all {
+            selected.item = ProtocolItemStackSummary::empty();
+        } else {
+            selected.item.count -= 1;
+            normalize_item_stack(&mut selected.item);
+        }
+
+        self.set_player_inventory_slot_and_menu_slot(selected);
+        self.update_inventory_slot_count();
+        true
+    }
+
     pub fn local_player_has_equipped_elytra(&self) -> bool {
         self.inventory
             .player_slots
@@ -1046,6 +1070,34 @@ impl WorldStore {
             .slots
             .iter()
             .find_map(|slot| (slot.slot == INVENTORY_MENU_OFFHAND_SLOT).then_some(&slot.item))
+    }
+
+    fn player_inventory_slot(&self, slot: i32) -> InventorySlot {
+        self.inventory
+            .player_slots
+            .iter()
+            .find(|existing| existing.slot == slot)
+            .cloned()
+            .unwrap_or(InventorySlot {
+                slot,
+                item: ProtocolItemStackSummary::empty(),
+                local_selected_bundle_item_index: NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX,
+            })
+    }
+
+    fn set_player_inventory_slot_and_menu_slot(&mut self, slot: InventorySlot) {
+        let menu_slot = inventory_slot_to_inventory_menu_slot(slot.slot);
+        set_inventory_slot(&mut self.inventory.player_slots, slot.clone());
+        if let Some(menu_slot) = menu_slot {
+            set_container_slot(
+                &mut self.inventory.inventory_menu.slots,
+                ContainerSlot {
+                    slot: menu_slot,
+                    item: slot.item,
+                    local_selected_bundle_item_index: slot.local_selected_bundle_item_index,
+                },
+            );
+        }
     }
 
     fn active_container(&self) -> Option<&ContainerState> {
@@ -3099,6 +3151,45 @@ mod tests {
             item: ProtocolItemStackSummary::empty(),
         });
         assert!(!store.local_item_use_prefers_offhand());
+    }
+
+    #[test]
+    fn drop_local_selected_hotbar_item_drops_one_and_updates_menu_view() {
+        let mut store = WorldStore::new();
+        assert!(store.set_local_selected_hotbar_slot(2));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 2,
+            item: item_stack(42, 3),
+        });
+
+        assert!(store.drop_local_selected_hotbar_item(false));
+
+        assert_eq!(player_slot_item(&store, 2), item_stack(42, 2));
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START + 2),
+            item_stack(42, 2)
+        );
+    }
+
+    #[test]
+    fn drop_local_selected_hotbar_item_drops_stack_and_reports_empty_slots() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(99, 1),
+        });
+
+        assert!(store.drop_local_selected_hotbar_item(true));
+
+        assert_eq!(
+            player_slot_item(&store, 0),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            inventory_menu_slot_item(&store, INVENTORY_MENU_HOTBAR_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert!(!store.drop_local_selected_hotbar_item(true));
     }
 
     #[test]
