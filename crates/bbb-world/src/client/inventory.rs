@@ -925,6 +925,15 @@ impl WorldStore {
                     request.button_num,
                     &self.default_item_max_stack_sizes,
                 ),
+                ProtocolContainerInput::Clone => apply_clone_click_to_slots(
+                    &slots_after,
+                    &mut cursor_after,
+                    request.slot_num,
+                    self.local_player
+                        .abilities
+                        .is_some_and(|abilities| abilities.instabuild),
+                    &self.default_item_max_stack_sizes,
+                ),
                 ProtocolContainerInput::QuickMove => {
                     if container_id == INVENTORY_MENU_CONTAINER_ID {
                         if request.slot_num == 0 {
@@ -1659,6 +1668,28 @@ fn apply_quick_craft_to_slots(
         }
         _ => quick_craft.reset(),
     }
+}
+
+fn apply_clone_click_to_slots(
+    slots: &[ContainerSlot],
+    cursor: &mut ProtocolItemStackSummary,
+    slot_num: i16,
+    instabuild: bool,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !instabuild || !item_stack_is_empty(cursor) || slot_num < 0 {
+        return;
+    }
+    let Some(slot_item) = container_slot_item(slots, slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(slot_item) {
+        return;
+    }
+
+    *cursor = slot_item.clone();
+    cursor.count = item_stack_max_stack_size(slot_item, default_item_max_stack_sizes);
+    normalize_item_stack(cursor);
 }
 
 fn finish_quick_craft(
@@ -3075,7 +3106,8 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue as ProtocolEntityDataValue,
         EntityDataValueKind, IngredientSummary, MountScreenOpen as ProtocolMountScreenOpen,
-        RecipePropertySetSummary, SetEntityData as ProtocolSetEntityData, SlotDisplaySummary,
+        PlayerAbilities as ProtocolPlayerAbilities, RecipePropertySetSummary,
+        SetEntityData as ProtocolSetEntityData, SlotDisplaySummary,
         StonecutterSelectableRecipeSummary, UpdateRecipes as ProtocolUpdateRecipes,
         Vec3d as ProtocolVec3d,
     };
@@ -7267,20 +7299,102 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_container_click_slot_rejects_unsupported_local_simulation() {
+    fn apply_local_container_clone_copies_slot_stack_to_cursor_at_max_count() {
         let mut store = WorldStore::new();
-        assert!(store.open_local_inventory());
+        store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 16)]));
+        apply_player_instabuild(&mut store, true);
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 1,
+            title: "Chest".to_string(),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 3,
+            items: vec![item_stack(42, 3)],
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
 
+        let clone = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 2,
+                input: ProtocolContainerInput::Clone,
+            })
+            .unwrap();
+
+        assert_eq!(clone.container_id, 7);
+        assert_eq!(clone.state_id, 3);
+        assert_eq!(clone.input, ProtocolContainerInput::Clone);
+        assert!(clone.changed_slots.is_empty());
+        assert_eq!(clone.carried_item, hashed_item_stack(42, 16));
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 3));
+        assert_eq!(store.inventory().cursor_item, item_stack(42, 16));
+    }
+
+    #[test]
+    fn apply_local_container_clone_does_not_apply_without_instabuild() {
+        let mut store = WorldStore::new();
+        store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 16)]));
+        apply_player_instabuild(&mut store, false);
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 1,
+            title: "Chest".to_string(),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 3,
+            items: vec![item_stack(42, 3)],
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let blocked = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 2,
+                input: ProtocolContainerInput::Clone,
+            })
+            .unwrap();
+
+        assert!(blocked.changed_slots.is_empty());
+        assert_eq!(blocked.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 3));
         assert_eq!(
-            store
-                .apply_local_container_click_slot(ContainerClickSlotRequest {
-                    slot_num: 0,
-                    button_num: 0,
-                    input: ProtocolContainerInput::Clone,
-                })
-                .unwrap_err(),
-            ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::Clone)
+            store.inventory().cursor_item,
+            ProtocolItemStackSummary::empty()
         );
+    }
+
+    #[test]
+    fn apply_local_container_clone_does_not_apply_with_non_empty_cursor() {
+        let mut store = WorldStore::new();
+        store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 16)]));
+        apply_player_instabuild(&mut store, true);
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 1,
+            title: "Chest".to_string(),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 3,
+            items: vec![item_stack(42, 3)],
+            carried_item: item_stack(99, 1),
+        });
+
+        let blocked = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 2,
+                input: ProtocolContainerInput::Clone,
+            })
+            .unwrap();
+
+        assert!(blocked.changed_slots.is_empty());
+        assert_eq!(blocked.carried_item, hashed_item_stack(99, 1));
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 3));
+        assert_eq!(store.inventory().cursor_item, item_stack(99, 1));
     }
 
     fn mount_visibility_for_entity(
@@ -7355,6 +7469,17 @@ mod tests {
             count,
             components: ProtocolHashedComponentPatch::default(),
         })
+    }
+
+    fn apply_player_instabuild(store: &mut WorldStore, instabuild: bool) {
+        store.apply_player_abilities(ProtocolPlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: instabuild,
+            instabuild,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
     }
 
     fn quick_craft_request(

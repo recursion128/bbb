@@ -449,6 +449,10 @@ When an agent does any of the following, update this file in the same slice:
     - They toggle local creative/spectator-style flying with the vanilla
       double-jump window when synced abilities allow flight, then queue
       `ServerboundPlayerAbilitiesPacket`.
+    - Creative middle-click clone in local and server-opened containers queues
+      `ServerboundContainerClickPacket` with `ContainerInput.CLONE`, an empty
+      changed-slot set, and a carried item copied to the vanilla max stack
+      size.
     - They queue `START_FALL_FLYING` player commands when an airborne local
       player has an elytra-equipped chest slot.
     - They queue `STOP_SLEEPING` player commands when wake-up input is pressed

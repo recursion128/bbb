@@ -1242,6 +1242,7 @@ pub(crate) fn handle_inventory_mouse_input(
     let button_num = match button {
         MouseButton::Left => 0,
         MouseButton::Right => 1,
+        MouseButton::Middle => 2,
         _ => return true,
     };
 
@@ -1255,6 +1256,17 @@ pub(crate) fn handle_inventory_mouse_input(
             cursor_position,
             surface_size,
         );
+    }
+    if button_num == 2 {
+        maybe_queue_inventory_clone_click(
+            input,
+            world,
+            counters,
+            net_commands,
+            cursor_position,
+            surface_size,
+        );
+        return true;
     }
     if button_num == 0
         && maybe_queue_lectern_button_click(
@@ -1755,7 +1767,7 @@ fn local_inventory_apply_and_queue_click(
     let click = if world.local_inventory_is_open()
         || matches!(
             request.input,
-            ContainerInput::Pickup | ContainerInput::QuickMove
+            ContainerInput::Pickup | ContainerInput::QuickMove | ContainerInput::Clone
         ) {
         match world.apply_local_container_click_slot(request) {
             Ok(click) => click,
@@ -1775,6 +1787,49 @@ fn local_inventory_apply_and_queue_click(
     };
     queue_container_click_command(counters, net_commands, click);
     true
+}
+
+fn maybe_queue_inventory_clone_click(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if !world
+        .local_player()
+        .abilities
+        .is_some_and(|abilities| abilities.instabuild)
+    {
+        return false;
+    }
+    if !inventory_cursor_is_empty(world) {
+        return false;
+    }
+    let Some(InventoryClickTarget::Slot(slot_num)) =
+        inventory_screen_click_target(world, cursor_position, surface_size)
+    else {
+        return false;
+    };
+    if !inventory_slot_has_item(world, slot_num) {
+        return false;
+    }
+
+    input.inventory_last_click_slot = None;
+    input.inventory_last_click_button_num = None;
+    input.inventory_last_click_at = None;
+    local_inventory_clear_quick_craft(input);
+    local_inventory_apply_and_queue_click(
+        world,
+        counters,
+        net_commands,
+        ContainerClickSlotRequest {
+            slot_num,
+            button_num: 2,
+            input: ContainerInput::Clone,
+        },
+    )
 }
 
 fn local_inventory_clear_quick_craft(input: &mut ClientInputState) {
@@ -3024,9 +3079,9 @@ mod tests {
         ContainerSetContent, ContainerSetData, ContainerSlotStateChanged, EntityDataValue,
         EntityDataValueKind, HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary,
         ItemCostSummary, ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen,
-        OpenScreen, RecipePropertySetSummary, SelectBundleItem, SelectTradeCommand, SetBeacon,
-        SetCursorItem, SetEntityData, SetPlayerInventory, SlotDisplaySummary,
-        StonecutterSelectableRecipeSummary, UpdateRecipes, Vec3d,
+        OpenScreen, PlayerAbilities, RecipePropertySetSummary, SelectBundleItem,
+        SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData, SetPlayerInventory,
+        SlotDisplaySummary, StonecutterSelectableRecipeSummary, UpdateRecipes, Vec3d,
     };
     use uuid::Uuid;
 
@@ -7531,6 +7586,123 @@ mod tests {
     }
 
     #[test]
+    fn creative_inventory_middle_click_queues_container_zero_clone() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        apply_instabuild_abilities(&mut world);
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 3),
+        });
+        assert!(world.open_local_inventory());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Middle,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 419.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 0,
+                state_id: 0,
+                slot_num: 36,
+                button_num: 2,
+                input: ContainerInput::Clone,
+                changed_slots: [].into(),
+                carried_item: HashedStack::Item(hashed_item(42, 64)),
+            })
+        );
+        assert_eq!(world.inventory().cursor_item, item_stack(42, 64));
+    }
+
+    #[test]
+    fn creative_server_opened_container_middle_click_queues_clone() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        apply_instabuild_abilities(&mut world);
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: GENERIC_CONTAINER_FIRST_MENU_TYPE_ID,
+            title: "Chest".to_string(),
+        });
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![item_stack(42, 3)],
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Middle,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(568.0, 320.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 2,
+                input: ContainerInput::Clone,
+                changed_slots: [].into(),
+                carried_item: HashedStack::Item(hashed_item(42, 64)),
+            })
+        );
+        assert_eq!(world.inventory().cursor_item, item_stack(42, 64));
+    }
+
+    #[test]
+    fn inventory_middle_click_without_instabuild_is_consumed_without_packet() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 3),
+        });
+        assert!(world.open_local_inventory());
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Middle,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 419.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert_eq!(world.inventory().cursor_item, ItemStackSummary::empty());
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
     fn inventory_double_left_click_queues_container_zero_pickup_all() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -8172,6 +8344,17 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn apply_instabuild_abilities(world: &mut WorldStore) {
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
     }
 
     fn merchant_offers(container_id: i32, offer_count: usize) -> MerchantOffers {
