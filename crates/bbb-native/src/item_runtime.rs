@@ -33,6 +33,7 @@ const TOOLTIP_TEXT_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEXT_LIGHT_PURPLE: [f32; 4] = [1.0, 85.0 / 255.0, 1.0, 1.0];
 const TOOLTIP_TEXT_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
 const TOOLTIP_TEXT_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0];
+const TOOLTIP_TEXT_BLUE: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 1.0, 1.0];
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct NativeItemTooltipLine {
@@ -327,6 +328,12 @@ impl NativeItemRuntime {
                 tint: TOOLTIP_TEXT_DARK_PURPLE,
             }
         }));
+        if stack.component_patch.unbreakable {
+            lines.push(NativeItemTooltipLine {
+                text: self.language.get_or_key("item.unbreakable").to_string(),
+                tint: TOOLTIP_TEXT_BLUE,
+            });
+        }
         Some(lines)
     }
 
@@ -1115,6 +1122,7 @@ mod tests {
             &assets.join("lang").join("en_us.json"),
             r#"{
                 "item.minecraft.test_combo": "Test Combo",
+                "item.unbreakable": "Unbreakable",
                 "book.byAuthor": "by %1$s",
                 "book.generation.0": "Original",
                 "book.generation.2": "Copy of a copy"
@@ -1296,6 +1304,21 @@ mod tests {
                 "Component Item Name",
                 TOOLTIP_TEXT_YELLOW
             )])
+        );
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    item_name: Some("Durable Item".to_string()),
+                    unbreakable: true,
+                    ..DataComponentPatchSummary::default()
+                },
+            }),
+            Some(vec![
+                tooltip_line("Durable Item", TOOLTIP_TEXT_WHITE),
+                tooltip_line("Unbreakable", TOOLTIP_TEXT_BLUE),
+            ])
         );
         assert_eq!(
             runtime.tooltip_lines_for_stack(&ItemStackSummary {

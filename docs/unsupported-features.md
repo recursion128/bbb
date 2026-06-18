@@ -550,6 +550,7 @@ When an agent does any of the following, update this file in the same slice:
         - enchanted rarity upgrades
         - lore dark-purple lines
         - written-book author and generation detail lines
+        - unbreakable component detail line
       - renders hovered-slot item tooltip names as basic ASCII text using
         official 26.1 `font/ascii.png` glyphs
     - It renders and hit-tests supported server-opened screens:
