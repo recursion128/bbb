@@ -299,7 +299,9 @@ impl NativeItemRuntime {
             return None;
         }
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
-        Some(vec![localized_item_name(&self.language, item_id)])
+        let mut lines = vec![hover_name_for_stack(&self.language, item_id, stack)];
+        lines.extend(stack.component_patch.lore.iter().cloned());
+        Some(lines)
     }
 
     #[cfg(test)]
@@ -459,6 +461,29 @@ fn localized_item_name(language: &LanguageCatalog, resource_id: &str) -> String 
 
     let block_key = description_key("block", resource_id);
     language.get(&block_key).unwrap_or(&item_key).to_string()
+}
+
+fn hover_name_for_stack(
+    language: &LanguageCatalog,
+    resource_id: &str,
+    stack: &ItemStackSummary,
+) -> String {
+    if let Some(name) = &stack.component_patch.custom_name {
+        return name.clone();
+    }
+    if let Some(title) = stack
+        .component_patch
+        .written_book
+        .as_ref()
+        .map(|book| book.title.as_str())
+        .filter(|title| !title.trim().is_empty())
+    {
+        return title.to_string();
+    }
+    if let Some(name) = &stack.component_patch.item_name {
+        return name.clone();
+    }
+    localized_item_name(language, resource_id)
 }
 
 fn description_key(prefix: &str, resource_id: &str) -> String {
@@ -1110,6 +1135,52 @@ mod tests {
                 component_patch: DataComponentPatchSummary::default(),
             }),
             None
+        );
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    custom_name: Some("Custom Pick".to_string()),
+                    item_name: Some("Renamed Item Name".to_string()),
+                    lore: vec!["First lore".to_string(), "Second lore".to_string()],
+                    ..DataComponentPatchSummary::default()
+                },
+            }),
+            Some(vec![
+                "Custom Pick".to_string(),
+                "First lore".to_string(),
+                "Second lore".to_string()
+            ])
+        );
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    written_book: Some(bbb_protocol::packets::WrittenBookContentSummary {
+                        title: "Book Title".to_string(),
+                        author: "Alex".to_string(),
+                        generation: 0,
+                        pages: Vec::new(),
+                        resolved: true,
+                    }),
+                    item_name: Some("Ignored Item Name".to_string()),
+                    ..DataComponentPatchSummary::default()
+                },
+            }),
+            Some(vec!["Book Title".to_string()])
+        );
+        assert_eq!(
+            runtime.tooltip_lines_for_stack(&ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    item_name: Some("Component Item Name".to_string()),
+                    ..DataComponentPatchSummary::default()
+                },
+            }),
+            Some(vec!["Component Item Name".to_string()])
         );
 
         let stack_icon = runtime

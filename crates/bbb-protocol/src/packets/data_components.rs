@@ -40,6 +40,12 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub unbreakable: bool,
     #[serde(default)]
+    pub custom_name: Option<String>,
+    #[serde(default)]
+    pub item_name: Option<String>,
+    #[serde(default)]
+    pub lore: Vec<String>,
+    #[serde(default)]
     pub use_cooldown_ticks: Option<i32>,
     #[serde(default)]
     pub use_cooldown_group: Option<String>,
@@ -167,6 +173,15 @@ fn decode_typed_data_component_patch_summary(
             4 => {
                 summary.unbreakable = true;
             }
+            6 => {
+                summary.custom_name = Some(decode_component_summary_from_decoder(decoder)?);
+            }
+            9 => {
+                summary.item_name = Some(decode_component_summary_from_decoder(decoder)?);
+            }
+            11 => {
+                summary.lore = decode_lore(decoder)?;
+            }
             26 => {
                 let cooldown = decode_use_cooldown_summary(decoder)?;
                 summary.use_cooldown_ticks = Some(cooldown.ticks);
@@ -239,7 +254,9 @@ fn decode_data_component_value(decoder: &mut Decoder<'_>, type_id: i32) -> Resul
             decode_component_summary_from_decoder(decoder)?;
         }
         // lore: list(256) of ComponentSerialization.STREAM_CODEC.
-        11 => decode_lore(decoder)?,
+        11 => {
+            let _ = decode_lore(decoder)?;
+        }
         // minimum_attack_charge and potion_duration_scale.
         7 | 52 => {
             decoder.read_f32()?;
@@ -464,12 +481,13 @@ fn decode_global_pos(decoder: &mut Decoder<'_>) -> Result<()> {
     Ok(())
 }
 
-fn decode_lore(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_lore(decoder: &mut Decoder<'_>) -> Result<Vec<String>> {
     let line_count = read_bounded_len(decoder, MAX_LORE_LINES)?;
+    let mut lines = Vec::with_capacity(line_count);
     for _ in 0..line_count {
-        decode_component_summary_from_decoder(decoder)?;
+        lines.push(decode_component_summary_from_decoder(decoder)?);
     }
-    Ok(())
+    Ok(lines)
 }
 
 fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSummary>> {
@@ -1214,8 +1232,43 @@ mod tests {
                 max_damage: Some(432),
                 damage: Some(431),
                 unbreakable: true,
+                custom_name: Some("Named".to_string()),
                 use_cooldown_ticks: Some(30),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_hover_text_component_summaries() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(3);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(6);
+        payload.write_bytes(&nbt_string_root("Custom Name"));
+        payload.write_var_i32(9);
+        payload.write_bytes(&nbt_string_root("Item Name"));
+        payload.write_var_i32(11);
+        payload.write_var_i32(2);
+        payload.write_bytes(&nbt_string_root("Lore one"));
+        payload.write_bytes(&nbt_string_root("Lore two"));
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 3,
+                added_type_ids: vec![6, 9, 11],
+                removed_type_ids: Vec::new(),
+                custom_name: Some("Custom Name".to_string()),
+                item_name: Some("Item Name".to_string()),
+                lore: vec!["Lore one".to_string(), "Lore two".to_string()],
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -1373,6 +1426,7 @@ mod tests {
                     },
                 ],
                 custom_model_data_colors: vec![0x112233, 0x445566],
+                lore: vec!["Line one".to_string(), "Line two".to_string()],
                 ..DataComponentPatchSummary::default()
             }
         );

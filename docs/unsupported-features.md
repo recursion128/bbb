@@ -353,8 +353,6 @@ When an agent does any of the following, update this file in the same slice:
         - non-ASCII font providers
         - bidirectional text shaping
         - official tooltip background/frame sprites
-        - custom item names
-        - lore
         - rarity/style
         - component-specific detail lines
       - remaining dedicated server-opened menu layouts beyond:
@@ -544,6 +542,9 @@ When an agent does any of the following, update this file in the same slice:
         `QUICK_MOVE` / `SWAP` container clicks
       - projects hovered-slot default item tooltip names from official language
         assets and protocol item ids
+      - projects hovered-slot custom tooltip names from decoded
+        `custom_name`, `item_name`, and written-book title component summaries
+      - projects decoded lore component summaries as basic tooltip lines
       - renders hovered-slot item tooltip names as basic ASCII text using
         official 26.1 `font/ascii.png` glyphs
     - It renders and hit-tests supported server-opened screens:

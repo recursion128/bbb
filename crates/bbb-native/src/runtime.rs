@@ -2994,6 +2994,30 @@ mod tests {
             })
         );
 
+        let mut custom_stack = item_stack(0, 1);
+        custom_stack.component_patch.custom_name = Some("Custom Combo".to_string());
+        custom_stack.component_patch.lore =
+            vec!["First lore".to_string(), "Second lore".to_string()];
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: custom_stack,
+        });
+        let screen = hud_inventory_screen(&world, Some(&item_runtime), Some(36), 0.0).unwrap();
+
+        assert_eq!(
+            screen.tooltip,
+            Some(HudInventoryTooltip {
+                slot_id: 36,
+                x: 8,
+                y: 142,
+                lines: vec![
+                    "Custom Combo".to_string(),
+                    "First lore".to_string(),
+                    "Second lore".to_string()
+                ],
+            })
+        );
+
         std::fs::remove_dir_all(root).unwrap();
     }
 
