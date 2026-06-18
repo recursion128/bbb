@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use bbb_control::NetCounters;
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{ContainerInput, ItemStackSummary};
-use bbb_world::{ContainerClickSlotRequest, WorldStore};
+use bbb_world::{ContainerClickBuildError, ContainerClickSlotRequest, WorldStore};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -246,7 +246,11 @@ pub(crate) fn handle_inventory_mouse_input(
     let (slot_num, click_input) = match click_target {
         Some(InventoryClickTarget::Slot(slot)) => {
             if !world.local_inventory_is_open() {
-                (slot, ContainerInput::Pickup)
+                if input.shift_down() {
+                    (slot, ContainerInput::QuickMove)
+                } else {
+                    (slot, ContainerInput::Pickup)
+                }
             } else if double_click_slot == Some(slot)
                 && button_num == 0
                 && !input.shift_down()
@@ -386,11 +390,23 @@ fn local_inventory_apply_and_queue_click(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     request: ContainerClickSlotRequest,
 ) -> bool {
-    let click = if world.local_inventory_is_open() || request.input == ContainerInput::Pickup {
-        let Ok(click) = world.apply_local_container_click_slot(request) else {
-            return false;
-        };
-        click
+    let click = if world.local_inventory_is_open()
+        || matches!(
+            request.input,
+            ContainerInput::Pickup | ContainerInput::QuickMove
+        ) {
+        match world.apply_local_container_click_slot(request) {
+            Ok(click) => click,
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(_))
+                if !world.local_inventory_is_open() =>
+            {
+                let Ok(click) = world.build_container_click_slot(request) else {
+                    return false;
+                };
+                click
+            }
+            Err(_) => return false,
+        }
     } else {
         let Ok(click) = world.build_container_click_slot(request) else {
             return false;
@@ -881,6 +897,61 @@ mod tests {
             world.inventory().open_container.as_ref().unwrap().slots[0].item,
             ItemStackSummary::empty()
         );
+    }
+
+    #[test]
+    fn generic_container_shift_click_queues_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 5,
+            title: "Large Chest".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 90];
+        items[0] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(560.0, 267.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Empty),
+                    (89, HashedStack::Item(hashed_item(42, 3))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[89].item, item_stack(42, 3));
     }
 
     #[test]

@@ -16,6 +16,10 @@ use std::collections::BTreeMap;
 use crate::WorldStore;
 
 const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
+const VANILLA_MENU_TYPE_GENERIC_9X1_ID: i32 = 0;
+const VANILLA_MENU_TYPE_GENERIC_9X6_ID: i32 = 5;
+const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
+const GENERIC_CONTAINER_PLAYER_SLOT_COUNT: i16 = 36;
 const PLAYER_HOTBAR_SIZE: usize = 9;
 const PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 const PLAYER_OFFHAND_SLOT: i32 = 40;
@@ -619,7 +623,7 @@ impl WorldStore {
         &mut self,
         request: ContainerClickSlotRequest,
     ) -> Result<ProtocolContainerClick, ContainerClickBuildError> {
-        let (container_id, state_id, slots_before) = {
+        let (container_id, state_id, menu_type_id, slots_before) = {
             let Some(container) = self.active_container() else {
                 return Err(ContainerClickBuildError::NoOpenContainer);
             };
@@ -629,6 +633,7 @@ impl WorldStore {
             (
                 container.container_id,
                 container.state_id,
+                container.menu_type_id,
                 container.slots.clone(),
             )
         };
@@ -647,15 +652,27 @@ impl WorldStore {
                     request.button_num,
                     &self.default_item_max_stack_sizes,
                 ),
-                ProtocolContainerInput::QuickMove
-                    if container_id == INVENTORY_MENU_CONTAINER_ID =>
-                {
-                    apply_quick_move_to_slots(
-                        container_id,
-                        &mut slots_after,
-                        request.slot_num,
-                        &self.default_item_max_stack_sizes,
-                    )
+                ProtocolContainerInput::QuickMove => {
+                    if container_id == INVENTORY_MENU_CONTAINER_ID {
+                        apply_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else if let Some(rows) = generic_9x_container_rows(menu_type_id) {
+                        apply_generic_container_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            rows,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::QuickMove,
+                        ));
+                    }
                 }
                 ProtocolContainerInput::Throw if container_id == INVENTORY_MENU_CONTAINER_ID => {
                     apply_throw_click_to_slots(
@@ -1426,6 +1443,13 @@ fn swap_button_inventory_menu_slot(button_num: i8) -> Option<i16> {
     }
 }
 
+fn generic_9x_container_rows(menu_type_id: Option<i32>) -> Option<i16> {
+    let menu_type_id = menu_type_id?;
+    (VANILLA_MENU_TYPE_GENERIC_9X1_ID..=VANILLA_MENU_TYPE_GENERIC_9X6_ID)
+        .contains(&menu_type_id)
+        .then_some((menu_type_id - VANILLA_MENU_TYPE_GENERIC_9X1_ID + 1) as i16)
+}
+
 fn apply_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
@@ -1444,6 +1468,50 @@ fn apply_quick_move_to_slots(
     let Some((start_slot, end_slot, backwards)) = inventory_menu_quick_move_target_range(slot_num)
     else {
         return;
+    };
+
+    let mut moving = slots[source_index].item.clone();
+    if move_item_stack_to_slots(
+        container_id,
+        slots,
+        source_index,
+        &mut moving,
+        start_slot,
+        end_slot,
+        backwards,
+        default_item_max_stack_sizes,
+    ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn apply_generic_container_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    rows: i16,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if slot_num < 0 {
+        return;
+    }
+    let container_slot_count = rows * GENERIC_CONTAINER_SLOT_COUNT_PER_ROW;
+    let total_slot_count = container_slot_count + GENERIC_CONTAINER_PLAYER_SLOT_COUNT;
+    if slot_num >= total_slot_count {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+    let (start_slot, end_slot, backwards) = if slot_num < container_slot_count {
+        (container_slot_count, total_slot_count, true)
+    } else {
+        (0, container_slot_count, false)
     };
 
     let mut moving = slots[source_index].item.clone();
@@ -3451,17 +3519,102 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_container_quick_move_rejects_non_inventory_menu() {
+    fn apply_local_generic_container_quick_move_moves_chest_to_player_reverse() {
         let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 5,
+            title: "Large Chest".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 90];
+        items[0] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 0,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(quick_move.container_id, 7);
+        assert_eq!(quick_move.state_id, 12);
+        assert_eq!(quick_move.input, ProtocolContainerInput::QuickMove);
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, ProtocolHashedStack::Empty),
+                (89, hashed_item_stack(42, 3))
+            ])
+        );
+        assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ProtocolItemStackSummary::empty());
+        assert_eq!(slots[89].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn apply_local_generic_container_quick_move_merges_player_to_chest_forward() {
+        let mut store = WorldStore::new();
+        store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 16)]));
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: 1,
             title: "Chest".to_string(),
         });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 54];
+        items[0] = item_stack(42, 15);
+        items[18] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 18,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(quick_move.container_id, 7);
+        assert_eq!(quick_move.state_id, 13);
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, hashed_item_stack(42, 16)),
+                (1, hashed_item_stack(42, 2)),
+                (18, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
+        let slots = &store.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(42, 16));
+        assert_eq!(slots[1].item, item_stack(42, 2));
+        assert_eq!(slots[18].item, ProtocolItemStackSummary::empty());
+    }
+
+    #[test]
+    fn apply_local_container_quick_move_rejects_non_inventory_menu() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 6,
+            title: "Dispenser".to_string(),
+        });
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 3,
-            items: vec![item_stack(42, 3)],
+            items: vec![item_stack(42, 3); 9],
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
