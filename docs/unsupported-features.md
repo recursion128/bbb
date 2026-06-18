@@ -322,6 +322,7 @@ When an agent does any of the following, update this file in the same slice:
         - grindstone
         - hopper
         - loom
+        - merchant/villager
         - shulker box
         - smithing table
         - stonecutter
@@ -491,6 +492,10 @@ When an agent does any of the following, update this file in the same slice:
         - `loom.png` background
         - empty banner/dye/pattern slot sprites
         - disabled scroller sprite
+      - MerchantMenu screens with official:
+        - `villager.png` background
+        - payment/result slot layout
+        - villager trade-list sprites loaded for future trade presentation
       - ShulkerBoxMenu screens with official `shulker_box.png`
       - SmithingMenu screens with official:
         - `smithing.png` background
@@ -591,6 +596,22 @@ When an agent does any of the following, update this file in the same slice:
           - active scroller
           - banner preview
           - max-pattern error overlay
+      - MerchantMenu:
+        - result-slot pickup and quick-move paths are kept server-authoritative
+          until:
+          - offer selection routing
+          - payment slot routing from `MerchantOffer` costs
+          - result prediction
+          - input consumption
+          - trade sound/XP side effects
+        - deferred presentation parity work:
+          - trade offer list buttons
+          - trade item icons and stack decorations
+          - scroller and drag behavior
+          - out-of-stock/deprecated overlays
+          - discount strikethrough
+          - villager XP progress bar
+          - item hover tooltips
       - shulker box
       - SmithingMenu:
         - quick-move paths are kept server-authoritative until:

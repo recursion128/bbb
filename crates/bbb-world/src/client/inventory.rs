@@ -69,6 +69,7 @@ const GRINDSTONE_TOTAL_SLOT_COUNT: i16 = 39;
 const ANVIL_RESULT_SLOT: i16 = 2;
 const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
 const LOOM_RESULT_SLOT: i16 = 3;
+const MERCHANT_RESULT_SLOT: i16 = 2;
 const SMITHING_RESULT_SLOT: i16 = 3;
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
@@ -858,6 +859,10 @@ impl WorldStore {
                             ProtocolContainerInput::QuickMove,
                         ));
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_LOOM_ID) {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::QuickMove,
+                        ));
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_MERCHANT_ID) {
                         return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                             ProtocolContainerInput::QuickMove,
                         ));
@@ -1783,6 +1788,7 @@ fn menu_result_slot_requires_server_authority(menu_type_id: Option<i32>, slot_nu
                 GRINDSTONE_RESULT_SLOT
             )
             | (Some(VANILLA_MENU_TYPE_SMITHING_ID), SMITHING_RESULT_SLOT)
+            | (Some(VANILLA_MENU_TYPE_MERCHANT_ID), MERCHANT_RESULT_SLOT)
             | (
                 Some(VANILLA_MENU_TYPE_STONECUTTER_ID),
                 STONECUTTER_RESULT_SLOT
@@ -5284,6 +5290,73 @@ mod tests {
             item_stack(90, 1)
         );
         assert_eq!(open_container_slot_item(&store, 31), item_stack(45, 3));
+    }
+
+    #[test]
+    fn apply_local_merchant_result_and_quick_move_require_server_authority() {
+        const MERCHANT_TOTAL_SLOT_COUNT: usize = 39;
+
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+            title: "Merchant".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT];
+        items[0] = item_stack(42, 3);
+        items[1] = item_stack(43, 1);
+        items[MERCHANT_RESULT_SLOT as usize] = item_stack(90, 1);
+        items[3] = item_stack(44, 2);
+        items[30] = item_stack(45, 4);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        for input in [
+            ProtocolContainerInput::Pickup,
+            ProtocolContainerInput::QuickMove,
+        ] {
+            assert_eq!(
+                store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: MERCHANT_RESULT_SLOT,
+                    button_num: 0,
+                    input,
+                }),
+                Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
+            );
+        }
+        for slot_num in [0, 3, 30] {
+            assert_eq!(
+                store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num,
+                    button_num: 0,
+                    input: ProtocolContainerInput::QuickMove,
+                }),
+                Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                    ProtocolContainerInput::QuickMove
+                ))
+            );
+        }
+        let click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 30,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 3));
+        assert_eq!(open_container_slot_item(&store, 1), item_stack(43, 1));
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_RESULT_SLOT),
+            item_stack(90, 1)
+        );
+        assert_eq!(open_container_slot_item(&store, 3), item_stack(44, 2));
+        assert_eq!(open_container_slot_item(&store, 30), item_stack(45, 4));
     }
 
     #[test]

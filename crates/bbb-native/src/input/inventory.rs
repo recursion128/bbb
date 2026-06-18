@@ -39,6 +39,7 @@ const FURNACE_MENU_TYPE_ID: i32 = 14;
 const GRINDSTONE_MENU_TYPE_ID: i32 = 15;
 const HOPPER_MENU_TYPE_ID: i32 = 16;
 const LOOM_MENU_TYPE_ID: i32 = 18;
+const MERCHANT_MENU_TYPE_ID: i32 = 19;
 const SHULKER_BOX_MENU_TYPE_ID: i32 = 20;
 const SMITHING_MENU_TYPE_ID: i32 = 21;
 const SMOKER_MENU_TYPE_ID: i32 = 22;
@@ -93,6 +94,9 @@ const HOPPER_SLOT_COUNT: i16 = 5;
 const LOOM_SCREEN_WIDTH: i32 = 176;
 const LOOM_SCREEN_HEIGHT: i32 = 166;
 const LOOM_SLOT_COUNT: i16 = 4;
+const MERCHANT_SCREEN_WIDTH: i32 = 276;
+const MERCHANT_SCREEN_HEIGHT: i32 = 166;
+const MERCHANT_SLOT_COUNT: i16 = 3;
 const SHULKER_BOX_SCREEN_WIDTH: i32 = 176;
 const SHULKER_BOX_SCREEN_HEIGHT: i32 = 167;
 const SHULKER_BOX_SLOT_COUNT: i16 = 27;
@@ -123,6 +127,7 @@ pub(crate) enum InventoryScreenBackground {
     Grindstone,
     Hopper,
     Loom,
+    Merchant,
     ShulkerBox,
     Smithing,
     Smoker,
@@ -304,6 +309,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: LOOM_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Loom,
             slots: loom_slot_layouts(),
+        });
+    }
+    if menu_type_id == MERCHANT_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: MERCHANT_SCREEN_WIDTH,
+            height: MERCHANT_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Merchant,
+            slots: merchant_slot_layouts(),
         });
     }
     if menu_type_id == SHULKER_BOX_MENU_TYPE_ID {
@@ -807,6 +820,43 @@ fn loom_slot_layouts() -> Vec<InventorySlotLayout> {
         slots.push(InventorySlotLayout {
             slot_id: LOOM_SLOT_COUNT + 27 + x as i16,
             x: 8 + x * 18,
+            y: 142,
+        });
+    }
+
+    slots
+}
+
+fn merchant_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(MERCHANT_SLOT_COUNT as usize + 36);
+    slots.push(InventorySlotLayout {
+        slot_id: 0,
+        x: 136,
+        y: 37,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 1,
+        x: 162,
+        y: 37,
+    });
+    slots.push(InventorySlotLayout {
+        slot_id: 2,
+        x: 220,
+        y: 37,
+    });
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: MERCHANT_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 108 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: MERCHANT_SLOT_COUNT + 27 + x as i16,
+            x: 108 + x * 18,
             y: 142,
         });
     }
@@ -2381,6 +2431,63 @@ mod tests {
     }
 
     #[test]
+    fn merchant_layout_matches_vanilla_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: MERCHANT_MENU_TYPE_ID,
+            title: "Merchant".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 276);
+        assert_eq!(layout.height, 166);
+        assert_eq!(layout.background, InventoryScreenBackground::Merchant);
+        assert_eq!(layout.slots.len(), 39);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 136,
+                y: 37,
+            }
+        );
+        assert_eq!(
+            layout.slots[1],
+            InventorySlotLayout {
+                slot_id: 1,
+                x: 162,
+                y: 37,
+            }
+        );
+        assert_eq!(
+            layout.slots[2],
+            InventorySlotLayout {
+                slot_id: 2,
+                x: 220,
+                y: 37,
+            }
+        );
+        assert_eq!(
+            layout.slots[3],
+            InventorySlotLayout {
+                slot_id: 3,
+                x: 108,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[38],
+            InventorySlotLayout {
+                slot_id: 38,
+                x: 252,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn smithing_layout_matches_vanilla_item_combiner_menu() {
         let mut world = WorldStore::new();
         world.apply_open_screen(OpenScreen {
@@ -2911,6 +3018,38 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
             Some(InventoryClickTarget::Slot(39))
+        );
+    }
+
+    #[test]
+    fn merchant_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: MERCHANT_MENU_TYPE_ID,
+            title: "Merchant".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(646.0, 322.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(672.0, 322.0)), size),
+            Some(InventoryClickTarget::Slot(1))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(730.0, 322.0)), size),
+            Some(InventoryClickTarget::Slot(2))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(618.0, 369.0)), size),
+            Some(InventoryClickTarget::Slot(3))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(762.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(38))
         );
     }
 

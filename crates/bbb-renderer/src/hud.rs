@@ -177,6 +177,16 @@ pub enum HudInventoryBackgroundTexture {
     Hopper,
     ShulkerBox,
     Stonecutter,
+    Villager,
+    VillagerOutOfStock,
+    VillagerExperienceBarBackground,
+    VillagerExperienceBarCurrent,
+    VillagerExperienceBarResult,
+    VillagerScroller,
+    VillagerScrollerDisabled,
+    VillagerTradeArrow,
+    VillagerTradeArrowOutOfStock,
+    VillagerDiscountStrikethrough,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -899,6 +909,111 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn upload_hud_villager_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_out_of_stock(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_out_of_stock = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_experience_bar_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_experience_bar_background =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_experience_bar_current(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_experience_bar_current =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_experience_bar_result(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_experience_bar_result =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_scroller(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_scroller = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_scroller_disabled(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_scroller_disabled = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_trade_arrow(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_trade_arrow = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_trade_arrow_out_of_stock(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_trade_arrow_out_of_stock =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_villager_discount_strikethrough(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_villager_discount_strikethrough =
+            Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
     pub fn upload_hud_slot_highlight_back(
         &mut self,
         width: u32,
@@ -1485,6 +1600,32 @@ impl Renderer {
             HudInventoryBackgroundTexture::Hopper => self.hud_hopper_background.as_ref(),
             HudInventoryBackgroundTexture::ShulkerBox => self.hud_shulker_box_background.as_ref(),
             HudInventoryBackgroundTexture::Stonecutter => self.hud_stonecutter_background.as_ref(),
+            HudInventoryBackgroundTexture::Villager => self.hud_villager_background.as_ref(),
+            HudInventoryBackgroundTexture::VillagerOutOfStock => {
+                self.hud_villager_out_of_stock.as_ref()
+            }
+            HudInventoryBackgroundTexture::VillagerExperienceBarBackground => {
+                self.hud_villager_experience_bar_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::VillagerExperienceBarCurrent => {
+                self.hud_villager_experience_bar_current.as_ref()
+            }
+            HudInventoryBackgroundTexture::VillagerExperienceBarResult => {
+                self.hud_villager_experience_bar_result.as_ref()
+            }
+            HudInventoryBackgroundTexture::VillagerScroller => self.hud_villager_scroller.as_ref(),
+            HudInventoryBackgroundTexture::VillagerScrollerDisabled => {
+                self.hud_villager_scroller_disabled.as_ref()
+            }
+            HudInventoryBackgroundTexture::VillagerTradeArrow => {
+                self.hud_villager_trade_arrow.as_ref()
+            }
+            HudInventoryBackgroundTexture::VillagerTradeArrowOutOfStock => {
+                self.hud_villager_trade_arrow_out_of_stock.as_ref()
+            }
+            HudInventoryBackgroundTexture::VillagerDiscountStrikethrough => {
+                self.hud_villager_discount_strikethrough.as_ref()
+            }
         }
     }
 }

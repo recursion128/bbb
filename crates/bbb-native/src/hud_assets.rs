@@ -469,6 +469,71 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         stonecutter.height,
         &stonecutter.rgba,
     )?;
+    let villager = gui_texture(
+        roots,
+        "textures/gui/container/villager.png",
+        "minecraft:textures/gui/container/villager",
+    )?;
+    renderer.upload_hud_villager_background(villager.width, villager.height, &villager.rgba)?;
+    let villager_out_of_stock = hud_sprite(&sprites, "container/villager/out_of_stock")?;
+    renderer.upload_hud_villager_out_of_stock(
+        villager_out_of_stock.width,
+        villager_out_of_stock.height,
+        &villager_out_of_stock.rgba,
+    )?;
+    let villager_experience_bar_background =
+        hud_sprite(&sprites, "container/villager/experience_bar_background")?;
+    renderer.upload_hud_villager_experience_bar_background(
+        villager_experience_bar_background.width,
+        villager_experience_bar_background.height,
+        &villager_experience_bar_background.rgba,
+    )?;
+    let villager_experience_bar_current =
+        hud_sprite(&sprites, "container/villager/experience_bar_current")?;
+    renderer.upload_hud_villager_experience_bar_current(
+        villager_experience_bar_current.width,
+        villager_experience_bar_current.height,
+        &villager_experience_bar_current.rgba,
+    )?;
+    let villager_experience_bar_result =
+        hud_sprite(&sprites, "container/villager/experience_bar_result")?;
+    renderer.upload_hud_villager_experience_bar_result(
+        villager_experience_bar_result.width,
+        villager_experience_bar_result.height,
+        &villager_experience_bar_result.rgba,
+    )?;
+    let villager_scroller = hud_sprite(&sprites, "container/villager/scroller")?;
+    renderer.upload_hud_villager_scroller(
+        villager_scroller.width,
+        villager_scroller.height,
+        &villager_scroller.rgba,
+    )?;
+    let villager_scroller_disabled = hud_sprite(&sprites, "container/villager/scroller_disabled")?;
+    renderer.upload_hud_villager_scroller_disabled(
+        villager_scroller_disabled.width,
+        villager_scroller_disabled.height,
+        &villager_scroller_disabled.rgba,
+    )?;
+    let villager_trade_arrow = hud_sprite(&sprites, "container/villager/trade_arrow")?;
+    renderer.upload_hud_villager_trade_arrow(
+        villager_trade_arrow.width,
+        villager_trade_arrow.height,
+        &villager_trade_arrow.rgba,
+    )?;
+    let villager_trade_arrow_out_of_stock =
+        hud_sprite(&sprites, "container/villager/trade_arrow_out_of_stock")?;
+    renderer.upload_hud_villager_trade_arrow_out_of_stock(
+        villager_trade_arrow_out_of_stock.width,
+        villager_trade_arrow_out_of_stock.height,
+        &villager_trade_arrow_out_of_stock.rgba,
+    )?;
+    let villager_discount_strikethrough =
+        hud_sprite(&sprites, "container/villager/discount_strikethrough")?;
+    renderer.upload_hud_villager_discount_strikethrough(
+        villager_discount_strikethrough.width,
+        villager_discount_strikethrough.height,
+        &villager_discount_strikethrough.rgba,
+    )?;
     let slot_highlight_back = hud_sprite(&sprites, "container/slot_highlight_back")?;
     renderer.upload_hud_slot_highlight_back(
         slot_highlight_back.width,
@@ -533,6 +598,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         brewing_stand = ?(brewing_stand.width, brewing_stand.height),
         grindstone = ?(grindstone.width, grindstone.height),
         stonecutter = ?(stonecutter.width, stonecutter.height),
+        villager = ?(villager.width, villager.height),
         experience = ?(experience_background.width, experience_background.height),
         heart = ?(heart_full.width, heart_full.height),
         food = ?(food_full.width, food_full.height),
