@@ -5,9 +5,11 @@ known to be unsupported, partial, diagnostic-only, or intentionally deferred.
 Each remaining item must have an owner, status, and next action before the
 rewrite can be considered complete.
 
-When an agent adds a new unsupported behavior, preserves a diagnostic-only path,
-or discovers a vanilla feature gap that cannot be closed in the current slice,
-update this file in the same slice.
+When an agent does any of the following, update this file in the same slice:
+
+- Adds a new unsupported behavior.
+- Preserves a diagnostic-only path.
+- Discovers a vanilla feature gap that cannot be closed in the current slice.
 
 ## Status Key
 
@@ -27,8 +29,9 @@ update this file in the same slice.
 - Next action:
   - When an unsupported packet appears in probe/control diagnostics, verify it
     against local vanilla 26.1 sources.
-  - Then either implement protocol decode plus world/runtime handling, or record
-    why it is runtime-only.
+  - Then either:
+    - implement protocol decode plus world/runtime handling
+    - record why it is runtime-only
 - Evidence / boundary:
   - Unknown login/config/play packets:
     - preserve `packet_id` and `len`
@@ -49,8 +52,8 @@ update this file in the same slice.
     - serverbound encoders
   - Add focused encode/decode tests with each packet slice.
 - Evidence / boundary:
-  - `docs/full-native-rewrite-plan.md` phase 2 remains open until required paths
-    are covered:
+  - Phase 2 in `docs/full-native-rewrite-plan.md` remains open until required
+    paths are covered:
     - login
     - configuration
     - play
@@ -74,7 +77,8 @@ update this file in the same slice.
   - Probe and online paths now cover many packet families, including:
     - unsupported diagnostics
     - play -> configuration teardown
-  - The final criterion requires every supported decoded packet to stay aligned.
+  - The final criterion:
+    - every supported decoded packet stays aligned
 
 ### Native-Owned Business Snapshots
 
@@ -133,20 +137,25 @@ update this file in the same slice.
   - Current runtime:
     - Drains level-particle spawn batches.
     - Advances CPU-side common particles.
-    - Samples vanilla-shaped size/color/age-size curves for the common particle
-      providers.
+    - Samples vanilla-shaped curves for common particle providers:
+      - size
+      - color
+      - age-size
     - Uploads a stitched official particle atlas when assets are available.
     - Draws active particles as camera-facing textured billboards.
-  - Full vanilla provider behavior and presentation parity remain follow-up work
-    in the plan.
+  - Follow-up work in the plan:
+    - full vanilla provider behavior
+    - presentation parity
 
 ### Renderer Scene Parity
 
 - Owner: `bbb-renderer` + `bbb-native` + `bbb-pack` + `bbb-world`
 - Status: `partial`
 - Next action:
-  - Replace the entity bounds and dropped-item icon proxies with full extraction
-    from canonical world and pack data:
+  - Replace proxies with full extraction from canonical world and pack data:
+    - entity bounds
+    - dropped-item icons
+  - Extract complete entity presentation data:
     - model
     - equipment
     - skin
@@ -192,8 +201,9 @@ update this file in the same slice.
     - stop semantics
     - device/runtime diagnostics
 - Evidence / boundary:
-  - `bbb-audio` has Kira-backed command/runtime boundaries and pack-driven sound
-    lookup.
+  - `bbb-audio` has:
+    - Kira-backed command/runtime boundaries
+    - pack-driven sound lookup
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage
@@ -220,8 +230,10 @@ update this file in the same slice.
 - Owner: `bbb-protocol` + `bbb-world` + `bbb-native` + `bbb-pack`
 - Status: `partial`
 - Next action:
-  - Connect native bundle slot mouse helpers to inventory/container screen slot
-    hit-testing when that UI exists.
+  - Connect native bundle slot mouse helpers to screen slot hit-testing when
+    that UI exists:
+    - inventory
+    - container
   - Expand renderer/UI coverage beyond hotbar icon snapshots.
 - Evidence / boundary:
   - Vanilla `BundleHasSelectedItem` checks
@@ -242,19 +254,21 @@ update this file in the same slice.
 - Owner: `bbb-native` + `bbb-net` + `bbb-protocol` + `bbb-world`
 - Status: `partial`
 - Next action:
-  - Movement: extend the current basic AABB collision and gravity/jump slice to:
-    - full fixed 20Hz survival physics
-    - remaining vanilla voxel collision shapes
-    - fluids and remaining status-effect movement cases beyond local support for:
-      - local Speed/Slowness movement-speed modifiers
-      - local Jump Boost jump impulse
-      - local Slow Falling gravity clamp
-      - local Levitation vertical velocity targeting
-    - sneak pose details
-    - the near-ground/fallDistance branch of sneak edge backoff
-    - full flying friction
-    - remaining vehicle movement send edge cases beyond the vanilla-shaped
-      walking and passenger player packet thresholds
+  - Movement:
+    - Extend the current basic AABB collision and gravity/jump slice to cover:
+      - full fixed 20Hz survival physics
+      - remaining vanilla voxel collision shapes
+      - fluids
+      - remaining status-effect movement cases beyond local support for:
+        - local Speed/Slowness movement-speed modifiers
+        - local Jump Boost jump impulse
+        - local Slow Falling gravity clamp
+        - local Levitation vertical velocity targeting
+      - sneak pose details
+      - the near-ground/fallDistance branch of sneak edge backoff
+      - full flying friction
+      - remaining vehicle movement send edge cases beyond the vanilla-shaped
+        walking and passenger player packet thresholds
   - Block destroy: close:
     - remaining block destroy profile gaps outside the mechanically parsed
       `Blocks.java` property declarations:
@@ -290,7 +304,8 @@ update this file in the same slice.
     - recipe book/creative variants
     - remaining local crafting result parity for container `0`:
       - server-authored result recomputation from local 2x2 inputs
-      - repeated Shift-click crafting while the recomputed result stays the same
+      - repeated Shift-click crafting while the recomputed result stays the
+        same
       - recipe-specific remainder items
 - Evidence / boundary:
   - Movement:
@@ -344,7 +359,9 @@ update this file in the same slice.
       - a basic vanilla-shaped sneak edge backoff
       - vanilla-shaped walking player movement packet thresholds:
         - position delta squared greater than `(2.0E-4)^2`
-        - rotation/status-only packets when only look or collision flags change
+        - rotation/status-only packets when only:
+          - look changes
+          - collision flags change
         - 20 tick position reminder that resets only when a position packet is
           sent
       - vanilla-shaped passenger `MovePlayer.Rot` packets while mounted:
@@ -355,8 +372,9 @@ update this file in the same slice.
     - Existing input modules queue many serverbound packets, including
       vanilla-shaped boat/raft paddle-state packets from local mounted input.
     - They queue `START_RIDING_JUMP` player commands for vanilla
-      `PlayerRideableJumping` vehicle types using the 26.1 charge scale on jump
-      release.
+      `PlayerRideableJumping` vehicle types using:
+      - the 26.1 charge scale
+      - jump release
     - They queue `START_FALL_FLYING` player commands when an airborne local
       player has an elytra-equipped chest slot.
     - They queue `STOP_SLEEPING` player commands when wake-up input is pressed
@@ -366,9 +384,12 @@ update this file in the same slice.
       - request `ServerboundCommandSuggestionPacket` completions:
         - with the leading slash
         - while typing slash commands
-      - submit `ServerboundChatCommandPacket` payloads without the leading slash
-      - queue explicit `ServerboundClientCommandPacket` perform-respawn commands
-        from native/control input instead of auto-respawning on dead health
+      - submit `ServerboundChatCommandPacket` payloads without:
+        - the leading slash
+      - queue explicit `ServerboundClientCommandPacket` commands:
+        - perform-respawn
+        - from native/control input
+      - avoid auto-respawning on dead health
   - Inventory:
     - Native opens the ordinary local inventory as container `0`.
     - While the local inventory is open, it:
@@ -450,8 +471,10 @@ update this file in the same slice.
       - `ofLegacyCopy` / `ofFullCopy` inheritance
       - common helper registrations for logs, stems, leaves, buttons, flower
         pots, candles, beds, stained glass, shulker boxes, pistons, and stairs
-    - Local destroy progress applies the selected main-hand item profile through
-      vanilla-shaped mining speed and `correct_for_drops` rule order.
+    - Local destroy progress applies:
+      - selected main-hand item profile
+      - vanilla-shaped mining speed
+      - `correct_for_drops` rule order
     - It applies synced local player destroy-speed state:
       - `mining_efficiency` attribute id `20` when item speed is above `1`
       - Haste effect id `2` and Conduit Power effect id `28`, using the max
@@ -463,13 +486,16 @@ update this file in the same slice.
       - airborne slowdown
     - It tracks vanilla-shaped local destroy stages in canonical interaction
       state and clears them on completion/abort/restart.
-    - It projects local stages and server `BlockDestruction` progress to batched
-      renderer-visible cube crack overlays:
-      - using official `destroy_stage_0..9` block atlas textures
+    - It projects destroy progress to batched renderer-visible cube crack
+      overlays from:
+      - local stages
+      - server `BlockDestruction` progress
+    - Those overlays use:
+      - official `destroy_stage_0..9` block atlas textures
       - keeping the highest stage when multiple overlays target one block
         position
-      - expiring server destruction entries after the vanilla-shaped 400 render
-        tick window
+      - expiring server destruction entries after:
+        - the vanilla-shaped 400 render tick window
     - It predicts the locally destroyed block before queuing:
       - stop destroy packets
       - instant destroy packets
