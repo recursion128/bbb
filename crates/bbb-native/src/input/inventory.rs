@@ -24,8 +24,13 @@ const GENERIC_CONTAINER_BASE_HEIGHT: i32 = 114;
 const GENERIC_CONTAINER_ROW_HEIGHT: i32 = 18;
 const GENERIC_CONTAINER_FIRST_MENU_TYPE_ID: i32 = 0;
 const GENERIC_CONTAINER_LAST_MENU_TYPE_ID: i32 = 5;
+const GENERIC_3X3_MENU_TYPE_ID: i32 = 6;
 const GENERIC_CONTAINER_SLOT_COLUMNS: i32 = 9;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
+const GENERIC_3X3_SCREEN_WIDTH: i32 = 176;
+const GENERIC_3X3_SCREEN_HEIGHT: i32 = 166;
+const GENERIC_3X3_SLOT_COLUMNS: i32 = 3;
+const GENERIC_3X3_SLOT_COUNT: i16 = 9;
 const SLOT_SIZE: f64 = 16.0;
 const SLOT_HOVER_MARGIN: f64 = 1.0;
 const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
@@ -34,6 +39,7 @@ const VANILLA_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
 pub(crate) enum InventoryScreenBackground {
     LocalInventory,
     Generic9xRows { rows: u8 },
+    Generic3x3,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -116,13 +122,24 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
     }
 
     let container = world.inventory().open_container.as_ref()?;
-    let rows = generic_container_rows(container.menu_type_id?)?;
-    Some(InventoryScreenLayout {
-        width: GENERIC_CONTAINER_WIDTH,
-        height: GENERIC_CONTAINER_BASE_HEIGHT + i32::from(rows) * GENERIC_CONTAINER_ROW_HEIGHT,
-        background: InventoryScreenBackground::Generic9xRows { rows },
-        slots: generic_container_slot_layouts(rows),
-    })
+    let menu_type_id = container.menu_type_id?;
+    if let Some(rows) = generic_container_rows(menu_type_id) {
+        return Some(InventoryScreenLayout {
+            width: GENERIC_CONTAINER_WIDTH,
+            height: GENERIC_CONTAINER_BASE_HEIGHT + i32::from(rows) * GENERIC_CONTAINER_ROW_HEIGHT,
+            background: InventoryScreenBackground::Generic9xRows { rows },
+            slots: generic_container_slot_layouts(rows),
+        });
+    }
+    if menu_type_id == GENERIC_3X3_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: GENERIC_3X3_SCREEN_WIDTH,
+            height: GENERIC_3X3_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Generic3x3,
+            slots: generic_3x3_slot_layouts(),
+        });
+    }
+    None
 }
 
 fn generic_container_rows(menu_type_id: i32) -> Option<u8> {
@@ -161,6 +178,37 @@ fn generic_container_slot_layouts(rows: u8) -> Vec<InventorySlotLayout> {
             slot_id: container_slot_count + 27 + x as i16,
             x: 8 + x * 18,
             y: inventory_top + 58,
+        });
+    }
+
+    slots
+}
+
+fn generic_3x3_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(GENERIC_3X3_SLOT_COUNT as usize + 36);
+    for y in 0..GENERIC_3X3_SLOT_COLUMNS {
+        for x in 0..GENERIC_3X3_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: (x + y * GENERIC_3X3_SLOT_COLUMNS) as i16,
+                x: 62 + x * 18,
+                y: 17 + y * 18,
+            });
+        }
+    }
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: GENERIC_3X3_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: GENERIC_3X3_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
         });
     }
 
@@ -817,6 +865,55 @@ mod tests {
     }
 
     #[test]
+    fn generic_3x3_layout_matches_vanilla_dispenser_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 6,
+            title: "Dispenser".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(layout.background, InventoryScreenBackground::Generic3x3);
+        assert_eq!(layout.slots.len(), 45);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 62,
+                y: 17,
+            }
+        );
+        assert_eq!(
+            layout.slots[8],
+            InventorySlotLayout {
+                slot_id: 8,
+                x: 98,
+                y: 53,
+            }
+        );
+        assert_eq!(
+            layout.slots[9],
+            InventorySlotLayout {
+                slot_id: 9,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[44],
+            InventorySlotLayout {
+                slot_id: 44,
+                x: 152,
+                y: 142,
+            }
+        );
+    }
+
+    #[test]
     fn generic_container_hit_test_uses_vanilla_screen_height() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -841,6 +938,30 @@ mod tests {
         assert_eq!(
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(551.0, 249.0)), size),
             Some(InventoryClickTarget::Outside)
+        );
+    }
+
+    #[test]
+    fn generic_3x3_hit_test_uses_vanilla_dispenser_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 6,
+            title: "Dispenser".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(614.0, 294.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(650.0, 330.0)), size),
+            Some(InventoryClickTarget::Slot(8))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(704.0, 419.0)), size),
+            Some(InventoryClickTarget::Slot(44))
         );
     }
 
@@ -952,6 +1073,61 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, ItemStackSummary::empty());
         assert_eq!(slots[89].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn generic_3x3_shift_click_queues_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: 6,
+            title: "Dispenser".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 45];
+        items[0] = item_stack(42, 3);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(614.0, 294.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Empty),
+                    (44, HashedStack::Item(hashed_item(42, 3))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[44].item, item_stack(42, 3));
     }
 
     #[test]

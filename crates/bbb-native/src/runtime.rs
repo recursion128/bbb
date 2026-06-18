@@ -342,6 +342,17 @@ fn hud_inventory_background_layers(
                 ),
             ]
         }
+        InventoryScreenBackground::Generic3x3 => {
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Dispenser,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        }
     }
 }
 
@@ -785,6 +796,45 @@ mod tests {
         assert_eq!((player_inventory.x, player_inventory.y), (8, 139));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 89).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 197));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_generic_3x3_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 6,
+            title: "Dispenser".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 45],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(44)).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Dispenser,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(44));
+        assert_eq!(screen.slots.len(), 45);
+        let first_container = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((first_container.x, first_container.y), (62, 17));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 44).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
     }
 
     #[test]

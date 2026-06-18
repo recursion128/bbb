@@ -47,6 +47,12 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         generic_container.height,
         &generic_container.rgba,
     )?;
+    let dispenser = gui_texture(
+        roots,
+        "textures/gui/container/dispenser.png",
+        "minecraft:textures/gui/container/dispenser",
+    )?;
+    renderer.upload_hud_dispenser_background(dispenser.width, dispenser.height, &dispenser.rgba)?;
     let slot_highlight_back = hud_sprite(&sprites, "container/slot_highlight_back")?;
     renderer.upload_hud_slot_highlight_back(
         slot_highlight_back.width,
