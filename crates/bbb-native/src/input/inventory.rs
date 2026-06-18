@@ -13,7 +13,10 @@ use winit::{
 
 use super::{
     bundle::{handle_bundle_slot_hover_end, handle_bundle_slot_mouse_scroll},
-    commands::{hotbar_slot_for_key, queue_container_click_command},
+    commands::{
+        hotbar_slot_for_key, queue_container_click_command,
+        queue_container_slot_state_changed_command,
+    },
     ClientInputState,
 };
 
@@ -25,6 +28,7 @@ const GENERIC_CONTAINER_ROW_HEIGHT: i32 = 18;
 const GENERIC_CONTAINER_FIRST_MENU_TYPE_ID: i32 = 0;
 const GENERIC_CONTAINER_LAST_MENU_TYPE_ID: i32 = 5;
 const GENERIC_3X3_MENU_TYPE_ID: i32 = 6;
+const CRAFTER_MENU_TYPE_ID: i32 = 7;
 const ANVIL_MENU_TYPE_ID: i32 = 8;
 const BLAST_FURNACE_MENU_TYPE_ID: i32 = 10;
 const BREWING_STAND_MENU_TYPE_ID: i32 = 11;
@@ -41,6 +45,12 @@ const GENERIC_3X3_SCREEN_WIDTH: i32 = 176;
 const GENERIC_3X3_SCREEN_HEIGHT: i32 = 166;
 const GENERIC_3X3_SLOT_COLUMNS: i32 = 3;
 const GENERIC_3X3_SLOT_COUNT: i16 = 9;
+const CRAFTER_SCREEN_WIDTH: i32 = 176;
+const CRAFTER_SCREEN_HEIGHT: i32 = 166;
+const CRAFTER_GRID_SLOT_COLUMNS: i32 = 3;
+const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
+const CRAFTER_RESULT_SLOT: i16 = 45;
+const CRAFTER_TOTAL_SLOT_COUNT: i16 = 46;
 const ANVIL_SCREEN_WIDTH: i32 = 176;
 const ANVIL_SCREEN_HEIGHT: i32 = 166;
 const ANVIL_SLOT_COUNT: i16 = 3;
@@ -79,6 +89,7 @@ pub(crate) enum InventoryScreenBackground {
     BlastFurnace,
     BrewingStand,
     CraftingTable,
+    Crafter,
     Furnace,
     Grindstone,
     Hopper,
@@ -182,6 +193,14 @@ pub(crate) fn inventory_screen_layout(world: &WorldStore) -> Option<InventoryScr
             height: GENERIC_3X3_SCREEN_HEIGHT,
             background: InventoryScreenBackground::Generic3x3,
             slots: generic_3x3_slot_layouts(),
+        });
+    }
+    if menu_type_id == CRAFTER_MENU_TYPE_ID {
+        return Some(InventoryScreenLayout {
+            width: CRAFTER_SCREEN_WIDTH,
+            height: CRAFTER_SCREEN_HEIGHT,
+            background: InventoryScreenBackground::Crafter,
+            slots: crafter_slot_layouts(),
         });
     }
     if menu_type_id == CRAFTING_MENU_TYPE_ID {
@@ -329,6 +348,42 @@ fn generic_3x3_slot_layouts() -> Vec<InventorySlotLayout> {
             y: 142,
         });
     }
+
+    slots
+}
+
+fn crafter_slot_layouts() -> Vec<InventorySlotLayout> {
+    let mut slots = Vec::with_capacity(CRAFTER_TOTAL_SLOT_COUNT as usize);
+    for y in 0..CRAFTER_GRID_SLOT_COLUMNS {
+        for x in 0..CRAFTER_GRID_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: (x + y * CRAFTER_GRID_SLOT_COLUMNS) as i16,
+                x: 26 + x * 18,
+                y: 17 + y * 18,
+            });
+        }
+    }
+    for y in 0..3 {
+        for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+            slots.push(InventorySlotLayout {
+                slot_id: CRAFTER_GRID_SLOT_COUNT + (x + y * GENERIC_CONTAINER_SLOT_COLUMNS) as i16,
+                x: 8 + x * 18,
+                y: 84 + y * 18,
+            });
+        }
+    }
+    for x in 0..GENERIC_CONTAINER_SLOT_COLUMNS {
+        slots.push(InventorySlotLayout {
+            slot_id: CRAFTER_GRID_SLOT_COUNT + 27 + x as i16,
+            x: 8 + x * 18,
+            y: 142,
+        });
+    }
+    slots.push(InventorySlotLayout {
+        slot_id: CRAFTER_RESULT_SLOT,
+        x: 134,
+        y: 35,
+    });
 
     slots
 }
@@ -731,6 +786,13 @@ pub(crate) fn handle_inventory_mouse_input(
         button_num,
         input: click_input,
     };
+    maybe_queue_crafter_slot_state_changed(
+        world,
+        counters,
+        net_commands,
+        request.slot_num,
+        request.input,
+    );
     local_inventory_apply_and_queue_click(world, counters, net_commands, request);
     true
 }
@@ -834,6 +896,49 @@ fn local_inventory_queue_quick_craft(
 
 fn local_inventory_quick_craft_mask(header: i8, quick_craft_type: i8) -> i8 {
     (header & 3) | ((quick_craft_type & 3) << 2)
+}
+
+fn maybe_queue_crafter_slot_state_changed(
+    world: &WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    slot_num: i16,
+    click_input: ContainerInput,
+) {
+    if click_input != ContainerInput::Pickup || !(0..CRAFTER_GRID_SLOT_COUNT).contains(&slot_num) {
+        return;
+    }
+    let Some(container) = world.inventory().open_container.as_ref() else {
+        return;
+    };
+    if container.menu_type_id != Some(CRAFTER_MENU_TYPE_ID) {
+        return;
+    }
+    let Some(slot) = container.slots.iter().find(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if !item_stack_is_empty(&slot.item) {
+        return;
+    }
+
+    let disabled = world
+        .open_container_data_value(slot_num)
+        .unwrap_or_default()
+        == 1;
+    let new_state = if disabled {
+        true
+    } else if inventory_cursor_is_empty(world) {
+        false
+    } else {
+        return;
+    };
+    queue_container_slot_state_changed_command(
+        counters,
+        net_commands,
+        i32::from(slot_num),
+        container.container_id,
+        new_state,
+    );
 }
 
 fn local_inventory_apply_and_queue_click(
@@ -1135,10 +1240,10 @@ mod tests {
     use std::collections::BTreeMap;
 
     use bbb_protocol::packets::{
-        ContainerClick, ContainerSetContent, HashedComponentPatch, HashedItemStack, HashedStack,
-        IngredientSummary, ItemStackSummary, OpenScreen, RecipePropertySetSummary,
-        SelectBundleItem, SetCursorItem, SetPlayerInventory, SlotDisplaySummary,
-        StonecutterSelectableRecipeSummary, UpdateRecipes,
+        ContainerClick, ContainerSetContent, ContainerSlotStateChanged, HashedComponentPatch,
+        HashedItemStack, HashedStack, IngredientSummary, ItemStackSummary, OpenScreen,
+        RecipePropertySetSummary, SelectBundleItem, SetCursorItem, SetPlayerInventory,
+        SlotDisplaySummary, StonecutterSelectableRecipeSummary, UpdateRecipes,
     };
 
     #[test]
@@ -1315,6 +1420,63 @@ mod tests {
                 slot_id: 44,
                 x: 152,
                 y: 142,
+            }
+        );
+    }
+
+    #[test]
+    fn crafter_layout_matches_vanilla_menu() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: CRAFTER_MENU_TYPE_ID,
+            title: "Crafter".to_string(),
+        });
+
+        let layout = inventory_screen_layout(&world).unwrap();
+
+        assert_eq!(layout.width, 176);
+        assert_eq!(layout.height, 166);
+        assert_eq!(layout.background, InventoryScreenBackground::Crafter);
+        assert_eq!(layout.slots.len(), 46);
+        assert_eq!(
+            layout.slots[0],
+            InventorySlotLayout {
+                slot_id: 0,
+                x: 26,
+                y: 17,
+            }
+        );
+        assert_eq!(
+            layout.slots[8],
+            InventorySlotLayout {
+                slot_id: 8,
+                x: 62,
+                y: 53,
+            }
+        );
+        assert_eq!(
+            layout.slots[9],
+            InventorySlotLayout {
+                slot_id: 9,
+                x: 8,
+                y: 84,
+            }
+        );
+        assert_eq!(
+            layout.slots[44],
+            InventorySlotLayout {
+                slot_id: 44,
+                x: 152,
+                y: 142,
+            }
+        );
+        assert_eq!(
+            layout.slots[45],
+            InventorySlotLayout {
+                slot_id: 45,
+                x: 134,
+                y: 35,
             }
         );
     }
@@ -1838,6 +2000,34 @@ mod tests {
     }
 
     #[test]
+    fn crafter_hit_test_uses_vanilla_slots() {
+        let size = PhysicalSize::new(1280, 720);
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: CRAFTER_MENU_TYPE_ID,
+            title: "Crafter".to_string(),
+        });
+
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(586.0, 302.0)), size),
+            Some(InventoryClickTarget::Slot(0))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(622.0, 338.0)), size),
+            Some(InventoryClickTarget::Slot(8))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(694.0, 320.0)), size),
+            Some(InventoryClickTarget::Slot(45))
+        );
+        assert_eq!(
+            inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
+            Some(InventoryClickTarget::Slot(44))
+        );
+    }
+
+    #[test]
     fn crafting_table_hit_test_uses_vanilla_slots() {
         let size = PhysicalSize::new(1280, 720);
         let mut world = WorldStore::new();
@@ -2051,6 +2241,61 @@ mod tests {
             inventory_screen_click_target(&world, Some(PhysicalPosition::new(712.0, 427.0)), size),
             Some(InventoryClickTarget::Slot(37))
         );
+    }
+
+    #[test]
+    fn crafter_empty_grid_click_queues_slot_state_change_and_pickup() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: CRAFTER_MENU_TYPE_ID,
+            title: "Crafter".to_string(),
+        });
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![ItemStackSummary::empty(); 46],
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(586.0, 302.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_slot_state_changed_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerSlotStateChanged(ContainerSlotStateChanged {
+                slot_id: 0,
+                container_id: 7,
+                new_state: false,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 0,
+                button_num: 0,
+                input: ContainerInput::Pickup,
+                changed_slots: BTreeMap::new(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        assert_eq!(world.open_container_data_value(0), None);
     }
 
     #[test]

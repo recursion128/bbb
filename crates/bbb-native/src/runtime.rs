@@ -38,6 +38,10 @@ mod control_requests;
 mod events;
 
 const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
+const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
+const CRAFTER_POWERED_DATA_ID: i16 = 9;
+const CRAFTER_DISABLED_SLOT_SPRITE_SIZE: u32 = 18;
+const CRAFTER_REDSTONE_SPRITE_SIZE: u32 = 16;
 const BREWING_STAND_BREW_TIME_DATA_ID: i16 = 0;
 const BREWING_STAND_FUEL_DATA_ID: i16 = 1;
 const BREWING_STAND_FUEL_LENGTH_SPRITE_WIDTH: u32 = 18;
@@ -392,6 +396,19 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 166.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::Crafter => {
+            let mut layers = vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Crafter,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )];
+            push_crafter_state_layers(world, &mut layers);
+            layers
+        }
         InventoryScreenBackground::Anvil => {
             let mut layers = vec![
                 hud_inventory_background_layer(
@@ -558,6 +575,44 @@ fn hud_inventory_background_layers(
 
 fn anvil_input_slot_has_item(world: &WorldStore) -> bool {
     open_container_slot_has_item(world, 0)
+}
+
+fn push_crafter_state_layers(world: &WorldStore, layers: &mut Vec<HudInventoryBackgroundLayer>) {
+    for slot in 0..CRAFTER_GRID_SLOT_COUNT {
+        if world.open_container_data_value(slot).unwrap_or_default() != 1 {
+            continue;
+        }
+        let x = i32::from(slot % 3);
+        let y = i32::from(slot / 3);
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::CrafterDisabledSlot,
+            25 + x * 18,
+            16 + y * 18,
+            CRAFTER_DISABLED_SLOT_SPRITE_SIZE,
+            CRAFTER_DISABLED_SLOT_SPRITE_SIZE,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+
+    let redstone_texture = if world
+        .open_container_data_value(CRAFTER_POWERED_DATA_ID)
+        .unwrap_or_default()
+        == 1
+    {
+        HudInventoryBackgroundTexture::CrafterPoweredRedstone
+    } else {
+        HudInventoryBackgroundTexture::CrafterUnpoweredRedstone
+    };
+    layers.push(hud_inventory_background_layer(
+        redstone_texture,
+        97,
+        35,
+        CRAFTER_REDSTONE_SPRITE_SIZE,
+        CRAFTER_REDSTONE_SPRITE_SIZE,
+        [0.0, 0.0],
+        [1.0, 1.0],
+    ));
 }
 
 fn anvil_should_show_error(world: &WorldStore) -> bool {
@@ -1288,6 +1343,133 @@ mod tests {
         assert_eq!((first_container.x, first_container.y), (62, 17));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 44).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_crafter_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 7,
+            title: "Crafter".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 46],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(45), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Crafter,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::CrafterUnpoweredRedstone,
+                    97,
+                    35,
+                    16,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(45));
+        assert_eq!(screen.slots.len(), 46);
+        let first_grid = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((first_grid.x, first_grid.y), (26, 17));
+        let result = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
+        assert_eq!((result.x, result.y), (134, 35));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 44).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_crafter_state_layers() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 7,
+            title: "Crafter".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 46],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 1,
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 8,
+            value: 1,
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 9,
+            value: 1,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Crafter,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::CrafterDisabledSlot,
+                    25,
+                    16,
+                    18,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::CrafterDisabledSlot,
+                    61,
+                    52,
+                    18,
+                    18,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::CrafterPoweredRedstone,
+                    97,
+                    35,
+                    16,
+                    16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
     }
 
     #[test]

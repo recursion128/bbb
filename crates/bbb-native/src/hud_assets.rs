@@ -63,6 +63,30 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         crafting_table.height,
         &crafting_table.rgba,
     )?;
+    let crafter = gui_texture(
+        roots,
+        "textures/gui/container/crafter.png",
+        "minecraft:textures/gui/container/crafter",
+    )?;
+    renderer.upload_hud_crafter_background(crafter.width, crafter.height, &crafter.rgba)?;
+    let crafter_disabled_slot = hud_sprite(&sprites, "container/crafter/disabled_slot")?;
+    renderer.upload_hud_crafter_disabled_slot(
+        crafter_disabled_slot.width,
+        crafter_disabled_slot.height,
+        &crafter_disabled_slot.rgba,
+    )?;
+    let crafter_powered_redstone = hud_sprite(&sprites, "container/crafter/powered_redstone")?;
+    renderer.upload_hud_crafter_powered_redstone(
+        crafter_powered_redstone.width,
+        crafter_powered_redstone.height,
+        &crafter_powered_redstone.rgba,
+    )?;
+    let crafter_unpowered_redstone = hud_sprite(&sprites, "container/crafter/unpowered_redstone")?;
+    renderer.upload_hud_crafter_unpowered_redstone(
+        crafter_unpowered_redstone.width,
+        crafter_unpowered_redstone.height,
+        &crafter_unpowered_redstone.rgba,
+    )?;
     let anvil = gui_texture(
         roots,
         "textures/gui/container/anvil.png",
@@ -265,6 +289,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         hotbar = ?(hotbar.width, hotbar.height),
         inventory = ?(inventory.width, inventory.height),
         generic_container = ?(generic_container.width, generic_container.height),
+        crafter = ?(crafter.width, crafter.height),
         anvil = ?(anvil.width, anvil.height),
         furnace = ?(furnace.width, furnace.height),
         blast_furnace = ?(blast_furnace.width, blast_furnace.height),

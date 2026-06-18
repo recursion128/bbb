@@ -115,6 +115,10 @@ pub enum HudInventoryBackgroundTexture {
     GenericContainer,
     Dispenser,
     CraftingTable,
+    Crafter,
+    CrafterDisabledSlot,
+    CrafterPoweredRedstone,
+    CrafterUnpoweredRedstone,
     Anvil,
     AnvilTextField,
     AnvilTextFieldDisabled,
@@ -264,6 +268,46 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_crafting_table_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_crafter_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_crafter_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_crafter_disabled_slot(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_crafter_disabled_slot = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_crafter_powered_redstone(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_crafter_powered_redstone = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_crafter_unpowered_redstone(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_crafter_unpowered_redstone = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -929,6 +973,16 @@ impl Renderer {
             HudInventoryBackgroundTexture::Dispenser => self.hud_dispenser_background.as_ref(),
             HudInventoryBackgroundTexture::CraftingTable => {
                 self.hud_crafting_table_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::Crafter => self.hud_crafter_background.as_ref(),
+            HudInventoryBackgroundTexture::CrafterDisabledSlot => {
+                self.hud_crafter_disabled_slot.as_ref()
+            }
+            HudInventoryBackgroundTexture::CrafterPoweredRedstone => {
+                self.hud_crafter_powered_redstone.as_ref()
+            }
+            HudInventoryBackgroundTexture::CrafterUnpoweredRedstone => {
+                self.hud_crafter_unpowered_redstone.as_ref()
             }
             HudInventoryBackgroundTexture::Anvil => self.hud_anvil_background.as_ref(),
             HudInventoryBackgroundTexture::AnvilTextField => self.hud_anvil_text_field.as_ref(),

@@ -455,6 +455,9 @@ When an agent does any of the following, update this file in the same slice:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices
       - `generic_3x3` DispenserMenu screens with official `dispenser.png`
+      - CrafterMenu screens with official `crafter.png` background,
+        `container/crafter/disabled_slot`, and powered/unpowered redstone
+        sprites
       - AnvilMenu screens with official `anvil.png` background,
         `container/anvil/text_field`, `text_field_disabled`, and error sprites
       - BrewingStandMenu screens with official `brewing_stand.png`
@@ -489,6 +492,11 @@ When an agent does any of the following, update this file in the same slice:
       - CraftingMenu non-result slots, with result-slot clicks kept
         server-authoritative until recipe recomputation and remainders are
         locally modeled
+      - CrafterMenu grid/player inventory transfers:
+        - vanilla slot ranges
+        - disabled grid slots from `ContainerSetData`
+        - result-preview slot 45 kept server-authoritative until crafter recipe
+          preview and crafting side effects are locally modeled
       - BrewingStandMenu quick-move paths are kept server-authoritative until
         brewing fuel tags, potion bottle ids, ingredient parity, and
         component-hashable potion stack prediction are modeled
@@ -511,6 +519,9 @@ When an agent does any of the following, update this file in the same slice:
     - Control/native can still build a basic `ServerboundContainerClickPacket`
       from the active container id, state id, slot id, and cursor item for
       server-opened containers when the carried stack is hash-safe.
+    - CrafterMenu empty grid-slot toggles queue
+      `ServerboundContainerSlotStateChangedPacket`; rendered disabled/powered
+      state remains driven by server `ContainerSetData`.
   - Block destroy:
     - Native block destroy progress records the starting main-hand item
       signature and restarts the destroy sequence when the selected

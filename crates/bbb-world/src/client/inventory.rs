@@ -21,6 +21,7 @@ const VANILLA_MENU_TYPE_SHULKER_BOX_ID: i32 = 20;
 const VANILLA_MENU_TYPE_GENERIC_9X1_ID: i32 = 0;
 const VANILLA_MENU_TYPE_GENERIC_9X6_ID: i32 = 5;
 const VANILLA_MENU_TYPE_GENERIC_3X3_ID: i32 = 6;
+const VANILLA_MENU_TYPE_CRAFTER_ID: i32 = 7;
 const VANILLA_MENU_TYPE_ANVIL_ID: i32 = 8;
 const VANILLA_MENU_TYPE_BLAST_FURNACE_ID: i32 = 10;
 const VANILLA_MENU_TYPE_BREWING_STAND_ID: i32 = 11;
@@ -32,6 +33,11 @@ const VANILLA_MENU_TYPE_SMOKER_ID: i32 = 22;
 const VANILLA_MENU_TYPE_STONECUTTER_ID: i32 = 24;
 const GENERIC_CONTAINER_SLOT_COUNT_PER_ROW: i16 = 9;
 const GENERIC_3X3_CONTAINER_SLOT_COUNT: i16 = 9;
+const CRAFTER_GRID_SLOT_COUNT: i16 = 9;
+const CRAFTER_PLAYER_MAIN_START: i16 = 9;
+const CRAFTER_HOTBAR_END: i16 = 45;
+const CRAFTER_RESULT_SLOT: i16 = 45;
+const CRAFTER_TOTAL_SLOT_COUNT: i16 = 46;
 const CRAFTING_MENU_RESULT_SLOT: i16 = 0;
 const CRAFTING_MENU_CRAFT_SLOT_START: i16 = 1;
 const CRAFTING_MENU_CRAFT_SLOT_END: i16 = 10;
@@ -702,7 +708,7 @@ impl WorldStore {
         &mut self,
         request: ContainerClickSlotRequest,
     ) -> Result<ProtocolContainerClick, ContainerClickBuildError> {
-        let (container_id, state_id, menu_type_id, slots_before) = {
+        let (container_id, state_id, menu_type_id, slots_before, data_values) = {
             let Some(container) = self.active_container() else {
                 return Err(ContainerClickBuildError::NoOpenContainer);
             };
@@ -714,6 +720,7 @@ impl WorldStore {
                 container.state_id,
                 container.menu_type_id,
                 container.slots.clone(),
+                container.data_values.clone(),
             )
         };
         let mut slots_after = slots_before.clone();
@@ -782,6 +789,15 @@ impl WorldStore {
                             container_id,
                             &mut slots_after,
                             request.slot_num,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_CRAFTER_ID) {
+                        let disabled_slots = crafter_disabled_slots(&data_values);
+                        apply_crafter_menu_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            &disabled_slots,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_ANVIL_ID) {
@@ -1728,6 +1744,7 @@ fn menu_result_slot_requires_server_authority(menu_type_id: Option<i32>, slot_nu
                 Some(VANILLA_MENU_TYPE_CRAFTING_ID),
                 CRAFTING_MENU_RESULT_SLOT
             )
+            | (Some(VANILLA_MENU_TYPE_CRAFTER_ID), CRAFTER_RESULT_SLOT)
             | (
                 Some(VANILLA_MENU_TYPE_GRINDSTONE_ID),
                 GRINDSTONE_RESULT_SLOT
@@ -2043,6 +2060,58 @@ fn apply_crafting_menu_quick_move_to_slots(
     }
 }
 
+fn apply_crafter_menu_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    disabled_slots: &BTreeSet<i16>,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !(0..CRAFTER_TOTAL_SLOT_COUNT).contains(&slot_num) || slot_num == CRAFTER_RESULT_SLOT {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let source_item = slots[source_index].item.clone();
+    let (start_slot, end_slot, backwards) = if slot_num < CRAFTER_GRID_SLOT_COUNT {
+        (CRAFTER_PLAYER_MAIN_START, CRAFTER_HOTBAR_END, true)
+    } else {
+        (0, CRAFTER_GRID_SLOT_COUNT, false)
+    };
+
+    let mut moving = source_item;
+    if move_item_stack_to_slots_where(
+        container_id,
+        slots,
+        source_index,
+        &mut moving,
+        start_slot,
+        end_slot,
+        backwards,
+        |slot| !disabled_slots.contains(&slot),
+        default_item_max_stack_sizes,
+    ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn crafter_disabled_slots(data_values: &[ContainerDataValue]) -> BTreeSet<i16> {
+    data_values
+        .iter()
+        .filter_map(|value| {
+            ((0..CRAFTER_GRID_SLOT_COUNT).contains(&value.id) && value.value == 1)
+                .then_some(value.id)
+        })
+        .collect()
+}
+
 fn apply_grindstone_menu_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
@@ -2297,9 +2366,36 @@ fn move_item_stack_to_slots(
     backwards: bool,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) -> bool {
+    move_item_stack_to_slots_where(
+        container_id,
+        slots,
+        source_index,
+        moving,
+        start_slot,
+        end_slot,
+        backwards,
+        |_| true,
+        default_item_max_stack_sizes,
+    )
+}
+
+fn move_item_stack_to_slots_where(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    source_index: usize,
+    moving: &mut ProtocolItemStackSummary,
+    start_slot: i16,
+    end_slot: i16,
+    backwards: bool,
+    mut may_use_slot: impl FnMut(i16) -> bool,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> bool {
     let mut changed = false;
     if item_stack_max_stack_size(moving, default_item_max_stack_sizes) > 1 {
         for dest_slot in quick_move_slot_ids(start_slot, end_slot, backwards) {
+            if !may_use_slot(dest_slot) {
+                continue;
+            }
             if item_stack_is_empty(moving) {
                 break;
             }
@@ -2333,6 +2429,9 @@ fn move_item_stack_to_slots(
 
     if !item_stack_is_empty(moving) {
         for dest_slot in quick_move_slot_ids(start_slot, end_slot, backwards) {
+            if !may_use_slot(dest_slot) {
+                continue;
+            }
             let Some(dest_index) = slots.iter().position(|slot| slot.slot == dest_slot) else {
                 continue;
             };
@@ -4851,6 +4950,138 @@ mod tests {
     }
 
     #[test]
+    fn apply_local_crafter_quick_move_moves_grid_to_player_backwards() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
+            title: "Crafter".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[2] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 2,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (2, ProtocolHashedStack::Empty),
+                (44, hashed_item_stack(42, 3))
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, 2),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(open_container_slot_item(&store, 44), item_stack(42, 3));
+    }
+
+    #[test]
+    fn apply_local_crafter_quick_move_skips_disabled_grid_slots() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
+            title: "Crafter".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[9] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        store.apply_container_set_data(ProtocolContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 1,
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 9,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (1, hashed_item_stack(42, 3)),
+                (9, ProtocolHashedStack::Empty)
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, 0),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(open_container_slot_item(&store, 1), item_stack(42, 3));
+        assert_eq!(
+            open_container_slot_item(&store, 9),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_crafter_result_slot_requires_server_authority() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CRAFTER_ID,
+            title: "Crafter".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+        items[CRAFTER_RESULT_SLOT as usize] = item_stack(90, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        for input in [
+            ProtocolContainerInput::Pickup,
+            ProtocolContainerInput::QuickMove,
+        ] {
+            assert_eq!(
+                store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                    slot_num: CRAFTER_RESULT_SLOT,
+                    button_num: 0,
+                    input,
+                }),
+                Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
+            );
+        }
+        let click = store
+            .build_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CRAFTER_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            })
+            .unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, CRAFTER_RESULT_SLOT),
+            item_stack(90, 1)
+        );
+    }
+
+    #[test]
     fn apply_local_anvil_result_and_quick_move_require_server_authority() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
@@ -5773,8 +6004,8 @@ mod tests {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
-            menu_type_id: 7,
-            title: "Crafter".to_string(),
+            menu_type_id: 99,
+            title: "Unsupported".to_string(),
         });
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
