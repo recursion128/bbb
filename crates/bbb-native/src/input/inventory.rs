@@ -1200,6 +1200,7 @@ pub(crate) fn handle_inventory_mouse_input(
         return true;
     }
     if maybe_queue_stonecutter_recipe_click(
+        input,
         world,
         counters,
         net_commands,
@@ -1346,14 +1347,17 @@ fn maybe_queue_enchantment_button_click(
 }
 
 fn maybe_queue_stonecutter_recipe_click(
+    input: &mut ClientInputState,
     world: &WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    sync_stonecutter_recipe_scroll(input, world);
+    let start_index = input.stonecutter_recipe_scroll_row * STONECUTTER_RECIPE_BUTTON_COLUMNS;
     let Some(button_id) =
-        stonecutter_recipe_button_at_position(world, cursor_position, surface_size)
+        stonecutter_recipe_button_at_position(world, start_index, cursor_position, surface_size)
     else {
         return false;
     };
@@ -1717,6 +1721,9 @@ pub(crate) fn handle_inventory_mouse_wheel(
     if !input.focused || inventory_screen_layout(world).is_none() {
         return false;
     }
+    if maybe_scroll_stonecutter_recipes(input, world, &delta) {
+        return true;
+    }
     if maybe_scroll_merchant_trades(input, world, &delta) {
         return true;
     }
@@ -1729,6 +1736,25 @@ pub(crate) fn handle_inventory_mouse_wheel(
             i32::from(slot),
             delta,
         );
+    }
+    true
+}
+
+fn maybe_scroll_stonecutter_recipes(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    delta: &MouseScrollDelta,
+) -> bool {
+    sync_stonecutter_recipe_scroll(input, world);
+    let Some(max_scroll_row) = stonecutter_recipe_max_scroll_row(world) else {
+        return false;
+    };
+    if max_scroll_row <= 0 {
+        return false;
+    }
+    if let Some(wheel) = inventory_wheel_steps_from_scroll(input, delta) {
+        input.stonecutter_recipe_scroll_row =
+            (input.stonecutter_recipe_scroll_row - wheel).clamp(0, max_scroll_row);
     }
     true
 }
@@ -1913,6 +1939,7 @@ fn lectern_button_at_position(
 
 fn stonecutter_recipe_button_at_position(
     world: &WorldStore,
+    start_index: i32,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<i32> {
@@ -1935,28 +1962,62 @@ fn stonecutter_recipe_button_at_position(
     if column >= STONECUTTER_RECIPE_BUTTON_COLUMNS || row >= STONECUTTER_RECIPE_BUTTON_ROWS {
         return None;
     }
-    let button_id = row * STONECUTTER_RECIPE_BUTTON_COLUMNS + column;
+    let button_id = start_index + row * STONECUTTER_RECIPE_BUTTON_COLUMNS + column;
     Some(button_id)
 }
 
 fn stonecutter_visible_recipe_count(world: &WorldStore) -> Option<i32> {
+    let input_item_id = stonecutter_input_item_id(world)?;
+    Some(stonecutter_visible_recipe_count_for_input(
+        world,
+        input_item_id,
+    ))
+}
+
+fn stonecutter_visible_recipe_count_for_input(world: &WorldStore, input_item_id: i32) -> i32 {
+    world
+        .recipes()
+        .stonecutter_recipes
+        .iter()
+        .filter(|recipe| recipe.input.item_ids.contains(&input_item_id))
+        .count() as i32
+}
+
+fn stonecutter_recipe_max_scroll_row(world: &WorldStore) -> Option<i32> {
+    let visible_recipes = stonecutter_visible_recipe_count(world)?;
+    Some((stonecutter_recipe_row_count(visible_recipes) - STONECUTTER_RECIPE_BUTTON_ROWS).max(0))
+}
+
+fn stonecutter_recipe_row_count(visible_recipes: i32) -> i32 {
+    if visible_recipes <= 0 {
+        0
+    } else {
+        (visible_recipes + STONECUTTER_RECIPE_BUTTON_COLUMNS - 1)
+            / STONECUTTER_RECIPE_BUTTON_COLUMNS
+    }
+}
+
+fn sync_stonecutter_recipe_scroll(input: &mut ClientInputState, world: &WorldStore) {
+    let input_item_id = stonecutter_input_item_id(world);
+    if input.stonecutter_recipe_scroll_input_item_id != input_item_id {
+        input.stonecutter_recipe_scroll_input_item_id = input_item_id;
+        input.stonecutter_recipe_scroll_row = 0;
+    }
+    let max_scroll_row = stonecutter_recipe_max_scroll_row(world).unwrap_or_default();
+    input.stonecutter_recipe_scroll_row =
+        input.stonecutter_recipe_scroll_row.clamp(0, max_scroll_row);
+}
+
+fn stonecutter_input_item_id(world: &WorldStore) -> Option<i32> {
     let container = world.inventory().open_container.as_ref()?;
     if container.menu_type_id != Some(STONECUTTER_MENU_TYPE_ID) {
         return None;
     }
-    let input_item_id = container
+    container
         .slots
         .iter()
         .find(|slot| slot.slot == 0)
-        .and_then(|slot| slot.item.item_id)?;
-    Some(
-        world
-            .recipes()
-            .stonecutter_recipes
-            .iter()
-            .filter(|recipe| recipe.input.item_ids.contains(&input_item_id))
-            .count() as i32,
-    )
+        .and_then(|slot| slot.item.item_id)
 }
 
 fn inventory_screen_click_target(
@@ -3971,6 +4032,7 @@ mod tests {
         assert_eq!(
             stonecutter_recipe_button_at_position(
                 &world,
+                0,
                 Some(PhysicalPosition::new(612.0, 300.0)),
                 size
             ),
@@ -3979,6 +4041,7 @@ mod tests {
         assert_eq!(
             stonecutter_recipe_button_at_position(
                 &world,
+                0,
                 Some(PhysicalPosition::new(660.0, 336.0)),
                 size
             ),
@@ -3987,6 +4050,7 @@ mod tests {
         assert_eq!(
             stonecutter_recipe_button_at_position(
                 &world,
+                0,
                 Some(PhysicalPosition::new(669.0, 300.0)),
                 size
             ),
@@ -4085,6 +4149,134 @@ mod tests {
             NetCommand::ContainerButtonClick(ContainerButtonClick {
                 container_id: 7,
                 button_id: 5,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn stonecutter_mouse_wheel_scrolls_recipe_grid_button_index_by_rows() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_update_recipes(UpdateRecipes {
+            property_sets: Vec::new(),
+            stonecutter_recipes: (0..25).map(|_| stonecutter_recipe(vec![42])).collect(),
+        });
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: STONECUTTER_MENU_TYPE_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 38];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, -2.0),
+            Some(PhysicalPosition::new(612.0, 300.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert_eq!(input.stonecutter_recipe_scroll_row, 2);
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(628.0, 336.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(counters.container_click_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 17,
+            })
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn stonecutter_recipe_scroll_resets_when_input_item_changes() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        let mut stonecutter_recipes = Vec::new();
+        stonecutter_recipes.extend((0..25).map(|_| stonecutter_recipe(vec![42])));
+        stonecutter_recipes.extend((0..25).map(|_| stonecutter_recipe(vec![99])));
+        world.apply_update_recipes(UpdateRecipes {
+            property_sets: Vec::new(),
+            stonecutter_recipes,
+        });
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: STONECUTTER_MENU_TYPE_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 38];
+        items[0] = item_stack(42, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+        assert!(handle_inventory_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, -2.0),
+            Some(PhysicalPosition::new(612.0, 300.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+        assert_eq!(input.stonecutter_recipe_scroll_row, 2);
+
+        let mut replacement_items = vec![ItemStackSummary::empty(); 38];
+        replacement_items[0] = item_stack(99, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items: replacement_items,
+            carried_item: ItemStackSummary::empty(),
+        });
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(612.0, 300.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(input.stonecutter_recipe_scroll_row, 0);
+        assert_eq!(counters.container_button_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerButtonClick(ContainerButtonClick {
+                container_id: 7,
+                button_id: 0,
             })
         );
         assert!(rx.try_recv().is_err());

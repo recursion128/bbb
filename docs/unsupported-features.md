@@ -727,12 +727,12 @@ When an agent does any of the following, update this file in the same slice:
         - non-result slots
         - vanilla slot ranges
         - decoded item-id recipe input routing
-        - first-page recipe grid button clicks queue
+        - recipe grid wheel scroll and button clicks queue
           `ServerboundContainerButtonClickPacket`
         - result-slot clicks kept server-authoritative until:
           - recipe result side effects are locally modeled
-        - recipe grid scroll and scroller-drag state remain follow-up
-          presentation/control work
+        - recipe option icon rendering, active scroller rendering, and
+          scroller-drag state remain follow-up presentation/control work
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including:
         - vanilla slot ranges
         - result-to-player transfer order
