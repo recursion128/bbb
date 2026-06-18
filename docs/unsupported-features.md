@@ -99,6 +99,7 @@ When an agent does any of the following, update this file in the same slice:
     - world border initialize/center/size/warning updates
     - level chunk insert, block/section updates, chunk view, and chunk forgets
     - terrain light and biome updates
+    - inventory, container, cursor, and merchant-offer updates
   - The final criterion:
     - every supported decoded packet stays aligned
 

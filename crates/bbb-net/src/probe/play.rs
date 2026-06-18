@@ -510,15 +510,17 @@ mod tests {
         BossEventFlags, BossEventOperation, ChangeDifficulty, ChatFormatting, ChatTypeBound,
         ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData, ChunkPos as ProtocolChunkPos,
         ChunksBiomes, ClockUpdate, CommandSuggestion, CommandSuggestions, CommonPlayerSpawnInfo,
-        CookieRequest, Cooldown, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
+        ContainerClose, ContainerSetContent, ContainerSetData, ContainerSetSlot, CookieRequest,
+        Cooldown, CustomChatCompletions, CustomChatCompletionsAction, CustomPayload,
         CustomPayloadBody, CustomReportDetails, DebugBlockValue, DebugChunkValue, DebugEntityValue,
         DebugEvent, DebugSample, DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor,
         EntityAnimation, Explosion, FilterMask, FilterMaskKind, ForgetLevelChunk, GameEvent,
         GameProfile, GameProfileProperty, GameRuleValue, GameRuleValues, GameTestHighlightPos,
         GameType, HurtAnimation, IngredientSummary, InitializeBorder, InteractionHand,
-        LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
-        LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MessageSignature,
-        MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenSignEditor,
+        ItemCostSummary, ItemStackSummary, LevelChunkBlockEntity, LevelChunkData,
+        LevelChunkWithLight, LevelEvent, LevelParticles, LightUpdate, LightUpdateData,
+        MapColorPatch, MapDecoration, MapItemData, MerchantOffer, MerchantOffers, MessageSignature,
+        MountScreenOpen, MoveVehicle, ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor,
         PackedMessageSignature, ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime,
         PlayerAbilities, PlayerChat, PlayerExperience, PlayerHealth, PlayerInfoAction,
         PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt,
@@ -530,15 +532,16 @@ mod tests {
         ScoreboardDisplaySlot, SectionBlocksUpdate, SelectAdvancementsTab, ServerData,
         ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetBorderCenter,
         SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
-        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetDefaultSpawnPosition,
-        SetDisplayObjective, SetEntityMotion, SetHeldSlot, SetObjective, SetObjectiveMethod,
-        SetObjectiveParameters, SetPassengers, SetPlayerTeam, SetScore, SetSimulationDistance,
-        ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent,
-        SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound,
-        StoreCookie, TabList, TagQuery, TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus,
-        TickingState, TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer,
-        UpdateAdvancements, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
-        WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetEntityMotion, SetHeldSlot, SetObjective,
+        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerInventory,
+        SetPlayerTeam, SetScore, SetSimulationDistance, ShowDialog, SignedMessageBody,
+        SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder, SoundSource,
+        StatUpdate, StonecutterSelectableRecipeSummary, StopSound, StoreCookie, TabList, TagQuery,
+        TeamCollisionRule, TeamVisibility, TestInstanceBlockStatus, TickingState, TickingStep,
+        TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateRecipes,
+        Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i, WaypointData, WaypointIcon,
+        WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -1764,6 +1767,123 @@ mod tests {
         assert_eq!(report.world_counters.server_link_packets, 1);
         assert_eq!(report.world_counters.server_links_tracked, 2);
         assert_eq!(report.world_counters.server_link_invalid_entries, 1);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_inventory_container_packets_to_world() {
+        const VANILLA_MERCHANT_MENU_TYPE_ID: i32 = 19;
+
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::SetPlayerInventory(SetPlayerInventory {
+                slot: 36,
+                item: item_stack(42, 1),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::OpenScreen(OpenScreen {
+                container_id: 7,
+                menu_type_id: VANILLA_MERCHANT_MENU_TYPE_ID,
+                title: "Merchant".to_string(),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ContainerSetContent(ContainerSetContent {
+                container_id: 7,
+                state_id: 12,
+                items: vec![ItemStackSummary::empty(), item_stack(43, 2)],
+                carried_item: item_stack(98, 1),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ContainerSetSlot(ContainerSetSlot {
+                container_id: 7,
+                state_id: 13,
+                slot: 1,
+                item: item_stack(44, 3),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::ContainerSetData(ContainerSetData {
+                container_id: 7,
+                id: 2,
+                value: 10,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MerchantOffers(merchant_offers(7, 2)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetCursorItem(SetCursorItem {
+                item: item_stack(99, 1),
+            }))
+            .await
+            .unwrap();
+
+        let inventory = probe.world.inventory();
+        assert_eq!(inventory.player_slots.len(), 1);
+        assert_eq!(inventory.player_slots[0].slot, 36);
+        assert_eq!(inventory.player_slots[0].item, item_stack(42, 1));
+        assert_eq!(inventory.cursor_item, item_stack(99, 1));
+
+        let container = inventory.open_container.as_ref().unwrap();
+        assert_eq!(container.container_id, 7);
+        assert_eq!(container.menu_type_id, Some(VANILLA_MERCHANT_MENU_TYPE_ID));
+        assert_eq!(container.title.as_deref(), Some("Merchant"));
+        assert_eq!(container.state_id, 13);
+        assert_eq!(container.slots.len(), 2);
+        assert_eq!(container.slots[0].item, ItemStackSummary::empty());
+        assert_eq!(container.slots[1].item, item_stack(44, 3));
+        assert_eq!(container.data_values.len(), 1);
+        assert_eq!(container.data_values[0].id, 2);
+        assert_eq!(container.data_values[0].value, 10);
+        let offers = container.merchant_offers.as_ref().unwrap();
+        assert_eq!(offers.container_id, 7);
+        assert_eq!(offers.offers.len(), 2);
+        assert_eq!(offers.villager_level, 3);
+        assert_eq!(offers.villager_xp, 120);
+        assert!(offers.show_progress);
+        assert!(!offers.can_restock);
+        assert_eq!(offers.offers[0].buy_a, item_cost(42, 3));
+        assert_eq!(offers.offers[0].sell, item_stack(99, 1));
+
+        probe
+            .handle_play_packet(PlayClientbound::ContainerClose(ContainerClose {
+                container_id: 7,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(3, ChunkPos { x: 0, z: 0 });
+
+        assert!(report.world.inventory().open_container.is_none());
+        assert_eq!(
+            report.world.inventory().player_slots[0].item,
+            item_stack(42, 1)
+        );
+        assert_eq!(report.world.inventory().cursor_item, item_stack(99, 1));
+        assert_eq!(report.world_counters.inventory_slot_updates_received, 1);
+        assert_eq!(report.world_counters.inventory_slots_tracked, 1);
+        assert_eq!(report.world_counters.cursor_item_updates_received, 1);
+        assert_eq!(report.world_counters.container_open_updates_received, 1);
+        assert_eq!(report.world_counters.container_content_updates_received, 1);
+        assert_eq!(report.world_counters.container_slot_updates_received, 1);
+        assert_eq!(report.world_counters.container_data_updates_received, 1);
+        assert_eq!(report.world_counters.merchant_offer_packets_received, 1);
+        assert_eq!(report.world_counters.merchant_offer_packets_applied, 1);
+        assert_eq!(report.world_counters.merchant_offer_packets_ignored, 0);
+        assert_eq!(report.world_counters.merchant_offers_tracked, 0);
+        assert_eq!(report.world_counters.container_close_updates_received, 1);
+        assert_eq!(report.world_counters.container_close_updates_applied, 1);
+        assert_eq!(report.world_counters.container_close_updates_ignored, 0);
     }
 
     #[tokio::test]
@@ -3430,6 +3550,46 @@ mod tests {
         let byte = layer.get_mut(nibble_index / 2).unwrap();
         let shift = (nibble_index % 2) * 4;
         *byte = (*byte & !(0x0f << shift)) | ((value & 0x0f) << shift);
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        }
+    }
+
+    fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {
+        ItemCostSummary {
+            item_id,
+            count,
+            component_predicate: Default::default(),
+        }
+    }
+
+    fn merchant_offers(container_id: i32, offer_count: usize) -> MerchantOffers {
+        MerchantOffers {
+            container_id,
+            offers: (0..offer_count)
+                .map(|index| MerchantOffer {
+                    buy_a: item_cost(42 + index as i32, 3),
+                    sell: item_stack(99 + index as i32, 1),
+                    buy_b: None,
+                    is_out_of_stock: false,
+                    uses: 1,
+                    max_uses: 12,
+                    xp: 8,
+                    special_price_diff: -2,
+                    price_multiplier: 0.05,
+                    demand: 6,
+                })
+                .collect(),
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: false,
+        }
     }
 
     fn protocol_play_login(player_id: i32) -> PlayLogin {
