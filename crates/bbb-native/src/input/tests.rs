@@ -274,6 +274,30 @@ fn digit_key_selects_hotbar_slot_updates_world_and_queues_command() {
 }
 
 #[test]
+fn spectator_digit_key_does_not_queue_held_slot() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    assert!(world.set_local_selected_hotbar_slot(2));
+    set_local_spectator(&mut world);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Digit5),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(world.local_player().selected_hotbar_slot, 2);
+    assert_eq!(counters.held_slot_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn unfocused_movement_key_does_not_queue_player_input() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

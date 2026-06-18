@@ -314,6 +314,9 @@ pub(crate) fn handle_key_input(
 
     if pressed {
         if let Some(slot) = hotbar_slot_for_key(code) {
+            if world.local_player_is_spectator() {
+                return;
+            }
             select_hotbar_slot(counters, world, net_commands, slot);
             return;
         }

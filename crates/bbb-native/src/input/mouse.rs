@@ -398,6 +398,9 @@ pub(crate) fn handle_mouse_wheel(
     let Some(wheel) = wheel_steps_from_scroll(input, delta) else {
         return;
     };
+    if world.local_player_is_spectator() {
+        return;
+    }
     let current_slot = world.local_player().selected_hotbar_slot;
     if let Some(slot) = hotbar_slot_for_scroll(wheel, current_slot) {
         select_hotbar_slot(counters, world, net_commands, slot);
@@ -1733,6 +1736,29 @@ mod tests {
         assert_eq!(world.counters().held_slot_packets, 0);
         assert_eq!(counters.held_slot_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::SetHeldSlot(3));
+    }
+
+    #[test]
+    fn spectator_mouse_wheel_does_not_select_hotbar_or_queue_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        assert!(world.set_local_selected_hotbar_slot(4));
+        set_local_spectator(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_wheel(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseScrollDelta::LineDelta(0.0, 1.0),
+        );
+
+        assert_eq!(world.local_player().selected_hotbar_slot, 4);
+        assert_eq!(counters.held_slot_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]

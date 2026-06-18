@@ -315,6 +315,9 @@ When an agent does any of the following, update this file in the same slice:
       - Spectator left-click on an entity queues `SpectateEntity`; spectator
         left-click on blocks does not attack, destroy, or swing.
       - Middle-click pick block/entity uses Ctrl, not sprint, for include-data.
+      - Spectator hotbar number keys and wheel do not send held-slot packets;
+        full Spectator GUI selection and wheel speed/menu behavior remains
+        follow-up presentation/control work.
   - Inventory:
     - Implement:
       - tooltips
