@@ -129,11 +129,16 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                     counters,
                     net_commands,
                     hit.entity_id,
-                    input.sprint,
+                    input.control_down(),
                 );
             }
             Some(CrosshairTarget::Block(hit)) => {
-                queue_pick_item_from_block_command(counters, net_commands, hit.pos, input.sprint);
+                queue_pick_item_from_block_command(
+                    counters,
+                    net_commands,
+                    hit.pos,
+                    input.control_down(),
+                );
             }
             None => {}
         },
@@ -1624,11 +1629,11 @@ mod tests {
     }
 
     #[test]
-    fn middle_mouse_press_on_block_queues_pick_block() {
+    fn control_middle_mouse_press_on_block_queues_pick_block_with_data() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
-        input.sprint = true;
+        input.control_left_down = true;
         let mut world = world_with_crosshair_block();
         let mut counters = NetCounters::default();
 
@@ -1652,11 +1657,11 @@ mod tests {
     }
 
     #[test]
-    fn middle_mouse_press_on_entity_queues_pick_entity() {
+    fn control_middle_mouse_press_on_entity_queues_pick_entity_with_data() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
-        input.sprint = true;
+        input.control_left_down = true;
         let mut world = world_with_crosshair_entity(123);
         let mut counters = NetCounters::default();
 
@@ -1675,6 +1680,34 @@ mod tests {
             NetCommand::PickItemFromEntity(PickItemFromEntity {
                 entity_id: 123,
                 include_data: true,
+            })
+        );
+    }
+
+    #[test]
+    fn sprint_middle_mouse_press_does_not_include_pick_data() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.sprint = true;
+        let mut world = world_with_crosshair_block();
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Middle,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.pick_item_from_block_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PickItemFromBlock(PickItemFromBlock {
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                include_data: false,
             })
         );
     }

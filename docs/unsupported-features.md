@@ -314,6 +314,7 @@ When an agent does any of the following, update this file in the same slice:
       - Spectator mode suppresses gameplay drop and swap-offhand actions.
       - Spectator left-click on an entity queues `SpectateEntity`; spectator
         left-click on blocks does not attack, destroy, or swing.
+      - Middle-click pick block/entity uses Ctrl, not sprint, for include-data.
   - Inventory:
     - Implement:
       - tooltips
