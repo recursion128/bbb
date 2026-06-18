@@ -22,6 +22,7 @@ const VANILLA_MENU_TYPE_GENERIC_9X1_ID: i32 = 0;
 const VANILLA_MENU_TYPE_GENERIC_9X6_ID: i32 = 5;
 const VANILLA_MENU_TYPE_GENERIC_3X3_ID: i32 = 6;
 const VANILLA_MENU_TYPE_BLAST_FURNACE_ID: i32 = 10;
+const VANILLA_MENU_TYPE_BREWING_STAND_ID: i32 = 11;
 const VANILLA_MENU_TYPE_CRAFTING_ID: i32 = 12;
 const VANILLA_MENU_TYPE_FURNACE_ID: i32 = 14;
 const VANILLA_MENU_TYPE_GRINDSTONE_ID: i32 = 15;
@@ -791,6 +792,10 @@ impl WorldStore {
                             &self.furnace_fuel_item_ids,
                             &self.default_item_max_stack_sizes,
                         )
+                    } else if menu_type_id == Some(VANILLA_MENU_TYPE_BREWING_STAND_ID) {
+                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                            ProtocolContainerInput::QuickMove,
+                        ));
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_GRINDSTONE_ID) {
                         if grindstone_quick_move_requires_server_authority(
                             &slots_after,
@@ -5037,6 +5042,40 @@ mod tests {
             open_container_slot_item(&store, STONECUTTER_RESULT_SLOT),
             item_stack(90, 1)
         );
+    }
+
+    #[test]
+    fn apply_local_brewing_stand_quick_move_requires_server_authority() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
+            title: "Brewing Stand".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 41];
+        items[32] = item_stack(42, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let request = ContainerClickSlotRequest {
+            slot_num: 32,
+            button_num: 0,
+            input: ProtocolContainerInput::QuickMove,
+        };
+        assert_eq!(
+            store.apply_local_container_click_slot(request),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickMove
+            ))
+        );
+        let click = store.build_container_click_slot(request).unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(open_container_slot_item(&store, 32), item_stack(42, 3));
     }
 
     #[test]

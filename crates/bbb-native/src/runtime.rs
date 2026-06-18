@@ -38,6 +38,16 @@ mod control_requests;
 mod events;
 
 const CLIENT_ENTITY_ANIMATION_TICK_INTERVAL: Duration = Duration::from_millis(50);
+const BREWING_STAND_BREW_TIME_DATA_ID: i16 = 0;
+const BREWING_STAND_FUEL_DATA_ID: i16 = 1;
+const BREWING_STAND_FUEL_LENGTH_SPRITE_WIDTH: u32 = 18;
+const BREWING_STAND_FUEL_LENGTH_SPRITE_HEIGHT: u32 = 4;
+const BREWING_STAND_BREW_PROGRESS_SPRITE_WIDTH: u32 = 9;
+const BREWING_STAND_BREW_PROGRESS_SPRITE_HEIGHT: u32 = 28;
+const BREWING_STAND_BUBBLES_SPRITE_WIDTH: u32 = 12;
+const BREWING_STAND_BUBBLES_SPRITE_HEIGHT: u32 = 29;
+const BREWING_STAND_BREW_TOTAL_TICKS: f32 = 400.0;
+const BREWING_STAND_BUBBLE_LENGTHS: [u32; 7] = [29, 24, 20, 16, 11, 6, 0];
 const FURNACE_LIT_TIME_DATA_ID: i16 = 0;
 const FURNACE_LIT_DURATION_DATA_ID: i16 = 1;
 const FURNACE_COOKING_PROGRESS_DATA_ID: i16 = 2;
@@ -382,6 +392,19 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 166.0 / 256.0],
             )]
         }
+        InventoryScreenBackground::BrewingStand => {
+            let mut layers = vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::BrewingStand,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )];
+            push_brewing_stand_progress_layers(world, &mut layers);
+            layers
+        }
         InventoryScreenBackground::BlastFurnace => {
             let mut layers = vec![hud_inventory_background_layer(
                 HudInventoryBackgroundTexture::BlastFurnace,
@@ -492,6 +515,77 @@ fn hud_inventory_background_layers(
                 [176.0 / 256.0, 166.0 / 256.0],
             )]
         }
+    }
+}
+
+fn push_brewing_stand_progress_layers(
+    world: &WorldStore,
+    layers: &mut Vec<HudInventoryBackgroundLayer>,
+) {
+    let fuel = world
+        .open_container_data_value(BREWING_STAND_FUEL_DATA_ID)
+        .unwrap_or_default();
+    let max_fuel_length = i32::try_from(BREWING_STAND_FUEL_LENGTH_SPRITE_WIDTH).unwrap_or_default();
+    let fuel_length = ((max_fuel_length * i32::from(fuel) + 20 - 1) / 20).clamp(0, max_fuel_length);
+    if fuel_length > 0 {
+        let width = u32::try_from(fuel_length).unwrap_or_default();
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::BrewingStandFuelLength,
+            60,
+            44,
+            width,
+            BREWING_STAND_FUEL_LENGTH_SPRITE_HEIGHT,
+            [0.0, 0.0],
+            [
+                width as f32 / BREWING_STAND_FUEL_LENGTH_SPRITE_WIDTH as f32,
+                1.0,
+            ],
+        ));
+    }
+
+    let brew_ticks = world
+        .open_container_data_value(BREWING_STAND_BREW_TIME_DATA_ID)
+        .unwrap_or_default();
+    if brew_ticks <= 0 {
+        return;
+    }
+
+    let brew_length = (BREWING_STAND_BREW_PROGRESS_SPRITE_HEIGHT as f32
+        * (1.0 - f32::from(brew_ticks) / BREWING_STAND_BREW_TOTAL_TICKS))
+        as i32;
+    if brew_length > 0 {
+        let height = u32::try_from(brew_length).unwrap_or_default();
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::BrewingStandBrewProgress,
+            97,
+            16,
+            BREWING_STAND_BREW_PROGRESS_SPRITE_WIDTH,
+            height,
+            [0.0, 0.0],
+            [
+                1.0,
+                height as f32 / BREWING_STAND_BREW_PROGRESS_SPRITE_HEIGHT as f32,
+            ],
+        ));
+    }
+
+    let bubble_length =
+        BREWING_STAND_BUBBLE_LENGTHS[(usize::try_from(brew_ticks).unwrap_or_default() / 2)
+            % BREWING_STAND_BUBBLE_LENGTHS.len()];
+    if bubble_length > 0 {
+        let y_offset = BREWING_STAND_BUBBLES_SPRITE_HEIGHT - bubble_length;
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::BrewingStandBubbles,
+            63,
+            14 + i32::try_from(y_offset).unwrap_or_default(),
+            BREWING_STAND_BUBBLES_SPRITE_WIDTH,
+            bubble_length,
+            [
+                0.0,
+                y_offset as f32 / BREWING_STAND_BUBBLES_SPRITE_HEIGHT as f32,
+            ],
+            [1.0, 1.0],
+        ));
     }
 }
 
@@ -1179,6 +1273,119 @@ mod tests {
         assert_eq!((first_grid.x, first_grid.y), (30, 17));
         let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
         assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_brewing_stand_layout() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 11,
+            title: "Brewing Stand".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 41],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+
+        let screen = hud_inventory_screen(&world, None, Some(40), 0.0).unwrap();
+
+        assert_eq!(screen.width, 176);
+        assert_eq!(screen.height, 166);
+        assert_eq!(
+            screen.background_layers,
+            vec![hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::BrewingStand,
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )]
+        );
+        assert_eq!(screen.hovered_slot_id, Some(40));
+        assert_eq!(screen.slots.len(), 41);
+        let bottle = screen.slots.iter().find(|slot| slot.slot_id == 0).unwrap();
+        assert_eq!((bottle.x, bottle.y), (56, 51));
+        let ingredient = screen.slots.iter().find(|slot| slot.slot_id == 3).unwrap();
+        assert_eq!((ingredient.x, ingredient.y), (79, 17));
+        let fuel = screen.slots.iter().find(|slot| slot.slot_id == 4).unwrap();
+        assert_eq!((fuel.x, fuel.y), (17, 17));
+        let hotbar = screen.slots.iter().find(|slot| slot.slot_id == 40).unwrap();
+        assert_eq!((hotbar.x, hotbar.y), (152, 142));
+    }
+
+    #[test]
+    fn hud_inventory_screen_projects_brewing_stand_progress_layers() {
+        let mut world = WorldStore::new();
+        world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 11,
+            title: "Brewing Stand".to_string(),
+        });
+        world.apply_container_set_content(bbb_protocol::packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![bbb_protocol::packets::ItemStackSummary::empty(); 41],
+            carried_item: bbb_protocol::packets::ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 200,
+        });
+        world.apply_container_set_data(bbb_protocol::packets::ContainerSetData {
+            container_id: 7,
+            id: 1,
+            value: 10,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::BrewingStand,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::BrewingStandFuelLength,
+                    60,
+                    44,
+                    9,
+                    4,
+                    [0.0, 0.0],
+                    [9.0 / 18.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::BrewingStandBrewProgress,
+                    97,
+                    16,
+                    9,
+                    14,
+                    [0.0, 0.0],
+                    [1.0, 14.0 / 28.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::BrewingStandBubbles,
+                    63,
+                    23,
+                    12,
+                    20,
+                    [0.0, 9.0 / 29.0],
+                    [1.0, 1.0],
+                ),
+            ]
+        );
     }
 
     #[test]

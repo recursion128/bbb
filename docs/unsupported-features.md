@@ -312,6 +312,7 @@ When an agent does any of the following, update this file in the same slice:
       - remaining dedicated server-opened menu layouts beyond:
         - `generic_9xN`
         - `generic_3x3`
+        - brewing stand
         - furnace/blast furnace/smoker
         - crafting table
         - grindstone
@@ -453,6 +454,7 @@ When an agent does any of the following, update this file in the same slice:
       - `generic_9x1` through `generic_9x6` ChestMenu screens with official
         `generic_54.png` background slices
       - `generic_3x3` DispenserMenu screens with official `dispenser.png`
+      - BrewingStandMenu screens with official `brewing_stand.png`
       - CraftingMenu screens with official `crafting_table.png`
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens with official
         furnace-family backgrounds
@@ -465,9 +467,13 @@ When an agent does any of the following, update this file in the same slice:
       progress sprites:
       - lit-progress
       - burn-progress
+    - BrewingStandMenu screens also render official progress sprites:
+      - fuel-length
+      - brew-progress
+      - bubbles
     - Those progress sprites use:
       - canonical `ContainerSetData` values
-      - vanilla `AbstractFurnaceMenu` progress formulas
+      - vanilla `AbstractFurnaceMenu` / `BrewingStandScreen` progress formulas
     - It queues basic left/right `PICKUP` container clicks for those supported
       fixed-slot screens.
     - It also queues Shift-click `QUICK_MOVE` container clicks for:
@@ -476,6 +482,9 @@ When an agent does any of the following, update this file in the same slice:
       - CraftingMenu non-result slots, with result-slot clicks kept
         server-authoritative until recipe recomputation and remainders are
         locally modeled
+      - BrewingStandMenu quick-move paths are kept server-authoritative until
+        brewing fuel tags, potion bottle ids, ingredient parity, and
+        component-hashable potion stack prediction are modeled
       - GrindstoneMenu player inventory/hotbar range movement when both input
         slots are occupied; input/result-side paths are kept
         server-authoritative until component-hashable grindstone item

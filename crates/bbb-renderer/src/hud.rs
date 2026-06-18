@@ -115,6 +115,10 @@ pub enum HudInventoryBackgroundTexture {
     GenericContainer,
     Dispenser,
     CraftingTable,
+    BrewingStand,
+    BrewingStandFuelLength,
+    BrewingStandBrewProgress,
+    BrewingStandBubbles,
     Furnace,
     FurnaceLitProgress,
     FurnaceBurnProgress,
@@ -256,6 +260,46 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_crafting_table_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_brewing_stand_background(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_brewing_stand_background = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_brewing_stand_fuel_length(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_brewing_stand_fuel_length = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_brewing_stand_brew_progress(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_brewing_stand_brew_progress = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_brewing_stand_bubbles(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+    ) -> Result<()> {
+        self.hud_brewing_stand_bubbles = Some(self.upload_hud_sprite(width, height, rgba)?);
         Ok(())
     }
 
@@ -846,6 +890,18 @@ impl Renderer {
             HudInventoryBackgroundTexture::Dispenser => self.hud_dispenser_background.as_ref(),
             HudInventoryBackgroundTexture::CraftingTable => {
                 self.hud_crafting_table_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::BrewingStand => {
+                self.hud_brewing_stand_background.as_ref()
+            }
+            HudInventoryBackgroundTexture::BrewingStandFuelLength => {
+                self.hud_brewing_stand_fuel_length.as_ref()
+            }
+            HudInventoryBackgroundTexture::BrewingStandBrewProgress => {
+                self.hud_brewing_stand_brew_progress.as_ref()
+            }
+            HudInventoryBackgroundTexture::BrewingStandBubbles => {
+                self.hud_brewing_stand_bubbles.as_ref()
             }
             HudInventoryBackgroundTexture::Furnace => self.hud_furnace_background.as_ref(),
             HudInventoryBackgroundTexture::FurnaceLitProgress => {

@@ -122,6 +122,35 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         smoker_burn_progress.height,
         &smoker_burn_progress.rgba,
     )?;
+    let brewing_stand = gui_texture(
+        roots,
+        "textures/gui/container/brewing_stand.png",
+        "minecraft:textures/gui/container/brewing_stand",
+    )?;
+    renderer.upload_hud_brewing_stand_background(
+        brewing_stand.width,
+        brewing_stand.height,
+        &brewing_stand.rgba,
+    )?;
+    let brewing_stand_fuel_length = hud_sprite(&sprites, "container/brewing_stand/fuel_length")?;
+    renderer.upload_hud_brewing_stand_fuel_length(
+        brewing_stand_fuel_length.width,
+        brewing_stand_fuel_length.height,
+        &brewing_stand_fuel_length.rgba,
+    )?;
+    let brewing_stand_brew_progress =
+        hud_sprite(&sprites, "container/brewing_stand/brew_progress")?;
+    renderer.upload_hud_brewing_stand_brew_progress(
+        brewing_stand_brew_progress.width,
+        brewing_stand_brew_progress.height,
+        &brewing_stand_brew_progress.rgba,
+    )?;
+    let brewing_stand_bubbles = hud_sprite(&sprites, "container/brewing_stand/bubbles")?;
+    renderer.upload_hud_brewing_stand_bubbles(
+        brewing_stand_bubbles.width,
+        brewing_stand_bubbles.height,
+        &brewing_stand_bubbles.rgba,
+    )?;
     let grindstone = gui_texture(
         roots,
         "textures/gui/container/grindstone.png",
@@ -219,6 +248,7 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         furnace = ?(furnace.width, furnace.height),
         blast_furnace = ?(blast_furnace.width, blast_furnace.height),
         smoker = ?(smoker.width, smoker.height),
+        brewing_stand = ?(brewing_stand.width, brewing_stand.height),
         grindstone = ?(grindstone.width, grindstone.height),
         stonecutter = ?(stonecutter.width, stonecutter.height),
         experience = ?(experience_background.width, experience_background.height),
