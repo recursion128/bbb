@@ -559,9 +559,10 @@ When an agent does any of the following, update this file in the same slice:
       - horse-family chest slots from `inventoryColumns`
       - player inventory slots
       - hotbar slots
+    - Mount saddle/body slot rendering and hit-testing respect vanilla
+      active-slot conditions from entity type tags plus baby/tame metadata.
     - Mount Shift-click queues server-authoritative `QUICK_MOVE` clicks.
-    - Mount entity preview rendering and exact equipment-slot active hiding
-      remain follow-up presentation work.
+    - Mount entity preview rendering remains follow-up presentation work.
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
       progress sprites:
       - lit-progress

@@ -3,6 +3,7 @@ use bbb_protocol::packets::{
     ContainerInput as ProtocolContainerInput, ContainerSetContent as ProtocolContainerSetContent,
     ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
     DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     HashedComponentPatch as ProtocolHashedComponentPatch,
     HashedItemStack as ProtocolHashedItemStack, HashedStack as ProtocolHashedStack,
     ItemCostSummary as ProtocolItemCostSummary, ItemStackSummary as ProtocolItemStackSummary,
@@ -96,6 +97,10 @@ const QUICKCRAFT_TYPE_CLONE: i8 = 2;
 const QUICKCRAFT_HEADER_START: i8 = 0;
 const QUICKCRAFT_HEADER_CONTINUE: i8 = 1;
 const QUICKCRAFT_HEADER_END: i8 = 2;
+const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
+const VANILLA_MOUNT_TAME_FLAGS_DATA_ID: u8 = 18;
+const VANILLA_ABSTRACT_HORSE_TAME_FLAG: i8 = 2;
+const VANILLA_TAMABLE_ANIMAL_TAME_FLAG: i8 = 4;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InventorySlot {
@@ -178,6 +183,12 @@ pub enum MountArmorSlotKind {
     Horse,
     Llama,
     Nautilus,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MountEquipmentSlotVisibility {
+    pub saddle: bool,
+    pub body: Option<MountArmorSlotKind>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -627,14 +638,24 @@ impl WorldStore {
     }
 
     pub fn open_mount_armor_slot_kind(&self) -> Option<MountArmorSlotKind> {
+        self.open_mount_equipment_slot_visibility()?.body
+    }
+
+    pub fn open_mount_equipment_slot_visibility(&self) -> Option<MountEquipmentSlotVisibility> {
         let mount = self.inventory.open_container.as_ref()?.mount?;
-        let entity_type_id = self.entities.entity_type_id(mount.entity_id)?;
+        let entity = self.probe_entity(mount.entity_id)?;
+        let entity_type_id = entity.entity_type_id;
         if crate::entities::is_vanilla_abstract_nautilus_type(entity_type_id) {
-            Some(MountArmorSlotKind::Nautilus)
-        } else if crate::entities::is_vanilla_llama_type(entity_type_id) {
-            Some(MountArmorSlotKind::Llama)
+            let active = mount_nautilus_can_use_equipment_slots(&entity.data_values);
+            Some(MountEquipmentSlotVisibility {
+                saddle: active,
+                body: active.then_some(MountArmorSlotKind::Nautilus),
+            })
         } else if crate::entities::is_vanilla_abstract_horse_type(entity_type_id) {
-            Some(MountArmorSlotKind::Horse)
+            Some(MountEquipmentSlotVisibility {
+                saddle: mount_horse_saddle_slot_is_active(entity_type_id, &entity.data_values),
+                body: mount_horse_body_slot_kind(entity_type_id),
+            })
         } else {
             None
         }
@@ -1291,6 +1312,65 @@ impl WorldStore {
             .map(|offers| offers.offers.len())
             .unwrap_or(0);
     }
+}
+
+fn mount_horse_saddle_slot_is_active(
+    entity_type_id: i32,
+    data_values: &[ProtocolEntityDataValue],
+) -> bool {
+    if !crate::entities::is_vanilla_can_equip_saddle_type(entity_type_id) {
+        return false;
+    }
+    if crate::entities::is_vanilla_horse_slot_always_active_type(entity_type_id) {
+        return true;
+    }
+    !mount_entity_is_ageable_baby(data_values)
+        && (entity_data_byte(data_values, VANILLA_MOUNT_TAME_FLAGS_DATA_ID, 0)
+            & VANILLA_ABSTRACT_HORSE_TAME_FLAG)
+            != 0
+}
+
+fn mount_horse_body_slot_kind(entity_type_id: i32) -> Option<MountArmorSlotKind> {
+    if crate::entities::is_vanilla_llama_type(entity_type_id) {
+        Some(MountArmorSlotKind::Llama)
+    } else if crate::entities::is_vanilla_can_wear_horse_armor_type(entity_type_id) {
+        Some(MountArmorSlotKind::Horse)
+    } else {
+        None
+    }
+}
+
+fn mount_nautilus_can_use_equipment_slots(data_values: &[ProtocolEntityDataValue]) -> bool {
+    !mount_entity_is_ageable_baby(data_values)
+        && (entity_data_byte(data_values, VANILLA_MOUNT_TAME_FLAGS_DATA_ID, 0)
+            & VANILLA_TAMABLE_ANIMAL_TAME_FLAG)
+            != 0
+}
+
+fn mount_entity_is_ageable_baby(data_values: &[ProtocolEntityDataValue]) -> bool {
+    entity_data_bool(data_values, VANILLA_AGEABLE_MOB_BABY_DATA_ID, false)
+}
+
+fn entity_data_bool(data_values: &[ProtocolEntityDataValue], data_id: u8, fallback: bool) -> bool {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
+}
+
+fn entity_data_byte(data_values: &[ProtocolEntityDataValue], data_id: u8, fallback: i8) -> i8 {
+    data_values
+        .iter()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Byte(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(fallback)
 }
 
 fn container_click_slot_is_valid(container: &ContainerState, slot_num: i16) -> bool {
@@ -2927,10 +3007,18 @@ impl MerchantOfferState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{
-        IngredientSummary, RecipePropertySetSummary, SlotDisplaySummary,
-        StonecutterSelectableRecipeSummary, UpdateRecipes as ProtocolUpdateRecipes,
+    use crate::entities::{
+        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID,
     };
+    use bbb_protocol::packets::{
+        AddEntity as ProtocolAddEntity, EntityDataValue as ProtocolEntityDataValue,
+        EntityDataValueKind, IngredientSummary, MountScreenOpen as ProtocolMountScreenOpen,
+        RecipePropertySetSummary, SetEntityData as ProtocolSetEntityData, SlotDisplaySummary,
+        StonecutterSelectableRecipeSummary, UpdateRecipes as ProtocolUpdateRecipes,
+        Vec3d as ProtocolVec3d,
+    };
+    use uuid::Uuid;
 
     #[test]
     fn tracks_player_inventory_and_container_state() {
@@ -3032,6 +3120,84 @@ mod tests {
         assert_eq!(store.counters().container_close_updates_received, 2);
         assert_eq!(store.counters().container_close_updates_applied, 1);
         assert_eq!(store.counters().container_close_updates_ignored, 1);
+    }
+
+    #[test]
+    fn mount_equipment_visibility_follows_vanilla_horse_type_tags() {
+        assert_eq!(
+            mount_visibility_for_entity(VANILLA_ENTITY_TYPE_HORSE_ID, Vec::new()),
+            Some(MountEquipmentSlotVisibility {
+                saddle: true,
+                body: Some(MountArmorSlotKind::Horse),
+            })
+        );
+        assert_eq!(
+            mount_visibility_for_entity(VANILLA_ENTITY_TYPE_LLAMA_ID, Vec::new()),
+            Some(MountEquipmentSlotVisibility {
+                saddle: false,
+                body: Some(MountArmorSlotKind::Llama),
+            })
+        );
+        assert_eq!(
+            mount_visibility_for_entity(VANILLA_ENTITY_TYPE_DONKEY_ID, Vec::new()),
+            Some(MountEquipmentSlotVisibility {
+                saddle: false,
+                body: None,
+            })
+        );
+    }
+
+    #[test]
+    fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
+        assert_eq!(
+            mount_visibility_for_entity(
+                VANILLA_ENTITY_TYPE_DONKEY_ID,
+                vec![protocol_byte_data(
+                    VANILLA_MOUNT_TAME_FLAGS_DATA_ID,
+                    VANILLA_ABSTRACT_HORSE_TAME_FLAG,
+                )],
+            ),
+            Some(MountEquipmentSlotVisibility {
+                saddle: true,
+                body: None,
+            })
+        );
+        assert_eq!(
+            mount_visibility_for_entity(
+                VANILLA_ENTITY_TYPE_DONKEY_ID,
+                vec![
+                    protocol_bool_data(VANILLA_AGEABLE_MOB_BABY_DATA_ID, true),
+                    protocol_byte_data(
+                        VANILLA_MOUNT_TAME_FLAGS_DATA_ID,
+                        VANILLA_ABSTRACT_HORSE_TAME_FLAG,
+                    ),
+                ],
+            ),
+            Some(MountEquipmentSlotVisibility {
+                saddle: false,
+                body: None,
+            })
+        );
+        assert_eq!(
+            mount_visibility_for_entity(
+                VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+                vec![protocol_byte_data(
+                    VANILLA_MOUNT_TAME_FLAGS_DATA_ID,
+                    VANILLA_TAMABLE_ANIMAL_TAME_FLAG,
+                )],
+            ),
+            Some(MountEquipmentSlotVisibility {
+                saddle: true,
+                body: Some(MountArmorSlotKind::Nautilus),
+            })
+        );
+        assert_eq!(
+            mount_visibility_for_entity(VANILLA_ENTITY_TYPE_NAUTILUS_ID, Vec::new()),
+            Some(MountEquipmentSlotVisibility {
+                saddle: false,
+                body: None,
+            })
+        );
     }
 
     #[test]
@@ -7004,6 +7170,64 @@ mod tests {
                 .unwrap_err(),
             ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::Clone)
         );
+    }
+
+    fn mount_visibility_for_entity(
+        entity_type_id: i32,
+        data_values: Vec<ProtocolEntityDataValue>,
+    ) -> Option<MountEquipmentSlotVisibility> {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(42, entity_type_id));
+        if !data_values.is_empty() {
+            assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+                id: 42,
+                values: data_values,
+            }));
+        }
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 7,
+            inventory_columns: 3,
+            entity_id: 42,
+        });
+        store.open_mount_equipment_slot_visibility()
+    }
+
+    fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEntity {
+        ProtocolAddEntity {
+            id,
+            uuid: Uuid::from_u128(id as u128),
+            entity_type_id,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        }
+    }
+
+    fn protocol_byte_data(data_id: u8, value: i8) -> ProtocolEntityDataValue {
+        ProtocolEntityDataValue {
+            data_id,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(value),
+        }
+    }
+
+    fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
+        ProtocolEntityDataValue {
+            data_id,
+            serializer_id: 8,
+            value: EntityDataValueKind::Boolean(value),
+        }
     }
 
     fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {

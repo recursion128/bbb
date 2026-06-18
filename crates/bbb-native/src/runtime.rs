@@ -654,62 +654,65 @@ fn hud_inventory_background_layers(
             kind,
             inventory_columns,
         } => {
-            let armor_slot_texture = open_mount_armor_slot_texture(world).unwrap_or(match kind {
-                MountInventoryKind::Horse => HudInventoryBackgroundTexture::MountHorseArmorSlot,
-                MountInventoryKind::Nautilus => {
-                    HudInventoryBackgroundTexture::MountNautilusArmorSlot
-                }
-            });
-            let mut layers = vec![
-                hud_inventory_background_layer(
-                    match kind {
-                        MountInventoryKind::Horse => HudInventoryBackgroundTexture::Horse,
-                        MountInventoryKind::Nautilus => HudInventoryBackgroundTexture::Nautilus,
-                    },
-                    0,
-                    0,
-                    176,
-                    166,
-                    [0.0, 0.0],
-                    [176.0 / 256.0, 166.0 / 256.0],
-                ),
-                hud_inventory_background_layer(
-                    HudInventoryBackgroundTexture::MountSlot,
-                    7,
-                    17,
-                    18,
-                    18,
-                    [0.0, 0.0],
-                    [1.0, 1.0],
-                ),
-                hud_inventory_background_layer(
-                    HudInventoryBackgroundTexture::MountSlot,
-                    7,
-                    35,
-                    18,
-                    18,
-                    [0.0, 0.0],
-                    [1.0, 1.0],
-                ),
-                hud_inventory_background_layer(
-                    HudInventoryBackgroundTexture::MountSaddleSlot,
-                    8,
-                    18,
-                    16,
-                    16,
-                    [0.0, 0.0],
-                    [1.0, 1.0],
-                ),
-                hud_inventory_background_layer(
-                    armor_slot_texture,
-                    8,
-                    36,
-                    16,
-                    16,
-                    [0.0, 0.0],
-                    [1.0, 1.0],
-                ),
-            ];
+            let equipment_slots = world
+                .open_mount_equipment_slot_visibility()
+                .unwrap_or_default();
+            let mut layers = vec![hud_inventory_background_layer(
+                match kind {
+                    MountInventoryKind::Horse => HudInventoryBackgroundTexture::Horse,
+                    MountInventoryKind::Nautilus => HudInventoryBackgroundTexture::Nautilus,
+                },
+                0,
+                0,
+                176,
+                166,
+                [0.0, 0.0],
+                [176.0 / 256.0, 166.0 / 256.0],
+            )];
+            if equipment_slots.saddle {
+                layers.extend([
+                    hud_inventory_background_layer(
+                        HudInventoryBackgroundTexture::MountSlot,
+                        7,
+                        17,
+                        18,
+                        18,
+                        [0.0, 0.0],
+                        [1.0, 1.0],
+                    ),
+                    hud_inventory_background_layer(
+                        HudInventoryBackgroundTexture::MountSaddleSlot,
+                        8,
+                        18,
+                        16,
+                        16,
+                        [0.0, 0.0],
+                        [1.0, 1.0],
+                    ),
+                ]);
+            }
+            if let Some(armor_slot) = equipment_slots.body {
+                layers.extend([
+                    hud_inventory_background_layer(
+                        HudInventoryBackgroundTexture::MountSlot,
+                        7,
+                        35,
+                        18,
+                        18,
+                        [0.0, 0.0],
+                        [1.0, 1.0],
+                    ),
+                    hud_inventory_background_layer(
+                        mount_armor_slot_texture(armor_slot),
+                        8,
+                        36,
+                        16,
+                        16,
+                        [0.0, 0.0],
+                        [1.0, 1.0],
+                    ),
+                ]);
+            }
             if inventory_columns > 0 {
                 let chest_width = u32::from(inventory_columns) * 18;
                 layers.push(hud_inventory_background_layer(
@@ -824,11 +827,11 @@ fn hud_inventory_background_layers(
     }
 }
 
-fn open_mount_armor_slot_texture(world: &WorldStore) -> Option<HudInventoryBackgroundTexture> {
-    match world.open_mount_armor_slot_kind()? {
-        MountArmorSlotKind::Horse => Some(HudInventoryBackgroundTexture::MountHorseArmorSlot),
-        MountArmorSlotKind::Llama => Some(HudInventoryBackgroundTexture::MountLlamaArmorSlot),
-        MountArmorSlotKind::Nautilus => Some(HudInventoryBackgroundTexture::MountNautilusArmorSlot),
+fn mount_armor_slot_texture(kind: MountArmorSlotKind) -> HudInventoryBackgroundTexture {
+    match kind {
+        MountArmorSlotKind::Horse => HudInventoryBackgroundTexture::MountHorseArmorSlot,
+        MountArmorSlotKind::Llama => HudInventoryBackgroundTexture::MountLlamaArmorSlot,
+        MountArmorSlotKind::Nautilus => HudInventoryBackgroundTexture::MountNautilusArmorSlot,
     }
 }
 
@@ -2773,20 +2776,20 @@ mod tests {
                     [1.0, 1.0],
                 ),
                 hud_inventory_background_layer(
-                    HudInventoryBackgroundTexture::MountSlot,
-                    7,
-                    35,
-                    18,
-                    18,
-                    [0.0, 0.0],
-                    [1.0, 1.0],
-                ),
-                hud_inventory_background_layer(
                     HudInventoryBackgroundTexture::MountSaddleSlot,
                     8,
                     18,
                     16,
                     16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountSlot,
+                    7,
+                    35,
+                    18,
+                    18,
                     [0.0, 0.0],
                     [1.0, 1.0],
                 ),
@@ -2824,6 +2827,10 @@ mod tests {
     fn hud_inventory_screen_projects_mount_nautilus_slot_placeholders() {
         let mut world = WorldStore::new();
         world.apply_add_entity(test_add_entity(42, 88));
+        world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+            id: 42,
+            values: vec![test_byte_data(18, 4)],
+        });
         world.apply_mount_screen_open(bbb_protocol::packets::MountScreenOpen {
             container_id: 7,
             inventory_columns: 5,
@@ -2854,20 +2861,20 @@ mod tests {
                     [1.0, 1.0],
                 ),
                 hud_inventory_background_layer(
-                    HudInventoryBackgroundTexture::MountSlot,
-                    7,
-                    35,
-                    18,
-                    18,
-                    [0.0, 0.0],
-                    [1.0, 1.0],
-                ),
-                hud_inventory_background_layer(
                     HudInventoryBackgroundTexture::MountSaddleSlot,
                     8,
                     18,
                     16,
                     16,
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountSlot,
+                    7,
+                    35,
+                    18,
+                    18,
                     [0.0, 0.0],
                     [1.0, 1.0],
                 ),
@@ -2885,6 +2892,46 @@ mod tests {
         assert_eq!(screen.slots.len(), 38);
         let armor = screen.slots.iter().find(|slot| slot.slot_id == 1).unwrap();
         assert_eq!((armor.x, armor.y), (8, 36));
+    }
+
+    #[test]
+    fn hud_inventory_screen_hides_inactive_mount_equipment_slot_layers() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(test_add_entity(42, 36));
+        world.apply_mount_screen_open(bbb_protocol::packets::MountScreenOpen {
+            container_id: 7,
+            inventory_columns: 3,
+            entity_id: 42,
+        });
+
+        let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+        assert_eq!(
+            screen.background_layers,
+            vec![
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::Horse,
+                    0,
+                    0,
+                    176,
+                    166,
+                    [0.0, 0.0],
+                    [176.0 / 256.0, 166.0 / 256.0],
+                ),
+                hud_inventory_background_layer(
+                    HudInventoryBackgroundTexture::MountChestSlots,
+                    79,
+                    17,
+                    54,
+                    54,
+                    [0.0, 0.0],
+                    [0.6, 1.0],
+                ),
+            ]
+        );
+        assert!(screen.slots.iter().all(|slot| slot.slot_id != 0));
+        assert!(screen.slots.iter().all(|slot| slot.slot_id != 1));
+        assert_eq!(screen.slots[0].slot_id, 2);
     }
 
     #[test]
@@ -3785,6 +3832,14 @@ mod tests {
             data_id,
             serializer_id: 8,
             value: bbb_protocol::packets::EntityDataValueKind::Boolean(value),
+        }
+    }
+
+    fn test_byte_data(data_id: u8, value: i8) -> bbb_protocol::packets::EntityDataValue {
+        bbb_protocol::packets::EntityDataValue {
+            data_id,
+            serializer_id: 0,
+            value: bbb_protocol::packets::EntityDataValueKind::Byte(value),
         }
     }
 
