@@ -4,6 +4,8 @@ set -eu
 usage() {
   cat <<'EOF'
 Usage:
+  scripts/cargo-dev.sh focused [cargo test args...]
+  scripts/cargo-dev.sh default [cargo test args...]
   scripts/cargo-dev.sh test [cargo test args...]
   scripts/cargo-dev.sh fast-test [cargo test args...]
   scripts/cargo-dev.sh timings [cargo test args...]
@@ -23,13 +25,15 @@ Environment:
   BBB_USE_SCCACHE=1       Use sccache only if it is installed
 
 Examples:
+  scripts/cargo-dev.sh focused -p bbb-world command_tree
+  scripts/cargo-dev.sh default -p bbb-world command_tree
   scripts/cargo-dev.sh test -p bbb-world command_tree
   scripts/cargo-dev.sh fast-test -p bbb-world command_tree
-  BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world command_tree
+  BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh focused -p bbb-world command_tree
   scripts/cargo-dev.sh timings --workspace --timings
   BBB_USE_SCCACHE=1 scripts/cargo-dev.sh timings-clean sccache-clean-20260619 --workspace --timings
   scripts/cargo-dev.sh sccache-eval 20260619 -p bbb-world command_tree --quiet
-  BBB_USE_SCCACHE=1 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world command_tree
+  BBB_USE_SCCACHE=1 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh focused -p bbb-world command_tree
   scripts/cargo-dev.sh timings-clean clean-baseline-20260619 --workspace --timings
   scripts/cargo-dev.sh clean-target clean-baseline-20260619
   scripts/cargo-dev.sh gate
@@ -183,7 +187,7 @@ EOF
   show_sccache_stats
 
   echo
-  echo "== new worker focused test with sccache =="
+  echo "== new worker target focused test with sccache =="
   sccache --zero-stats
   (
     export RUSTC_WRAPPER=sccache
@@ -194,7 +198,7 @@ EOF
   show_sccache_stats
 
   echo
-  echo "== new worker focused test without sccache =="
+  echo "== new worker target focused test without sccache =="
   (
     unset RUSTC_WRAPPER
     export CARGO_TARGET_DIR="$nosccache_worker_target"
@@ -247,7 +251,7 @@ cmd="$1"
 shift
 
 case "$cmd" in
-  test)
+  focused|default|test)
     exec cargo test "$@"
     ;;
   fast-test)
