@@ -96,6 +96,7 @@ const ANVIL_RESULT_SLOT: i16 = 2;
 const ANVIL_PLAYER_MAIN_START: i16 = 3;
 const ANVIL_HOTBAR_END: i16 = 39;
 const ANVIL_TOTAL_SLOT_COUNT: i16 = 39;
+const CARTOGRAPHY_TABLE_MAP_SLOT: i16 = 0;
 const CARTOGRAPHY_TABLE_ADDITIONAL_SLOT: i16 = 1;
 const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
 const CARTOGRAPHY_TABLE_PLAYER_MAIN_START: i16 = 3;
@@ -3256,7 +3257,10 @@ fn cartography_table_quick_move_requires_server_authority(
     if !(0..CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT).contains(&slot_num) {
         return false;
     }
-    if slot_num == CARTOGRAPHY_TABLE_ADDITIONAL_SLOT {
+    if matches!(
+        slot_num,
+        CARTOGRAPHY_TABLE_MAP_SLOT | CARTOGRAPHY_TABLE_ADDITIONAL_SLOT
+    ) {
         return false;
     }
     inventory_menu_slot_has_item(slots, slot_num)
@@ -3268,7 +3272,10 @@ fn apply_cartography_table_menu_quick_move_to_slots(
     slot_num: i16,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if slot_num != CARTOGRAPHY_TABLE_ADDITIONAL_SLOT {
+    if !matches!(
+        slot_num,
+        CARTOGRAPHY_TABLE_MAP_SLOT | CARTOGRAPHY_TABLE_ADDITIONAL_SLOT
+    ) {
         return;
     }
     let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
@@ -7696,7 +7703,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_cartography_table_quick_move_moves_additional_slot_to_player_forward() {
+    fn apply_local_cartography_table_quick_move_moves_input_slots_to_player_forward() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
@@ -7705,6 +7712,7 @@ mod tests {
         });
         let mut items =
             vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
+        items[CARTOGRAPHY_TABLE_MAP_SLOT as usize] = item_stack(42, 1);
         items[CARTOGRAPHY_TABLE_ADDITIONAL_SLOT as usize] = item_stack(43, 3);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
@@ -7713,7 +7721,27 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
-        let quick_move = store
+        let map_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CARTOGRAPHY_TABLE_MAP_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            map_move.changed_slots,
+            BTreeMap::from([
+                (CARTOGRAPHY_TABLE_MAP_SLOT, ProtocolHashedStack::Empty),
+                (
+                    CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                    hashed_item_stack(42, 1)
+                ),
+            ])
+        );
+        assert_eq!(map_move.carried_item, ProtocolHashedStack::Empty);
+
+        let additional_move = store
             .apply_local_container_click_slot(ContainerClickSlotRequest {
                 slot_num: CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
                 button_num: 0,
@@ -7722,25 +7750,33 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            quick_move.changed_slots,
+            additional_move.changed_slots,
             BTreeMap::from([
                 (
                     CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
                     ProtocolHashedStack::Empty
                 ),
                 (
-                    CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                    CARTOGRAPHY_TABLE_PLAYER_MAIN_START + 1,
                     hashed_item_stack(43, 3)
                 ),
             ])
         );
-        assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(additional_move.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_MAP_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
         assert_eq!(
             open_container_slot_item(&store, CARTOGRAPHY_TABLE_ADDITIONAL_SLOT),
             ProtocolItemStackSummary::empty()
         );
         assert_eq!(
             open_container_slot_item(&store, CARTOGRAPHY_TABLE_PLAYER_MAIN_START),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_PLAYER_MAIN_START + 1),
             item_stack(43, 3)
         );
     }

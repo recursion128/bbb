@@ -1181,9 +1181,10 @@ When an agent does any of the following, update this file in the same slice:
           - local brew-result stack prediction
           - brew completion side effects
       - CartographyTableMenu:
-        - shift-click from the additional slot back to the player inventory is
-          locally predicted when the stack has no component hash requirements.
-        - result-slot and remaining quick-move paths are kept
+        - shift-click from the map and additional slots back to the player
+          inventory is locally predicted when changed stacks have no component
+          hash requirements.
+        - result-slot and player-inventory quick-move paths are kept
           server-authoritative until:
           - full cartography input item/tag routing
           - hashed component patch support for map-id stacks
