@@ -165,7 +165,7 @@ When an agent does any of the following, update this file in the same slice:
     - atlas mip animation
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
-      simple smoke/white-smoke/flame/explosion/cloud side effects
+      simple smoke/white-smoke/flame/explosion/cloud/block-face side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -187,6 +187,10 @@ When an agent does any of the following, update this file in the same slice:
       - event `2009`: eight `minecraft:cloud` particles above the block
       - event `3000`: one always-visible centered
         `minecraft:explosion_emitter` particle
+      - event `3003`: vanilla block-face `minecraft:wax_on` particles
+      - event `3004`: vanilla block-face `minecraft:wax_off` particles
+      - event `3005`: vanilla block-face `minecraft:scrape` particles
+      - event `3009`: vanilla block-face `minecraft:egg_crack` particles
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
@@ -267,6 +271,7 @@ When an agent does any of the following, update this file in the same slice:
       - crafter craft/fail
       - end portal frame fill
       - bone meal use
+      - honeycomb wax on
     - native dispatcher playback for randomized vanilla `LevelEventHandler`
       sounds using a runtime-local `LegacyRandomSource`-shaped `nextFloat()`:
       - fire extinguish / generic extinguish

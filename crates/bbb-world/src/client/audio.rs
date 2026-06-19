@@ -46,6 +46,21 @@ impl LevelEventSoundRandomState {
         (self.next_bits(24) as f32) * RANDOM_FLOAT_MULTIPLIER
     }
 
+    pub fn next_int_bound(&mut self, bound: i32) -> i32 {
+        assert!(bound > 0, "bound must be positive");
+        if (bound & (bound - 1)) == 0 {
+            return ((i64::from(bound) * i64::from(self.next_bits(31))) >> 31) as i32;
+        }
+
+        loop {
+            let sample = self.next_bits(31) as i32;
+            let modulo = sample % bound;
+            if sample.wrapping_sub(modulo).wrapping_add(bound - 1) >= 0 {
+                return modulo;
+            }
+        }
+    }
+
     pub fn next_double(&mut self) -> f64 {
         let high = (self.next_bits(26) as u64) << 27;
         let low = self.next_bits(27) as u64;
@@ -526,6 +541,12 @@ fn fixed_level_event_sound(event_type: i32) -> Option<FixedLevelEventSound> {
             volume: 1.0,
             pitch: 1.0,
         },
+        3003 => FixedLevelEventSound {
+            event_id: "minecraft:item.honeycomb.wax_on",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
         _ => return None,
     };
     Some(sound)
@@ -824,6 +845,12 @@ mod tests {
         assert_close_f64(random.next_double(), 0.637_417_425_350_108_3);
 
         let mut random = LevelEventSoundRandomState::with_seed(0);
+        assert_eq!(random.next_int_bound(3), 0);
+        assert_eq!(random.next_int_bound(3), 1);
+        assert_eq!(random.next_int_bound(4), 0);
+        assert_eq!(random.next_int_bound(5), 2);
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
         assert_close_f64(random.next_gaussian(), 0.802_533_063_739_030_5);
         assert_close_f64(random.next_gaussian(), -0.901_546_088_417_512_2);
         assert_close_f64(random.next_gaussian(), 2.080_920_790_428_163);
@@ -1073,6 +1100,7 @@ mod tests {
                 1.0,
             ),
             (1505, "minecraft:item.bone_meal.use", "block", 1.0, 1.0),
+            (3003, "minecraft:item.honeycomb.wax_on", "block", 1.0, 1.0),
         ] {
             let sound = store
                 .level_event_sound(LevelEvent {

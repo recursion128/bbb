@@ -3386,6 +3386,53 @@ fn end_gateway_level_event_emits_vanilla_sound_and_particles() {
 }
 
 #[test]
+fn wax_on_level_event_emits_vanilla_sound_and_particles() {
+    let event = LevelEvent {
+        event_type: 3003,
+        pos: ProtocolBlockPos { x: -3, y: 72, z: 5 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:item.honeycomb.wax_on");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [-2.5, 72.5, 5.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, 1.0);
+    assert_eq!(particles.level_events, vec![event]);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
 fn global_level_event_emits_vanilla_camera_relative_sound() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::LevelEvent(LevelEvent {
@@ -5081,6 +5128,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "block.end_gateway.spawn": {
                 "sounds": ["block/end_gateway/spawn"]
+            },
+            "item.honeycomb.wax_on": {
+                "sounds": ["item/honeycomb/wax_on"]
             },
             "block.end_portal.spawn": {
                 "sounds": ["portal/endportal"]
