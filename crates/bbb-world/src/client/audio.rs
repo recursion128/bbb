@@ -659,6 +659,7 @@ fn random_level_event_sound(
             volume: 64.0,
             pitch: ranged_pitch(0.8, 0.3, next_float),
         },
+        3006 => sculk_charge_sound(data, next_float)?,
         _ => return None,
     };
     Some(sound)
@@ -755,6 +756,33 @@ fn block_ranged(
         volume,
         pitch: ranged_pitch(0.9, 0.1, next_float),
     }
+}
+
+fn sculk_charge_sound(
+    data: i32,
+    next_float: &mut impl FnMut() -> f32,
+) -> Option<FixedLevelEventSound> {
+    let count = data >> 6;
+    if count <= 0 {
+        return Some(FixedLevelEventSound {
+            event_id: "minecraft:block.sculk.charge",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        });
+    }
+
+    let count = count as f32;
+    if next_float().clamp(0.0, 1.0) >= 0.3 + count * 0.1 {
+        return None;
+    }
+
+    Some(FixedLevelEventSound {
+        event_id: "minecraft:block.sculk.charge",
+        source: "block",
+        volume: 0.15 + 0.02 * count * count * next_float().clamp(0.0, 1.0),
+        pitch: 0.4 + 0.3 * count * next_float().clamp(0.0, 1.0),
+    })
 }
 
 fn triangle_pitch(mean: f32, spread: f32, next_float: &mut impl FnMut() -> f32) -> f32 {
@@ -1252,6 +1280,37 @@ mod tests {
         assert_eq!(dragon_growl.source, "hostile");
         assert_close(dragon_growl.volume, 64.0);
         assert_close(dragon_growl.pitch, 0.95);
+
+        let sculk_charge_pop = random_level_event_sound(&store, 3006, 0, &[]);
+        assert_eq!(
+            sculk_charge_pop.sound.location.as_deref(),
+            Some("minecraft:block.sculk.charge")
+        );
+        assert_eq!(sculk_charge_pop.source, "block");
+        assert_close(sculk_charge_pop.volume, 1.0);
+        assert_close(sculk_charge_pop.pitch, 1.0);
+
+        let sculk_charge = random_level_event_sound(&store, 3006, 2 << 6, &[0.25, 0.5, 0.25]);
+        assert_eq!(
+            sculk_charge.sound.location.as_deref(),
+            Some("minecraft:block.sculk.charge")
+        );
+        assert_eq!(sculk_charge.source, "block");
+        assert_close(sculk_charge.volume, 0.19);
+        assert_close(sculk_charge.pitch, 0.55);
+
+        let mut missed_samples = [0.5].into_iter();
+        assert!(store
+            .level_event_sound_with_random(
+                LevelEvent {
+                    event_type: 3006,
+                    pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                    data: 1 << 6,
+                    global: false,
+                },
+                || missed_samples.next().unwrap(),
+            )
+            .is_none());
 
         assert!(store
             .level_event_sound_with_random(

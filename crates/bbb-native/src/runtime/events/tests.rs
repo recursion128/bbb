@@ -3339,6 +3339,39 @@ fn randomized_level_event_emits_vanilla_positioned_sound() {
 }
 
 #[test]
+fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 3006,
+        pos: ProtocolBlockPos { x: -2, y: 68, z: 3 },
+        data: 5 << 6,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.sculk.charge");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [-1.5, 68.5, 3.5]);
+    assert_close(command.packet_volume, 0.565_720_5);
+    assert_close(command.packet_pitch, 0.760_804_6);
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
 fn end_gateway_level_event_emits_vanilla_sound_and_particles() {
     let event = LevelEvent {
         event_type: 3000,
@@ -5131,6 +5164,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "item.honeycomb.wax_on": {
                 "sounds": ["item/honeycomb/wax_on"]
+            },
+            "block.sculk.charge": {
+                "sounds": ["block/sculk/charge"]
             },
             "block.end_portal.spawn": {
                 "sounds": ["portal/endportal"]

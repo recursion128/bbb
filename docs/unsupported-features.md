@@ -281,6 +281,8 @@ When an agent does any of the following, update this file in the same slice:
       - anvil, grindstone, book, smithing table, dripstone, wind charge
       - lava extinguish and redstone torch burnout sounds
       - end gateway spawn and ender dragon growl sounds
+      - sculk charge sounds for event `3006`, including the fixed pop branch
+        and the randomized charged branch
       - lava extinguish and redstone torch burnout now share the dispatcher
         path with renderer smoke side effects for events `1501` and `1502`
     - native dispatcher and offline probe recording/playback for
