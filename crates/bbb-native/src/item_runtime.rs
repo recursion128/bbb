@@ -304,6 +304,17 @@ impl NativeItemRuntime {
         self.default_piercing_weapon_item_ids_by_protocol_id().len()
     }
 
+    pub(crate) fn default_damageable_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::max_damage_protocol_ids)
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn default_damageable_item_count(&self) -> usize {
+        self.default_damageable_item_ids_by_protocol_id().len()
+    }
+
     pub(crate) fn item_attack_ranges_by_protocol_id(&self) -> BTreeMap<i32, WorldItemAttackRange> {
         let mut ranges = BTreeMap::new();
         let Some(registry) = &self.registry else {

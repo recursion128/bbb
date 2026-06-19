@@ -249,6 +249,13 @@ impl ItemRegistryCatalog {
         self.max_damage.get(&resource_id).copied()
     }
 
+    pub fn max_damage_protocol_ids(&self) -> BTreeSet<i32> {
+        self.max_damage
+            .keys()
+            .filter_map(|resource_id| self.protocol_ids.get(resource_id).copied())
+            .collect()
+    }
+
     pub fn max_stack_size(&self, resource_id: &str) -> Option<i32> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.max_stack_size.get(&resource_id).copied()
@@ -386,9 +393,93 @@ fn parse_item_id_constants(source: &str) -> Result<BTreeMap<String, String>> {
 }
 
 fn durability_for_declaration(expression: &str) -> Result<Option<i32>> {
-    optional_capture(r#"\.durability\(\s*([0-9]+)\s*\)"#, expression)?
-        .map(|value| value.parse().map_err(Into::into))
-        .transpose()
+    if let Some(durability) = optional_capture(r#"\.durability\(\s*([0-9]+)\s*\)"#, expression)?
+        .map(|value| value.parse::<i32>())
+        .transpose()?
+    {
+        return Ok(Some(durability));
+    }
+
+    if let Some(material) = tool_material_for_durability(expression)? {
+        return Ok(Some(tool_material_durability(&material)?));
+    }
+
+    if let Some((material, armor_type)) = humanoid_armor_material_and_type(expression)? {
+        return Ok(Some(
+            armor_material_durability_multiplier(&material)?
+                * armor_type_unit_durability(&armor_type)?,
+        ));
+    }
+
+    if let Some(material) =
+        optional_capture(r#"\.wolfArmor\(\s*ArmorMaterials\.([A-Z_]+)"#, expression)?
+    {
+        return Ok(Some(
+            armor_material_durability_multiplier(&material)? * armor_type_unit_durability("BODY")?,
+        ));
+    }
+
+    Ok(None)
+}
+
+fn tool_material_for_durability(expression: &str) -> Result<Option<String>> {
+    for pattern in [
+        r#"\.(?:sword|pickaxe|axe|hoe|shovel|spear)\(\s*ToolMaterial\.([A-Z_]+)"#,
+        r#"new\s+(?:PickaxeItem|AxeItem|HoeItem|ShovelItem)\(\s*ToolMaterial\.([A-Z_]+)"#,
+    ] {
+        if let Some(material) = optional_capture(pattern, expression)? {
+            return Ok(Some(material));
+        }
+    }
+    Ok(None)
+}
+
+fn tool_material_durability(material: &str) -> Result<i32> {
+    match material {
+        "WOOD" => Ok(59),
+        "STONE" => Ok(131),
+        "COPPER" => Ok(190),
+        "IRON" => Ok(250),
+        "DIAMOND" => Ok(1561),
+        "GOLD" => Ok(32),
+        "NETHERITE" => Ok(2031),
+        _ => bail!("unsupported tool material ToolMaterial.{material}"),
+    }
+}
+
+fn humanoid_armor_material_and_type(expression: &str) -> Result<Option<(String, String)>> {
+    let regex =
+        Regex::new(r#"\.humanoidArmor\(\s*ArmorMaterials\.([A-Z_]+)\s*,\s*ArmorType\.([A-Z_]+)"#)?;
+    Ok(regex.captures(expression).map(|capture| {
+        (
+            capture.get(1).unwrap().as_str().to_string(),
+            capture.get(2).unwrap().as_str().to_string(),
+        )
+    }))
+}
+
+fn armor_material_durability_multiplier(material: &str) -> Result<i32> {
+    match material {
+        "LEATHER" => Ok(5),
+        "COPPER" => Ok(11),
+        "CHAINMAIL" | "IRON" => Ok(15),
+        "GOLD" => Ok(7),
+        "DIAMOND" => Ok(33),
+        "TURTLE_SCUTE" => Ok(25),
+        "NETHERITE" => Ok(37),
+        "ARMADILLO_SCUTE" => Ok(4),
+        _ => bail!("unsupported armor material ArmorMaterials.{material}"),
+    }
+}
+
+fn armor_type_unit_durability(armor_type: &str) -> Result<i32> {
+    match armor_type {
+        "HELMET" => Ok(11),
+        "CHESTPLATE" | "BODY" => Ok(16),
+        "LEGGINGS" => Ok(15),
+        "BOOTS" => Ok(13),
+        _ => bail!("unsupported armor type ArmorType.{armor_type}"),
+    }
 }
 
 fn max_stack_size_for_declaration(expression: &str) -> Result<i32> {
@@ -786,7 +877,9 @@ mod tests {
         assert_eq!(catalog.protocol_id("minecraft:pumpkin_seeds"), Some(4));
         assert_eq!(catalog.protocol_id("minecraft:missing_item"), None);
         assert_eq!(catalog.max_damage("minecraft:elytra"), Some(432));
+        assert_eq!(catalog.max_damage("minecraft:iron_sword"), Some(250));
         assert_eq!(catalog.max_damage("minecraft:trial_key"), None);
+        assert_eq!(catalog.max_damage_protocol_ids(), BTreeSet::from([14, 16]));
         assert_eq!(catalog.max_stack_size("minecraft:trial_key"), Some(64));
         assert_eq!(catalog.max_stack_size("minecraft:elytra"), Some(1));
         assert_eq!(catalog.max_stack_size("minecraft:ender_pearl"), Some(16));
@@ -915,7 +1008,7 @@ mod tests {
                );
                public static final Item DIAMOND_LEGGINGS = registerItem("diamond_leggings", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.LEGGINGS));
                public static final Item DIAMOND_BOOTS = registerItem("diamond_boots", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.BOOTS));
-               public static final Item BODY_ARMOR = registerItem("body_armor", new Item.Properties().humanoidArmor(ArmorMaterials.TEST, ArmorType.BODY));
+               public static final Item BODY_ARMOR = registerItem("body_armor", new Item.Properties().humanoidArmor(ArmorMaterials.LEATHER, ArmorType.BODY));
                public static final Item CARVED_PUMPKIN = registerBlock(
                   Blocks.CARVED_PUMPKIN,
                   p -> p.component(
@@ -966,6 +1059,12 @@ mod tests {
             catalog.equipment_slot("minecraft:body_armor"),
             Some(ItemEquipmentSlot::Body)
         );
+        assert_eq!(catalog.max_damage("minecraft:diamond_helmet"), Some(363));
+        assert_eq!(
+            catalog.max_damage("minecraft:diamond_chestplate"),
+            Some(528)
+        );
+        assert_eq!(catalog.max_damage("minecraft:body_armor"), Some(80));
         assert_eq!(
             catalog.equipment_slot("minecraft:carved_pumpkin"),
             Some(ItemEquipmentSlot::Head)

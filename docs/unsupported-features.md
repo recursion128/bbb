@@ -1206,9 +1206,12 @@ When an agent does any of the following, update this file in the same slice:
             available
       - GrindstoneMenu:
         - input slots back to player inventory
+        - default damageable player inventory items route into open input slots
+          when the native item registry provides vanilla max-damage ids
         - player inventory/hotbar range movement when both input slots are
           occupied
-        - player-to-input and result-slot paths are kept server-authoritative
+        - component/enchantment-only player-to-input and result-slot paths are
+          kept server-authoritative
           until:
           - component-hashable grindstone item/result prediction
           - result side effects and input consumption

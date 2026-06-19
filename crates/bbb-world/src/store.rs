@@ -110,6 +110,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) default_item_use_effects: BTreeMap<i32, ItemUseEffects>,
     #[serde(default)]
+    pub(crate) default_damageable_item_ids: BTreeSet<i32>,
+    #[serde(default)]
     pub(crate) default_piercing_weapon_item_ids: BTreeSet<i32>,
     #[serde(default)]
     pub(crate) furnace_fuel_item_ids: BTreeSet<i32>,
