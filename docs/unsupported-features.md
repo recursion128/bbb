@@ -458,6 +458,7 @@ When an agent does any of the following, update this file in the same slice:
       - bars/pane
       - wall
       - leaves
+      - mangrove roots / muddy mangrove roots
       - bamboo stalk
       - snow layer
       - flat carpet
@@ -514,6 +515,8 @@ When an agent does any of the following, update this file in the same slice:
       - `bamboo` follows vanilla `BambooStalkBlock` 3px offset collision
         column; `bamboo_sapling` is empty, matching its vanilla
         `noCollision` registration.
+      - `mangrove_roots` and `muddy_mangrove_roots` use vanilla default
+        full-block collision even though their render material is cutout.
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which

@@ -119,6 +119,12 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if is_leaves_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
+        if matches!(
+            block_name,
+            "minecraft:mangrove_roots" | "minecraft:muddy_mangrove_roots"
+        ) {
+            return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+        }
         if block_name == "minecraft:snow" {
             return snow_layer_collision_shape(&block.block_properties);
         }

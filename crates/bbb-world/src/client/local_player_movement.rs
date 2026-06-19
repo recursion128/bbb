@@ -1673,6 +1673,9 @@ mod tests {
     const OAK_BOTTOM_STRAIGHT_NORTH_STAIR_BLOCK_STATE_ID: i32 = 3918;
     const OAK_BOTTOM_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3938;
     const OAK_LEAVES_BLOCK_STATE_ID: i32 = 255;
+    const MANGROVE_ROOTS_WATERLOGGED_BLOCK_STATE_ID: i32 = 163;
+    const MANGROVE_ROOTS_DRY_BLOCK_STATE_ID: i32 = 164;
+    const MUDDY_MANGROVE_ROOTS_X_BLOCK_STATE_ID: i32 = 165;
     const PISTON_EXTENDED_NORTH_BLOCK_STATE_ID: i32 = 2257;
     const PISTON_EXTENDED_UP_BLOCK_STATE_ID: i32 = 2261;
     const PISTON_HEAD_SOUTH_LONG_BLOCK_STATE_ID: i32 = 2279;
@@ -2403,6 +2406,35 @@ mod tests {
         );
         assert!(pose.horizontal_collision);
         assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_mangrove_roots() {
+        let cases = [
+            ("dry mangrove roots", MANGROVE_ROOTS_DRY_BLOCK_STATE_ID),
+            (
+                "waterlogged mangrove roots",
+                MANGROVE_ROOTS_WATERLOGGED_BLOCK_STATE_ID,
+            ),
+            (
+                "muddy mangrove roots",
+                MUDDY_MANGROVE_ROOTS_X_BLOCK_STATE_ID,
+            ),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z <= 0.7005,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
     }
 
     #[test]
