@@ -265,8 +265,6 @@ When an agent does any of the following, update this file in the same slice:
     - stop semantics
     - remaining level-event audio that is still coupled to unimplemented
       particle/provider side effects
-    - Kira-side delayed playback for preserved positioned-sound
-      `distanceDelay` metadata
     - device/runtime diagnostics
 - Evidence / boundary:
   - `bbb-audio` has:
@@ -315,7 +313,10 @@ When an agent does any of the following, update this file in the same slice:
       - LevelEvent-derived sound recording does not increment Sound-packet
         counters
       - positioned sound state and audio commands preserve vanilla
-        `distanceDelay` metadata for delayed-local-sound follow-up work
+        `distanceDelay` metadata
+      - Kira runtime queues distance-delayed positioned sounds using the
+        vanilla `distanceDelay && distance^2 > 100` threshold and
+        `floor(distance / 2)` tick delay
     - native dispatcher playback for vanilla `globalLevelEvent` sounds:
       - wither spawn event `1023`
       - ender dragon death event `1028`
