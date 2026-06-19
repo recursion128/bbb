@@ -372,11 +372,30 @@ impl ParticleCommandResolver {
                 EGG_CRACK_PARTICLE_MAX,
                 random,
             ),
-            TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT => {
+            TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT
+            | TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT
+            | TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT => {
                 self.trial_spawn_particle_batch(event, random)
             }
-            TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT => {
+            TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT => self.trial_detect_player_particle_batch(
+                event,
+                TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID,
+                event.data,
+                random,
+            ),
+            TRIAL_SPAWNER_EJECT_ITEM_LEVEL_EVENT
+            | TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT => {
                 self.trial_eject_item_particle_batch(event, random)
+            }
+            TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT => self
+                .trial_detect_player_particle_batch(
+                    event,
+                    TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID,
+                    event.data,
+                    random,
+                ),
+            TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT => {
+                self.trial_ominous_activate_particle_batch(event, random)
             }
             COBWEB_PLACE_PARTICLES_LEVEL_EVENT => self.cobweb_poof_particle_batch(event, random),
             SPLASH_CLOUD_LEVEL_EVENT => {
@@ -520,6 +539,110 @@ impl ParticleCommandResolver {
         }
 
         batch
+    }
+
+    fn trial_detect_player_particle_batch(
+        &self,
+        event: &LevelEvent,
+        particle_type_id: i32,
+        data: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let mut batch = ParticleSpawnBatch::default();
+        self.append_trial_detect_player_particles(
+            &mut batch,
+            event,
+            particle_type_id,
+            data,
+            random,
+        );
+        batch
+    }
+
+    fn trial_ominous_activate_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let mut batch = ParticleSpawnBatch::default();
+        self.append_trial_detect_player_particles(
+            &mut batch,
+            event,
+            TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID,
+            0,
+            random,
+        );
+        self.append_trial_become_ominous_particles(&mut batch, event, random);
+        batch
+    }
+
+    fn append_trial_detect_player_particles(
+        &self,
+        batch: &mut ParticleSpawnBatch,
+        event: &LevelEvent,
+        particle_type_id: i32,
+        data: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) {
+        let Some(template) =
+            self.append_template_result(batch, self.simple_particle_template(particle_type_id))
+        else {
+            return;
+        };
+        let count = 30_i64 + i64::from(data.min(10)) * 5;
+        for _ in 0..count.max(0) {
+            let spread_x = (2.0 * f64::from(random.next_float()) - 1.0) * 0.65;
+            let spread_z = (2.0 * f64::from(random.next_float()) - 1.0) * 0.65;
+            let position = Vec3d {
+                x: f64::from(event.pos.x) + 0.5 + spread_x,
+                y: f64::from(event.pos.y) + 0.1 + f64::from(random.next_float()) * 0.8,
+                z: f64::from(event.pos.z) + 0.5 + spread_z,
+            };
+            batch.commands.push(self.command_from_template(
+                &template,
+                position,
+                Vec3d::default(),
+                false,
+            ));
+        }
+    }
+
+    fn append_trial_become_ominous_particles(
+        &self,
+        batch: &mut ParticleSpawnBatch,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) {
+        let trial_omen = self.simple_particle_template(TRIAL_OMEN_PARTICLE_TYPE_ID);
+        let soul_fire_flame = self.simple_particle_template(SOUL_FIRE_FLAME_PARTICLE_TYPE_ID);
+        let trial_omen = self.append_template_result(batch, trial_omen);
+        let soul_fire_flame = self.append_template_result(batch, soul_fire_flame);
+
+        for _ in 0..20 {
+            let position = Vec3d {
+                x: f64::from(event.pos.x) + 0.5 + (random.next_double() - 0.5) * 2.0,
+                y: f64::from(event.pos.y) + 0.5 + (random.next_double() - 0.5) * 2.0,
+                z: f64::from(event.pos.z) + 0.5 + (random.next_double() - 0.5) * 2.0,
+            };
+            let velocity = Vec3d {
+                x: random.next_gaussian() * 0.02,
+                y: random.next_gaussian() * 0.02,
+                z: random.next_gaussian() * 0.02,
+            };
+            if let Some(trial_omen) = trial_omen.as_ref() {
+                batch
+                    .commands
+                    .push(self.command_from_template(trial_omen, position, velocity, false));
+            }
+            if let Some(soul_fire_flame) = soul_fire_flame.as_ref() {
+                batch.commands.push(self.command_from_template(
+                    soul_fire_flame,
+                    position,
+                    velocity,
+                    false,
+                ));
+            }
+        }
     }
 
     fn cobweb_poof_particle_batch(
@@ -888,8 +1011,14 @@ const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const SCRAPE_LEVEL_EVENT: i32 = 3005;
 const EGG_CRACK_LEVEL_EVENT: i32 = 3009;
 const TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT: i32 = 3011;
+const TRIAL_SPAWNER_SPAWN_MOB_LEVEL_EVENT: i32 = 3012;
+const TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT: i32 = 3013;
+const TRIAL_SPAWNER_EJECT_ITEM_LEVEL_EVENT: i32 = 3014;
 const TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT: i32 = 3017;
 const COBWEB_PLACE_PARTICLES_LEVEL_EVENT: i32 = 3018;
+const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
+const TRIAL_SPAWNER_OMINOUS_ACTIVATE_LEVEL_EVENT: i32 = 3020;
+const TRIAL_SPAWNER_SPAWN_ITEM_LEVEL_EVENT: i32 = 3021;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
@@ -905,6 +1034,9 @@ const WAX_ON_PARTICLE_TYPE_ID: i32 = 101;
 const WAX_OFF_PARTICLE_TYPE_ID: i32 = 102;
 const SCRAPE_PARTICLE_TYPE_ID: i32 = 104;
 const EGG_CRACK_PARTICLE_TYPE_ID: i32 = 106;
+const TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID: i32 = 108;
+const TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID: i32 = 109;
+const TRIAL_OMEN_PARTICLE_TYPE_ID: i32 = 114;
 const BLOCK_FACE_DIRECTIONS: &[(i32, i32, i32)] = &[
     (0, -1, 0),
     (0, 1, 0),
@@ -1390,6 +1522,45 @@ mod tests {
             "minecraft:soul_fire_flame"
         );
 
+        let mut trial_spawn_mob_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_spawn_mob = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3012,
+                data: 1,
+                ..level_event_packet(3012)
+            },
+            &mut trial_spawn_mob_random,
+        );
+        assert_eq!(trial_spawn_mob.len(), 40);
+        assert_eq!(trial_spawn_mob.commands[1].particle_type_id, 40);
+        assert_eq!(
+            trial_spawn_mob.commands[1].particle_id,
+            "minecraft:soul_fire_flame"
+        );
+
+        let mut trial_detect_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_detect = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3013,
+                data: 2,
+                ..level_event_packet(3013)
+            },
+            &mut trial_detect_random,
+        );
+        assert_eq!(trial_detect.len(), 40);
+        assert_particle_command(
+            &trial_detect.commands[0],
+            108,
+            "minecraft:trial_spawner_detection",
+            [
+                10.800_258_088_111_878,
+                64.292_429_113_388_05,
+                -2.069_126_719_236_374,
+            ],
+            [0.0, 0.0, 0.0],
+            true,
+        );
+
         let mut trial_eject_random = LevelEventSoundRandomState::with_seed(0);
         let trial_eject = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -1432,6 +1603,18 @@ mod tests {
             false,
         );
 
+        let mut trial_eject_sound_event_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_eject_sound_event = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3014,
+                ..level_event_packet(3014)
+            },
+            &mut trial_eject_sound_event_random,
+        );
+        assert_eq!(trial_eject_sound_event.len(), 40);
+        assert_eq!(trial_eject_sound_event.commands[0].particle_type_id, 93);
+        assert_eq!(trial_eject_sound_event.commands[1].particle_type_id, 62);
+
         let mut cobweb_poof_random = LevelEventSoundRandomState::with_seed(0);
         let cobweb_poof = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -1457,6 +1640,66 @@ mod tests {
             ],
             true,
         );
+
+        let mut trial_detect_ominous_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_detect_ominous = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3019,
+                data: 10,
+                ..level_event_packet(3019)
+            },
+            &mut trial_detect_ominous_random,
+        );
+        assert_eq!(trial_detect_ominous.len(), 80);
+        assert_eq!(trial_detect_ominous.commands[0].particle_type_id, 109);
+        assert_eq!(
+            trial_detect_ominous.commands[0].particle_id,
+            "minecraft:trial_spawner_detection_ominous"
+        );
+
+        let mut trial_ominous_activate_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_ominous_activate = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3020,
+                ..level_event_packet(3020)
+            },
+            &mut trial_ominous_activate_random,
+        );
+        assert_eq!(trial_ominous_activate.len(), 70);
+        assert_eq!(trial_ominous_activate.commands[0].particle_type_id, 109);
+        assert_particle_command(
+            &trial_ominous_activate.commands[30],
+            114,
+            "minecraft:trial_omen",
+            [
+                11.208_974_334_084_582,
+                63.519_346_994_601_946,
+                -2.115_413_986_094_133_7,
+            ],
+            [
+                0.019_195_505_076_083_332,
+                0.015_047_723_904_287_527,
+                -0.013_159_128_311_470_1,
+            ],
+            false,
+        );
+        assert_eq!(trial_ominous_activate.commands[31].particle_type_id, 40);
+        assert_eq!(
+            trial_ominous_activate.commands[31].particle_id,
+            "minecraft:soul_fire_flame"
+        );
+
+        let mut trial_spawn_item_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_spawn_item = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3021,
+                data: 0,
+                ..level_event_packet(3021)
+            },
+            &mut trial_spawn_item_random,
+        );
+        assert_eq!(trial_spawn_item.len(), 40);
+        assert_eq!(trial_spawn_item.commands[1].particle_type_id, 32);
 
         let mut cloud_random = LevelEventSoundRandomState::with_seed(0);
         let cloud = resolver.resolve_level_event_particles(
@@ -1585,6 +1828,9 @@ mod tests {
                 "wax_off_0",
                 "scrape_0",
                 "egg_crack_0",
+                "trial_spawner_detection_0",
+                "trial_spawner_detection_ominous_0",
+                "trial_omen_0",
             ],
         )
     }
@@ -1720,6 +1966,30 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:egg_crack_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("trial_spawner_detection.json"),
+            r#"{
+              "textures": [
+                "minecraft:trial_spawner_detection_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("trial_spawner_detection_ominous.json"),
+            r#"{
+              "textures": [
+                "minecraft:trial_spawner_detection_ominous_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("trial_omen.json"),
+            r#"{
+              "textures": [
+                "minecraft:trial_omen_0"
               ]
             }"#,
         );

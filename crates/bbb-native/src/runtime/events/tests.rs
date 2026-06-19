@@ -3533,6 +3533,63 @@ fn trial_spawner_level_events_emit_distance_delayed_vanilla_sounds() {
 }
 
 #[test]
+fn trial_spawner_level_event_emits_sound_and_particle_side_effects() {
+    let event = LevelEvent {
+        event_type: 3012,
+        pos: ProtocolBlockPos { x: 4, y: 65, z: -6 },
+        data: 1,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_pitch = 1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
+    let expected_seed = expected_random.next_long();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(sound) = &audio.commands[0] else {
+        panic!(
+            "expected positioned trial spawner sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(
+        sound.sound.event_id,
+        "minecraft:block.trial_spawner.spawn_mob"
+    );
+    assert_eq!(sound.category, AudioCategory::Blocks);
+    assert_close(sound.packet_pitch, expected_pitch);
+    assert_eq!(sound.seed, expected_seed);
+    assert!(sound.distance_delay);
+    assert_eq!(particles.level_events, vec![event]);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
 fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::LevelEvent(LevelEvent {

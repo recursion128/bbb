@@ -196,9 +196,19 @@ When an agent does any of the following, update this file in the same slice:
       - event `3009`: vanilla block-face `minecraft:egg_crack` particles
       - event `3011`: trial spawner smoke plus normal/ominous flame spawn
         particles
+      - event `3012`: trial spawner mob-spawn sound-side smoke plus
+        normal/ominous flame spawn particles
+      - event `3013`: normal trial spawner detected-player particles
+      - event `3014`: trial spawner eject-item sound-side
+        `minecraft:small_flame` and `minecraft:smoke` particles
       - event `3017`: trial spawner eject-item `minecraft:small_flame` and
         `minecraft:smoke` particles
       - event `3018`: cobweb-place `minecraft:poof` particles
+      - event `3019`: ominous trial spawner detected-player particles
+      - event `3020`: ominous trial spawner activation detected-player,
+        `minecraft:trial_omen`, and `minecraft:soul_fire_flame` particles
+      - event `3021`: trial spawner item-spawn sound-side smoke plus
+        normal/ominous flame spawn particles
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
