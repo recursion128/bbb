@@ -44,18 +44,27 @@ target_dir_for_arg() {
       exit 2
       ;;
     /tmp/bbb-target-*)
-      printf '%s\n' "$arg"
+      suffix="${arg#/tmp/bbb-target-}"
+      validate_target_suffix "$suffix"
+      printf '/tmp/bbb-target-%s\n' "$suffix"
       ;;
     /*|*/*)
       echo "target suffix must be a name or /tmp/bbb-target-... path: $arg" >&2
       exit 2
       ;;
-    *[!A-Za-z0-9_-]*)
-      echo "target suffix may contain only letters, digits, '_' and '-': $arg" >&2
-      exit 2
-      ;;
     *)
+      validate_target_suffix "$arg"
       printf '/tmp/bbb-target-%s\n' "$arg"
+      ;;
+  esac
+}
+
+validate_target_suffix() {
+  suffix="$1"
+  case "$suffix" in
+    ""|*[!A-Za-z0-9_-]*)
+      echo "target suffix may contain only letters, digits, '_' and '-': $suffix" >&2
+      exit 2
       ;;
   esac
 }
@@ -181,7 +190,8 @@ if [ "$#" -eq 0 ]; then
 fi
 
 target_name="${BBB_CARGO_TARGET_NAME:-main}"
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/bbb-target-${target_name}}"
+default_target_dir="$(target_dir_for_arg "$target_name")"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$default_target_dir}"
 
 if [ "${BBB_USE_SCCACHE:-0}" = "1" ] && [ -z "${RUSTC_WRAPPER:-}" ]; then
   if ! command -v sccache >/dev/null 2>&1; then

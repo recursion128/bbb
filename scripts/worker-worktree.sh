@@ -6,7 +6,7 @@ usage() {
 Usage:
   scripts/worker-worktree.sh create <name> [base-ref]
   scripts/worker-worktree.sh status [name]
-  scripts/worker-worktree.sh cleanup <name>
+  scripts/worker-worktree.sh cleanup <name> [--remove-target]
   scripts/worker-worktree.sh env <name>
   scripts/worker-worktree.sh shell-env <name>
 
@@ -16,11 +16,15 @@ Examples:
   scripts/worker-worktree.sh env world
   scripts/worker-worktree.sh shell-env world
   scripts/worker-worktree.sh cleanup world
+  scripts/worker-worktree.sh cleanup world --remove-target
 
 Conventions:
   worktree path: ../bbb-wt-<name>
   branch:        bbb-worker-<name>
   target dir:    /tmp/bbb-target-<name>
+
+cleanup removes the worker worktree, safely deletes the temporary branch when
+Git allows it, and keeps the matching target dir unless --remove-target is set.
 EOF
 }
 
@@ -57,6 +61,25 @@ branch_name() {
 target_dir() {
   name="$1"
   printf '/tmp/bbb-target-%s\n' "$name"
+}
+
+remove_target_dir() {
+  target="$1"
+  case "$target" in
+    /tmp/bbb-target-*)
+      ;;
+    *)
+      echo "refusing to remove target outside /tmp/bbb-target-*: $target" >&2
+      exit 2
+      ;;
+  esac
+
+  if [ -d "$target" ]; then
+    rm -rf "$target"
+    echo "removed target: $target"
+  else
+    echo "target not found: $target"
+  fi
 }
 
 shell_quote() {
@@ -168,15 +191,38 @@ status_workers() {
 
 cleanup_worker() {
   name="$1"
+  cleanup_target="${2:-}"
   validate_name "$name"
+  case "$cleanup_target" in
+    ""|--keep-target|--remove-target)
+      ;;
+    *)
+      echo "unknown cleanup option: $cleanup_target" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
 
   root="$(repo_root)"
   path="$(worktree_path "$root" "$name")"
   branch="$(branch_name "$name")"
+  target="$(target_dir "$name")"
+  branch_cleanup_failed=0
 
   if [ ! -e "$path" ]; then
     echo "worktree not found: $path"
   else
+    if ! git -C "$path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      echo "refusing to remove non-git worktree path: $path" >&2
+      exit 2
+    fi
+    current_branch="$(git -C "$path" branch --show-current)"
+    if [ "$current_branch" != "$branch" ]; then
+      echo "refusing to remove worktree on unexpected branch: $path" >&2
+      echo "expected: $branch" >&2
+      echo "actual: ${current_branch:-detached HEAD}" >&2
+      exit 2
+    fi
     dirty="$(git -C "$path" status --short)"
     if [ -n "$dirty" ]; then
       echo "refusing to remove dirty worktree: $path" >&2
@@ -193,9 +239,20 @@ cleanup_worker() {
     else
       echo "branch kept because git refused safe deletion: $branch" >&2
       echo "review/integrate it before deleting manually" >&2
+      branch_cleanup_failed=1
     fi
   else
     echo "branch not found: $branch"
+  fi
+
+  if [ "$cleanup_target" = "--remove-target" ]; then
+    if [ "$branch_cleanup_failed" = "1" ]; then
+      echo "kept target because branch cleanup did not complete safely: $target" >&2
+      exit 1
+    fi
+    remove_target_dir "$target"
+  else
+    echo "kept target: $target"
   fi
 }
 
@@ -243,11 +300,11 @@ case "$cmd" in
     status_workers "$@"
     ;;
   cleanup)
-    if [ "$#" -ne 1 ]; then
+    if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
       usage >&2
       exit 2
     fi
-    cleanup_worker "$1"
+    cleanup_worker "$@"
     ;;
   env)
     if [ "$#" -ne 1 ]; then
