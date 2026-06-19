@@ -413,8 +413,6 @@ When an agent does any of the following, update this file in the same slice:
           hit
         - still need remaining vanilla `AttackRange.getClosesetHit` parity:
           - movement-extended max reach
-          - exact `ProjectileUtil.getManyEntityHitResult` margin-to-surface hit
-            location for custom-range entity interaction packets
   - Inventory:
     - Implement:
       - remaining rich tooltip behavior:

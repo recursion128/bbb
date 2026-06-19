@@ -333,7 +333,14 @@ where
                 Some(EntityRaycastTarget { target })
             }
         });
-    raycast_crosshair_entity_hit_between(ray, min_distance, max_distance, hitbox_margin, targets)
+    raycast_crosshair_entity_hit_between(
+        world,
+        ray,
+        min_distance,
+        max_distance,
+        hitbox_margin,
+        targets,
+    )
 }
 
 fn clamp_entity_partial_tick(partial_tick: f32) -> f32 {
@@ -380,6 +387,19 @@ where
 fn raycast_crosshair_block_hit_from_ray<F>(
     ray: CrosshairRay,
     max_distance: f64,
+    target_at: F,
+) -> Option<CrosshairBlockHit>
+where
+    F: FnMut(BlockPos) -> Option<BlockOutlineTarget>,
+{
+    let direction = look_direction_from_crosshair_ray(ray);
+    raycast_block_hit_from_direction(ray.eye, direction, max_distance, target_at)
+}
+
+fn raycast_block_hit_from_direction<F>(
+    eye: [f64; 3],
+    direction: [f64; 3],
+    max_distance: f64,
     mut target_at: F,
 ) -> Option<CrosshairBlockHit>
 where
@@ -389,8 +409,6 @@ where
         return None;
     }
 
-    let eye = ray.eye;
-    let direction = look_direction_from_crosshair_ray(ray);
     if direction == [0.0, 0.0, 0.0] {
         return None;
     }
@@ -486,6 +504,7 @@ where
 }
 
 fn raycast_crosshair_entity_hit_between<I>(
+    world: &WorldStore,
     ray: CrosshairRay,
     min_distance: f64,
     max_distance: f64,
@@ -507,7 +526,8 @@ where
 
     let mut nearest: Option<RaycastEntityHit> = None;
     for target in targets {
-        let Some(distance) = raycast_entity_target_distance_between(
+        let Some(intersection) = raycast_entity_target_intersection_between(
+            world,
             eye,
             direction,
             min_distance.max(0.0),
@@ -517,14 +537,14 @@ where
         ) else {
             continue;
         };
-        let distance_sq = distance * distance;
+        let distance_sq = intersection.distance_sq;
         if nearest.is_some_and(|hit| hit.distance_sq <= distance_sq) {
             continue;
         }
         let location = ProtocolVec3d {
-            x: eye[0] + direction[0] * distance,
-            y: eye[1] + direction[1] * distance,
-            z: eye[2] + direction[2] * distance,
+            x: intersection.location[0],
+            y: intersection.location[1],
+            z: intersection.location[2],
         };
         nearest = Some(RaycastEntityHit {
             hit: CrosshairEntityHit {
@@ -542,6 +562,12 @@ where
     nearest
 }
 
+#[derive(Debug, Clone, Copy)]
+struct EntityTargetIntersection {
+    location: [f64; 3],
+    distance_sq: f64,
+}
+
 fn raycast_entity_target_distance(
     eye: [f64; 3],
     direction: [f64; 3],
@@ -553,23 +579,96 @@ fn raycast_entity_target_distance(
     ray_box_distance(eye, direction, max_distance, min, max)
 }
 
-fn raycast_entity_target_distance_between(
+fn raycast_entity_target_intersection_between(
+    world: &WorldStore,
     eye: [f64; 3],
     direction: [f64; 3],
     min_distance: f64,
     max_distance: f64,
     hitbox_margin: f64,
     target: EntityRaycastTarget,
-) -> Option<f64> {
+) -> Option<EntityTargetIntersection> {
     let from = [
         eye[0] + direction[0] * min_distance,
         eye[1] + direction[1] * min_distance,
         eye[2] + direction[2] * min_distance,
     ];
     let segment_distance = max_distance - min_distance;
-    let (min, max) = entity_target_box(target, hitbox_margin);
-    ray_box_distance(from, direction, segment_distance, min, max)
-        .map(|distance| min_distance + distance)
+    let (entity_min, entity_max) = entity_target_box(target, 0.0);
+    if contains_point(entity_min, entity_max, from) {
+        return Some(EntityTargetIntersection {
+            location: from,
+            distance_sq: distance_sq(eye, from),
+        });
+    }
+
+    if let Some(distance) =
+        ray_box_distance(from, direction, segment_distance, entity_min, entity_max)
+    {
+        let total_distance = min_distance + distance;
+        let location = [
+            eye[0] + direction[0] * total_distance,
+            eye[1] + direction[1] * total_distance,
+            eye[2] + direction[2] * total_distance,
+        ];
+        return Some(EntityTargetIntersection {
+            location,
+            distance_sq: distance_sq(eye, location),
+        });
+    }
+
+    if hitbox_margin <= 0.0 {
+        return None;
+    }
+
+    let (inflated_min, inflated_max) = entity_target_box(target, hitbox_margin);
+    let outside_distance = ray_box_distance(
+        from,
+        direction,
+        segment_distance,
+        inflated_min,
+        inflated_max,
+    )?;
+    let outside_total_distance = min_distance + outside_distance;
+    let outside = [
+        eye[0] + direction[0] * outside_total_distance,
+        eye[1] + direction[1] * outside_total_distance,
+        eye[2] + direction[2] * outside_total_distance,
+    ];
+    let center = box_center(entity_min, entity_max);
+    let target = clip_segment_end_by_block(world, outside, center).unwrap_or(center);
+    let to_target = [
+        target[0] - outside[0],
+        target[1] - outside[1],
+        target[2] - outside[2],
+    ];
+    let target_distance =
+        (to_target[0] * to_target[0] + to_target[1] * to_target[1] + to_target[2] * to_target[2])
+            .sqrt();
+    if target_distance <= f64::EPSILON {
+        return None;
+    }
+    let surface_direction = [
+        to_target[0] / target_distance,
+        to_target[1] / target_distance,
+        to_target[2] / target_distance,
+    ];
+    let surface_distance = ray_box_distance(
+        outside,
+        surface_direction,
+        target_distance,
+        entity_min,
+        entity_max,
+    )?;
+    let location = [
+        outside[0] + surface_direction[0] * surface_distance,
+        outside[1] + surface_direction[1] * surface_distance,
+        outside[2] + surface_direction[2] * surface_distance,
+    ];
+    Some(EntityTargetIntersection {
+        location,
+        distance_sq: distance_sq(eye, location),
+    })
 }
 
 fn entity_target_box(target: EntityRaycastTarget, inflate: f64) -> ([f64; 3], [f64; 3]) {
@@ -584,6 +683,33 @@ fn entity_target_box(target: EntityRaycastTarget, inflate: f64) -> ([f64; 3], [f
         target.target.position.z + f64::from(target.target.bounds.max[2]) + inflate,
     ];
     (min, max)
+}
+
+fn box_center(min: [f64; 3], max: [f64; 3]) -> [f64; 3] {
+    [
+        (min[0] + max[0]) * 0.5,
+        (min[1] + max[1]) * 0.5,
+        (min[2] + max[2]) * 0.5,
+    ]
+}
+
+fn clip_segment_end_by_block(world: &WorldStore, from: [f64; 3], to: [f64; 3]) -> Option<[f64; 3]> {
+    let delta = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+    let distance = (delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]).sqrt();
+    if distance <= f64::EPSILON {
+        return None;
+    }
+    let direction = [
+        delta[0] / distance,
+        delta[1] / distance,
+        delta[2] / distance,
+    ];
+    raycast_block_hit_from_direction(from, direction, distance, |pos| {
+        world
+            .probe_block(pos)
+            .map(|probe| BlockOutlineTarget::from_probe(&probe))
+    })
+    .map(block_hit_location)
 }
 
 fn ray_box_distance(
@@ -1310,10 +1436,7 @@ mod tests {
             panic!("expected entity hit from attack range margin");
         };
         assert_eq!(hit.entity_id, 12);
-        assert_vec3_close(
-            hit.location,
-            [0.0, LocalPlayerPoseState::default().eye_height(), 3.26],
-        );
+        assert_vec3_close(hit.location, [0.0, 1.5287837829456616, 3.51]);
     }
 
     #[test]
