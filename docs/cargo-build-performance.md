@@ -1025,3 +1025,47 @@ usable through environment variables, but it did not reduce the measured worker
 cold focused test time and still produced zero Rust cache hits. Keep it opt-in
 through `RUSTC_WRAPPER=sccache` or `BBB_USE_SCCACHE=1`; do not add a
 repo-local `.cargo/config.toml` wrapper setting.
+
+Requested Recheck 2:
+
+- Command:
+  `scripts/cargo-dev.sh sccache-eval 20260619173725 -p bbb-world command_tree --quiet`
+- Clean full workspace with `sccache`:
+  - Wall time: 173.85s.
+  - Target size before cleanup: 3.3G.
+  - Result: all tests passed.
+  - Timing report copied to:
+    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619173725.html`
+  - `sccache` stats:
+    - compile requests: 217
+    - executed: 156
+    - cache hits: 1 C/C++ hit
+    - Rust cache hits: 0
+    - Rust cache misses: 155
+    - non-cacheable calls: 59
+    - cache size after run: 2 GiB
+- New worker target focused test with `sccache`:
+  - Wall time: 51.60s.
+  - Target size before cleanup: 648M.
+  - Result: 1 test passed.
+  - `sccache` stats:
+    - compile requests: 46
+    - executed: 29
+    - cache hits: 0
+    - Rust cache misses: 29
+    - non-cacheable calls: 17
+- New worker target focused test without `sccache`:
+  - Wall time: 50.45s.
+  - Target size before cleanup: 647M.
+  - Result: 1 test passed.
+- Warm focused default with `sccache` on `/tmp/bbb-target-main`:
+  - Wall time: 5.59s.
+  - Result: 1 test passed.
+  - `sccache` compile requests: 4
+  - `sccache` executed compilations: 0
+
+This recheck keeps the policy unchanged. `sccache` is installed and can be
+used explicitly through environment variables, but the current multi-worktree
+focused-test workload still shows zero Rust cache hits and no cold-worker
+improvement. Keep stable external `CARGO_TARGET_DIR` caches as the primary
+developer-speed path.
