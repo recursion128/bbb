@@ -1223,11 +1223,15 @@ When an agent does any of the following, update this file in the same slice:
           when the native item registry provides vanilla max-damage ids
         - player inventory/hotbar range movement when both input slots are
           occupied
-        - component/enchantment-only player-to-input and result-slot paths are
-          kept server-authoritative
+        - result-slot quick-move into the player inventory is locally
+          predicted from the current server-provided result stack when the
+          transfer fully fits and the input/result stacks are hashable.
+        - component/enchantment-only player-to-input, result-slot pickup,
+          partial/full-inventory result transfers, XP, and level-event side
+          effects are kept server-authoritative
           until:
           - component-hashable grindstone item/result prediction
-          - result side effects and input consumption
+          - full result recomputation parity
       - HopperMenu:
         - quick-move paths are locally predicted for:
           - hopper slots back to player inventory with vanilla reverse-fill
