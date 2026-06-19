@@ -417,6 +417,8 @@ When an agent does any of the following, update this file in the same slice:
       - anvil
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
+      - synced local player `NoGravity` entity metadata data id `5`, which
+        suppresses local gravity in air, water, and lava travel
       - jumps only from ground
       - local player `movement_speed` / `sneaking_speed` attributes with the
         vanilla default sneaking-speed reduction

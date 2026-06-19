@@ -1014,6 +1014,9 @@ fn local_player_airborne_vertical_velocity(
 }
 
 fn local_player_effective_gravity_per_tick(world: &WorldStore, current_velocity: f64) -> f64 {
+    if local_player_no_gravity(world) {
+        return 0.0;
+    }
     let gravity = local_player_attribute_value(world, VANILLA_ATTRIBUTE_GRAVITY_ID)
         .unwrap_or(LOCAL_INPUT_DEFAULT_GRAVITY_ATTRIBUTE);
     if current_velocity <= 0.0
@@ -1023,6 +1026,13 @@ fn local_player_effective_gravity_per_tick(world: &WorldStore, current_velocity:
     } else {
         gravity
     }
+}
+
+fn local_player_no_gravity(world: &WorldStore) -> bool {
+    world
+        .local_player_id
+        .and_then(|id| world.entities.no_gravity(id))
+        .unwrap_or(false)
 }
 
 fn local_player_flying_air_travel(
@@ -1236,8 +1246,10 @@ mod tests {
 
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
-        AttributeSnapshot as ProtocolAttributeSnapshot, MobEffectFlags as ProtocolMobEffectFlags,
-        PlayerHealth as ProtocolPlayerHealth, UpdateAttributes as ProtocolUpdateAttributes,
+        AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
+        EntityDataValueKind as ProtocolEntityDataValueKind,
+        MobEffectFlags as ProtocolMobEffectFlags, PlayerHealth as ProtocolPlayerHealth,
+        SetEntityData as ProtocolSetEntityData, UpdateAttributes as ProtocolUpdateAttributes,
         UpdateMobEffect as ProtocolUpdateMobEffect,
     };
     use uuid::Uuid;
@@ -1376,6 +1388,32 @@ mod tests {
 
         assert_f64_near(pose.position.y, 3.0, 0.000001);
         assert_f64_near(pose.delta_movement.y, -0.0392, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_no_gravity_metadata_suppresses_airborne_gravity() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_no_gravity(&mut world, 123, true));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 3.0, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
         assert!(!pose.on_ground);
     }
 
@@ -2518,6 +2556,34 @@ mod tests {
     }
 
     #[test]
+    fn local_player_no_gravity_metadata_suppresses_water_falling_gravity() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_no_gravity(&mut world, 123, true));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.016, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    }
+
+    #[test]
     fn local_player_bad_omen_does_not_apply_dolphins_grace_water_drag() {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
@@ -2940,6 +3006,34 @@ mod tests {
         assert_f64_near(pose.position.z, 0.52, 0.000001);
         assert_f64_near(pose.delta_movement.z, 0.01, 0.000001);
         assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
+    }
+
+    #[test]
+    fn local_player_no_gravity_metadata_suppresses_lava_gravity() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_no_gravity(&mut world, 123, true));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.01, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
     }
 
     #[test]
@@ -3801,6 +3895,17 @@ mod tests {
             food,
             saturation: 5.0,
         });
+    }
+
+    fn apply_no_gravity(world: &mut WorldStore, entity_id: i32, no_gravity: bool) -> bool {
+        world.apply_set_entity_data(ProtocolSetEntityData {
+            id: entity_id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: crate::entities::VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
+                serializer_id: 8,
+                value: ProtocolEntityDataValueKind::Boolean(no_gravity),
+            }],
+        })
     }
 
     fn apply_flying_abilities(world: &mut WorldStore, flying_speed: f32) {

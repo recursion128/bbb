@@ -88,6 +88,7 @@ pub(crate) const VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID: i32 = 151;
 pub(crate) const VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID: i32 = 152;
 pub(crate) const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 pub(crate) const VANILLA_ENTITY_SILENT_DATA_ID: u8 = 4;
+pub(crate) const VANILLA_ENTITY_NO_GRAVITY_DATA_ID: u8 = 5;
 pub(crate) const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
 
 pub(crate) fn is_vanilla_boat_type(entity_type_id: i32) -> bool {
