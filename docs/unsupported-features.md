@@ -406,13 +406,15 @@ When an agent does any of the following, update this file in the same slice:
       - Main-hand `attack_range` item components:
         - are decoded from network item patches
         - are parsed from official 26.1 default item declarations
+        - participate in crosshair entity selection for extended custom reach
+        - use custom min/max reach, creative reach, hitbox margin, and block
+          outline clipping before entity hits
         - suppress out-of-range `AttackEntity` packets for the current entity
           hit
-        - still need full vanilla `AttackRange.getClosesetHit` raycast parity:
-          - custom min/max reach ray origins
-          - block clipping before entity hits
+        - still need remaining vanilla `AttackRange.getClosesetHit` parity:
           - movement-extended max reach
-          - renderer-visible target updates for extended custom ranges
+          - exact `ProjectileUtil.getManyEntityHitResult` margin-to-surface hit
+            location for custom-range entity interaction packets
   - Inventory:
     - Implement:
       - remaining rich tooltip behavior:

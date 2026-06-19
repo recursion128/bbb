@@ -1005,6 +1005,40 @@ mod tests {
     }
 
     #[test]
+    fn left_mouse_press_on_extended_attack_range_entity_queues_attack_and_swing() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity_at(123, [0.0, 1.0, 4.0]);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack_with_attack_range(42, 1, 0.0, 4.5),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(counters.attack_entity_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::AttackEntity(AttackEntity { entity_id: 123 })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
     fn left_mouse_press_on_entity_outside_selected_attack_range_swings_without_attack() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -2652,6 +2686,10 @@ mod tests {
     }
 
     fn world_with_crosshair_entity(entity_id: i32) -> WorldStore {
+        world_with_crosshair_entity_at(entity_id, [0.0, 1.0, 3.0])
+    }
+
+    fn world_with_crosshair_entity_at(entity_id: i32, position: [f64; 3]) -> WorldStore {
         let mut world = WorldStore::new();
         world.set_local_player_pose(LocalPlayerPoseState::default());
         world.apply_add_entity(AddEntity {
@@ -2659,9 +2697,9 @@ mod tests {
             uuid: Uuid::from_u128(0x12345678123456781234567812345678),
             entity_type_id: VANILLA_ENTITY_TYPE_MINECART_ID,
             position: ProtocolVec3d {
-                x: 0.0,
-                y: 1.0,
-                z: 3.0,
+                x: position[0],
+                y: position[1],
+                z: position[2],
             },
             delta_movement: ProtocolVec3d::default(),
             x_rot: 0.0,

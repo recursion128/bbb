@@ -5,7 +5,7 @@ use bbb_protocol::packets::{
 use bbb_renderer::{CameraPose, SelectionOutline};
 #[cfg(test)]
 use bbb_world::LocalPlayerPoseState;
-use bbb_world::{BlockPos, EntityPickTargetState, WorldStore};
+use bbb_world::{BlockPos, EntityPickTargetState, ItemAttackRange, WorldStore};
 
 use crate::block_outline::{
     selection_outline_for_block, selection_outline_for_probe, BlockOutlineTarget,
@@ -143,13 +143,24 @@ fn crosshair_target_from_ray<F>(
     world: &WorldStore,
     ray: CrosshairRay,
     entity_partial_tick: f32,
-    excluded_entity_id: F,
+    mut excluded_entity_id: F,
 ) -> Option<CrosshairTarget>
 where
     F: FnMut(i32) -> bool,
 {
     let eye = ray.eye;
     let block_hit = crosshair_block_hit_from_ray(world, ray);
+    if let Some(attack_range) = selected_crosshair_attack_range(world) {
+        if let Some(target) = attack_range_target_from_ray(
+            world,
+            ray,
+            attack_range,
+            entity_partial_tick,
+            &mut excluded_entity_id,
+        ) {
+            return Some(target);
+        }
+    }
     let block_distance_sq = block_hit
         .map(|hit| distance_sq(eye, block_hit_location(hit)))
         .unwrap_or(f64::INFINITY);
@@ -161,10 +172,92 @@ where
         ray,
         entity_max_distance,
         entity_partial_tick,
-        excluded_entity_id,
+        &mut excluded_entity_id,
     );
 
     choose_crosshair_target(eye, block_hit, entity_hit, DEFAULT_ENTITY_INTERACTION_RANGE)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CrosshairAttackRange {
+    min_reach: f64,
+    max_reach: f64,
+    hitbox_margin: f64,
+}
+
+fn selected_crosshair_attack_range(world: &WorldStore) -> Option<CrosshairAttackRange> {
+    let range = world.local_selected_main_hand_attack_range()?;
+    Some(crosshair_attack_range_from_item(
+        range,
+        world
+            .local_player()
+            .abilities
+            .is_some_and(|abilities| abilities.instabuild),
+    ))
+}
+
+fn crosshair_attack_range_from_item(
+    range: ItemAttackRange,
+    local_player_instabuild: bool,
+) -> CrosshairAttackRange {
+    let (min_reach, max_reach) = if local_player_instabuild {
+        (range.min_creative_reach, range.max_creative_reach)
+    } else {
+        (range.min_reach, range.max_reach)
+    };
+    CrosshairAttackRange {
+        min_reach: f64::from(min_reach.max(0.0)),
+        max_reach: f64::from(max_reach.max(min_reach).max(0.0)),
+        hitbox_margin: f64::from(range.hitbox_margin.max(0.0)),
+    }
+}
+
+fn attack_range_target_from_ray<F>(
+    world: &WorldStore,
+    ray: CrosshairRay,
+    attack_range: CrosshairAttackRange,
+    entity_partial_tick: f32,
+    excluded_entity_id: &mut F,
+) -> Option<CrosshairTarget>
+where
+    F: FnMut(i32) -> bool,
+{
+    if attack_range.max_reach <= 0.0 {
+        return None;
+    }
+
+    let eye = ray.eye;
+    let block_hit = raycast_crosshair_block_hit_from_ray(ray, attack_range.max_reach, |pos| {
+        world
+            .probe_block(pos)
+            .map(|probe| BlockOutlineTarget::from_probe(&probe))
+    });
+    let block_distance = block_hit
+        .map(|hit| distance_sq(eye, block_hit_location(hit)).sqrt())
+        .unwrap_or(f64::INFINITY);
+    if block_distance < attack_range.min_reach {
+        return block_hit
+            .filter(|_| block_distance < DEFAULT_BLOCK_INTERACTION_RANGE)
+            .map(CrosshairTarget::Block);
+    }
+
+    let entity_end_distance = block_distance.min(attack_range.max_reach);
+    let entity_hit = crosshair_entity_hit_between_from_ray(
+        world,
+        ray,
+        attack_range.min_reach,
+        entity_end_distance,
+        attack_range.hitbox_margin,
+        entity_partial_tick,
+        excluded_entity_id,
+    );
+    if let Some(entity_hit) = entity_hit {
+        return Some(CrosshairTarget::Entity(entity_hit.hit));
+    }
+
+    block_hit
+        .filter(|_| block_distance < DEFAULT_BLOCK_INTERACTION_RANGE)
+        .map(CrosshairTarget::Block)
 }
 
 fn choose_crosshair_target(
@@ -197,7 +290,7 @@ fn crosshair_entity_hit_from_ray<F>(
     ray: CrosshairRay,
     max_distance: f64,
     entity_partial_tick: f32,
-    mut excluded_entity_id: F,
+    excluded_entity_id: &mut F,
 ) -> Option<RaycastEntityHit>
 where
     F: FnMut(i32) -> bool,
@@ -213,6 +306,34 @@ where
             }
         });
     raycast_crosshair_entity_hit(ray, max_distance, targets)
+}
+
+fn crosshair_entity_hit_between_from_ray<F>(
+    world: &WorldStore,
+    ray: CrosshairRay,
+    min_distance: f64,
+    max_distance: f64,
+    hitbox_margin: f64,
+    entity_partial_tick: f32,
+    excluded_entity_id: &mut F,
+) -> Option<RaycastEntityHit>
+where
+    F: FnMut(i32) -> bool,
+{
+    if max_distance < min_distance {
+        return None;
+    }
+    let targets = world
+        .entity_pick_targets_at_partial_tick(clamp_entity_partial_tick(entity_partial_tick))
+        .into_iter()
+        .filter_map(|target| {
+            if excluded_entity_id(target.entity_id) {
+                None
+            } else {
+                Some(EntityRaycastTarget { target })
+            }
+        });
+    raycast_crosshair_entity_hit_between(ray, min_distance, max_distance, hitbox_margin, targets)
 }
 
 fn clamp_entity_partial_tick(partial_tick: f32) -> f32 {
@@ -364,6 +485,63 @@ where
     nearest
 }
 
+fn raycast_crosshair_entity_hit_between<I>(
+    ray: CrosshairRay,
+    min_distance: f64,
+    max_distance: f64,
+    hitbox_margin: f64,
+    targets: I,
+) -> Option<RaycastEntityHit>
+where
+    I: IntoIterator<Item = EntityRaycastTarget>,
+{
+    if max_distance < min_distance || max_distance <= 0.0 {
+        return None;
+    }
+
+    let eye = ray.eye;
+    let direction = look_direction_from_crosshair_ray(ray);
+    if direction == [0.0, 0.0, 0.0] {
+        return None;
+    }
+
+    let mut nearest: Option<RaycastEntityHit> = None;
+    for target in targets {
+        let Some(distance) = raycast_entity_target_distance_between(
+            eye,
+            direction,
+            min_distance.max(0.0),
+            max_distance,
+            hitbox_margin,
+            target,
+        ) else {
+            continue;
+        };
+        let distance_sq = distance * distance;
+        if nearest.is_some_and(|hit| hit.distance_sq <= distance_sq) {
+            continue;
+        }
+        let location = ProtocolVec3d {
+            x: eye[0] + direction[0] * distance,
+            y: eye[1] + direction[1] * distance,
+            z: eye[2] + direction[2] * distance,
+        };
+        nearest = Some(RaycastEntityHit {
+            hit: CrosshairEntityHit {
+                entity_id: target.target.entity_id,
+                location,
+                relative_location: ProtocolVec3d {
+                    x: location.x - target.target.position.x,
+                    y: location.y - target.target.position.y,
+                    z: location.z - target.target.position.z,
+                },
+            },
+            distance_sq,
+        });
+    }
+    nearest
+}
+
 fn raycast_entity_target_distance(
     eye: [f64; 3],
     direction: [f64; 3],
@@ -371,6 +549,30 @@ fn raycast_entity_target_distance(
     target: EntityRaycastTarget,
 ) -> Option<f64> {
     let inflate = f64::from(target.target.bounds.pick_radius);
+    let (min, max) = entity_target_box(target, inflate);
+    ray_box_distance(eye, direction, max_distance, min, max)
+}
+
+fn raycast_entity_target_distance_between(
+    eye: [f64; 3],
+    direction: [f64; 3],
+    min_distance: f64,
+    max_distance: f64,
+    hitbox_margin: f64,
+    target: EntityRaycastTarget,
+) -> Option<f64> {
+    let from = [
+        eye[0] + direction[0] * min_distance,
+        eye[1] + direction[1] * min_distance,
+        eye[2] + direction[2] * min_distance,
+    ];
+    let segment_distance = max_distance - min_distance;
+    let (min, max) = entity_target_box(target, hitbox_margin);
+    ray_box_distance(from, direction, segment_distance, min, max)
+        .map(|distance| min_distance + distance)
+}
+
+fn entity_target_box(target: EntityRaycastTarget, inflate: f64) -> ([f64; 3], [f64; 3]) {
     let min = [
         target.target.position.x + f64::from(target.target.bounds.min[0]) - inflate,
         target.target.position.y + f64::from(target.target.bounds.min[1]) - inflate,
@@ -381,7 +583,7 @@ fn raycast_entity_target_distance(
         target.target.position.y + f64::from(target.target.bounds.max[1]) + inflate,
         target.target.position.z + f64::from(target.target.bounds.max[2]) + inflate,
     ];
-    ray_box_distance(eye, direction, max_distance, min, max)
+    (min, max)
 }
 
 fn ray_box_distance(
@@ -660,11 +862,19 @@ fn look_direction_from_crosshair_ray(ray: CrosshairRay) -> [f64; 3] {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, EntityDataValue, EntityDataValueKind, EntityPositionSync, SetEntityData,
+        AddEntity, AttackRangeSummary, EntityDataValue, EntityDataValueKind, EntityPositionSync,
+        ItemStackSummary, PlayerAbilities, SetEntityData, SetPlayerInventory,
         Vec3d as ProtocolVec3d,
+    };
+    use bbb_world::{
+        ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
+        PalettedContainerData, WorldDimension,
     };
     use uuid::Uuid;
 
+    const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
+    const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
+    const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
     const VANILLA_ENTITY_TYPE_ARMOR_STAND_ID: i32 = 5;
     const VANILLA_ENTITY_TYPE_INTERACTION_ID: i32 = 69;
     const VANILLA_ENTITY_TYPE_ITEM_FRAME_ID: i32 = 73;
@@ -1063,6 +1273,104 @@ mod tests {
     }
 
     #[test]
+    fn crosshair_target_uses_selected_item_attack_range_for_extended_entity_hit() {
+        let mut world = WorldStore::new();
+        set_selected_attack_range(&mut world, 0.0, 4.5, 0.0, 4.5, 0.0);
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 4.0],
+        ));
+
+        let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected entity hit");
+        };
+        assert_eq!(hit.entity_id, 12);
+        assert_vec3_close(
+            hit.location,
+            [0.0, LocalPlayerPoseState::default().eye_height(), 3.51],
+        );
+    }
+
+    #[test]
+    fn crosshair_target_attack_range_uses_hitbox_margin() {
+        let mut world = WorldStore::new();
+        set_selected_attack_range(&mut world, 0.0, 3.3, 0.0, 3.3, 0.25);
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 4.0],
+        ));
+
+        let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected entity hit from attack range margin");
+        };
+        assert_eq!(hit.entity_id, 12);
+        assert_vec3_close(
+            hit.location,
+            [0.0, LocalPlayerPoseState::default().eye_height(), 3.26],
+        );
+    }
+
+    #[test]
+    fn crosshair_target_attack_range_uses_creative_reach_when_instabuild() {
+        let mut world = WorldStore::new();
+        set_selected_attack_range(&mut world, 0.0, 1.0, 0.0, 5.0, 0.0);
+        world.apply_player_abilities(PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 4.0],
+        ));
+
+        let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected creative reach entity hit");
+        };
+        assert_eq!(hit.entity_id, 12);
+    }
+
+    #[test]
+    fn crosshair_target_attack_range_keeps_block_when_block_clips_before_extended_entity() {
+        let mut world = WorldStore::with_dimension(WorldDimension {
+            min_y: 0,
+            height: 16,
+        });
+        insert_air_chunk(&mut world);
+        set_selected_attack_range(&mut world, 0.0, 4.5, 0.0, 4.5, 0.0);
+        assert!(
+            world.apply_block_update(bbb_protocol::packets::BlockUpdate {
+                pos: bbb_protocol::packets::BlockPos { x: 0, y: 1, z: 2 },
+                block_state_id: VANILLA_GRASS_BLOCK_STATE_ID,
+            })
+        );
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 4.0],
+        ));
+
+        let target = crosshair_target_from_world(&world, Some(player_pose(0.0, 0.0, 0.0)));
+
+        let CrosshairTarget::Block(hit) = target.unwrap() else {
+            panic!("expected nearer block hit");
+        };
+        assert_eq!(hit.pos, BlockPos { x: 0, y: 1, z: 2 });
+    }
+
+    #[test]
     fn crosshair_target_keeps_block_when_block_is_nearer_than_entity() {
         let eye = [0.0, LocalPlayerPoseState::default().eye_height(), 0.0];
         let block = CrosshairBlockHit {
@@ -1280,6 +1588,88 @@ mod tests {
 
     fn protocol_add_entity(id: i32, entity_type_id: i32, position: [f64; 3]) -> AddEntity {
         protocol_add_entity_with_data(id, entity_type_id, position, 0)
+    }
+
+    fn set_selected_attack_range(
+        world: &mut WorldStore,
+        min_reach: f32,
+        max_reach: f32,
+        min_creative_reach: f32,
+        max_creative_reach: f32,
+        hitbox_margin: f32,
+    ) {
+        world.apply_set_player_inventory(SetPlayerInventory {
+            slot: 0,
+            item: item_stack_with_attack_range(
+                42,
+                min_reach,
+                max_reach,
+                min_creative_reach,
+                max_creative_reach,
+                hitbox_margin,
+            ),
+        });
+    }
+
+    fn insert_air_chunk(world: &mut WorldStore) {
+        world.insert_decoded_chunk(ChunkColumn {
+            pos: ChunkPos { x: 0, z: 0 },
+            state: ChunkState::Decoded,
+            heightmaps: Vec::new(),
+            sections: vec![ChunkSection {
+                non_empty_block_count: 0,
+                fluid_count: 0,
+                block_states: single_value_container(
+                    PaletteDomain::BlockStates,
+                    4096,
+                    VANILLA_AIR_BLOCK_STATE_ID,
+                ),
+                biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
+            }],
+            block_entities: Vec::new(),
+            light: LightData::default(),
+        });
+    }
+
+    fn single_value_container(
+        domain: PaletteDomain,
+        entry_count: usize,
+        global_id: i32,
+    ) -> PalettedContainerData {
+        PalettedContainerData {
+            domain,
+            bits_per_entry: 0,
+            palette_kind: PaletteKind::SingleValue,
+            palette_global_ids: vec![global_id],
+            packed_data: Vec::new(),
+            entry_count,
+        }
+    }
+
+    fn item_stack_with_attack_range(
+        item_id: i32,
+        min_reach: f32,
+        max_reach: f32,
+        min_creative_reach: f32,
+        max_creative_reach: f32,
+        hitbox_margin: f32,
+    ) -> ItemStackSummary {
+        let mut stack = ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: Default::default(),
+        };
+        stack.component_patch.added = 1;
+        stack.component_patch.added_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+        stack.component_patch.attack_range = Some(AttackRangeSummary {
+            min_reach,
+            max_reach,
+            min_creative_reach,
+            max_creative_reach,
+            hitbox_margin,
+            mob_factor: 1.0,
+        });
+        stack
     }
 
     fn protocol_add_entity_with_data(
