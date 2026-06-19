@@ -312,7 +312,7 @@ When an agent does any of the following, update this file in the same slice:
     - Close remaining vanilla player destroy-speed gaps:
       - validate exact pose/fluid nuance beyond the current standing-eye
         water probe
-    - remaining hit effects beyond local block hit sounds:
+    - remaining hit effects beyond local block hit/break sounds:
       - block-specific `state.attack` callbacks
       - hit particles
     - full model-shaped crack decals with vanilla crumbling blend/depth-bias
@@ -1029,6 +1029,13 @@ When an agent does any of the following, update this file in the same slice:
       - `(volume + 1) / 8`
       - `pitch * 0.5`
       - every 4 destroy ticks
+    - Level event `2001` emits vanilla-shaped block break sounds through the
+      native audio runtime:
+      - `Block.stateById(data)`
+      - `SoundType.getBreakSound()`
+      - `SoundSource.BLOCKS`
+      - `(volume + 1) / 2`
+      - `pitch * 0.8`
   - Completion requires full vanilla movement and these flows to work through
     encoded serverbound packets end to end.
 

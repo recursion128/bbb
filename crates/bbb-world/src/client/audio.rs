@@ -1,13 +1,15 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::packets::{
-    SoundEntityEvent as ProtocolSoundEntityEvent, SoundEvent as ProtocolSoundEvent,
-    SoundEventHolder as ProtocolSoundEventHolder, StopSound as ProtocolStopSound,
-    Vec3d as ProtocolVec3d,
+    LevelEvent as ProtocolLevelEvent, SoundEntityEvent as ProtocolSoundEntityEvent,
+    SoundEvent as ProtocolSoundEvent, SoundEventHolder as ProtocolSoundEventHolder,
+    StopSound as ProtocolStopSound, Vec3d as ProtocolVec3d,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
+
+const BLOCK_BREAK_LEVEL_EVENT: i32 = 2001;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientAudioState {
@@ -55,6 +57,8 @@ pub struct SoundHolderState {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorldBlockSoundProfile {
+    #[serde(default)]
+    pub break_sound: String,
     pub hit_sound: String,
     pub volume: f32,
     pub pitch: f32,
@@ -146,24 +150,68 @@ impl WorldStore {
         let block = self.probe_block(pos)?;
         let block_name = block.block_name.as_deref()?;
         let profile = self.default_block_sound_profiles.get(block_name)?;
-        Some(SoundEventState {
-            sound: SoundHolderState {
-                kind: "direct".to_string(),
-                registry_id: None,
-                location: Some(profile.hit_sound.clone()),
-                fixed_range: None,
-            },
-            source: "block".to_string(),
-            position: ProtocolVec3d {
-                x: f64::from(pos.x) + 0.5,
-                y: f64::from(pos.y) + 0.5,
-                z: f64::from(pos.z) + 0.5,
-            },
-            volume: (profile.volume + 1.0) / 8.0,
-            pitch: profile.pitch * 0.5,
-            seed: 0,
-        })
+        Some(block_sound_state(
+            pos,
+            &profile.hit_sound,
+            (profile.volume + 1.0) / 8.0,
+            profile.pitch * 0.5,
+        ))
     }
+
+    pub fn level_event_block_break_sound(
+        &self,
+        event: ProtocolLevelEvent,
+    ) -> Option<SoundEventState> {
+        if event.event_type != BLOCK_BREAK_LEVEL_EVENT {
+            return None;
+        }
+        let block_state = self.registries.block_state(event.data)?;
+        if is_air_block_name(&block_state.name) {
+            return None;
+        }
+        let profile = self.default_block_sound_profiles.get(&block_state.name)?;
+        if profile.break_sound.is_empty() {
+            return None;
+        }
+        Some(block_sound_state(
+            crate::protocol_block_pos(event.pos),
+            &profile.break_sound,
+            (profile.volume + 1.0) / 2.0,
+            profile.pitch * 0.8,
+        ))
+    }
+}
+
+fn block_sound_state(
+    pos: crate::BlockPos,
+    sound: &str,
+    volume: f32,
+    pitch: f32,
+) -> SoundEventState {
+    SoundEventState {
+        sound: SoundHolderState {
+            kind: "direct".to_string(),
+            registry_id: None,
+            location: Some(sound.to_string()),
+            fixed_range: None,
+        },
+        source: "block".to_string(),
+        position: ProtocolVec3d {
+            x: f64::from(pos.x) + 0.5,
+            y: f64::from(pos.y) + 0.5,
+            z: f64::from(pos.z) + 0.5,
+        },
+        volume,
+        pitch,
+        seed: 0,
+    }
+}
+
+fn is_air_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
+    )
 }
 
 fn sound_holder_state(sound: ProtocolSoundEventHolder) -> SoundHolderState {
@@ -189,7 +237,10 @@ fn sound_holder_state(sound: ProtocolSoundEventHolder) -> SoundHolderState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{AddEntity, SoundSource, StopSound};
+    use bbb_protocol::packets::{
+        AddEntity, BlockPos as ProtocolBlockPos, LevelEvent, SoundSource, StopSound,
+    };
+    use std::collections::BTreeMap;
     use uuid::Uuid;
 
     #[test]
@@ -318,6 +369,63 @@ mod tests {
         assert_eq!(store.counters().stop_sound_packets, 1);
     }
 
+    #[test]
+    fn level_event_2001_maps_block_state_id_to_vanilla_break_sound() {
+        let mut store = WorldStore::new();
+        store.set_default_block_sound_profiles(BTreeMap::from([(
+            "minecraft:grass_block".to_string(),
+            WorldBlockSoundProfile {
+                break_sound: "minecraft:block.grass.break".to_string(),
+                hit_sound: "minecraft:block.grass.hit".to_string(),
+                volume: 0.8,
+                pitch: 1.2,
+            },
+        )]));
+
+        let sound = store
+            .level_event_block_break_sound(LevelEvent {
+                event_type: 2001,
+                pos: ProtocolBlockPos { x: 2, y: 3, z: -4 },
+                data: 9,
+                global: false,
+            })
+            .unwrap();
+
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.grass.break")
+        );
+        assert_eq!(sound.source, "block");
+        assert_eq!(
+            sound.position,
+            ProtocolVec3d {
+                x: 2.5,
+                y: 3.5,
+                z: -3.5,
+            }
+        );
+        assert_close(sound.volume, 0.9);
+        assert_close(sound.pitch, 0.96);
+        assert_eq!(sound.seed, 0);
+
+        assert!(store
+            .level_event_block_break_sound(LevelEvent {
+                event_type: 1001,
+                pos: ProtocolBlockPos { x: 2, y: 3, z: -4 },
+                data: 9,
+                global: false,
+            })
+            .is_none());
+        assert!(store
+            .level_event_block_break_sound(LevelEvent {
+                event_type: 2001,
+                pos: ProtocolBlockPos { x: 2, y: 3, z: -4 },
+                data: 0,
+                global: false,
+            })
+            .is_none());
+    }
+
     fn protocol_add_entity(id: i32) -> AddEntity {
         AddEntity {
             id,
@@ -330,5 +438,12 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    fn assert_close(actual: f32, expected: f32) {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
     }
 }

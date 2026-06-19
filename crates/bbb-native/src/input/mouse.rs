@@ -1444,6 +1444,7 @@ mod tests {
         world.set_default_block_sound_profiles(BTreeMap::from([(
             "minecraft:grass_block".to_string(),
             WorldBlockSoundProfile {
+                break_sound: "minecraft:block.grass.break".to_string(),
                 hit_sound: "minecraft:block.grass.hit".to_string(),
                 volume: 1.0,
                 pitch: 1.2,

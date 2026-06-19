@@ -8,6 +8,7 @@ use crate::{resources::ResourceLocation, PackRoots};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BlockSoundProfile {
+    pub break_sound: String,
     pub hit_sound: String,
     pub volume: f32,
     pub pitch: f32,
@@ -20,6 +21,7 @@ pub struct BlockSoundProfileCatalog {
 
 #[derive(Debug, Clone)]
 struct SoundTypeProfile {
+    break_sound: String,
     hit_sound: String,
     volume: f32,
     pitch: f32,
@@ -172,13 +174,18 @@ fn parse_sound_types(
                 args.len()
             );
         }
+        let break_constant = sound_event_constant(&args[2])?;
         let hit_constant = sound_event_constant(&args[5])?;
+        let Some(break_sound) = sound_events.get(&break_constant).cloned() else {
+            bail!("unknown break SoundEvents constant {break_constant} for SoundType {name}");
+        };
         let Some(hit_sound) = sound_events.get(&hit_constant).cloned() else {
             bail!("unknown hit SoundEvents constant {hit_constant} for SoundType {name}");
         };
         sound_types.insert(
             name.to_string(),
             SoundTypeProfile {
+                break_sound,
                 hit_sound,
                 volume: parse_java_float(&args[0])?,
                 pitch: parse_java_float(&args[1])?,
@@ -231,6 +238,7 @@ fn block_profile_for_sound_type(
         bail!("unknown SoundType {sound_type}");
     };
     Ok(BlockSoundProfile {
+        break_sound: profile.break_sound.clone(),
         hit_sound: profile.hit_sound.clone(),
         volume: profile.volume,
         pitch: profile.pitch,
@@ -386,6 +394,7 @@ mod tests {
                 public static final SoundEvent GLASS_HIT = register("block.glass.hit");
                 public static final SoundEvent CANDLE_HIT = register("block.candle.hit");
                 public static final SoundEvent STONE_BREAK = register("block.stone.break");
+                public static final SoundEvent GRASS_BREAK = register("block.grass.break");
                 public static final SoundEvent STONE_STEP = register("block.stone.step");
                 public static final SoundEvent STONE_PLACE = register("block.stone.place");
                 public static final SoundEvent STONE_FALL = register("block.stone.fall");
@@ -398,7 +407,7 @@ mod tests {
                     SoundEvents.STONE_PLACE, SoundEvents.STONE_HIT, SoundEvents.STONE_FALL
                 );
                 public static final SoundType GRASS = new SoundType(
-                    0.8F, 1.2F, SoundEvents.STONE_BREAK, SoundEvents.STONE_STEP,
+                    0.8F, 1.2F, SoundEvents.GRASS_BREAK, SoundEvents.STONE_STEP,
                     SoundEvents.STONE_PLACE, SoundEvents.GRASS_HIT, SoundEvents.STONE_FALL
                 );
                 public static final SoundType WOOD = new SoundType(
@@ -443,6 +452,7 @@ mod tests {
         assert_eq!(
             catalog.profile("minecraft:grass_block").unwrap(),
             &BlockSoundProfile {
+                break_sound: "minecraft:block.grass.break".to_string(),
                 hit_sound: "minecraft:block.grass.hit".to_string(),
                 volume: 0.8,
                 pitch: 1.2,
@@ -489,6 +499,13 @@ mod tests {
         assert_eq!(
             catalog.profile("minecraft:grass_block").unwrap().hit_sound,
             "minecraft:block.grass.hit"
+        );
+        assert_eq!(
+            catalog
+                .profile("minecraft:grass_block")
+                .unwrap()
+                .break_sound,
+            "minecraft:block.grass.break"
         );
         assert_eq!(
             catalog.profile("minecraft:dirt").unwrap().hit_sound,

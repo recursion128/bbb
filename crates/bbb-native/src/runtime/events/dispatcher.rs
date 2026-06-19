@@ -304,6 +304,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::LevelEvent(event) => {
                 world.apply_level_event(event);
+                if let Some(state) = world.level_event_block_break_sound(event) {
+                    emit_positioned_sound(&mut audio_events, &state);
+                }
             }
             NetEvent::InitializeBorder(border) => {
                 world.apply_initialize_border(border);

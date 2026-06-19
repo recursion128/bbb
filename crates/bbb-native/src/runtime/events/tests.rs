@@ -20,13 +20,13 @@ use bbb_protocol::packets::{
     EntityEvent, EntityMove, EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, Explosion,
     FilterMask, FilterMaskKind, ForgetLevelChunk, GameRuleValue, GameRuleValues,
     GameTestHighlightPos, HurtAnimation, IngredientSummary, InteractionHand, ItemCostSummary,
-    ItemStackSummary, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelParticles,
-    LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MerchantOffer,
-    MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen, MoveMinecartAlongTrack,
-    OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature, ParticlePayload,
-    PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill, PlayerLookAt,
-    PlayerLookAtTarget, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse, ProjectilePower,
-    RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
+    ItemStackSummary, LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent,
+    LevelParticles, LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData,
+    MerchantOffer, MerchantOffers, MessageSignature, MinecartStep, MountScreenOpen,
+    MoveMinecartAlongTrack, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
+    ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayerChat, PlayerCombatEnd, PlayerCombatKill,
+    PlayerLookAt, PlayerLookAtTarget, PlayerPositionUpdate, PlayerRotationUpdate, PongResponse,
+    ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
     RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
     RecipeDisplayType, RecipePropertySetSummary, RegistryData, RegistryDataEntry, RegistryTags,
     RemoteDebugSampleType, RemoveEntities, Respawn, RotateHead, SectionBlocksUpdate,
@@ -40,7 +40,10 @@ use bbb_protocol::packets::{
     Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
     WaypointVec3i,
 };
-use bbb_world::{BlockPos, ChunkPos, LocalPlayerPoseState, RegistryPacketEntry, WorldStore};
+use bbb_world::{
+    BlockPos, ChunkPos, LocalPlayerPoseState, RegistryPacketEntry, WorldBlockSoundProfile,
+    WorldStore,
+};
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
 use uuid::Uuid;
@@ -3184,6 +3187,50 @@ fn block_and_level_events_update_world_and_world_counters() {
 }
 
 #[test]
+fn level_event_2001_emits_vanilla_block_break_sound() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 2001,
+        pos: ProtocolBlockPos { x: 2, y: 3, z: -4 },
+        data: 9,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.set_default_block_sound_profiles(BTreeMap::from([(
+        "minecraft:grass_block".to_string(),
+        WorldBlockSoundProfile {
+            break_sound: "minecraft:block.grass.break".to_string(),
+            hit_sound: "minecraft:block.grass.hit".to_string(),
+            volume: 0.8,
+            pitch: 1.2,
+        },
+    )]));
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.grass.break");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [2.5, 3.5, -3.5]);
+    assert_close(command.packet_volume, 0.9);
+    assert_close(command.packet_pitch, 0.96);
+    assert_eq!(command.seed, 0);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
 fn border_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::InitializeBorder(
@@ -4459,6 +4506,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.cat.ambient": {
                 "sounds": ["mob/cat/meow1"]
+            },
+            "block.grass.break": {
+                "sounds": ["dig/grass1"]
             }
         }"#,
     )
@@ -4559,6 +4609,13 @@ fn write_sign_text_side(out: &mut Vec<u8>, name: &str, lines: [&str; 4]) {
 fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
     out.extend_from_slice(&(value.len() as u16).to_be_bytes());
     out.extend_from_slice(value.as_bytes());
+}
+
+fn assert_close(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() < 1.0e-6,
+        "expected {expected}, got {actual}"
+    );
 }
 
 fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
