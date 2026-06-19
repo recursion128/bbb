@@ -27,7 +27,7 @@ Conventions:
 
 If worker/<name> already exists, create uses a timestamp-suffixed branch.
 cleanup refuses dirty worktrees unless --force is passed, deletes the temporary
-branch only when Git allows a safe delete, and keeps the matching target unless
+branch safely unless --force is passed, and keeps the matching target unless
 --remove-target is passed.
 EOF
 }
@@ -338,7 +338,12 @@ cleanup_worker() {
   fi
 
   if [ -n "$branch" ] && branch_exists "$root" "$branch"; then
-    if git -C "$root" branch -d "$branch"; then
+    if [ "$force" = "1" ]; then
+      delete_branch_args="-D"
+    else
+      delete_branch_args="-d"
+    fi
+    if git -C "$root" branch "$delete_branch_args" "$branch"; then
       echo "deleted branch: $branch"
     else
       echo "branch kept because git refused safe deletion: $branch" >&2
