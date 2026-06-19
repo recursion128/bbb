@@ -16,7 +16,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::{MountScreenState, WorldStore};
+use crate::{MountScreenState, RegistryTagState, WorldStore};
 
 const VANILLA_MENU_TYPE_MERCHANT_ID: i32 = 19;
 const VANILLA_MENU_TYPE_SHULKER_BOX_ID: i32 = 20;
@@ -74,7 +74,18 @@ const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
 const CARTOGRAPHY_TABLE_PLAYER_MAIN_START: i16 = 3;
 const CARTOGRAPHY_TABLE_HOTBAR_END: i16 = 39;
 const CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT: i16 = 39;
+const LOOM_BANNER_SLOT: i16 = 0;
+const LOOM_DYE_SLOT: i16 = 1;
+const LOOM_PATTERN_SLOT: i16 = 2;
 const LOOM_RESULT_SLOT: i16 = 3;
+const LOOM_PLAYER_MAIN_START: i16 = 4;
+const LOOM_PLAYER_MAIN_END: i16 = 31;
+const LOOM_HOTBAR_START: i16 = 31;
+const LOOM_HOTBAR_END: i16 = 40;
+const LOOM_TOTAL_SLOT_COUNT: i16 = 40;
+const LOOM_BANNER_ITEM_TAG: &str = "minecraft:banners";
+const LOOM_DYE_ITEM_TAG: &str = "minecraft:loom_dyes";
+const LOOM_PATTERN_ITEM_TAG: &str = "minecraft:loom_patterns";
 const MERCHANT_RESULT_SLOT: i16 = 2;
 const MERCHANT_VISIBLE_OFFER_COUNT: usize = 7;
 const SMITHING_RESULT_SLOT: i16 = 3;
@@ -1200,9 +1211,13 @@ impl WorldStore {
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_LOOM_ID) {
-                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                            ProtocolContainerInput::QuickMove,
-                        ));
+                        apply_loom_menu_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            self.registry_tags("minecraft:item"),
+                            &self.default_item_max_stack_sizes,
+                        )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_MERCHANT_ID) {
                         return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                             ProtocolContainerInput::QuickMove,
@@ -2840,6 +2855,64 @@ fn apply_cartography_table_menu_quick_move_to_slots(
     }
 }
 
+fn apply_loom_menu_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    item_tags: Option<&RegistryTagState>,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !(0..LOOM_TOTAL_SLOT_COUNT).contains(&slot_num) || slot_num == LOOM_RESULT_SLOT {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let source_item = slots[source_index].item.clone();
+    let target = match slot_num {
+        LOOM_BANNER_SLOT | LOOM_DYE_SLOT | LOOM_PATTERN_SLOT => {
+            Some((LOOM_PLAYER_MAIN_START, LOOM_HOTBAR_END, false))
+        }
+        slot if (LOOM_PLAYER_MAIN_START..LOOM_HOTBAR_END).contains(&slot) => {
+            if item_stack_in_item_tag(&source_item, item_tags, LOOM_BANNER_ITEM_TAG) {
+                Some((LOOM_BANNER_SLOT, LOOM_DYE_SLOT, false))
+            } else if item_stack_in_item_tag(&source_item, item_tags, LOOM_DYE_ITEM_TAG) {
+                Some((LOOM_DYE_SLOT, LOOM_PATTERN_SLOT, false))
+            } else if item_stack_in_item_tag(&source_item, item_tags, LOOM_PATTERN_ITEM_TAG) {
+                Some((LOOM_PATTERN_SLOT, LOOM_RESULT_SLOT, false))
+            } else if (LOOM_PLAYER_MAIN_START..LOOM_PLAYER_MAIN_END).contains(&slot) {
+                Some((LOOM_HOTBAR_START, LOOM_HOTBAR_END, false))
+            } else {
+                Some((LOOM_PLAYER_MAIN_START, LOOM_PLAYER_MAIN_END, false))
+            }
+        }
+        _ => None,
+    };
+    let Some((start_slot, end_slot, backwards)) = target else {
+        return;
+    };
+
+    let mut moving = source_item;
+    if move_item_stack_to_slots(
+        container_id,
+        slots,
+        source_index,
+        &mut moving,
+        start_slot,
+        end_slot,
+        backwards,
+        default_item_max_stack_sizes,
+    ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
 fn apply_stonecutter_menu_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
@@ -2943,6 +3016,19 @@ fn furnace_is_fuel(
     stack
         .item_id
         .is_some_and(|item_id| furnace_fuel_item_ids.contains(&item_id))
+}
+
+fn item_stack_in_item_tag(
+    stack: &ProtocolItemStackSummary,
+    item_tags: Option<&RegistryTagState>,
+    tag: &str,
+) -> bool {
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    item_tags
+        .and_then(|registry| registry.tags.get(tag))
+        .is_some_and(|entries| entries.contains(&item_id))
 }
 
 fn inventory_menu_quick_move_target_range(
@@ -3387,9 +3473,10 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue as ProtocolEntityDataValue,
         EntityDataValueKind, IngredientSummary, MountScreenOpen as ProtocolMountScreenOpen,
-        PlayerAbilities as ProtocolPlayerAbilities, RecipePropertySetSummary,
+        PlayerAbilities as ProtocolPlayerAbilities, RecipePropertySetSummary, RegistryTags,
         SetEntityData as ProtocolSetEntityData, SlotDisplaySummary,
-        StonecutterSelectableRecipeSummary, UpdateRecipes as ProtocolUpdateRecipes,
+        StonecutterSelectableRecipeSummary, TagNetworkPayload,
+        UpdateRecipes as ProtocolUpdateRecipes, UpdateTags as ProtocolUpdateTags,
         UseEffectsSummary as ProtocolUseEffectsSummary, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
@@ -6290,21 +6377,18 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_loom_result_and_quick_move_require_server_authority() {
-        const LOOM_TOTAL_SLOT_COUNT: usize = 40;
-
+    fn apply_local_loom_result_pickup_and_quick_move_require_server_authority() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
             title: "Loom".to_string(),
         });
-        let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT];
+        let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
         items[0] = item_stack(42, 1);
         items[1] = item_stack(43, 1);
         items[2] = item_stack(44, 1);
         items[LOOM_RESULT_SLOT as usize] = item_stack(90, 1);
-        items[31] = item_stack(45, 3);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 13,
@@ -6325,19 +6409,9 @@ mod tests {
                 Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
             );
         }
-        assert_eq!(
-            store.apply_local_container_click_slot(ContainerClickSlotRequest {
-                slot_num: 31,
-                button_num: 0,
-                input: ProtocolContainerInput::QuickMove,
-            }),
-            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                ProtocolContainerInput::QuickMove
-            ))
-        );
         let click = store
             .build_container_click_slot(ContainerClickSlotRequest {
-                slot_num: 31,
+                slot_num: LOOM_RESULT_SLOT,
                 button_num: 0,
                 input: ProtocolContainerInput::QuickMove,
             })
@@ -6351,7 +6425,204 @@ mod tests {
             open_container_slot_item(&store, LOOM_RESULT_SLOT),
             item_stack(90, 1)
         );
-        assert_eq!(open_container_slot_item(&store, 31), item_stack(45, 3));
+    }
+
+    #[test]
+    fn apply_local_loom_quick_move_moves_input_slots_to_player_forward() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
+            title: "Loom".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
+        items[LOOM_BANNER_SLOT as usize] = item_stack(42, 3);
+        items[LOOM_DYE_SLOT as usize] = item_stack(43, 2);
+        items[LOOM_PATTERN_SLOT as usize] = item_stack(44, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let banner_to_player = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: LOOM_BANNER_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            banner_to_player.changed_slots,
+            BTreeMap::from([
+                (LOOM_BANNER_SLOT, ProtocolHashedStack::Empty),
+                (LOOM_PLAYER_MAIN_START, hashed_item_stack(42, 3)),
+            ])
+        );
+
+        let dye_to_player = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: LOOM_DYE_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            dye_to_player.changed_slots,
+            BTreeMap::from([
+                (LOOM_DYE_SLOT, ProtocolHashedStack::Empty),
+                (LOOM_PLAYER_MAIN_START + 1, hashed_item_stack(43, 2)),
+            ])
+        );
+
+        let pattern_to_player = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: LOOM_PATTERN_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            pattern_to_player.changed_slots,
+            BTreeMap::from([
+                (LOOM_PATTERN_SLOT, ProtocolHashedStack::Empty),
+                (LOOM_PLAYER_MAIN_START + 2, hashed_item_stack(44, 1)),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_BANNER_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_DYE_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_PATTERN_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_PLAYER_MAIN_START),
+            item_stack(42, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_PLAYER_MAIN_START + 1),
+            item_stack(43, 2)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_PLAYER_MAIN_START + 2),
+            item_stack(44, 1)
+        );
+    }
+
+    #[test]
+    fn apply_local_loom_quick_move_routes_tagged_items_to_input_slots() {
+        let mut store = WorldStore::new();
+        apply_item_tags(
+            &mut store,
+            vec![
+                (LOOM_BANNER_ITEM_TAG, vec![42]),
+                (LOOM_DYE_ITEM_TAG, vec![43]),
+                (LOOM_PATTERN_ITEM_TAG, vec![44]),
+            ],
+        );
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
+            title: "Loom".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); LOOM_TOTAL_SLOT_COUNT as usize];
+        items[LOOM_PLAYER_MAIN_START as usize] = item_stack(42, 1);
+        items[(LOOM_PLAYER_MAIN_START + 1) as usize] = item_stack(43, 2);
+        items[(LOOM_PLAYER_MAIN_START + 2) as usize] = item_stack(44, 1);
+        items[LOOM_HOTBAR_START as usize] = item_stack(45, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let banner_to_input = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: LOOM_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            banner_to_input.changed_slots,
+            BTreeMap::from([
+                (LOOM_BANNER_SLOT, hashed_item_stack(42, 1)),
+                (LOOM_PLAYER_MAIN_START, ProtocolHashedStack::Empty),
+            ])
+        );
+
+        let dye_to_input = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: LOOM_PLAYER_MAIN_START + 1,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            dye_to_input.changed_slots,
+            BTreeMap::from([
+                (LOOM_DYE_SLOT, hashed_item_stack(43, 2)),
+                (LOOM_PLAYER_MAIN_START + 1, ProtocolHashedStack::Empty),
+            ])
+        );
+
+        let pattern_to_input = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: LOOM_PLAYER_MAIN_START + 2,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            pattern_to_input.changed_slots,
+            BTreeMap::from([
+                (LOOM_PATTERN_SLOT, hashed_item_stack(44, 1)),
+                (LOOM_PLAYER_MAIN_START + 2, ProtocolHashedStack::Empty),
+            ])
+        );
+
+        let hotbar_to_main = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: LOOM_HOTBAR_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            hotbar_to_main.changed_slots,
+            BTreeMap::from([
+                (LOOM_PLAYER_MAIN_START, hashed_item_stack(45, 3)),
+                (LOOM_HOTBAR_START, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_BANNER_SLOT),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_DYE_SLOT),
+            item_stack(43, 2)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_PATTERN_SLOT),
+            item_stack(44, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_PLAYER_MAIN_START),
+            item_stack(45, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, LOOM_HOTBAR_START),
+            ProtocolItemStackSummary::empty()
+        );
     }
 
     #[test]
@@ -8043,6 +8314,21 @@ mod tests {
                 .collect(),
             stonecutter_recipes: Vec::new(),
         }
+    }
+
+    fn apply_item_tags(store: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
+        store.apply_update_tags(ProtocolUpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: tags
+                    .into_iter()
+                    .map(|(tag, entries)| TagNetworkPayload {
+                        tag: tag.to_string(),
+                        entries,
+                    })
+                    .collect(),
+            }],
+        });
     }
 
     fn update_stonecutter_recipes(
