@@ -1810,13 +1810,11 @@ fn hashed_stack_from_summary(stack: &ProtocolItemStackSummary) -> Option<Protoco
     let (Some(item_id), true) = (stack.item_id, stack.count > 0) else {
         return Some(ProtocolHashedStack::Empty);
     };
-    if !component_patch_can_be_hashed_from_summary(&stack.component_patch) {
-        return None;
-    }
+    let components = hashed_component_patch_from_summary(&stack.component_patch)?;
     Some(ProtocolHashedStack::Item(ProtocolHashedItemStack {
         item_id,
         count: stack.count,
-        components: ProtocolHashedComponentPatch::default(),
+        components,
     }))
 }
 
@@ -1929,8 +1927,52 @@ fn item_stack_use_effects(
     Some(default_effects)
 }
 
+fn hashed_component_patch_from_summary(
+    patch: &ProtocolDataComponentPatchSummary,
+) -> Option<ProtocolHashedComponentPatch> {
+    if patch == &ProtocolDataComponentPatchSummary::default() {
+        return Some(ProtocolHashedComponentPatch::default());
+    }
+
+    let map_id = patch.map_id?;
+    let mut expected = ProtocolDataComponentPatchSummary::default();
+    expected.added = 1;
+    expected.added_type_ids.push(VANILLA_MAP_ID_COMPONENT_ID);
+    expected.map_id = Some(map_id);
+    if patch != &expected {
+        return None;
+    }
+
+    Some(ProtocolHashedComponentPatch {
+        added_components: BTreeMap::from([(
+            VANILLA_MAP_ID_COMPONENT_ID,
+            hash_ops_crc32c_int(map_id),
+        )]),
+        removed_components: BTreeSet::new(),
+    })
+}
+
 fn component_patch_can_be_hashed_from_summary(patch: &ProtocolDataComponentPatchSummary) -> bool {
-    patch == &ProtocolDataComponentPatchSummary::default()
+    hashed_component_patch_from_summary(patch).is_some()
+}
+
+fn hash_ops_crc32c_int(value: i32) -> i32 {
+    let mut bytes = [0u8; 5];
+    bytes[0] = 8;
+    bytes[1..].copy_from_slice(&value.to_le_bytes());
+    crc32c(&bytes) as i32
+}
+
+fn crc32c(bytes: &[u8]) -> u32 {
+    let mut crc = !0u32;
+    for &byte in bytes {
+        crc ^= u32::from(byte);
+        for _ in 0..8 {
+            let mask = 0u32.wrapping_sub(crc & 1);
+            crc = (crc >> 1) ^ (0x82f6_3b78 & mask);
+        }
+    }
+    !crc
 }
 
 fn set_inventory_slot(slots: &mut Vec<InventorySlot>, mut update: InventorySlot) {
@@ -3766,10 +3808,13 @@ fn cartography_table_quick_move_requires_server_authority(
     if item_stack_is_empty(source_item) {
         return false;
     }
+    if item_stack_has_map_id(source_item) {
+        return hashed_component_patch_from_summary(&source_item.component_patch).is_none();
+    }
     if cartography_additional_item_ids.is_empty() {
         return true;
     }
-    item_stack_has_map_id(source_item)
+    false
 }
 
 fn apply_cartography_table_menu_quick_move_to_slots(
@@ -3802,7 +3847,11 @@ fn apply_cartography_table_menu_quick_move_to_slots(
             .contains(&slot) =>
         {
             if item_stack_has_map_id(&source_item) {
-                None
+                Some((
+                    CARTOGRAPHY_TABLE_MAP_SLOT,
+                    CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
+                    false,
+                ))
             } else if item_stack_item_id_in_set(&source_item, cartography_additional_item_ids) {
                 Some((
                     CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
@@ -9186,9 +9235,8 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_cartography_table_player_map_id_quick_move_requires_server_authority() {
+    fn apply_local_cartography_table_player_map_id_quick_move_routes_to_map_slot() {
         let mut store = WorldStore::new();
-        store.set_cartography_additional_item_ids(BTreeSet::from([43, 44, 45]));
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
@@ -9197,6 +9245,63 @@ mod tests {
         let mut items =
             vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
         items[CARTOGRAPHY_TABLE_PLAYER_MAIN_START as usize] = map_id_item_stack(42, 1, 7);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let map_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            map_move.changed_slots,
+            BTreeMap::from([
+                (
+                    CARTOGRAPHY_TABLE_MAP_SLOT,
+                    hashed_map_id_item_stack(42, 1, 7)
+                ),
+                (
+                    CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                    ProtocolHashedStack::Empty
+                ),
+            ])
+        );
+        assert_eq!(map_move.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_MAP_SLOT),
+            map_id_item_stack(42, 1, 7)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_PLAYER_MAIN_START),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn cartography_table_map_id_unknown_component_requires_server_authority() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            title: "Cartography Table".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
+        let mut map_stack = map_id_item_stack(42, 1, 7);
+        map_stack.component_patch.added = 2;
+        map_stack
+            .component_patch
+            .added_type_ids
+            .push(VANILLA_MAX_DAMAGE_COMPONENT_ID);
+        map_stack.component_patch.max_damage = Some(100);
+        items[CARTOGRAPHY_TABLE_PLAYER_MAIN_START as usize] = map_stack.clone();
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 12,
@@ -9216,7 +9321,7 @@ mod tests {
         );
         assert_eq!(
             open_container_slot_item(&store, CARTOGRAPHY_TABLE_PLAYER_MAIN_START),
-            map_id_item_stack(42, 1, 7)
+            map_stack
         );
     }
 
@@ -10834,6 +10939,26 @@ mod tests {
             count,
             components: ProtocolHashedComponentPatch::default(),
         })
+    }
+
+    fn hashed_map_id_item_stack(item_id: i32, count: i32, map_id: i32) -> ProtocolHashedStack {
+        ProtocolHashedStack::Item(ProtocolHashedItemStack {
+            item_id,
+            count,
+            components: ProtocolHashedComponentPatch {
+                added_components: BTreeMap::from([(
+                    VANILLA_MAP_ID_COMPONENT_ID,
+                    hash_ops_crc32c_int(map_id),
+                )]),
+                removed_components: BTreeSet::new(),
+            },
+        })
+    }
+
+    #[test]
+    fn hash_ops_crc32c_int_matches_guava_for_map_id() {
+        assert_eq!(crc32c(b"123456789"), 0xe306_9283);
+        assert_eq!(hash_ops_crc32c_int(7), -1_726_626_450);
     }
 
     fn apply_player_instabuild(store: &mut WorldStore, instabuild: bool) {

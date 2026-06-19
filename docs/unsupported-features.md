@@ -1196,12 +1196,15 @@ When an agent does any of the following, update this file in the same slice:
           inventory is locally predicted when changed stacks have no component
           hash requirements.
         - player-inventory quick-move paths are locally predicted for:
+          - filled-map routing into the map slot when the decoded stack summary
+            contains only a `map_id` component patch that can be hashed for
+            serverbound changed slots
           - paper/map/glass-pane additional input routing when native item
             runtime provides the vanilla protocol ids
           - ordinary player inventory/hotbar range movement
-        - result-slot and filled-map input routing are kept server-authoritative
+        - result-slot and component-hash-unsupported filled-map paths are kept
+          server-authoritative
           until:
-          - hashed component patch support for map-id stacks
           - local result stack prediction
           - input consumption
           - take-result sound side effects
