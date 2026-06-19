@@ -146,6 +146,17 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if block_name == "minecraft:chorus_flower" {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
+        if block_name == "minecraft:conduit" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(6.0, 6.0, 5.0, 11.0),
+            ));
+        }
+        if matches!(
+            block_name,
+            "minecraft:azalea" | "minecraft:flowering_azalea"
+        ) {
+            return Some(azalea_collision_shape());
+        }
         if is_copper_grate_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
@@ -726,6 +737,13 @@ fn chorus_plant_arm_collision_box(direction: BlockDirection) -> BlockCollisionBo
         BlockDirection::Up => north_arm.rotate_x_270(),
         BlockDirection::Down => north_arm.rotate_x_90(),
     }
+}
+
+fn azalea_collision_shape() -> BlockCollisionShape {
+    BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::centered_column(16.0, 16.0, 8.0, 16.0)),
+        Some(BlockCollisionBox::centered_column(4.0, 4.0, 0.0, 8.0)),
+    ])
 }
 
 fn scaffolding_collision_shape(

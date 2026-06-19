@@ -461,6 +461,8 @@ When an agent does any of the following, update this file in the same slice:
       - mangrove roots / muddy mangrove roots
       - bamboo stalk
       - chorus plant / chorus flower
+      - conduit
+      - azalea / flowering azalea
       - snow layer
       - flat carpet
       - pale moss carpet base
@@ -521,6 +523,9 @@ When an agent does any of the following, update this file in the same slice:
       - `chorus_plant` follows vanilla `PipeBlock(10.0F)` center cube plus
         connected six-direction arms; `chorus_flower` uses vanilla default
         full-block collision.
+      - `conduit` follows vanilla `Block.cube(6.0)` collision.
+      - `azalea` and `flowering_azalea` follow vanilla `AzaleaBlock` collision:
+        an 8px-tall full-width crown plus a 4px center stem.
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which

@@ -1759,6 +1759,7 @@ mod tests {
     const CHORUS_PLANT_NORTH_BLOCK_STATE_ID: i32 = 14697;
     const CHORUS_PLANT_NONE_BLOCK_STATE_ID: i32 = 14705;
     const CHORUS_FLOWER_AGE_0_BLOCK_STATE_ID: i32 = 14706;
+    const CONDUIT_DRY_BLOCK_STATE_ID: i32 = 15277;
     const BAMBOO_SAPLING_BLOCK_STATE_ID: i32 = 15278;
     const BAMBOO_AGE_0_NO_LEAVES_STAGE_0_BLOCK_STATE_ID: i32 = 15279;
     const CANDLE_ONE_DRY_UNLIT_BLOCK_STATE_ID: i32 = 23099;
@@ -1775,6 +1776,8 @@ mod tests {
     const BIG_DRIPLEAF_NORTH_FULL_DRY_BLOCK_STATE_ID: i32 = 27870;
     const BIG_DRIPLEAF_STEM_NORTH_DRY_BLOCK_STATE_ID: i32 = 27896;
     const MUD_BLOCK_STATE_ID: i32 = 27922;
+    const AZALEA_BLOCK_STATE_ID: i32 = 27811;
+    const FLOWERING_AZALEA_BLOCK_STATE_ID: i32 = 27812;
     const HEAVY_CORE_DRY_BLOCK_STATE_ID: i32 = 29702;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
@@ -2496,6 +2499,35 @@ mod tests {
     }
 
     #[test]
+    fn local_player_respects_conduit_and_azalea_collision_shapes() {
+        let cases = [
+            ("conduit", CONDUIT_DRY_BLOCK_STATE_ID, 0.9, 1.013),
+            ("azalea", AZALEA_BLOCK_STATE_ID, 0.0, 0.7005),
+            (
+                "flowering azalea",
+                FLOWERING_AZALEA_BLOCK_STATE_ID,
+                0.0,
+                0.7005,
+            ),
+        ];
+
+        for (name, block_state_id, min_z, max_z) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z > min_z && pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
     fn local_player_steps_over_thin_ground_shapes() {
         let cases = [
             ("white carpet", WHITE_CARPET_BLOCK_STATE_ID, 1.0625),
@@ -2613,6 +2645,9 @@ mod tests {
             ("decorated pot", DECORATED_POT_NORTH_DRY_BLOCK_STATE_ID, 2.0),
             ("chorus plant", CHORUS_PLANT_NONE_BLOCK_STATE_ID, 1.8125),
             ("chorus flower", CHORUS_FLOWER_AGE_0_BLOCK_STATE_ID, 2.0),
+            ("conduit", CONDUIT_DRY_BLOCK_STATE_ID, 1.6875),
+            ("azalea", AZALEA_BLOCK_STATE_ID, 2.0),
+            ("flowering azalea", FLOWERING_AZALEA_BLOCK_STATE_ID, 2.0),
         ];
 
         for (name, block_state_id, expected_y) in cases {
