@@ -295,7 +295,6 @@ When an agent does any of the following, update this file in the same slice:
       - remaining vanilla voxel collision shapes
       - remaining fluid movement work beyond current still water/lava support:
         - swimming pose / sprint-swim camera and movement nuance
-        - jump-out-of-fluid collision assist
         - bubble column behavior
       - remaining status-effect movement cases beyond local support for:
         - local Speed/Slowness movement-speed modifiers
@@ -460,6 +459,13 @@ When an agent does any of the following, update this file in the same slice:
           - applies at half strength when not on ground
         - Dolphin's Grace effect id `29` overrides horizontal water drag to
           `0.96`
+        - water/lava `jumpOutOfFluid(oldY)` collision assist:
+          - checks post-move `horizontalCollision`
+          - probes the current player bounds offset by:
+            `delta_movement.y + 0.6 - current_y + old_y`
+          - requires the probed bounds to be free of block collision and any
+            fluid block
+          - sets vertical velocity to `0.3` when clear
       - vanilla-shaped flow current push for local players affected by fluids:
         - `FlowingFluid.getFlow` horizontal own-height gradients
         - empty-neighbor falling-hole lookup with the vanilla `8/9` offset

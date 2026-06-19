@@ -4,7 +4,10 @@ use super::local_player::{LocalPlayerAbilitiesState, LocalPlayerInputState, Loca
 use super::local_player_collision::{
     local_player_collides, CollisionAxis as Axis, LocalPlayerBounds, COLLISION_EPSILON,
 };
-use super::local_player_fluid::{local_player_fluid_contact, LocalPlayerFluidContactState};
+use super::local_player_fluid::{
+    local_player_bounds_contains_any_fluid, local_player_fluid_contact,
+    LocalPlayerFluidContactState,
+};
 use crate::WorldStore;
 
 pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
@@ -54,6 +57,7 @@ const LOCAL_INPUT_FAST_LAVA_CURRENT_PUSH_PER_TICK: f64 = 0.007;
 const LOCAL_INPUT_FLUID_CURRENT_MIN_PUSH_PER_TICK: f64 = 0.0045;
 const LOCAL_INPUT_FLUID_CURRENT_MIN_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.003;
 const LOCAL_INPUT_FLUID_CURRENT_APPLY_THRESHOLD_SQUARED: f64 = 1.0e-5;
+const LOCAL_INPUT_FLUID_JUMP_OUT_VELOCITY_PER_TICK: f64 = 0.3;
 const LOCAL_PLAYER_FLUID_JUMP_THRESHOLD: f64 = 0.4;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
@@ -236,6 +240,7 @@ fn advance_local_player_fluid_physics_step(
     initial_fluid_contact: LocalPlayerFluidContactState,
 ) -> LocalPlayerPoseState {
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
+    let old_y = pose.position.y;
     pose.delta_movement = local_player_velocity_with_fluid_current(
         pose.delta_movement,
         initial_fluid_contact.water_current,
@@ -332,6 +337,13 @@ fn advance_local_player_fluid_physics_step(
             step_ticks,
         );
     }
+    pose.delta_movement = local_player_jump_out_of_fluid_velocity(
+        world,
+        pose.position,
+        old_y,
+        pose.delta_movement,
+        horizontal_collision,
+    );
 
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
@@ -373,6 +385,29 @@ fn local_player_velocity_with_fluid_current(
     velocity.y += impulse.y;
     velocity.z += impulse.z;
     velocity
+}
+
+fn local_player_jump_out_of_fluid_velocity(
+    world: &WorldStore,
+    position: ProtocolVec3d,
+    old_y: f64,
+    velocity: ProtocolVec3d,
+    horizontal_collision: bool,
+) -> ProtocolVec3d {
+    let jump_clearance_y = velocity.y + LOCAL_PLAYER_STEP_HEIGHT - position.y + old_y;
+    let clear_bounds =
+        LocalPlayerBounds::at(position).moved(velocity.x, jump_clearance_y, velocity.z);
+    if horizontal_collision
+        && !local_player_collides(world, clear_bounds)
+        && !local_player_bounds_contains_any_fluid(world, clear_bounds)
+    {
+        ProtocolVec3d {
+            y: LOCAL_INPUT_FLUID_JUMP_OUT_VELOCITY_PER_TICK,
+            ..velocity
+        }
+    } else {
+        velocity
+    }
 }
 
 fn local_player_lava_current_push_per_tick(world: &WorldStore) -> f64 {
@@ -2068,6 +2103,92 @@ mod tests {
 
         assert_f64_near(downward.position.y, 1.06, 0.000001);
         assert_f64_near(downward.delta_movement.y, -0.037, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_water_jumps_out_when_horizontal_collision_has_clear_space() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 1, GRASS_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.45, 0.69),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.horizontal_collision);
+        assert_f64_near(
+            pose.delta_movement.y,
+            LOCAL_INPUT_FLUID_JUMP_OUT_VELOCITY_PER_TICK,
+            0.000001,
+        );
+    }
+
+    #[test]
+    fn local_player_in_water_does_not_jump_out_when_clearance_still_contains_fluid() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 1, GRASS_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.69),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.horizontal_collision);
+        assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_lava_jumps_out_when_horizontal_collision_has_clear_space() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 1, GRASS_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.45, 0.69),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.horizontal_collision);
+        assert_f64_near(
+            pose.delta_movement.y,
+            LOCAL_INPUT_FLUID_JUMP_OUT_VELOCITY_PER_TICK,
+            0.000001,
+        );
     }
 
     #[test]

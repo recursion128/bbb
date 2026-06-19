@@ -58,6 +58,34 @@ pub(super) fn local_player_eye_in_water(world: &WorldStore) -> bool {
         .is_some_and(|pose| local_player_fluid_contact(world, pose).eye_in_water)
 }
 
+pub(super) fn local_player_bounds_contains_any_fluid(
+    world: &WorldStore,
+    bounds: LocalPlayerBounds,
+) -> bool {
+    let min_x = block_floor(bounds.min_x());
+    let max_x = block_ceil(bounds.max_x());
+    let min_y = block_floor(bounds.min_y());
+    let max_y = block_ceil(bounds.max_y());
+    let min_z = block_floor(bounds.min_z());
+    let max_z = block_ceil(bounds.max_z());
+
+    for x in min_x..max_x {
+        for y in min_y..max_y {
+            for z in min_z..max_z {
+                if world
+                    .probe_block(BlockPos { x, y, z })
+                    .and_then(|block| block.fluid)
+                    .is_some()
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
 fn local_player_fluid_contact_in_bounds(
     world: &WorldStore,
     bounds: LocalPlayerBounds,
