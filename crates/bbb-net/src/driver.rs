@@ -12,10 +12,10 @@ mod commands;
 pub(crate) use commands::{
     send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
-    send_chat_command_signed, send_chat_message, send_command_suggestion_request,
-    send_container_button_click, send_container_click, send_container_close,
-    send_container_slot_state_changed, send_custom_payload, send_edit_book, send_entity_tag_query,
-    send_interact_entity, send_lock_difficulty, send_paddle_boat, send_perform_respawn,
+    send_chat_command_signed, send_chat_message, send_client_command,
+    send_command_suggestion_request, send_container_button_click, send_container_click,
+    send_container_close, send_container_slot_state_changed, send_custom_payload, send_edit_book,
+    send_entity_tag_query, send_interact_entity, send_lock_difficulty, send_paddle_boat,
     send_pick_item_from_block, send_pick_item_from_entity, send_ping_request, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_recipe_book_change_settings, send_recipe_book_seen_recipe,
@@ -208,8 +208,16 @@ pub(crate) async fn read_packet_or_drive_connection(
                     Some(NetCommand::CommandSuggestionRequest(request)) => {
                         send_command_suggestion_request(conn, request).await?;
                     }
-                    Some(NetCommand::PerformRespawn) => {
-                        send_perform_respawn(conn).await?;
+                    Some(command @ (NetCommand::PerformRespawn
+                    | NetCommand::RequestStats
+                    | NetCommand::RequestGameRuleValues)) => {
+                        send_client_command(
+                            conn,
+                            command
+                                .client_command_action()
+                                .expect("client command action variant"),
+                        )
+                        .await?;
                     }
                     Some(NetCommand::AcceptCodeOfConduct) => {}
                     Some(NetCommand::Disconnect) | None => {
@@ -278,6 +286,8 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ContainerSlotStateChanged(_)) => {}
                     Some(NetCommand::CommandSuggestionRequest(_)) => {}
                     Some(NetCommand::PerformRespawn) => {}
+                    Some(NetCommand::RequestStats) => {}
+                    Some(NetCommand::RequestGameRuleValues) => {}
                     Some(NetCommand::AcceptCodeOfConduct) => {
                         if matches!(state, ConnectionState::Configuration) {
                             send_accept_code_of_conduct(conn).await?;
@@ -470,20 +480,28 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn drive_connection_sends_perform_respawn_net_command_in_play() {
+    async fn drive_connection_sends_client_command_net_commands_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
-        let (tx, mut commands) = mpsc::channel(2);
+        let (tx, mut commands) = mpsc::channel(4);
         tx.send(NetCommand::PerformRespawn).await.unwrap();
+        tx.send(NetCommand::RequestStats).await.unwrap();
+        tx.send(NetCommand::RequestGameRuleValues).await.unwrap();
         tx.send(NetCommand::Disconnect).await.unwrap();
         let mut player_position_state = PlayerPositionState::default();
 
         drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
 
-        let (packet_id, payload) = read_server_packet(&mut server, "perform respawn").await;
-        assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_COMMAND);
-        let mut decoder = Decoder::new(&payload);
-        assert_eq!(decoder.read_var_i32().unwrap(), 0);
-        assert!(decoder.is_empty());
+        for (name, ordinal) in [
+            ("perform respawn", 0),
+            ("request stats", 1),
+            ("request game rule values", 2),
+        ] {
+            let (packet_id, payload) = read_server_packet(&mut server, name).await;
+            assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_COMMAND);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_var_i32().unwrap(), ordinal);
+            assert!(decoder.is_empty());
+        }
     }
 
     #[tokio::test]

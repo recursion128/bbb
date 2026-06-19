@@ -156,6 +156,23 @@ pub struct ChatAcknowledgement {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClientCommandAction {
+    PerformRespawn,
+    RequestStats,
+    RequestGameRuleValues,
+}
+
+impl ClientCommandAction {
+    fn ordinal(self) -> i32 {
+        match self {
+            Self::PerformRespawn => 0,
+            Self::RequestStats => 1,
+            Self::RequestGameRuleValues => 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LockDifficultyCommand {
     pub locked: bool,
 }
@@ -1028,10 +1045,14 @@ pub fn encode_play_chunk_batch_received(desired_chunks_per_tick: f32) -> (i32, V
     )
 }
 
-pub fn encode_play_perform_respawn() -> (i32, Vec<u8>) {
+pub fn encode_play_client_command(action: ClientCommandAction) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
-    out.write_var_i32(0);
+    out.write_var_i32(action.ordinal());
     (ids::play::SERVERBOUND_CLIENT_COMMAND, out.into_inner())
+}
+
+pub fn encode_play_perform_respawn() -> (i32, Vec<u8>) {
+    encode_play_client_command(ClientCommandAction::PerformRespawn)
 }
 
 pub fn encode_play_configuration_acknowledged() -> (i32, Vec<u8>) {

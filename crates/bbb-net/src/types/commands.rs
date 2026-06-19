@@ -1,13 +1,13 @@
 use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, CommandSuggestionRequest,
-    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
-    EditBook, EntityTagQuery, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
-    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-    PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
-    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
-    SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SignUpdate, SpectateEntity,
-    TeleportToEntity, UseItem, UseItemOn, Vec3d,
+    ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, ClientCommandAction,
+    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
+    ContainerSlotStateChanged, EditBook, EntityTagQuery, InteractEntity, InteractionHand,
+    LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
+    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
+    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SignUpdate,
+    SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
 };
 use serde::{Deserialize, Serialize};
 
@@ -154,6 +154,8 @@ pub enum NetCommand {
     TeleportToEntity(TeleportToEntity),
     SelectBundleItem(SelectBundleItem),
     PerformRespawn,
+    RequestStats,
+    RequestGameRuleValues,
     ContainerButtonClick(ContainerButtonClick),
     ContainerClick(ContainerClick),
     ContainerClose(ContainerCloseRequest),
@@ -161,4 +163,15 @@ pub enum NetCommand {
     CommandSuggestionRequest(CommandSuggestionRequest),
     AcceptCodeOfConduct,
     Disconnect,
+}
+
+impl NetCommand {
+    pub(crate) fn client_command_action(&self) -> Option<ClientCommandAction> {
+        match self {
+            Self::PerformRespawn => Some(ClientCommandAction::PerformRespawn),
+            Self::RequestStats => Some(ClientCommandAction::RequestStats),
+            Self::RequestGameRuleValues => Some(ClientCommandAction::RequestGameRuleValues),
+            _ => None,
+        }
+    }
 }

@@ -484,6 +484,36 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.request_stats" {
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::RequestStats);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "net.request_game_rule_values" {
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::RequestGameRuleValues);
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.place_recipe" {
         let Some(container_id) = i32_param(&request.params, "container_id") else {
             return ControlResponse {
@@ -2447,6 +2477,37 @@ mod tests {
         assert_eq!(
             snapshot.read().unwrap().net_requests,
             vec![NetControlRequest::PerformRespawn]
+        );
+    }
+
+    #[test]
+    fn net_client_command_requests_queue_requests() {
+        let snapshot = shared_snapshot("test");
+
+        let stats = dispatch(
+            ControlRequest {
+                method: "net.request_stats".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+        let game_rules = dispatch(
+            ControlRequest {
+                method: "net.request_game_rule_values".to_string(),
+                params: json!({}),
+            },
+            &snapshot,
+        );
+
+        assert!(stats.ok);
+        assert!(game_rules.ok);
+        assert_eq!(game_rules.result.unwrap()["pending"], 2);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![
+                NetControlRequest::RequestStats,
+                NetControlRequest::RequestGameRuleValues,
+            ]
         );
     }
 

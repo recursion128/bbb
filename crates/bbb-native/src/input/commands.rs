@@ -105,6 +105,28 @@ pub(crate) fn queue_perform_respawn_command(
     }
 }
 
+pub(crate) fn queue_request_stats_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::RequestStats).is_ok() {
+            counters.request_stats_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_request_game_rule_values_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if let Some(tx) = net_commands {
+        if tx.try_send(NetCommand::RequestGameRuleValues).is_ok() {
+            counters.request_game_rule_values_commands_queued += 1;
+        }
+    }
+}
+
 pub(crate) fn queue_place_recipe_command(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -959,6 +981,21 @@ mod tests {
 
         assert_eq!(counters.perform_respawn_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::PerformRespawn);
+    }
+
+    #[test]
+    fn queues_client_command_requests() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+
+        queue_request_stats_command(&mut counters, &commands);
+        queue_request_game_rule_values_command(&mut counters, &commands);
+
+        assert_eq!(counters.request_stats_commands_queued, 1);
+        assert_eq!(counters.request_game_rule_values_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestStats);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestGameRuleValues);
     }
 
     #[test]

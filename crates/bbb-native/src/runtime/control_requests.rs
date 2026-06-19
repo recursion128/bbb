@@ -23,7 +23,8 @@ use crate::{
         queue_edit_book_command, queue_entity_tag_query_command, queue_lock_difficulty_command,
         queue_perform_respawn_command, queue_place_recipe_command, queue_player_abilities_command,
         queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
-        queue_rename_item_command, queue_seen_advancements_command, queue_select_trade_command,
+        queue_rename_item_command, queue_request_game_rule_values_command,
+        queue_request_stats_command, queue_seen_advancements_command, queue_select_trade_command,
         queue_set_beacon_command, queue_sign_update_command, queue_spectate_entity_command,
         queue_teleport_to_entity_command, select_bundle_item, select_hotbar_slot,
     },
@@ -168,6 +169,12 @@ pub(crate) fn pump_control_net_requests(
             }
             NetControlRequest::PerformRespawn => {
                 queue_perform_respawn_command(counters, net_commands);
+            }
+            NetControlRequest::RequestStats => {
+                queue_request_stats_command(counters, net_commands);
+            }
+            NetControlRequest::RequestGameRuleValues => {
+                queue_request_game_rule_values_command(counters, net_commands);
             }
             NetControlRequest::PlaceRecipe {
                 container_id,
@@ -666,6 +673,26 @@ mod tests {
 
         assert_eq!(counters.perform_respawn_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::PerformRespawn);
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_client_command_requests() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.extend([
+            bbb_control::NetControlRequest::RequestStats,
+            bbb_control::NetControlRequest::RequestGameRuleValues,
+        ]);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(2);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.request_stats_commands_queued, 1);
+        assert_eq!(counters.request_game_rule_values_commands_queued, 1);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestStats);
+        assert_eq!(rx.try_recv().unwrap(), NetCommand::RequestGameRuleValues);
         assert!(snapshot.read().unwrap().net_requests.is_empty());
     }
 

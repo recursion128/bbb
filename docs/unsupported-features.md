@@ -701,6 +701,8 @@ When an agent does any of the following, update this file in the same slice:
         - the leading slash
       - queue explicit `ServerboundClientCommandPacket` commands:
         - perform-respawn
+        - request-stats
+        - request-game-rule-values
         - from native/control input
       - avoid auto-respawning on dead health
     - Sign editor input paths:

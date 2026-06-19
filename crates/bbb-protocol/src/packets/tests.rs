@@ -941,6 +941,21 @@ fn encodes_perform_respawn() {
 }
 
 #[test]
+fn encodes_client_command_actions() {
+    for (action, expected_ordinal) in [
+        (ClientCommandAction::PerformRespawn, 0),
+        (ClientCommandAction::RequestStats, 1),
+        (ClientCommandAction::RequestGameRuleValues, 2),
+    ] {
+        let (id, payload) = encode_play_client_command(action);
+        assert_eq!(id, ids::play::SERVERBOUND_CLIENT_COMMAND);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), expected_ordinal);
+        assert!(decoder.is_empty());
+    }
+}
+
+#[test]
 fn encodes_set_carried_item() {
     let (id, payload) = encode_play_set_carried_item(6);
     assert_eq!(id, ids::play::SERVERBOUND_SET_CARRIED_ITEM);

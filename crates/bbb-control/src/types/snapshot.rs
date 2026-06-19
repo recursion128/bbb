@@ -39,6 +39,8 @@ pub enum NetControlRequest {
         flying: bool,
     },
     PerformRespawn,
+    RequestStats,
+    RequestGameRuleValues,
     PlaceRecipe {
         container_id: i32,
         recipe_index: i32,
