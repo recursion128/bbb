@@ -100,6 +100,8 @@ const CARTOGRAPHY_TABLE_MAP_SLOT: i16 = 0;
 const CARTOGRAPHY_TABLE_ADDITIONAL_SLOT: i16 = 1;
 const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
 const CARTOGRAPHY_TABLE_PLAYER_MAIN_START: i16 = 3;
+const CARTOGRAPHY_TABLE_PLAYER_MAIN_END: i16 = 30;
+const CARTOGRAPHY_TABLE_HOTBAR_START: i16 = 30;
 const CARTOGRAPHY_TABLE_HOTBAR_END: i16 = 39;
 const CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT: i16 = 39;
 const LOOM_BANNER_SLOT: i16 = 0;
@@ -151,6 +153,7 @@ const VANILLA_MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
 const VANILLA_USE_EFFECTS_COMPONENT_ID: i32 = 5;
 const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
 const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
+const VANILLA_MAP_ID_COMPONENT_ID: i32 = 41;
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
@@ -1028,6 +1031,13 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_cartography_additional_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.cartography_additional_item_ids = item_ids
+            .into_iter()
+            .filter(|item_id| *item_id >= 0)
+            .collect();
+    }
+
     pub fn set_freeze_immune_wearable_item_ids(&mut self, item_ids: BTreeSet<i32>) {
         self.freeze_immune_wearable_item_ids = item_ids
             .into_iter()
@@ -1297,6 +1307,7 @@ impl WorldStore {
                         if cartography_table_quick_move_requires_server_authority(
                             &slots_after,
                             request.slot_num,
+                            &self.cartography_additional_item_ids,
                         ) {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                 ProtocolContainerInput::QuickMove,
@@ -1306,6 +1317,7 @@ impl WorldStore {
                             container_id,
                             &mut slots_after,
                             request.slot_num,
+                            &self.cartography_additional_item_ids,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_LOOM_ID) {
@@ -1755,6 +1767,23 @@ fn item_stack_has_piercing_weapon(
             .component_patch
             .added_type_ids
             .contains(&VANILLA_PIERCING_WEAPON_COMPONENT_ID)
+}
+
+fn item_stack_has_map_id(stack: &ProtocolItemStackSummary) -> bool {
+    if item_stack_is_empty(stack)
+        || stack
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_MAP_ID_COMPONENT_ID)
+    {
+        return false;
+    }
+
+    stack.component_patch.map_id.is_some()
+        || stack
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_MAP_ID_COMPONENT_ID)
 }
 
 fn item_stack_attack_range(
@@ -3253,6 +3282,7 @@ fn apply_smithing_menu_quick_move_to_slots(
 fn cartography_table_quick_move_requires_server_authority(
     slots: &[ContainerSlot],
     slot_num: i16,
+    cartography_additional_item_ids: &BTreeSet<i32>,
 ) -> bool {
     if !(0..CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT).contains(&slot_num) {
         return false;
@@ -3263,19 +3293,31 @@ fn cartography_table_quick_move_requires_server_authority(
     ) {
         return false;
     }
-    inventory_menu_slot_has_item(slots, slot_num)
+    if slot_num == CARTOGRAPHY_TABLE_RESULT_SLOT {
+        return inventory_menu_slot_has_item(slots, slot_num);
+    }
+    let Some(source_item) = container_slot_item(slots, slot_num) else {
+        return false;
+    };
+    if item_stack_is_empty(source_item) {
+        return false;
+    }
+    if cartography_additional_item_ids.is_empty() {
+        return true;
+    }
+    item_stack_has_map_id(source_item)
 }
 
 fn apply_cartography_table_menu_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
     slot_num: i16,
+    cartography_additional_item_ids: &BTreeSet<i32>,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if !matches!(
-        slot_num,
-        CARTOGRAPHY_TABLE_MAP_SLOT | CARTOGRAPHY_TABLE_ADDITIONAL_SLOT
-    ) {
+    if !(0..CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT).contains(&slot_num)
+        || slot_num == CARTOGRAPHY_TABLE_RESULT_SLOT
+    {
         return;
     }
     let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
@@ -3285,15 +3327,55 @@ fn apply_cartography_table_menu_quick_move_to_slots(
         return;
     }
 
-    let mut moving = slots[source_index].item.clone();
+    let source_item = slots[source_index].item.clone();
+    let target = match slot_num {
+        CARTOGRAPHY_TABLE_MAP_SLOT | CARTOGRAPHY_TABLE_ADDITIONAL_SLOT => Some((
+            CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+            CARTOGRAPHY_TABLE_HOTBAR_END,
+            false,
+        )),
+        slot if (CARTOGRAPHY_TABLE_PLAYER_MAIN_START..CARTOGRAPHY_TABLE_HOTBAR_END)
+            .contains(&slot) =>
+        {
+            if item_stack_has_map_id(&source_item) {
+                None
+            } else if item_stack_item_id_in_set(&source_item, cartography_additional_item_ids) {
+                Some((
+                    CARTOGRAPHY_TABLE_ADDITIONAL_SLOT,
+                    CARTOGRAPHY_TABLE_RESULT_SLOT,
+                    false,
+                ))
+            } else if (CARTOGRAPHY_TABLE_PLAYER_MAIN_START..CARTOGRAPHY_TABLE_PLAYER_MAIN_END)
+                .contains(&slot)
+            {
+                Some((
+                    CARTOGRAPHY_TABLE_HOTBAR_START,
+                    CARTOGRAPHY_TABLE_HOTBAR_END,
+                    false,
+                ))
+            } else {
+                Some((
+                    CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                    CARTOGRAPHY_TABLE_PLAYER_MAIN_END,
+                    false,
+                ))
+            }
+        }
+        _ => None,
+    };
+    let Some((start_slot, end_slot, backwards)) = target else {
+        return;
+    };
+
+    let mut moving = source_item;
     if move_item_stack_to_slots(
         container_id,
         slots,
         source_index,
         &mut moving,
-        CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
-        CARTOGRAPHY_TABLE_HOTBAR_END,
-        false,
+        start_slot,
+        end_slot,
+        backwards,
         default_item_max_stack_sizes,
     ) {
         normalize_item_stack(&mut moving);
@@ -7782,6 +7864,131 @@ mod tests {
     }
 
     #[test]
+    fn apply_local_cartography_table_quick_move_routes_additional_and_player_ranges() {
+        let mut store = WorldStore::new();
+        store.set_cartography_additional_item_ids(BTreeSet::from([43, 44, 45]));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            title: "Cartography Table".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
+        items[CARTOGRAPHY_TABLE_PLAYER_MAIN_START as usize] = item_stack(43, 2);
+        items[(CARTOGRAPHY_TABLE_PLAYER_MAIN_START + 1) as usize] = item_stack(50, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let additional_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            additional_move.changed_slots,
+            BTreeMap::from([
+                (CARTOGRAPHY_TABLE_ADDITIONAL_SLOT, hashed_item_stack(43, 2)),
+                (
+                    CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                    ProtocolHashedStack::Empty
+                ),
+            ])
+        );
+
+        let main_to_hotbar = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CARTOGRAPHY_TABLE_PLAYER_MAIN_START + 1,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            main_to_hotbar.changed_slots,
+            BTreeMap::from([
+                (
+                    CARTOGRAPHY_TABLE_PLAYER_MAIN_START + 1,
+                    ProtocolHashedStack::Empty
+                ),
+                (CARTOGRAPHY_TABLE_HOTBAR_START, hashed_item_stack(50, 3)),
+            ])
+        );
+
+        let hotbar_to_main = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CARTOGRAPHY_TABLE_HOTBAR_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            hotbar_to_main.changed_slots,
+            BTreeMap::from([
+                (
+                    CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                    hashed_item_stack(50, 3)
+                ),
+                (CARTOGRAPHY_TABLE_HOTBAR_START, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_ADDITIONAL_SLOT),
+            item_stack(43, 2)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_PLAYER_MAIN_START),
+            item_stack(50, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_HOTBAR_START),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_cartography_table_player_map_id_quick_move_requires_server_authority() {
+        let mut store = WorldStore::new();
+        store.set_cartography_additional_item_ids(BTreeSet::from([43, 44, 45]));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
+            title: "Cartography Table".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); CARTOGRAPHY_TABLE_TOTAL_SLOT_COUNT as usize];
+        items[CARTOGRAPHY_TABLE_PLAYER_MAIN_START as usize] = map_id_item_stack(42, 1, 7);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        assert_eq!(
+            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: CARTOGRAPHY_TABLE_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            }),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickMove
+            ))
+        );
+        assert_eq!(
+            open_container_slot_item(&store, CARTOGRAPHY_TABLE_PLAYER_MAIN_START),
+            map_id_item_stack(42, 1, 7)
+        );
+    }
+
+    #[test]
     fn apply_local_stonecutter_quick_move_moves_input_slot_to_player_forward() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
@@ -9298,6 +9505,16 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn map_id_item_stack(item_id: i32, count: i32, map_id: i32) -> ProtocolItemStackSummary {
+        let mut item = item_stack(item_id, count);
+        item.component_patch.added = 1;
+        item.component_patch
+            .added_type_ids
+            .push(VANILLA_MAP_ID_COMPONENT_ID);
+        item.component_patch.map_id = Some(map_id);
+        item
     }
 
     fn item_attack_range(min_reach: f32, max_reach: f32) -> ItemAttackRange {

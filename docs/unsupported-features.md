@@ -1184,9 +1184,12 @@ When an agent does any of the following, update this file in the same slice:
         - shift-click from the map and additional slots back to the player
           inventory is locally predicted when changed stacks have no component
           hash requirements.
-        - result-slot and player-inventory quick-move paths are kept
-          server-authoritative until:
-          - full cartography input item/tag routing
+        - player-inventory quick-move paths are locally predicted for:
+          - paper/map/glass-pane additional input routing when native item
+            runtime provides the vanilla protocol ids
+          - ordinary player inventory/hotbar range movement
+        - result-slot and filled-map input routing are kept server-authoritative
+          until:
           - hashed component patch support for map-id stacks
           - local result stack prediction
           - input consumption

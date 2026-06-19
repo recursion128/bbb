@@ -7997,6 +7997,62 @@ mod tests {
     }
 
     #[test]
+    fn cartography_table_shift_click_player_additional_item_queues_predicted_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.set_cartography_additional_item_ids(BTreeSet::from([43, 44, 45]));
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: CARTOGRAPHY_TABLE_MENU_TYPE_ID,
+            title: "Cartography Table".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[38] = item_stack(43, 2);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(712.0, 427.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 38,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (1, HashedStack::Item(hashed_item(43, 2))),
+                    (38, HashedStack::Empty),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[1].item, item_stack(43, 2));
+        assert_eq!(slots[38].item, ItemStackSummary::empty());
+    }
+
+    #[test]
     fn loom_shift_click_input_slots_queue_predicted_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);

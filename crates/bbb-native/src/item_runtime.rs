@@ -65,6 +65,8 @@ const BREWING_INGREDIENT_ITEM_IDS: &[&str] = &[
     "minecraft:blaze_powder",
     "minecraft:phantom_membrane",
 ];
+const CARTOGRAPHY_ADDITIONAL_ITEM_IDS: &[&str] =
+    &["minecraft:paper", "minecraft:map", "minecraft:glass_pane"];
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct NativeItemTooltipLine {
@@ -385,6 +387,22 @@ impl NativeItemRuntime {
 
     pub(crate) fn brewing_ingredient_item_count(&self) -> usize {
         self.brewing_ingredient_item_ids_by_protocol_id().len()
+    }
+
+    pub(crate) fn cartography_additional_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        let Some(registry) = &self.registry else {
+            return BTreeSet::new();
+        };
+        let item_ids = protocol_ids_for_resource_ids(registry, CARTOGRAPHY_ADDITIONAL_ITEM_IDS);
+        if item_ids.len() == CARTOGRAPHY_ADDITIONAL_ITEM_IDS.len() {
+            item_ids
+        } else {
+            BTreeSet::new()
+        }
+    }
+
+    pub(crate) fn cartography_additional_item_count(&self) -> usize {
+        self.cartography_additional_item_ids_by_protocol_id().len()
     }
 
     pub(crate) fn freeze_immune_wearable_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
