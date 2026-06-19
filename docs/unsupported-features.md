@@ -1209,11 +1209,16 @@ When an agent does any of the following, update this file in the same slice:
           - paper/map/glass-pane additional input routing when native item
             runtime provides the vanilla protocol ids
           - ordinary player inventory/hotbar range movement
+        - result-slot quick-move into the player inventory is locally predicted
+          when the current server result fully fits and the single map and
+          additional inputs are consumed to empty.
         - result-slot and component-hash-unsupported filled-map paths are kept
-          server-authoritative
-          until:
+          server-authoritative until:
+          - result-slot pickup
+          - component-hash-unsupported result stacks
           - local result stack prediction
-          - input consumption
+          - result recomputation after partial input consumption
+          - blocked or partial result transfers
           - take-result sound side effects
         - result-state sprites are projected from:
           - input map id components
