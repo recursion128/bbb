@@ -1426,6 +1426,10 @@ mod tests {
     const WATER_CAULDRON_LEVEL_3_BLOCK_STATE_ID: i32 = 9463;
     const HOPPER_NORTH_ENABLED_BLOCK_STATE_ID: i32 = 11314;
     const ENCHANTING_TABLE_BLOCK_STATE_ID: i32 = 9451;
+    const GRINDSTONE_FLOOR_NORTH_BLOCK_STATE_ID: i32 = 20772;
+    const GRINDSTONE_WALL_NORTH_BLOCK_STATE_ID: i32 = 20776;
+    const GRINDSTONE_CEILING_NORTH_BLOCK_STATE_ID: i32 = 20780;
+    const LECTERN_NORTH_NO_BOOK_BLOCK_STATE_ID: i32 = 20787;
     const BELL_FLOOR_NORTH_BLOCK_STATE_ID: i32 = 20806;
     const BELL_CEILING_NORTH_BLOCK_STATE_ID: i32 = 20814;
     const BELL_SINGLE_WALL_NORTH_BLOCK_STATE_ID: i32 = 20822;
@@ -2057,6 +2061,11 @@ mod tests {
             ("north hopper", HOPPER_NORTH_ENABLED_BLOCK_STATE_ID, 0.7005),
             ("enchanting table", ENCHANTING_TABLE_BLOCK_STATE_ID, 0.7005),
             ("anvil", ANVIL_NORTH_BLOCK_STATE_ID, 0.7005),
+            (
+                "north wall grindstone",
+                GRINDSTONE_WALL_NORTH_BLOCK_STATE_ID,
+                0.7005,
+            ),
         ];
 
         for (name, block_state_id, max_z) in cases {
@@ -2073,6 +2082,51 @@ mod tests {
             assert!(pose.horizontal_collision, "{name}");
             assert!(pose.on_ground, "{name}");
         }
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_grindstone_floor_and_ceiling_faces() {
+        let cases = [
+            (
+                "north floor grindstone",
+                GRINDSTONE_FLOOR_NORTH_BLOCK_STATE_ID,
+            ),
+            (
+                "north ceiling grindstone",
+                GRINDSTONE_CEILING_NORTH_BLOCK_STATE_ID,
+            ),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z <= 0.8255,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_steps_onto_lectern_base_but_stops_at_center_column() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, LECTERN_NORTH_NO_BOOK_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+        assert_f64_near(pose.position.y, 1.125, 0.0005);
+        assert!(
+            pose.position.z > 0.7005 && pose.position.z <= 0.9505,
+            "position was {:?}",
+            pose.position
+        );
+        assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
     }
 
     #[test]

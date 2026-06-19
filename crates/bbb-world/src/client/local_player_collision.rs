@@ -149,6 +149,12 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
                 BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 9.0),
             ));
         }
+        if block_name == "minecraft:lectern" {
+            return Some(lectern_collision_shape());
+        }
+        if block_name == "minecraft:grindstone" {
+            return grindstone_collision_shape(&block.block_properties);
+        }
         if block_name == "minecraft:bell" {
             return bell_collision_shape(&block.block_properties);
         }
@@ -767,6 +773,75 @@ fn anvil_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockC
     Some(BlockCollisionShape::from_boxes(boxes))
 }
 
+fn lectern_collision_shape() -> BlockCollisionShape {
+    BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 2.0)),
+        Some(BlockCollisionBox::centered_column(8.0, 8.0, 2.0, 14.0)),
+    ])
+}
+
+fn grindstone_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let shape = match properties.get("face").map(String::as_str)? {
+        "wall" => grindstone_north_wall_collision_shape(),
+        "floor" => grindstone_north_wall_collision_shape().map_boxes(rotate_grindstone_to_floor),
+        "ceiling" => {
+            grindstone_north_wall_collision_shape().map_boxes(rotate_grindstone_to_ceiling)
+        }
+        _ => return None,
+    };
+    Some(shape.rotate_to_direction(facing))
+}
+
+fn grindstone_north_wall_collision_shape() -> BlockCollisionShape {
+    BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::from_pixels(
+            [4.0, 2.0, 0.0],
+            [12.0, 14.0, 12.0],
+        )),
+        Some(BlockCollisionBox::from_pixels(
+            [2.0, 6.0, 7.0],
+            [4.0, 10.0, 16.0],
+        )),
+        Some(BlockCollisionBox::from_pixels(
+            [2.0, 5.0, 3.0],
+            [4.0, 11.0, 9.0],
+        )),
+        Some(BlockCollisionBox::from_pixels(
+            [12.0, 6.0, 7.0],
+            [14.0, 10.0, 16.0],
+        )),
+        Some(BlockCollisionBox::from_pixels(
+            [12.0, 5.0, 3.0],
+            [14.0, 11.0, 9.0],
+        )),
+    ])
+}
+
+fn rotate_grindstone_to_floor(shape_box: BlockCollisionBox) -> BlockCollisionBox {
+    BlockCollisionBox {
+        min_x: shape_box.min_x,
+        min_y: 1.0 - shape_box.max_z,
+        min_z: shape_box.min_y,
+        max_x: shape_box.max_x,
+        max_y: 1.0 - shape_box.min_z,
+        max_z: shape_box.max_y,
+    }
+}
+
+fn rotate_grindstone_to_ceiling(shape_box: BlockCollisionBox) -> BlockCollisionBox {
+    BlockCollisionBox {
+        min_x: 1.0 - shape_box.max_x,
+        min_y: shape_box.min_z,
+        min_z: shape_box.min_y,
+        max_x: 1.0 - shape_box.min_x,
+        max_y: shape_box.max_z,
+        max_z: shape_box.max_y,
+    }
+}
+
 fn bell_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
     let facing = HorizontalDirection::parse(properties.get("facing")?)?;
     match properties.get("attachment").map(String::as_str)? {
@@ -1157,6 +1232,12 @@ impl BlockCollisionShape {
             boxes: self
                 .boxes
                 .map(|shape_box| shape_box.map(BlockCollisionBox::invert_y)),
+        }
+    }
+
+    fn map_boxes(self, mut f: impl FnMut(BlockCollisionBox) -> BlockCollisionBox) -> Self {
+        Self {
+            boxes: self.boxes.map(|shape_box| shape_box.map(&mut f)),
         }
     }
 
