@@ -8,7 +8,7 @@ use bbb_protocol::packets::{
     EntityEvent as ProtocolEntityEvent, EntityMove as ProtocolEntityMove,
     EntityPositionSync as ProtocolEntityPositionSync, EquipmentSlot, EquipmentSlotUpdate,
     GameProfile as ProtocolGameProfile, GameType as ProtocolGameType,
-    HurtAnimation as ProtocolHurtAnimation, ItemStackSummary,
+    HurtAnimation as ProtocolHurtAnimation, InteractionHand, ItemStackSummary,
     ItemStackSummary as ProtocolItemStackSummary, MinecartStep as ProtocolMinecartStep,
     MoveMinecartAlongTrack as ProtocolMoveMinecartAlongTrack, MoveVehicle as ProtocolMoveVehicle,
     PlayLogin as ProtocolPlayLogin, PlayerInfoAction as ProtocolPlayerInfoAction,
@@ -16,9 +16,10 @@ use bbb_protocol::packets::{
     RemoveEntities as ProtocolRemoveEntities, RotateHead as ProtocolRotateHead,
     SetEntityData as ProtocolSetEntityData, SetEntityLink as ProtocolSetEntityLink,
     SetEntityMotion as ProtocolSetEntityMotion, SetEquipment as ProtocolSetEquipment,
-    SetPassengers as ProtocolSetPassengers, TakeItemEntity as ProtocolTakeItemEntity,
-    TeleportEntity as ProtocolTeleportEntity, UpdateAttributes as ProtocolUpdateAttributes,
-    Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
+    TakeItemEntity as ProtocolTakeItemEntity, TeleportEntity as ProtocolTeleportEntity,
+    UpdateAttributes as ProtocolUpdateAttributes, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y,
+    PLAYER_RELATIVE_X,
 };
 
 #[test]
@@ -463,6 +464,99 @@ fn set_entity_data_ignores_unknown_entities() {
     assert_eq!(store.counters().entity_data_values_received, 1);
     assert_eq!(store.counters().entity_data_updates_applied, 0);
     assert_eq!(store.counters().entity_data_updates_ignored, 1);
+}
+
+#[test]
+fn local_player_using_item_tracks_living_entity_flags() {
+    let mut store = WorldStore::new();
+    store.local_player_id = Some(123);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        123,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![living_entity_flags_data(0x01)],
+    }));
+    assert!(store.local_player().interaction.using_item);
+    assert_eq!(
+        store.local_player().interaction.using_item_hand,
+        Some(InteractionHand::MainHand)
+    );
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![living_entity_flags_data(0x00)],
+    }));
+    assert!(!store.local_player().interaction.using_item);
+    assert_eq!(store.local_player().interaction.using_item_hand, None);
+
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 40,
+        item: item_stack(43, 1),
+    });
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![living_entity_flags_data(0x03)],
+    }));
+    assert!(store.local_player().interaction.using_item);
+    assert_eq!(
+        store.local_player().interaction.using_item_hand,
+        Some(InteractionHand::OffHand)
+    );
+}
+
+#[test]
+fn local_player_using_item_flags_do_not_start_with_empty_hand() {
+    let mut store = WorldStore::new();
+    store.local_player_id = Some(123);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        123,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![living_entity_flags_data(0x01)],
+    }));
+
+    assert!(!store.local_player().interaction.using_item);
+    assert_eq!(store.local_player().interaction.using_item_hand, None);
+}
+
+#[test]
+fn local_player_using_item_flags_do_not_replace_existing_started_hand() {
+    let mut store = WorldStore::new();
+    store.local_player_id = Some(123);
+    store.apply_add_entity(protocol_add_entity_with_type(
+        123,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: item_stack(42, 1),
+    });
+    store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 40,
+        item: item_stack(43, 1),
+    });
+    store.set_local_using_item_with_hand(true, InteractionHand::MainHand);
+
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 123,
+        values: vec![living_entity_flags_data(0x03)],
+    }));
+
+    assert!(store.local_player().interaction.using_item);
+    assert_eq!(
+        store.local_player().interaction.using_item_hand,
+        Some(InteractionHand::MainHand)
+    );
 }
 
 #[test]
@@ -4141,6 +4235,14 @@ fn item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataV
         data_id: VANILLA_ITEM_ENTITY_STACK_DATA_ID,
         serializer_id: 7,
         value: EntityDataValueKind::ItemStack(item),
+    }
+}
+
+fn living_entity_flags_data(flags: i8) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id: 8,
+        serializer_id: 0,
+        value: EntityDataValueKind::Byte(flags),
     }
 }
 

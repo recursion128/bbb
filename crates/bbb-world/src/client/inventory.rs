@@ -810,6 +810,22 @@ impl WorldStore {
                 .is_some_and(item_stack_is_non_empty)
     }
 
+    pub(crate) fn local_item_in_hand_is_non_empty(&self, hand: InteractionHand) -> bool {
+        match hand {
+            InteractionHand::MainHand => {
+                let selected_slot = self.local_player.selected_hotbar_slot;
+                if selected_slot > 8 {
+                    return false;
+                }
+                self.local_player_inventory_item(i32::from(selected_slot))
+                    .is_some_and(item_stack_is_non_empty)
+            }
+            InteractionHand::OffHand => self
+                .local_offhand_item()
+                .is_some_and(item_stack_is_non_empty),
+        }
+    }
+
     pub fn local_selected_main_hand_has_piercing_weapon(&self) -> bool {
         let selected_slot = self.local_player.selected_hotbar_slot;
         if selected_slot > 8 {

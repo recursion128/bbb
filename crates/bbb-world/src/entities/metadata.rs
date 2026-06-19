@@ -1,19 +1,30 @@
 use bbb_protocol::packets::{
-    SetEntityData as ProtocolSetEntityData, SetEquipment as ProtocolSetEquipment,
-    UpdateAttributes as ProtocolUpdateAttributes,
+    EntityDataValueKind, InteractionHand, SetEntityData as ProtocolSetEntityData,
+    SetEquipment as ProtocolSetEquipment, UpdateAttributes as ProtocolUpdateAttributes,
 };
 
 use crate::WorldStore;
 
 use super::dimensions::{vanilla_living_entity_type, VANILLA_POSE_SLEEPING_ID};
 
+const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
+const LIVING_ENTITY_FLAG_IS_USING: i8 = 0x01;
+const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 0x02;
+
 impl WorldStore {
     pub fn apply_set_entity_data(&mut self, packet: ProtocolSetEntityData) -> bool {
         self.counters.entity_data_updates_received += 1;
         self.counters.entity_data_values_received += packet.values.len();
         let id = packet.id;
+        let is_local_player = self.local_player_id == Some(id);
+        let mut local_living_entity_flags = None;
         let Some(()) = self.entities.with_metadata_mut(id, |metadata| {
             for value in packet.values {
+                if is_local_player && value.data_id == VANILLA_LIVING_ENTITY_FLAGS_DATA_ID {
+                    if let EntityDataValueKind::Byte(flags) = &value.value {
+                        local_living_entity_flags = Some(*flags);
+                    }
+                }
                 if let Some(existing) = metadata
                     .data_values
                     .iter_mut()
@@ -33,8 +44,34 @@ impl WorldStore {
             .entities
             .sync_client_animation_targets_from_metadata(id);
         let _ = self.entities.refresh_client_position_from_entity_data(id);
+        if let Some(flags) = local_living_entity_flags {
+            self.sync_local_using_item_from_living_entity_flags(flags);
+        }
         self.counters.entity_data_updates_applied += 1;
         true
+    }
+
+    fn sync_local_using_item_from_living_entity_flags(&mut self, flags: i8) {
+        let server_using_item = flags & LIVING_ENTITY_FLAG_IS_USING != 0;
+        if !server_using_item {
+            if self.local_player.interaction.using_item {
+                self.take_local_using_item();
+            }
+            return;
+        }
+
+        if self.local_player.interaction.using_item {
+            return;
+        }
+
+        let hand = if flags & LIVING_ENTITY_FLAG_OFF_HAND != 0 {
+            InteractionHand::OffHand
+        } else {
+            InteractionHand::MainHand
+        };
+        if self.local_item_in_hand_is_non_empty(hand) {
+            self.set_local_using_item_with_hand(true, hand);
+        }
     }
 
     pub fn local_player_is_sleeping(&self) -> bool {
