@@ -83,6 +83,9 @@ const LEVITATION_TARGET_VELOCITY_PER_LEVEL: f64 = 0.05;
 const LEVITATION_APPROACH_FACTOR_PER_TICK: f64 = 0.2;
 const VANILLA_SPEED_EFFECT_MODIFIER_ID: &str = "minecraft:effect.speed";
 const VANILLA_SLOWNESS_EFFECT_MODIFIER_ID: &str = "minecraft:effect.slowness";
+const VANILLA_POWDER_SNOW_SPEED_MODIFIER_ID: &str = "minecraft:powder_snow";
+const LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE: f64 = 140.0;
+const POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE: f64 = -0.05;
 
 pub(super) fn integrate_local_player_input_pose(
     world: &WorldStore,
@@ -961,6 +964,7 @@ fn local_player_horizontal_speed(
 fn local_player_movement_speed_attribute_value(world: &WorldStore) -> f64 {
     let mut speed = local_player_attribute_value(world, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID)
         .unwrap_or(LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE);
+    speed += local_player_powder_snow_speed_modifier(world);
     if !local_player_attribute_has_modifier(
         world,
         VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
@@ -984,6 +988,26 @@ fn local_player_movement_speed_attribute_value(world: &WorldStore) -> f64 {
         );
     }
     speed.max(0.0)
+}
+
+fn local_player_powder_snow_speed_modifier(world: &WorldStore) -> f64 {
+    if local_player_attribute_has_modifier(
+        world,
+        VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        VANILLA_POWDER_SNOW_SPEED_MODIFIER_ID,
+    ) {
+        return 0.0;
+    }
+
+    let ticks_frozen = world
+        .local_player_id
+        .and_then(|id| world.entities.ticks_frozen(id))
+        .unwrap_or(0)
+        .max(0);
+    let frozen_percent = (f64::from(ticks_frozen).min(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
+        / LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
+        .clamp(0.0, 1.0);
+    POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE * frozen_percent
 }
 
 fn local_player_jump_velocity(world: &WorldStore) -> f64 {
@@ -3550,6 +3574,74 @@ mod tests {
     }
 
     #[test]
+    fn local_player_ticks_frozen_applies_powder_snow_slowdown() {
+        let mut half_frozen_world = flat_collision_world();
+        attach_local_player_entity(&mut half_frozen_world, 123);
+        assert!(apply_ticks_frozen(&mut half_frozen_world, 123, 70));
+
+        let half_frozen_pose =
+            advance_forward_from_standard_start(&mut half_frozen_world, LOCAL_PHYSICS_TICK_SECONDS);
+        let half_frozen_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.75 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(
+            half_frozen_pose.position.z,
+            0.5 + half_frozen_step,
+            0.000001,
+        );
+        assert_f64_near(
+            half_frozen_pose.delta_movement.z,
+            half_frozen_step,
+            0.000001,
+        );
+
+        let mut fully_frozen_world = flat_collision_world();
+        attach_local_player_entity(&mut fully_frozen_world, 124);
+        assert!(apply_ticks_frozen(&mut fully_frozen_world, 124, 280));
+
+        let fully_frozen_pose = advance_forward_from_standard_start(
+            &mut fully_frozen_world,
+            LOCAL_PHYSICS_TICK_SECONDS,
+        );
+        let fully_frozen_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.5 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(
+            fully_frozen_pose.position.z,
+            0.5 + fully_frozen_step,
+            0.000001,
+        );
+        assert_f64_near(
+            fully_frozen_pose.delta_movement.z,
+            fully_frozen_step,
+            0.000001,
+        );
+    }
+
+    #[test]
+    fn local_player_powder_snow_speed_modifier_does_not_double_apply_synced_attribute_modifier() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                base: LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE,
+                modifiers: vec![ProtocolAttributeModifier {
+                    id: VANILLA_POWDER_SNOW_SPEED_MODIFIER_ID.to_string(),
+                    amount: -0.025,
+                    operation_id: 0,
+                }],
+            }],
+        }));
+        assert!(apply_ticks_frozen(&mut world, 123, 70));
+
+        let pose = advance_forward_from_standard_start(&mut world, LOCAL_PHYSICS_TICK_SECONDS);
+        let expected_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.75 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
     fn local_player_blindness_prevents_sprint_speed() {
         let mut world = flat_collision_world();
         attach_local_player_entity(&mut world, 123);
@@ -3904,6 +3996,17 @@ mod tests {
                 data_id: crate::entities::VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
                 serializer_id: 8,
                 value: ProtocolEntityDataValueKind::Boolean(no_gravity),
+            }],
+        })
+    }
+
+    fn apply_ticks_frozen(world: &mut WorldStore, entity_id: i32, ticks_frozen: i32) -> bool {
+        world.apply_set_entity_data(ProtocolSetEntityData {
+            id: entity_id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+                serializer_id: 1,
+                value: ProtocolEntityDataValueKind::Int(ticks_frozen),
             }],
         })
     }

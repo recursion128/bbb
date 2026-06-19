@@ -296,12 +296,15 @@ When an agent does any of the following, update this file in the same slice:
       - remaining fluid movement work beyond current still water/lava support:
         - sprint-swim camera, animation, and presentation nuance beyond
           canonical swimming pose selection and pitch-coupled vertical travel
+      - remaining block-state movement factors beyond the synced frozen-tick
+        powder-snow slowdown:
+        - in-world powder snow contact freezing/unfreezing tick updates
+        - generic block speed factor interpolation through `movement_efficiency`
       - remaining status-effect movement cases beyond local support for:
         - local Speed/Slowness movement-speed modifiers
         - local Jump Boost jump impulse
         - local Slow Falling gravity clamp
         - local Levitation vertical velocity targeting
-        - local Blindness sprint restriction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
         walking and passenger player packet thresholds
   - Block destroy:
@@ -419,6 +422,11 @@ When an agent does any of the following, update this file in the same slice:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which
         suppresses local gravity in air, water, and lava travel
+      - synced local player `TicksFrozen` entity metadata data id `7` as the
+        vanilla `minecraft:powder_snow` movement-speed `ADD_VALUE` modifier:
+        - amount is `-0.05 * min(ticks_frozen, 140) / 140`
+        - skipped when the server already syncs the `minecraft:powder_snow`
+          movement-speed modifier
       - jumps only from ground
       - local player `movement_speed` / `sneaking_speed` attributes with the
         vanilla default sneaking-speed reduction
