@@ -1875,6 +1875,8 @@ mod tests {
     const PINK_PETALS_ONE_NORTH_BLOCK_STATE_ID: i32 = 27814;
     const LEAF_LITTER_ONE_NORTH_BLOCK_STATE_ID: i32 = 27846;
     const MUD_BLOCK_STATE_ID: i32 = 27922;
+    const WHITE_BANNER_ROTATION_0_BLOCK_STATE_ID: i32 = 12927;
+    const WHITE_WALL_BANNER_NORTH_BLOCK_STATE_ID: i32 = 13183;
     const AZALEA_BLOCK_STATE_ID: i32 = 27811;
     const FLOWERING_AZALEA_BLOCK_STATE_ID: i32 = 27812;
     const HEAVY_CORE_DRY_BLOCK_STATE_ID: i32 = 29702;
@@ -3183,6 +3185,29 @@ mod tests {
                 "wall hanging sign",
                 OAK_WALL_HANGING_SIGN_NORTH_BLOCK_STATE_ID,
             ),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_does_not_collide_with_banner_outline() {
+        let cases = [
+            ("standing banner", WHITE_BANNER_ROTATION_0_BLOCK_STATE_ID),
+            ("wall banner", WHITE_WALL_BANNER_NORTH_BLOCK_STATE_ID),
         ];
 
         for (name, block_state_id) in cases {

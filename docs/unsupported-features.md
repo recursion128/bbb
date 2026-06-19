@@ -504,6 +504,7 @@ When an agent does any of the following, update this file in the same slice:
       - dragon egg
       - decorated pot
       - sign / hanging sign
+      - banner / wall banner
       - chest
       - bed
       - cauldron
@@ -561,6 +562,9 @@ When an agent does any of the following, update this file in the same slice:
       - standing signs, wall signs, ceiling hanging signs, and wall hanging
         signs follow vanilla `.noCollision()` registration; their outline
         shapes remain renderer/crosshair selection data only.
+      - standing banners and wall banners follow vanilla `.noCollision()`
+        registration; their banner pole/cloth outline remains selection data
+        and does not block local movement.
       - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
         registration so they do not block local movement.
       - `cobweb` applies vanilla `entityInside` stuck movement multipliers:

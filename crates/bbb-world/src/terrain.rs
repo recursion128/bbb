@@ -247,6 +247,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_no_collision_crop_block_name(name)
         || is_no_collision_thin_overlay_block_name(name)
         || is_no_collision_fire_or_wire_block_name(name)
+        || is_no_collision_banner_block_name(name)
         || is_copper_grate_block_name(name)
         || is_bar_block_name(name)
         || is_chain_block_name(name)
@@ -502,6 +503,11 @@ fn is_no_collision_fire_or_wire_block_name(name: &str) -> bool {
     )
 }
 
+fn is_no_collision_banner_block_name(name: &str) -> bool {
+    name.strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_banner"))
+}
+
 fn is_sign_block_name(name: &str) -> bool {
     name.strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_sign"))
@@ -649,6 +655,17 @@ mod tests {
             "minecraft:redstone_wire",
             "minecraft:tripwire",
             "minecraft:tripwire_hook",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:white_banner",
+            "minecraft:black_banner",
+            "minecraft:white_wall_banner",
+            "minecraft:black_wall_banner",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),
