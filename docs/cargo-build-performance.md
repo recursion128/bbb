@@ -29,6 +29,34 @@ to relax correctness checks. The preferred order is:
 5. Keep the final merge gate on the default profile with
    `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`.
 
+## Current sccache Decision
+
+`sccache` is installed locally and remains opt-in. Use
+`RUSTC_WRAPPER=sccache` or `BBB_USE_SCCACHE=1` only when explicitly measuring
+or experimenting; do not add a repo-local `.cargo/config.toml` wrapper setting.
+
+The latest 2026-06-19 recheck used:
+
+```sh
+scripts/cargo-dev.sh sccache-eval 20260619b -p bbb-world command_tree --quiet
+```
+
+Results:
+
+- Clean full workspace with `sccache`: 194.49s, 3.3G target, all tests passed,
+  timing report copied to
+  `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619b.html`.
+- Fresh worker focused test with `sccache`: 53.67s, 656M target, 1 test passed,
+  0 Rust cache hits.
+- Fresh worker focused test without `sccache`: 54.85s, 657M target, 1 test
+  passed.
+- Warm focused default profile on `/tmp/bbb-target-main` with `sccache`: 0.23s,
+  1 test passed, no compilations executed.
+
+This keeps the policy unchanged: stable external `CARGO_TARGET_DIR` values are
+the default developer-speed path, and `sccache` is available for explicit
+future rechecks rather than default worker prompts.
+
 ## Target Directories
 
 Use stable external target directories through the helper script:
@@ -411,7 +439,7 @@ Conclusion:
 
 Environment change:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 
 Measured command:
 
@@ -432,7 +460,7 @@ not after each slice or worker run.
 
 Environment:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 - Stable target caches found:
   - `/tmp/bbb-target-main`: 10G.
   - `/tmp/bbb-target-net`: 726M.
@@ -457,14 +485,14 @@ Measured commands:
     `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260618T194434598Z-14ffed61c5c1036c.html`
 
 The current data supports keeping stable external target caches for daily work.
-Do not add a repo-local mandatory `rustc-wrapper` until `sccache` is installed
-and measured against clean and warm focused workloads.
+Later installed `sccache` measurements kept the same policy: do not add a
+repo-local mandatory `rustc-wrapper`.
 
 ## Warm Update: 2026-06-19 After Cartography Slice
 
 Environment:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 - Stable target caches found:
   - `/tmp/bbb-target-main`: 11G.
   - `/tmp/bbb-target-net`: 726M.
@@ -496,7 +524,7 @@ baseline.
 
 Environment:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 - Stable target caches found:
   - `/tmp/bbb-target-main`: 11G.
   - `/tmp/bbb-target-net`: 726M.
@@ -516,13 +544,14 @@ Measured command:
 
 This confirms the current external-target workflow keeps a post-slice warm full
 workspace gate in the low single-digit seconds once incremental rebuild work is
-complete. Keep `sccache` optional until it is installed and measured locally.
+complete. Later installed `sccache` measurements kept it optional rather than a
+repo default.
 
 ## Warm Update: 2026-06-19 After Bundle Click Slice
 
 Environment:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 - Stable target caches found:
   - `/tmp/bbb-target-main`: 12G.
   - `/tmp/bbb-target-net`: 726M.
@@ -552,7 +581,7 @@ directories when parallelism matters.
 
 Environment:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 - Stable target caches found:
   - `/tmp/bbb-target-main`: 14G.
   - `/tmp/bbb-target-native`: 3.3G.
@@ -588,7 +617,7 @@ repo-local Cargo config unless future measurements show a stable benefit.
 
 Environment:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 - Stable target caches found:
   - `/tmp/bbb-target-main`: 16G.
   - `/tmp/bbb-target-native`: 3.3G.
@@ -623,7 +652,7 @@ real or a cache becomes misleading.
 
 Environment:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 - Stable target caches found:
   - `/tmp/bbb-target-main`: 18G.
   - `/tmp/bbb-target-native`: 3.3G.
@@ -661,7 +690,7 @@ after measurement, not as a blanket replacement for default-profile tests.
 
 Environment:
 
-- `sccache` is still not installed on `PATH`.
+- At this measurement time, `sccache` was not installed on `PATH`.
 - Stable target caches found:
   - `/tmp/bbb-target-main`: 19G.
   - `/tmp/bbb-target-native`: 3.3G.
