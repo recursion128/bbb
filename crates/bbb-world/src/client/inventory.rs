@@ -82,8 +82,12 @@ const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
 const GENERIC_CONTAINER_PLAYER_SLOT_COUNT: i16 = 36;
 const PLAYER_HOTBAR_SIZE: usize = 9;
+const PLAYER_FEET_EQUIPMENT_SLOT: i32 = 36;
+const PLAYER_LEGS_EQUIPMENT_SLOT: i32 = 37;
 const PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
+const PLAYER_HEAD_EQUIPMENT_SLOT: i32 = 39;
 const PLAYER_OFFHAND_SLOT: i32 = 40;
+const PLAYER_BODY_EQUIPMENT_SLOT: i32 = 41;
 const INVENTORY_MENU_CONTAINER_ID: i32 = 0;
 const INVENTORY_MENU_MAIN_START: i16 = 9;
 const INVENTORY_MENU_MAIN_END: i16 = 36;
@@ -847,6 +851,13 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_freeze_immune_wearable_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.freeze_immune_wearable_item_ids = item_ids
+            .into_iter()
+            .filter(|item_id| *item_id >= 0)
+            .collect();
+    }
+
     pub fn set_default_item_equipment_slots(
         &mut self,
         equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
@@ -1184,6 +1195,39 @@ impl WorldStore {
             .slots
             .iter()
             .find_map(|slot| (slot.slot == INVENTORY_MENU_OFFHAND_SLOT).then_some(&slot.item))
+    }
+
+    pub(crate) fn local_player_has_freeze_immune_wearable(&self) -> bool {
+        [
+            PLAYER_FEET_EQUIPMENT_SLOT,
+            PLAYER_LEGS_EQUIPMENT_SLOT,
+            PLAYER_CHEST_EQUIPMENT_SLOT,
+            PLAYER_HEAD_EQUIPMENT_SLOT,
+            PLAYER_BODY_EQUIPMENT_SLOT,
+        ]
+        .into_iter()
+        .filter_map(|slot| self.local_player_inventory_item(slot))
+        .filter(|item| item.count > 0)
+        .filter_map(|item| item.item_id)
+        .any(|item_id| self.freeze_immune_wearable_item_ids.contains(&item_id))
+    }
+
+    fn local_player_inventory_item(&self, slot_id: i32) -> Option<&ProtocolItemStackSummary> {
+        if let Some(item) = self
+            .inventory
+            .player_slots
+            .iter()
+            .find_map(|slot| (slot.slot == slot_id).then_some(&slot.item))
+        {
+            return Some(item);
+        }
+
+        let menu_slot = inventory_slot_to_inventory_menu_slot(slot_id)?;
+        self.inventory
+            .inventory_menu
+            .slots
+            .iter()
+            .find_map(|slot| (slot.slot == menu_slot).then_some(&slot.item))
     }
 
     fn player_inventory_slot(&self, slot: i32) -> InventorySlot {

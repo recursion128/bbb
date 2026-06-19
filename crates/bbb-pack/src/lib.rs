@@ -5,6 +5,7 @@ mod block_models;
 mod block_sound_profiles;
 mod colors;
 mod exports;
+mod freeze_immune_wearables;
 mod furnace_fuels;
 mod image;
 mod item_cuboid_models;

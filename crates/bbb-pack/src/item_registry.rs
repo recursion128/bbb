@@ -92,7 +92,7 @@ impl ItemRegistryCatalog {
     }
 
     #[cfg(test)]
-    fn from_items_java_source(
+    pub(crate) fn from_items_java_source(
         source: &str,
         item_id_constants: &BTreeMap<String, String>,
     ) -> Result<Self> {

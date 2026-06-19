@@ -129,6 +129,9 @@ fn main() -> Result<()> {
         world.set_default_item_max_stack_sizes(items.item_max_stack_sizes_by_protocol_id());
         world.set_default_item_equipment_slots(items.item_equipment_slots_by_protocol_id());
         world.set_furnace_fuel_item_ids(items.furnace_fuel_item_ids_by_protocol_id());
+        world.set_freeze_immune_wearable_item_ids(
+            items.freeze_immune_wearable_item_ids_by_protocol_id(),
+        );
         world.set_default_item_mining_profiles(items.item_mining_profiles_by_protocol_id());
         let (atlas_width, atlas_height) = items.atlas_size();
         let missingno_index = items.texture_index("minecraft:missingno");
@@ -141,6 +144,7 @@ fn main() -> Result<()> {
             item_equipment_slots = items.item_equipment_slot_count(),
             item_mining_profiles = items.item_mining_profile_count(),
             furnace_fuel_items = items.furnace_fuel_item_count(),
+            freeze_immune_wearable_items = items.freeze_immune_wearable_item_count(),
             missing_models = items.missing_model_count(),
             missing_textures = items.missing_texture_count(),
             missingno_index,

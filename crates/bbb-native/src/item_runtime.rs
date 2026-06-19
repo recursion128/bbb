@@ -2,12 +2,12 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::{Context, Result};
 use bbb_pack::{
-    AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, FurnaceFuelCatalog, ItemCuboidModel,
-    ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
-    ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
-    ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
-    ItemRegistryCatalog, ItemTintSource, LanguageCatalog, PackRoots, SpriteImage, TerrainColorMaps,
-    DEFAULT_LANGUAGE_CODE,
+    AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, FreezeImmuneWearableCatalog,
+    FurnaceFuelCatalog, ItemCuboidModel, ItemCuboidModelCatalog, ItemCuboidModelSet,
+    ItemCuboidTextureImageCatalog, ItemEquipmentSlot as PackItemEquipmentSlot,
+    ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
+    ItemModelCatalog, ItemModelDefinition, ItemRegistryCatalog, ItemTintSource, LanguageCatalog,
+    PackRoots, SpriteImage, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
@@ -49,6 +49,7 @@ pub(crate) struct NativeItemRuntime {
     missing_model_ids: BTreeSet<String>,
     missing_texture_ids: BTreeSet<String>,
     furnace_fuel_item_ids: BTreeSet<i32>,
+    freeze_immune_wearable_item_ids: BTreeSet<i32>,
     item_icon_models: HashMap<String, ItemIconModel>,
     registry: Option<ItemRegistryCatalog>,
     language: LanguageCatalog,
@@ -89,6 +90,21 @@ impl NativeItemRuntime {
                     .ok()
             })
             .unwrap_or_default();
+        let freeze_immune_wearable_item_ids = registry
+            .as_ref()
+            .and_then(|registry| {
+                FreezeImmuneWearableCatalog::load(roots, registry)
+                    .map(|catalog| catalog.protocol_ids(registry))
+                    .map_err(|err| {
+                        tracing::warn!(
+                            ?err,
+                            "continuing without native freeze immune wearable catalog"
+                        );
+                        err
+                    })
+                    .ok()
+            })
+            .unwrap_or_default();
         let colormaps = roots
             .load_terrain_colormaps()
             .context("load terrain colormaps for item tints")
@@ -107,6 +123,7 @@ impl NativeItemRuntime {
             registry,
             colormaps,
             furnace_fuel_item_ids,
+            freeze_immune_wearable_item_ids,
             language,
         )
     }
@@ -118,6 +135,7 @@ impl NativeItemRuntime {
         registry: Option<ItemRegistryCatalog>,
         colormaps: Option<TerrainColorMaps>,
         furnace_fuel_item_ids: BTreeSet<i32>,
+        freeze_immune_wearable_item_ids: BTreeSet<i32>,
         language: LanguageCatalog,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -182,6 +200,7 @@ impl NativeItemRuntime {
             missing_model_ids,
             missing_texture_ids,
             furnace_fuel_item_ids,
+            freeze_immune_wearable_item_ids,
             item_icon_models,
             registry,
             language,
@@ -257,6 +276,14 @@ impl NativeItemRuntime {
 
     pub(crate) fn furnace_fuel_item_count(&self) -> usize {
         self.furnace_fuel_item_ids.len()
+    }
+
+    pub(crate) fn freeze_immune_wearable_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.freeze_immune_wearable_item_ids.clone()
+    }
+
+    pub(crate) fn freeze_immune_wearable_item_count(&self) -> usize {
+        self.freeze_immune_wearable_item_ids.len()
     }
 
     pub(crate) fn resolved_model_count(&self) -> usize {

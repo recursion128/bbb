@@ -1154,11 +1154,12 @@ fn local_player_update_powder_snow_freezing(world: &mut WorldStore, pose: LocalP
         return;
     };
 
-    let next_ticks = if local_player_inside_powder_snow(world, pose) {
-        (current_ticks + 1).min(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
-    } else {
-        (current_ticks - 2).max(0)
-    };
+    let next_ticks =
+        if local_player_inside_powder_snow(world, pose) && local_player_can_freeze(world) {
+            (current_ticks + 1).min(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
+        } else {
+            (current_ticks - 2).max(0)
+        };
     if next_ticks == current_ticks {
         return;
     }
@@ -1193,6 +1194,10 @@ fn local_player_inside_powder_snow(world: &WorldStore, pose: LocalPlayerPoseStat
         .probe_block(pos)
         .and_then(|block| block.block_name)
         .is_some_and(|block_name| block_name == LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME)
+}
+
+fn local_player_can_freeze(world: &WorldStore) -> bool {
+    !world.local_player_is_spectator() && !world.local_player_has_freeze_immune_wearable()
 }
 
 fn local_player_jump_velocity(world: &WorldStore, pose: LocalPlayerPoseState) -> f64 {
@@ -1627,15 +1632,16 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
         AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
-        EntityDataValueKind as ProtocolEntityDataValueKind,
-        MobEffectFlags as ProtocolMobEffectFlags, PlayerHealth as ProtocolPlayerHealth,
-        SetEntityData as ProtocolSetEntityData, UpdateAttributes as ProtocolUpdateAttributes,
-        UpdateMobEffect as ProtocolUpdateMobEffect,
+        EntityDataValueKind as ProtocolEntityDataValueKind, GameEvent as ProtocolGameEvent,
+        ItemStackSummary as ProtocolItemStackSummary, MobEffectFlags as ProtocolMobEffectFlags,
+        PlayerHealth as ProtocolPlayerHealth, SetEntityData as ProtocolSetEntityData,
+        SetPlayerInventory as ProtocolSetPlayerInventory,
+        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
     };
     use uuid::Uuid;
 
@@ -1693,6 +1699,8 @@ mod tests {
     const CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID: i32 = 20880;
     const HONEY_BLOCK_STATE_ID: i32 = 21816;
     const POWDER_SNOW_BLOCK_STATE_ID: i32 = 24689;
+    const FREEZE_IMMUNE_WEARABLE_ITEM_ID: i32 = 42;
+    const PLAYER_FEET_EQUIPMENT_SLOT_ID: i32 = 36;
     const CHEST_SINGLE_NORTH_BLOCK_STATE_ID: i32 = 3988;
     const CHEST_LEFT_NORTH_BLOCK_STATE_ID: i32 = 3990;
     const TRAPPED_CHEST_RIGHT_NORTH_BLOCK_STATE_ID: i32 = 11212;
@@ -4868,6 +4876,74 @@ mod tests {
     }
 
     #[test]
+    fn local_player_spectator_in_powder_snow_thaws_instead_of_freezing() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_ticks_frozen(&mut world, 123, 5));
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        world.apply_game_event(ProtocolGameEvent {
+            event_id: 3,
+            param: 3.0,
+        });
+
+        local_player_update_powder_snow_freezing(
+            &mut world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.2, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(world.entities.ticks_frozen(123), Some(3));
+    }
+
+    #[test]
+    fn local_player_freeze_immune_wearable_in_powder_snow_thaws_instead_of_freezing() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_ticks_frozen(&mut world, 123, 5));
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        world.set_freeze_immune_wearable_item_ids(BTreeSet::from([FREEZE_IMMUNE_WEARABLE_ITEM_ID]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_FEET_EQUIPMENT_SLOT_ID,
+            item: item_stack(FREEZE_IMMUNE_WEARABLE_ITEM_ID, 1),
+        });
+
+        local_player_update_powder_snow_freezing(
+            &mut world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.2, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(world.entities.ticks_frozen(123), Some(3));
+    }
+
+    #[test]
+    fn local_player_empty_freeze_immune_wearable_stack_in_powder_snow_still_freezes() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_ticks_frozen(&mut world, 123, 5));
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        world.set_freeze_immune_wearable_item_ids(BTreeSet::from([FREEZE_IMMUNE_WEARABLE_ITEM_ID]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_FEET_EQUIPMENT_SLOT_ID,
+            item: item_stack(FREEZE_IMMUNE_WEARABLE_ITEM_ID, 0),
+        });
+
+        local_player_update_powder_snow_freezing(
+            &mut world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.2, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(world.entities.ticks_frozen(123), Some(6));
+    }
+
+    #[test]
     fn local_player_advance_thaws_ticks_frozen_per_physics_step() {
         let mut world = flat_collision_world();
         attach_local_player_entity(&mut world, 123);
@@ -5446,6 +5522,14 @@ mod tests {
                 value: ProtocolEntityDataValueKind::Int(ticks_frozen),
             }],
         })
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
+        ProtocolItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: bbb_protocol::packets::DataComponentPatchSummary::default(),
+        }
     }
 
     fn apply_flying_abilities(world: &mut WorldStore, flying_speed: f32) {

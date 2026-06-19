@@ -317,9 +317,9 @@ When an agent does any of the following, update this file in the same slice:
           canonical swimming pose selection and pitch-coupled vertical travel
       - remaining block-state movement factors beyond the synced frozen-tick
         and local powder-snow contact slowdown:
-        - powder-snow `canFreeze` nuance:
-          - spectator immunity
-          - freeze-immune equipment / entity type exceptions
+        - remaining powder-snow `canFreeze` nuance beyond local player:
+          - non-player freeze-immune entity type exceptions if locally
+            controlled entity freezing is added later
         - full vanilla post-`Entity.move` `deltaMovement` travel ordering
           beyond the current direct local walking prediction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
@@ -468,6 +468,11 @@ When an agent does any of the following, update this file in the same slice:
         - increments by `1` per local physics step while inside powder snow
         - thaws by `2` per local physics step outside powder snow
         - clamps to `0..140`
+        - respects vanilla local player `canFreeze` immunity:
+          - spectator mode thaws instead of freezing
+          - armor/body items in the official
+            `minecraft:freeze_immune_wearables` item tag thaw instead of
+            freezing
       - vanilla block speed factor for local walking prediction:
         - `minecraft:soul_sand` and `minecraft:honey_block` apply `0.4`
         - synced local player `movement_efficiency` attribute id `21`
