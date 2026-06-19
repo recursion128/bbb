@@ -593,18 +593,18 @@ mod tests {
         MinecartStep, MobEffectFlags, MountScreenOpen, MoveMinecartAlongTrack, MoveVehicle,
         ObjectiveRenderType, OpenBook, OpenScreen, OpenSignEditor, PackedMessageSignature,
         ParticlePayload, PlaceGhostRecipe, PlayLogin, PlayTime, PlayerAbilities, PlayerChat,
-        PlayerExperience, PlayerHealth, PlayerInfoAction, PlayerInfoChatSession, PlayerInfoEntry,
-        PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt, PlayerPositionUpdate,
-        PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters, PongResponse,
-        ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove, RecipeBookSettings,
-        RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
-        RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType, RemoveEntities,
-        RemoveMobEffect, ResetScore, ResourcePackPop, ResourcePackPush, ResourcePackResponseAction,
-        RotateHead, ScoreboardDisplaySlot, SectionBlocksUpdate, SelectAdvancementsTab, ServerData,
-        ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks, SetBorderCenter,
-        SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
-        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
-        SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
+        PlayerCombatEnd, PlayerCombatKill, PlayerExperience, PlayerHealth, PlayerInfoAction,
+        PlayerInfoChatSession, PlayerInfoEntry, PlayerInfoRemove, PlayerInfoUpdate, PlayerLookAt,
+        PlayerPositionUpdate, PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters,
+        PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
+        RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
+        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType,
+        RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop, ResourcePackPush,
+        ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot, SectionBlocksUpdate,
+        SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
+        ServerLinks, SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
+        SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
+        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
         SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetObjectiveMethod,
         SetObjectiveParameters, SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore,
         SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
@@ -3766,6 +3766,45 @@ mod tests {
                 },
                 target_entity_id: None,
                 to_anchor: None,
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_player_combat_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::PlayerCombatEnter)
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::PlayerCombatEnd(PlayerCombatEnd {
+                duration: 37,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::PlayerCombatKill(PlayerCombatKill {
+                player_id: 123,
+                message: "You died".to_string(),
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.player_combat_enter_packets, 1);
+        assert_eq!(report.world_counters.player_combat_end_packets, 1);
+        assert_eq!(report.world_counters.player_combat_kill_packets, 1);
+        assert_eq!(
+            report.world.last_player_combat(),
+            Some(&bbb_world::PlayerCombatEventState {
+                kind: "kill".to_string(),
+                duration: None,
+                player_id: Some(123),
+                message: Some("You died".to_string()),
             })
         );
     }
