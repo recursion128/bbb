@@ -3378,6 +3378,81 @@ fn randomized_level_event_emits_vanilla_positioned_sound() {
 }
 
 #[test]
+fn potion_and_dragon_fireball_level_events_emit_vanilla_sounds() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 2002,
+        pos: ProtocolBlockPos { x: 1, y: 64, z: -3 },
+        data: 0x3366cc,
+        global: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 2006,
+        pos: ProtocolBlockPos { x: -2, y: 70, z: 4 },
+        data: 1,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_potion_pitch = 0.9 + expected_random.next_float().clamp(0.0, 1.0) * 0.1;
+    let expected_potion_seed = expected_random.next_long();
+    let expected_dragon_pitch = 0.9 + expected_random.next_float().clamp(0.0, 1.0) * 0.1;
+    let expected_dragon_seed = expected_random.next_long();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayPositionedSound(potion) = &audio.commands[0] else {
+        panic!(
+            "expected positioned potion sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(
+        potion.sound.event_id,
+        "minecraft:entity.splash_potion.break"
+    );
+    assert_eq!(potion.category, AudioCategory::Neutral);
+    assert_eq!(potion.position, [1.5, 64.5, -2.5]);
+    assert_close(potion.packet_volume, 1.0);
+    assert_close(potion.packet_pitch, expected_potion_pitch);
+    assert_eq!(potion.seed, expected_potion_seed);
+
+    let AudioCommand::PlayPositionedSound(dragon) = &audio.commands[1] else {
+        panic!(
+            "expected positioned dragon sound, got {:?}",
+            audio.commands[1]
+        );
+    };
+    assert_eq!(
+        dragon.sound.event_id,
+        "minecraft:entity.dragon_fireball.explode"
+    );
+    assert_eq!(dragon.category, AudioCategory::Hostile);
+    assert_eq!(dragon.position, [-1.5, 70.5, 4.5]);
+    assert_close(dragon.packet_volume, 1.0);
+    assert_close(dragon.packet_pitch, expected_dragon_pitch);
+    assert_eq!(dragon.seed, expected_dragon_seed);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:entity.dragon_fireball.explode")
+    );
+    assert_eq!(world.counters().sound_packets, 0);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
 fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::LevelEvent(LevelEvent {
@@ -5258,6 +5333,12 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.firework_rocket.shoot": {
                 "sounds": ["fireworks/launch1"]
+            },
+            "entity.splash_potion.break": {
+                "sounds": ["random/glass"]
+            },
+            "entity.dragon_fireball.explode": {
+                "sounds": ["mob/enderdragon/fireball"]
             },
             "entity.ghast.warn": {
                 "sounds": ["mob/ghast/affectionate_scream"]

@@ -681,6 +681,18 @@ fn random_level_event_sound(
             volume: 0.5,
             pitch: triangle_pitch(2.6, 0.8, next_float),
         },
+        2002 | 2007 => FixedLevelEventSound {
+            event_id: "minecraft:entity.splash_potion.break",
+            source: "neutral",
+            volume: 1.0,
+            pitch: ranged_pitch(0.9, 0.1, next_float),
+        },
+        2006 if data == 1 => FixedLevelEventSound {
+            event_id: "minecraft:entity.dragon_fireball.explode",
+            source: "hostile",
+            volume: 1.0,
+            pitch: ranged_pitch(0.9, 0.1, next_float),
+        },
         3000 => FixedLevelEventSound {
             event_id: "minecraft:block.end_gateway.spawn",
             source: "block",
@@ -1324,6 +1336,45 @@ mod tests {
         assert_eq!(wind_charge.source, "block");
         assert_close(wind_charge.volume, 0.5);
         assert_close(wind_charge.pitch, 0.4);
+
+        let splash_potion_break = random_level_event_sound(&store, 2002, 0x3366cc, &[0.5]);
+        assert_eq!(
+            splash_potion_break.sound.location.as_deref(),
+            Some("minecraft:entity.splash_potion.break")
+        );
+        assert_eq!(splash_potion_break.source, "neutral");
+        assert_close(splash_potion_break.volume, 1.0);
+        assert_close(splash_potion_break.pitch, 0.95);
+
+        let instant_effect_potion_break = random_level_event_sound(&store, 2007, 0x3366cc, &[0.25]);
+        assert_eq!(
+            instant_effect_potion_break.sound.location.as_deref(),
+            Some("minecraft:entity.splash_potion.break")
+        );
+        assert_eq!(instant_effect_potion_break.source, "neutral");
+        assert_close(instant_effect_potion_break.volume, 1.0);
+        assert_close(instant_effect_potion_break.pitch, 0.925);
+
+        let dragon_fireball = random_level_event_sound(&store, 2006, 1, &[0.75]);
+        assert_eq!(
+            dragon_fireball.sound.location.as_deref(),
+            Some("minecraft:entity.dragon_fireball.explode")
+        );
+        assert_eq!(dragon_fireball.source, "hostile");
+        assert_close(dragon_fireball.volume, 1.0);
+        assert_close(dragon_fireball.pitch, 0.975);
+
+        assert!(store
+            .level_event_sound_with_random(
+                LevelEvent {
+                    event_type: 2006,
+                    pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                    data: 0,
+                    global: false,
+                },
+                || panic!("2006 without data=1 has no sound")
+            )
+            .is_none());
 
         let end_gateway_spawn = random_level_event_sound(&store, 3000, 0, &[0.75, 0.25]);
         assert_eq!(
