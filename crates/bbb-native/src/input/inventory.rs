@@ -7997,7 +7997,7 @@ mod tests {
     }
 
     #[test]
-    fn loom_shift_click_input_slot_queues_predicted_quick_move() {
+    fn loom_shift_click_input_slots_queue_predicted_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
@@ -8011,6 +8011,8 @@ mod tests {
         });
         let mut items = vec![ItemStackSummary::empty(); 40];
         items[0] = item_stack(42, 3);
+        items[1] = item_stack(43, 2);
+        items[2] = item_stack(44, 1);
         world.apply_container_set_content(ContainerSetContent {
             container_id: 7,
             state_id: 12,
@@ -8046,9 +8048,71 @@ mod tests {
                 carried_item: HashedStack::Empty,
             })
         );
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(593.0, 311.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 2);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 1,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (1, HashedStack::Empty),
+                    (5, HashedStack::Item(hashed_item(43, 2))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(583.0, 330.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 3);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 2,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (2, HashedStack::Empty),
+                    (6, HashedStack::Item(hashed_item(44, 1))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[1].item, ItemStackSummary::empty());
+        assert_eq!(slots[2].item, ItemStackSummary::empty());
         assert_eq!(slots[4].item, item_stack(42, 3));
+        assert_eq!(slots[5].item, item_stack(43, 2));
+        assert_eq!(slots[6].item, item_stack(44, 1));
     }
 
     #[test]

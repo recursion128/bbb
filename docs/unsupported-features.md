@@ -1220,8 +1220,11 @@ When an agent does any of the following, update this file in the same slice:
           visible pattern window.
         - selected pattern buttons and active/disabled scroller state render
           from native HUD state.
-        - quick-move and result-slot paths are kept server-authoritative until:
-          - banner/dye/pattern item routing
+        - quick-move paths are locally predicted for:
+          - input slots back to player inventory
+          - player inventory/hotbar range movement
+          - banner/dye/pattern input routing from vanilla item tags
+        - result-slot paths are kept server-authoritative until:
           - component-aware selectable banner pattern state
           - result prediction
           - input consumption
