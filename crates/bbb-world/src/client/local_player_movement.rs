@@ -59,6 +59,10 @@ const LOCAL_INPUT_FLUID_CURRENT_MIN_PUSH_PER_TICK: f64 = 0.0045;
 const LOCAL_INPUT_FLUID_CURRENT_MIN_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.003;
 const LOCAL_INPUT_FLUID_CURRENT_APPLY_THRESHOLD_SQUARED: f64 = 1.0e-5;
 const LOCAL_INPUT_FLUID_JUMP_OUT_VELOCITY_PER_TICK: f64 = 0.3;
+const LOCAL_INPUT_SWIM_LOOK_DOWN_VERTICAL_APPROACH: f64 = 0.085;
+const LOCAL_INPUT_SWIM_VERTICAL_APPROACH: f64 = 0.06;
+const LOCAL_INPUT_SWIM_LOOK_DOWN_THRESHOLD: f64 = -0.2;
+const LOCAL_INPUT_SWIM_HEAD_FLUID_OFFSET: f64 = 0.9;
 const LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_PER_TICK: f64 = 0.06;
 const LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_LIMIT: f64 = 0.7;
 const LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_PER_TICK: f64 = 0.1;
@@ -269,6 +273,13 @@ fn advance_local_player_fluid_physics_step(
         local_player_lava_current_push_per_tick(world),
         step_ticks,
     );
+    pose.delta_movement = local_player_swimming_vertical_velocity(
+        world,
+        pose,
+        input,
+        initial_fluid_contact,
+        pose.delta_movement,
+    );
 
     if input.focused && input.jump {
         pose.delta_movement.y += LOCAL_INPUT_LIQUID_JUMP_VELOCITY_PER_TICK * step_ticks;
@@ -363,6 +374,51 @@ fn advance_local_player_fluid_physics_step(
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
     pose
+}
+
+fn local_player_swimming_vertical_velocity(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+    fluid_contact: LocalPlayerFluidContactState,
+    mut velocity: ProtocolVec3d,
+) -> ProtocolVec3d {
+    if !pose.swimming || !fluid_contact.in_water() {
+        return velocity;
+    }
+
+    let look_y = local_player_look_direction_y(pose);
+    if look_y <= 0.0
+        || input.focused && input.jump
+        || local_player_has_fluid_at_swim_head(world, pose)
+    {
+        let approach = if look_y < LOCAL_INPUT_SWIM_LOOK_DOWN_THRESHOLD {
+            LOCAL_INPUT_SWIM_LOOK_DOWN_VERTICAL_APPROACH
+        } else {
+            LOCAL_INPUT_SWIM_VERTICAL_APPROACH
+        };
+        velocity.y += (look_y - velocity.y) * approach;
+    }
+
+    velocity
+}
+
+fn local_player_look_direction_y(pose: LocalPlayerPoseState) -> f64 {
+    -f64::from(pose.x_rot).to_radians().sin()
+}
+
+fn local_player_has_fluid_at_swim_head(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
+    world
+        .probe_block(BlockPos {
+            x: local_player_block_floor(pose.position.x),
+            y: local_player_block_floor(pose.position.y + LOCAL_INPUT_SWIM_HEAD_FLUID_OFFSET),
+            z: local_player_block_floor(pose.position.z),
+        })
+        .is_some_and(|block| block.fluid.is_some())
+}
+
+fn local_player_block_floor(value: f64) -> i32 {
+    value.floor() as i32
 }
 
 fn local_player_velocity_with_fluid_current(
@@ -2424,6 +2480,95 @@ mod tests {
 
         assert_f64_near(pose.position.z, 0.52, 0.000001);
         assert_f64_near(pose.delta_movement.z, 0.018, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_swimming_pitch_down_pulls_velocity_toward_look_y() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 2, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            x_rot: 30.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.swimming);
+        assert_f64_near(pose.position.y, 1.0575, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.034, 0.000001);
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.018, 0.000001);
+    }
+
+    #[test]
+    fn local_player_swimming_pitch_up_rises_when_fluid_above() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 2, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            x_rot: -30.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.swimming);
+        assert_f64_near(pose.position.y, 1.13, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.024, 0.000001);
+    }
+
+    #[test]
+    fn local_player_swimming_pitch_up_near_surface_does_not_auto_rise() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            x_rot: -30.0,
+            swimming: true,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.swimming);
+        assert_f64_near(pose.position.y, 1.1, 0.000001);
         assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
     }
 

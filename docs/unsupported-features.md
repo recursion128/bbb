@@ -294,8 +294,8 @@ When an agent does any of the following, update this file in the same slice:
       - full fixed 20Hz survival physics
       - remaining vanilla voxel collision shapes
       - remaining fluid movement work beyond current still water/lava support:
-        - sprint-swim camera and movement nuance beyond canonical swimming
-          pose selection
+        - sprint-swim camera, animation, and presentation nuance beyond
+          canonical swimming pose selection and pitch-coupled vertical travel
       - remaining status-effect movement cases beyond local support for:
         - local Speed/Slowness movement-speed modifiers
         - local Jump Boost jump impulse
@@ -443,6 +443,12 @@ When an agent does any of the following, update this file in the same slice:
       - canonical local player `swimming` visual pose state when:
         - sprinting while underwater in water contact
         - standing and crouching bounds are blocked but swimming bounds fit
+      - vanilla-shaped sprint-swim vertical travel:
+        - adjusts water swimming Y velocity toward `getLookAngle().y`
+        - uses approach `0.085` when looking down below `-0.2`
+        - otherwise uses approach `0.06`
+        - upward look only auto-rises while jumping or when fluid remains at
+          the vanilla `y + 0.9` swim-head probe
       - vanilla local player standing/crouching/swimming eye heights:
         - standing `1.62`
         - crouching `1.27`
