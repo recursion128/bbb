@@ -2078,7 +2078,10 @@ fn sync_anvil_rename_input(
     let next = anvil_rename_input_signature(world);
     if input.anvil_rename_input != next {
         input.anvil_rename_input = next;
-        input.anvil_rename_text = anvil_initial_rename_text(world, item_runtime);
+        input.anvil_rename_hover_name = anvil_initial_rename_text(world, item_runtime);
+        input
+            .anvil_rename_text
+            .clone_from(&input.anvil_rename_hover_name);
         input.anvil_rename_cursor = anvil_rename_char_len(&input.anvil_rename_text);
     }
 }
@@ -2157,13 +2160,19 @@ fn queue_anvil_rename(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
-    queue_rename_item_command(
-        counters,
-        net_commands,
-        RenameItem {
-            name: input.anvil_rename_text.clone(),
-        },
-    );
+    let name = anvil_rename_wire_name(input);
+    queue_rename_item_command(counters, net_commands, RenameItem { name });
+}
+
+fn anvil_rename_wire_name(input: &ClientInputState) -> String {
+    if let Some(signature) = &input.anvil_rename_input {
+        if signature.item.component_patch.custom_name.is_none()
+            && input.anvil_rename_text == input.anvil_rename_hover_name
+        {
+            return String::new();
+        }
+    }
+    input.anvil_rename_text.clone()
 }
 
 fn is_anvil_rename_char(ch: char) -> bool {

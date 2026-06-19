@@ -1802,6 +1802,106 @@ fn anvil_text_input_starts_from_default_hover_name_when_item_runtime_is_availabl
 }
 
 #[test]
+fn anvil_default_hover_name_is_sent_as_empty_rename() {
+    let root = unique_input_temp_dir("anvil-rename-default-empty");
+    write_input_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(0, 1)));
+
+    handle_text_input_with_item_runtime(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        Some(&item_runtime),
+        "!",
+    );
+    handle_key_input_with_item_runtime(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        Some(&item_runtime),
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(input.anvil_rename_text(), "Test Combo");
+    assert_eq!(counters.rename_item_commands_queued, 2);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Test Combo!".to_string(),
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: String::new(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn anvil_custom_name_matching_hover_name_is_sent_verbatim() {
+    let root = unique_input_temp_dir("anvil-rename-custom-name");
+    write_input_tooltip_item_assets(&root);
+    let item_runtime =
+        NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut stack = test_item_stack(0, 1);
+    stack.component_patch.custom_name = Some("Custom Combo".to_string());
+    let mut world = anvil_container_world(7, 12, Some(stack));
+
+    handle_text_input_with_item_runtime(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        Some(&item_runtime),
+        "!",
+    );
+    handle_key_input_with_item_runtime(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        Some(&item_runtime),
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(input.anvil_rename_text(), "Custom Combo");
+    assert_eq!(counters.rename_item_commands_queued, 2);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Custom Combo!".to_string(),
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Custom Combo".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn anvil_backspace_queues_updated_rename_item_command() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
