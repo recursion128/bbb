@@ -503,9 +503,14 @@ When an agent does any of the following, update this file in the same slice:
       - copper golem statue
       - dragon egg
       - decorated pot
+      - rail / powered rail / detector rail / activator rail
+      - torch / wall torch
+      - lever / button
       - sign / hanging sign
       - banner / wall banner
       - nether portal plane
+      - end portal / end gateway
+      - structure void / light
       - chest
       - bed
       - cauldron
@@ -566,9 +571,18 @@ When an agent does any of the following, update this file in the same slice:
       - standing banners and wall banners follow vanilla `.noCollision()`
         registration; their banner pole/cloth outline remains selection data
         and does not block local movement.
+      - Rails, torches, wall torches, levers, and buttons follow vanilla
+        `.noCollision()` registration; their outline shapes remain
+        renderer/crosshair selection data only.
       - `nether_portal` is translucent terrain and follows vanilla
         `.noCollision()` local movement. Portal travel remains server/runtime
         behavior driven by entity-inside semantics, not terrain collision.
+      - `end_portal` and `end_gateway` are invisible portal blocks and follow
+        vanilla `.noCollision()` local movement. End portal/gateway travel,
+        smoke/portal particles, and gateway cooldown remain server/runtime or
+        entity-inside behavior, not terrain collision.
+      - `structure_void` and `light` are invisible non-blocking blocks for local
+        movement. `barrier` remains a full collision block.
       - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
         registration so they do not block local movement.
       - `cobweb` applies vanilla `entityInside` stuck movement multipliers:

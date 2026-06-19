@@ -1753,9 +1753,16 @@ mod tests {
     const PISTON_EXTENDED_UP_BLOCK_STATE_ID: i32 = 2261;
     const PISTON_HEAD_SOUTH_LONG_BLOCK_STATE_ID: i32 = 2279;
     const MOVING_PISTON_NORTH_BLOCK_STATE_ID: i32 = 2309;
+    const POWERED_RAIL_NORTH_SOUTH_BLOCK_STATE_ID: i32 = 2200;
+    const DETECTOR_RAIL_NORTH_SOUTH_BLOCK_STATE_ID: i32 = 2224;
+    const TORCH_BLOCK_STATE_ID: i32 = 3370;
+    const WALL_TORCH_NORTH_BLOCK_STATE_ID: i32 = 3371;
+    const RAIL_NORTH_SOUTH_BLOCK_STATE_ID: i32 = 5728;
+    const LEVER_FLOOR_NORTH_BLOCK_STATE_ID: i32 = 6772;
     const FARMLAND_MOISTURE_0_BLOCK_STATE_ID: i32 = 5319;
     const SNOW_5_LAYERS_BLOCK_STATE_ID: i32 = 6923;
     const SNOW_6_LAYERS_BLOCK_STATE_ID: i32 = 6924;
+    const STONE_BUTTON_FLOOR_NORTH_BLOCK_STATE_ID: i32 = 6896;
     const CACTUS_AGE_0_BLOCK_STATE_ID: i32 = 6929;
     const SOUL_SAND_BLOCK_STATE_ID: i32 = 6998;
     const NETHER_PORTAL_X_BLOCK_STATE_ID: i32 = 7017;
@@ -1764,6 +1771,7 @@ mod tests {
     const CAKE_BITES_3_BLOCK_STATE_ID: i32 = 7030;
     const END_PORTAL_FRAME_EYE_NORTH_BLOCK_STATE_ID: i32 = 9469;
     const END_PORTAL_FRAME_EMPTY_NORTH_BLOCK_STATE_ID: i32 = 9473;
+    const END_PORTAL_BLOCK_STATE_ID: i32 = 9468;
     const DRAGON_EGG_BLOCK_STATE_ID: i32 = 9478;
     const COCOA_AGE_2_NORTH_BLOCK_STATE_ID: i32 = 9489;
     const COCOA_AGE_2_SOUTH_BLOCK_STATE_ID: i32 = 9490;
@@ -1782,6 +1790,8 @@ mod tests {
     const SKELETON_WALL_SKULL_NORTH_BLOCK_STATE_ID: i32 = 10948;
     const PIGLIN_HEAD_BLOCK_STATE_ID: i32 = 11171;
     const PIGLIN_WALL_HEAD_NORTH_BLOCK_STATE_ID: i32 = 11188;
+    const ACTIVATOR_RAIL_NORTH_SOUTH_BLOCK_STATE_ID: i32 = 11421;
+    const LIGHT_LEVEL_15_DRY_BLOCK_STATE_ID: i32 = 12566;
     const OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID: i32 = 5666;
     const OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7121;
     const OAK_TOP_OPEN_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7117;
@@ -1883,6 +1893,8 @@ mod tests {
     const FLOWERING_AZALEA_BLOCK_STATE_ID: i32 = 27812;
     const HEAVY_CORE_DRY_BLOCK_STATE_ID: i32 = 29702;
     const FIREFLY_BUSH_BLOCK_STATE_ID: i32 = 29872;
+    const END_GATEWAY_BLOCK_STATE_ID: i32 = 14816;
+    const STRUCTURE_VOID_BLOCK_STATE_ID: i32 = 14851;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
     const SOURCE_LAVA_BLOCK_STATE_ID: i32 = 102;
@@ -3175,6 +3187,35 @@ mod tests {
     }
 
     #[test]
+    fn local_player_does_not_collide_with_no_collision_rails_and_controls() {
+        let cases = [
+            ("rail", RAIL_NORTH_SOUTH_BLOCK_STATE_ID),
+            ("powered rail", POWERED_RAIL_NORTH_SOUTH_BLOCK_STATE_ID),
+            ("detector rail", DETECTOR_RAIL_NORTH_SOUTH_BLOCK_STATE_ID),
+            ("activator rail", ACTIVATOR_RAIL_NORTH_SOUTH_BLOCK_STATE_ID),
+            ("torch", TORCH_BLOCK_STATE_ID),
+            ("wall torch", WALL_TORCH_NORTH_BLOCK_STATE_ID),
+            ("lever", LEVER_FLOOR_NORTH_BLOCK_STATE_ID),
+            ("button", STONE_BUTTON_FLOOR_NORTH_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
     fn local_player_does_not_collide_with_sign_outline() {
         let cases = [
             ("standing sign", OAK_SIGN_ROTATION_0_BLOCK_STATE_ID),
@@ -3210,6 +3251,31 @@ mod tests {
         let cases = [
             ("standing banner", WHITE_BANNER_ROTATION_0_BLOCK_STATE_ID),
             ("wall banner", WHITE_WALL_BANNER_NORTH_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_does_not_collide_with_invisible_nonblocking_blocks() {
+        let cases = [
+            ("end portal", END_PORTAL_BLOCK_STATE_ID),
+            ("end gateway", END_GATEWAY_BLOCK_STATE_ID),
+            ("structure void", STRUCTURE_VOID_BLOCK_STATE_ID),
+            ("light", LIGHT_LEVEL_15_DRY_BLOCK_STATE_ID),
         ];
 
         for (name, block_state_id) in cases {
