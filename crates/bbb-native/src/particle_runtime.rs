@@ -268,6 +268,9 @@ impl ParticleCommandResolver {
                 }
                 self.simple_particle_batch(SMOKE_PARTICLE_TYPE_ID, spawns)
             }
+            DISPENSER_SMOKE_LEVEL_EVENT => {
+                self.shoot_particles(event, SMOKE_PARTICLE_TYPE_ID, random)
+            }
             BLAZE_SMOKE_LEVEL_EVENT => {
                 let mut batch = ParticleSpawnBatch::default();
                 let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
@@ -325,8 +328,48 @@ impl ParticleCommandResolver {
                 }
                 self.simple_particle_batch(CLOUD_PARTICLE_TYPE_ID, spawns)
             }
+            DISPENSER_WHITE_SMOKE_LEVEL_EVENT => {
+                self.shoot_particles(event, WHITE_SMOKE_PARTICLE_TYPE_ID, random)
+            }
             _ => ParticleSpawnBatch::default(),
         }
+    }
+
+    fn shoot_particles(
+        &self,
+        event: &LevelEvent,
+        particle_type_id: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let (normal_x, normal_y, normal_z) = direction_normal_from_3d_data_value(event.data);
+        let mut spawns = Vec::with_capacity(10);
+        for _ in 0..10 {
+            let pow = random.next_double() * 0.2 + 0.01;
+            let position = Vec3d {
+                x: f64::from(event.pos.x)
+                    + f64::from(normal_x) * 0.6
+                    + 0.5
+                    + f64::from(normal_x) * 0.01
+                    + (random.next_double() - 0.5) * f64::from(normal_z) * 0.5,
+                y: f64::from(event.pos.y)
+                    + f64::from(normal_y) * 0.6
+                    + 0.5
+                    + f64::from(normal_y) * 0.01
+                    + (random.next_double() - 0.5) * f64::from(normal_y) * 0.5,
+                z: f64::from(event.pos.z)
+                    + f64::from(normal_z) * 0.6
+                    + 0.5
+                    + f64::from(normal_z) * 0.01
+                    + (random.next_double() - 0.5) * f64::from(normal_x) * 0.5,
+            };
+            let velocity = Vec3d {
+                x: f64::from(normal_x) * pow + random.next_gaussian() * 0.01,
+                y: f64::from(normal_y) * pow + random.next_gaussian() * 0.01,
+                z: f64::from(normal_z) * pow + random.next_gaussian() * 0.01,
+            };
+            spawns.push((position, velocity));
+        }
+        self.simple_particle_batch(particle_type_id, spawns)
     }
 
     fn simple_particle_batch(
@@ -470,17 +513,31 @@ fn append_particle_batch(batch: &mut ParticleSpawnBatch, mut other: ParticleSpaw
     batch.unknown_particle_type_count += other.unknown_particle_type_count;
 }
 
+fn direction_normal_from_3d_data_value(data: i32) -> (i32, i32, i32) {
+    match (data % 6).abs() {
+        0 => (0, -1, 0),
+        1 => (0, 1, 0),
+        2 => (0, 0, -1),
+        3 => (0, 0, 1),
+        4 => (-1, 0, 0),
+        _ => (1, 0, 0),
+    }
+}
+
 const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
+const DISPENSER_SMOKE_LEVEL_EVENT: i32 = 2000;
 const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
 const EXPLOSION_LEVEL_EVENT: i32 = 2008;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
+const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
+const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
 
 fn default_particle_seed() -> i64 {
     SystemTime::now()
@@ -663,6 +720,7 @@ mod tests {
             55,
             "minecraft:large_smoke",
             [10.730_967_787_376_657, 65.2, -2.759_463_584_328_514],
+            [0.0, 0.0, 0.0],
             false,
         );
 
@@ -686,6 +744,7 @@ mod tests {
                 64.582_450_455_210_06,
                 -2.469_737_796_929_42,
             ],
+            [0.0, 0.0, 0.0],
             false,
         );
 
@@ -703,6 +762,7 @@ mod tests {
             62,
             "minecraft:smoke",
             [10.586_612_920_266_246, 64.8125, -2.597_298_844_123_192_6],
+            [0.0, 0.0, 0.0],
             false,
         );
 
@@ -724,6 +784,7 @@ mod tests {
                 63.981_072_831_342_97,
                 -2.225_165_149_299_783_7,
             ],
+            [0.0, 0.0, 0.0],
             false,
         );
         assert_particle_command(
@@ -735,6 +796,7 @@ mod tests {
                 63.981_072_831_342_97,
                 -2.225_165_149_299_783_7,
             ],
+            [0.0, 0.0, 0.0],
             false,
         );
 
@@ -752,6 +814,7 @@ mod tests {
             23,
             "minecraft:explosion",
             [10.5, 64.5, -2.5],
+            [0.0, 0.0, 0.0],
             true,
         );
 
@@ -769,8 +832,67 @@ mod tests {
             4,
             "minecraft:cloud",
             [10.730_967_787_376_657, 65.2, -2.759_463_584_328_514],
+            [0.0, 0.0, 0.0],
             false,
         );
+
+        let mut dispenser_random = LevelEventSoundRandomState::with_seed(0);
+        let dispenser = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2000,
+                data: 5,
+                ..level_event_packet(2000)
+            },
+            &mut dispenser_random,
+        );
+        assert_eq!(dispenser.len(), 10);
+        assert_particle_command(
+            &dispenser.commands[0],
+            62,
+            "minecraft:smoke",
+            [11.11, 64.5, -2.474_781_497_441_183],
+            [
+                0.166_039_302_804_156_55,
+                -0.016_834_122_587_673_427,
+                -0.000_272_902_629_078_872_87,
+            ],
+            false,
+        );
+
+        let mut white_smoke_random = LevelEventSoundRandomState::with_seed(0);
+        let white_smoke = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2010,
+                data: 2,
+                ..level_event_packet(2010)
+            },
+            &mut white_smoke_random,
+        );
+        assert_eq!(white_smoke.len(), 10);
+        assert_particle_command(
+            &white_smoke.commands[0],
+            63,
+            "minecraft:white_smoke",
+            [10.629_731_792_164_257, 64.5, -3.11],
+            [
+                0.009_845_745_328_825_128,
+                -0.016_834_122_587_673_427,
+                -0.156_466_460_104_410_3,
+            ],
+            false,
+        );
+    }
+
+    #[test]
+    fn direction_normal_from_3d_data_value_matches_vanilla_wrapping() {
+        assert_eq!(direction_normal_from_3d_data_value(0), (0, -1, 0));
+        assert_eq!(direction_normal_from_3d_data_value(1), (0, 1, 0));
+        assert_eq!(direction_normal_from_3d_data_value(2), (0, 0, -1));
+        assert_eq!(direction_normal_from_3d_data_value(3), (0, 0, 1));
+        assert_eq!(direction_normal_from_3d_data_value(4), (-1, 0, 0));
+        assert_eq!(direction_normal_from_3d_data_value(5), (1, 0, 0));
+        assert_eq!(direction_normal_from_3d_data_value(7), (0, 1, 0));
+        assert_eq!(direction_normal_from_3d_data_value(-1), (0, 1, 0));
     }
 
     #[test]
@@ -813,6 +935,7 @@ mod tests {
                 "explosion_0",
                 "smoke_0",
                 "large_smoke_0",
+                "white_smoke_0",
             ],
         )
     }
@@ -871,6 +994,14 @@ mod tests {
               ]
             }"#,
         );
+        write_json(
+            &particle_dir(&root).join("white_smoke.json"),
+            r#"{
+              "textures": [
+                "minecraft:white_smoke_0"
+              ]
+            }"#,
+        );
 
         let catalog = PackRoots::from_root(&root)
             .unwrap()
@@ -925,6 +1056,7 @@ mod tests {
         particle_type_id: i32,
         particle_id: &str,
         position: [f64; 3],
+        velocity: [f64; 3],
         override_limiter: bool,
     ) {
         assert_eq!(command.particle_type_id, particle_type_id);
@@ -932,7 +1064,9 @@ mod tests {
         for (actual, expected) in command.position.iter().zip(position) {
             assert_close(*actual, expected);
         }
-        assert_eq!(command.velocity, [0.0, 0.0, 0.0]);
+        for (actual, expected) in command.velocity.iter().zip(velocity) {
+            assert_close(*actual, expected);
+        }
         assert_eq!(command.override_limiter, override_limiter);
         assert!(!command.always_show);
         assert_eq!(command.raw_options_len, 0);

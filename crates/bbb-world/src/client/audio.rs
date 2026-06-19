@@ -31,12 +31,14 @@ static SEED_UNIQUIFIER: AtomicU64 = AtomicU64::new(SEED_UNIQUIFIER_INITIAL);
 #[derive(Debug, Clone)]
 pub struct LevelEventSoundRandomState {
     seed: u64,
+    next_gaussian: Option<f64>,
 }
 
 impl LevelEventSoundRandomState {
     pub fn with_seed(seed: i64) -> Self {
         Self {
             seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
+            next_gaussian: None,
         }
     }
 
@@ -48,6 +50,23 @@ impl LevelEventSoundRandomState {
         let high = (self.next_bits(26) as u64) << 27;
         let low = self.next_bits(27) as u64;
         (high + low) as f64 / RANDOM_DOUBLE_DIVISOR
+    }
+
+    pub fn next_gaussian(&mut self) -> f64 {
+        if let Some(value) = self.next_gaussian.take() {
+            return value;
+        }
+
+        loop {
+            let v1 = 2.0 * self.next_double() - 1.0;
+            let v2 = 2.0 * self.next_double() - 1.0;
+            let s = v1 * v1 + v2 * v2;
+            if s < 1.0 && s != 0.0 {
+                let multiplier = (-2.0 * s.ln() / s).sqrt();
+                self.next_gaussian = Some(v2 * multiplier);
+                return v1 * multiplier;
+            }
+        }
     }
 
     fn next_bits(&mut self, bits: u32) -> u32 {
@@ -791,6 +810,11 @@ mod tests {
         assert_close(random.next_float(), 0.831_441);
         assert_close_f64(random.next_double(), 0.240_536_415_671_485_87);
         assert_close_f64(random.next_double(), 0.637_417_425_350_108_3);
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        assert_close_f64(random.next_gaussian(), 0.802_533_063_739_030_5);
+        assert_close_f64(random.next_gaussian(), -0.901_546_088_417_512_2);
+        assert_close_f64(random.next_gaussian(), 2.080_920_790_428_163);
     }
 
     #[test]

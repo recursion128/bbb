@@ -165,7 +165,7 @@ When an agent does any of the following, update this file in the same slice:
     - atlas mip animation
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
-      simple smoke/flame/explosion/cloud side effects
+      simple smoke/white-smoke/flame/explosion/cloud side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -178,6 +178,9 @@ When an agent does any of the following, update this file in the same slice:
         burnout
       - event `1503`: sixteen `minecraft:smoke` particles above end portal
         frame fill
+      - event `2000`: ten directionally emitted `minecraft:smoke` particles
+      - event `2010`: ten directionally emitted `minecraft:white_smoke`
+        particles
       - event `2004`: twenty paired `minecraft:smoke` and `minecraft:flame`
         particles around the block center
       - event `2008`: one centered `minecraft:explosion` particle
