@@ -9,7 +9,7 @@ use super::local_player_fluid::{
     local_player_bounds_contains_any_fluid, local_player_fluid_contact,
     LocalPlayerFluidContactState,
 };
-use crate::{BlockPos, WorldStore};
+use crate::{BlockPos, BlockProbe, WorldStore};
 
 pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
@@ -178,12 +178,7 @@ fn advance_local_player_physics_step(
             initial_fluid_contact,
         );
     }
-    let climbable_before = if flying.is_none() {
-        local_player_climbable_block_name(world, pose)
-    } else {
-        None
-    };
-    let on_climbable_before = climbable_before.is_some();
+    let on_climbable_before = flying.is_none() && local_player_on_climbable(world, pose);
     if on_climbable_before {
         pose.fall_distance = 0.0;
         pose.delta_movement = local_player_climbable_limited_velocity(pose.delta_movement, input);
@@ -274,8 +269,7 @@ fn advance_local_player_physics_step(
         && requested_y < 0.0
         && !input.sneak
         && local_player_standing_on_block(world, pose, "minecraft:slime_block");
-    let on_climbable_after =
-        flying.is_none() && local_player_climbable_block_name(world, pose).is_some();
+    let on_climbable_after = flying.is_none() && local_player_on_climbable(world, pose);
     let climbable_upward_impulse =
         on_climbable_after && (horizontal_collision || input.focused && input.jump);
     let fluid_contact = local_player_fluid_contact(world, pose);
@@ -1175,19 +1169,20 @@ fn local_player_standing_on_block(
         .is_some_and(|block_name| block_name == name)
 }
 
-fn local_player_climbable_block_name(
-    world: &WorldStore,
-    pose: LocalPlayerPoseState,
-) -> Option<String> {
+fn local_player_on_climbable(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
     let pos = BlockPos {
         x: local_player_block_floor(pose.position.x),
         y: local_player_block_floor(pose.position.y),
         z: local_player_block_floor(pose.position.z),
     };
-    world
-        .probe_block(pos)
-        .and_then(|block| block.block_name)
-        .filter(|block_name| is_climbable_block_name(block_name))
+    let Some(block) = world.probe_block(pos) else {
+        return false;
+    };
+    block
+        .block_name
+        .as_deref()
+        .is_some_and(is_climbable_block_name)
+        || local_player_trapdoor_usable_as_ladder(world, pos, &block)
 }
 
 fn is_climbable_block_name(block_name: &str) -> bool {
@@ -1202,6 +1197,45 @@ fn is_climbable_block_name(block_name: &str) -> bool {
             | "minecraft:cave_vines"
             | "minecraft:cave_vines_plant"
     )
+}
+
+fn local_player_trapdoor_usable_as_ladder(
+    world: &WorldStore,
+    pos: BlockPos,
+    block: &BlockProbe,
+) -> bool {
+    if !block
+        .block_name
+        .as_deref()
+        .is_some_and(is_trapdoor_block_name)
+    {
+        return false;
+    }
+    if block.block_properties.get("open").map(String::as_str) != Some("true") {
+        return false;
+    }
+    let Some(facing) = block.block_properties.get("facing").map(String::as_str) else {
+        return false;
+    };
+    let Some(y) = pos.y.checked_sub(1) else {
+        return false;
+    };
+    let below_pos = BlockPos { y, ..pos };
+    let Some(below_block) = world.probe_block(below_pos) else {
+        return false;
+    };
+    below_block.block_name.as_deref() == Some("minecraft:ladder")
+        && below_block
+            .block_properties
+            .get("facing")
+            .map(String::as_str)
+            == Some(facing)
+}
+
+fn is_trapdoor_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_trapdoor"))
 }
 
 fn local_player_climbable_limited_velocity(
@@ -1516,6 +1550,8 @@ mod tests {
     const PIGLIN_WALL_HEAD_NORTH_BLOCK_STATE_ID: i32 = 11188;
     const OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID: i32 = 5666;
     const OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7121;
+    const OAK_TOP_OPEN_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7117;
+    const OAK_TOP_OPEN_SOUTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7133;
     const STONE_PRESSURE_PLATE_BLOCK_STATE_ID: i32 = 6796;
     const OAK_NORTH_FENCE_BLOCK_STATE_ID: i32 = 6988;
     const OAK_CLOSED_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8653;
@@ -1525,6 +1561,7 @@ mod tests {
     const WHITE_CARPET_BLOCK_STATE_ID: i32 = 12896;
     const COBBLESTONE_NORTH_EAST_WALL_BLOCK_STATE_ID: i32 = 10236;
     const IRON_CHAIN_Y_AXIS_BLOCK_STATE_ID: i32 = 8249;
+    const LADDER_NORTH_BLOCK_STATE_ID: i32 = 5720;
     const LADDER_SOUTH_BLOCK_STATE_ID: i32 = 5722;
     const END_ROD_NORTH_BLOCK_STATE_ID: i32 = 14636;
     const DIRT_PATH_BLOCK_STATE_ID: i32 = 14815;
@@ -1769,6 +1806,113 @@ mod tests {
         assert_f64_near(pose.position.y, 1.2, 0.000001);
         assert_f64_near(pose.delta_movement.y, -0.0784, 0.000001);
         assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_open_trapdoor_above_matching_ladder_counts_as_climbable() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+        set_test_block(
+            &mut world,
+            0,
+            1,
+            0,
+            OAK_TOP_OPEN_SOUTH_TRAPDOOR_BLOCK_STATE_ID,
+        );
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.5, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.05, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.2254, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_open_trapdoor_requires_matching_ladder_facing_for_climbable() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+        set_test_block(
+            &mut world,
+            0,
+            1,
+            0,
+            OAK_TOP_OPEN_NORTH_TRAPDOOR_BLOCK_STATE_ID,
+        );
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.1, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.1, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.1764, 0.000001);
+        assert_f64_near(pose.fall_distance, 2.1, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_closed_trapdoor_above_matching_ladder_is_not_climbable() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, LADDER_NORTH_BLOCK_STATE_ID);
+        set_test_block(
+            &mut world,
+            0,
+            1,
+            0,
+            OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID,
+        );
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.1, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.1, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.1764, 0.000001);
+        assert_f64_near(pose.fall_distance, 2.1, 0.000001);
         assert!(!pose.on_ground);
     }
 

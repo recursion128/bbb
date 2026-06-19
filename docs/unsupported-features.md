@@ -313,7 +313,6 @@ When an agent does any of the following, update this file in the same slice:
       - full fixed 20Hz survival physics
       - remaining vanilla voxel collision shapes
       - scaffolding-specific collision and climbable sneak-descent behavior
-      - open trapdoor-as-ladder climbable behavior
       - remaining fluid movement work beyond current still water/lava support:
         - sprint-swim camera, animation, and presentation nuance beyond
           canonical swimming pose selection and pitch-coupled vertical travel
@@ -481,6 +480,10 @@ When an agent does any of the following, update this file in the same slice:
         - clamps downward velocity to `-0.15` per tick
         - sneak input suppresses non-scaffolding climbable sliding
         - jump or horizontal collision applies the vanilla upward climb velocity
+      - vanilla open trapdoor-as-ladder climbable behavior when:
+        - the current block is an open trapdoor
+        - the block below is a ladder
+        - both blocks have the same horizontal facing
       - jumps only from ground
       - vanilla sprint jump horizontal impulse:
         - adds `0.2` horizontal velocity in the local yaw forward direction
