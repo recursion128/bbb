@@ -164,10 +164,20 @@ When an agent does any of the following, update this file in the same slice:
     - particle limits/settings
     - atlas mip animation
     - terrain/item particle option rendering
+    - remaining level-event particle effects beyond the currently covered
+      smoke side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
     - Drains level-particle spawn batches.
+    - Emits renderer spawn batches for vanilla `LevelEventHandler` smoke side
+      effects:
+      - event `1501`: eight `minecraft:large_smoke` particles above lava
+        extinguish
+      - event `1502`: five `minecraft:smoke` particles inside redstone torch
+        burnout
+      - event `1503`: sixteen `minecraft:smoke` particles above end portal
+        frame fill
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
@@ -232,8 +242,8 @@ When an agent does any of the following, update this file in the same slice:
     - source/category mapping
     - spatial/entity-following sounds
     - stop semantics
-    - remaining level-event audio:
-      - particle-coupled level-event side effects
+    - remaining level-event audio that is still coupled to unimplemented
+      particle/provider side effects
     - device/runtime diagnostics
 - Evidence / boundary:
   - `bbb-audio` has:
@@ -254,6 +264,8 @@ When an agent does any of the following, update this file in the same slice:
       - ghast/blaze/dragon/wither/zombie/skeleton/phantom hostile effects
       - anvil, grindstone, book, smithing table, dripstone, wind charge
       - lava extinguish and redstone torch burnout sounds
+      - lava extinguish and redstone torch burnout now share the dispatcher
+        path with renderer smoke side effects for events `1501` and `1502`
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`

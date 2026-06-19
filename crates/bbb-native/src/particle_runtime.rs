@@ -5,15 +5,21 @@ use bbb_pack::{
     AtlasLayout, AtlasPacker, AtlasSprite, PackRoots, ParticleDefinitionCatalog,
     ParticleSpriteCatalog, SpriteImage,
 };
-use bbb_protocol::packets::{LevelParticles, Vec3d};
+use bbb_protocol::packets::{LevelEvent, LevelParticles, Vec3d};
 use bbb_renderer::{
     ParticleSpawnBatch, ParticleSpawnCommand, ParticleSpriteUv, ParticleUvRect, Renderer,
 };
+use bbb_world::LevelEventSoundRandomState;
 
 use crate::particle_registry::{vanilla_particle_type, ParticleTypeInfo};
 
 pub(crate) trait ParticleEventSink {
     fn spawn_level_particles(&mut self, packet: &LevelParticles) -> ParticleSpawnBatch;
+    fn spawn_level_event_particles(
+        &mut self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch;
 }
 
 pub(crate) struct NativeParticleRuntime {
@@ -50,6 +56,14 @@ impl NativeParticleRuntime {
 impl ParticleEventSink for NativeParticleRuntime {
     fn spawn_level_particles(&mut self, packet: &LevelParticles) -> ParticleSpawnBatch {
         self.resolver.resolve_level_particles(packet)
+    }
+
+    fn spawn_level_event_particles(
+        &mut self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        self.resolver.resolve_level_event_particles(event, random)
     }
 }
 
@@ -199,6 +213,106 @@ impl ParticleCommandResolver {
         }
     }
 
+    fn resolve_level_event_particles(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        match event.event_type {
+            LAVA_EXTINGUISH_LEVEL_EVENT => {
+                let mut spawns = Vec::with_capacity(8);
+                for _ in 0..8 {
+                    spawns.push((
+                        Vec3d {
+                            x: f64::from(event.pos.x) + random.next_double(),
+                            y: f64::from(event.pos.y) + 1.2,
+                            z: f64::from(event.pos.z) + random.next_double(),
+                        },
+                        Vec3d::default(),
+                    ));
+                }
+                self.simple_particle_batch(LARGE_SMOKE_PARTICLE_TYPE_ID, spawns)
+            }
+            REDSTONE_TORCH_BURNOUT_LEVEL_EVENT => {
+                let mut spawns = Vec::with_capacity(5);
+                for _ in 0..5 {
+                    spawns.push((
+                        Vec3d {
+                            x: f64::from(event.pos.x) + random.next_double() * 0.6 + 0.2,
+                            y: f64::from(event.pos.y) + random.next_double() * 0.6 + 0.2,
+                            z: f64::from(event.pos.z) + random.next_double() * 0.6 + 0.2,
+                        },
+                        Vec3d::default(),
+                    ));
+                }
+                self.simple_particle_batch(SMOKE_PARTICLE_TYPE_ID, spawns)
+            }
+            END_PORTAL_FRAME_FILL_LEVEL_EVENT => {
+                let mut spawns = Vec::with_capacity(16);
+                for _ in 0..16 {
+                    spawns.push((
+                        Vec3d {
+                            x: f64::from(event.pos.x) + (5.0 + random.next_double() * 6.0) / 16.0,
+                            y: f64::from(event.pos.y) + 0.8125,
+                            z: f64::from(event.pos.z) + (5.0 + random.next_double() * 6.0) / 16.0,
+                        },
+                        Vec3d::default(),
+                    ));
+                }
+                self.simple_particle_batch(SMOKE_PARTICLE_TYPE_ID, spawns)
+            }
+            _ => ParticleSpawnBatch::default(),
+        }
+    }
+
+    fn simple_particle_batch(
+        &self,
+        particle_type_id: i32,
+        spawns: Vec<(Vec3d, Vec3d)>,
+    ) -> ParticleSpawnBatch {
+        if spawns.is_empty() {
+            return ParticleSpawnBatch::default();
+        }
+        let Some(particle_type) = vanilla_particle_type(particle_type_id) else {
+            return ParticleSpawnBatch {
+                unknown_particle_type_count: 1,
+                ..ParticleSpawnBatch::default()
+            };
+        };
+        let Some(definition) = self.definitions.definition(particle_type.name) else {
+            return ParticleSpawnBatch {
+                missing_definition_count: 1,
+                ..ParticleSpawnBatch::default()
+            };
+        };
+
+        let sprite_ids = definition.textures.clone();
+        let missing_sprite_count = sprite_ids
+            .iter()
+            .filter(|sprite_id| self.sprites.sprite(sprite_id).is_none())
+            .count();
+        let commands = spawns
+            .into_iter()
+            .map(|(position, velocity)| {
+                self.command_for_type(
+                    particle_type,
+                    &sprite_ids,
+                    position,
+                    velocity,
+                    particle_type.override_limiter,
+                    false,
+                    0,
+                )
+            })
+            .collect();
+
+        ParticleSpawnBatch {
+            commands,
+            missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
     fn command(
         &self,
         packet: &LevelParticles,
@@ -209,18 +323,45 @@ impl ParticleCommandResolver {
         override_limiter: bool,
         raw_options_len: usize,
     ) -> ParticleSpawnCommand {
+        self.command_for_type(
+            particle_type,
+            sprite_ids,
+            position,
+            velocity,
+            override_limiter,
+            packet.always_show,
+            raw_options_len,
+        )
+    }
+
+    fn command_for_type(
+        &self,
+        particle_type: ParticleTypeInfo,
+        sprite_ids: &[String],
+        position: Vec3d,
+        velocity: Vec3d,
+        override_limiter: bool,
+        always_show: bool,
+        raw_options_len: usize,
+    ) -> ParticleSpawnCommand {
         ParticleSpawnCommand {
-            particle_type_id: packet.particle.particle_type_id,
+            particle_type_id: particle_type.id,
             particle_id: particle_type.name.to_string(),
             sprite_ids: sprite_ids.to_vec(),
             position: [position.x, position.y, position.z],
             velocity: [velocity.x, velocity.y, velocity.z],
             override_limiter,
-            always_show: packet.always_show,
+            always_show,
             raw_options_len,
         }
     }
 }
+
+const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
+const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
+const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
+const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
+const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 
 fn default_particle_seed() -> i64 {
     SystemTime::now()
@@ -391,6 +532,60 @@ mod tests {
     }
 
     #[test]
+    fn level_event_particles_map_vanilla_smoke_side_effects() {
+        let resolver = test_resolver(0);
+
+        let mut lava_random = LevelEventSoundRandomState::with_seed(0);
+        let lava =
+            resolver.resolve_level_event_particles(&level_event_packet(1501), &mut lava_random);
+        assert_eq!(lava.len(), 8);
+        assert_particle_command(
+            &lava.commands[0],
+            55,
+            "minecraft:large_smoke",
+            [10.730_967_787_376_657, 65.2, -2.759_463_584_328_514],
+        );
+
+        let mut burnout_random = LevelEventSoundRandomState::with_seed(0);
+        burnout_random.next_float();
+        burnout_random.next_float();
+        let burnout = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 1502,
+                ..level_event_packet(1502)
+            },
+            &mut burnout_random,
+        );
+        assert_eq!(burnout.len(), 5);
+        assert_particle_command(
+            &burnout.commands[0],
+            62,
+            "minecraft:smoke",
+            [
+                10.344_321_849_402_891,
+                64.582_450_455_210_06,
+                -2.469_737_796_929_42,
+            ],
+        );
+
+        let mut frame_fill_random = LevelEventSoundRandomState::with_seed(0);
+        let frame_fill = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 1503,
+                ..level_event_packet(1503)
+            },
+            &mut frame_fill_random,
+        );
+        assert_eq!(frame_fill.len(), 16);
+        assert_particle_command(
+            &frame_fill.commands[0],
+            62,
+            "minecraft:smoke",
+            [10.586_612_920_266_246, 64.8125, -2.597_298_844_123_192_6],
+        );
+    }
+
+    #[test]
     fn particle_atlas_from_images_exports_renderer_uvs() {
         let image = SpriteImage::new(
             "minecraft:generic_0",
@@ -423,7 +618,13 @@ mod tests {
         test_resolver_with_cloud_textures(
             seed,
             &["minecraft:generic_7", "minecraft:generic_6"],
-            &["generic_7", "generic_6", "flame"],
+            &[
+                "generic_7",
+                "generic_6",
+                "flame",
+                "smoke_0",
+                "large_smoke_0",
+            ],
         )
     }
 
@@ -454,6 +655,22 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:flame"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("smoke.json"),
+            r#"{
+              "textures": [
+                "minecraft:smoke_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("large_smoke.json"),
+            r#"{
+              "textures": [
+                "minecraft:large_smoke_0"
               ]
             }"#,
         );
@@ -491,6 +708,36 @@ mod tests {
                 raw_options: vec![0xaa, 0xbb],
             },
         }
+    }
+
+    fn level_event_packet(event_type: i32) -> LevelEvent {
+        LevelEvent {
+            event_type,
+            pos: bbb_protocol::packets::BlockPos {
+                x: 10,
+                y: 64,
+                z: -3,
+            },
+            data: 0,
+            global: false,
+        }
+    }
+
+    fn assert_particle_command(
+        command: &ParticleSpawnCommand,
+        particle_type_id: i32,
+        particle_id: &str,
+        position: [f64; 3],
+    ) {
+        assert_eq!(command.particle_type_id, particle_type_id);
+        assert_eq!(command.particle_id, particle_id);
+        for (actual, expected) in command.position.iter().zip(position) {
+            assert_close(*actual, expected);
+        }
+        assert_eq!(command.velocity, [0.0, 0.0, 0.0]);
+        assert!(!command.override_limiter);
+        assert!(!command.always_show);
+        assert_eq!(command.raw_options_len, 0);
     }
 
     fn particle_dir(root: &Path) -> PathBuf {

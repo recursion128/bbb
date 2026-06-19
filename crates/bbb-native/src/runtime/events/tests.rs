@@ -2891,6 +2891,42 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
 }
 
 #[test]
+fn level_event_smoke_particles_emit_particle_runtime_batch_and_world_counters() {
+    let event = LevelEvent {
+        event_type: 1502,
+        pos: ProtocolBlockPos { x: 4, y: 65, z: -7 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert_eq!(particles.level_events, vec![event]);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+    assert_eq!(world.level_events().last().unwrap().event_type, 1502);
+}
+
+#[test]
 fn projectile_power_updates_world_entity_state_and_world_counters() {
     const VANILLA_ENTITY_TYPE_FIREBALL_ID: i32 = 52;
 
@@ -4930,6 +4966,7 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
 #[derive(Default)]
 struct RecordingParticleSink {
     packets: Vec<LevelParticles>,
+    level_events: Vec<LevelEvent>,
     batches: Vec<bbb_renderer::ParticleSpawnBatch>,
 }
 
@@ -4941,6 +4978,20 @@ impl ParticleEventSink for RecordingParticleSink {
         self.packets.push(packet.clone());
         let batch = bbb_renderer::ParticleSpawnBatch {
             missing_definition_count: 1,
+            ..bbb_renderer::ParticleSpawnBatch::default()
+        };
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_level_event_particles(
+        &mut self,
+        event: &LevelEvent,
+        _random: &mut LevelEventSoundRandomState,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.level_events.push(*event);
+        let batch = bbb_renderer::ParticleSpawnBatch {
+            missing_sprite_count: 1,
             ..bbb_renderer::ParticleSpawnBatch::default()
         };
         self.batches.push(batch.clone());

@@ -22,6 +22,7 @@ const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
 const RANDOM_INCREMENT: u64 = 11;
 const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
 const RANDOM_FLOAT_MULTIPLIER: f32 = 5.960_464_5e-8;
+const RANDOM_DOUBLE_DIVISOR: f64 = (1_u64 << 53) as f64;
 const SEED_UNIQUIFIER_INITIAL: u64 = 8_682_522_807_148_012;
 const SEED_UNIQUIFIER_MULTIPLIER: u64 = 1_181_783_497_276_652_981;
 
@@ -41,6 +42,12 @@ impl LevelEventSoundRandomState {
 
     pub fn next_float(&mut self) -> f32 {
         (self.next_bits(24) as f32) * RANDOM_FLOAT_MULTIPLIER
+    }
+
+    pub fn next_double(&mut self) -> f64 {
+        let high = (self.next_bits(26) as u64) << 27;
+        let low = self.next_bits(27) as u64;
+        (high + low) as f64 / RANDOM_DOUBLE_DIVISOR
     }
 
     fn next_bits(&mut self, bits: u32) -> u32 {
@@ -778,6 +785,15 @@ mod tests {
     use uuid::Uuid;
 
     #[test]
+    fn level_event_random_state_matches_java_float_and_double_samples() {
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        assert_close(random.next_float(), 0.730_967_76);
+        assert_close(random.next_float(), 0.831_441);
+        assert_close_f64(random.next_double(), 0.240_536_415_671_485_87);
+        assert_close_f64(random.next_double(), 0.637_417_425_350_108_3);
+    }
+
+    #[test]
     fn tracks_last_sound_events_and_counters() {
         let mut store = WorldStore::new();
 
@@ -1282,6 +1298,13 @@ mod tests {
     fn assert_close(actual: f32, expected: f32) {
         assert!(
             (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
+    }
+
+    fn assert_close_f64(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() < 1.0e-12,
             "expected {expected}, got {actual}"
         );
     }

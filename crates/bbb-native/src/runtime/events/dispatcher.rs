@@ -348,6 +348,12 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 {
                     emit_positioned_sound(&mut audio_events, &state);
                 }
+                emit_level_event_particles(
+                    &mut particle_events,
+                    &mut particle_renderer,
+                    &event,
+                    level_event_sound_random,
+                );
             }
             NetEvent::InitializeBorder(border) => {
                 world.apply_initialize_border(border);
@@ -671,6 +677,20 @@ fn emit_level_particles(
 ) {
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch = particle_events.spawn_level_particles(packet);
+        if let Some(renderer) = particle_renderer.as_deref_mut() {
+            renderer.submit_particle_spawns(batch);
+        }
+    }
+}
+
+fn emit_level_event_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    event: &bbb_protocol::packets::LevelEvent,
+    random: &mut LevelEventSoundRandomState,
+) {
+    if let Some(particle_events) = particle_events.as_deref_mut() {
+        let batch = particle_events.spawn_level_event_particles(event, random);
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }
