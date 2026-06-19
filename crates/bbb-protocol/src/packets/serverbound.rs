@@ -10,6 +10,7 @@ use crate::{
 
 use super::client_features::{RecipeBookType, RecipeDisplayId};
 use super::client_state::Difficulty;
+use super::inventory::{DataComponentPatchSummary, ItemStackSummary};
 use super::player_info::GameType;
 use super::{chunks, connection, BlockPos, MessageSignature, Vec3d};
 
@@ -335,6 +336,12 @@ pub struct SpectateEntity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TeleportToEntity {
     pub uuid: Uuid,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetCreativeModeSlot {
+    pub slot_num: i16,
+    pub item: ItemStackSummary,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -992,6 +999,28 @@ fn encode_hashed_component_patch(out: &mut Encoder, patch: &HashedComponentPatch
     }
 }
 
+fn encode_item_stack_summary(out: &mut Encoder, item: &ItemStackSummary) -> Result<()> {
+    let Some(item_id) = item.item_id else {
+        out.write_var_i32(0);
+        return Ok(());
+    };
+    if item.count <= 0 {
+        out.write_var_i32(0);
+        return Ok(());
+    }
+    if item.component_patch != DataComponentPatchSummary::default() {
+        return Err(ProtocolError::InvalidData(
+            "cannot encode summarized item component patch for creative mode slot".to_string(),
+        ));
+    }
+
+    out.write_var_i32(item.count);
+    out.write_var_i32(item_id);
+    out.write_var_i32(0);
+    out.write_var_i32(0);
+    Ok(())
+}
+
 fn encode_lp_vec3(out: &mut Encoder, value: Vec3d) {
     let x = sanitize_lp_vec3_value(value.x);
     let y = sanitize_lp_vec3_value(value.y);
@@ -1034,6 +1063,16 @@ pub fn encode_play_set_carried_item(slot: i16) -> (i32, Vec<u8>) {
     let mut out = Encoder::new();
     out.write_i16(slot);
     (ids::play::SERVERBOUND_SET_CARRIED_ITEM, out.into_inner())
+}
+
+pub fn encode_play_set_creative_mode_slot(packet: &SetCreativeModeSlot) -> Result<(i32, Vec<u8>)> {
+    let mut out = Encoder::new();
+    out.write_i16(packet.slot_num);
+    encode_item_stack_summary(&mut out, &packet.item)?;
+    Ok((
+        ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT,
+        out.into_inner(),
+    ))
 }
 
 pub fn encode_play_chunk_batch_received(desired_chunks_per_tick: f32) -> (i32, Vec<u8>) {

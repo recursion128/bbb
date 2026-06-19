@@ -80,6 +80,7 @@ pub enum NetControlRequest {
         primary_effect: Option<i32>,
         secondary_effect: Option<i32>,
     },
+    SetCreativeModeSlot(CreativeModeSlotControlRequest),
     SelectBundleItem {
         slot_id: i32,
         selected_item_index: i32,
@@ -172,6 +173,24 @@ pub enum RecipeBookTypeControl {
     Furnace,
     BlastFurnace,
     Smoker,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CreativeModeSlotControlRequest {
+    pub slot_num: i16,
+    #[serde(default)]
+    pub item: CreativeModeItemStackControl,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum CreativeModeItemStackControl {
+    #[default]
+    Empty,
+    Item {
+        item_id: i32,
+        count: i32,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

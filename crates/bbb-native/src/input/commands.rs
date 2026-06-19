@@ -15,8 +15,8 @@ use bbb_protocol::packets::{
     PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
     PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
     RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity,
-    UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    SelectBundleItem, SelectTradeCommand, SetBeacon, SetCreativeModeSlot, SignUpdate,
+    SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -261,6 +261,21 @@ pub(crate) fn queue_set_beacon_command(
     if let Some(tx) = net_commands {
         if tx.try_send(NetCommand::SetBeacon(command)).is_ok() {
             counters.set_beacon_commands_queued += 1;
+        }
+    }
+}
+
+pub(crate) fn queue_set_creative_mode_slot_command(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    command: SetCreativeModeSlot,
+) {
+    if let Some(tx) = net_commands {
+        if tx
+            .try_send(NetCommand::SetCreativeModeSlot(command))
+            .is_ok()
+        {
+            counters.set_creative_mode_slot_commands_queued += 1;
         }
     }
 }
@@ -1109,6 +1124,29 @@ mod tests {
 
         assert_eq!(counters.set_beacon_commands_queued, 1);
         assert_eq!(rx.try_recv().unwrap(), NetCommand::SetBeacon(command));
+    }
+
+    #[test]
+    fn queues_set_creative_mode_slot_command() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut counters = NetCounters::default();
+        let command = SetCreativeModeSlot {
+            slot_num: 36,
+            item: bbb_protocol::packets::ItemStackSummary {
+                item_id: Some(42),
+                count: 64,
+                component_patch: Default::default(),
+            },
+        };
+
+        queue_set_creative_mode_slot_command(&mut counters, &commands, command.clone());
+
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetCreativeModeSlot(command)
+        );
     }
 
     #[test]

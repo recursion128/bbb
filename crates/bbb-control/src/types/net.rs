@@ -65,6 +65,8 @@ pub struct NetCounters {
     #[serde(default)]
     pub set_beacon_commands_queued: usize,
     #[serde(default)]
+    pub set_creative_mode_slot_commands_queued: usize,
+    #[serde(default)]
     pub sign_update_commands_queued: usize,
     #[serde(default)]
     pub spectate_entity_commands_queued: usize,

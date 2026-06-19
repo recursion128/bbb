@@ -13,7 +13,8 @@ use tokio::{
 use crate::types::{
     AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest,
     ContainerClickSlotControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
-    NetControlRequest, RecipeBookTypeControl, SharedSnapshot,
+    CreativeModeItemStackControl, CreativeModeSlotControlRequest, NetControlRequest,
+    RecipeBookTypeControl, SharedSnapshot,
 };
 
 const SIGN_UPDATE_LINE_COUNT: usize = 4;
@@ -873,6 +874,40 @@ fn dispatch(request: ControlRequest, snapshot: &SharedSnapshot) -> ControlRespon
         };
     }
 
+    if request.method == "net.set_creative_mode_slot" {
+        let request = match serde_json::from_value::<CreativeModeSlotControlRequest>(
+            request.params.clone(),
+        ) {
+            Ok(request) => request,
+            Err(err) => {
+                return ControlResponse {
+                    ok: false,
+                    result: None,
+                    error: Some(format!("net.set_creative_mode_slot invalid params: {err}")),
+                };
+            }
+        };
+        if let Err(err) = validate_creative_mode_slot_request(&request) {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(err),
+            };
+        }
+        let mut snapshot_guard = snapshot.write().expect("control snapshot poisoned");
+        snapshot_guard
+            .net_requests
+            .push(NetControlRequest::SetCreativeModeSlot(request));
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": snapshot_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "net.select_bundle_item" {
         let Some(slot_id) = i32_param(&request.params, "slot_id") else {
             return ControlResponse {
@@ -1481,6 +1516,23 @@ fn edit_book_title_param(params: &serde_json::Value, key: &str) -> Result<Option
 
 fn bool_param(params: &serde_json::Value, key: &str) -> Option<bool> {
     params.get(key)?.as_bool()
+}
+
+fn validate_creative_mode_slot_request(
+    request: &CreativeModeSlotControlRequest,
+) -> Result<(), String> {
+    match &request.item {
+        CreativeModeItemStackControl::Empty => Ok(()),
+        CreativeModeItemStackControl::Item { item_id, count } => {
+            if *item_id < 0 {
+                return Err("net.set_creative_mode_slot requires item.item_id >= 0".to_string());
+            }
+            if *count <= 0 {
+                return Err("net.set_creative_mode_slot requires item.count > 0".to_string());
+            }
+            Ok(())
+        }
+    }
 }
 
 #[cfg(test)]
@@ -3083,6 +3135,102 @@ mod tests {
         let counters: NetCounters = serde_json::from_value(value).unwrap();
 
         assert_eq!(counters.set_beacon_commands_queued, 0);
+    }
+
+    #[test]
+    fn net_set_creative_mode_slot_queues_request() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.set_creative_mode_slot".to_string(),
+                params: json!({
+                    "slot_num": 36,
+                    "item": {
+                        "kind": "item",
+                        "item_id": 42,
+                        "count": 64
+                    }
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok, "{response:?}");
+        assert_eq!(response.result.unwrap()["pending"], 1);
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SetCreativeModeSlot(
+                crate::types::CreativeModeSlotControlRequest {
+                    slot_num: 36,
+                    item: crate::types::CreativeModeItemStackControl::Item {
+                        item_id: 42,
+                        count: 64,
+                    },
+                }
+            )]
+        );
+    }
+
+    #[test]
+    fn net_set_creative_mode_slot_defaults_missing_item_to_empty_drop() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.set_creative_mode_slot".to_string(),
+                params: json!({"slot_num": -1}),
+            },
+            &snapshot,
+        );
+
+        assert!(response.ok, "{response:?}");
+        assert_eq!(
+            snapshot.read().unwrap().net_requests,
+            vec![NetControlRequest::SetCreativeModeSlot(
+                crate::types::CreativeModeSlotControlRequest {
+                    slot_num: -1,
+                    item: crate::types::CreativeModeItemStackControl::Empty,
+                }
+            )]
+        );
+    }
+
+    #[test]
+    fn net_set_creative_mode_slot_rejects_invalid_item_stack() {
+        let snapshot = shared_snapshot("test");
+        let response = dispatch(
+            ControlRequest {
+                method: "net.set_creative_mode_slot".to_string(),
+                params: json!({
+                    "slot_num": 36,
+                    "item": {
+                        "kind": "item",
+                        "item_id": 42,
+                        "count": 0
+                    }
+                }),
+            },
+            &snapshot,
+        );
+
+        assert!(!response.ok);
+        assert_eq!(
+            response.error.as_deref(),
+            Some("net.set_creative_mode_slot requires item.count > 0")
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn net_set_creative_mode_slot_counter_deserializes_with_default() {
+        let mut value = serde_json::to_value(NetCounters::default()).unwrap();
+        value
+            .as_object_mut()
+            .unwrap()
+            .remove("set_creative_mode_slot_commands_queued");
+
+        let counters: NetCounters = serde_json::from_value(value).unwrap();
+
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 0);
     }
 
     #[test]

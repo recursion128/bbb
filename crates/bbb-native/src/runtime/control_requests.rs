@@ -1,14 +1,16 @@
 use bbb_control::{
     CodeOfConductControlRequest, ContainerClickControlRequest, ContainerInputControl,
-    DifficultyControl, GameModeControl, HashedComponentPatchControl, HashedStackControl,
-    NetControlRequest, NetCounters, RecipeBookTypeControl, SharedSnapshot,
+    CreativeModeItemStackControl, CreativeModeSlotControlRequest, DifficultyControl,
+    GameModeControl, HashedComponentPatchControl, HashedStackControl, NetControlRequest,
+    NetCounters, RecipeBookTypeControl, SharedSnapshot,
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeDifficultyCommand,
     ChangeGameModeCommand, ContainerClick, ContainerInput, Difficulty, EditBook, EntityTagQuery,
-    GameType, HashedComponentPatch, HashedItemStack, HashedStack, LockDifficultyCommand,
-    RecipeBookType, RenameItem, SeenAdvancements, SetBeacon, SpectateEntity, TeleportToEntity,
+    GameType, HashedComponentPatch, HashedItemStack, HashedStack, ItemStackSummary,
+    LockDifficultyCommand, RecipeBookType, RenameItem, SeenAdvancements, SetBeacon,
+    SetCreativeModeSlot, SpectateEntity, TeleportToEntity,
 };
 use bbb_world::{ContainerClickSlotRequest, WorldStore};
 use tokio::sync::mpsc;
@@ -25,8 +27,9 @@ use crate::{
         queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
         queue_rename_item_command, queue_request_game_rule_values_command,
         queue_request_stats_command, queue_seen_advancements_command, queue_select_trade_command,
-        queue_set_beacon_command, queue_sign_update_command, queue_spectate_entity_command,
-        queue_teleport_to_entity_command, select_bundle_item, select_hotbar_slot,
+        queue_set_beacon_command, queue_set_creative_mode_slot_command, queue_sign_update_command,
+        queue_spectate_entity_command, queue_teleport_to_entity_command, select_bundle_item,
+        select_hotbar_slot,
     },
 };
 
@@ -87,6 +90,21 @@ fn protocol_hashed_components(components: HashedComponentPatchControl) -> Hashed
     HashedComponentPatch {
         added_components: components.added_components,
         removed_components: components.removed_components,
+    }
+}
+
+fn protocol_creative_mode_slot(request: CreativeModeSlotControlRequest) -> SetCreativeModeSlot {
+    let item = match request.item {
+        CreativeModeItemStackControl::Empty => ItemStackSummary::empty(),
+        CreativeModeItemStackControl::Item { item_id, count } => ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: Default::default(),
+        },
+    };
+    SetCreativeModeSlot {
+        slot_num: request.slot_num,
+        item,
     }
 }
 
@@ -255,6 +273,13 @@ pub(crate) fn pump_control_net_requests(
                         primary_effect,
                         secondary_effect,
                     },
+                );
+            }
+            NetControlRequest::SetCreativeModeSlot(request) => {
+                queue_set_creative_mode_slot_command(
+                    counters,
+                    net_commands,
+                    protocol_creative_mode_slot(request),
                 );
             }
             NetControlRequest::SignUpdate {
@@ -1046,6 +1071,41 @@ mod tests {
             NetCommand::SetBeacon(SetBeacon {
                 primary_effect: Some(1),
                 secondary_effect: None,
+            })
+        );
+        assert!(snapshot.read().unwrap().net_requests.is_empty());
+    }
+
+    #[test]
+    fn pump_control_net_requests_queues_set_creative_mode_slot() {
+        let snapshot = bbb_control::shared_snapshot("test");
+        snapshot.write().unwrap().net_requests.push(
+            bbb_control::NetControlRequest::SetCreativeModeSlot(
+                bbb_control::CreativeModeSlotControlRequest {
+                    slot_num: 36,
+                    item: bbb_control::CreativeModeItemStackControl::Item {
+                        item_id: 42,
+                        count: 64,
+                    },
+                },
+            ),
+        );
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_net_requests(&snapshot, &Some(tx), &mut counters, &mut world, None);
+
+        assert_eq!(counters.set_creative_mode_slot_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SetCreativeModeSlot(SetCreativeModeSlot {
+                slot_num: 36,
+                item: ItemStackSummary {
+                    item_id: Some(42),
+                    count: 64,
+                    component_patch: Default::default(),
+                },
             })
         );
         assert!(snapshot.read().unwrap().net_requests.is_empty());

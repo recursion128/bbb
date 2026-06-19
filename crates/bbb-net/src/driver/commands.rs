@@ -7,8 +7,8 @@ use bbb_protocol::packets::{
     LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
     PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
     RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SignUpdate,
-    SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
+    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot,
+    SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
 };
 
 use crate::{
@@ -246,6 +246,14 @@ pub(crate) async fn send_select_trade(
 
 pub(crate) async fn send_set_beacon(conn: &mut RawConnection, packet: SetBeacon) -> Result<()> {
     let (id, payload) = packets::encode_play_set_beacon(packet);
+    conn.send_packet(id, &payload).await
+}
+
+pub(crate) async fn send_set_creative_mode_slot(
+    conn: &mut RawConnection,
+    packet: SetCreativeModeSlot,
+) -> Result<()> {
+    let (id, payload) = packets::encode_play_set_creative_mode_slot(&packet)?;
     conn.send_packet(id, &payload).await
 }
 

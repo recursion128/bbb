@@ -965,6 +965,63 @@ fn encodes_set_carried_item() {
 }
 
 #[test]
+fn encodes_set_creative_mode_slot_componentless_item() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 64,
+            component_patch: DataComponentPatchSummary::default(),
+        },
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), 36);
+    assert_eq!(decoder.read_var_i32().unwrap(), 64);
+    assert_eq!(decoder.read_var_i32().unwrap(), 42);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn encodes_set_creative_mode_slot_drop_empty_stack() {
+    let (id, payload) = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: -1,
+        item: ItemStackSummary::empty(),
+    })
+    .unwrap();
+
+    assert_eq!(id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i16().unwrap(), -1);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(decoder.is_empty());
+}
+
+#[test]
+fn set_creative_mode_slot_rejects_summarized_component_patch() {
+    let err = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(42),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![6],
+                custom_name: Some("Renamed".to_string()),
+                ..DataComponentPatchSummary::default()
+            },
+        },
+    })
+    .unwrap_err();
+
+    assert!(matches!(err, ProtocolError::InvalidData(_)));
+}
+
+#[test]
 fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order() {
     assert_eq!(ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED, 3);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK, 17);
@@ -976,6 +1033,7 @@ fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order()
     assert_eq!(ids::play::SERVERBOUND_SEEN_ADVANCEMENTS, 50);
     assert_eq!(ids::play::SERVERBOUND_SELECT_TRADE, 51);
     assert_eq!(ids::play::SERVERBOUND_SET_BEACON, 52);
+    assert_eq!(ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT, 56);
     assert_eq!(ids::play::SERVERBOUND_SIGN_UPDATE, 61);
 }
 

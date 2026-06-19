@@ -685,6 +685,12 @@ When an agent does any of the following, update this file in the same slice:
       `ServerboundContainerClickPacket` with `ContainerInput.CLONE`, an empty
       changed-slot set, and a carried item copied to the vanilla max stack
       size.
+    - Control/native can queue `ServerboundSetCreativeModeSlotPacket` for:
+      - creative inventory slot updates
+      - creative drop requests
+      - empty or componentless item stacks
+      Full item component payload encoding remains follow-up before
+      component-rich creative stacks can be sent.
     - They queue `START_FALL_FLYING` player commands when an airborne local
       player has an elytra-equipped chest slot.
     - They queue `STOP_SLEEPING` player commands when wake-up input is pressed

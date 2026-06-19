@@ -34,8 +34,8 @@ pub(crate) use commands::{
     queue_recipe_book_change_settings_command, queue_recipe_book_seen_recipe_command,
     queue_rename_item_command, queue_request_game_rule_values_command, queue_request_stats_command,
     queue_seen_advancements_command, queue_select_trade_command, queue_set_beacon_command,
-    queue_sign_update_command, queue_spectate_entity_command, queue_teleport_to_entity_command,
-    queue_vehicle_move_command, select_hotbar_slot,
+    queue_set_creative_mode_slot_command, queue_sign_update_command, queue_spectate_entity_command,
+    queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
 pub(crate) use inventory::{
     anvil_rename_entry_consumes_key, handle_inventory_cursor_moved, handle_inventory_key_input,

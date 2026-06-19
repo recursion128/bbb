@@ -253,6 +253,7 @@ pub mod play {
     pub const SERVERBOUND_SELECT_TRADE: i32 = 51;
     pub const SERVERBOUND_SET_BEACON: i32 = 52;
     pub const SERVERBOUND_SET_CARRIED_ITEM: i32 = 53;
+    pub const SERVERBOUND_SET_CREATIVE_MODE_SLOT: i32 = 56;
     pub const SERVERBOUND_SIGN_UPDATE: i32 = 61;
     pub const SERVERBOUND_SPECTATE_ENTITY: i32 = 62;
     pub const SERVERBOUND_SWING: i32 = 63;
