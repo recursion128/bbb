@@ -113,6 +113,9 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
         }
         (MouseButton::Left, ElementState::Released) => {
             input.destroy_block_held = false;
+            if world.local_selected_main_hand_has_piercing_weapon() {
+                return;
+            }
             abort_destroy_block(counters, world, net_commands, ProtocolDirection::Down);
         }
         (MouseButton::Right, ElementState::Pressed) => {
@@ -305,6 +308,9 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
         return;
     }
     if local_player_attack_is_blocked(world) {
+        return;
+    }
+    if world.local_selected_main_hand_has_piercing_weapon() {
         return;
     }
     if world.tick_local_destroy_delay() {
@@ -1311,6 +1317,60 @@ mod tests {
 
         assert!(input.destroy_block_held);
         assert!(world.local_player().interaction.using_item);
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(old_pos)
+        );
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn held_left_mouse_with_piercing_weapon_does_not_continue_or_abort_destroy() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        let old_pos = BlockPos { x: 2, y: 65, z: -3 };
+        world.set_local_destroying_block_hit(old_pos, ProtocolDirection::South);
+        set_selected_piercing_weapon(&mut world, 42);
+        let mut counters = NetCounters::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            None,
+            1.0,
+            1,
+        );
+
+        assert!(input.destroy_block_held);
+        assert_eq!(
+            world.local_player().interaction.destroying_block,
+            Some(old_pos)
+        );
+        assert_eq!(
+            world.local_player().interaction.destroying_block_face,
+            Some(ProtocolDirection::South)
+        );
+        assert_eq!(world.local_player().interaction.destroying_block_ticks, 0);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Released,
+        );
+
+        assert!(!input.destroy_block_held);
         assert_eq!(
             world.local_player().interaction.destroying_block,
             Some(old_pos)
