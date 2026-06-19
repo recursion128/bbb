@@ -3302,6 +3302,44 @@ fn randomized_level_event_emits_vanilla_positioned_sound() {
 }
 
 #[test]
+fn portal_travel_level_event_emits_vanilla_local_ambience() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1032,
+        pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+        data: 0,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayLocalSound(command) = &audio.commands[0] else {
+        panic!("expected local sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.portal.travel");
+    assert_eq!(command.sound.sound_name, "minecraft:portal/travel");
+    assert_eq!(command.category, AudioCategory::Ambient);
+    assert_close(command.packet_volume, 0.25);
+    assert_close(command.packet_pitch, 1.092_387_1);
+    assert_eq!(command.seed, 0);
+    assert_eq!(
+        world.last_local_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:block.portal.travel")
+    );
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
 fn border_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::InitializeBorder(
@@ -4592,6 +4630,14 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
         self.registry = registry;
     }
 
+    fn play_local_sound(&mut self, state: &bbb_world::LocalSoundEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            resolver.play_local_sound(state)
+        };
+        self.record(command);
+    }
+
     fn play_positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
         let command = {
             let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
@@ -4667,6 +4713,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.ghast.warn": {
                 "sounds": ["mob/ghast/affectionate_scream"]
+            },
+            "block.portal.travel": {
+                "sounds": ["portal/travel"]
             }
         }"#,
     )

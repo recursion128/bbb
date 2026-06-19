@@ -2,8 +2,8 @@ mod client_state;
 mod control_state;
 mod dispatcher;
 
+pub(crate) use bbb_world::LevelEventSoundRandomState;
 pub(super) use dispatcher::drain_net_events_with_sinks;
-pub(crate) use dispatcher::LevelEventSoundRandomState;
 #[cfg(test)]
 pub(super) use dispatcher::{drain_net_events, drain_net_events_with_audio};
 

@@ -234,7 +234,6 @@ When an agent does any of the following, update this file in the same slice:
     - stop semantics
     - remaining level-event audio:
       - jukebox song start/stop
-      - portal local ambience
       - particle-coupled level-event side effects
     - device/runtime diagnostics
 - Evidence / boundary:
@@ -256,6 +255,12 @@ When an agent does any of the following, update this file in the same slice:
       - ghast/blaze/dragon/wither/zombie/skeleton/phantom hostile effects
       - anvil, grindstone, book, smithing table, dripstone, wind charge
       - lava extinguish and redstone torch burnout sounds
+    - native dispatcher and offline probe recording/playback for
+      `LevelEventHandler` portal travel local ambience:
+      - event `1032`
+      - `minecraft:block.portal.travel`
+      - ambient source
+      - non-spatial local sound command
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage

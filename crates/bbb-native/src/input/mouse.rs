@@ -575,6 +575,8 @@ mod tests {
 
         fn set_sound_event_registry(&mut self, _registry: bbb_audio::SoundEventRegistry) {}
 
+        fn play_local_sound(&mut self, _state: &bbb_world::LocalSoundEventState) {}
+
         fn play_positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
             self.positioned_sounds.push(state.clone());
         }

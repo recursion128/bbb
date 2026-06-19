@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use anyhow::{Context, Result};
 use bbb_protocol::packets::{self, ClientIntent, PlayerPositionState};
-use bbb_world::{BlockPos, ChunkPos, WorldStore};
+use bbb_world::{BlockPos, ChunkPos, LevelEventSoundRandomState, WorldStore};
 use tokio::time::{timeout, Interval};
 
 use crate::{
@@ -23,6 +23,7 @@ struct ProbeContext {
     player_loaded_sent: bool,
     player_position_state: PlayerPositionState,
     play_tick: Option<Interval>,
+    level_event_sound_random: LevelEventSoundRandomState,
     chunk_batch_size: ChunkBatchSizeCalculator,
     server_cookies: BTreeMap<String, Vec<u8>>,
     seen_code_of_conduct: bool,
@@ -74,6 +75,7 @@ impl ProbeContext {
             player_loaded_sent: false,
             player_position_state: PlayerPositionState::default(),
             play_tick: None,
+            level_event_sound_random: LevelEventSoundRandomState::with_seed(0),
             chunk_batch_size: ChunkBatchSizeCalculator::new(),
             server_cookies: BTreeMap::new(),
             seen_code_of_conduct: false,

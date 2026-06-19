@@ -4,10 +4,23 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AudioCommand {
+    PlayLocalSound(PlayLocalSoundCommand),
     PlayPositionedSound(PlayPositionedSoundCommand),
     PlayEntitySound(PlayEntitySoundCommand),
     StopSound(StopSoundCommand),
     TickEntitySoundPositions(TickEntitySoundPositionsCommand),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlayLocalSoundCommand {
+    pub sound: ResolvedSound,
+    pub category: AudioCategory,
+    pub packet_volume: f32,
+    pub packet_pitch: f32,
+    pub gain: f32,
+    pub channel_gain: f32,
+    pub playback_rate: f32,
+    pub seed: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

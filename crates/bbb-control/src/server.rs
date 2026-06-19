@@ -3997,6 +3997,18 @@ mod tests {
                 pitch: 1.25,
                 seed: 123456789,
             });
+            store.record_local_sound(bbb_world::LocalSoundEventState {
+                sound: bbb_world::SoundHolderState {
+                    kind: "direct".to_string(),
+                    registry_id: None,
+                    location: Some("minecraft:block.portal.travel".to_string()),
+                    fixed_range: None,
+                },
+                source: "ambient".to_string(),
+                volume: 0.25,
+                pitch: 1.0,
+                seed: 0,
+            });
             store.apply_stop_sound(StopSound {
                 source: Some(SoundSource::Music),
                 name: Some("minecraft:music.menu".to_string()),
@@ -4019,6 +4031,12 @@ mod tests {
         assert_eq!(audio["last_sound"]["position"]["x"], 2.5);
         assert_eq!(audio["last_sound"]["position"]["y"], -1.0);
         assert_eq!(audio["last_sound"]["position"]["z"], 0.0);
+        assert_eq!(
+            audio["last_local_sound"]["sound"]["location"],
+            "minecraft:block.portal.travel"
+        );
+        assert_eq!(audio["last_local_sound"]["source"], "ambient");
+        assert_eq!(audio["last_local_sound"]["volume"], 0.25);
         assert_eq!(audio["last_stop_sound"]["source"], "music");
         assert_eq!(audio["last_stop_sound"]["name"], "minecraft:music.menu");
     }

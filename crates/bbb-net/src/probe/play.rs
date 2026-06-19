@@ -379,6 +379,11 @@ impl ProbeContext {
             }
             PlayClientbound::LevelEvent(event) => {
                 self.world.apply_level_event(event);
+                if let Some(state) = self.world.level_event_local_sound_with_random(event, || {
+                    self.level_event_sound_random.next_float()
+                }) {
+                    self.world.record_local_sound(state);
+                }
             }
             PlayClientbound::GameEvent(update) => {
                 self.world.apply_game_event(update);
@@ -3492,6 +3497,35 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_records_portal_travel_level_event_as_local_sound() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 1032,
+                pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+                data: 0,
+                global: false,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.level_events_received, 1);
+        let sound = report.world.last_local_sound().unwrap();
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.portal.travel")
+        );
+        assert_eq!(sound.source, "ambient");
+        assert_close(sound.volume, 0.25);
+        assert_close(sound.pitch, 1.092_387_1);
+        assert_eq!(sound.seed, 0);
+    }
+
+    #[tokio::test]
     async fn probe_applies_player_look_at_to_world() {
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
@@ -4134,6 +4168,13 @@ mod tests {
             entity_type_id,
             ..protocol_add_entity(id)
         }
+    }
+
+    fn assert_close(actual: f32, expected: f32) {
+        assert!(
+            (actual - expected).abs() < 1.0e-6,
+            "expected {expected}, got {actual}"
+        );
     }
 
     fn minecart_step(

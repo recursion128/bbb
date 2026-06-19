@@ -1,11 +1,14 @@
 use bbb_pack::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
-use bbb_world::{SoundEntityEventState, SoundEventState, SoundHolderState, StopSoundEventState};
+use bbb_world::{
+    LocalSoundEventState, SoundEntityEventState, SoundEventState, SoundHolderState,
+    StopSoundEventState,
+};
 use thiserror::Error;
 
 use crate::{
     command::{
         AudioCategory, AudioCommand, AudioVolumeSettings, PlayEntitySoundCommand,
-        PlayPositionedSoundCommand, ResolvedSound, StopSoundCommand,
+        PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound, StopSoundCommand,
     },
     random::LegacyRandom,
     SoundEventRegistry,
@@ -80,6 +83,27 @@ impl<'a> AudioCommandResolver<'a> {
                 sound,
             },
         ))
+    }
+
+    pub fn play_local_sound(
+        &self,
+        state: &LocalSoundEventState,
+    ) -> Result<AudioCommand, AudioResolveError> {
+        let (event_id, _) = self.event_id_for_holder(&state.sound)?;
+        let sound = self.resolve_event_for_seed(&event_id, state.seed)?;
+        let category = AudioCategory::from_world_source(&state.source);
+        let gain = state.volume * sound.entry_volume;
+        let channel_gain = self.volume_settings.channel_gain(gain, &category);
+        Ok(AudioCommand::PlayLocalSound(PlayLocalSoundCommand {
+            gain,
+            channel_gain,
+            playback_rate: state.pitch * sound.entry_pitch,
+            packet_volume: state.volume,
+            packet_pitch: state.pitch,
+            seed: state.seed,
+            category,
+            sound,
+        }))
     }
 
     pub fn play_entity_sound(
@@ -414,6 +438,57 @@ mod tests {
         assert_near(play.gain, 0.3);
         assert_near(play.playback_rate, 2.4);
         assert_eq!(play.fixed_range, Some(24.0));
+    }
+
+    #[test]
+    fn resolves_direct_local_sound_without_spatial_position() {
+        let assets_dir = unique_assets_dir("direct-local");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "block.portal.travel": {
+                "sounds": [
+                  {
+                    "name": "portal/travel",
+                    "volume": 0.8,
+                    "pitch": 1.1
+                  }
+                ]
+              }
+            }"#,
+        );
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+
+        let command = resolver
+            .play_local_sound(&LocalSoundEventState {
+                sound: SoundHolderState {
+                    kind: "direct".to_string(),
+                    registry_id: None,
+                    location: Some("minecraft:block.portal.travel".to_string()),
+                    fixed_range: None,
+                },
+                source: "ambient".to_string(),
+                volume: 0.25,
+                pitch: 1.0,
+                seed: 0,
+            })
+            .unwrap();
+
+        let AudioCommand::PlayLocalSound(play) = command else {
+            panic!("expected local sound command");
+        };
+        assert_eq!(play.category, AudioCategory::Ambient);
+        assert_eq!(play.sound.event_id, "minecraft:block.portal.travel");
+        assert_eq!(play.sound.sound_name, "minecraft:portal/travel");
+        assert_eq!(
+            play.sound.ogg_path,
+            assets_dir.join("sounds").join("portal/travel.ogg")
+        );
+        assert_near(play.gain, 0.2);
+        assert_near(play.playback_rate, 1.1);
+        assert_eq!(play.packet_volume, 0.25);
+        assert_eq!(play.packet_pitch, 1.0);
     }
 
     #[test]

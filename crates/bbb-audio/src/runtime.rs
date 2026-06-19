@@ -54,6 +54,12 @@ impl KiraAudioRuntime {
 
     pub fn handle_command(&mut self, command: &AudioCommand) -> Result<()> {
         match command {
+            AudioCommand::PlayLocalSound(command) => self.play_local_sound(
+                &command.sound,
+                command.category.clone(),
+                command.channel_gain,
+                command.playback_rate,
+            ),
             AudioCommand::PlayPositionedSound(command) => self.play_spatial_sound(
                 &command.sound,
                 command.category.clone(),
@@ -83,6 +89,40 @@ impl KiraAudioRuntime {
                 Ok(())
             }
         }
+    }
+
+    fn play_local_sound(
+        &mut self,
+        sound: &ResolvedSound,
+        category: AudioCategory,
+        channel_gain: f32,
+        playback_rate: f32,
+    ) -> Result<()> {
+        self.retain_active_sounds();
+        if !sound_should_start(channel_gain, &category) {
+            return Ok(());
+        }
+        let volume = channel_decibels_from_gain(channel_gain);
+        let playback_rate = channel_playback_rate(playback_rate);
+        let handle = if sound.stream {
+            let data = StreamingSoundData::from_file(&sound.ogg_path)?
+                .volume(volume)
+                .playback_rate(playback_rate as f64);
+            KiraSoundHandle::Streaming(self.manager.play(data)?)
+        } else {
+            let data = StaticSoundData::from_file(&sound.ogg_path)?
+                .volume(volume)
+                .playback_rate(playback_rate as f64);
+            KiraSoundHandle::Static(self.manager.play(data)?)
+        };
+        self.playing.push(KiraPlayingSound {
+            event_id: sound.event_id.clone(),
+            category,
+            entity_id: None,
+            handle,
+            track: None,
+        });
+        Ok(())
     }
 
     fn play_spatial_sound(

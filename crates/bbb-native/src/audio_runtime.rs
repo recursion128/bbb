@@ -5,11 +5,14 @@ use bbb_audio::{
 };
 use bbb_control::AudioCounters;
 use bbb_pack::{PackRoots, SoundCatalog};
-use bbb_world::{SoundEntityEventState, SoundEventState, StopSoundEventState};
+use bbb_world::{
+    LocalSoundEventState, SoundEntityEventState, SoundEventState, StopSoundEventState,
+};
 
 pub(crate) trait AudioEventSink {
     fn counters(&self) -> AudioCounters;
     fn set_sound_event_registry(&mut self, registry: SoundEventRegistry);
+    fn play_local_sound(&mut self, state: &LocalSoundEventState);
     fn play_positioned_sound(&mut self, state: &SoundEventState);
     fn play_entity_sound(&mut self, state: &SoundEntityEventState, position: Option<[f64; 3]>);
     fn stop_sound(&mut self, state: &StopSoundEventState);
@@ -89,6 +92,14 @@ impl AudioEventSink for NativeAudioRuntime {
         self.counters.registry_entries = registry.len();
         self.counters.registry_updates += 1;
         self.registry = registry;
+    }
+
+    fn play_local_sound(&mut self, state: &LocalSoundEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            resolver.play_local_sound(state)
+        };
+        self.handle_resolved_command(command);
     }
 
     fn play_positioned_sound(&mut self, state: &SoundEventState) {

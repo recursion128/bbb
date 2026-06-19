@@ -1,4 +1,8 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    sync::atomic::{AtomicU64, Ordering},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use bbb_protocol::packets::{
     LevelEvent as ProtocolLevelEvent, SoundEntityEvent as ProtocolSoundEntityEvent,
@@ -10,11 +14,67 @@ use serde::{Deserialize, Serialize};
 use crate::WorldStore;
 
 const BLOCK_BREAK_LEVEL_EVENT: i32 = 2001;
+const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
+const RANDOM_INCREMENT: u64 = 11;
+const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
+const RANDOM_FLOAT_MULTIPLIER: f32 = 5.960_464_5e-8;
+const SEED_UNIQUIFIER_INITIAL: u64 = 8_682_522_807_148_012;
+const SEED_UNIQUIFIER_MULTIPLIER: u64 = 1_181_783_497_276_652_981;
+
+static SEED_UNIQUIFIER: AtomicU64 = AtomicU64::new(SEED_UNIQUIFIER_INITIAL);
+
+#[derive(Debug, Clone)]
+pub struct LevelEventSoundRandomState {
+    seed: u64,
+}
+
+impl LevelEventSoundRandomState {
+    pub fn with_seed(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
+        }
+    }
+
+    pub fn next_float(&mut self) -> f32 {
+        (self.next_bits(24) as f32) * RANDOM_FLOAT_MULTIPLIER
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(RANDOM_MULTIPLIER)
+            .wrapping_add(RANDOM_INCREMENT)
+            & RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+}
+
+impl Default for LevelEventSoundRandomState {
+    fn default() -> Self {
+        Self::with_seed(generate_unique_seed())
+    }
+}
+
+fn generate_unique_seed() -> i64 {
+    let unique = SEED_UNIQUIFIER
+        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |current| {
+            Some(current.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER))
+        })
+        .map(|previous| previous.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER))
+        .unwrap_or_else(|current| current.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER));
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos() as u64)
+        .unwrap_or(0);
+    (unique ^ nanos) as i64
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientAudioState {
     #[serde(default)]
     pub last_sound: Option<SoundEventState>,
+    #[serde(default)]
+    pub last_local_sound: Option<LocalSoundEventState>,
     #[serde(default)]
     pub last_sound_entity: Option<SoundEntityEventState>,
     #[serde(default)]
@@ -26,6 +86,15 @@ pub struct SoundEventState {
     pub sound: SoundHolderState,
     pub source: String,
     pub position: ProtocolVec3d,
+    pub volume: f32,
+    pub pitch: f32,
+    pub seed: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LocalSoundEventState {
+    pub sound: SoundHolderState,
+    pub source: String,
     pub volume: f32,
     pub pitch: f32,
     pub seed: i64,
@@ -138,6 +207,10 @@ impl WorldStore {
         self.client_audio.last_sound.as_ref()
     }
 
+    pub fn last_local_sound(&self) -> Option<&LocalSoundEventState> {
+        self.client_audio.last_local_sound.as_ref()
+    }
+
     pub fn last_sound_entity(&self) -> Option<&SoundEntityEventState> {
         self.client_audio.last_sound_entity.as_ref()
     }
@@ -196,6 +269,26 @@ impl WorldStore {
             sound.pitch,
             sound.source,
         ))
+    }
+
+    pub fn level_event_local_sound_with_random(
+        &self,
+        event: ProtocolLevelEvent,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<LocalSoundEventState> {
+        let sound = local_level_event_sound(event.event_type, &mut next_float)?;
+        Some(LocalSoundEventState {
+            sound: direct_sound_holder(sound.event_id),
+            source: sound.source.to_string(),
+            volume: sound.volume,
+            pitch: sound.pitch,
+            seed: 0,
+        })
+    }
+
+    pub fn record_local_sound(&mut self, state: LocalSoundEventState) -> LocalSoundEventState {
+        self.client_audio.last_local_sound = Some(state.clone());
+        state
     }
 
     fn level_event_block_break_sound_state(
@@ -404,6 +497,22 @@ fn random_level_event_sound(
     Some(sound)
 }
 
+fn local_level_event_sound(
+    event_type: i32,
+    next_float: &mut impl FnMut() -> f32,
+) -> Option<FixedLevelEventSound> {
+    let sound = match event_type {
+        1032 => FixedLevelEventSound {
+            event_id: "minecraft:block.portal.travel",
+            source: "ambient",
+            volume: 0.25,
+            pitch: ranged_pitch(0.8, 0.4, next_float),
+        },
+        _ => return None,
+    };
+    Some(sound)
+}
+
 fn hostile_triangle(
     event_id: &'static str,
     volume: f32,
@@ -461,6 +570,15 @@ fn block_sound_state(
         volume,
         pitch,
         seed: 0,
+    }
+}
+
+fn direct_sound_holder(sound: &str) -> SoundHolderState {
+    SoundHolderState {
+        kind: "direct".to_string(),
+        registry_id: None,
+        location: Some(sound.to_string()),
+        fixed_range: None,
     }
 }
 
@@ -836,6 +954,35 @@ mod tests {
                 || 0.5,
             )
             .is_none());
+    }
+
+    #[test]
+    fn level_event_local_sound_with_random_maps_portal_travel_ambience() {
+        let mut store = WorldStore::new();
+        let sound = store
+            .level_event_local_sound_with_random(
+                LevelEvent {
+                    event_type: 1032,
+                    pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                    data: 0,
+                    global: false,
+                },
+                || 0.5,
+            )
+            .unwrap();
+
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.portal.travel")
+        );
+        assert_eq!(sound.source, "ambient");
+        assert_close(sound.volume, 0.25);
+        assert_close(sound.pitch, 1.0);
+        assert_eq!(sound.seed, 0);
+        assert_eq!(store.last_local_sound(), None);
+
+        let recorded = store.record_local_sound(sound);
+        assert_eq!(store.last_local_sound(), Some(&recorded));
     }
 
     fn protocol_add_entity(id: i32) -> AddEntity {
