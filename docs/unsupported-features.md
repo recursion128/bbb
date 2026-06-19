@@ -185,6 +185,8 @@ When an agent does any of the following, update this file in the same slice:
         particles around the block center
       - event `2008`: one centered `minecraft:explosion` particle
       - event `2009`: eight `minecraft:cloud` particles above the block
+      - event `3000`: one always-visible centered
+        `minecraft:explosion_emitter` particle
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
@@ -271,6 +273,7 @@ When an agent does any of the following, update this file in the same slice:
       - ghast/blaze/dragon/wither/zombie/skeleton/phantom hostile effects
       - anvil, grindstone, book, smithing table, dripstone, wind charge
       - lava extinguish and redstone torch burnout sounds
+      - end gateway spawn and ender dragon growl sounds
       - lava extinguish and redstone torch burnout now share the dispatcher
         path with renderer smoke side effects for events `1501` and `1502`
     - native dispatcher and offline probe recording/playback for

@@ -626,6 +626,18 @@ fn random_level_event_sound(
             volume: 0.5,
             pitch: triangle_pitch(2.6, 0.8, next_float),
         },
+        3000 => FixedLevelEventSound {
+            event_id: "minecraft:block.end_gateway.spawn",
+            source: "block",
+            volume: 10.0,
+            pitch: triangle_pitch(1.0, 0.2, next_float) * 0.7,
+        },
+        3001 => FixedLevelEventSound {
+            event_id: "minecraft:entity.ender_dragon.growl",
+            source: "hostile",
+            volume: 64.0,
+            pitch: ranged_pitch(0.8, 0.3, next_float),
+        },
         _ => return None,
     };
     Some(sound)
@@ -1194,6 +1206,24 @@ mod tests {
         assert_eq!(wind_charge.source, "block");
         assert_close(wind_charge.volume, 0.5);
         assert_close(wind_charge.pitch, 0.4);
+
+        let end_gateway_spawn = random_level_event_sound(&store, 3000, 0, &[0.75, 0.25]);
+        assert_eq!(
+            end_gateway_spawn.sound.location.as_deref(),
+            Some("minecraft:block.end_gateway.spawn")
+        );
+        assert_eq!(end_gateway_spawn.source, "block");
+        assert_close(end_gateway_spawn.volume, 10.0);
+        assert_close(end_gateway_spawn.pitch, 0.77);
+
+        let dragon_growl = random_level_event_sound(&store, 3001, 0, &[0.5]);
+        assert_eq!(
+            dragon_growl.sound.location.as_deref(),
+            Some("minecraft:entity.ender_dragon.growl")
+        );
+        assert_eq!(dragon_growl.source, "hostile");
+        assert_close(dragon_growl.volume, 64.0);
+        assert_close(dragon_growl.pitch, 0.95);
 
         assert!(store
             .level_event_sound_with_random(

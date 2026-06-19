@@ -314,6 +314,18 @@ impl ParticleCommandResolver {
                     Vec3d::default(),
                 )],
             ),
+            END_GATEWAY_SPAWN_LEVEL_EVENT => self.simple_particle_batch_with_visibility(
+                EXPLOSION_EMITTER_PARTICLE_TYPE_ID,
+                vec![(
+                    Vec3d {
+                        x: f64::from(event.pos.x) + 0.5,
+                        y: f64::from(event.pos.y) + 0.5,
+                        z: f64::from(event.pos.z) + 0.5,
+                    },
+                    Vec3d::default(),
+                )],
+                true,
+            ),
             SPLASH_CLOUD_LEVEL_EVENT => {
                 let mut spawns = Vec::with_capacity(8);
                 for _ in 0..8 {
@@ -377,6 +389,15 @@ impl ParticleCommandResolver {
         particle_type_id: i32,
         spawns: Vec<(Vec3d, Vec3d)>,
     ) -> ParticleSpawnBatch {
+        self.simple_particle_batch_with_visibility(particle_type_id, spawns, false)
+    }
+
+    fn simple_particle_batch_with_visibility(
+        &self,
+        particle_type_id: i32,
+        spawns: Vec<(Vec3d, Vec3d)>,
+        always_show: bool,
+    ) -> ParticleSpawnBatch {
         if spawns.is_empty() {
             return ParticleSpawnBatch::default();
         }
@@ -387,7 +408,7 @@ impl ParticleCommandResolver {
         let commands = spawns
             .into_iter()
             .map(|(position, velocity)| {
-                self.command_from_template(&template, position, velocity, false)
+                self.command_from_template(&template, position, velocity, always_show)
             })
             .collect();
 
@@ -532,7 +553,9 @@ const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
 const EXPLOSION_LEVEL_EVENT: i32 = 2008;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
+const END_GATEWAY_SPAWN_LEVEL_EVENT: i32 = 3000;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
+const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
@@ -818,6 +841,25 @@ mod tests {
             true,
         );
 
+        let mut gateway_random = LevelEventSoundRandomState::with_seed(0);
+        let gateway = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3000,
+                ..level_event_packet(3000)
+            },
+            &mut gateway_random,
+        );
+        assert_eq!(gateway.len(), 1);
+        assert_particle_command_with_visibility(
+            &gateway.commands[0],
+            22,
+            "minecraft:explosion_emitter",
+            [10.5, 64.5, -2.5],
+            [0.0, 0.0, 0.0],
+            true,
+            true,
+        );
+
         let mut cloud_random = LevelEventSoundRandomState::with_seed(0);
         let cloud = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -932,6 +974,7 @@ mod tests {
                 "generic_7",
                 "generic_6",
                 "flame",
+                "explosion_emitter_0",
                 "explosion_0",
                 "smoke_0",
                 "large_smoke_0",
@@ -975,6 +1018,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:explosion_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("explosion_emitter.json"),
+            r#"{
+              "textures": [
+                "minecraft:explosion_emitter_0"
               ]
             }"#,
         );
@@ -1059,6 +1110,26 @@ mod tests {
         velocity: [f64; 3],
         override_limiter: bool,
     ) {
+        assert_particle_command_with_visibility(
+            command,
+            particle_type_id,
+            particle_id,
+            position,
+            velocity,
+            override_limiter,
+            false,
+        );
+    }
+
+    fn assert_particle_command_with_visibility(
+        command: &ParticleSpawnCommand,
+        particle_type_id: i32,
+        particle_id: &str,
+        position: [f64; 3],
+        velocity: [f64; 3],
+        override_limiter: bool,
+        always_show: bool,
+    ) {
         assert_eq!(command.particle_type_id, particle_type_id);
         assert_eq!(command.particle_id, particle_id);
         for (actual, expected) in command.position.iter().zip(position) {
@@ -1068,7 +1139,7 @@ mod tests {
             assert_close(*actual, expected);
         }
         assert_eq!(command.override_limiter, override_limiter);
-        assert!(!command.always_show);
+        assert_eq!(command.always_show, always_show);
         assert_eq!(command.raw_options_len, 0);
     }
 
