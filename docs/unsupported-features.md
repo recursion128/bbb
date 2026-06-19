@@ -1261,7 +1261,7 @@ When an agent does any of the following, update this file in the same slice:
           - component-aware selectable banner pattern state
           - result recomputation after partial input consumption
           - pattern-item result quick-move
-          - partial/full-inventory result transfers
+          - blocked or partial result transfers
           - take-result sound side effects
         - deferred presentation parity work:
           - pattern-item component/tag lists beyond the single-pattern vanilla
@@ -1311,9 +1311,14 @@ When an agent does any of the following, update this file in the same slice:
           `UpdateRecipes` provides the three vanilla smithing property sets:
           - template/base/addition input slot routing
           - ordinary player inventory/hotbar range movement
+        - result-slot quick-move into the player inventory is locally predicted
+          when the current server result fully fits and the single
+          template/base/addition inputs are consumed to empty.
         - result-slot clicks are kept server-authoritative until:
+          - result-slot pickup
           - result prediction
-          - input consumption
+          - result recomputation after partial input consumption
+          - partial/full-inventory result transfers
           - level event side effects
         - deferred presentation parity work:
           - armor stand preview
