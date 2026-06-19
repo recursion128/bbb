@@ -4,12 +4,25 @@ use super::local_player::LocalPlayerPoseState;
 use crate::{BlockPos, BlockProbe, TerrainMaterialClass, WorldStore};
 
 pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
+const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
 
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const MAX_COLLISION_BOXES: usize = 16;
 const PX: f64 = 1.0 / 16.0;
 
 pub(super) fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBounds) -> bool {
+    local_player_collides_with_context(
+        world,
+        bounds,
+        LocalPlayerCollisionContext::for_bounds(bounds),
+    )
+}
+
+pub(super) fn local_player_collides_with_context(
+    world: &WorldStore,
+    bounds: LocalPlayerBounds,
+    context: LocalPlayerCollisionContext,
+) -> bool {
     let min_x = block_floor(bounds.min_x + COLLISION_EPSILON);
     let max_x = block_floor(bounds.max_x - COLLISION_EPSILON);
     let min_y = block_floor(bounds.min_y + COLLISION_EPSILON) - 1;
@@ -23,7 +36,12 @@ pub(super) fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBound
                 let Some(block) = world.probe_block(BlockPos { x, y, z }) else {
                     continue;
                 };
-                if block_collides_with_local_player_bounds(&block, BlockPos { x, y, z }, bounds) {
+                if block_collides_with_local_player_bounds(
+                    &block,
+                    BlockPos { x, y, z },
+                    bounds,
+                    context,
+                ) {
                     return true;
                 }
             }
@@ -45,7 +63,13 @@ impl WorldStore {
         let Some(block) = self.probe_block(pos) else {
             return false;
         };
-        block_collides_with_local_player_bounds(&block, pos, LocalPlayerBounds::for_pose(pose))
+        let bounds = LocalPlayerBounds::for_pose(pose);
+        block_collides_with_local_player_bounds(
+            &block,
+            pos,
+            bounds,
+            LocalPlayerCollisionContext::new(pose.position.y, false),
+        )
     }
 }
 
@@ -53,11 +77,23 @@ fn block_collides_with_local_player_bounds(
     block: &BlockProbe,
     pos: BlockPos,
     bounds: LocalPlayerBounds,
+    context: LocalPlayerCollisionContext,
 ) -> bool {
-    if let Some(shape) = block_collision_shape(block, pos) {
+    if let Some(shape) = block_collision_shape_with_context(block, pos, context) {
         return bounds_intersects_block_shape(bounds, pos, shape);
     }
     false
+}
+
+fn block_collision_shape_with_context(
+    block: &BlockProbe,
+    pos: BlockPos,
+    context: LocalPlayerCollisionContext,
+) -> Option<BlockCollisionShape> {
+    if block.block_name.as_deref() == Some("minecraft:scaffolding") {
+        return scaffolding_collision_shape(&block.block_properties, pos, context);
+    }
+    block_collision_shape(block, pos)
 }
 
 fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockCollisionShape> {
@@ -532,6 +568,35 @@ fn snow_layer_collision_shape(
     Some(BlockCollisionShape::single(BlockCollisionBox::column(
         0.0, 0.0, 1.0, height, 1.0,
     )))
+}
+
+fn scaffolding_collision_shape(
+    properties: &BTreeMap<String, String>,
+    pos: BlockPos,
+    context: LocalPlayerCollisionContext,
+) -> Option<BlockCollisionShape> {
+    if context.is_above(pos, 1.0) && !context.descending {
+        return Some(scaffolding_stable_collision_shape());
+    }
+
+    let distance = properties.get("distance")?.parse::<i32>().ok()?;
+    if distance != 0 && bool_property(properties, "bottom")? && context.is_above(pos, 0.0) {
+        return Some(BlockCollisionShape::single(
+            BlockCollisionBox::SCAFFOLDING_UNSTABLE_BOTTOM,
+        ));
+    }
+
+    None
+}
+
+fn scaffolding_stable_collision_shape() -> BlockCollisionShape {
+    BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::SCAFFOLDING_TOP),
+        Some(BlockCollisionBox::SCAFFOLDING_NORTH_WEST_POST),
+        Some(BlockCollisionBox::SCAFFOLDING_NORTH_EAST_POST),
+        Some(BlockCollisionBox::SCAFFOLDING_SOUTH_EAST_POST),
+        Some(BlockCollisionBox::SCAFFOLDING_SOUTH_WEST_POST),
+    ])
 }
 
 fn pointed_dripstone_collision_shape(
@@ -1330,6 +1395,30 @@ enum StairShapeKind {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub(super) struct LocalPlayerCollisionContext {
+    entity_bottom: f64,
+    descending: bool,
+}
+
+impl LocalPlayerCollisionContext {
+    pub(super) fn new(entity_bottom: f64, descending: bool) -> Self {
+        Self {
+            entity_bottom,
+            descending,
+        }
+    }
+
+    fn for_bounds(bounds: LocalPlayerBounds) -> Self {
+        Self::new(bounds.min_y, false)
+    }
+
+    fn is_above(self, pos: BlockPos, shape_max_y: f64) -> bool {
+        self.entity_bottom
+            > f64::from(pos.y) + shape_max_y - VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub(super) struct LocalPlayerBounds {
     min_x: f64,
     min_y: f64,
@@ -1543,6 +1632,54 @@ impl BlockCollisionBox {
         min_y: 0.0,
         min_z: 0.0,
         max_x: 1.0,
+        max_y: 1.0,
+        max_z: 1.0,
+    };
+    const SCAFFOLDING_TOP: Self = Self {
+        min_x: 0.0,
+        min_y: 14.0 * PX,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: 1.0,
+        max_z: 1.0,
+    };
+    const SCAFFOLDING_UNSTABLE_BOTTOM: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: 2.0 * PX,
+        max_z: 1.0,
+    };
+    const SCAFFOLDING_NORTH_WEST_POST: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 2.0 * PX,
+        max_y: 1.0,
+        max_z: 2.0 * PX,
+    };
+    const SCAFFOLDING_NORTH_EAST_POST: Self = Self {
+        min_x: 14.0 * PX,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: 1.0,
+        max_z: 2.0 * PX,
+    };
+    const SCAFFOLDING_SOUTH_EAST_POST: Self = Self {
+        min_x: 14.0 * PX,
+        min_y: 0.0,
+        min_z: 14.0 * PX,
+        max_x: 1.0,
+        max_y: 1.0,
+        max_z: 1.0,
+    };
+    const SCAFFOLDING_SOUTH_WEST_POST: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 14.0 * PX,
+        max_x: 2.0 * PX,
         max_y: 1.0,
         max_z: 1.0,
     };
