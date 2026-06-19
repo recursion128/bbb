@@ -316,8 +316,10 @@ When an agent does any of the following, update this file in the same slice:
         - sprint-swim camera, animation, and presentation nuance beyond
           canonical swimming pose selection and pitch-coupled vertical travel
       - remaining block-state movement factors beyond the synced frozen-tick
-        powder-snow slowdown:
-        - in-world powder snow contact freezing/unfreezing tick updates
+        and local powder-snow contact slowdown:
+        - powder-snow `canFreeze` nuance:
+          - spectator immunity
+          - freeze-immune equipment / entity type exceptions
         - full vanilla post-`Entity.move` `deltaMovement` travel ordering
           beyond the current direct local walking prediction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
@@ -461,6 +463,11 @@ When an agent does any of the following, update this file in the same slice:
         - amount is `-0.05 * min(ticks_frozen, 140) / 140`
         - skipped when the server already syncs the `minecraft:powder_snow`
           movement-speed modifier
+      - local player in-world `minecraft:powder_snow` contact updates synced
+        `TicksFrozen` metadata:
+        - increments by `1` per local physics step while inside powder snow
+        - thaws by `2` per local physics step outside powder snow
+        - clamps to `0..140`
       - vanilla block speed factor for local walking prediction:
         - `minecraft:soul_sand` and `minecraft:honey_block` apply `0.4`
         - synced local player `movement_efficiency` attribute id `21`

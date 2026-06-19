@@ -1,4 +1,7 @@
-use bbb_protocol::packets::Vec3d as ProtocolVec3d;
+use bbb_protocol::packets::{
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind as ProtocolEntityDataValueKind,
+    Vec3d as ProtocolVec3d,
+};
 
 use super::local_player::{LocalPlayerAbilitiesState, LocalPlayerInputState, LocalPlayerPoseState};
 use super::local_player_collision::{
@@ -86,7 +89,9 @@ const LEVITATION_APPROACH_FACTOR_PER_TICK: f64 = 0.2;
 const VANILLA_SPEED_EFFECT_MODIFIER_ID: &str = "minecraft:effect.speed";
 const VANILLA_SLOWNESS_EFFECT_MODIFIER_ID: &str = "minecraft:effect.slowness";
 const VANILLA_POWDER_SNOW_SPEED_MODIFIER_ID: &str = "minecraft:powder_snow";
-const LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE: f64 = 140.0;
+const VANILLA_ENTITY_DATA_INT_SERIALIZER_ID: i32 = 1;
+const LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME: &str = "minecraft:powder_snow";
+const LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE: i32 = 140;
 const POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE: f64 = -0.05;
 const SLOW_BLOCK_SPEED_FACTOR: f64 = 0.4;
 const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
@@ -97,8 +102,8 @@ const LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.15;
 const LOCAL_PLAYER_CLIMBABLE_MAX_DOWNWARD_VELOCITY_PER_TICK: f64 = -0.15;
 const LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK: f64 = 0.2;
 
-pub(super) fn integrate_local_player_input_pose(
-    world: &WorldStore,
+pub(super) fn integrate_local_player_input_pose_with_world_effects(
+    world: &mut WorldStore,
     mut pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
     dt_seconds: f64,
@@ -109,6 +114,7 @@ pub(super) fn integrate_local_player_input_pose(
     while remaining_seconds > COLLISION_EPSILON {
         let step_seconds = remaining_seconds.min(LOCAL_PHYSICS_TICK_SECONDS);
         pose = advance_local_player_physics_step(world, pose, input, step_seconds);
+        local_player_update_powder_snow_freezing(world, pose);
         remaining_seconds -= step_seconds;
     }
 
@@ -1134,10 +1140,59 @@ fn local_player_powder_snow_speed_modifier(world: &WorldStore) -> f64 {
         .and_then(|id| world.entities.ticks_frozen(id))
         .unwrap_or(0)
         .max(0);
-    let frozen_percent = (f64::from(ticks_frozen).min(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
-        / LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
-        .clamp(0.0, 1.0);
+    let frozen_percent = (f64::from(ticks_frozen.min(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE))
+        / f64::from(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE))
+    .clamp(0.0, 1.0);
     POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE * frozen_percent
+}
+
+fn local_player_update_powder_snow_freezing(world: &mut WorldStore, pose: LocalPlayerPoseState) {
+    let Some(local_player_id) = world.local_player_id else {
+        return;
+    };
+    let Some(current_ticks) = world.entities.ticks_frozen(local_player_id) else {
+        return;
+    };
+
+    let next_ticks = if local_player_inside_powder_snow(world, pose) {
+        (current_ticks + 1).min(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
+    } else {
+        (current_ticks - 2).max(0)
+    };
+    if next_ticks == current_ticks {
+        return;
+    }
+
+    let _ =
+        world
+            .entities
+            .with_metadata_mut(local_player_id, |metadata| {
+                if let Some(value) = metadata.data_values.iter_mut().find(|value| {
+                    value.data_id == crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID
+                }) {
+                    value.serializer_id = VANILLA_ENTITY_DATA_INT_SERIALIZER_ID;
+                    value.value = ProtocolEntityDataValueKind::Int(next_ticks);
+                } else {
+                    metadata.data_values.push(ProtocolEntityDataValue {
+                        data_id: crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+                        serializer_id: VANILLA_ENTITY_DATA_INT_SERIALIZER_ID,
+                        value: ProtocolEntityDataValueKind::Int(next_ticks),
+                    });
+                }
+                metadata.data_values.sort_by_key(|value| value.data_id);
+            });
+}
+
+fn local_player_inside_powder_snow(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
+    let pos = BlockPos {
+        x: local_player_block_floor(pose.position.x),
+        y: local_player_block_floor(pose.position.y),
+        z: local_player_block_floor(pose.position.z),
+    };
+    world
+        .probe_block(pos)
+        .and_then(|block| block.block_name)
+        .is_some_and(|block_name| block_name == LOCAL_PLAYER_POWDER_SNOW_BLOCK_NAME)
 }
 
 fn local_player_jump_velocity(world: &WorldStore, pose: LocalPlayerPoseState) -> f64 {
@@ -1637,6 +1692,7 @@ mod tests {
     const LANTERN_STANDING_BLOCK_STATE_ID: i32 = 20840;
     const CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID: i32 = 20880;
     const HONEY_BLOCK_STATE_ID: i32 = 21816;
+    const POWDER_SNOW_BLOCK_STATE_ID: i32 = 24689;
     const CHEST_SINGLE_NORTH_BLOCK_STATE_ID: i32 = 3988;
     const CHEST_LEFT_NORTH_BLOCK_STATE_ID: i32 = 3990;
     const TRAPPED_CHEST_RIGHT_NORTH_BLOCK_STATE_ID: i32 = 11212;
@@ -4720,6 +4776,116 @@ mod tests {
             LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.75 * LOCAL_PHYSICS_TICK_SECONDS;
         assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
         assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_powder_snow_increments_ticks_frozen() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+
+        local_player_update_powder_snow_freezing(
+            &mut world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.2, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(world.entities.ticks_frozen(123), Some(1));
+        assert_eq!(
+            world
+                .entities
+                .metadata(123)
+                .unwrap()
+                .data_values
+                .iter()
+                .find(|value| {
+                    value.data_id == crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID
+                })
+                .map(|value| value.serializer_id),
+            Some(VANILLA_ENTITY_DATA_INT_SERIALIZER_ID)
+        );
+    }
+
+    #[test]
+    fn local_player_in_powder_snow_caps_ticks_frozen_at_required_ticks() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_ticks_frozen(
+            &mut world,
+            123,
+            LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE,
+        ));
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+
+        local_player_update_powder_snow_freezing(
+            &mut world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.2, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(
+            world.entities.ticks_frozen(123),
+            Some(LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE)
+        );
+    }
+
+    #[test]
+    fn local_player_out_of_powder_snow_thaws_two_ticks_per_step() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_ticks_frozen(&mut world, 123, 5));
+
+        local_player_update_powder_snow_freezing(
+            &mut world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.2, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(world.entities.ticks_frozen(123), Some(3));
+    }
+
+    #[test]
+    fn local_player_out_of_powder_snow_thaw_clamps_at_zero() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_ticks_frozen(&mut world, 123, 1));
+
+        local_player_update_powder_snow_freezing(
+            &mut world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.2, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_eq!(world.entities.ticks_frozen(123), Some(0));
+    }
+
+    #[test]
+    fn local_player_advance_thaws_ticks_frozen_per_physics_step() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(apply_ticks_frozen(&mut world, 123, 7));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        world
+            .advance_local_player_input(
+                LocalPlayerInputState::default(),
+                LOCAL_PHYSICS_TICK_SECONDS * 3.0,
+            )
+            .unwrap();
+
+        assert_eq!(world.entities.ticks_frozen(123), Some(1));
     }
 
     #[test]

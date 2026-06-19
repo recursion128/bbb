@@ -11,7 +11,8 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 
 use super::local_player_movement::{
-    apply_local_player_input_look, integrate_local_player_input_pose, local_player_effective_sprint,
+    apply_local_player_input_look, integrate_local_player_input_pose_with_world_effects,
+    local_player_effective_sprint,
 };
 use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
 
@@ -409,8 +410,12 @@ impl WorldStore {
         input: LocalPlayerInputState,
         dt_seconds: f64,
     ) -> Option<LocalPlayerPoseState> {
-        let pose =
-            integrate_local_player_input_pose(self, self.local_player.pose?, input, dt_seconds);
+        let pose = integrate_local_player_input_pose_with_world_effects(
+            self,
+            self.local_player.pose?,
+            input,
+            dt_seconds,
+        );
         self.local_player.pose = Some(pose);
         Some(pose)
     }
