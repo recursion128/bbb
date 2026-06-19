@@ -3254,7 +3254,7 @@ fn local_inventory_item_max_stack_size(stack: &ItemStackSummary) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use bbb_protocol::packets::{
         AddEntity, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
@@ -7191,13 +7191,15 @@ mod tests {
     }
 
     #[test]
-    fn brewing_stand_shift_click_queues_server_authoritative_click() {
+    fn brewing_stand_shift_click_potion_item_queues_predicted_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.shift_left_down = true;
         let mut counters = NetCounters::default();
         let mut world = WorldStore::new();
+        world.set_default_item_max_stack_sizes(BTreeMap::from([(42, 64)]));
+        world.set_brewing_potion_item_ids(BTreeSet::from([42]));
         world.apply_open_screen(OpenScreen {
             container_id: 7,
             menu_type_id: BREWING_STAND_MENU_TYPE_ID,
@@ -7232,12 +7234,17 @@ mod tests {
                 slot_num: 32,
                 button_num: 0,
                 input: ContainerInput::QuickMove,
-                changed_slots: BTreeMap::new(),
+                changed_slots: [
+                    (0, HashedStack::Item(hashed_item(42, 1))),
+                    (32, HashedStack::Item(hashed_item(42, 2))),
+                ]
+                .into(),
                 carried_item: HashedStack::Empty,
             })
         );
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
-        assert_eq!(slots[32].item, item_stack(42, 3));
+        assert_eq!(slots[0].item, item_stack(42, 1));
+        assert_eq!(slots[32].item, item_stack(42, 2));
     }
 
     #[test]

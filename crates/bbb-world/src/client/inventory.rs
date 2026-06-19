@@ -68,6 +68,16 @@ const GRINDSTONE_PLAYER_MAIN_END: i16 = 30;
 const GRINDSTONE_HOTBAR_START: i16 = 30;
 const GRINDSTONE_HOTBAR_END: i16 = 39;
 const GRINDSTONE_TOTAL_SLOT_COUNT: i16 = 39;
+const BREWING_STAND_BOTTLE_SLOT_START: i16 = 0;
+const BREWING_STAND_BOTTLE_SLOT_END: i16 = 3;
+const BREWING_STAND_INGREDIENT_SLOT: i16 = 3;
+const BREWING_STAND_FUEL_SLOT: i16 = 4;
+const BREWING_STAND_PLAYER_MAIN_START: i16 = 5;
+const BREWING_STAND_PLAYER_MAIN_END: i16 = 32;
+const BREWING_STAND_HOTBAR_START: i16 = 32;
+const BREWING_STAND_HOTBAR_END: i16 = 41;
+const BREWING_STAND_TOTAL_SLOT_COUNT: i16 = 41;
+const BREWING_STAND_FUEL_ITEM_TAG: &str = "minecraft:brewing_fuel";
 const ANVIL_RESULT_SLOT: i16 = 2;
 const CARTOGRAPHY_TABLE_ADDITIONAL_SLOT: i16 = 1;
 const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
@@ -973,6 +983,20 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_brewing_potion_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.brewing_potion_item_ids = item_ids
+            .into_iter()
+            .filter(|item_id| *item_id >= 0)
+            .collect();
+    }
+
+    pub fn set_brewing_ingredient_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.brewing_ingredient_item_ids = item_ids
+            .into_iter()
+            .filter(|item_id| *item_id >= 0)
+            .collect();
+    }
+
     pub fn set_freeze_immune_wearable_item_ids(&mut self, item_ids: BTreeSet<i32>) {
         self.freeze_immune_wearable_item_ids = item_ids
             .into_iter()
@@ -1173,9 +1197,15 @@ impl WorldStore {
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_BREWING_STAND_ID) {
-                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                            ProtocolContainerInput::QuickMove,
-                        ));
+                        apply_brewing_stand_menu_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            self.registry_tags("minecraft:item"),
+                            &self.brewing_potion_item_ids,
+                            &self.brewing_ingredient_item_ids,
+                            &self.default_item_max_stack_sizes,
+                        )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_GRINDSTONE_ID) {
                         if grindstone_quick_move_requires_server_authority(
                             &slots_after,
@@ -2745,6 +2775,135 @@ fn crafter_disabled_slots(data_values: &[ContainerDataValue]) -> BTreeSet<i16> {
         .collect()
 }
 
+fn apply_brewing_stand_menu_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    item_tags: Option<&RegistryTagState>,
+    brewing_potion_item_ids: &BTreeSet<i32>,
+    brewing_ingredient_item_ids: &BTreeSet<i32>,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !(0..BREWING_STAND_TOTAL_SLOT_COUNT).contains(&slot_num) {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let source_item = slots[source_index].item.clone();
+    let mut moving = source_item.clone();
+    let moved = if (BREWING_STAND_BOTTLE_SLOT_START..=BREWING_STAND_FUEL_SLOT).contains(&slot_num) {
+        move_item_stack_to_slots(
+            container_id,
+            slots,
+            source_index,
+            &mut moving,
+            BREWING_STAND_PLAYER_MAIN_START,
+            BREWING_STAND_HOTBAR_END,
+            true,
+            default_item_max_stack_sizes,
+        )
+    } else if (BREWING_STAND_PLAYER_MAIN_START..BREWING_STAND_HOTBAR_END).contains(&slot_num) {
+        let is_ingredient = item_stack_item_id_in_set(&source_item, brewing_ingredient_item_ids);
+        if item_stack_in_item_tag(&source_item, item_tags, BREWING_STAND_FUEL_ITEM_TAG) {
+            let fuel_moved = move_item_stack_to_slots(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                BREWING_STAND_FUEL_SLOT,
+                BREWING_STAND_FUEL_SLOT + 1,
+                false,
+                default_item_max_stack_sizes,
+            );
+            fuel_moved
+                || (is_ingredient
+                    && move_item_stack_to_slots(
+                        container_id,
+                        slots,
+                        source_index,
+                        &mut moving,
+                        BREWING_STAND_INGREDIENT_SLOT,
+                        BREWING_STAND_INGREDIENT_SLOT + 1,
+                        false,
+                        default_item_max_stack_sizes,
+                    ))
+        } else if is_ingredient {
+            move_item_stack_to_slots(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                BREWING_STAND_INGREDIENT_SLOT,
+                BREWING_STAND_INGREDIENT_SLOT + 1,
+                false,
+                default_item_max_stack_sizes,
+            )
+        } else if item_stack_item_id_in_set(&source_item, brewing_potion_item_ids) {
+            move_item_stack_to_slots_where_with_limit(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                BREWING_STAND_BOTTLE_SLOT_START,
+                BREWING_STAND_BOTTLE_SLOT_END,
+                false,
+                |_| true,
+                brewing_stand_slot_max_stack_size,
+                default_item_max_stack_sizes,
+            )
+        } else if (BREWING_STAND_PLAYER_MAIN_START..BREWING_STAND_PLAYER_MAIN_END)
+            .contains(&slot_num)
+        {
+            move_item_stack_to_slots(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                BREWING_STAND_HOTBAR_START,
+                BREWING_STAND_HOTBAR_END,
+                false,
+                default_item_max_stack_sizes,
+            )
+        } else {
+            move_item_stack_to_slots(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                BREWING_STAND_PLAYER_MAIN_START,
+                BREWING_STAND_PLAYER_MAIN_END,
+                false,
+                default_item_max_stack_sizes,
+            )
+        }
+    } else {
+        false
+    };
+
+    if moved {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn brewing_stand_slot_max_stack_size(
+    slot_num: i16,
+    _stack: &ProtocolItemStackSummary,
+    base_max_stack_size: i32,
+) -> i32 {
+    if (BREWING_STAND_BOTTLE_SLOT_START..BREWING_STAND_BOTTLE_SLOT_END).contains(&slot_num) {
+        base_max_stack_size.min(1)
+    } else {
+        base_max_stack_size
+    }
+}
+
 fn apply_grindstone_menu_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
@@ -3031,6 +3190,12 @@ fn item_stack_in_item_tag(
         .is_some_and(|entries| entries.contains(&item_id))
 }
 
+fn item_stack_item_id_in_set(stack: &ProtocolItemStackSummary, item_ids: &BTreeSet<i32>) -> bool {
+    stack
+        .item_id
+        .is_some_and(|item_id| item_ids.contains(&item_id))
+}
+
 fn inventory_menu_quick_move_target_range(
     slot_num: i16,
     source_item: &ProtocolItemStackSummary,
@@ -3137,7 +3302,33 @@ fn move_item_stack_to_slots_where(
     start_slot: i16,
     end_slot: i16,
     backwards: bool,
+    may_use_slot: impl FnMut(i16) -> bool,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> bool {
+    move_item_stack_to_slots_where_with_limit(
+        container_id,
+        slots,
+        source_index,
+        moving,
+        start_slot,
+        end_slot,
+        backwards,
+        may_use_slot,
+        |_, _, max_stack_size| max_stack_size,
+        default_item_max_stack_sizes,
+    )
+}
+
+fn move_item_stack_to_slots_where_with_limit(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    source_index: usize,
+    moving: &mut ProtocolItemStackSummary,
+    start_slot: i16,
+    end_slot: i16,
+    backwards: bool,
     mut may_use_slot: impl FnMut(i16) -> bool,
+    mut slot_max_stack_size: impl FnMut(i16, &ProtocolItemStackSummary, i32) -> i32,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) -> bool {
     let mut changed = false;
@@ -3159,12 +3350,14 @@ fn move_item_stack_to_slots_where(
             if item_stack_is_empty(&slot.item) || !same_item_same_components(moving, &slot.item) {
                 continue;
             }
-            let max_stack_size = container_slot_max_stack_size(
+            let base_max_stack_size = container_slot_max_stack_size(
                 container_id,
                 dest_slot,
                 &slot.item,
                 default_item_max_stack_sizes,
             );
+            let max_stack_size =
+                slot_max_stack_size(dest_slot, &slot.item, base_max_stack_size).max(0);
             let moved = moving.count.min((max_stack_size - slot.item.count).max(0));
             if moved <= 0 {
                 continue;
@@ -3188,12 +3381,13 @@ fn move_item_stack_to_slots_where(
             if dest_index == source_index || !item_stack_is_empty(&slots[dest_index].item) {
                 continue;
             }
-            let max_stack_size = container_slot_max_stack_size(
+            let base_max_stack_size = container_slot_max_stack_size(
                 container_id,
                 dest_slot,
                 moving,
                 default_item_max_stack_sizes,
             );
+            let max_stack_size = slot_max_stack_size(dest_slot, moving, base_max_stack_size).max(0);
             let amount = moving.count.min(max_stack_size);
             if amount <= 0 {
                 continue;
@@ -7117,15 +7311,18 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_brewing_stand_quick_move_requires_server_authority() {
+    fn apply_local_brewing_stand_quick_move_moves_brewing_slots_to_player_reverse() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
             title: "Brewing Stand".to_string(),
         });
-        let mut items = vec![ProtocolItemStackSummary::empty(); 41];
-        items[32] = item_stack(42, 3);
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize];
+        items[BREWING_STAND_BOTTLE_SLOT_START as usize] = item_stack(42, 1);
+        items[BREWING_STAND_INGREDIENT_SLOT as usize] = item_stack(43, 2);
+        items[BREWING_STAND_FUEL_SLOT as usize] = item_stack(44, 3);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 12,
@@ -7133,21 +7330,165 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
-        let request = ContainerClickSlotRequest {
-            slot_num: 32,
-            button_num: 0,
-            input: ProtocolContainerInput::QuickMove,
-        };
+        let bottle_to_player = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: BREWING_STAND_BOTTLE_SLOT_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
         assert_eq!(
-            store.apply_local_container_click_slot(request),
-            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                ProtocolContainerInput::QuickMove
-            ))
+            bottle_to_player.changed_slots,
+            BTreeMap::from([
+                (BREWING_STAND_BOTTLE_SLOT_START, ProtocolHashedStack::Empty),
+                (BREWING_STAND_HOTBAR_END - 1, hashed_item_stack(42, 1)),
+            ])
         );
-        let click = store.build_container_click_slot(request).unwrap();
-        assert_eq!(click.changed_slots, BTreeMap::new());
-        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
-        assert_eq!(open_container_slot_item(&store, 32), item_stack(42, 3));
+
+        let ingredient_to_player = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: BREWING_STAND_INGREDIENT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            ingredient_to_player.changed_slots,
+            BTreeMap::from([
+                (BREWING_STAND_INGREDIENT_SLOT, ProtocolHashedStack::Empty),
+                (BREWING_STAND_HOTBAR_END - 2, hashed_item_stack(43, 2)),
+            ])
+        );
+
+        let fuel_to_player = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: BREWING_STAND_FUEL_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            fuel_to_player.changed_slots,
+            BTreeMap::from([
+                (BREWING_STAND_FUEL_SLOT, ProtocolHashedStack::Empty),
+                (BREWING_STAND_HOTBAR_END - 3, hashed_item_stack(44, 3)),
+            ])
+        );
+    }
+
+    #[test]
+    fn apply_local_brewing_stand_quick_move_routes_player_items_to_brewing_slots() {
+        let mut store = WorldStore::new();
+        store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 64)]));
+        store.set_brewing_potion_item_ids(BTreeSet::from([42]));
+        store.set_brewing_ingredient_item_ids(BTreeSet::from([43]));
+        apply_item_tags(&mut store, vec![(BREWING_STAND_FUEL_ITEM_TAG, vec![44])]);
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
+            title: "Brewing Stand".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); BREWING_STAND_TOTAL_SLOT_COUNT as usize];
+        items[BREWING_STAND_PLAYER_MAIN_START as usize] = item_stack(42, 3);
+        items[(BREWING_STAND_PLAYER_MAIN_START + 1) as usize] = item_stack(43, 2);
+        items[(BREWING_STAND_PLAYER_MAIN_START + 2) as usize] = item_stack(44, 5);
+        items[BREWING_STAND_HOTBAR_START as usize] = item_stack(45, 4);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let potion_to_bottle_slot = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: BREWING_STAND_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            potion_to_bottle_slot.changed_slots,
+            BTreeMap::from([
+                (BREWING_STAND_BOTTLE_SLOT_START, hashed_item_stack(42, 1)),
+                (BREWING_STAND_PLAYER_MAIN_START, hashed_item_stack(42, 2)),
+            ])
+        );
+
+        let ingredient_to_slot = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: BREWING_STAND_PLAYER_MAIN_START + 1,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            ingredient_to_slot.changed_slots,
+            BTreeMap::from([
+                (BREWING_STAND_INGREDIENT_SLOT, hashed_item_stack(43, 2)),
+                (
+                    BREWING_STAND_PLAYER_MAIN_START + 1,
+                    ProtocolHashedStack::Empty
+                ),
+            ])
+        );
+
+        let fuel_to_slot = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: BREWING_STAND_PLAYER_MAIN_START + 2,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            fuel_to_slot.changed_slots,
+            BTreeMap::from([
+                (BREWING_STAND_FUEL_SLOT, hashed_item_stack(44, 5)),
+                (
+                    BREWING_STAND_PLAYER_MAIN_START + 2,
+                    ProtocolHashedStack::Empty
+                ),
+            ])
+        );
+
+        let hotbar_to_main = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: BREWING_STAND_HOTBAR_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            hotbar_to_main.changed_slots,
+            BTreeMap::from([
+                (
+                    BREWING_STAND_PLAYER_MAIN_START + 1,
+                    hashed_item_stack(45, 4)
+                ),
+                (BREWING_STAND_HOTBAR_START, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, BREWING_STAND_BOTTLE_SLOT_START),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, BREWING_STAND_PLAYER_MAIN_START),
+            item_stack(42, 2)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, BREWING_STAND_INGREDIENT_SLOT),
+            item_stack(43, 2)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, BREWING_STAND_FUEL_SLOT),
+            item_stack(44, 5)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, BREWING_STAND_HOTBAR_START),
+            ProtocolItemStackSummary::empty()
+        );
     }
 
     #[test]

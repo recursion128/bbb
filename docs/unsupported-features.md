@@ -1163,11 +1163,16 @@ When an agent does any of the following, update this file in the same slice:
           - enchanting glyph text and its disabled/highlight coloring
           - hover tooltips
       - BrewingStandMenu:
-        - quick-move paths are kept server-authoritative until:
-          - brewing fuel tags
-          - potion bottle ids
-          - ingredient parity
-          - component-hashable potion stack prediction
+        - quick-move paths are locally predicted for:
+          - vanilla slot ranges
+          - brewing fuel item tag routing
+          - default potion/glass-bottle item routing
+          - default vanilla ingredient item routing
+          - max-stack-one bottle slots
+        - remaining brewing parity work:
+          - full feature-flag-sensitive `PotionBrewing` bootstrap parity
+          - local brew-result stack prediction
+          - brew completion side effects
       - CartographyTableMenu:
         - shift-click from the additional slot back to the player inventory is
           locally predicted when the stack has no component hash requirements.

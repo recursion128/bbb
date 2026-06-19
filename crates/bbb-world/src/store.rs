@@ -114,6 +114,10 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) furnace_fuel_item_ids: BTreeSet<i32>,
     #[serde(default)]
+    pub(crate) brewing_potion_item_ids: BTreeSet<i32>,
+    #[serde(default)]
+    pub(crate) brewing_ingredient_item_ids: BTreeSet<i32>,
+    #[serde(default)]
     pub(crate) freeze_immune_wearable_item_ids: BTreeSet<i32>,
     #[serde(default)]
     pub(crate) powder_snow_walkable_foot_item_ids: BTreeSet<i32>,

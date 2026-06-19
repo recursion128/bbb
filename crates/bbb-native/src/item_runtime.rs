@@ -36,6 +36,35 @@ const TOOLTIP_TEXT_LIGHT_PURPLE: [f32; 4] = [1.0, 85.0 / 255.0, 1.0, 1.0];
 const TOOLTIP_TEXT_DARK_PURPLE: [f32; 4] = [170.0 / 255.0, 0.0, 170.0 / 255.0, 1.0];
 const TOOLTIP_TEXT_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0, 1.0];
 const TOOLTIP_TEXT_BLUE: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 1.0, 1.0];
+const BREWING_POTION_ITEM_IDS: &[&str] = &[
+    "minecraft:potion",
+    "minecraft:splash_potion",
+    "minecraft:lingering_potion",
+    "minecraft:glass_bottle",
+];
+const BREWING_INGREDIENT_ITEM_IDS: &[&str] = &[
+    "minecraft:gunpowder",
+    "minecraft:dragon_breath",
+    "minecraft:glowstone_dust",
+    "minecraft:redstone",
+    "minecraft:nether_wart",
+    "minecraft:breeze_rod",
+    "minecraft:slime_block",
+    "minecraft:stone",
+    "minecraft:cobweb",
+    "minecraft:golden_carrot",
+    "minecraft:fermented_spider_eye",
+    "minecraft:magma_cream",
+    "minecraft:rabbit_foot",
+    "minecraft:turtle_helmet",
+    "minecraft:sugar",
+    "minecraft:pufferfish",
+    "minecraft:glistering_melon_slice",
+    "minecraft:spider_eye",
+    "minecraft:ghast_tear",
+    "minecraft:blaze_powder",
+    "minecraft:phantom_membrane",
+];
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct NativeItemTooltipLine {
@@ -334,6 +363,28 @@ impl NativeItemRuntime {
 
     pub(crate) fn furnace_fuel_item_count(&self) -> usize {
         self.furnace_fuel_item_ids.len()
+    }
+
+    pub(crate) fn brewing_potion_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.registry
+            .as_ref()
+            .map(|registry| protocol_ids_for_resource_ids(registry, BREWING_POTION_ITEM_IDS))
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn brewing_potion_item_count(&self) -> usize {
+        self.brewing_potion_item_ids_by_protocol_id().len()
+    }
+
+    pub(crate) fn brewing_ingredient_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.registry
+            .as_ref()
+            .map(|registry| protocol_ids_for_resource_ids(registry, BREWING_INGREDIENT_ITEM_IDS))
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn brewing_ingredient_item_count(&self) -> usize {
+        self.brewing_ingredient_item_ids_by_protocol_id().len()
     }
 
     pub(crate) fn freeze_immune_wearable_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
@@ -694,6 +745,16 @@ fn description_key(prefix: &str, resource_id: &str) -> String {
 
 fn item_stack_is_empty(stack: &ItemStackSummary) -> bool {
     stack.item_id.is_none() || stack.count <= 0
+}
+
+fn protocol_ids_for_resource_ids(
+    registry: &ItemRegistryCatalog,
+    resource_ids: &[&str],
+) -> BTreeSet<i32> {
+    resource_ids
+        .iter()
+        .filter_map(|resource_id| registry.protocol_id(resource_id))
+        .collect()
 }
 
 fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {

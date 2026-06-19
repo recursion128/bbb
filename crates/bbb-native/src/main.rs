@@ -134,6 +134,8 @@ fn main() -> Result<()> {
         );
         world.set_default_item_use_effects(items.item_use_effects_by_protocol_id());
         world.set_furnace_fuel_item_ids(items.furnace_fuel_item_ids_by_protocol_id());
+        world.set_brewing_potion_item_ids(items.brewing_potion_item_ids_by_protocol_id());
+        world.set_brewing_ingredient_item_ids(items.brewing_ingredient_item_ids_by_protocol_id());
         world.set_freeze_immune_wearable_item_ids(
             items.freeze_immune_wearable_item_ids_by_protocol_id(),
         );
@@ -155,6 +157,8 @@ fn main() -> Result<()> {
             default_use_effect_items = items.item_use_effect_count(),
             item_mining_profiles = items.item_mining_profile_count(),
             furnace_fuel_items = items.furnace_fuel_item_count(),
+            brewing_potion_items = items.brewing_potion_item_count(),
+            brewing_ingredient_items = items.brewing_ingredient_item_count(),
             freeze_immune_wearable_items = items.freeze_immune_wearable_item_count(),
             powder_snow_walkable_foot_items = items.powder_snow_walkable_foot_item_count(),
             missing_models = items.missing_model_count(),
