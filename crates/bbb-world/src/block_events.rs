@@ -137,6 +137,7 @@ impl WorldStore {
             global: event.global,
         });
         self.counters.level_events_tracked = self.level_events.len();
+        self.record_jukebox_level_event(event);
     }
 
     pub fn block_destructions(&self) -> &[BlockDestructionProgress] {

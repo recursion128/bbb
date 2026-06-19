@@ -1,6 +1,7 @@
 pub use crate::client::audio::{
-    ClientAudioState, LevelEventSoundRandomState, LocalSoundEventState, SoundEntityEventState,
-    SoundEventState, SoundHolderState, StopSoundEventState, WorldBlockSoundProfile,
+    ClientAudioState, JukeboxLevelEventAction, JukeboxLevelEventState, JukeboxSongState,
+    LevelEventSoundRandomState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
+    SoundHolderState, StopSoundEventState, WorldBlockSoundProfile,
 };
 pub use crate::client::chat::{
     ChatMessageKind, ChatMessageState, ChatSignatureState, ChatTypeState, ChatValidationState,

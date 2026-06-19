@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
 
+const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
+const JUKEBOX_STOP_LEVEL_EVENT: i32 = 1011;
 const BLOCK_BREAK_LEVEL_EVENT: i32 = 2001;
 const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
 const RANDOM_INCREMENT: u64 = 11;
@@ -79,6 +81,10 @@ pub struct ClientAudioState {
     pub last_sound_entity: Option<SoundEntityEventState>,
     #[serde(default)]
     pub last_stop_sound: Option<StopSoundEventState>,
+    #[serde(default)]
+    pub playing_jukebox_songs: Vec<JukeboxSongState>,
+    #[serde(default)]
+    pub last_jukebox_event: Option<JukeboxLevelEventState>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -114,6 +120,27 @@ pub struct SoundEntityEventState {
 pub struct StopSoundEventState {
     pub source: Option<String>,
     pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JukeboxSongState {
+    pub pos: crate::BlockPos,
+    pub song_registry_id: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JukeboxLevelEventState {
+    pub action: JukeboxLevelEventAction,
+    pub pos: crate::BlockPos,
+    pub song_registry_id: Option<i32>,
+    pub stopped_existing: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum JukeboxLevelEventAction {
+    Start,
+    Stop,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -219,6 +246,53 @@ impl WorldStore {
         self.client_audio.last_stop_sound.as_ref()
     }
 
+    pub fn playing_jukebox_songs(&self) -> &[JukeboxSongState] {
+        &self.client_audio.playing_jukebox_songs
+    }
+
+    pub fn last_jukebox_event(&self) -> Option<&JukeboxLevelEventState> {
+        self.client_audio.last_jukebox_event.as_ref()
+    }
+
+    pub(crate) fn record_jukebox_level_event(
+        &mut self,
+        event: ProtocolLevelEvent,
+    ) -> Option<JukeboxLevelEventState> {
+        let pos = crate::protocol_block_pos(event.pos);
+        let state = match event.event_type {
+            JUKEBOX_PLAY_LEVEL_EVENT if event.data >= 0 => {
+                let stopped_existing =
+                    remove_jukebox_song(&mut self.client_audio.playing_jukebox_songs, pos);
+                self.client_audio
+                    .playing_jukebox_songs
+                    .push(JukeboxSongState {
+                        pos,
+                        song_registry_id: event.data,
+                    });
+                sort_jukebox_songs(&mut self.client_audio.playing_jukebox_songs);
+                JukeboxLevelEventState {
+                    action: JukeboxLevelEventAction::Start,
+                    pos,
+                    song_registry_id: Some(event.data),
+                    stopped_existing,
+                }
+            }
+            JUKEBOX_STOP_LEVEL_EVENT => {
+                let stopped_existing =
+                    remove_jukebox_song(&mut self.client_audio.playing_jukebox_songs, pos);
+                JukeboxLevelEventState {
+                    action: JukeboxLevelEventAction::Stop,
+                    pos,
+                    song_registry_id: None,
+                    stopped_existing,
+                }
+            }
+            _ => return None,
+        };
+        self.client_audio.last_jukebox_event = Some(state);
+        Some(state)
+    }
+
     pub fn local_block_hit_sound(&self, pos: crate::BlockPos) -> Option<SoundEventState> {
         let block = self.probe_block(pos)?;
         let block_name = block.block_name.as_deref()?;
@@ -314,6 +388,16 @@ impl WorldStore {
             "block",
         ))
     }
+}
+
+fn remove_jukebox_song(songs: &mut Vec<JukeboxSongState>, pos: crate::BlockPos) -> bool {
+    let before = songs.len();
+    songs.retain(|song| song.pos != pos);
+    songs.len() != before
+}
+
+fn sort_jukebox_songs(songs: &mut [JukeboxSongState]) {
+    songs.sort_by_key(|song| (song.pos.x, song.pos.y, song.pos.z));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -983,6 +1067,74 @@ mod tests {
 
         let recorded = store.record_local_sound(sound);
         assert_eq!(store.last_local_sound(), Some(&recorded));
+    }
+
+    #[test]
+    fn level_event_1010_and_1011_track_jukebox_song_state() {
+        let mut store = WorldStore::new();
+        let pos = ProtocolBlockPos { x: 4, y: 65, z: -7 };
+
+        store.apply_level_event(LevelEvent {
+            event_type: 1010,
+            pos,
+            data: 12,
+            global: false,
+        });
+
+        assert_eq!(
+            store.playing_jukebox_songs(),
+            &[JukeboxSongState {
+                pos: crate::BlockPos { x: 4, y: 65, z: -7 },
+                song_registry_id: 12,
+            }]
+        );
+        assert_eq!(
+            store.last_jukebox_event(),
+            Some(&JukeboxLevelEventState {
+                action: JukeboxLevelEventAction::Start,
+                pos: crate::BlockPos { x: 4, y: 65, z: -7 },
+                song_registry_id: Some(12),
+                stopped_existing: false,
+            })
+        );
+
+        store.apply_level_event(LevelEvent {
+            event_type: 1010,
+            pos,
+            data: 15,
+            global: false,
+        });
+
+        assert_eq!(
+            store.playing_jukebox_songs(),
+            &[JukeboxSongState {
+                pos: crate::BlockPos { x: 4, y: 65, z: -7 },
+                song_registry_id: 15,
+            }]
+        );
+        assert_eq!(
+            store.last_jukebox_event().unwrap().action,
+            JukeboxLevelEventAction::Start
+        );
+        assert!(store.last_jukebox_event().unwrap().stopped_existing);
+
+        store.apply_level_event(LevelEvent {
+            event_type: 1011,
+            pos,
+            data: 0,
+            global: false,
+        });
+
+        assert!(store.playing_jukebox_songs().is_empty());
+        assert_eq!(
+            store.last_jukebox_event(),
+            Some(&JukeboxLevelEventState {
+                action: JukeboxLevelEventAction::Stop,
+                pos: crate::BlockPos { x: 4, y: 65, z: -7 },
+                song_registry_id: None,
+                stopped_existing: true,
+            })
+        );
     }
 
     fn protocol_add_entity(id: i32) -> AddEntity {

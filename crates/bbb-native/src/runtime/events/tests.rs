@@ -3340,6 +3340,42 @@ fn portal_travel_level_event_emits_vanilla_local_ambience() {
 }
 
 #[test]
+fn jukebox_level_events_update_world_audio_state() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+        data: 27,
+        global: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1011,
+        pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+        data: 0,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    assert!(world.playing_jukebox_songs().is_empty());
+    let event = world.last_jukebox_event().unwrap();
+    assert_eq!(event.action, bbb_world::JukeboxLevelEventAction::Stop);
+    assert_eq!(event.pos, BlockPos { x: -4, y: 70, z: 9 });
+    assert_eq!(event.song_registry_id, None);
+    assert!(event.stopped_existing);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
 fn border_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::InitializeBorder(

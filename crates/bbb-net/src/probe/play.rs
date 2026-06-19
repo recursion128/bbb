@@ -3526,6 +3526,33 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_records_jukebox_level_events_in_world_audio_state() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 1010,
+                pos: ProtocolBlockPos { x: 3, y: 4, z: 5 },
+                data: 27,
+                global: false,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.level_events_received, 1);
+        assert_eq!(report.world.playing_jukebox_songs().len(), 1);
+        let song = report.world.playing_jukebox_songs()[0];
+        assert_eq!(song.pos, BlockPos { x: 3, y: 4, z: 5 });
+        assert_eq!(song.song_registry_id, 27);
+        let event = report.world.last_jukebox_event().unwrap();
+        assert_eq!(event.action, bbb_world::JukeboxLevelEventAction::Start);
+        assert_eq!(event.song_registry_id, Some(27));
+    }
+
+    #[tokio::test]
     async fn probe_applies_player_look_at_to_world() {
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);

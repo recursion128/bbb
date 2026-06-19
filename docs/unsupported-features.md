@@ -233,7 +233,8 @@ When an agent does any of the following, update this file in the same slice:
     - spatial/entity-following sounds
     - stop semantics
     - remaining level-event audio:
-      - jukebox song start/stop
+      - Kira playback for jukebox song start/stop after resolving
+        `JukeboxSong` registry entries to sound events and descriptions
       - particle-coupled level-event side effects
     - device/runtime diagnostics
 - Evidence / boundary:
@@ -261,6 +262,11 @@ When an agent does any of the following, update this file in the same slice:
       - `minecraft:block.portal.travel`
       - ambient source
       - non-spatial local sound command
+    - canonical world/probe/native state for `LevelEventHandler` jukebox
+      start/stop:
+      - event `1010` records active jukebox song registry id at block position
+      - event `1011` stops the active jukebox song at that block position
+      - active jukebox songs are cleared with client-level teardown
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage

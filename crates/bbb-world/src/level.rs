@@ -375,6 +375,7 @@ impl WorldStore {
         self.block_destructions.clear();
         self.block_events.clear();
         self.level_events.clear();
+        self.client_audio.playing_jukebox_songs.clear();
         self.local_block_predictions.clear();
         self.entities.clear();
         self.counters.block_destructions_tracked = 0;
@@ -749,6 +750,13 @@ mod tests {
             data: 42,
             global: true,
         });
+        store.apply_level_event(ProtocolLevelEvent {
+            event_type: 1010,
+            pos: ProtocolBlockPos { x: 6, y: 7, z: 8 },
+            data: 27,
+            global: false,
+        });
+        assert_eq!(store.playing_jukebox_songs().len(), 1);
         store.apply_world_time(ProtocolPlayTime {
             game_time: 123,
             clock_updates: Vec::new(),
@@ -777,6 +785,7 @@ mod tests {
         assert!(store.block_destructions.is_empty());
         assert!(store.block_events.is_empty());
         assert!(store.level_events.is_empty());
+        assert!(store.playing_jukebox_songs().is_empty());
         assert!(store.world_time().is_none());
         assert_eq!(store.weather(), WorldWeatherState::default());
         assert_eq!(store.ticking(), WorldTickingState::default());
