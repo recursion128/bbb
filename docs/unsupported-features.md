@@ -294,8 +294,6 @@ When an agent does any of the following, update this file in the same slice:
       - full fixed 20Hz survival physics
       - remaining vanilla voxel collision shapes
       - remaining fluid movement work beyond current still water/lava support:
-        - water movement efficiency
-        - Dolphin's Grace
         - swimming pose / sprint-swim camera and movement nuance
         - jump-out-of-fluid collision assist
         - bubble column behavior
@@ -456,6 +454,12 @@ When an agent does any of the following, update this file in the same slice:
         - water sneak descent impulse `-0.04`
         - vanilla-shaped fluid gravity scaling
         - creative/spectator flying movement ignores fluid travel
+        - water movement efficiency attribute id `32`:
+          - interpolates water input speed toward local player movement speed
+          - interpolates horizontal water drag toward `0.54600006`
+          - applies at half strength when not on ground
+        - Dolphin's Grace effect id `29` overrides horizontal water drag to
+          `0.96`
       - vanilla-shaped flow current push for local players affected by fluids:
         - `FlowingFluid.getFlow` horizontal own-height gradients
         - empty-neighbor falling-hole lookup with the vanilla `8/9` offset

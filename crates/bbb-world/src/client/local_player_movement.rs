@@ -15,11 +15,13 @@ const VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID: i32 = 22;
 const VANILLA_ATTRIBUTE_GRAVITY_ID: i32 = 14;
 const VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID: i32 = 15;
 const VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID: i32 = 26;
+const VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID: i32 = 32;
 const VANILLA_MOB_EFFECT_SPEED_ID: i32 = 0;
 const VANILLA_MOB_EFFECT_SLOWNESS_ID: i32 = 1;
 const VANILLA_MOB_EFFECT_JUMP_BOOST_ID: i32 = 7;
 const VANILLA_MOB_EFFECT_LEVITATION_ID: i32 = 24;
 const VANILLA_MOB_EFFECT_SLOW_FALLING_ID: i32 = 27;
+const VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID: i32 = 29;
 const LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE: f64 = 0.1;
 const LOCAL_INPUT_DEFAULT_GRAVITY_ATTRIBUTE: f64 = 0.08;
 const LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE: f64 = 0.42;
@@ -38,7 +40,9 @@ const LOCAL_INPUT_LIQUID_JUMP_VELOCITY_PER_TICK: f64 = 0.04;
 const LOCAL_INPUT_WATER_SNEAK_DESCEND_VELOCITY_PER_TICK: f64 = 0.04;
 const LOCAL_INPUT_WATER_HORIZONTAL_DRAG: f64 = 0.8;
 const LOCAL_INPUT_SPRINTING_WATER_HORIZONTAL_DRAG: f64 = 0.9;
+const LOCAL_INPUT_WATER_EFFICIENCY_HORIZONTAL_DRAG_TARGET: f64 = 0.54600006;
 const LOCAL_INPUT_WATER_VERTICAL_DRAG: f64 = 0.8;
+const LOCAL_INPUT_DOLPHINS_GRACE_WATER_HORIZONTAL_DRAG: f64 = 0.96;
 const LOCAL_INPUT_LAVA_HORIZONTAL_DRAG: f64 = 0.5;
 const LOCAL_INPUT_LAVA_VERTICAL_DRAG: f64 = 0.8;
 const LOCAL_INPUT_LAVA_DEEP_DRAG: f64 = 0.5;
@@ -254,8 +258,13 @@ fn advance_local_player_fluid_physics_step(
         pose.delta_movement.y -= LOCAL_INPUT_WATER_SNEAK_DESCEND_VELOCITY_PER_TICK * step_ticks;
     }
 
-    pose.delta_movement.x += move_x * LOCAL_INPUT_FLUID_SPEED_PER_TICK * step_ticks;
-    pose.delta_movement.z += move_z * LOCAL_INPUT_FLUID_SPEED_PER_TICK * step_ticks;
+    let fluid_relative_speed = if initial_fluid_contact.in_water() {
+        local_player_water_relative_speed_per_tick(world, pose.on_ground)
+    } else {
+        LOCAL_INPUT_FLUID_SPEED_PER_TICK
+    };
+    pose.delta_movement.x += move_x * fluid_relative_speed * step_ticks;
+    pose.delta_movement.z += move_z * fluid_relative_speed * step_ticks;
     let is_falling = pose.delta_movement.y <= 0.0;
     let requested_x = pose.delta_movement.x * step_ticks;
     let requested_y = pose.delta_movement.y * step_ticks;
@@ -302,9 +311,10 @@ fn advance_local_player_fluid_physics_step(
     }
 
     if initial_fluid_contact.in_water() {
-        pose.delta_movement.x *= water_horizontal_drag(input).powf(step_ticks);
+        let horizontal_drag = water_horizontal_drag(world, input, pose.on_ground);
+        pose.delta_movement.x *= horizontal_drag.powf(step_ticks);
         pose.delta_movement.y *= LOCAL_INPUT_WATER_VERTICAL_DRAG.powf(step_ticks);
-        pose.delta_movement.z *= water_horizontal_drag(input).powf(step_ticks);
+        pose.delta_movement.z *= horizontal_drag.powf(step_ticks);
         pose.delta_movement = local_player_fluid_falling_adjusted_velocity(
             world,
             pose.delta_movement,
@@ -376,12 +386,40 @@ fn local_player_lava_current_push_per_tick(world: &WorldStore) -> f64 {
     }
 }
 
-fn water_horizontal_drag(input: LocalPlayerInputState) -> f64 {
-    if input.sprint {
+fn local_player_water_relative_speed_per_tick(world: &WorldStore, on_ground: bool) -> f64 {
+    let mut speed = LOCAL_INPUT_FLUID_SPEED_PER_TICK;
+    let efficiency = local_player_water_movement_efficiency(world, on_ground);
+    if efficiency > 0.0 {
+        speed += (local_player_movement_speed_attribute_value(world) - speed) * efficiency;
+    }
+    speed
+}
+
+fn water_horizontal_drag(world: &WorldStore, input: LocalPlayerInputState, on_ground: bool) -> f64 {
+    let mut drag = if input.sprint {
         LOCAL_INPUT_SPRINTING_WATER_HORIZONTAL_DRAG
     } else {
         LOCAL_INPUT_WATER_HORIZONTAL_DRAG
+    };
+    let efficiency = local_player_water_movement_efficiency(world, on_ground);
+    if efficiency > 0.0 {
+        drag += (LOCAL_INPUT_WATER_EFFICIENCY_HORIZONTAL_DRAG_TARGET - drag) * efficiency;
     }
+    if local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID).is_some() {
+        drag = LOCAL_INPUT_DOLPHINS_GRACE_WATER_HORIZONTAL_DRAG;
+    }
+    drag
+}
+
+fn local_player_water_movement_efficiency(world: &WorldStore, on_ground: bool) -> f64 {
+    let mut efficiency =
+        local_player_attribute_value(world, VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID)
+            .unwrap_or(0.0)
+            .clamp(0.0, 1.0);
+    if !on_ground {
+        efficiency *= 0.5;
+    }
+    efficiency
 }
 
 fn local_player_lava_velocity_after_travel(
@@ -927,6 +965,7 @@ mod tests {
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
     const SOURCE_LAVA_BLOCK_STATE_ID: i32 = 102;
     const FLOWING_LAVA_LEVEL_3_BLOCK_STATE_ID: i32 = 105;
+    const VANILLA_MOB_EFFECT_BAD_OMEN_ID: i32 = 30;
 
     #[test]
     fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
@@ -1831,6 +1870,136 @@ mod tests {
     }
 
     #[test]
+    fn local_player_water_movement_efficiency_half_applies_when_airborne() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID,
+                base: 1.0,
+                modifiers: Vec::new(),
+            }],
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.56, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.0403800018, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
+    }
+
+    #[test]
+    fn local_player_water_movement_efficiency_fully_applies_on_ground() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID,
+                base: 1.0,
+                modifiers: Vec::new(),
+            }],
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.6, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.054600006, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
+    }
+
+    #[test]
+    fn local_player_dolphins_grace_overrides_water_horizontal_drag() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID,
+            0,
+        )));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.0192, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
+    }
+
+    #[test]
+    fn local_player_bad_omen_does_not_apply_dolphins_grace_water_drag() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_mob_effect(mob_effect(123, VANILLA_MOB_EFFECT_BAD_OMEN_ID, 0,)));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.016, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
+    }
+
+    #[test]
     fn local_player_sprinting_in_water_uses_vanilla_sprint_drag_without_sinking_gravity() {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
@@ -1905,6 +2074,41 @@ mod tests {
     fn local_player_in_lava_uses_lava_drag_and_gravity() {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.01, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.02, 0.000001);
+    }
+
+    #[test]
+    fn local_player_in_lava_ignores_water_movement_efficiency() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_LAVA_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID,
+                base: 1.0,
+                modifiers: Vec::new(),
+            }],
+        }));
         world.set_local_player_pose(LocalPlayerPoseState {
             position: vec3(0.5, 1.1, 0.5),
             on_ground: false,
