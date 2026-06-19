@@ -1530,6 +1530,27 @@ fn encodes_player_action_packet() {
 }
 
 #[test]
+fn encodes_stab_player_action_packet() {
+    let (id, payload) = encode_play_player_action(PlayerAction {
+        action: PlayerActionKind::Stab,
+        pos: BlockPos { x: 0, y: 0, z: 0 },
+        direction: Direction::Down,
+        sequence: 0,
+    });
+
+    assert_eq!(id, ids::play::SERVERBOUND_PLAYER_ACTION);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_var_i32().unwrap(), 7);
+    assert_eq!(
+        chunks::decode_block_pos(decoder.read_i64().unwrap()),
+        BlockPos { x: 0, y: 0, z: 0 }
+    );
+    assert_eq!(decoder.read_u8().unwrap(), 0);
+    assert_eq!(decoder.read_var_i32().unwrap(), 0);
+    assert!(decoder.is_empty());
+}
+
+#[test]
 fn encodes_chat_command_packet() {
     let (id, payload) = encode_play_chat_command(&ChatCommand {
         command: "give @p minecraft:stone".to_string(),

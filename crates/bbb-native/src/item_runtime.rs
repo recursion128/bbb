@@ -259,6 +259,17 @@ impl NativeItemRuntime {
         self.item_equipment_slots_by_protocol_id().len()
     }
 
+    pub(crate) fn default_piercing_weapon_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.registry
+            .as_ref()
+            .map(ItemRegistryCatalog::default_piercing_weapon_protocol_ids)
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn default_piercing_weapon_item_count(&self) -> usize {
+        self.default_piercing_weapon_item_ids_by_protocol_id().len()
+    }
+
     pub(crate) fn item_mining_profiles_by_protocol_id(
         &self,
     ) -> BTreeMap<i32, WorldItemMiningProfile> {

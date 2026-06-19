@@ -128,6 +128,9 @@ fn main() -> Result<()> {
     if let Some(items) = &item_runtime {
         world.set_default_item_max_stack_sizes(items.item_max_stack_sizes_by_protocol_id());
         world.set_default_item_equipment_slots(items.item_equipment_slots_by_protocol_id());
+        world.set_default_piercing_weapon_item_ids(
+            items.default_piercing_weapon_item_ids_by_protocol_id(),
+        );
         world.set_furnace_fuel_item_ids(items.furnace_fuel_item_ids_by_protocol_id());
         world.set_freeze_immune_wearable_item_ids(
             items.freeze_immune_wearable_item_ids_by_protocol_id(),
@@ -145,6 +148,7 @@ fn main() -> Result<()> {
             textures = items.texture_count(),
             icon_textures = items.icon_texture_count(),
             item_equipment_slots = items.item_equipment_slot_count(),
+            default_piercing_weapon_items = items.default_piercing_weapon_item_count(),
             item_mining_profiles = items.item_mining_profile_count(),
             furnace_fuel_items = items.furnace_fuel_item_count(),
             freeze_immune_wearable_items = items.freeze_immune_wearable_item_count(),

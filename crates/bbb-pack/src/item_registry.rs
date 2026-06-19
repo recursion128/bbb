@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, path::Path};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+};
 
 use anyhow::{bail, Context, Result};
 use regex::Regex;
@@ -42,6 +45,8 @@ pub struct ItemRegistryCatalog {
     max_stack_size: BTreeMap<String, i32>,
     #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
+    #[serde(default)]
+    default_piercing_weapon_ids: BTreeSet<String>,
     #[serde(default)]
     mining_profiles: BTreeMap<String, ItemMiningProfile>,
 }
@@ -111,6 +116,7 @@ impl ItemRegistryCatalog {
         let mut max_damage = BTreeMap::new();
         let mut max_stack_size = BTreeMap::new();
         let mut default_equipment_slots = BTreeMap::new();
+        let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut mining_profiles = BTreeMap::new();
         for capture in declaration.captures_iter(source) {
             let kind = capture.get(1).unwrap().as_str();
@@ -119,6 +125,7 @@ impl ItemRegistryCatalog {
             let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
+            let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let mining_profile = mining_profile_for_declaration(expression, block_tags)?;
             if let Some(durability) = durability_for_declaration(expression)? {
                 for resource_id in &ids {
@@ -129,6 +136,9 @@ impl ItemRegistryCatalog {
                 max_stack_size.insert(resource_id.clone(), stack_size);
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
+                }
+                if default_piercing_weapon {
+                    default_piercing_weapon_ids.insert(resource_id.clone());
                 }
                 if let Some(profile) = &mining_profile {
                     mining_profiles.insert(resource_id.clone(), profile.clone());
@@ -157,6 +167,7 @@ impl ItemRegistryCatalog {
             max_damage,
             max_stack_size,
             default_equipment_slots,
+            default_piercing_weapon_ids,
             mining_profiles,
         })
     }
@@ -190,6 +201,20 @@ impl ItemRegistryCatalog {
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_equipment_slots.get(&resource_id).copied()
+    }
+
+    pub fn default_piercing_weapon(&self, resource_id: &str) -> bool {
+        let Some(resource_id) = ResourceLocation::parse(resource_id).ok().map(|id| id.id()) else {
+            return false;
+        };
+        self.default_piercing_weapon_ids.contains(&resource_id)
+    }
+
+    pub fn default_piercing_weapon_protocol_ids(&self) -> BTreeSet<i32> {
+        self.default_piercing_weapon_ids
+            .iter()
+            .filter_map(|resource_id| self.protocol_ids.get(resource_id).copied())
+            .collect()
     }
 
     pub fn mining_profile(&self, resource_id: &str) -> Option<&ItemMiningProfile> {
@@ -348,6 +373,10 @@ fn equipment_slot_for_declaration(expression: &str) -> Result<Option<ItemEquipme
     }
 
     Ok(None)
+}
+
+fn default_piercing_weapon_for_declaration(expression: &str) -> bool {
+    expression.contains(".spear(")
 }
 
 fn mining_profile_for_declaration(
@@ -633,6 +662,40 @@ mod tests {
     }
 
     #[test]
+    fn item_registry_catalog_parses_default_piercing_weapon_ids() {
+        let source = r#"
+            public class Items {
+               public static final Item AIR = registerBlock(Blocks.AIR, AirItem::new);
+               public static final Item WOODEN_SPEAR = registerItem(
+                  "wooden_spear",
+                  new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
+               );
+               public static final Item STONE_SPEAR = registerItem("stone_spear", new Item.Properties().spear(ToolMaterial.STONE, 0.75F, 0.82F, 0.7F, 4.5F, 13.0F, 9.0F, 5.1F, 13.75F, 4.6F));
+               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+
+        assert!(catalog.default_piercing_weapon("wooden_spear"));
+        assert!(catalog.default_piercing_weapon("minecraft:stone_spear"));
+        assert!(!catalog.default_piercing_weapon("minecraft:iron_sword"));
+        assert!(!catalog.default_piercing_weapon("minecraft:air"));
+        assert_eq!(
+            catalog.default_piercing_weapon_protocol_ids(),
+            BTreeSet::from([1, 2])
+        );
+
+        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": ["minecraft:wooden_spear"],
+            "protocol_ids": {"minecraft:wooden_spear": 0}
+        }))
+        .unwrap();
+        assert!(decoded.default_piercing_weapon_protocol_ids().is_empty());
+    }
+
+    #[test]
     fn item_registry_catalog_parses_default_equipment_slots() {
         let source = r#"
             public class Items {
@@ -874,6 +937,23 @@ mod tests {
             .mining_profile("minecraft:diamond_pickaxe")
             .is_some());
         assert!(catalog.mining_profile("minecraft:shears").is_some());
+        let default_piercing_weapon_ids: Vec<_> = catalog
+            .default_piercing_weapon_protocol_ids()
+            .into_iter()
+            .filter_map(|protocol_id| catalog.resource_id(protocol_id))
+            .collect();
+        assert_eq!(
+            default_piercing_weapon_ids,
+            vec![
+                "minecraft:wooden_spear",
+                "minecraft:stone_spear",
+                "minecraft:copper_spear",
+                "minecraft:iron_spear",
+                "minecraft:golden_spear",
+                "minecraft:diamond_spear",
+                "minecraft:netherite_spear",
+            ]
+        );
         assert_eq!(
             catalog.equipment_slot("minecraft:diamond_boots"),
             Some(ItemEquipmentSlot::Feet)

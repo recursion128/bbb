@@ -87,6 +87,15 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                 }
                 return;
             }
+            if world.local_selected_main_hand_has_piercing_weapon() {
+                queue_zero_pos_player_action_command(
+                    counters,
+                    net_commands,
+                    PlayerActionKind::Stab,
+                );
+                queue_swing_command(counters, net_commands, InteractionHand::MainHand);
+                return;
+            }
             input.destroy_block_held = true;
             match camera_target {
                 Some(CrosshairTarget::Entity(hit)) => {
@@ -551,7 +560,7 @@ mod tests {
         BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
         PaletteDomain, PaletteKind, PalettedContainerData, WorldBlockSoundProfile, WorldDimension,
     };
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
     use uuid::Uuid;
 
     const CROSSHAIR_BLOCK_POS: BlockPos = BlockPos { x: 0, y: 1, z: 3 };
@@ -916,6 +925,44 @@ mod tests {
     }
 
     #[test]
+    fn left_mouse_press_with_piercing_weapon_queues_stab_and_swing_on_entity() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        set_selected_piercing_weapon(&mut world, 42);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.destroy_block_held);
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.attack_entity_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::Stab,
+                pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                direction: ProtocolDirection::Down,
+                sequence: 0,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
     fn spectator_left_mouse_press_on_entity_queues_spectate_only() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -938,6 +985,36 @@ mod tests {
         assert_eq!(counters.spectate_entity_commands_queued, 1);
         assert_eq!(counters.attack_entity_commands_queued, 0);
         assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 0);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::SpectateEntity(SpectateEntity { entity_id: 123 })
+        );
+    }
+
+    #[test]
+    fn spectator_left_mouse_press_with_piercing_weapon_queues_spectate_only() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        set_selected_piercing_weapon(&mut world, 42);
+        set_local_spectator(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.destroy_block_held);
+        assert_eq!(counters.spectate_entity_commands_queued, 1);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert_eq!(counters.attack_entity_commands_queued, 0);
         assert_eq!(counters.swing_commands_queued, 0);
         assert_eq!(
             rx.try_recv().unwrap(),
@@ -1005,6 +1082,43 @@ mod tests {
                 pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
                 direction: ProtocolDirection::North,
                 sequence: 1,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
+    fn left_mouse_press_with_piercing_weapon_queues_stab_and_swing_on_block() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        set_selected_piercing_weapon(&mut world, 42);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(!input.destroy_block_held);
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::Stab,
+                pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                direction: ProtocolDirection::Down,
+                sequence: 0,
             })
         );
         assert_eq!(
@@ -2417,6 +2531,14 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn set_selected_piercing_weapon(world: &mut WorldStore, item_id: i32) {
+        world.set_default_piercing_weapon_item_ids(BTreeSet::from([item_id]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(item_id, 1),
+        });
     }
 
     fn world_with_ender_dragon() -> WorldStore {

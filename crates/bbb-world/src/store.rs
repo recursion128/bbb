@@ -106,6 +106,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) default_item_equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     #[serde(default)]
+    pub(crate) default_piercing_weapon_item_ids: BTreeSet<i32>,
+    #[serde(default)]
     pub(crate) furnace_fuel_item_ids: BTreeSet<i32>,
     #[serde(default)]
     pub(crate) freeze_immune_wearable_item_ids: BTreeSet<i32>,

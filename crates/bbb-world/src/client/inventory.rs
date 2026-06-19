@@ -95,6 +95,7 @@ const INVENTORY_MENU_HOTBAR_START: i16 = 36;
 const INVENTORY_MENU_HOTBAR_END: i16 = 45;
 const INVENTORY_MENU_OFFHAND_SLOT: i16 = 45;
 const VANILLA_MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
+const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 const NO_LOCAL_SELECTED_BUNDLE_ITEM_INDEX: i32 = -1;
@@ -756,6 +757,18 @@ impl WorldStore {
                 .is_some_and(item_stack_is_non_empty)
     }
 
+    pub fn local_selected_main_hand_has_piercing_weapon(&self) -> bool {
+        let selected_slot = self.local_player.selected_hotbar_slot;
+        if selected_slot > 8 {
+            return false;
+        }
+
+        self.local_player_inventory_item(i32::from(selected_slot))
+            .is_some_and(|item| {
+                item_stack_has_piercing_weapon(item, &self.default_piercing_weapon_item_ids)
+            })
+    }
+
     pub fn drop_local_selected_hotbar_item(&mut self, all: bool) -> bool {
         let selected_slot = self.local_player.selected_hotbar_slot;
         if selected_slot > 8 {
@@ -860,6 +873,13 @@ impl WorldStore {
 
     pub fn set_powder_snow_walkable_foot_item_ids(&mut self, item_ids: BTreeSet<i32>) {
         self.powder_snow_walkable_foot_item_ids = item_ids
+            .into_iter()
+            .filter(|item_id| *item_id >= 0)
+            .collect();
+    }
+
+    pub fn set_default_piercing_weapon_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.default_piercing_weapon_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
             .collect();
@@ -1475,6 +1495,30 @@ fn hashed_stack_from_summary(stack: &ProtocolItemStackSummary) -> Option<Protoco
 
 fn item_stack_is_non_empty(stack: &ProtocolItemStackSummary) -> bool {
     stack.item_id.is_some() && stack.count > 0
+}
+
+fn item_stack_has_piercing_weapon(
+    stack: &ProtocolItemStackSummary,
+    default_piercing_weapon_item_ids: &BTreeSet<i32>,
+) -> bool {
+    if item_stack_is_empty(stack)
+        || stack
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_PIERCING_WEAPON_COMPONENT_ID)
+    {
+        return false;
+    }
+
+    let Some(item_id) = stack.item_id.filter(|item_id| *item_id >= 0) else {
+        return false;
+    };
+
+    default_piercing_weapon_item_ids.contains(&item_id)
+        || stack
+            .component_patch
+            .added_type_ids
+            .contains(&VANILLA_PIERCING_WEAPON_COMPONENT_ID)
 }
 
 fn component_patch_can_be_hashed_from_summary(patch: &ProtocolDataComponentPatchSummary) -> bool {
@@ -3537,6 +3581,80 @@ mod tests {
             item: ProtocolItemStackSummary::empty(),
         });
         assert!(!store.local_item_use_prefers_offhand());
+    }
+
+    #[test]
+    fn local_selected_main_hand_has_piercing_weapon_true_for_default_item() {
+        let mut store = WorldStore::new();
+        store.set_default_piercing_weapon_item_ids(BTreeSet::from([-1, 42]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+
+        assert!(store.local_selected_main_hand_has_piercing_weapon());
+    }
+
+    #[test]
+    fn local_selected_main_hand_has_piercing_weapon_true_for_added_component() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack_with_component_summary(99, 1, VANILLA_PIERCING_WEAPON_COMPONENT_ID),
+        });
+
+        assert!(store.local_selected_main_hand_has_piercing_weapon());
+    }
+
+    #[test]
+    fn local_selected_main_hand_has_piercing_weapon_removed_component_overrides_default_and_added()
+    {
+        let mut store = WorldStore::new();
+        store.set_default_piercing_weapon_item_ids(BTreeSet::from([42]));
+        let mut item =
+            item_stack_with_component_summary(42, 1, VANILLA_PIERCING_WEAPON_COMPONENT_ID);
+        item.component_patch.removed_type_ids = vec![VANILLA_PIERCING_WEAPON_COMPONENT_ID];
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory { slot: 0, item });
+
+        assert!(!store.local_selected_main_hand_has_piercing_weapon());
+    }
+
+    #[test]
+    fn local_selected_main_hand_has_piercing_weapon_false_for_empty_or_invalid_item() {
+        let mut store = WorldStore::new();
+        store.set_default_piercing_weapon_item_ids(BTreeSet::from([-1, 42]));
+
+        assert!(!store.local_selected_main_hand_has_piercing_weapon());
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 0),
+        });
+        assert!(!store.local_selected_main_hand_has_piercing_weapon());
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(-1, 1),
+        });
+        assert!(!store.local_selected_main_hand_has_piercing_weapon());
+    }
+
+    #[test]
+    fn local_selected_main_hand_has_piercing_weapon_respects_selected_slot() {
+        let mut store = WorldStore::new();
+        store.set_default_piercing_weapon_item_ids(BTreeSet::from([42]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 1,
+            item: item_stack(99, 1),
+        });
+
+        assert!(store.local_selected_main_hand_has_piercing_weapon());
+        assert!(store.set_local_selected_hotbar_slot(1));
+        assert!(!store.local_selected_main_hand_has_piercing_weapon());
     }
 
     #[test]
