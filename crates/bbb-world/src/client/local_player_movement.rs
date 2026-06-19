@@ -1673,6 +1673,10 @@ mod tests {
     const OAK_BOTTOM_STRAIGHT_NORTH_STAIR_BLOCK_STATE_ID: i32 = 3918;
     const OAK_BOTTOM_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3938;
     const OAK_LEAVES_BLOCK_STATE_ID: i32 = 255;
+    const PISTON_EXTENDED_NORTH_BLOCK_STATE_ID: i32 = 2257;
+    const PISTON_EXTENDED_UP_BLOCK_STATE_ID: i32 = 2261;
+    const PISTON_HEAD_SOUTH_LONG_BLOCK_STATE_ID: i32 = 2279;
+    const MOVING_PISTON_NORTH_BLOCK_STATE_ID: i32 = 2309;
     const FARMLAND_MOISTURE_0_BLOCK_STATE_ID: i32 = 5319;
     const SNOW_5_LAYERS_BLOCK_STATE_ID: i32 = 6923;
     const SNOW_6_LAYERS_BLOCK_STATE_ID: i32 = 6924;
@@ -2613,6 +2617,75 @@ mod tests {
             assert!(pose.horizontal_collision, "{name}");
             assert!(pose.on_ground, "{name}");
         }
+    }
+
+    #[test]
+    fn local_player_respects_extended_piston_base_shape() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, PISTON_EXTENDED_NORTH_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+        assert!(
+            pose.position.z > 0.7005 && pose.position.z <= 0.9505,
+            "position was {:?}",
+            pose.position
+        );
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_respects_piston_head_rod_extending_outside_block() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 2, PISTON_HEAD_SOUTH_LONG_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+        assert!(
+            pose.position.z > 0.7005 && pose.position.z <= 1.4505,
+            "position was {:?}",
+            pose.position
+        );
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_lands_on_up_extended_piston_base_plate() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, PISTON_EXTENDED_UP_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                2.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.75, 0.0005);
+        assert!(pose.on_ground);
+        assert!(!pose.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_does_not_collide_with_moving_piston_without_block_entity() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, MOVING_PISTON_NORTH_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.position.z > 1.0, "position was {:?}", pose.position);
+        assert!(!pose.horizontal_collision);
+        assert!(pose.on_ground);
     }
 
     #[test]

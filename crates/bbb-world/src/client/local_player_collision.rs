@@ -25,12 +25,14 @@ pub(super) fn local_player_collides_with_context(
     bounds: LocalPlayerBounds,
     context: LocalPlayerCollisionContext,
 ) -> bool {
-    let min_x = block_floor(bounds.min_x + COLLISION_EPSILON);
-    let max_x = block_floor(bounds.max_x - COLLISION_EPSILON);
+    // Some vanilla collision shapes extend outside their block cell, such as
+    // piston heads and fence heights.
+    let min_x = block_floor(bounds.min_x + COLLISION_EPSILON) - 1;
+    let max_x = block_floor(bounds.max_x - COLLISION_EPSILON) + 1;
     let min_y = block_floor(bounds.min_y + COLLISION_EPSILON) - 1;
-    let max_y = block_floor(bounds.max_y - COLLISION_EPSILON);
-    let min_z = block_floor(bounds.min_z + COLLISION_EPSILON);
-    let max_z = block_floor(bounds.max_z - COLLISION_EPSILON);
+    let max_y = block_floor(bounds.max_y - COLLISION_EPSILON) + 1;
+    let min_z = block_floor(bounds.min_z + COLLISION_EPSILON) - 1;
+    let max_z = block_floor(bounds.max_z - COLLISION_EPSILON) + 1;
 
     for y in min_y..=max_y {
         for z in min_z..=max_z {
@@ -125,6 +127,15 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         }
         if is_copper_grate_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+        }
+        if is_piston_base_block_name(block_name) {
+            return piston_base_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:piston_head" {
+            return piston_head_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:moving_piston" {
+            return None;
         }
         if is_flower_pot_block_name(block_name) {
             return Some(BlockCollisionShape::single(
@@ -362,6 +373,10 @@ fn is_copper_grate_block_name(block_name: &str) -> bool {
         .is_some_and(|path| path == "copper_grate" || path.ends_with("_copper_grate"))
 }
 
+fn is_piston_base_block_name(block_name: &str) -> bool {
+    matches!(block_name, "minecraft:piston" | "minecraft:sticky_piston")
+}
+
 fn is_flower_pot_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
@@ -573,6 +588,46 @@ fn snow_layer_collision_shape(
     Some(BlockCollisionShape::single(BlockCollisionBox::column(
         0.0, 0.0, 1.0, height, 1.0,
     )))
+}
+
+fn piston_base_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    if !bool_property(properties, "extended")? {
+        return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+    }
+    let facing = BlockDirection::parse(properties.get("facing")?)?;
+    Some(
+        BlockCollisionShape::single(BlockCollisionBox::from_pixels(
+            [0.0, 0.0, 4.0],
+            [16.0, 16.0, 16.0],
+        ))
+        .rotate_all_from_north(facing),
+    )
+}
+
+fn piston_head_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let facing = BlockDirection::parse(properties.get("facing")?)?;
+    let rod_max_z = if bool_property(properties, "short")? {
+        16.0
+    } else {
+        20.0
+    };
+    Some(
+        BlockCollisionShape::from_boxes([
+            Some(BlockCollisionBox::from_pixels(
+                [0.0, 0.0, 0.0],
+                [16.0, 16.0, 4.0],
+            )),
+            Some(BlockCollisionBox::from_pixels(
+                [6.0, 6.0, 4.0],
+                [10.0, 10.0, rod_max_z],
+            )),
+        ])
+        .rotate_all_from_north(facing),
+    )
 }
 
 fn scaffolding_collision_shape(
@@ -1408,6 +1463,30 @@ impl ShapeAxis {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BlockDirection {
+    North,
+    East,
+    South,
+    West,
+    Up,
+    Down,
+}
+
+impl BlockDirection {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "north" => Some(Self::North),
+            "east" => Some(Self::East),
+            "south" => Some(Self::South),
+            "west" => Some(Self::West),
+            "up" => Some(Self::Up),
+            "down" => Some(Self::Down),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StairShapeKind {
     Straight,
     Outer,
@@ -1625,6 +1704,17 @@ impl BlockCollisionShape {
             };
         }
         rotated
+    }
+
+    fn rotate_all_from_north(self, direction: BlockDirection) -> Self {
+        match direction {
+            BlockDirection::North => self,
+            BlockDirection::East => self.rotate_to_direction(HorizontalDirection::East),
+            BlockDirection::South => self.rotate_to_direction(HorizontalDirection::South),
+            BlockDirection::West => self.rotate_to_direction(HorizontalDirection::West),
+            BlockDirection::Up => self.map_boxes(BlockCollisionBox::rotate_x_270),
+            BlockDirection::Down => self.map_boxes(BlockCollisionBox::rotate_x_90),
+        }
     }
 }
 
@@ -2193,6 +2283,28 @@ impl BlockCollisionBox {
             max_x: 1.0 - self.min_z,
             max_y: self.max_y,
             max_z: self.max_x,
+        }
+    }
+
+    fn rotate_x_90(self) -> Self {
+        Self {
+            min_x: self.min_x,
+            min_y: self.min_z,
+            min_z: 1.0 - self.max_y,
+            max_x: self.max_x,
+            max_y: self.max_z,
+            max_z: 1.0 - self.min_y,
+        }
+    }
+
+    fn rotate_x_270(self) -> Self {
+        Self {
+            min_x: self.min_x,
+            min_y: 1.0 - self.max_z,
+            min_z: self.min_y,
+            max_x: self.max_x,
+            max_y: 1.0 - self.min_z,
+            max_z: self.max_y,
         }
     }
 
