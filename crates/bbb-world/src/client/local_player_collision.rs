@@ -85,6 +85,29 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
         if is_copper_grate_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
+        if block_name == "minecraft:end_portal_frame" {
+            return end_portal_frame_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:daylight_detector" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 6.0),
+            ));
+        }
+        if is_sculk_sensor_block_name(block_name) || block_name == "minecraft:sculk_shrieker" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 8.0),
+            ));
+        }
+        if block_name == "minecraft:heavy_core" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(8.0, 8.0, 0.0, 8.0),
+            ));
+        }
+        if block_name == "minecraft:dragon_egg" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(14.0, 14.0, 0.0, 16.0),
+            ));
+        }
         if is_chain_block_name(block_name) {
             return chain_collision_shape(&block.block_properties);
         }
@@ -250,6 +273,13 @@ fn is_copper_grate_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path == "copper_grate" || path.ends_with("_copper_grate"))
+}
+
+fn is_sculk_sensor_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:sculk_sensor" | "minecraft:calibrated_sculk_sensor"
+    )
 }
 
 fn is_chain_block_name(block_name: &str) -> bool {
@@ -771,6 +801,17 @@ fn anvil_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockC
         ],
     };
     Some(BlockCollisionShape::from_boxes(boxes))
+}
+
+fn end_portal_frame_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let mut builder = BlockCollisionShapeBuilder::new();
+    builder.push(BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 13.0));
+    if bool_property(properties, "eye")? {
+        builder.push(BlockCollisionBox::centered_column(8.0, 8.0, 13.0, 16.0));
+    }
+    Some(builder.build())
 }
 
 fn lectern_collision_shape() -> BlockCollisionShape {

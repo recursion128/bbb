@@ -1401,6 +1401,9 @@ mod tests {
     const SOUL_SAND_BLOCK_STATE_ID: i32 = 6998;
     const CAKE_BITES_0_BLOCK_STATE_ID: i32 = 7027;
     const CAKE_BITES_3_BLOCK_STATE_ID: i32 = 7030;
+    const END_PORTAL_FRAME_EYE_NORTH_BLOCK_STATE_ID: i32 = 9469;
+    const END_PORTAL_FRAME_EMPTY_NORTH_BLOCK_STATE_ID: i32 = 9473;
+    const DRAGON_EGG_BLOCK_STATE_ID: i32 = 9478;
     const OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID: i32 = 5666;
     const OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7121;
     const STONE_PRESSURE_PLATE_BLOCK_STATE_ID: i32 = 6796;
@@ -1424,6 +1427,7 @@ mod tests {
     const ENDER_CHEST_NORTH_BLOCK_STATE_ID: i32 = 9576;
     const WHITE_BED_NORTH_FOOT_BLOCK_STATE_ID: i32 = 1934;
     const WATER_CAULDRON_LEVEL_3_BLOCK_STATE_ID: i32 = 9463;
+    const DAYLIGHT_DETECTOR_POWER_0_BLOCK_STATE_ID: i32 = 11295;
     const HOPPER_NORTH_ENABLED_BLOCK_STATE_ID: i32 = 11314;
     const ENCHANTING_TABLE_BLOCK_STATE_ID: i32 = 9451;
     const GRINDSTONE_FLOOR_NORTH_BLOCK_STATE_ID: i32 = 20772;
@@ -1440,8 +1444,12 @@ mod tests {
     const COMPOSTER_LEVEL_7_BLOCK_STATE_ID: i32 = 21750;
     const COPPER_GRATE_BLOCK_STATE_ID: i32 = 27048;
     const WAXED_COPPER_GRATE_BLOCK_STATE_ID: i32 = 27056;
+    const SCULK_SENSOR_INACTIVE_BLOCK_STATE_ID: i32 = 24691;
+    const CALIBRATED_SCULK_SENSOR_NORTH_INACTIVE_BLOCK_STATE_ID: i32 = 24787;
+    const SCULK_SHRIEKER_IDLE_BLOCK_STATE_ID: i32 = 25304;
     const LIGHTNING_ROD_UP_UNPOWERED_BLOCK_STATE_ID: i32 = 27562;
     const MUD_BLOCK_STATE_ID: i32 = 27922;
+    const HEAVY_CORE_DRY_BLOCK_STATE_ID: i32 = 29702;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
     const SOURCE_LAVA_BLOCK_STATE_ID: i32 = 102;
@@ -1775,6 +1783,29 @@ mod tests {
             ("mud", MUD_BLOCK_STATE_ID, 1.875),
             ("cake", CAKE_BITES_0_BLOCK_STATE_ID, 1.5),
             ("lily pad", LILY_PAD_BLOCK_STATE_ID, 1.09375),
+            (
+                "daylight detector",
+                DAYLIGHT_DETECTOR_POWER_0_BLOCK_STATE_ID,
+                1.375,
+            ),
+            ("sculk sensor", SCULK_SENSOR_INACTIVE_BLOCK_STATE_ID, 1.5),
+            (
+                "calibrated sculk sensor",
+                CALIBRATED_SCULK_SENSOR_NORTH_INACTIVE_BLOCK_STATE_ID,
+                1.5,
+            ),
+            ("sculk shrieker", SCULK_SHRIEKER_IDLE_BLOCK_STATE_ID, 1.5),
+            ("heavy core", HEAVY_CORE_DRY_BLOCK_STATE_ID, 1.5),
+            (
+                "empty end portal frame",
+                END_PORTAL_FRAME_EMPTY_NORTH_BLOCK_STATE_ID,
+                1.8125,
+            ),
+            (
+                "eye end portal frame",
+                END_PORTAL_FRAME_EYE_NORTH_BLOCK_STATE_ID,
+                2.0,
+            ),
         ];
 
         for (name, block_state_id, expected_y) in cases {
@@ -1832,6 +1863,7 @@ mod tests {
         let cases = [
             ("cactus", CACTUS_AGE_0_BLOCK_STATE_ID),
             ("honey block", HONEY_BLOCK_STATE_ID),
+            ("dragon egg", DRAGON_EGG_BLOCK_STATE_ID),
         ];
 
         for (name, block_state_id) in cases {

@@ -426,6 +426,11 @@ When an agent does any of the following, update this file in the same slice:
       - rod
       - campfire
       - copper grate
+      - end portal frame
+      - daylight detector
+      - sculk sensor / calibrated sculk sensor / sculk shrieker
+      - heavy core
+      - dragon egg
       - chest
       - bed
       - cauldron
