@@ -1111,6 +1111,16 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_default_mount_body_armor_kinds(
+        &mut self,
+        armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
+    ) {
+        self.default_mount_body_armor_kinds = armor_kinds
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect();
+    }
+
     pub fn build_container_click_slot(
         &self,
         request: ContainerClickSlotRequest,
@@ -1232,6 +1242,7 @@ impl WorldStore {
                             request.slot_num,
                             mount_equipment_slots,
                             &self.default_item_equipment_slots,
+                            &self.default_mount_body_armor_kinds,
                         ) {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                 ProtocolContainerInput::QuickMove,
@@ -1243,6 +1254,7 @@ impl WorldStore {
                             request.slot_num,
                             mount_equipment_slots,
                             &self.default_item_equipment_slots,
+                            &self.default_mount_body_armor_kinds,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if let Some(container_slot_count) =
@@ -2646,6 +2658,7 @@ fn apply_mount_inventory_quick_move_to_slots(
     slot_num: i16,
     mount_equipment_slots: Option<MountEquipmentSlotVisibility>,
     default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+    default_mount_body_armor_kinds: &BTreeMap<i32, MountArmorSlotKind>,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
     let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
@@ -2677,18 +2690,26 @@ fn apply_mount_inventory_quick_move_to_slots(
             default_item_max_stack_sizes,
         );
     } else {
-        if mount_equipment_quick_move_target(
+        if let Some(target_slot) = mount_equipment_quick_move_target(
             &source_item,
             slots,
             mount_equipment_slots,
             default_item_equipment_slots,
-        )
-        .is_some()
-        {
-            return;
+            default_mount_body_armor_kinds,
+        ) {
+            changed = move_item_stack_to_slots(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                target_slot,
+                target_slot + 1,
+                false,
+                default_item_max_stack_sizes,
+            );
         }
 
-        if player_start > MOUNT_INVENTORY_START {
+        if !changed && player_start > MOUNT_INVENTORY_START {
             changed = move_item_stack_to_slots(
                 container_id,
                 slots,
@@ -2737,6 +2758,7 @@ fn mount_inventory_quick_move_requires_server_authority(
     slot_num: i16,
     mount_equipment_slots: Option<MountEquipmentSlotVisibility>,
     default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+    default_mount_body_armor_kinds: &BTreeMap<i32, MountArmorSlotKind>,
 ) -> bool {
     let Some(player_start) = mount_inventory_player_start_slot(slots) else {
         return false;
@@ -2754,14 +2776,21 @@ fn mount_inventory_quick_move_requires_server_authority(
     if default_item_equipment_slots.is_empty() || mount_equipment_slots.is_none() {
         return true;
     }
+    if item_stack_has_component_patch(&source.item) {
+        return true;
+    }
 
-    mount_equipment_quick_move_target(
-        &source.item,
-        slots,
-        mount_equipment_slots,
-        default_item_equipment_slots,
-    )
-    .is_some()
+    if let Some(item_id) = source.item.item_id {
+        if default_item_equipment_slots
+            .get(&item_id)
+            .is_some_and(|slot| *slot == ItemEquipmentSlot::Body)
+            && !default_mount_body_armor_kinds.contains_key(&item_id)
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn mount_inventory_player_start_slot(slots: &[ContainerSlot]) -> Option<i16> {
@@ -2775,12 +2804,16 @@ fn mount_equipment_quick_move_target(
     slots: &[ContainerSlot],
     mount_equipment_slots: Option<MountEquipmentSlotVisibility>,
     default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+    default_mount_body_armor_kinds: &BTreeMap<i32, MountArmorSlotKind>,
 ) -> Option<i16> {
     let item_id = stack.item_id?;
     let visibility = mount_equipment_slots?;
     match default_item_equipment_slots.get(&item_id).copied()? {
         ItemEquipmentSlot::Body
-            if visibility.body.is_some()
+            if visibility
+                .body
+                .zip(default_mount_body_armor_kinds.get(&item_id).copied())
+                .is_some_and(|(slot_kind, item_kind)| slot_kind == item_kind)
                 && !inventory_menu_slot_has_item(slots, MOUNT_BODY_ARMOR_SLOT) =>
         {
             Some(MOUNT_BODY_ARMOR_SLOT)
@@ -4368,6 +4401,10 @@ fn item_stack_is_empty(stack: &ProtocolItemStackSummary) -> bool {
     stack.item_id.is_none() || stack.count <= 0
 }
 
+fn item_stack_has_component_patch(stack: &ProtocolItemStackSummary) -> bool {
+    stack.component_patch != Default::default()
+}
+
 fn same_item_same_components(
     left: &ProtocolItemStackSummary,
     right: &ProtocolItemStackSummary,
@@ -4796,7 +4833,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_mount_quick_move_keeps_equipment_priority_server_authoritative() {
+    fn apply_local_mount_quick_move_routes_saddle_to_equipment_slot() {
         let mut store = WorldStore::new();
         store.set_default_item_equipment_slots(BTreeMap::from([(90, ItemEquipmentSlot::Saddle)]));
         store.apply_add_entity(protocol_add_entity_with_type(
@@ -4817,25 +4854,177 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
-        let request = ContainerClickSlotRequest {
-            slot_num: 17,
-            button_num: 0,
-            input: ProtocolContainerInput::QuickMove,
-        };
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 17,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
         assert_eq!(
-            store.apply_local_container_click_slot(request),
-            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                ProtocolContainerInput::QuickMove
-            ))
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (0, hashed_item_stack(90, 1)),
+                (17, ProtocolHashedStack::Empty)
+            ])
         );
-        let click = store.build_container_click_slot(request).unwrap();
-        assert_eq!(click.changed_slots, BTreeMap::new());
-        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(open_container_slot_item(&store, 0), item_stack(90, 1));
         assert_eq!(
-            open_container_slot_item(&store, 0),
+            open_container_slot_item(&store, 17),
             ProtocolItemStackSummary::empty()
         );
-        assert_eq!(open_container_slot_item(&store, 17), item_stack(90, 1));
+    }
+
+    #[test]
+    fn apply_local_mount_quick_move_routes_matching_body_armor_to_equipment_slot() {
+        let mut store = WorldStore::new();
+        store.set_default_item_equipment_slots(BTreeMap::from([
+            (91, ItemEquipmentSlot::Body),
+            (92, ItemEquipmentSlot::Body),
+        ]));
+        store.set_default_mount_body_armor_kinds(BTreeMap::from([
+            (91, MountArmorSlotKind::Horse),
+            (92, MountArmorSlotKind::Llama),
+        ]));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            42,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+        ));
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 53];
+        items[17] = item_stack(91, 1);
+        items[18] = item_stack(92, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 15,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let horse_armor = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 17,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            horse_armor.changed_slots,
+            BTreeMap::from([
+                (1, hashed_item_stack(91, 1)),
+                (17, ProtocolHashedStack::Empty)
+            ])
+        );
+
+        let llama_armor = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 18,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            llama_armor.changed_slots,
+            BTreeMap::from([
+                (MOUNT_INVENTORY_START, hashed_item_stack(92, 1)),
+                (18, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(open_container_slot_item(&store, 1), item_stack(91, 1));
+        assert_eq!(
+            open_container_slot_item(&store, MOUNT_INVENTORY_START),
+            item_stack(92, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, 17),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, 18),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_mount_quick_move_keeps_component_patched_player_item_server_authoritative() {
+        let mut store = WorldStore::new();
+        store.set_default_item_equipment_slots(BTreeMap::from([(90, ItemEquipmentSlot::Saddle)]));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            42,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+        ));
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut patched = item_stack(90, 1);
+        patched.component_patch.added = 1;
+        patched.component_patch.added_type_ids = vec![1];
+        let mut items = vec![ProtocolItemStackSummary::empty(); 53];
+        items[17] = patched.clone();
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 16,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let err = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 17,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap_err();
+
+        assert_eq!(
+            err,
+            ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::QuickMove)
+        );
+        assert_eq!(open_container_slot_item(&store, 17), patched);
+    }
+
+    #[test]
+    fn apply_local_mount_quick_move_keeps_unknown_body_armor_kind_server_authoritative() {
+        let mut store = WorldStore::new();
+        store.set_default_item_equipment_slots(BTreeMap::from([(93, ItemEquipmentSlot::Body)]));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            42,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+        ));
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 53];
+        items[17] = item_stack(93, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 17,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let err = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 17,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap_err();
+
+        assert_eq!(
+            err,
+            ContainerClickBuildError::UnsupportedLocalClickInput(ProtocolContainerInput::QuickMove)
+        );
+        assert_eq!(open_container_slot_item(&store, 17), item_stack(93, 1));
     }
 
     #[test]

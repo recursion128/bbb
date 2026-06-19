@@ -6,7 +6,8 @@ use bbb_protocol::packets::{
     ContainerInput, ItemStackSummary, RenameItem, SelectTradeCommand, SetBeacon,
 };
 use bbb_world::{
-    ContainerClickSlotRequest, MountEquipmentSlotVisibility, MountInventoryKind, WorldStore,
+    ContainerClickSlotRequest, ItemEquipmentSlot, MountEquipmentSlotVisibility, MountInventoryKind,
+    WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -6749,6 +6750,63 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[2].item, ItemStackSummary::empty());
         assert_eq!(slots[52].item, item_stack(42, 3));
+    }
+
+    #[test]
+    fn mount_horse_shift_click_queues_predicted_saddle_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.set_default_item_equipment_slots(BTreeMap::from([(90, ItemEquipmentSlot::Saddle)]));
+        world.apply_add_entity(add_entity_with_type(42, 66));
+        world.apply_mount_screen_open(MountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut items = vec![ItemStackSummary::empty(); 53];
+        items[17] = item_stack(90, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(568.0, 369.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 13,
+                slot_num: 17,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Item(hashed_item(90, 1))),
+                    (17, HashedStack::Empty),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(90, 1));
+        assert_eq!(slots[17].item, ItemStackSummary::empty());
     }
 
     #[test]

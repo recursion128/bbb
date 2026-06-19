@@ -9,7 +9,7 @@ use crate::{
     ClientHudState, ClientRecipesState, ClientStatsState, ClientUiState, ClientWaypointsState,
     CommandSuggestionsState, CommandTreeState, InventoryState, ItemAttackRange, ItemCooldownState,
     ItemEquipmentSlot, ItemUseEffects, LastMapColorPatchState, LevelEventRecord,
-    LocalBlockPredictionState, LocalPlayerState, MapItemState, PlayerInfoState,
+    LocalBlockPredictionState, LocalPlayerState, MapItemState, MountArmorSlotKind, PlayerInfoState,
     ProjectilePowerUpdateState, RegistrySet, ScoreboardState, ServerPresentationState,
     WorldApplyDiagnosticsState, WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldBorderState,
     WorldCounters, WorldDimension, WorldGameplayState, WorldItemMiningProfile, WorldLevelInfo,
@@ -105,6 +105,8 @@ pub struct WorldStore {
     pub(crate) default_item_max_stack_sizes: BTreeMap<i32, i32>,
     #[serde(default)]
     pub(crate) default_item_equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
+    #[serde(default)]
+    pub(crate) default_mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
     #[serde(default)]
     pub(crate) default_item_attack_ranges: BTreeMap<i32, ItemAttackRange>,
     #[serde(default)]

@@ -7,15 +7,17 @@ use bbb_pack::{
     ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
     ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
     ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
-    ItemRegistryCatalog, ItemTintSource, ItemUseEffects as PackItemUseEffects, LanguageCatalog,
-    PackRoots, SpriteImage, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
+    ItemMountBodyArmorKind as PackItemMountBodyArmorKind, ItemRegistryCatalog, ItemTintSource,
+    ItemUseEffects as PackItemUseEffects, LanguageCatalog, PackRoots, SpriteImage,
+    TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
 };
 use bbb_world::{
     ItemAttackRange as WorldItemAttackRange, ItemEquipmentSlot as WorldItemEquipmentSlot,
-    ItemUseEffects as WorldItemUseEffects, WorldItemMiningProfile, WorldItemMiningRule,
+    ItemUseEffects as WorldItemUseEffects, MountArmorSlotKind as WorldMountArmorSlotKind,
+    WorldItemMiningProfile, WorldItemMiningRule,
 };
 
 mod icon_model;
@@ -291,6 +293,25 @@ impl NativeItemRuntime {
 
     pub(crate) fn item_equipment_slot_count(&self) -> usize {
         self.item_equipment_slots_by_protocol_id().len()
+    }
+
+    pub(crate) fn mount_body_armor_kinds_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldMountArmorSlotKind> {
+        self.registry
+            .as_ref()
+            .map(|registry| {
+                registry
+                    .mount_body_armor_kinds_by_protocol_id()
+                    .into_iter()
+                    .map(|(item_id, kind)| (item_id, world_mount_armor_slot_kind(kind)))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn mount_body_armor_kind_count(&self) -> usize {
+        self.mount_body_armor_kinds_by_protocol_id().len()
     }
 
     pub(crate) fn default_piercing_weapon_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
@@ -811,6 +832,14 @@ fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentS
         PackItemEquipmentSlot::Head => WorldItemEquipmentSlot::Head,
         PackItemEquipmentSlot::Body => WorldItemEquipmentSlot::Body,
         PackItemEquipmentSlot::Saddle => WorldItemEquipmentSlot::Saddle,
+    }
+}
+
+fn world_mount_armor_slot_kind(kind: PackItemMountBodyArmorKind) -> WorldMountArmorSlotKind {
+    match kind {
+        PackItemMountBodyArmorKind::Horse => WorldMountArmorSlotKind::Horse,
+        PackItemMountBodyArmorKind::Llama => WorldMountArmorSlotKind::Llama,
+        PackItemMountBodyArmorKind::Nautilus => WorldMountArmorSlotKind::Nautilus,
     }
 }
 

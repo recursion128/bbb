@@ -22,6 +22,14 @@ pub enum ItemEquipmentSlot {
     Saddle,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ItemMountBodyArmorKind {
+    Horse,
+    Llama,
+    Nautilus,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemMiningRule {
     pub block_names: Vec<String>,
@@ -45,6 +53,8 @@ pub struct ItemRegistryCatalog {
     max_stack_size: BTreeMap<String, i32>,
     #[serde(default)]
     default_equipment_slots: BTreeMap<String, ItemEquipmentSlot>,
+    #[serde(default)]
+    default_mount_body_armor_kinds: BTreeMap<String, ItemMountBodyArmorKind>,
     #[serde(default)]
     default_piercing_weapon_ids: BTreeSet<String>,
     #[serde(default)]
@@ -160,6 +170,7 @@ impl ItemRegistryCatalog {
         let mut max_damage = BTreeMap::new();
         let mut max_stack_size = BTreeMap::new();
         let mut default_equipment_slots = BTreeMap::new();
+        let mut default_mount_body_armor_kinds = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
         let mut default_use_effects = BTreeMap::new();
@@ -171,6 +182,7 @@ impl ItemRegistryCatalog {
             let ids = resource_ids_for_declaration(kind, field, expression, item_id_constants)?;
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
+            let mount_body_armor_kind = mount_body_armor_kind_for_declaration(expression);
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let default_attack_range = default_attack_range_for_declaration(expression)?;
             let default_use_effect = default_use_effects_for_declaration(expression)?;
@@ -184,6 +196,9 @@ impl ItemRegistryCatalog {
                 max_stack_size.insert(resource_id.clone(), stack_size);
                 if let Some(equipment_slot) = equipment_slot {
                     default_equipment_slots.insert(resource_id.clone(), equipment_slot);
+                }
+                if let Some(kind) = mount_body_armor_kind {
+                    default_mount_body_armor_kinds.insert(resource_id.clone(), kind);
                 }
                 if default_piercing_weapon {
                     default_piercing_weapon_ids.insert(resource_id.clone());
@@ -221,6 +236,7 @@ impl ItemRegistryCatalog {
             max_damage,
             max_stack_size,
             default_equipment_slots,
+            default_mount_body_armor_kinds,
             default_piercing_weapon_ids,
             default_attack_ranges,
             default_use_effects,
@@ -264,6 +280,25 @@ impl ItemRegistryCatalog {
     pub fn equipment_slot(&self, resource_id: &str) -> Option<ItemEquipmentSlot> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_equipment_slots.get(&resource_id).copied()
+    }
+
+    pub fn mount_body_armor_kind(&self, resource_id: &str) -> Option<ItemMountBodyArmorKind> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_mount_body_armor_kinds
+            .get(&resource_id)
+            .copied()
+    }
+
+    pub fn mount_body_armor_kinds_by_protocol_id(&self) -> BTreeMap<i32, ItemMountBodyArmorKind> {
+        self.default_mount_body_armor_kinds
+            .iter()
+            .filter_map(|(resource_id, kind)| {
+                self.protocol_ids
+                    .get(resource_id)
+                    .copied()
+                    .map(|item_id| (item_id, *kind))
+            })
+            .collect()
     }
 
     pub fn default_piercing_weapon(&self, resource_id: &str) -> bool {
@@ -518,6 +553,7 @@ fn equipment_slot_for_declaration(expression: &str) -> Result<Option<ItemEquipme
     if expression.contains(".horseArmor(")
         || expression.contains(".nautilusArmor(")
         || expression.contains(".wolfArmor(")
+        || expression.contains("Equippable.llamaSwag(")
     {
         return Ok(Some(ItemEquipmentSlot::Body));
     }
@@ -540,6 +576,18 @@ fn equipment_slot_for_declaration(expression: &str) -> Result<Option<ItemEquipme
     }
 
     Ok(None)
+}
+
+fn mount_body_armor_kind_for_declaration(expression: &str) -> Option<ItemMountBodyArmorKind> {
+    if expression.contains(".horseArmor(") {
+        Some(ItemMountBodyArmorKind::Horse)
+    } else if expression.contains("Equippable.llamaSwag(") {
+        Some(ItemMountBodyArmorKind::Llama)
+    } else if expression.contains(".nautilusArmor(") {
+        Some(ItemMountBodyArmorKind::Nautilus)
+    } else {
+        None
+    }
 }
 
 fn default_piercing_weapon_for_declaration(expression: &str) -> bool {
@@ -1021,6 +1069,7 @@ mod tests {
                public static final Item BODY_ARMOR = registerItem("body_armor", new Item.Properties().humanoidArmor(ArmorMaterials.LEATHER, ArmorType.BODY));
                public static final Item SADDLE = registerItem("saddle", new Item.Properties().stacksTo(1).component(DataComponents.EQUIPPABLE, Equippable.saddle()));
                public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
+               public static final Item WHITE_CARPET = registerBlock(Blocks.WHITE_CARPET, p -> p.component(DataComponents.EQUIPPABLE, Equippable.llamaSwag(DyeColor.WHITE)));
                public static final Item NAUTILUS_ARMOR = registerItem("nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.IRON));
                public static final Item WOLF_ARMOR = registerItem("wolf_armor", new Item.Properties().wolfArmor(ArmorMaterials.ARMADILLO_SCUTE));
                public static final Item CARVED_PUMPKIN = registerBlock(
@@ -1088,6 +1137,10 @@ mod tests {
             Some(ItemEquipmentSlot::Body)
         );
         assert_eq!(
+            catalog.equipment_slot("minecraft:white_carpet"),
+            Some(ItemEquipmentSlot::Body)
+        );
+        assert_eq!(
             catalog.equipment_slot("minecraft:nautilus_armor"),
             Some(ItemEquipmentSlot::Body)
         );
@@ -1121,6 +1174,35 @@ mod tests {
         );
         assert_eq!(catalog.equipment_slot("minecraft:stone"), None);
         assert_eq!(catalog.equipment_slot("minecraft:missing_item"), None);
+        assert_eq!(
+            catalog.mount_body_armor_kind("minecraft:horse_armor"),
+            Some(ItemMountBodyArmorKind::Horse)
+        );
+        assert_eq!(
+            catalog.mount_body_armor_kind("minecraft:white_carpet"),
+            Some(ItemMountBodyArmorKind::Llama)
+        );
+        assert_eq!(
+            catalog.mount_body_armor_kind("minecraft:nautilus_armor"),
+            Some(ItemMountBodyArmorKind::Nautilus)
+        );
+        assert_eq!(catalog.mount_body_armor_kind("minecraft:wolf_armor"), None);
+
+        let mount_body_armor_kinds = catalog.mount_body_armor_kinds_by_protocol_id();
+        assert_eq!(
+            mount_body_armor_kinds.get(&catalog.protocol_id("minecraft:horse_armor").unwrap()),
+            Some(&ItemMountBodyArmorKind::Horse)
+        );
+        assert_eq!(
+            mount_body_armor_kinds.get(&catalog.protocol_id("minecraft:white_carpet").unwrap()),
+            Some(&ItemMountBodyArmorKind::Llama)
+        );
+        assert_eq!(
+            mount_body_armor_kinds.get(&catalog.protocol_id("minecraft:nautilus_armor").unwrap()),
+            Some(&ItemMountBodyArmorKind::Nautilus)
+        );
+        assert!(!mount_body_armor_kinds
+            .contains_key(&catalog.protocol_id("minecraft:wolf_armor").unwrap()));
 
         let encoded = serde_json::to_value(&catalog).unwrap();
         assert_eq!(

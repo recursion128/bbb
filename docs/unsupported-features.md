@@ -1077,12 +1077,14 @@ When an agent does any of the following, update this file in the same slice:
     - Mount Shift-click routes locally for:
       - mount-owned slots back to the player inventory with vanilla
         reverse-fill ordering
+      - default saddle items into an active saddle slot
+      - known default horse/llama/nautilus body armor into matching active
+        body slots
       - non-equipment player items into mount chest slots when present
       - player main-inventory/hotbar range movement when no mount slot accepts
         the stack
-    - Mount saddle/body-equipment-priority Shift-click paths remain
-      server-authoritative until component/entity-specific equippable
-      predicates are modeled locally.
+    - Mount component-patched or otherwise entity-specific equippable
+      predicates remain server-authoritative.
     - Mount entity preview rendering remains follow-up presentation work.
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
       progress sprites:
