@@ -154,6 +154,9 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if is_chain_block_name(block_name) {
             return chain_collision_shape(&block.block_properties);
         }
+        if block_name == "minecraft:scaffolding" {
+            return None;
+        }
         if is_ladder_block_name(block_name) {
             return ladder_collision_shape(&block.block_properties);
         }

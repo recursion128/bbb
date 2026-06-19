@@ -312,7 +312,10 @@ When an agent does any of the following, update this file in the same slice:
     - Extend the current basic AABB collision and gravity/jump slice to cover:
       - full fixed 20Hz survival physics
       - remaining vanilla voxel collision shapes
-      - scaffolding-specific collision and climbable sneak-descent behavior
+      - full scaffolding context-sensitive top/support collision:
+        - stable top shape when above and not descending
+        - unstable bottom support shape for bottom scaffolding with non-zero
+          distance
       - remaining fluid movement work beyond current still water/lava support:
         - sprint-swim camera, animation, and presentation nuance beyond
           canonical swimming pose selection and pitch-coupled vertical travel
@@ -480,6 +483,10 @@ When an agent does any of the following, update this file in the same slice:
         - clamps downward velocity to `-0.15` per tick
         - sneak input suppresses non-scaffolding climbable sliding
         - jump or horizontal collision applies the vanilla upward climb velocity
+      - basic scaffolding climbable movement:
+        - counts as climbable for fall-distance reset and velocity clamps
+        - sneak input does not suppress downward slide
+        - side entry no longer treats scaffolding as a full block
       - vanilla open trapdoor-as-ladder climbable behavior when:
         - the current block is an open trapdoor
         - the block below is a ladder

@@ -178,10 +178,16 @@ fn advance_local_player_physics_step(
             initial_fluid_contact,
         );
     }
-    let on_climbable_before = flying.is_none() && local_player_on_climbable(world, pose);
-    if on_climbable_before {
+    let climbable_before = if flying.is_none() {
+        local_player_climbable_kind(world, pose)
+    } else {
+        None
+    };
+    let on_climbable_before = climbable_before.is_some();
+    if let Some(kind) = climbable_before {
         pose.fall_distance = 0.0;
-        pose.delta_movement = local_player_climbable_limited_velocity(pose.delta_movement, input);
+        pose.delta_movement =
+            local_player_climbable_limited_velocity(pose.delta_movement, input, kind);
     }
 
     let mut jump_horizontal_impulse = (0.0, 0.0);
@@ -269,7 +275,7 @@ fn advance_local_player_physics_step(
         && requested_y < 0.0
         && !input.sneak
         && local_player_standing_on_block(world, pose, "minecraft:slime_block");
-    let on_climbable_after = flying.is_none() && local_player_on_climbable(world, pose);
+    let on_climbable_after = flying.is_none() && local_player_climbable_kind(world, pose).is_some();
     let climbable_upward_impulse =
         on_climbable_after && (horizontal_collision || input.focused && input.jump);
     let fluid_contact = local_player_fluid_contact(world, pose);
@@ -1169,20 +1175,34 @@ fn local_player_standing_on_block(
         .is_some_and(|block_name| block_name == name)
 }
 
-fn local_player_on_climbable(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LocalPlayerClimbableKind {
+    Ordinary,
+    Scaffolding,
+}
+
+fn local_player_climbable_kind(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+) -> Option<LocalPlayerClimbableKind> {
     let pos = BlockPos {
         x: local_player_block_floor(pose.position.x),
         y: local_player_block_floor(pose.position.y),
         z: local_player_block_floor(pose.position.z),
     };
     let Some(block) = world.probe_block(pos) else {
-        return false;
+        return None;
     };
-    block
-        .block_name
-        .as_deref()
-        .is_some_and(is_climbable_block_name)
+    let block_name = block.block_name.as_deref()?;
+    if block_name == "minecraft:scaffolding" {
+        return Some(LocalPlayerClimbableKind::Scaffolding);
+    }
+    if is_climbable_block_name(block_name)
         || local_player_trapdoor_usable_as_ladder(world, pos, &block)
+    {
+        return Some(LocalPlayerClimbableKind::Ordinary);
+    }
+    None
 }
 
 fn is_climbable_block_name(block_name: &str) -> bool {
@@ -1241,8 +1261,9 @@ fn is_trapdoor_block_name(block_name: &str) -> bool {
 fn local_player_climbable_limited_velocity(
     velocity: ProtocolVec3d,
     input: LocalPlayerInputState,
+    kind: LocalPlayerClimbableKind,
 ) -> ProtocolVec3d {
-    let downward_limit = if input.sneak {
+    let downward_limit = if input.sneak && kind != LocalPlayerClimbableKind::Scaffolding {
         0.0
     } else {
         LOCAL_PLAYER_CLIMBABLE_MAX_DOWNWARD_VELOCITY_PER_TICK
@@ -1565,6 +1586,7 @@ mod tests {
     const LADDER_SOUTH_BLOCK_STATE_ID: i32 = 5722;
     const END_ROD_NORTH_BLOCK_STATE_ID: i32 = 14636;
     const DIRT_PATH_BLOCK_STATE_ID: i32 = 14815;
+    const SCAFFOLDING_BOTTOM_DISTANCE_0_BLOCK_STATE_ID: i32 = 20707;
     const LANTERN_STANDING_BLOCK_STATE_ID: i32 = 20840;
     const CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID: i32 = 20880;
     const HONEY_BLOCK_STATE_ID: i32 = 21816;
@@ -1805,6 +1827,41 @@ mod tests {
 
         assert_f64_near(pose.position.y, 1.2, 0.000001);
         assert_f64_near(pose.delta_movement.y, -0.0784, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_sneak_does_not_suppress_scaffolding_climbable_sliding() {
+        let mut world = flat_collision_world();
+        set_test_block(
+            &mut world,
+            0,
+            1,
+            0,
+            SCAFFOLDING_BOTTOM_DISTANCE_0_BLOCK_STATE_ID,
+        );
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.5, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.05, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.2254, 0.000001);
         assert_f64_near(pose.fall_distance, 0.0, 0.000001);
         assert!(!pose.on_ground);
     }
@@ -2376,6 +2433,24 @@ mod tests {
         );
         assert_f64_near(pose.position.y, 1.0, 0.0005);
         assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_moves_through_scaffolding_side_instead_of_full_block() {
+        let mut world = flat_collision_world();
+        set_test_block(
+            &mut world,
+            0,
+            1,
+            1,
+            SCAFFOLDING_BOTTOM_DISTANCE_0_BLOCK_STATE_ID,
+        );
+        let pose = advance_forward_from_standard_start(&mut world, 0.1);
+
+        assert!(pose.position.z > 0.8, "position was {:?}", pose.position);
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(!pose.horizontal_collision);
         assert!(pose.on_ground);
     }
 
