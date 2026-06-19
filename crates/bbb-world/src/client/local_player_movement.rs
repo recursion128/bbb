@@ -32,6 +32,7 @@ const VANILLA_MOB_EFFECT_BLINDNESS_ID: i32 = 14;
 const VANILLA_MOB_EFFECT_LEVITATION_ID: i32 = 24;
 const VANILLA_MOB_EFFECT_SLOW_FALLING_ID: i32 = 27;
 const VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID: i32 = 29;
+const VANILLA_MOB_EFFECT_WEAVING_ID: i32 = 36;
 const LOCAL_PLAYER_SPRINT_MIN_FOOD_LEVEL: i32 = 7;
 const LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE: f64 = 0.1;
 const LOCAL_INPUT_DEFAULT_GRAVITY_ATTRIBUTE: f64 = 0.08;
@@ -101,6 +102,7 @@ const SPRINT_JUMP_HORIZONTAL_IMPULSE: f64 = 0.2;
 const LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.15;
 const LOCAL_PLAYER_CLIMBABLE_MAX_DOWNWARD_VELOCITY_PER_TICK: f64 = -0.15;
 const LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK: f64 = 0.2;
+const LOCAL_PLAYER_ENTITY_INSIDE_BLOCK_EPSILON: f64 = 1.0e-5;
 
 pub(super) fn integrate_local_player_input_pose_with_world_effects(
     world: &mut WorldStore,
@@ -244,7 +246,7 @@ fn advance_local_player_physics_step(
         requested_x = requested_x.clamp(-max_horizontal, max_horizontal);
         requested_z = requested_z.clamp(-max_horizontal, max_horizontal);
     }
-    let requested_y = match flying {
+    let mut requested_y = match flying {
         Some(abilities) => {
             let vertical_input = if input.focused {
                 axis(input.jump, input.sneak)
@@ -259,6 +261,14 @@ fn advance_local_player_physics_step(
         }
         None => pose.delta_movement.y * step_ticks,
     };
+    if flying.is_none() {
+        if let Some(stuck_multiplier) = local_player_stuck_speed_multiplier(world, pose) {
+            pose.fall_distance = 0.0;
+            requested_x *= stuck_multiplier.x;
+            requested_y *= stuck_multiplier.y;
+            requested_z *= stuck_multiplier.z;
+        }
+    }
     if should_back_off_from_edge(world, pose, input, requested_y) {
         (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
     }
@@ -1099,6 +1109,61 @@ fn local_player_raw_block_speed_factor(world: &WorldStore, pose: LocalPlayerPose
         .probe_block(below_pos)
         .and_then(|block| block.block_name.as_deref().map(block_speed_factor))
         .unwrap_or(DEFAULT_BLOCK_SPEED_FACTOR)
+}
+
+fn local_player_stuck_speed_multiplier(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+) -> Option<ProtocolVec3d> {
+    let bounds =
+        LocalPlayerBounds::for_pose(pose).deflated(LOCAL_PLAYER_ENTITY_INSIDE_BLOCK_EPSILON);
+    let min_x = local_player_block_floor(bounds.min_x());
+    let max_x = local_player_block_floor(bounds.max_x());
+    let min_y = local_player_block_floor(bounds.min_y());
+    let max_y = local_player_block_floor(bounds.max_y());
+    let min_z = local_player_block_floor(bounds.min_z());
+    let max_z = local_player_block_floor(bounds.max_z());
+
+    let mut berry_bush = false;
+    for y in min_y..=max_y {
+        for z in min_z..=max_z {
+            for x in min_x..=max_x {
+                let Some(block_name) = world
+                    .probe_block(BlockPos { x, y, z })
+                    .and_then(|block| block.block_name)
+                else {
+                    continue;
+                };
+                match block_name.as_str() {
+                    "minecraft:cobweb" => return Some(local_player_cobweb_stuck_multiplier(world)),
+                    "minecraft:sweet_berry_bush" => berry_bush = true,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    berry_bush.then_some(ProtocolVec3d {
+        x: 0.8,
+        y: 0.75,
+        z: 0.8,
+    })
+}
+
+fn local_player_cobweb_stuck_multiplier(world: &WorldStore) -> ProtocolVec3d {
+    if local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_WEAVING_ID).is_some() {
+        ProtocolVec3d {
+            x: 0.5,
+            y: 0.25,
+            z: 0.5,
+        }
+    } else {
+        ProtocolVec3d {
+            x: 0.25,
+            y: 0.05,
+            z: 0.25,
+        }
+    }
 }
 
 fn block_speed_factor(block_name: &str) -> f64 {
@@ -2743,7 +2808,7 @@ mod tests {
         for (name, block_state_id) in cases {
             let mut world = flat_collision_world();
             set_test_block(&mut world, 0, 1, 1, block_state_id);
-            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
 
             assert_f64_near(pose.position.y, 1.0, 0.0005);
             assert!(
@@ -5029,6 +5094,76 @@ mod tests {
             assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
             assert!(pose.on_ground, "{name}");
         }
+    }
+
+    #[test]
+    fn local_player_no_collision_hazards_apply_stuck_speed_multiplier() {
+        let cases = [
+            ("cobweb", COBWEB_BLOCK_STATE_ID, 0.25),
+            (
+                "sweet berry bush",
+                SWEET_BERRY_BUSH_AGE_3_BLOCK_STATE_ID,
+                0.8,
+            ),
+        ];
+
+        for (name, block_state_id, expected_multiplier) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 0, block_state_id);
+            world.set_local_player_pose(LocalPlayerPoseState {
+                position: vec3(0.5, 1.0, 0.5),
+                on_ground: true,
+                ..LocalPlayerPoseState::default()
+            });
+
+            let pose = world
+                .advance_local_player_input(
+                    LocalPlayerInputState {
+                        focused: true,
+                        forward: true,
+                        ..LocalPlayerInputState::default()
+                    },
+                    LOCAL_PHYSICS_TICK_SECONDS,
+                )
+                .unwrap();
+
+            let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
+                * expected_multiplier
+                * LOCAL_PHYSICS_TICK_SECONDS;
+            assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+            assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_weaving_effect_relaxes_cobweb_stuck_speed_multiplier() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, COBWEB_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_mob_effect(mob_effect(123, VANILLA_MOB_EFFECT_WEAVING_ID, 0)));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.5 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+        assert!(pose.on_ground);
     }
 
     #[test]

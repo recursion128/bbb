@@ -354,9 +354,8 @@ When an agent does any of the following, update this file in the same slice:
           - non-player freeze-immune entity type exceptions if locally
             controlled entity freezing is added later
         - remaining no-collision hazard `entityInside` effects:
-          - cobweb stuck speed multipliers, including Weaving effect nuance
-          - sweet berry bush stuck speed, age-gated damage, and fox/bee
-            exceptions
+          - sweet berry bush age-gated damage and fox/bee exceptions if locally
+            controlled non-player entities are added later
         - full vanilla post-`Entity.move` `deltaMovement` travel ordering
           beyond the current direct local walking prediction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
@@ -531,8 +530,13 @@ When an agent does any of the following, update this file in the same slice:
       - `azalea` and `flowering_azalea` follow vanilla `AzaleaBlock` collision:
         an 8px-tall full-width crown plus a 4px center stem.
       - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
-        registration so they do not block local movement; their stuck/damage
-        `entityInside` side effects remain follow-up movement-factor work.
+        registration so they do not block local movement.
+      - `cobweb` applies vanilla `entityInside` stuck movement multipliers:
+        normal players use `(0.25, 0.05, 0.25)` and players with the synced
+        Weaving effect use `(0.5, 0.25, 0.5)`.
+      - `sweet_berry_bush` applies vanilla local-player stuck movement
+        multiplier `(0.8, 0.75, 0.8)`; server-authored damage remains
+        authoritative.
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which
