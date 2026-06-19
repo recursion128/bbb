@@ -186,6 +186,9 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if is_candle_block_name(block_name) {
             return candle_collision_shape(&block.block_properties);
         }
+        if block_name == "minecraft:cocoa" {
+            return cocoa_collision_shape(&block.block_properties);
+        }
         if block_name == "minecraft:sea_pickle" {
             return sea_pickle_collision_shape(&block.block_properties);
         }
@@ -914,6 +917,28 @@ fn candle_cake_collision_shape() -> BlockCollisionShape {
         Some(BlockCollisionBox::centered_column(2.0, 2.0, 8.0, 14.0)),
         Some(BlockCollisionBox::centered_column(14.0, 14.0, 0.0, 8.0)),
     ])
+}
+
+fn cocoa_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let age = match properties.get("age").map(String::as_str)? {
+        "0" => 0.0,
+        "1" => 1.0,
+        "2" => 2.0,
+        _ => return None,
+    };
+
+    Some(BlockCollisionShape::single(
+        BlockCollisionBox {
+            min_x: (6.0 - age) * PX,
+            min_y: (7.0 - 2.0 * age) * PX,
+            min_z: PX,
+            max_x: (10.0 + age) * PX,
+            max_y: 12.0 * PX,
+            max_z: (5.0 + 2.0 * age) * PX,
+        }
+        .rotate_to_direction(facing),
+    ))
 }
 
 fn sea_pickle_collision_shape(
@@ -2439,6 +2464,38 @@ impl BlockCollisionBox {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cocoa_shape_matches_vanilla_age_and_facing() {
+        let mut properties = BTreeMap::new();
+        properties.insert("age".to_owned(), "2".to_owned());
+        properties.insert("facing".to_owned(), "north".to_owned());
+
+        let shape = cocoa_collision_shape(&properties).expect("north cocoa shape");
+        let mut boxes = shape.boxes();
+        let shape_box = boxes.next().expect("shape box");
+        assert!(boxes.next().is_none());
+
+        assert_f64_near(shape_box.min_x, 4.0 * PX);
+        assert_f64_near(shape_box.min_y, 3.0 * PX);
+        assert_f64_near(shape_box.min_z, PX);
+        assert_f64_near(shape_box.max_x, 12.0 * PX);
+        assert_f64_near(shape_box.max_y, 12.0 * PX);
+        assert_f64_near(shape_box.max_z, 9.0 * PX);
+
+        properties.insert("facing".to_owned(), "south".to_owned());
+        let shape = cocoa_collision_shape(&properties).expect("south cocoa shape");
+        let mut boxes = shape.boxes();
+        let shape_box = boxes.next().expect("shape box");
+        assert!(boxes.next().is_none());
+
+        assert_f64_near(shape_box.min_x, 4.0 * PX);
+        assert_f64_near(shape_box.min_y, 3.0 * PX);
+        assert_f64_near(shape_box.min_z, 7.0 * PX);
+        assert_f64_near(shape_box.max_x, 12.0 * PX);
+        assert_f64_near(shape_box.max_y, 12.0 * PX);
+        assert_f64_near(shape_box.max_z, 15.0 * PX);
+    }
 
     #[test]
     fn pointed_dripstone_xz_offset_matches_vanilla_seed() {
