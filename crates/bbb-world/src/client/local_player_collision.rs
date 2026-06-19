@@ -85,6 +85,46 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
         if is_copper_grate_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
+        if is_flower_pot_block_name(block_name) {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(6.0, 6.0, 0.0, 6.0),
+            ));
+        }
+        if is_candle_cake_block_name(block_name) {
+            return Some(candle_cake_collision_shape());
+        }
+        if is_candle_block_name(block_name) {
+            return candle_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:sea_pickle" {
+            return sea_pickle_collision_shape(&block.block_properties);
+        }
+        if is_floor_skull_block_name(block_name) {
+            return Some(BlockCollisionShape::single(floor_skull_collision_box(
+                block_name,
+            )));
+        }
+        if is_wall_skull_block_name(block_name) {
+            return wall_skull_collision_shape(block_name, &block.block_properties);
+        }
+        if block_name == "minecraft:turtle_egg" {
+            return turtle_egg_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:sniffer_egg" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(14.0, 12.0, 0.0, 16.0),
+            ));
+        }
+        if block_name == "minecraft:dried_ghast" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(10.0, 10.0, 0.0, 10.0),
+            ));
+        }
+        if block_name == "minecraft:decorated_pot" {
+            return Some(BlockCollisionShape::single(
+                BlockCollisionBox::centered_column(14.0, 14.0, 0.0, 16.0),
+            ));
+        }
         if block_name == "minecraft:end_portal_frame" {
             return end_portal_frame_collision_shape(&block.block_properties);
         }
@@ -275,10 +315,54 @@ fn is_copper_grate_block_name(block_name: &str) -> bool {
         .is_some_and(|path| path == "copper_grate" || path.ends_with("_copper_grate"))
 }
 
+fn is_flower_pot_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "flower_pot" || path.starts_with("potted_"))
+}
+
+fn is_candle_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "candle" || path.ends_with("_candle"))
+}
+
+fn is_candle_cake_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "candle_cake" || path.ends_with("_candle_cake"))
+}
+
 fn is_sculk_sensor_block_name(block_name: &str) -> bool {
     matches!(
         block_name,
         "minecraft:sculk_sensor" | "minecraft:calibrated_sculk_sensor"
+    )
+}
+
+fn is_floor_skull_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:skeleton_skull"
+            | "minecraft:wither_skeleton_skull"
+            | "minecraft:zombie_head"
+            | "minecraft:player_head"
+            | "minecraft:creeper_head"
+            | "minecraft:dragon_head"
+            | "minecraft:piglin_head"
+    )
+}
+
+fn is_wall_skull_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:skeleton_wall_skull"
+            | "minecraft:wither_skeleton_wall_skull"
+            | "minecraft:zombie_wall_head"
+            | "minecraft:player_wall_head"
+            | "minecraft:creeper_wall_head"
+            | "minecraft:dragon_wall_head"
+            | "minecraft:piglin_wall_head"
     )
 }
 
@@ -504,6 +588,77 @@ fn cake_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCo
         [1.0 + f64::from(bites) * 2.0, 0.0, 1.0],
         [15.0, 8.0, 15.0],
     )))
+}
+
+fn candle_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let candles = properties.get("candles")?.parse::<u8>().ok()?;
+    let shape_box = match candles {
+        1 => BlockCollisionBox::centered_column(2.0, 2.0, 0.0, 6.0),
+        2 => BlockCollisionBox::from_pixels([5.0, 0.0, 6.0], [11.0, 6.0, 9.0]),
+        3 => BlockCollisionBox::from_pixels([5.0, 0.0, 6.0], [10.0, 6.0, 11.0]),
+        4 => BlockCollisionBox::from_pixels([5.0, 0.0, 5.0], [11.0, 6.0, 10.0]),
+        _ => return None,
+    };
+    Some(BlockCollisionShape::single(shape_box))
+}
+
+fn candle_cake_collision_shape() -> BlockCollisionShape {
+    BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::centered_column(2.0, 2.0, 8.0, 14.0)),
+        Some(BlockCollisionBox::centered_column(14.0, 14.0, 0.0, 8.0)),
+    ])
+}
+
+fn sea_pickle_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let shape_box = match properties.get("pickles")?.parse::<u8>().ok()? {
+        1 => BlockCollisionBox::centered_column(4.0, 4.0, 0.0, 6.0),
+        2 => BlockCollisionBox::centered_column(10.0, 10.0, 0.0, 6.0),
+        3 => BlockCollisionBox::centered_column(12.0, 12.0, 0.0, 6.0),
+        4 => BlockCollisionBox::centered_column(12.0, 12.0, 0.0, 7.0),
+        _ => return None,
+    };
+    Some(BlockCollisionShape::single(shape_box))
+}
+
+fn floor_skull_collision_box(block_name: &str) -> BlockCollisionBox {
+    if block_name == "minecraft:piglin_head" {
+        BlockCollisionBox::centered_column(10.0, 10.0, 0.0, 8.0)
+    } else {
+        BlockCollisionBox::centered_column(8.0, 8.0, 0.0, 8.0)
+    }
+}
+
+fn wall_skull_collision_shape(
+    block_name: &str,
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    let shape_box = if block_name == "minecraft:piglin_wall_head" {
+        BlockCollisionBox::from_pixels([3.0, 4.0, 8.0], [13.0, 12.0, 16.0])
+    } else {
+        BlockCollisionBox::from_pixels([4.0, 4.0, 8.0], [12.0, 12.0, 16.0])
+    };
+    Some(BlockCollisionShape::single(shape_box).rotate_to_direction(facing))
+}
+
+fn turtle_egg_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let eggs = properties.get("eggs")?.parse::<u8>().ok()?;
+    if eggs == 1 {
+        return Some(BlockCollisionShape::single(BlockCollisionBox::from_pixels(
+            [3.0, 0.0, 3.0],
+            [12.0, 7.0, 12.0],
+        )));
+    }
+    if eggs <= 4 {
+        return Some(BlockCollisionShape::single(
+            BlockCollisionBox::centered_column(14.0, 14.0, 0.0, 7.0),
+        ));
+    }
+    None
 }
 
 fn door_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {

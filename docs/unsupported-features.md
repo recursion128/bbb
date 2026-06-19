@@ -421,6 +421,13 @@ When an agent does any of the following, update this file in the same slice:
       - honey block
       - cake
       - lily pad
+      - flower pot
+      - candle / candle cake
+      - sea pickle
+      - skull / wall skull
+      - turtle egg
+      - sniffer egg
+      - dried ghast
       - chain
       - ladder
       - rod
@@ -431,6 +438,7 @@ When an agent does any of the following, update this file in the same slice:
       - sculk sensor / calibrated sculk sensor / sculk shrieker
       - heavy core
       - dragon egg
+      - decorated pot
       - chest
       - bed
       - cauldron

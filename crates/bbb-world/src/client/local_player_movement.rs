@@ -1404,6 +1404,12 @@ mod tests {
     const END_PORTAL_FRAME_EYE_NORTH_BLOCK_STATE_ID: i32 = 9469;
     const END_PORTAL_FRAME_EMPTY_NORTH_BLOCK_STATE_ID: i32 = 9473;
     const DRAGON_EGG_BLOCK_STATE_ID: i32 = 9478;
+    const FLOWER_POT_BLOCK_STATE_ID: i32 = 10629;
+    const POTTED_DANDELION_BLOCK_STATE_ID: i32 = 10641;
+    const SKELETON_SKULL_BLOCK_STATE_ID: i32 = 10931;
+    const SKELETON_WALL_SKULL_NORTH_BLOCK_STATE_ID: i32 = 10948;
+    const PIGLIN_HEAD_BLOCK_STATE_ID: i32 = 11171;
+    const PIGLIN_WALL_HEAD_NORTH_BLOCK_STATE_ID: i32 = 11188;
     const OAK_CLOSED_NORTH_DOOR_BLOCK_STATE_ID: i32 = 5666;
     const OAK_TOP_CLOSED_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7121;
     const STONE_PRESSURE_PLATE_BLOCK_STATE_ID: i32 = 6796;
@@ -1448,6 +1454,16 @@ mod tests {
     const CALIBRATED_SCULK_SENSOR_NORTH_INACTIVE_BLOCK_STATE_ID: i32 = 24787;
     const SCULK_SHRIEKER_IDLE_BLOCK_STATE_ID: i32 = 25304;
     const LIGHTNING_ROD_UP_UNPOWERED_BLOCK_STATE_ID: i32 = 27562;
+    const TURTLE_EGG_ONE_BLOCK_STATE_ID: i32 = 15090;
+    const TURTLE_EGG_TWO_BLOCK_STATE_ID: i32 = 15093;
+    const SNIFFER_EGG_BLOCK_STATE_ID: i32 = 15102;
+    const DRIED_GHAST_NORTH_DRY_BLOCK_STATE_ID: i32 = 15106;
+    const SEA_PICKLE_ONE_DRY_BLOCK_STATE_ID: i32 = 15268;
+    const SEA_PICKLE_FOUR_DRY_BLOCK_STATE_ID: i32 = 15274;
+    const CANDLE_ONE_DRY_UNLIT_BLOCK_STATE_ID: i32 = 23099;
+    const CANDLE_FOUR_DRY_UNLIT_BLOCK_STATE_ID: i32 = 23111;
+    const CANDLE_CAKE_UNLIT_BLOCK_STATE_ID: i32 = 23369;
+    const DECORATED_POT_NORTH_DRY_BLOCK_STATE_ID: i32 = 29602;
     const MUD_BLOCK_STATE_ID: i32 = 27922;
     const HEAVY_CORE_DRY_BLOCK_STATE_ID: i32 = 29702;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
@@ -1783,6 +1799,22 @@ mod tests {
             ("mud", MUD_BLOCK_STATE_ID, 1.875),
             ("cake", CAKE_BITES_0_BLOCK_STATE_ID, 1.5),
             ("lily pad", LILY_PAD_BLOCK_STATE_ID, 1.09375),
+            ("flower pot", FLOWER_POT_BLOCK_STATE_ID, 1.375),
+            ("potted dandelion", POTTED_DANDELION_BLOCK_STATE_ID, 1.375),
+            ("one candle", CANDLE_ONE_DRY_UNLIT_BLOCK_STATE_ID, 1.375),
+            ("four candles", CANDLE_FOUR_DRY_UNLIT_BLOCK_STATE_ID, 1.375),
+            ("one sea pickle", SEA_PICKLE_ONE_DRY_BLOCK_STATE_ID, 1.375),
+            (
+                "four sea pickles",
+                SEA_PICKLE_FOUR_DRY_BLOCK_STATE_ID,
+                1.4375,
+            ),
+            ("skeleton skull", SKELETON_SKULL_BLOCK_STATE_ID, 1.5),
+            ("piglin head", PIGLIN_HEAD_BLOCK_STATE_ID, 1.5),
+            ("one turtle egg", TURTLE_EGG_ONE_BLOCK_STATE_ID, 1.4375),
+            ("two turtle eggs", TURTLE_EGG_TWO_BLOCK_STATE_ID, 1.4375),
+            ("sniffer egg", SNIFFER_EGG_BLOCK_STATE_ID, 2.0),
+            ("dried ghast", DRIED_GHAST_NORTH_DRY_BLOCK_STATE_ID, 1.625),
             (
                 "daylight detector",
                 DAYLIGHT_DETECTOR_POWER_0_BLOCK_STATE_ID,
@@ -1806,6 +1838,8 @@ mod tests {
                 END_PORTAL_FRAME_EYE_NORTH_BLOCK_STATE_ID,
                 2.0,
             ),
+            ("candle cake", CANDLE_CAKE_UNLIT_BLOCK_STATE_ID, 1.875),
+            ("decorated pot", DECORATED_POT_NORTH_DRY_BLOCK_STATE_ID, 2.0),
         ];
 
         for (name, block_state_id, expected_y) in cases {
@@ -2094,6 +2128,11 @@ mod tests {
             ("enchanting table", ENCHANTING_TABLE_BLOCK_STATE_ID, 0.7005),
             ("anvil", ANVIL_NORTH_BLOCK_STATE_ID, 0.7005),
             (
+                "north wall skull",
+                SKELETON_WALL_SKULL_NORTH_BLOCK_STATE_ID,
+                1.2005,
+            ),
+            (
                 "north wall grindstone",
                 GRINDSTONE_WALL_NORTH_BLOCK_STATE_ID,
                 0.7005,
@@ -2114,6 +2153,75 @@ mod tests {
             assert!(pose.horizontal_collision, "{name}");
             assert!(pose.on_ground, "{name}");
         }
+    }
+
+    #[test]
+    fn local_player_respects_piglin_wall_head_wider_collision() {
+        let mut normal_world = flat_collision_world();
+        set_test_block(
+            &mut normal_world,
+            0,
+            1,
+            1,
+            SKELETON_WALL_SKULL_NORTH_BLOCK_STATE_ID,
+        );
+        normal_world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(1.06, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        let normal_pose = normal_world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                1.0,
+            )
+            .unwrap();
+
+        assert!(
+            normal_pose.position.z > 1.5,
+            "normal wall skull position was {:?}",
+            normal_pose.position
+        );
+        assert!(!normal_pose.horizontal_collision);
+        assert!(normal_pose.on_ground);
+
+        let mut piglin_world = flat_collision_world();
+        set_test_block(
+            &mut piglin_world,
+            0,
+            1,
+            1,
+            PIGLIN_WALL_HEAD_NORTH_BLOCK_STATE_ID,
+        );
+        piglin_world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(1.06, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        let piglin_pose = piglin_world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                1.0,
+            )
+            .unwrap();
+
+        assert!(
+            piglin_pose.position.z <= 1.2005,
+            "piglin wall head position was {:?}",
+            piglin_pose.position
+        );
+        assert!(piglin_pose.horizontal_collision);
+        assert!(piglin_pose.on_ground);
     }
 
     #[test]
