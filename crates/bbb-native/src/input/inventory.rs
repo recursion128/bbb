@@ -6381,6 +6381,14 @@ mod tests {
             title: "Merchant".to_string(),
         });
         assert!(world.apply_merchant_offers(merchant_offers(7, 4)));
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[3] = item_stack(45, 5);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
 
         assert!(handle_inventory_mouse_input(
             &mut input,
@@ -6408,6 +6416,9 @@ mod tests {
                 .map(|offers| offers.local_selected_offer_index),
             Some(3)
         );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(45, 5));
+        assert_eq!(slots[3].item, ItemStackSummary::empty());
         assert!(rx.try_recv().is_err());
     }
 

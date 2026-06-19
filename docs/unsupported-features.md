@@ -1260,12 +1260,15 @@ When an agent does any of the following, update this file in the same slice:
       - MerchantMenu:
         - payment slots quick-move back to the player inventory
         - player inventory/hotbar quick-move range movement
-        - result-slot pickup/quick-move and trade-row payment autofill are kept
-          server-authoritative until:
-          - payment slot routing from `MerchantOffer` costs
+        - trade-row clicks locally autofill payment slots from
+          component-predicate-free `MerchantOffer` costs after returning
+          existing payment items to player inventory
+        - result-slot pickup/quick-move and component-predicate trade-row
+          payment autofill are kept server-authoritative until:
           - result prediction
           - input consumption
           - trade sound/XP side effects
+          - component-aware `ItemCost` predicate matching
         - deferred presentation parity work:
           - rendered generic button row backgrounds and hover/focus highlight
           - selected row state if a future vanilla source adds one
