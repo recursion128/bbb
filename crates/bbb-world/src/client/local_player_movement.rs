@@ -196,6 +196,9 @@ fn advance_local_player_physics_step(
         pose.delta_movement =
             local_player_climbable_limited_velocity(pose.delta_movement, input, kind);
     }
+    let powder_snow_climb_out_before = flying.is_none()
+        && world.local_player_can_walk_on_powder_snow()
+        && local_player_inside_powder_snow(world, pose);
 
     let mut jump_horizontal_impulse = (0.0, 0.0);
     if flying.is_none() && input.focused && input.jump && pose.on_ground {
@@ -288,6 +291,8 @@ fn advance_local_player_physics_step(
     let on_climbable_after = flying.is_none() && local_player_climbable_kind(world, pose).is_some();
     let climbable_upward_impulse =
         on_climbable_after && (horizontal_collision || input.focused && input.jump);
+    let powder_snow_upward_impulse =
+        powder_snow_climb_out_before && (horizontal_collision || input.focused && input.jump);
     let fluid_contact = local_player_fluid_contact(world, pose);
     pose.fall_distance = if fluid_contact.in_water() || on_climbable_before || on_climbable_after {
         0.0
@@ -327,7 +332,7 @@ fn advance_local_player_physics_step(
             0.0
         };
     } else {
-        let vertical_velocity = if climbable_upward_impulse {
+        let vertical_velocity = if climbable_upward_impulse || powder_snow_upward_impulse {
             LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK
         } else {
             pose.delta_movement.y
@@ -5069,6 +5074,87 @@ mod tests {
                 ..LocalPlayerPoseState::default()
             },
         ));
+    }
+
+    #[test]
+    fn local_player_leather_boots_jump_climbs_out_of_powder_snow() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        equip_powder_snow_walkable_boots(&mut world, 1);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.2, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.1176, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_without_leather_boots_jump_does_not_climb_out_of_powder_snow() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.2, 0.000001);
+        assert!(pose.delta_movement.y < 0.0);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_leather_boots_horizontal_collision_climbs_out_of_powder_snow() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 1, GRASS_BLOCK_STATE_ID);
+        equip_powder_snow_walkable_boots(&mut world, 1);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(pose.horizontal_collision);
+        assert_f64_near(pose.delta_movement.y, 0.1176, 0.000001);
+        assert!(!pose.on_ground);
     }
 
     #[test]

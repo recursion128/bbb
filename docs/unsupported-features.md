@@ -320,7 +320,6 @@ When an agent does any of the following, update this file in the same slice:
         - remaining powder-snow behavior beyond local player collision:
           - non-player `POWDER_SNOW_WALKABLE_MOBS` entity collision if locally
             controlled non-player entities are added later
-          - climb-out behavior from `wasInPowderSnow` plus leather boots
           - inside-block particle/extinguish/fall-sound side effects
         - remaining powder-snow `canFreeze` nuance beyond local player:
           - non-player freeze-immune entity type exceptions if locally
@@ -512,6 +511,8 @@ When an agent does any of the following, update this file in the same slice:
         - sneak/descending input bypasses the top collision
         - `fall_distance > 2.5` uses the vanilla full-width `0.9`-high falling
           collision shape
+        - leather boots plus jump or horizontal collision while inside powder
+          snow applies vanilla `0.2` climb-out Y velocity before gravity/friction
       - vanilla open trapdoor-as-ladder climbable behavior when:
         - the current block is an open trapdoor
         - the block below is a ladder
