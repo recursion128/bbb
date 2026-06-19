@@ -301,6 +301,7 @@ When an agent does any of the following, update this file in the same slice:
         - local Jump Boost jump impulse
         - local Slow Falling gravity clamp
         - local Levitation vertical velocity targeting
+        - local Blindness sprint restriction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
         walking and passenger player packet thresholds
   - Block destroy:
@@ -428,6 +429,13 @@ When an agent does any of the following, update this file in the same slice:
         gravity clamp
       - synced local player Levitation effect id `24` as the vanilla vertical
         velocity target
+      - synced local player Blindness effect id `14` as the vanilla mobility
+        restriction that prevents sprinting
+      - vanilla local sprint eligibility for player food and forward impulse:
+        - requires food level above `6`
+        - treats synced `mayfly` / `can_fly` abilities as enough food
+        - suppresses local sprint speed, sprint-swim pose, and sprinting fluid
+          drag when sprinting is not eligible
       - abilities-driven flying movement with no ordinary gravity
       - vanilla flying horizontal input:
         - uses synced abilities `flying_speed` as per-tick acceleration
@@ -526,6 +534,12 @@ When an agent does any of the following, update this file in the same slice:
         - forced to the Rot-only packet variant instead of position/status
           variants
   - Commands:
+    - Native sprint command queuing is derived from the same world-owned
+      effective sprint predicate used by local movement:
+      - forward impulse is required before `START_SPRINTING`
+      - low food suppresses `START_SPRINTING`
+      - releasing focus or input queues `STOP_SPRINTING` when effective sprint
+        was active
     - Existing input modules queue many serverbound packets, including
       vanilla-shaped boat/raft paddle-state packets from local mounted input.
     - They queue `START_RIDING_JUMP` player commands for vanilla

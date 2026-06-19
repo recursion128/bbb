@@ -2635,10 +2635,11 @@ fn release_active_input_keeps_shift_modifier_for_inventory_clicks() {
 }
 
 #[test]
-fn sprint_key_queues_player_input_and_sprint_commands() {
+fn sprint_key_with_forward_input_queues_player_input_and_sprint_commands() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
+    input.forward = true;
     let mut counters = NetCounters::default();
     let mut world = world_with_local_player_id(77);
 
@@ -2656,6 +2657,7 @@ fn sprint_key_queues_player_input_and_sprint_commands() {
     assert_eq!(
         rx.try_recv().unwrap(),
         NetCommand::PlayerInput(PlayerInput {
+            forward: true,
             sprint: true,
             ..PlayerInput::default()
         })
@@ -2682,7 +2684,10 @@ fn sprint_key_queues_player_input_and_sprint_commands() {
     assert_eq!(counters.player_command_commands_queued, 2);
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::PlayerInput(PlayerInput::default())
+        NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            ..PlayerInput::default()
+        })
     );
     assert_eq!(
         rx.try_recv().unwrap(),
@@ -2692,6 +2697,99 @@ fn sprint_key_queues_player_input_and_sprint_commands() {
             data: 0,
         })
     );
+}
+
+#[test]
+fn sprint_key_without_forward_input_does_not_start_sprinting_until_forward_pressed() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            sprint: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert!(rx.try_recv().is_err());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 2);
+    assert_eq!(counters.player_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            sprint: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::StartSprinting,
+            data: 0,
+        })
+    );
+}
+
+#[test]
+fn sprint_key_with_low_food_only_queues_raw_player_input() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.forward = true;
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    world.apply_player_health(PlayerHealth {
+        health: 20.0,
+        food: 6,
+        saturation: 0.0,
+    });
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            sprint: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

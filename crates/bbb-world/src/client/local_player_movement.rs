@@ -23,9 +23,11 @@ const VANILLA_ATTRIBUTE_WATER_MOVEMENT_EFFICIENCY_ID: i32 = 32;
 const VANILLA_MOB_EFFECT_SPEED_ID: i32 = 0;
 const VANILLA_MOB_EFFECT_SLOWNESS_ID: i32 = 1;
 const VANILLA_MOB_EFFECT_JUMP_BOOST_ID: i32 = 7;
+const VANILLA_MOB_EFFECT_BLINDNESS_ID: i32 = 14;
 const VANILLA_MOB_EFFECT_LEVITATION_ID: i32 = 24;
 const VANILLA_MOB_EFFECT_SLOW_FALLING_ID: i32 = 27;
 const VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID: i32 = 29;
+const LOCAL_PLAYER_SPRINT_MIN_FOOD_LEVEL: i32 = 7;
 const LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE: f64 = 0.1;
 const LOCAL_INPUT_DEFAULT_GRAVITY_ATTRIBUTE: f64 = 0.08;
 const LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE: f64 = 0.42;
@@ -128,6 +130,7 @@ fn advance_local_player_physics_step(
     input: LocalPlayerInputState,
     step_seconds: f64,
 ) -> LocalPlayerPoseState {
+    let input = local_player_effective_movement_input(world, input);
     let forward_input = if input.focused {
         axis(input.forward, input.backward)
     } else {
@@ -287,6 +290,7 @@ fn advance_local_player_fluid_physics_step(
     move_z: f64,
     initial_fluid_contact: LocalPlayerFluidContactState,
 ) -> LocalPlayerPoseState {
+    let input = local_player_effective_movement_input(world, input);
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
     let old_y = pose.position.y;
     pose.delta_movement = local_player_velocity_with_fluid_current(
@@ -896,6 +900,45 @@ fn local_player_with_body_pose(
     pose
 }
 
+fn local_player_effective_movement_input(
+    world: &WorldStore,
+    mut input: LocalPlayerInputState,
+) -> LocalPlayerInputState {
+    if input.sprint && !local_player_can_sprint(world, input) {
+        input.sprint = false;
+    }
+    input
+}
+
+pub(super) fn local_player_effective_sprint(
+    world: &WorldStore,
+    input: LocalPlayerInputState,
+) -> bool {
+    input.sprint && local_player_can_sprint(world, input)
+}
+
+fn local_player_can_sprint(world: &WorldStore, input: LocalPlayerInputState) -> bool {
+    input.focused
+        && input.forward
+        && !input.backward
+        && local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_BLINDNESS_ID).is_none()
+        && local_player_has_enough_food_to_sprint(world)
+}
+
+fn local_player_has_enough_food_to_sprint(world: &WorldStore) -> bool {
+    if world
+        .local_player
+        .abilities
+        .is_some_and(|abilities| abilities.can_fly)
+    {
+        return true;
+    }
+    world
+        .local_player
+        .health
+        .is_none_or(|health| health.food >= LOCAL_PLAYER_SPRINT_MIN_FOOD_LEVEL)
+}
+
 fn local_player_horizontal_speed(
     world: &WorldStore,
     pose: LocalPlayerPoseState,
@@ -1194,7 +1237,8 @@ mod tests {
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
         AttributeSnapshot as ProtocolAttributeSnapshot, MobEffectFlags as ProtocolMobEffectFlags,
-        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
+        PlayerHealth as ProtocolPlayerHealth, UpdateAttributes as ProtocolUpdateAttributes,
+        UpdateMobEffect as ProtocolUpdateMobEffect,
     };
     use uuid::Uuid;
 
@@ -2529,6 +2573,35 @@ mod tests {
     }
 
     #[test]
+    fn local_player_low_food_prevents_water_sprint_and_swimming_pose() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        apply_player_health(&mut world, 6);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(!pose.swimming);
+        assert_f64_near(pose.position.z, 0.52, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.016, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.005, 0.000001);
+    }
+
+    #[test]
     fn local_player_swimming_pitch_down_pulls_velocity_toward_look_y() {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
@@ -3383,6 +3456,91 @@ mod tests {
     }
 
     #[test]
+    fn local_player_blindness_prevents_sprint_speed() {
+        let mut world = flat_collision_world();
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_mob_effect(mob_effect(123, VANILLA_MOB_EFFECT_BLINDNESS_ID, 0,)));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
+    fn local_player_low_food_prevents_sprint_speed_unless_mayfly() {
+        let mut survival_world = flat_collision_world();
+        apply_player_health(&mut survival_world, 6);
+        survival_world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let survival_pose = survival_world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+        let walk_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(survival_pose.position.z, 0.5 + walk_step, 0.000001);
+        assert_f64_near(survival_pose.delta_movement.z, walk_step, 0.000001);
+
+        let mut creative_world = flat_collision_world();
+        apply_player_health(&mut creative_world, 6);
+        creative_world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: false,
+            flying: false,
+            can_fly: true,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        creative_world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let creative_pose = creative_world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+        let sprint_step = LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(creative_pose.position.z, 0.5 + sprint_step, 0.000001);
+        assert_f64_near(creative_pose.delta_movement.z, sprint_step, 0.000001);
+    }
+
+    #[test]
     fn local_player_speed_and_slowness_effects_scale_horizontal_movement() {
         let mut speed_world = flat_collision_world();
         attach_local_player_entity(&mut speed_world, 123);
@@ -3635,6 +3793,14 @@ mod tests {
             duration_ticks: 200,
             flags: ProtocolMobEffectFlags::default(),
         }
+    }
+
+    fn apply_player_health(world: &mut WorldStore, food: i32) {
+        world.apply_player_health(ProtocolPlayerHealth {
+            health: 20.0,
+            food,
+            saturation: 5.0,
+        });
     }
 
     fn apply_flying_abilities(world: &mut WorldStore, flying_speed: f32) {

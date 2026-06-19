@@ -6,7 +6,7 @@ use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, Direction as ProtocolDirection, InteractionHand,
     ItemStackSummary, PlayerActionKind, PlayerCommandAction, PlayerInput, SignUpdate,
 };
-use bbb_world::{LocalPlayerPoseState, WorldStore};
+use bbb_world::{LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
 use winit::{
     event::ElementState,
@@ -277,12 +277,14 @@ pub(crate) fn release_active_input(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) {
     let before = player_input_from_state(input);
+    let before_sprinting = effective_sprinting_from_state(world, input);
     input.clear_pressed();
     let after = player_input_from_state(input);
+    let after_sprinting = effective_sprinting_from_state(world, input);
     if after != before {
         queue_player_input_command(counters, net_commands, after);
-        if before.sprint != after.sprint {
-            queue_sprint_command(counters, world, net_commands, after.sprint);
+        if before_sprinting != after_sprinting {
+            queue_sprint_command(counters, world, net_commands, after_sprinting);
         }
     }
     if let Some(pos) = world.take_local_destroying_block() {
@@ -314,11 +316,11 @@ pub(crate) fn handle_focus_change(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     focused: bool,
 ) {
-    input.focused = focused;
     if !focused {
         release_active_input(input, world, counters, net_commands);
         input.clear_modifiers();
     }
+    input.focused = focused;
 }
 
 pub(crate) fn handle_key_input(
@@ -479,6 +481,7 @@ pub(crate) fn handle_key_input_with_item_runtime(
     }
 
     let before = player_input_from_state(input);
+    let before_sprinting = effective_sprinting_from_state(world, input);
     let handled = match code {
         KeyCode::KeyW | KeyCode::ArrowUp => {
             input.forward = pressed;
@@ -512,10 +515,11 @@ pub(crate) fn handle_key_input_with_item_runtime(
     };
     if handled {
         let after = player_input_from_state(input);
+        let after_sprinting = effective_sprinting_from_state(world, input);
         if after != before {
             queue_player_input_command(counters, net_commands, after);
-            if before.sprint != after.sprint {
-                queue_sprint_command(counters, world, net_commands, after.sprint);
+            if before_sprinting != after_sprinting {
+                queue_sprint_command(counters, world, net_commands, after_sprinting);
             }
             let just_toggled_creative_flight =
                 maybe_toggle_creative_flight(input, counters, world, net_commands, before, after);
@@ -1027,6 +1031,25 @@ fn player_input_from_state(input: &ClientInputState) -> PlayerInput {
         shift: input.sneak,
         sprint: input.sprint,
     }
+}
+
+fn local_player_input_from_state(input: &ClientInputState) -> LocalPlayerInputState {
+    LocalPlayerInputState {
+        focused: input.focused,
+        forward: input.forward,
+        backward: input.backward,
+        left: input.left,
+        right: input.right,
+        jump: input.jump,
+        sneak: input.sneak,
+        sprint: input.sprint,
+        mouse_delta_x: input.mouse_delta_x,
+        mouse_delta_y: input.mouse_delta_y,
+    }
+}
+
+fn effective_sprinting_from_state(world: &WorldStore, input: &ClientInputState) -> bool {
+    world.local_player_effective_sprint(local_player_input_from_state(input))
 }
 
 #[cfg(test)]
