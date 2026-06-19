@@ -121,6 +121,7 @@ pub(crate) struct ClientInputState {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ChatEntryState {
     text: String,
+    cursor: usize,
     last_suggestion_request_text: Option<String>,
     suppress_open_key_commit: bool,
 }
@@ -708,17 +709,9 @@ pub(crate) fn handle_text_input_with_item_runtime(
             return;
         }
     }
-    for ch in text.chars().filter(|ch| is_chat_text_char(*ch)) {
-        entry.text.push(ch);
-    }
-    if entry.text.is_empty() {
-        input.chat_entry = None;
-        return;
-    }
-
-    if entry.text.starts_with('/') {
-        maybe_queue_command_suggestion_request(input, counters, world, net_commands);
-    }
+    let before = entry.text.clone();
+    insert_chat_entry_text(&mut entry.text, &mut entry.cursor, text);
+    update_chat_entry_after_text_change(input, counters, world, net_commands, before.as_str());
 }
 
 fn open_chat_entry(
@@ -731,6 +724,7 @@ fn open_chat_entry(
     release_active_input(input, world, counters, net_commands);
     input.chat_entry = Some(ChatEntryState {
         text: String::new(),
+        cursor: 0,
         last_suggestion_request_text: None,
         suppress_open_key_commit,
     });
@@ -756,14 +750,74 @@ fn handle_chat_entry_key(
         KeyCode::Tab => {
             apply_latest_command_suggestion(input, world);
         }
-        KeyCode::Backspace => {
+        KeyCode::ArrowLeft => {
+            let control_down = input.control_down();
             if let Some(entry) = &mut input.chat_entry {
-                entry.text.pop();
+                entry.cursor = if control_down {
+                    text_edit::word_position(&entry.text, entry.cursor, -1)
+                } else {
+                    entry.cursor.saturating_sub(1)
+                };
+            }
+        }
+        KeyCode::ArrowRight => {
+            let control_down = input.control_down();
+            if let Some(entry) = &mut input.chat_entry {
+                entry.cursor = if control_down {
+                    text_edit::word_position(&entry.text, entry.cursor, 1)
+                } else {
+                    (entry.cursor + 1).min(text_edit::char_len(&entry.text))
+                };
+            }
+        }
+        KeyCode::Home => {
+            if let Some(entry) = &mut input.chat_entry {
+                entry.cursor = 0;
+            }
+        }
+        KeyCode::End => {
+            if let Some(entry) = &mut input.chat_entry {
+                entry.cursor = text_edit::char_len(&entry.text);
+            }
+        }
+        KeyCode::Backspace => {
+            let control_down = input.control_down();
+            if let Some(entry) = &mut input.chat_entry {
                 if entry.text.is_empty() {
                     input.chat_entry = None;
-                } else if entry.text.starts_with('/') {
-                    maybe_queue_command_suggestion_request(input, counters, world, net_commands);
+                    return;
                 }
+                let before = entry.text.clone();
+                if control_down {
+                    text_edit::remove_word_before_cursor(&mut entry.text, &mut entry.cursor);
+                } else {
+                    remove_chat_entry_char_before_cursor(&mut entry.text, &mut entry.cursor);
+                }
+                update_chat_entry_after_text_change(
+                    input,
+                    counters,
+                    world,
+                    net_commands,
+                    before.as_str(),
+                );
+            }
+        }
+        KeyCode::Delete => {
+            let control_down = input.control_down();
+            if let Some(entry) = &mut input.chat_entry {
+                let before = entry.text.clone();
+                if control_down {
+                    text_edit::remove_word_at_cursor(&mut entry.text, entry.cursor);
+                } else {
+                    remove_chat_entry_char_at_cursor(&mut entry.text, entry.cursor);
+                }
+                update_chat_entry_after_text_change(
+                    input,
+                    counters,
+                    world,
+                    net_commands,
+                    before.as_str(),
+                );
             }
         }
         _ => {}
@@ -779,6 +833,7 @@ fn apply_latest_command_suggestion(input: &mut ClientInputState, world: &WorldSt
     };
     if let Some(entry) = &mut input.chat_entry {
         entry.text = updated_text;
+        entry.cursor = text_edit::char_len(&entry.text);
         entry.last_suggestion_request_text = Some(entry.text.clone());
     }
 }
@@ -821,6 +876,56 @@ fn apply_command_suggestion_text(
     updated.push_str(suggestion);
     updated.push_str(&current_text[end..]);
     Some(updated)
+}
+
+fn update_chat_entry_after_text_change(
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    before: &str,
+) {
+    let Some(entry) = &mut input.chat_entry else {
+        return;
+    };
+    if entry.text.is_empty() {
+        input.chat_entry = None;
+        return;
+    }
+    if entry.text == before {
+        return;
+    }
+    if entry.text.starts_with('/') {
+        maybe_queue_command_suggestion_request(input, counters, world, net_commands);
+    }
+}
+
+fn insert_chat_entry_text(current: &mut String, cursor: &mut usize, text: &str) {
+    *cursor = (*cursor).min(text_edit::char_len(current));
+    for ch in text.chars().filter(|ch| is_chat_text_char(*ch)) {
+        let insert_at = text_edit::byte_index(current, *cursor);
+        current.insert(insert_at, ch);
+        *cursor += 1;
+    }
+}
+
+fn remove_chat_entry_char_before_cursor(current: &mut String, cursor: &mut usize) {
+    if *cursor == 0 {
+        return;
+    }
+    let start = text_edit::byte_index(current, *cursor - 1);
+    let end = text_edit::byte_index(current, *cursor);
+    current.replace_range(start..end, "");
+    *cursor -= 1;
+}
+
+fn remove_chat_entry_char_at_cursor(current: &mut String, cursor: usize) {
+    if cursor >= text_edit::char_len(current) {
+        return;
+    }
+    let start = text_edit::byte_index(current, cursor);
+    let end = text_edit::byte_index(current, cursor + 1);
+    current.replace_range(start..end, "");
 }
 
 fn submit_chat_entry(

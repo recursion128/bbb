@@ -747,6 +747,200 @@ fn command_entry_blocks_movement_keys_and_backspace_edits_text() {
 }
 
 #[test]
+fn command_entry_cursor_editing_updates_slash_suggestions() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "/givve");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    );
+
+    let entry = input
+        .chat_entry
+        .as_ref()
+        .expect("command entry should stay open");
+    assert_eq!(entry.text, "/give");
+    assert_eq!(entry.cursor, 4);
+    assert_eq!(counters.command_suggestion_commands_queued, 2);
+    for (id, command) in [(0, "/givve"), (1, "/give")] {
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+                id,
+                command: command.to_string(),
+            })
+        );
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn command_entry_control_word_keys_edit_text() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "/say alpha beta gamma",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowRight),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+
+    let entry = input
+        .chat_entry
+        .as_ref()
+        .expect("command entry should stay open");
+    assert_eq!(entry.text, "/say alpha ");
+    assert_eq!(entry.cursor, 11);
+    assert_eq!(counters.command_suggestion_commands_queued, 3);
+    for (id, command) in [
+        (0, "/say alpha beta gamma"),
+        (1, "/say alpha gamma"),
+        (2, "/say alpha "),
+    ] {
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+                id,
+                command: command.to_string(),
+            })
+        );
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn chat_entry_cursor_editing_submits_corrected_message() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "t");
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "helo");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "l");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert!(!input.chat_entry_is_active());
+    assert_eq!(counters.command_suggestion_commands_queued, 0);
+    assert_eq!(counters.chat_message_commands_queued, 1);
+    match rx.try_recv().unwrap() {
+        NetCommand::ChatMessage(packet) => assert_eq!(packet.message, "hello"),
+        command => panic!("expected chat message command, got {command:?}"),
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn command_entry_escape_cancels_without_queuing_command() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

@@ -912,8 +912,14 @@ When an agent does any of the following, update this file in the same slice:
       - request `ServerboundCommandSuggestionPacket` completions:
         - with the leading slash
         - while typing slash commands
+        - after middle-of-line edits that change a slash command
       - submit `ServerboundChatCommandPacket` payloads without:
         - the leading slash
+      - edit chat and command text before submit with:
+        - left/right/home/end cursor movement
+        - delete/backspace
+        - Ctrl+left/right word movement
+        - Ctrl+delete/backspace word deletion
       - queue explicit `ServerboundClientCommandPacket` commands:
         - perform-respawn
         - request-stats
