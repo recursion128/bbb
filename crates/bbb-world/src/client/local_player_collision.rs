@@ -5,6 +5,8 @@ use crate::{BlockPos, BlockProbe, TerrainMaterialClass, WorldStore};
 
 pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
 const VANILLA_COLLISION_CONTEXT_ABOVE_EPSILON: f64 = 1.0e-5;
+const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_FALL_DISTANCE: f64 = 2.5;
+const LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_HEIGHT: f64 = 0.9;
 
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
 const MAX_COLLISION_BOXES: usize = 16;
@@ -68,7 +70,7 @@ impl WorldStore {
             &block,
             pos,
             bounds,
-            LocalPlayerCollisionContext::new(pose.position.y, false),
+            LocalPlayerCollisionContext::for_pose(self, pose, false),
         )
     }
 }
@@ -90,6 +92,9 @@ fn block_collision_shape_with_context(
     pos: BlockPos,
     context: LocalPlayerCollisionContext,
 ) -> Option<BlockCollisionShape> {
+    if block.block_name.as_deref() == Some("minecraft:powder_snow") {
+        return powder_snow_collision_shape(pos, context);
+    }
     if block.block_name.as_deref() == Some("minecraft:scaffolding") {
         return scaffolding_collision_shape(&block.block_properties, pos, context);
     }
@@ -597,6 +602,21 @@ fn scaffolding_stable_collision_shape() -> BlockCollisionShape {
         Some(BlockCollisionBox::SCAFFOLDING_SOUTH_EAST_POST),
         Some(BlockCollisionBox::SCAFFOLDING_SOUTH_WEST_POST),
     ])
+}
+
+fn powder_snow_collision_shape(
+    pos: BlockPos,
+    context: LocalPlayerCollisionContext,
+) -> Option<BlockCollisionShape> {
+    if context.fall_distance > LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_FALL_DISTANCE {
+        return Some(BlockCollisionShape::single(
+            BlockCollisionBox::POWDER_SNOW_FALLING,
+        ));
+    }
+    if context.can_walk_on_powder_snow && context.is_above(pos, 1.0) && !context.descending {
+        return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+    }
+    None
 }
 
 fn pointed_dripstone_collision_shape(
@@ -1398,6 +1418,8 @@ enum StairShapeKind {
 pub(super) struct LocalPlayerCollisionContext {
     entity_bottom: f64,
     descending: bool,
+    fall_distance: f64,
+    can_walk_on_powder_snow: bool,
 }
 
 impl LocalPlayerCollisionContext {
@@ -1405,6 +1427,21 @@ impl LocalPlayerCollisionContext {
         Self {
             entity_bottom,
             descending,
+            fall_distance: 0.0,
+            can_walk_on_powder_snow: false,
+        }
+    }
+
+    pub(super) fn for_pose(
+        world: &WorldStore,
+        pose: LocalPlayerPoseState,
+        descending: bool,
+    ) -> Self {
+        Self {
+            entity_bottom: pose.position.y,
+            descending,
+            fall_distance: pose.fall_distance,
+            can_walk_on_powder_snow: world.local_player_can_walk_on_powder_snow(),
         }
     }
 
@@ -1649,6 +1686,14 @@ impl BlockCollisionBox {
         min_z: 0.0,
         max_x: 1.0,
         max_y: 2.0 * PX,
+        max_z: 1.0,
+    };
+    const POWDER_SNOW_FALLING: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 1.0,
+        max_y: LOCAL_PLAYER_POWDER_SNOW_FALLING_COLLISION_HEIGHT,
         max_z: 1.0,
     };
     const SCAFFOLDING_NORTH_WEST_POST: Self = Self {

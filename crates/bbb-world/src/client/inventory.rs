@@ -858,6 +858,13 @@ impl WorldStore {
             .collect();
     }
 
+    pub fn set_powder_snow_walkable_foot_item_ids(&mut self, item_ids: BTreeSet<i32>) {
+        self.powder_snow_walkable_foot_item_ids = item_ids
+            .into_iter()
+            .filter(|item_id| *item_id >= 0)
+            .collect();
+    }
+
     pub fn set_default_item_equipment_slots(
         &mut self,
         equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
@@ -1210,6 +1217,13 @@ impl WorldStore {
         .filter(|item| item.count > 0)
         .filter_map(|item| item.item_id)
         .any(|item_id| self.freeze_immune_wearable_item_ids.contains(&item_id))
+    }
+
+    pub(crate) fn local_player_can_walk_on_powder_snow(&self) -> bool {
+        self.local_player_inventory_item(PLAYER_FEET_EQUIPMENT_SLOT)
+            .filter(|item| item.count > 0)
+            .and_then(|item| item.item_id)
+            .is_some_and(|item_id| self.powder_snow_walkable_foot_item_ids.contains(&item_id))
     }
 
     fn local_player_inventory_item(&self, slot_id: i32) -> Option<&ProtocolItemStackSummary> {

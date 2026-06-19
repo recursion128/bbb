@@ -50,6 +50,7 @@ pub(crate) struct NativeItemRuntime {
     missing_texture_ids: BTreeSet<String>,
     furnace_fuel_item_ids: BTreeSet<i32>,
     freeze_immune_wearable_item_ids: BTreeSet<i32>,
+    powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
     item_icon_models: HashMap<String, ItemIconModel>,
     registry: Option<ItemRegistryCatalog>,
     language: LanguageCatalog,
@@ -105,6 +106,11 @@ impl NativeItemRuntime {
                     .ok()
             })
             .unwrap_or_default();
+        let powder_snow_walkable_foot_item_ids = registry
+            .as_ref()
+            .and_then(|registry| registry.protocol_id("minecraft:leather_boots"))
+            .into_iter()
+            .collect();
         let colormaps = roots
             .load_terrain_colormaps()
             .context("load terrain colormaps for item tints")
@@ -124,6 +130,7 @@ impl NativeItemRuntime {
             colormaps,
             furnace_fuel_item_ids,
             freeze_immune_wearable_item_ids,
+            powder_snow_walkable_foot_item_ids,
             language,
         )
     }
@@ -136,6 +143,7 @@ impl NativeItemRuntime {
         colormaps: Option<TerrainColorMaps>,
         furnace_fuel_item_ids: BTreeSet<i32>,
         freeze_immune_wearable_item_ids: BTreeSet<i32>,
+        powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
         language: LanguageCatalog,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -201,6 +209,7 @@ impl NativeItemRuntime {
             missing_texture_ids,
             furnace_fuel_item_ids,
             freeze_immune_wearable_item_ids,
+            powder_snow_walkable_foot_item_ids,
             item_icon_models,
             registry,
             language,
@@ -284,6 +293,14 @@ impl NativeItemRuntime {
 
     pub(crate) fn freeze_immune_wearable_item_count(&self) -> usize {
         self.freeze_immune_wearable_item_ids.len()
+    }
+
+    pub(crate) fn powder_snow_walkable_foot_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.powder_snow_walkable_foot_item_ids.clone()
+    }
+
+    pub(crate) fn powder_snow_walkable_foot_item_count(&self) -> usize {
+        self.powder_snow_walkable_foot_item_ids.len()
     }
 
     pub(crate) fn resolved_model_count(&self) -> usize {

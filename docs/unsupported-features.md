@@ -316,7 +316,12 @@ When an agent does any of the following, update this file in the same slice:
         - sprint-swim camera, animation, and presentation nuance beyond
           canonical swimming pose selection and pitch-coupled vertical travel
       - remaining block-state movement factors beyond the synced frozen-tick
-        and local powder-snow contact slowdown:
+        and local powder-snow contact slowdown/collision slices:
+        - remaining powder-snow behavior beyond local player collision:
+          - non-player `POWDER_SNOW_WALKABLE_MOBS` entity collision if locally
+            controlled non-player entities are added later
+          - climb-out behavior from `wasInPowderSnow` plus leather boots
+          - inside-block particle/extinguish/fall-sound side effects
         - remaining powder-snow `canFreeze` nuance beyond local player:
           - non-player freeze-immune entity type exceptions if locally
             controlled entity freezing is added later
@@ -499,6 +504,14 @@ When an agent does any of the following, update this file in the same slice:
         - sneak/descending input bypasses the stable top shape
         - unstable bottom support shape applies for bottom scaffolding with
           non-zero distance
+      - vanilla local player powder snow context-sensitive collision:
+        - ordinary local player movement sinks through `minecraft:powder_snow`
+        - feet slot item must be the injected official
+          `minecraft:leather_boots` protocol id to stand on top
+        - freeze-immune wearable items do not imply powder-snow walkability
+        - sneak/descending input bypasses the top collision
+        - `fall_distance > 2.5` uses the vanilla full-width `0.9`-high falling
+          collision shape
       - vanilla open trapdoor-as-ladder climbable behavior when:
         - the current block is an open trapdoor
         - the block below is a ladder

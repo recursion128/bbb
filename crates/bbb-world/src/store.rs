@@ -110,6 +110,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) freeze_immune_wearable_item_ids: BTreeSet<i32>,
     #[serde(default)]
+    pub(crate) powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
+    #[serde(default)]
     pub(crate) default_item_mining_profiles: BTreeMap<i32, WorldItemMiningProfile>,
     #[serde(default)]
     pub(crate) default_block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,

@@ -259,7 +259,7 @@ fn advance_local_player_physics_step(
     if should_back_off_from_edge(world, pose, input, requested_y) {
         (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
     }
-    let collision_context = LocalPlayerCollisionContext::new(pose.position.y, input.sneak);
+    let collision_context = LocalPlayerCollisionContext::for_pose(world, pose, input.sneak);
     let movement = clip_local_player_movement(
         world,
         pose,
@@ -392,7 +392,7 @@ fn advance_local_player_fluid_physics_step(
     let requested_x = pose.delta_movement.x * step_ticks;
     let requested_y = pose.delta_movement.y * step_ticks;
     let requested_z = pose.delta_movement.z * step_ticks;
-    let collision_context = LocalPlayerCollisionContext::new(pose.position.y, input.sneak);
+    let collision_context = LocalPlayerCollisionContext::for_pose(world, pose, input.sneak);
     let movement = clip_local_player_movement_without_step(
         world,
         pose,
@@ -1700,6 +1700,7 @@ mod tests {
     const HONEY_BLOCK_STATE_ID: i32 = 21816;
     const POWDER_SNOW_BLOCK_STATE_ID: i32 = 24689;
     const FREEZE_IMMUNE_WEARABLE_ITEM_ID: i32 = 42;
+    const LEATHER_BOOTS_ITEM_ID: i32 = 43;
     const PLAYER_FEET_EQUIPMENT_SLOT_ID: i32 = 36;
     const CHEST_SINGLE_NORTH_BLOCK_STATE_ID: i32 = 3988;
     const CHEST_LEFT_NORTH_BLOCK_STATE_ID: i32 = 3990;
@@ -4944,6 +4945,133 @@ mod tests {
     }
 
     #[test]
+    fn local_player_without_powder_snow_walkable_boots_sinks_through_powder_snow() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 2.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        });
+
+        world
+            .advance_local_player_input(
+                LocalPlayerInputState::default(),
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+        world
+            .advance_local_player_input(
+                LocalPlayerInputState::default(),
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let pose = world.local_player_pose().unwrap();
+        assert!(pose.position.y < 2.0);
+        assert!(!pose.on_ground);
+        assert!(pose.delta_movement.y < 0.0);
+    }
+
+    #[test]
+    fn local_player_leather_boots_stand_on_powder_snow_top_collision() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        equip_powder_snow_walkable_boots(&mut world, 1);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 2.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        });
+
+        world
+            .advance_local_player_input(
+                LocalPlayerInputState::default(),
+                LOCAL_PHYSICS_TICK_SECONDS * 2.0,
+            )
+            .unwrap();
+
+        let pose = world.local_player_pose().unwrap();
+        assert_f64_near(pose.position.y, 2.0, 0.000001);
+        assert!(pose.on_ground);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_freeze_immune_non_leather_boots_do_not_walk_on_powder_snow() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        world.set_freeze_immune_wearable_item_ids(BTreeSet::from([FREEZE_IMMUNE_WEARABLE_ITEM_ID]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_FEET_EQUIPMENT_SLOT_ID,
+            item: item_stack(FREEZE_IMMUNE_WEARABLE_ITEM_ID, 1),
+        });
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 2.0, 0.5),
+            ..LocalPlayerPoseState::default()
+        });
+
+        world
+            .advance_local_player_input(
+                LocalPlayerInputState::default(),
+                LOCAL_PHYSICS_TICK_SECONDS * 2.0,
+            )
+            .unwrap();
+
+        let pose = world.local_player_pose().unwrap();
+        assert!(pose.position.y < 2.0);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_sneak_descends_through_powder_snow_even_with_leather_boots() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+        equip_powder_snow_walkable_boots(&mut world, 1);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 2.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS * 2.0,
+            )
+            .unwrap();
+
+        let pose = world.local_player_pose().unwrap();
+        assert!(pose.position.y < 2.0);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_high_fall_distance_uses_powder_snow_falling_collision_shape() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
+
+        assert!(!world.local_player_pose_collides_with_block(
+            BlockPos { x: 0, y: 1, z: 0 },
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.85, 0.5),
+                fall_distance: 2.5,
+                ..LocalPlayerPoseState::default()
+            },
+        ));
+        assert!(world.local_player_pose_collides_with_block(
+            BlockPos { x: 0, y: 1, z: 0 },
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.85, 0.5),
+                fall_distance: 2.500001,
+                ..LocalPlayerPoseState::default()
+            },
+        ));
+    }
+
+    #[test]
     fn local_player_advance_thaws_ticks_frozen_per_physics_step() {
         let mut world = flat_collision_world();
         attach_local_player_entity(&mut world, 123);
@@ -5530,6 +5658,14 @@ mod tests {
             count,
             component_patch: bbb_protocol::packets::DataComponentPatchSummary::default(),
         }
+    }
+
+    fn equip_powder_snow_walkable_boots(world: &mut WorldStore, count: i32) {
+        world.set_powder_snow_walkable_foot_item_ids(BTreeSet::from([LEATHER_BOOTS_ITEM_ID]));
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: PLAYER_FEET_EQUIPMENT_SLOT_ID,
+            item: item_stack(LEATHER_BOOTS_ITEM_ID, count),
+        });
     }
 
     fn apply_flying_abilities(world: &mut WorldStore, flying_speed: f32) {
