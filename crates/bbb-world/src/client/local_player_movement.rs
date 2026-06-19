@@ -251,6 +251,11 @@ fn advance_local_player_physics_step(
     let horizontal_collision = x_collision || z_collision;
     let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
     let on_ground = vertical_collision && requested_y < 0.0 || local_player_supported(world, pose);
+    let bounced_on_slime = flying.is_none()
+        && vertical_collision
+        && requested_y < 0.0
+        && !input.sneak
+        && local_player_standing_on_block(world, pose, "minecraft:slime_block");
     let fluid_contact = local_player_fluid_contact(world, pose);
     pose.fall_distance = if fluid_contact.in_water() {
         0.0
@@ -284,7 +289,11 @@ fn advance_local_player_physics_step(
             pose.delta_movement.y *= LOCAL_INPUT_FLY_VERTICAL_DAMPING.powf(step_ticks);
         }
     } else if on_ground || vertical_collision {
-        pose.delta_movement.y = 0.0;
+        pose.delta_movement.y = if bounced_on_slime {
+            (-requested_y / tick_span).max(0.0)
+        } else {
+            0.0
+        };
     } else {
         pose.delta_movement.y =
             local_player_airborne_vertical_velocity(world, pose.delta_movement.y, step_ticks);
@@ -1123,6 +1132,22 @@ fn block_jump_factor(block_name: &str) -> f64 {
     }
 }
 
+fn local_player_standing_on_block(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    name: &str,
+) -> bool {
+    let pos = BlockPos {
+        x: local_player_block_floor(pose.position.x),
+        y: local_player_block_floor(pose.position.y - SUPPORT_EPSILON),
+        z: local_player_block_floor(pose.position.z),
+    };
+    world
+        .probe_block(pos)
+        .and_then(|block| block.block_name)
+        .is_some_and(|block_name| block_name == name)
+}
+
 fn local_player_airborne_vertical_velocity(
     world: &WorldStore,
     current_velocity: f64,
@@ -1404,6 +1429,7 @@ mod tests {
     const END_PORTAL_FRAME_EYE_NORTH_BLOCK_STATE_ID: i32 = 9469;
     const END_PORTAL_FRAME_EMPTY_NORTH_BLOCK_STATE_ID: i32 = 9473;
     const DRAGON_EGG_BLOCK_STATE_ID: i32 = 9478;
+    const SLIME_BLOCK_STATE_ID: i32 = 12532;
     const FLOWER_POT_BLOCK_STATE_ID: i32 = 10629;
     const POTTED_DANDELION_BLOCK_STATE_ID: i32 = 10641;
     const SKELETON_SKULL_BLOCK_STATE_ID: i32 = 10931;
@@ -4054,6 +4080,22 @@ mod tests {
     }
 
     #[test]
+    fn local_player_block_speed_factor_does_not_fallback_through_bubble_column() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, SOUL_SAND_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 0, bubble_column_block_state_id(false));
+        let factor = local_player_block_speed_factor(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.0, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_f64_near(factor, DEFAULT_BLOCK_SPEED_FACTOR, 0.000001);
+    }
+
+    #[test]
     fn local_player_ticks_frozen_applies_powder_snow_slowdown() {
         let mut half_frozen_world = flat_collision_world();
         attach_local_player_entity(&mut half_frozen_world, 123);
@@ -4399,6 +4441,63 @@ mod tests {
         assert_f64_near(pose.position.y, honey_top_y + expected_jump, 0.000001);
         assert!(!pose.on_ground);
         assert!(pose.delta_movement.y > 0.0);
+    }
+
+    #[test]
+    fn local_player_bounces_after_landing_on_slime_block() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, SLIME_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.5, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0001);
+        assert_f64_near(pose.delta_movement.y, 0.5, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_sneak_suppresses_slime_block_bounce() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, SLIME_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.5, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0001);
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(pose.on_ground);
     }
 
     #[test]

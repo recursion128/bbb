@@ -470,6 +470,9 @@ When an agent does any of the following, update this file in the same slice:
       - vanilla block jump factor for local jumps:
         - `minecraft:honey_block` applies `0.5` to the base jump strength
         - Jump Boost remains additive after the block jump factor
+      - vanilla slime block landing bounce:
+        - downward collision reverses local player Y velocity
+        - sneak input suppresses the bounce
       - jumps only from ground
       - vanilla sprint jump horizontal impulse:
         - adds `0.2` horizontal velocity in the local yaw forward direction
