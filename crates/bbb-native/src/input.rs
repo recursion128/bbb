@@ -51,6 +51,8 @@ pub(crate) use movement::advance_player_input;
 
 const CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS: u8 = 7;
 const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
+const SPRINT_TRIGGER_TICKS: u8 = 7;
+const SPRINT_TRIGGER_TICK_SECONDS: f64 = 0.05;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 
 #[derive(Debug, Clone, Default)]
@@ -106,6 +108,8 @@ pub(crate) struct ClientInputState {
     last_move_command_pose: Option<LocalPlayerPoseState>,
     last_paddle_boat_command_at: Option<Instant>,
     riding_jump_charge_seconds: Option<f64>,
+    sprint_trigger_ticks: u8,
+    sprint_trigger_elapsed_seconds: f64,
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
 }
@@ -177,6 +181,7 @@ impl ClientInputState {
         self.chat_entry = None;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
+        self.clear_sprint_trigger();
         self.creative_flight_jump_trigger_ticks = 0;
         self.creative_flight_jump_trigger_elapsed_seconds = 0.0;
     }
@@ -267,6 +272,35 @@ impl ClientInputState {
 
         if self.creative_flight_jump_trigger_ticks == 0 {
             self.creative_flight_jump_trigger_elapsed_seconds = 0.0;
+        }
+    }
+
+    fn prime_sprint_trigger(&mut self) {
+        self.sprint_trigger_ticks = SPRINT_TRIGGER_TICKS;
+        self.sprint_trigger_elapsed_seconds = 0.0;
+    }
+
+    fn clear_sprint_trigger(&mut self) {
+        self.sprint_trigger_ticks = 0;
+        self.sprint_trigger_elapsed_seconds = 0.0;
+    }
+
+    fn advance_sprint_trigger(&mut self, dt_seconds: f64) {
+        if self.sprint_trigger_ticks == 0 {
+            self.sprint_trigger_elapsed_seconds = 0.0;
+            return;
+        }
+
+        self.sprint_trigger_elapsed_seconds += dt_seconds.max(0.0);
+        while self.sprint_trigger_elapsed_seconds + f64::EPSILON >= SPRINT_TRIGGER_TICK_SECONDS
+            && self.sprint_trigger_ticks > 0
+        {
+            self.sprint_trigger_elapsed_seconds -= SPRINT_TRIGGER_TICK_SECONDS;
+            self.sprint_trigger_ticks -= 1;
+        }
+
+        if self.sprint_trigger_ticks == 0 {
+            self.sprint_trigger_elapsed_seconds = 0.0;
         }
     }
 }
@@ -486,10 +520,16 @@ pub(crate) fn handle_key_input_with_item_runtime(
     let handled = match code {
         KeyCode::KeyW | KeyCode::ArrowUp => {
             input.forward = pressed;
+            if pressed && !before.forward {
+                maybe_apply_forward_sprint_trigger(input, world);
+            }
             true
         }
         KeyCode::KeyS | KeyCode::ArrowDown => {
             input.backward = pressed;
+            if pressed {
+                input.clear_sprint_trigger();
+            }
             true
         }
         KeyCode::KeyA | KeyCode::ArrowLeft => {
@@ -506,10 +546,16 @@ pub(crate) fn handle_key_input_with_item_runtime(
         }
         KeyCode::ShiftLeft | KeyCode::ShiftRight => {
             input.sneak = input.shift_down();
+            if input.sneak {
+                input.clear_sprint_trigger();
+            }
             true
         }
         KeyCode::ControlLeft | KeyCode::ControlRight => {
             input.sprint = pressed;
+            if pressed {
+                input.clear_sprint_trigger();
+            }
             true
         }
         _ => false,
@@ -536,6 +582,24 @@ pub(crate) fn handle_key_input_with_item_runtime(
                 }
             }
         }
+    }
+}
+
+fn maybe_apply_forward_sprint_trigger(input: &mut ClientInputState, world: &WorldStore) {
+    if input.sprint {
+        input.clear_sprint_trigger();
+        return;
+    }
+    let mut sprint_candidate = local_player_input_from_state(input);
+    sprint_candidate.sprint = true;
+    if !world.local_player_effective_sprint(sprint_candidate) {
+        return;
+    }
+    if input.sprint_trigger_ticks > 0 {
+        input.sprint = true;
+        input.clear_sprint_trigger();
+    } else {
+        input.prime_sprint_trigger();
     }
 }
 

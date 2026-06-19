@@ -674,6 +674,7 @@ When an agent does any of the following, update this file in the same slice:
     - Native sprint command queuing is derived from the same world-owned
       effective sprint predicate used by local movement:
       - forward impulse is required before `START_SPRINTING`
+      - vanilla default 7 tick double-tap-forward sprint window is supported
       - low food suppresses unmounted `START_SPRINTING`
       - camel and camel_husk mounts can queue `START_SPRINTING` while horse and
         boat mounts only queue raw `PlayerInput`

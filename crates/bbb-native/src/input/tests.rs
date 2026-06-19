@@ -2776,6 +2776,145 @@ fn sprint_key_with_forward_input_queues_player_input_and_sprint_commands() {
 }
 
 #[test]
+fn double_tap_forward_within_sprint_window_queues_start_sprinting() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 3);
+    assert_eq!(counters.player_command_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            sprint: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::StartSprinting,
+            data: 0,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn double_tap_forward_after_sprint_window_expires_does_not_start_sprinting() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Released,
+    );
+
+    let start = Instant::now();
+    advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_millis(250),
+    );
+    advance_player_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        start + std::time::Duration::from_millis(350),
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 3);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput::default())
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn sprint_key_without_forward_input_does_not_start_sprinting_until_forward_pressed() {
     let (tx, mut rx) = mpsc::channel(4);
     let commands = Some(tx);
