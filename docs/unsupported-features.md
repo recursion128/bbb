@@ -1289,12 +1289,15 @@ When an agent does any of the following, update this file in the same slice:
           existing payment items to player inventory
         - result-slot quick-move locally predicts selected
           component-predicate-free `MerchantOffer`s when the current result
-          matches the selected sell stack, payment slots exactly satisfy the
-          modified cost counts, and the result fully fits the player inventory
-        - result-slot pickup, swapped or overfilled payment-slot result takes,
+          matches the selected sell stack, payment slots satisfy the modified
+          cost counts in vanilla normal or swapped order, and the result fully
+          fits the player inventory; payment remainders are kept and the result
+          slot is repopulated when the same selected offer remains in stock and
+          payable
+        - result-slot pickup, alternate-offer payment remainder recomputation,
           and component-predicate trade-row/payment result prediction are kept
           server-authoritative until:
-          - active-offer/result recomputation with payment remainders
+          - full active-offer search across remaining payment slots
           - trade sound/XP side effects
           - component-aware `ItemCost` predicate matching
         - deferred presentation parity work:

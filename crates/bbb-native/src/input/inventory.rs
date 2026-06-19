@@ -7821,7 +7821,7 @@ mod tests {
             title: "Merchant".to_string(),
         });
         let mut items = vec![ItemStackSummary::empty(); 39];
-        items[0] = item_stack(42, 1);
+        items[0] = item_stack(42, 3);
         items[2] = item_stack(99, 1);
         world.apply_container_set_content(ContainerSetContent {
             container_id: 7,
@@ -7852,8 +7852,7 @@ mod tests {
                 button_num: 0,
                 input: ContainerInput::QuickMove,
                 changed_slots: [
-                    (0, HashedStack::Empty),
-                    (2, HashedStack::Empty),
+                    (0, HashedStack::Item(hashed_item(42, 2))),
                     (38, HashedStack::Item(hashed_item(99, 1))),
                 ]
                 .into(),
@@ -7861,8 +7860,8 @@ mod tests {
             })
         );
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
-        assert_eq!(slots[0].item, ItemStackSummary::empty());
-        assert_eq!(slots[2].item, ItemStackSummary::empty());
+        assert_eq!(slots[0].item, item_stack(42, 2));
+        assert_eq!(slots[2].item, item_stack(99, 1));
         assert_eq!(slots[38].item, item_stack(99, 1));
     }
 
