@@ -149,6 +149,9 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
                 BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 9.0),
             ));
         }
+        if block_name == "minecraft:brewing_stand" {
+            return Some(brewing_stand_collision_shape());
+        }
         if is_anvil_block_name(block_name) {
             return anvil_collision_shape(&block.block_properties);
         }
@@ -761,6 +764,13 @@ fn anvil_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockC
     Some(BlockCollisionShape::from_boxes(boxes))
 }
 
+fn brewing_stand_collision_shape() -> BlockCollisionShape {
+    BlockCollisionShape::from_boxes([
+        Some(BlockCollisionBox::BREWING_STAND_ROD),
+        Some(BlockCollisionBox::BREWING_STAND_BASE),
+    ])
+}
+
 fn cross_collision_shape(
     properties: &BTreeMap<String, String>,
     post: BlockCollisionBox,
@@ -1266,6 +1276,22 @@ impl BlockCollisionBox {
         max_x: 1.0,
         max_y: 9.0 * PX,
         max_z: 1.0,
+    };
+    const BREWING_STAND_ROD: Self = Self {
+        min_x: 7.0 * PX,
+        min_y: 2.0 * PX,
+        min_z: 7.0 * PX,
+        max_x: 9.0 * PX,
+        max_y: 14.0 * PX,
+        max_z: 9.0 * PX,
+    };
+    const BREWING_STAND_BASE: Self = Self {
+        min_x: PX,
+        min_y: 0.0,
+        min_z: PX,
+        max_x: 15.0 * PX,
+        max_y: 2.0 * PX,
+        max_z: 15.0 * PX,
     };
     const BOTTOM_TRAPDOOR: Self = Self {
         min_x: 0.0,

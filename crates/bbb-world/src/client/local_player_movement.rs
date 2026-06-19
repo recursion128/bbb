@@ -1425,6 +1425,7 @@ mod tests {
     const WATER_CAULDRON_LEVEL_3_BLOCK_STATE_ID: i32 = 9463;
     const HOPPER_NORTH_ENABLED_BLOCK_STATE_ID: i32 = 11314;
     const ENCHANTING_TABLE_BLOCK_STATE_ID: i32 = 9451;
+    const BREWING_STAND_EMPTY_BLOCK_STATE_ID: i32 = 9459;
     const STONECUTTER_NORTH_BLOCK_STATE_ID: i32 = 20801;
     const ANVIL_NORTH_BLOCK_STATE_ID: i32 = 11195;
     const COMPOSTER_LEVEL_7_BLOCK_STATE_ID: i32 = 21750;
@@ -2090,6 +2091,22 @@ mod tests {
             assert!(!pose.horizontal_collision, "{name}");
             assert!(pose.on_ground, "{name}");
         }
+    }
+
+    #[test]
+    fn local_player_steps_onto_brewing_stand_base_but_stops_at_center_rod() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 1, BREWING_STAND_EMPTY_BLOCK_STATE_ID);
+        let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+        assert_f64_near(pose.position.y, 1.125, 0.0005);
+        assert!(
+            pose.position.z > 1.0 && pose.position.z <= 1.1376,
+            "position was {:?}",
+            pose.position
+        );
+        assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
     }
 
     #[test]

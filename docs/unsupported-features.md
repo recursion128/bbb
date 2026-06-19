@@ -431,6 +431,7 @@ When an agent does any of the following, update this file in the same slice:
       - cauldron
       - hopper
       - composter
+      - brewing stand
       - enchanting table
       - stonecutter
       - anvil
