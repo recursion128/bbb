@@ -312,6 +312,8 @@ When an agent does any of the following, update this file in the same slice:
     - Extend the current basic AABB collision and gravity/jump slice to cover:
       - full fixed 20Hz survival physics
       - remaining vanilla voxel collision shapes
+      - scaffolding-specific collision and climbable sneak-descent behavior
+      - open trapdoor-as-ladder climbable behavior
       - remaining fluid movement work beyond current still water/lava support:
         - sprint-swim camera, animation, and presentation nuance beyond
           canonical swimming pose selection and pitch-coupled vertical travel
@@ -473,6 +475,12 @@ When an agent does any of the following, update this file in the same slice:
       - vanilla slime block landing bounce:
         - downward collision reverses local player Y velocity
         - sneak input suppresses the bounce
+      - basic vanilla climbable movement for ladder and vine-family blocks:
+        - resets fall distance while inside the climbable block
+        - clamps horizontal velocity to `0.15` per tick
+        - clamps downward velocity to `-0.15` per tick
+        - sneak input suppresses non-scaffolding climbable sliding
+        - jump or horizontal collision applies the vanilla upward climb velocity
       - jumps only from ground
       - vanilla sprint jump horizontal impulse:
         - adds `0.2` horizontal velocity in the local yaw forward direction

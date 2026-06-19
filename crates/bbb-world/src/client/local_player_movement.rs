@@ -92,6 +92,9 @@ const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
 const HONEY_BLOCK_JUMP_FACTOR: f64 = 0.5;
 const DEFAULT_BLOCK_JUMP_FACTOR: f64 = 1.0;
 const SPRINT_JUMP_HORIZONTAL_IMPULSE: f64 = 0.2;
+const LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.15;
+const LOCAL_PLAYER_CLIMBABLE_MAX_DOWNWARD_VELOCITY_PER_TICK: f64 = -0.15;
+const LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK: f64 = 0.2;
 
 pub(super) fn integrate_local_player_input_pose(
     world: &WorldStore,
@@ -175,6 +178,16 @@ fn advance_local_player_physics_step(
             initial_fluid_contact,
         );
     }
+    let climbable_before = if flying.is_none() {
+        local_player_climbable_block_name(world, pose)
+    } else {
+        None
+    };
+    let on_climbable_before = climbable_before.is_some();
+    if on_climbable_before {
+        pose.fall_distance = 0.0;
+        pose.delta_movement = local_player_climbable_limited_velocity(pose.delta_movement, input);
+    }
 
     let mut jump_horizontal_impulse = (0.0, 0.0);
     if flying.is_none() && input.focused && input.jump && pose.on_ground {
@@ -215,6 +228,11 @@ fn advance_local_player_physics_step(
             )
         }
     };
+    if on_climbable_before {
+        let max_horizontal = LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK * step_ticks;
+        requested_x = requested_x.clamp(-max_horizontal, max_horizontal);
+        requested_z = requested_z.clamp(-max_horizontal, max_horizontal);
+    }
     let requested_y = match flying {
         Some(abilities) => {
             let vertical_input = if input.focused {
@@ -256,8 +274,12 @@ fn advance_local_player_physics_step(
         && requested_y < 0.0
         && !input.sneak
         && local_player_standing_on_block(world, pose, "minecraft:slime_block");
+    let on_climbable_after =
+        flying.is_none() && local_player_climbable_block_name(world, pose).is_some();
+    let climbable_upward_impulse =
+        on_climbable_after && (horizontal_collision || input.focused && input.jump);
     let fluid_contact = local_player_fluid_contact(world, pose);
-    pose.fall_distance = if fluid_contact.in_water() {
+    pose.fall_distance = if fluid_contact.in_water() || on_climbable_before || on_climbable_after {
         0.0
     } else {
         next_local_player_fall_distance(pose.fall_distance, movement.y, on_ground)
@@ -295,8 +317,13 @@ fn advance_local_player_physics_step(
             0.0
         };
     } else {
+        let vertical_velocity = if climbable_upward_impulse {
+            LOCAL_PLAYER_CLIMBABLE_UPWARD_VELOCITY_PER_TICK
+        } else {
+            pose.delta_movement.y
+        };
         pose.delta_movement.y =
-            local_player_airborne_vertical_velocity(world, pose.delta_movement.y, step_ticks);
+            local_player_airborne_vertical_velocity(world, vertical_velocity, step_ticks);
     }
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
@@ -1148,6 +1175,57 @@ fn local_player_standing_on_block(
         .is_some_and(|block_name| block_name == name)
 }
 
+fn local_player_climbable_block_name(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+) -> Option<String> {
+    let pos = BlockPos {
+        x: local_player_block_floor(pose.position.x),
+        y: local_player_block_floor(pose.position.y),
+        z: local_player_block_floor(pose.position.z),
+    };
+    world
+        .probe_block(pos)
+        .and_then(|block| block.block_name)
+        .filter(|block_name| is_climbable_block_name(block_name))
+}
+
+fn is_climbable_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:ladder"
+            | "minecraft:vine"
+            | "minecraft:weeping_vines"
+            | "minecraft:weeping_vines_plant"
+            | "minecraft:twisting_vines"
+            | "minecraft:twisting_vines_plant"
+            | "minecraft:cave_vines"
+            | "minecraft:cave_vines_plant"
+    )
+}
+
+fn local_player_climbable_limited_velocity(
+    velocity: ProtocolVec3d,
+    input: LocalPlayerInputState,
+) -> ProtocolVec3d {
+    let downward_limit = if input.sneak {
+        0.0
+    } else {
+        LOCAL_PLAYER_CLIMBABLE_MAX_DOWNWARD_VELOCITY_PER_TICK
+    };
+    ProtocolVec3d {
+        x: velocity.x.clamp(
+            -LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK,
+            LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK,
+        ),
+        y: velocity.y.max(downward_limit),
+        z: velocity.z.clamp(
+            -LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK,
+            LOCAL_PLAYER_CLIMBABLE_MAX_HORIZONTAL_VELOCITY_PER_TICK,
+        ),
+    }
+}
+
 fn local_player_airborne_vertical_velocity(
     world: &WorldStore,
     current_velocity: f64,
@@ -1634,6 +1712,118 @@ mod tests {
 
         assert_f64_near(pose.position.y, 2.92, 0.000001);
         assert_f64_near(pose.delta_movement.y, -0.0882, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_climbable_limits_downward_velocity_and_resets_fall_distance() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.5, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.05, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.2254, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_sneak_suppresses_climbable_sliding() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            delta_movement: vec3(0.0, -0.5, 0.0),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.2, 0.000001);
+        assert_f64_near(pose.delta_movement.y, -0.0784, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_jump_on_climbable_applies_vanilla_upward_velocity() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            fall_distance: 2.0,
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.2, 0.000001);
+        assert_f64_near(pose.delta_movement.y, 0.1176, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_climbable_clamps_horizontal_velocity() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, LADDER_SOUTH_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.2, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.z, 0.65, 0.000001);
+        assert_f64_near(pose.delta_movement.z, 0.15, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
         assert!(!pose.on_ground);
     }
 
