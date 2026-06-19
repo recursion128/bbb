@@ -432,6 +432,7 @@ When an agent does any of the following, update this file in the same slice:
       - hopper
       - composter
       - brewing stand
+      - bell
       - enchanting table
       - stonecutter
       - anvil

@@ -149,6 +149,9 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
                 BlockCollisionBox::centered_column(16.0, 16.0, 0.0, 9.0),
             ));
         }
+        if block_name == "minecraft:bell" {
+            return bell_collision_shape(&block.block_properties);
+        }
         if block_name == "minecraft:brewing_stand" {
             return Some(brewing_stand_collision_shape());
         }
@@ -764,6 +767,55 @@ fn anvil_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockC
     Some(BlockCollisionShape::from_boxes(boxes))
 }
 
+fn bell_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    match properties.get("attachment").map(String::as_str)? {
+        "floor" => Some(BlockCollisionShape::single(bell_floor_collision_box(
+            facing,
+        ))),
+        "ceiling" => Some(bell_ceiling_collision_shape()),
+        "single_wall" => Some(bell_single_wall_collision_shape(facing)),
+        "double_wall" => Some(bell_double_wall_collision_shape(facing)),
+        _ => None,
+    }
+}
+
+fn bell_floor_collision_box(facing: HorizontalDirection) -> BlockCollisionBox {
+    match facing.axis() {
+        HorizontalAxis::X => BlockCollisionBox::BELL_FLOOR_X_AXIS,
+        HorizontalAxis::Z => BlockCollisionBox::BELL_FLOOR_Z_AXIS,
+    }
+}
+
+fn bell_ceiling_collision_shape() -> BlockCollisionShape {
+    let mut builder = bell_body_collision_shape_builder();
+    builder.push(BlockCollisionBox::BELL_CEILING_SUPPORT);
+    builder.build()
+}
+
+fn bell_single_wall_collision_shape(facing: HorizontalDirection) -> BlockCollisionShape {
+    let mut builder = bell_body_collision_shape_builder();
+    builder.push(BlockCollisionBox::BELL_SINGLE_WALL_NORTH_SUPPORT.rotate_to_direction(facing));
+    builder.build()
+}
+
+fn bell_double_wall_collision_shape(facing: HorizontalDirection) -> BlockCollisionShape {
+    let mut builder = bell_body_collision_shape_builder();
+    let support = match facing.axis() {
+        HorizontalAxis::X => BlockCollisionBox::BELL_DOUBLE_WALL_X_AXIS_SUPPORT,
+        HorizontalAxis::Z => BlockCollisionBox::BELL_DOUBLE_WALL_Z_AXIS_SUPPORT,
+    };
+    builder.push(support);
+    builder.build()
+}
+
+fn bell_body_collision_shape_builder() -> BlockCollisionShapeBuilder {
+    let mut builder = BlockCollisionShapeBuilder::new();
+    builder.push(BlockCollisionBox::BELL_BODY);
+    builder.push(BlockCollisionBox::BELL_BASE);
+    builder
+}
+
 fn brewing_stand_collision_shape() -> BlockCollisionShape {
     BlockCollisionShape::from_boxes([
         Some(BlockCollisionBox::BREWING_STAND_ROD),
@@ -1277,6 +1329,70 @@ impl BlockCollisionBox {
         max_y: 9.0 * PX,
         max_z: 1.0,
     };
+    const BELL_BODY: Self = Self {
+        min_x: 5.0 * PX,
+        min_y: 6.0 * PX,
+        min_z: 5.0 * PX,
+        max_x: 11.0 * PX,
+        max_y: 13.0 * PX,
+        max_z: 11.0 * PX,
+    };
+    const BELL_BASE: Self = Self {
+        min_x: 4.0 * PX,
+        min_y: 4.0 * PX,
+        min_z: 4.0 * PX,
+        max_x: 12.0 * PX,
+        max_y: 6.0 * PX,
+        max_z: 12.0 * PX,
+    };
+    const BELL_FLOOR_X_AXIS: Self = Self {
+        min_x: 4.0 * PX,
+        min_y: 0.0,
+        min_z: 0.0,
+        max_x: 12.0 * PX,
+        max_y: 1.0,
+        max_z: 1.0,
+    };
+    const BELL_FLOOR_Z_AXIS: Self = Self {
+        min_x: 0.0,
+        min_y: 0.0,
+        min_z: 4.0 * PX,
+        max_x: 1.0,
+        max_y: 1.0,
+        max_z: 12.0 * PX,
+    };
+    const BELL_CEILING_SUPPORT: Self = Self {
+        min_x: 7.0 * PX,
+        min_y: 13.0 * PX,
+        min_z: 7.0 * PX,
+        max_x: 9.0 * PX,
+        max_y: 1.0,
+        max_z: 9.0 * PX,
+    };
+    const BELL_SINGLE_WALL_NORTH_SUPPORT: Self = Self {
+        min_x: 7.0 * PX,
+        min_y: 13.0 * PX,
+        min_z: 0.0,
+        max_x: 9.0 * PX,
+        max_y: 15.0 * PX,
+        max_z: 13.0 * PX,
+    };
+    const BELL_DOUBLE_WALL_X_AXIS_SUPPORT: Self = Self {
+        min_x: 0.0,
+        min_y: 13.0 * PX,
+        min_z: 7.0 * PX,
+        max_x: 1.0,
+        max_y: 15.0 * PX,
+        max_z: 9.0 * PX,
+    };
+    const BELL_DOUBLE_WALL_Z_AXIS_SUPPORT: Self = Self {
+        min_x: 7.0 * PX,
+        min_y: 13.0 * PX,
+        min_z: 0.0,
+        max_x: 9.0 * PX,
+        max_y: 15.0 * PX,
+        max_z: 1.0,
+    };
     const BREWING_STAND_ROD: Self = Self {
         min_x: 7.0 * PX,
         min_y: 2.0 * PX,
@@ -1556,5 +1672,13 @@ impl BlockCollisionBox {
             max_y: self.max_y,
             max_z: self.max_x,
         }
+    }
+
+    fn rotate_to_direction(self, direction: HorizontalDirection) -> Self {
+        let mut rotated = self;
+        for _ in 0..direction.quarter_turns_from_north() {
+            rotated = rotated.rotate_y_90();
+        }
+        rotated
     }
 }

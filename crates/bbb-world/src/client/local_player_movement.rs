@@ -1381,8 +1381,9 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        entities::VANILLA_ENTITY_TYPE_PLAYER_ID, ChunkColumn, ChunkSection, ChunkState, LightData,
-        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension, WorldLevelInfo,
+        entities::VANILLA_ENTITY_TYPE_PLAYER_ID, BlockPos, ChunkColumn, ChunkSection, ChunkState,
+        LightData, PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+        WorldLevelInfo,
     };
 
     const AIR_BLOCK_STATE_ID: i32 = 0;
@@ -1425,6 +1426,10 @@ mod tests {
     const WATER_CAULDRON_LEVEL_3_BLOCK_STATE_ID: i32 = 9463;
     const HOPPER_NORTH_ENABLED_BLOCK_STATE_ID: i32 = 11314;
     const ENCHANTING_TABLE_BLOCK_STATE_ID: i32 = 9451;
+    const BELL_FLOOR_NORTH_BLOCK_STATE_ID: i32 = 20806;
+    const BELL_CEILING_NORTH_BLOCK_STATE_ID: i32 = 20814;
+    const BELL_SINGLE_WALL_NORTH_BLOCK_STATE_ID: i32 = 20822;
+    const BELL_DOUBLE_WALL_NORTH_BLOCK_STATE_ID: i32 = 20830;
     const BREWING_STAND_EMPTY_BLOCK_STATE_ID: i32 = 9459;
     const STONECUTTER_NORTH_BLOCK_STATE_ID: i32 = 20801;
     const ANVIL_NORTH_BLOCK_STATE_ID: i32 = 11195;
@@ -2068,6 +2073,59 @@ mod tests {
             assert!(pose.horizontal_collision, "{name}");
             assert!(pose.on_ground, "{name}");
         }
+    }
+
+    #[test]
+    fn local_player_does_not_walk_through_bell_attachments() {
+        let cases = [
+            ("floor bell", BELL_FLOOR_NORTH_BLOCK_STATE_ID, 0.9505),
+            (
+                "single-wall bell",
+                BELL_SINGLE_WALL_NORTH_BLOCK_STATE_ID,
+                0.7005,
+            ),
+            (
+                "double-wall bell",
+                BELL_DOUBLE_WALL_NORTH_BLOCK_STATE_ID,
+                0.7005,
+            ),
+        ];
+
+        for (name, block_state_id, max_z) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_collision_detects_ceiling_bell_body() {
+        let mut world = flat_collision_world();
+        let pos = BlockPos { x: 0, y: 1, z: 1 };
+        set_test_block(
+            &mut world,
+            pos.x,
+            pos.y,
+            pos.z,
+            BELL_CEILING_NORTH_BLOCK_STATE_ID,
+        );
+
+        assert!(world.local_player_pose_collides_with_block(
+            pos,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.0, 1.5),
+                ..LocalPlayerPoseState::default()
+            },
+        ));
     }
 
     #[test]
