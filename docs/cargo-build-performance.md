@@ -534,3 +534,38 @@ Measured commands:
 For this warm focused sample, the default profile was faster than the warmed
 `fast-test` profile. Keep `fast-test` opt-in for repeated focused iteration
 after measurement, not as a blanket replacement for default-profile tests.
+
+## Warm Update: 2026-06-19 After Small Object Collision Slice
+
+Environment:
+
+- `sccache` is still not installed on `PATH`.
+- Stable target caches found:
+  - `/tmp/bbb-target-main`: 19G.
+  - `/tmp/bbb-target-native`: 3.3G.
+  - `/tmp/bbb-target-net`: 720M.
+  - `/tmp/bbb-target-pack`: 438M.
+  - `/tmp/bbb-target-renderer`: 2.0G.
+  - `/tmp/bbb-target-world`: 3.0G.
+- No clean target was created for this update. The clean full-workspace baseline
+  remains the 2026-06-18 disposable-target measurement above because this slice
+  did not change Cargo profiles, dependencies, or cache policy.
+
+Measured commands:
+
+- Warm focused default:
+  `scripts/cargo-dev.sh test -p bbb-world local_player_respects_piglin_wall_head_wider_collision --quiet`
+  - Wall time: 0.13s.
+  - Result: 1 test passed.
+- Warm full workspace:
+  `scripts/cargo-dev.sh timings --workspace --timings --quiet`
+  - Wall time: 4.94s.
+  - Target size: 19G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260619T030451664Z-14ffed61c5c1036c.html`
+
+The cache policy is behaving as intended for fast focused tests, but the main
+target is now large enough that periodic size checks should stay part of the
+workflow. Do not clean it automatically at slice boundaries; clean only for
+real disk pressure, toolchain changes, or disposable clean-baseline runs.
