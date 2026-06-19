@@ -1166,6 +1166,7 @@ impl WorldStore {
             slots_before,
             data_values,
             mount_equipment_slots,
+            merchant_offers,
         ) = {
             let Some(container) = self.active_container() else {
                 return Err(ContainerClickBuildError::NoOpenContainer);
@@ -1183,6 +1184,7 @@ impl WorldStore {
                 container
                     .mount
                     .and_then(|_| self.open_mount_equipment_slot_visibility()),
+                container.merchant_offers.clone(),
             )
         };
         let mut slots_after = slots_before.clone();
@@ -1414,15 +1416,16 @@ impl WorldStore {
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_MERCHANT_ID) {
-                        if merchant_quick_move_requires_server_authority(request.slot_num) {
-                            return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                                ProtocolContainerInput::QuickMove,
-                            ));
-                        }
+                        let selected_offer = merchant_offers.as_ref().and_then(|offers| {
+                            usize::try_from(offers.local_selected_offer_index)
+                                .ok()
+                                .and_then(|index| offers.offers.get(index))
+                        });
                         apply_merchant_menu_quick_move_to_slots(
                             container_id,
                             &mut slots_after,
                             request.slot_num,
+                            selected_offer,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_STONECUTTER_ID) {
@@ -2660,6 +2663,10 @@ fn menu_result_slot_requires_server_authority(
         ) | (
             Some(VANILLA_MENU_TYPE_SMITHING_ID),
             SMITHING_RESULT_SLOT,
+            ProtocolContainerInput::QuickMove
+        ) | (
+            Some(VANILLA_MENU_TYPE_MERCHANT_ID),
+            MERCHANT_RESULT_SLOT,
             ProtocolContainerInput::QuickMove
         )
     ) {
@@ -4338,10 +4345,6 @@ fn apply_loom_result_quick_move_to_slots(
     slots.clone_from_slice(&trial);
 }
 
-fn merchant_quick_move_requires_server_authority(slot_num: i16) -> bool {
-    (0..MERCHANT_TOTAL_SLOT_COUNT).contains(&slot_num) && slot_num == MERCHANT_RESULT_SLOT
-}
-
 fn apply_merchant_selected_offer_payment_autofill_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
@@ -4501,9 +4504,19 @@ fn apply_merchant_menu_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
     slot_num: i16,
+    selected_offer: Option<&MerchantOfferState>,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if !(0..MERCHANT_TOTAL_SLOT_COUNT).contains(&slot_num) || slot_num == MERCHANT_RESULT_SLOT {
+    if !(0..MERCHANT_TOTAL_SLOT_COUNT).contains(&slot_num) {
+        return;
+    }
+    if slot_num == MERCHANT_RESULT_SLOT {
+        apply_merchant_result_quick_move_to_slots(
+            container_id,
+            slots,
+            selected_offer,
+            default_item_max_stack_sizes,
+        );
         return;
     }
     let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
@@ -4545,6 +4558,137 @@ fn apply_merchant_menu_quick_move_to_slots(
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
     }
+}
+
+fn apply_merchant_result_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    selected_offer: Option<&MerchantOfferState>,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    let Some(offer) = selected_offer else {
+        return;
+    };
+    if offer.is_out_of_stock || !merchant_offer_supports_local_payment_autofill(offer) {
+        return;
+    }
+    let Some(source_index) = slots
+        .iter()
+        .position(|slot| slot.slot == MERCHANT_RESULT_SLOT)
+    else {
+        return;
+    };
+    let Some(payment_1_index) = slots
+        .iter()
+        .position(|slot| slot.slot == MERCHANT_PAYMENT_SLOT_1)
+    else {
+        return;
+    };
+    let Some(payment_2_index) = slots
+        .iter()
+        .position(|slot| slot.slot == MERCHANT_PAYMENT_SLOT_2)
+    else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item)
+        || !merchant_result_matches_offer(&slots[source_index].item, offer)
+        || !merchant_payment_slots_exactly_satisfy_offer(
+            &slots[payment_1_index].item,
+            &slots[payment_2_index].item,
+            offer,
+            default_item_max_stack_sizes,
+        )
+    {
+        return;
+    }
+
+    let mut trial = slots.to_vec();
+    let mut moving = slots[source_index].item.clone();
+    if !move_item_stack_to_slots(
+        container_id,
+        &mut trial,
+        source_index,
+        &mut moving,
+        MERCHANT_PLAYER_MAIN_START,
+        MERCHANT_HOTBAR_END,
+        true,
+        default_item_max_stack_sizes,
+    ) || !item_stack_is_empty(&moving)
+    {
+        return;
+    }
+
+    trial[payment_1_index].item = ProtocolItemStackSummary::empty();
+    normalize_container_slot_selection(&mut trial[payment_1_index]);
+    trial[payment_2_index].item = ProtocolItemStackSummary::empty();
+    normalize_container_slot_selection(&mut trial[payment_2_index]);
+    trial[source_index].item = ProtocolItemStackSummary::empty();
+    normalize_container_slot_selection(&mut trial[source_index]);
+    slots.clone_from_slice(&trial);
+}
+
+fn merchant_result_matches_offer(
+    result: &ProtocolItemStackSummary,
+    offer: &MerchantOfferState,
+) -> bool {
+    item_stack_is_non_empty(&offer.sell)
+        && result.count == offer.sell.count
+        && same_item_same_components(result, &offer.sell)
+}
+
+fn merchant_payment_slots_exactly_satisfy_offer(
+    payment_a: &ProtocolItemStackSummary,
+    payment_b: &ProtocolItemStackSummary,
+    offer: &MerchantOfferState,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> bool {
+    let Some(cost_a_count) = merchant_modified_cost_a_count(offer, default_item_max_stack_sizes)
+    else {
+        return false;
+    };
+    if !merchant_payment_slot_exactly_satisfies_cost(payment_a, &offer.buy_a, cost_a_count) {
+        return false;
+    }
+    match &offer.buy_b {
+        Some(cost_b) => {
+            merchant_payment_slot_exactly_satisfies_cost(payment_b, cost_b, cost_b.count)
+        }
+        None => item_stack_is_empty(payment_b),
+    }
+}
+
+fn merchant_payment_slot_exactly_satisfies_cost(
+    payment: &ProtocolItemStackSummary,
+    cost: &ProtocolItemCostSummary,
+    required_count: i32,
+) -> bool {
+    required_count > 0
+        && item_stack_is_non_empty(payment)
+        && payment.item_id == Some(cost.item_id)
+        && payment.count == required_count
+}
+
+fn merchant_modified_cost_a_count(
+    offer: &MerchantOfferState,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) -> Option<i32> {
+    let cost = &offer.buy_a;
+    if cost.item_id < 0 || cost.count <= 0 || !offer.price_multiplier.is_finite() {
+        return None;
+    }
+    let demand_diff =
+        ((cost.count as f32) * (offer.demand as f32) * offer.price_multiplier).floor();
+    if !demand_diff.is_finite() {
+        return None;
+    }
+    let demand_diff = (demand_diff as i64).max(0);
+    let max_stack_size = default_item_max_stack_sizes
+        .get(&cost.item_id)
+        .copied()
+        .map(clamp_vanilla_item_max_stack_size)
+        .unwrap_or(VANILLA_DEFAULT_MAX_STACK_SIZE);
+    let modified_count = i64::from(cost.count) + demand_diff + i64::from(offer.special_price_diff);
+    Some(modified_count.clamp(1, i64::from(max_stack_size)) as i32)
 }
 
 fn apply_stonecutter_menu_quick_move_to_slots(
@@ -9083,19 +9227,28 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
-        for input in [
-            ProtocolContainerInput::Pickup,
-            ProtocolContainerInput::QuickMove,
-        ] {
-            assert_eq!(
-                store.apply_local_container_click_slot(ContainerClickSlotRequest {
-                    slot_num: MERCHANT_RESULT_SLOT,
-                    button_num: 0,
-                    input,
-                }),
-                Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
-            );
-        }
+        assert_eq!(
+            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: MERCHANT_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            }),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::Pickup
+            ))
+        );
+        let result_move_without_offer = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: MERCHANT_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(result_move_without_offer.changed_slots, BTreeMap::new());
+        assert_eq!(
+            result_move_without_offer.carried_item,
+            ProtocolHashedStack::Empty
+        );
 
         let payment_1_move = store
             .apply_local_container_click_slot(ContainerClickSlotRequest {
@@ -9197,6 +9350,192 @@ mod tests {
         assert_eq!(
             open_container_slot_item(&store, MERCHANT_HOTBAR_START + 1),
             item_stack(44, 2)
+        );
+    }
+
+    #[test]
+    fn apply_local_merchant_result_quick_move_consumes_exact_selected_offer_payments() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+            title: "Merchant".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
+        items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 7);
+        items[MERCHANT_PAYMENT_SLOT_2 as usize] = item_stack(43, 2);
+        items[MERCHANT_RESULT_SLOT as usize] = item_stack(90, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(store.apply_merchant_offers(ProtocolMerchantOffers {
+            container_id: 7,
+            offers: vec![ProtocolMerchantOffer {
+                buy_a: item_cost(42, 5),
+                sell: item_stack(90, 1),
+                buy_b: Some(item_cost(43, 2)),
+                is_out_of_stock: false,
+                uses: 1,
+                max_uses: 12,
+                xp: 8,
+                special_price_diff: -1,
+                price_multiplier: 0.1,
+                demand: 6,
+            }],
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: false,
+        }));
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: MERCHANT_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (MERCHANT_PAYMENT_SLOT_1, ProtocolHashedStack::Empty),
+                (MERCHANT_PAYMENT_SLOT_2, ProtocolHashedStack::Empty),
+                (MERCHANT_RESULT_SLOT, ProtocolHashedStack::Empty),
+                (MERCHANT_HOTBAR_END - 1, hashed_item_stack(90, 1)),
+            ])
+        );
+        assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_PAYMENT_SLOT_1),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_PAYMENT_SLOT_2),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_RESULT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_HOTBAR_END - 1),
+            item_stack(90, 1)
+        );
+    }
+
+    #[test]
+    fn apply_local_merchant_result_quick_move_requires_exact_payment_counts() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+            title: "Merchant".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
+        items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 4);
+        items[MERCHANT_RESULT_SLOT as usize] = item_stack(90, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 15,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        assert!(store.apply_merchant_offers(ProtocolMerchantOffers {
+            container_id: 7,
+            offers: vec![ProtocolMerchantOffer {
+                buy_a: item_cost(42, 3),
+                sell: item_stack(90, 1),
+                buy_b: None,
+                is_out_of_stock: false,
+                uses: 1,
+                max_uses: 12,
+                xp: 8,
+                special_price_diff: 0,
+                price_multiplier: 0.05,
+                demand: 0,
+            }],
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: false,
+        }));
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: MERCHANT_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(quick_move.changed_slots, BTreeMap::new());
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_PAYMENT_SLOT_1),
+            item_stack(42, 4)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_RESULT_SLOT),
+            item_stack(90, 1)
+        );
+    }
+
+    #[test]
+    fn apply_local_merchant_result_quick_move_rejects_component_predicate_cost() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
+            title: "Merchant".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); MERCHANT_TOTAL_SLOT_COUNT as usize];
+        items[MERCHANT_PAYMENT_SLOT_1 as usize] = item_stack(42, 3);
+        items[MERCHANT_RESULT_SLOT as usize] = item_stack(90, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 16,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        let mut cost = item_cost(42, 3);
+        cost.component_predicate.component_count = 1;
+        cost.component_predicate.component_type_ids = vec![10];
+        assert!(store.apply_merchant_offers(ProtocolMerchantOffers {
+            container_id: 7,
+            offers: vec![ProtocolMerchantOffer {
+                buy_a: cost,
+                sell: item_stack(90, 1),
+                buy_b: None,
+                is_out_of_stock: false,
+                uses: 1,
+                max_uses: 12,
+                xp: 8,
+                special_price_diff: 0,
+                price_multiplier: 0.05,
+                demand: 0,
+            }],
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: false,
+        }));
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: MERCHANT_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(quick_move.changed_slots, BTreeMap::new());
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_PAYMENT_SLOT_1),
+            item_stack(42, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, MERCHANT_RESULT_SLOT),
+            item_stack(90, 1)
         );
     }
 

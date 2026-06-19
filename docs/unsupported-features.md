@@ -1287,10 +1287,14 @@ When an agent does any of the following, update this file in the same slice:
         - trade-row clicks locally autofill payment slots from
           component-predicate-free `MerchantOffer` costs after returning
           existing payment items to player inventory
-        - result-slot pickup/quick-move and component-predicate trade-row
-          payment autofill are kept server-authoritative until:
-          - result prediction
-          - input consumption
+        - result-slot quick-move locally predicts selected
+          component-predicate-free `MerchantOffer`s when the current result
+          matches the selected sell stack, payment slots exactly satisfy the
+          modified cost counts, and the result fully fits the player inventory
+        - result-slot pickup, swapped or overfilled payment-slot result takes,
+          and component-predicate trade-row/payment result prediction are kept
+          server-authoritative until:
+          - active-offer/result recomputation with payment remainders
           - trade sound/XP side effects
           - component-aware `ItemCost` predicate matching
         - deferred presentation parity work:
