@@ -330,11 +330,15 @@ pub(crate) fn pump_network_and_terrain(
     world.advance_item_cooldowns(advanced_ticks);
     renderer.advance_particles(advanced_ticks);
     advance_player_input(input, world, net_counters, net_commands, now);
+    let audio_events_for_destroy = audio_events
+        .as_mut()
+        .map(|audio_events| &mut **audio_events as &mut dyn AudioEventSink);
     advance_destroying_block_at_partial_tick(
         input,
         world,
         net_counters,
         net_commands,
+        audio_events_for_destroy,
         entity_partial_tick,
         advanced_ticks,
     );

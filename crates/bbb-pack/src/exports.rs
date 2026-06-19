@@ -7,6 +7,7 @@ pub use crate::block_models::{
     BlockModelDisplayTransform, BlockModelDisplayTransforms, BlockModelFace, BlockModelGuiLight,
     BlockModelQuad, BlockModelShape, BlockRenderModel,
 };
+pub use crate::block_sound_profiles::{BlockSoundProfile, BlockSoundProfileCatalog};
 pub use crate::colors::{
     BiomeColorCatalog, BiomeColorProfile, ColorMapImage, GrassColorModifier, TerrainColorMaps,
 };

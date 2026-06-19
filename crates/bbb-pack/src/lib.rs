@@ -2,6 +2,7 @@ mod atlas;
 mod atlas_sources;
 mod block_destroy_profiles;
 mod block_models;
+mod block_sound_profiles;
 mod colors;
 mod exports;
 mod furnace_fuels;

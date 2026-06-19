@@ -312,7 +312,9 @@ When an agent does any of the following, update this file in the same slice:
     - Close remaining vanilla player destroy-speed gaps:
       - validate exact pose/fluid nuance beyond the current standing-eye
         water probe
-    - hit effects
+    - remaining hit effects beyond local block hit sounds:
+      - block-specific `state.attack` callbacks
+      - hit particles
     - full model-shaped crack decals with vanilla crumbling blend/depth-bias
       behavior
     - any remaining `STOP_DESTROY_BLOCK` sequencing gaps
@@ -1020,6 +1022,13 @@ When an agent does any of the following, update this file in the same slice:
       - storing the prediction-start local player position
       - snapping the local player back to that position when a rejected ack
         restores a colliding block, matching vanilla `ClientLevel.syncBlockState`
+    - Local destroy ticking emits vanilla-shaped block hit sounds through the
+      native audio runtime:
+      - `SoundType.getHitSound()`
+      - `SoundSource.BLOCKS`
+      - `(volume + 1) / 8`
+      - `pitch * 0.5`
+      - every 4 destroy ticks
   - Completion requires full vanilla movement and these flows to work through
     encoded serverbound packets end to end.
 

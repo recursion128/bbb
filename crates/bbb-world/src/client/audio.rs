@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use bbb_protocol::packets::{
     SoundEntityEvent as ProtocolSoundEntityEvent, SoundEvent as ProtocolSoundEvent,
     SoundEventHolder as ProtocolSoundEventHolder, StopSound as ProtocolStopSound,
@@ -51,7 +53,29 @@ pub struct SoundHolderState {
     pub fixed_range: Option<f32>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WorldBlockSoundProfile {
+    pub hit_sound: String,
+    pub volume: f32,
+    pub pitch: f32,
+}
+
 impl WorldStore {
+    pub fn set_default_block_sound_profiles(
+        &mut self,
+        profiles: BTreeMap<String, WorldBlockSoundProfile>,
+    ) {
+        self.default_block_sound_profiles = profiles
+            .into_iter()
+            .filter(|(block_name, profile)| {
+                !block_name.is_empty()
+                    && !profile.hit_sound.is_empty()
+                    && profile.volume.is_finite()
+                    && profile.pitch.is_finite()
+            })
+            .collect();
+    }
+
     pub fn apply_sound_event(&mut self, packet: ProtocolSoundEvent) -> SoundEventState {
         self.counters.sound_packets += 1;
         let state = SoundEventState {
@@ -116,6 +140,29 @@ impl WorldStore {
 
     pub fn last_stop_sound(&self) -> Option<&StopSoundEventState> {
         self.client_audio.last_stop_sound.as_ref()
+    }
+
+    pub fn local_block_hit_sound(&self, pos: crate::BlockPos) -> Option<SoundEventState> {
+        let block = self.probe_block(pos)?;
+        let block_name = block.block_name.as_deref()?;
+        let profile = self.default_block_sound_profiles.get(block_name)?;
+        Some(SoundEventState {
+            sound: SoundHolderState {
+                kind: "direct".to_string(),
+                registry_id: None,
+                location: Some(profile.hit_sound.clone()),
+                fixed_range: None,
+            },
+            source: "block".to_string(),
+            position: ProtocolVec3d {
+                x: f64::from(pos.x) + 0.5,
+                y: f64::from(pos.y) + 0.5,
+                z: f64::from(pos.z) + 0.5,
+            },
+            volume: (profile.volume + 1.0) / 8.0,
+            pitch: profile.pitch * 0.5,
+            seed: 0,
+        })
     }
 }
 

@@ -7,6 +7,7 @@ use bbb_world::{BlockPos as WorldBlockPos, LocalDestroyBlockFinished, WorldStore
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 
+use crate::audio_runtime::AudioEventSink;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::{
     crosshair_target_from_camera_at_partial_tick, CrosshairBlockHit, CrosshairTarget,
@@ -285,9 +286,11 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     world: &mut WorldStore,
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: Option<&mut dyn AudioEventSink>,
     entity_partial_tick: f32,
     destroy_ticks: u32,
 ) {
+    let mut audio_events = audio_events;
     if !input.focused || input.sign_editor_is_active_or_pending(world) || !input.destroy_block_held
     {
         return;
@@ -306,7 +309,14 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     );
     match camera_target {
         Some(CrosshairTarget::Block(hit)) if block_target_within_world_border(world, hit.pos) => {
-            continue_destroy_block(counters, world, net_commands, hit, destroy_ticks)
+            continue_destroy_block(
+                counters,
+                world,
+                net_commands,
+                &mut audio_events,
+                hit,
+                destroy_ticks,
+            )
         }
         Some(CrosshairTarget::Block(_)) => {}
         _ => {
@@ -319,6 +329,7 @@ fn continue_destroy_block(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
     hit: CrosshairBlockHit,
     destroy_ticks: u32,
 ) {
@@ -327,6 +338,7 @@ fn continue_destroy_block(
     {
         world.update_local_destroying_block_face(hit.face);
         for _ in 0..destroy_ticks {
+            maybe_play_destroy_hit_sound(audio_events, world, hit.pos);
             if let Some(finished) = world.advance_local_destroying_block_tick() {
                 stop_destroy_block(counters, net_commands, finished);
                 break;
@@ -346,6 +358,22 @@ fn continue_destroy_block(
         );
     }
     start_destroy_block(counters, world, net_commands, hit);
+}
+
+fn maybe_play_destroy_hit_sound(
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+    world: &WorldStore,
+    pos: WorldBlockPos,
+) {
+    if world.local_player().interaction.destroying_block_ticks % 4 != 0 {
+        return;
+    }
+    let Some(sound) = world.local_block_hit_sound(pos) else {
+        return;
+    };
+    if let Some(audio_events) = audio_events.as_mut() {
+        audio_events.play_positioned_sound(&sound);
+    }
 }
 
 fn start_destroy_block(
@@ -521,8 +549,9 @@ mod tests {
     };
     use bbb_world::{
         BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
-        PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldBlockSoundProfile, WorldDimension,
     };
+    use std::collections::BTreeMap;
     use uuid::Uuid;
 
     const CROSSHAIR_BLOCK_POS: BlockPos = BlockPos { x: 0, y: 1, z: 3 };
@@ -533,6 +562,38 @@ mod tests {
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
     const VANILLA_PLAYER_OFFHAND_SLOT: i32 = 40;
     const VANILLA_WORLD_BORDER_ABSOLUTE_MAX_SIZE: i32 = 29_999_984;
+
+    #[derive(Default)]
+    struct RecordingAudioSink {
+        positioned_sounds: Vec<bbb_world::SoundEventState>,
+    }
+
+    impl AudioEventSink for RecordingAudioSink {
+        fn counters(&self) -> bbb_control::AudioCounters {
+            bbb_control::AudioCounters::default()
+        }
+
+        fn set_sound_event_registry(&mut self, _registry: bbb_audio::SoundEventRegistry) {}
+
+        fn play_positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
+            self.positioned_sounds.push(state.clone());
+        }
+
+        fn play_entity_sound(
+            &mut self,
+            _state: &bbb_world::SoundEntityEventState,
+            _position: Option<[f64; 3]>,
+        ) {
+        }
+
+        fn stop_sound(&mut self, _state: &bbb_world::StopSoundEventState) {}
+
+        fn tick_entity_sound_positions(
+            &mut self,
+            _command: bbb_audio::TickEntitySoundPositionsCommand,
+        ) {
+        }
+    }
 
     fn set_local_spectator(world: &mut WorldStore) {
         world.apply_game_event(ProtocolGameEvent {
@@ -1042,6 +1103,7 @@ mod tests {
             &mut world,
             &mut counters,
             &commands,
+            None,
             1.0,
             0,
         );
@@ -1092,6 +1154,7 @@ mod tests {
             &mut world,
             &mut counters,
             &commands,
+            None,
             1.0,
             1,
         );
@@ -1125,6 +1188,7 @@ mod tests {
             &mut world,
             &mut counters,
             &commands,
+            None,
             1.0,
             1,
         );
@@ -1162,6 +1226,7 @@ mod tests {
             &mut world,
             &mut counters,
             &commands,
+            None,
             1.0,
             1,
         );
@@ -1222,6 +1287,7 @@ mod tests {
             &mut world,
             &mut counters,
             &commands,
+            None,
             1.0,
             0,
         );
@@ -1260,6 +1326,7 @@ mod tests {
             &mut world,
             &mut counters,
             &commands,
+            None,
             1.0,
             18,
         );
@@ -1311,6 +1378,7 @@ mod tests {
             &mut world,
             &mut counters,
             &commands,
+            None,
             1.0,
             0,
         );
@@ -1347,6 +1415,7 @@ mod tests {
             &mut world,
             &mut counters,
             &commands,
+            None,
             1.0,
             1,
         );
@@ -1361,6 +1430,65 @@ mod tests {
             Some(0)
         );
         assert_eq!(world.local_player().interaction.destroying_block_ticks, 1);
+        assert_eq!(counters.player_action_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn held_left_mouse_same_target_emits_vanilla_block_hit_sound_every_four_ticks() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.destroy_block_held = true;
+        let mut world = world_with_crosshair_block();
+        world.set_default_block_sound_profiles(BTreeMap::from([(
+            "minecraft:grass_block".to_string(),
+            WorldBlockSoundProfile {
+                hit_sound: "minecraft:block.grass.hit".to_string(),
+                volume: 1.0,
+                pitch: 1.2,
+            },
+        )]));
+        world.set_local_destroying_block_hit(CROSSHAIR_BLOCK_POS, ProtocolDirection::North);
+        let mut counters = NetCounters::default();
+        let mut audio = RecordingAudioSink::default();
+
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Some(&mut audio),
+            1.0,
+            1,
+        );
+        advance_destroying_block_at_partial_tick(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            Some(&mut audio),
+            1.0,
+            1,
+        );
+
+        assert_eq!(audio.positioned_sounds.len(), 1);
+        let sound = &audio.positioned_sounds[0];
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.grass.hit")
+        );
+        assert_eq!(sound.source, "block");
+        assert_eq!(
+            sound.position,
+            ProtocolVec3d {
+                x: 0.5,
+                y: 1.5,
+                z: 3.5,
+            }
+        );
+        assert_eq!(sound.volume, 0.25);
+        assert_eq!(sound.pitch, 0.6);
         assert_eq!(counters.player_action_commands_queued, 0);
         assert!(rx.try_recv().is_err());
     }

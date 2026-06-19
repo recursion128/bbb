@@ -1,7 +1,10 @@
 use anyhow::Result;
 use bbb_control::{shared_snapshot, AudioCounters, NetCounters};
-use bbb_pack::{BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog};
-use bbb_world::{WorldBlockDestroyProfile, WorldStore};
+use bbb_pack::{
+    BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
+    BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog,
+};
+use bbb_world::{WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldStore};
 use std::collections::BTreeMap;
 use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
@@ -157,6 +160,18 @@ fn main() -> Result<()> {
             }
             Err(err) => {
                 tracing::warn!(?err, "continuing without block destroy profiles");
+            }
+        }
+        match roots.load_block_sound_profile_catalog() {
+            Ok(catalog) => {
+                world.set_default_block_sound_profiles(block_sound_profiles_for_world(&catalog));
+                tracing::info!(
+                    block_sound_profiles = catalog.len(),
+                    "loaded block sound profiles"
+                );
+            }
+            Err(err) => {
+                tracing::warn!(?err, "continuing without block sound profiles");
             }
         }
     }
@@ -584,6 +599,24 @@ fn world_block_destroy_profile(profile: &PackBlockDestroyProfile) -> WorldBlockD
     WorldBlockDestroyProfile {
         destroy_time_tenths: profile.destroy_time_tenths,
         requires_correct_tool: profile.requires_correct_tool,
+    }
+}
+
+fn block_sound_profiles_for_world(
+    catalog: &BlockSoundProfileCatalog,
+) -> BTreeMap<String, WorldBlockSoundProfile> {
+    catalog
+        .profiles()
+        .iter()
+        .map(|(block_name, profile)| (block_name.clone(), world_block_sound_profile(profile)))
+        .collect()
+}
+
+fn world_block_sound_profile(profile: &PackBlockSoundProfile) -> WorldBlockSoundProfile {
+    WorldBlockSoundProfile {
+        hit_sound: profile.hit_sound.clone(),
+        volume: profile.volume,
+        pitch: profile.pitch,
     }
 }
 

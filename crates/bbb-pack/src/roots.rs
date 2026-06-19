@@ -7,6 +7,7 @@ use crate::{
     atlas_sources::{load_atlas_texture_entries, AtlasTextureEntry},
     block_destroy_profiles::BlockDestroyProfileCatalog,
     block_models::BlockModelCatalog,
+    block_sound_profiles::BlockSoundProfileCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
     item_cuboid_models::ItemCuboidModelCatalog,
     item_models::ItemModelCatalog,
@@ -241,6 +242,10 @@ impl PackRoots {
 
     pub fn load_block_destroy_profile_catalog(&self) -> Result<BlockDestroyProfileCatalog> {
         BlockDestroyProfileCatalog::load(self)
+    }
+
+    pub fn load_block_sound_profile_catalog(&self) -> Result<BlockSoundProfileCatalog> {
+        BlockSoundProfileCatalog::load(self)
     }
 
     pub fn load_waypoint_style_catalog(&self) -> Result<WaypointStyleCatalog> {
