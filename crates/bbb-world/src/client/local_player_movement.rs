@@ -1760,6 +1760,8 @@ mod tests {
     const COCOA_AGE_2_SOUTH_BLOCK_STATE_ID: i32 = 9490;
     const OAK_SHELF_NORTH_BLOCK_STATE_ID: i32 = 3121;
     const OAK_SHELF_SOUTH_BLOCK_STATE_ID: i32 = 3137;
+    const COPPER_GOLEM_STATUE_STANDING_NORTH_BLOCK_STATE_ID: i32 = 27288;
+    const WAXED_OXIDIZED_COPPER_GOLEM_STATUE_STANDING_NORTH_BLOCK_STATE_ID: i32 = 27512;
     const AMETHYST_CLUSTER_NORTH_BLOCK_STATE_ID: i32 = 23405;
     const AMETHYST_CLUSTER_SOUTH_BLOCK_STATE_ID: i32 = 23409;
     const AMETHYST_CLUSTER_UP_BLOCK_STATE_ID: i32 = 23413;
@@ -2707,6 +2709,11 @@ mod tests {
             ("sculk shrieker", SCULK_SHRIEKER_IDLE_BLOCK_STATE_ID, 1.5),
             ("heavy core", HEAVY_CORE_DRY_BLOCK_STATE_ID, 1.5),
             (
+                "copper golem statue",
+                COPPER_GOLEM_STATUE_STANDING_NORTH_BLOCK_STATE_ID,
+                1.875,
+            ),
+            (
                 "up-facing amethyst cluster",
                 AMETHYST_CLUSTER_UP_BLOCK_STATE_ID,
                 1.4375,
@@ -3049,6 +3056,33 @@ mod tests {
 
             assert!(
                 pose.position.z > min_z && pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_respects_copper_golem_statue_collision() {
+        for (name, block_state_id) in [
+            (
+                "copper golem statue",
+                COPPER_GOLEM_STATUE_STANDING_NORTH_BLOCK_STATE_ID,
+            ),
+            (
+                "waxed oxidized copper golem statue",
+                WAXED_OXIDIZED_COPPER_GOLEM_STATUE_STANDING_NORTH_BLOCK_STATE_ID,
+            ),
+        ] {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z > 0.887 && pose.position.z <= 0.888,
                 "{name} position was {:?}",
                 pose.position
             );

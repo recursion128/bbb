@@ -198,6 +198,9 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if is_shelf_block_name(block_name) {
             return shelf_collision_shape(&block.block_properties);
         }
+        if is_copper_golem_statue_block_name(block_name) {
+            return Some(copper_golem_statue_collision_shape());
+        }
         if is_floor_skull_block_name(block_name) {
             return Some(BlockCollisionShape::single(floor_skull_collision_box(
                 block_name,
@@ -456,6 +459,12 @@ fn is_amethyst_cluster_block_name(block_name: &str) -> bool {
             | "minecraft:medium_amethyst_bud"
             | "minecraft:small_amethyst_bud"
     )
+}
+
+fn is_copper_golem_statue_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path == "copper_golem_statue" || path.ends_with("_copper_golem_statue"))
 }
 
 fn is_sculk_sensor_block_name(block_name: &str) -> bool {
@@ -1020,6 +1029,10 @@ fn shelf_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockC
         ])
         .rotate_to_direction(facing),
     )
+}
+
+fn copper_golem_statue_collision_shape() -> BlockCollisionShape {
+    BlockCollisionShape::single(BlockCollisionBox::centered_column(10.0, 10.0, 0.0, 14.0))
 }
 
 fn floor_skull_collision_box(block_name: &str) -> BlockCollisionBox {
@@ -2652,6 +2665,33 @@ mod tests {
         assert_f64_near(shape_box.max_x, 12.0 * PX);
         assert_f64_near(shape_box.max_y, 3.0 * PX);
         assert_f64_near(shape_box.max_z, 12.0 * PX);
+    }
+
+    #[test]
+    fn copper_golem_statue_shape_matches_vanilla_column() {
+        for block_name in [
+            "minecraft:copper_golem_statue",
+            "minecraft:exposed_copper_golem_statue",
+            "minecraft:waxed_oxidized_copper_golem_statue",
+        ] {
+            assert!(
+                is_copper_golem_statue_block_name(block_name),
+                "{block_name}"
+            );
+        }
+        assert!(!is_copper_golem_statue_block_name("minecraft:copper_golem"));
+
+        let shape = copper_golem_statue_collision_shape();
+        let mut boxes = shape.boxes();
+        let shape_box = boxes.next().expect("shape box");
+        assert!(boxes.next().is_none());
+
+        assert_f64_near(shape_box.min_x, 3.0 * PX);
+        assert_f64_near(shape_box.min_y, 0.0);
+        assert_f64_near(shape_box.min_z, 3.0 * PX);
+        assert_f64_near(shape_box.max_x, 13.0 * PX);
+        assert_f64_near(shape_box.max_y, 14.0 * PX);
+        assert_f64_near(shape_box.max_z, 13.0 * PX);
     }
 
     #[test]

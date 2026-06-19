@@ -498,6 +498,7 @@ When an agent does any of the following, update this file in the same slice:
       - daylight detector
       - sculk sensor / calibrated sculk sensor / sculk shrieker
       - heavy core
+      - copper golem statue
       - dragon egg
       - decorated pot
       - chest
@@ -541,6 +542,10 @@ When an agent does any of the following, update this file in the same slice:
       - `amethyst_cluster`, `large_amethyst_bud`, `medium_amethyst_bud`, and
         `small_amethyst_bud` follow vanilla `AmethystClusterBlock` collision:
         `Block.boxZ(width, 16 - height, 16)` rotated with `Shapes.rotateAll`.
+      - `copper_golem_statue` variants follow vanilla
+        `CopperGolemStatueBlock` collision: fixed
+        `Block.column(10.0, 0.0, 14.0)` independent of pose, facing,
+        waterlogged, weathered, or waxed state.
       - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
         registration so they do not block local movement.
       - `cobweb` applies vanilla `entityInside` stuck movement multipliers:
