@@ -301,7 +301,6 @@ When an agent does any of the following, update this file in the same slice:
         - local Jump Boost jump impulse
         - local Slow Falling gravity clamp
         - local Levitation vertical velocity targeting
-      - full flying friction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
         walking and passenger player packet thresholds
   - Block destroy:
@@ -429,7 +428,11 @@ When an agent does any of the following, update this file in the same slice:
         gravity clamp
       - synced local player Levitation effect id `24` as the vanilla vertical
         velocity target
-      - basic abilities-driven flying movement with no ordinary gravity
+      - abilities-driven flying movement with no ordinary gravity
+      - vanilla flying horizontal input:
+        - uses synced abilities `flying_speed` as per-tick acceleration
+        - doubles acceleration while sprinting
+        - applies vanilla `0.91` post-move air drag to horizontal velocity
       - jump/sneak vertical controls while flying
       - vanilla 0.6 Y-velocity damping while flying
       - vanilla default 0.6 step-up onto bottom slabs/stairs and low ground

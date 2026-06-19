@@ -29,14 +29,13 @@ const VANILLA_MOB_EFFECT_DOLPHINS_GRACE_ID: i32 = 29;
 const LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE: f64 = 0.1;
 const LOCAL_INPUT_DEFAULT_GRAVITY_ATTRIBUTE: f64 = 0.08;
 const LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE: f64 = 0.42;
-const LOCAL_INPUT_DEFAULT_FLYING_SPEED_ATTRIBUTE: f64 = 0.05;
-const LOCAL_INPUT_DEFAULT_FLY_SPEED_BLOCKS_PER_SECOND: f64 = 10.89;
 const LOCAL_INPUT_SPRINT_SPEED_MULTIPLIER: f64 =
     LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND / LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
 const LOCAL_INPUT_FLY_SPRINT_SPEED_MULTIPLIER: f64 = 2.0;
 const LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER: f64 = 0.3;
 const LOCAL_INPUT_FLY_VERTICAL_SPEED_MULTIPLIER: f64 = 3.0;
 const LOCAL_INPUT_FLY_VERTICAL_DAMPING: f64 = 0.6;
+const LOCAL_INPUT_FLY_AIR_DRAG: f64 = 0.91;
 const LOCAL_PHYSICS_TICK_SECONDS: f64 = 0.05;
 const LOCAL_VERTICAL_FRICTION: f64 = 0.98;
 const LOCAL_INPUT_FLUID_SPEED_PER_TICK: f64 = 0.02;
@@ -173,8 +172,33 @@ fn advance_local_player_physics_step(
     }
 
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
-    let speed = local_player_horizontal_speed(world, pose, input);
-    let mut requested_x = move_x * speed * step_seconds;
+    let (mut requested_x, mut requested_z, flying_horizontal_velocity) = match flying {
+        Some(abilities) => {
+            let (requested_x, requested_z, next_velocity_x, next_velocity_z) =
+                local_player_flying_air_travel(
+                    pose.delta_movement.x,
+                    pose.delta_movement.z,
+                    move_x,
+                    move_z,
+                    abilities,
+                    input,
+                    step_ticks,
+                );
+            (
+                requested_x,
+                requested_z,
+                Some((next_velocity_x, next_velocity_z)),
+            )
+        }
+        None => {
+            let speed = local_player_horizontal_speed(world, pose, input);
+            (
+                move_x * speed * step_seconds,
+                move_z * speed * step_seconds,
+                None,
+            )
+        }
+    };
     let requested_y = match flying {
         Some(abilities) => {
             let vertical_input = if input.focused {
@@ -190,7 +214,6 @@ fn advance_local_player_physics_step(
         }
         None => pose.delta_movement.y * step_ticks,
     };
-    let mut requested_z = move_z * speed * step_seconds;
     if should_back_off_from_edge(world, pose, input, requested_y) {
         (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
     }
@@ -207,8 +230,9 @@ fn advance_local_player_physics_step(
     pose.position.z += movement.z;
 
     let tick_span = step_ticks.max(f64::EPSILON);
-    let horizontal_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON
-        || (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    let x_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON;
+    let z_collision = (movement.z - requested_z).abs() > COLLISION_EPSILON;
+    let horizontal_collision = x_collision || z_collision;
     let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
     let on_ground = vertical_collision && requested_y < 0.0 || local_player_supported(world, pose);
     let fluid_contact = local_player_fluid_contact(world, pose);
@@ -223,15 +247,21 @@ fn advance_local_player_physics_step(
         y: movement.y / tick_span,
         z: movement.z / tick_span,
     };
-    if horizontal_collision {
-        if (movement.x - requested_x).abs() > COLLISION_EPSILON {
-            pose.delta_movement.x = 0.0;
-        }
-        if (movement.z - requested_z).abs() > COLLISION_EPSILON {
-            pose.delta_movement.z = 0.0;
-        }
+    if x_collision {
+        pose.delta_movement.x = 0.0;
+    }
+    if z_collision {
+        pose.delta_movement.z = 0.0;
     }
     if flying.is_some() {
+        if let Some((next_velocity_x, next_velocity_z)) = flying_horizontal_velocity {
+            if !x_collision {
+                pose.delta_movement.x = next_velocity_x;
+            }
+            if !z_collision {
+                pose.delta_movement.z = next_velocity_z;
+            }
+        }
         if vertical_collision {
             pose.delta_movement.y = 0.0;
         } else {
@@ -871,10 +901,6 @@ fn local_player_horizontal_speed(
     pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
 ) -> f64 {
-    if let Some(abilities) = local_player_flying_abilities(world) {
-        return local_player_flying_horizontal_speed(abilities, input);
-    }
-
     let movement_speed_scale = local_player_movement_speed_attribute_value(world)
         / LOCAL_INPUT_DEFAULT_MOVEMENT_SPEED_ATTRIBUTE;
     let mut speed = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * movement_speed_scale;
@@ -956,13 +982,32 @@ fn local_player_effective_gravity_per_tick(world: &WorldStore, current_velocity:
     }
 }
 
-fn local_player_flying_horizontal_speed(
+fn local_player_flying_air_travel(
+    current_velocity_x: f64,
+    current_velocity_z: f64,
+    move_x: f64,
+    move_z: f64,
+    abilities: LocalPlayerAbilitiesState,
+    input: LocalPlayerInputState,
+    step_ticks: f64,
+) -> (f64, f64, f64, f64) {
+    let speed = local_player_flying_air_acceleration(abilities, input);
+    let velocity_x = current_velocity_x + move_x * speed;
+    let velocity_z = current_velocity_z + move_z * speed;
+    let drag = LOCAL_INPUT_FLY_AIR_DRAG.powf(step_ticks);
+    (
+        velocity_x * step_ticks,
+        velocity_z * step_ticks,
+        velocity_x * drag,
+        velocity_z * drag,
+    )
+}
+
+fn local_player_flying_air_acceleration(
     abilities: LocalPlayerAbilitiesState,
     input: LocalPlayerInputState,
 ) -> f64 {
-    let flying_speed_scale =
-        f64::from(abilities.flying_speed).max(0.0) / LOCAL_INPUT_DEFAULT_FLYING_SPEED_ATTRIBUTE;
-    let mut speed = LOCAL_INPUT_DEFAULT_FLY_SPEED_BLOCKS_PER_SECOND * flying_speed_scale;
+    let mut speed = f64::from(abilities.flying_speed).max(0.0);
     if input.sprint {
         speed *= LOCAL_INPUT_FLY_SPRINT_SPEED_MULTIPLIER;
     }
@@ -2969,10 +3014,13 @@ mod tests {
             )
             .unwrap();
 
-        let expected_step =
-            LOCAL_INPUT_DEFAULT_FLY_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        let expected_step = f64::from(0.05_f32);
         assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+        assert_f64_near(
+            pose.delta_movement.z,
+            expected_step * LOCAL_INPUT_FLY_AIR_DRAG,
+            0.000001,
+        );
         assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
     }
 
@@ -3159,6 +3207,57 @@ mod tests {
     }
 
     #[test]
+    fn local_player_flying_horizontal_velocity_accumulates_and_drags() {
+        let mut world = WorldStore::new();
+        apply_flying_abilities(&mut world, 0.05);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 64.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let first = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+        let acceleration = f64::from(0.05_f32);
+        assert_f64_near(first.position.z, 0.5 + acceleration, 0.000001);
+        assert_f64_near(
+            first.delta_movement.z,
+            acceleration * LOCAL_INPUT_FLY_AIR_DRAG,
+            0.000001,
+        );
+
+        let second = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+        let second_step = first.delta_movement.z + acceleration;
+        assert_f64_near(
+            second.position.z,
+            0.5 + acceleration + second_step,
+            0.000001,
+        );
+        assert_f64_near(
+            second.delta_movement.z,
+            second_step * LOCAL_INPUT_FLY_AIR_DRAG,
+            0.000001,
+        );
+    }
+
+    #[test]
     fn local_player_flying_uses_abilities_speed_and_sprint_multiplier() {
         let mut world = WorldStore::new();
         apply_flying_abilities(&mut world, 0.1);
@@ -3180,12 +3279,13 @@ mod tests {
             )
             .unwrap();
 
-        let expected_step = LOCAL_INPUT_DEFAULT_FLY_SPEED_BLOCKS_PER_SECOND
-            * (0.1 / LOCAL_INPUT_DEFAULT_FLYING_SPEED_ATTRIBUTE)
-            * LOCAL_INPUT_FLY_SPRINT_SPEED_MULTIPLIER
-            * LOCAL_PHYSICS_TICK_SECONDS;
+        let expected_step = f64::from(0.1_f32) * LOCAL_INPUT_FLY_SPRINT_SPEED_MULTIPLIER;
         assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
-        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+        assert_f64_near(
+            pose.delta_movement.z,
+            expected_step * LOCAL_INPUT_FLY_AIR_DRAG,
+            0.000001,
+        );
         assert_f64_near(pose.position.y, 64.0, 0.000001);
     }
 
