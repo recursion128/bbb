@@ -103,10 +103,9 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
                     queue_attack_entity_command(counters, net_commands, hit.entity_id);
                 }
                 Some(CrosshairTarget::Block(hit)) => {
-                    if !block_target_within_world_border(world, hit.pos) {
-                        return;
+                    if block_target_within_world_border(world, hit.pos) {
+                        start_destroy_block(counters, world, net_commands, hit);
                     }
-                    start_destroy_block(counters, world, net_commands, hit);
                 }
                 None => {}
             }
@@ -1156,7 +1155,7 @@ mod tests {
     }
 
     #[test]
-    fn left_mouse_press_on_block_outside_world_border_does_not_start_destroy_or_swing() {
+    fn left_mouse_press_on_block_outside_world_border_swings_without_destroying() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
@@ -1176,7 +1175,11 @@ mod tests {
         assert!(input.destroy_block_held);
         assert_eq!(world.local_player().interaction.destroying_block, None);
         assert_eq!(counters.player_action_commands_queued, 0);
-        assert_eq!(counters.swing_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
         assert!(rx.try_recv().is_err());
     }
 
