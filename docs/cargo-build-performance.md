@@ -122,8 +122,10 @@ runs the repeatable local `sccache` experiment:
 The focused test defaults to `-p bbb-world command_tree --quiet` when no cargo
 test arguments are supplied. The command refuses to reuse existing disposable
 measurement targets so warm cache state cannot accidentally invalidate the
-result. Remove those disposable targets with `scripts/cargo-dev.sh clean-target`
-after recording the numbers and timing report paths.
+result. It copies the clean full-workspace timing report to
+`/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-<run-suffix>.html` and
+prints the matching cleanup commands. Remove those disposable targets with
+`scripts/cargo-dev.sh clean-target` after recording the numbers.
 
 ## Command Matrix
 
@@ -867,3 +869,49 @@ Installed Recheck 3:
 This recheck keeps the same policy: do not make `sccache` a default repo
 setting. For this workload, explicit `RUSTC_WRAPPER=sccache` did not reduce
 new-worker focused test time, and Rust cache hits stayed at zero.
+
+Installed Live Recheck:
+
+- Command:
+  `scripts/cargo-dev.sh sccache-eval 20260619-live -p bbb-world command_tree --quiet`
+- Clean full workspace with `sccache`:
+  - Wall time: 175.35s.
+  - Target size before cleanup: 3.2G.
+  - Result: all tests passed.
+  - Timing report copied to:
+    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619-live.html`
+  - `sccache` stats:
+    - compile requests: 217
+    - executed: 156
+    - cache hits: 1 C/C++ hit
+    - Rust cache hits: 0
+    - Rust cache misses: 155
+    - non-cacheable calls: 59
+    - cache size after run: 2 GiB
+- New worker target focused test with `sccache`:
+  - Wall time: 52.37s.
+  - Target size before cleanup: 644M.
+  - Result: 1 test passed.
+  - `sccache` stats:
+    - compile requests: 46
+    - executed: 29
+    - cache hits: 0
+    - Rust cache misses: 29
+    - non-cacheable calls: 17
+- New worker target focused test without `sccache`:
+  - Wall time: 50.29s.
+  - Target size before cleanup: 642M.
+  - Result: 1 test passed.
+- Warm focused default with `sccache` on `/tmp/bbb-target-main`:
+  - Wall time: 0.19s.
+  - Result: 1 test passed.
+  - `sccache` compile requests: 0
+- Disposable measurement targets removed after recording:
+  - `/tmp/bbb-target-sccache-clean-20260619-live`
+  - `/tmp/bbb-target-sccache-worker-20260619-live`
+  - `/tmp/bbb-target-nosccache-worker-20260619-live`
+
+This live recheck keeps `sccache` opt-in. The new worker focused test was
+2.08s faster without `sccache`, Rust cache hits remained zero, and warm focused
+iteration came from the stable `/tmp/bbb-target-main` cache rather than from
+`sccache`.

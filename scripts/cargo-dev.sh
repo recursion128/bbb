@@ -101,6 +101,34 @@ show_sccache_stats() {
   sccache --show-stats || true
 }
 
+copy_timing_report() {
+  target="$1"
+  suffix="$2"
+  timing_dir="$target/cargo-timings"
+  if [ ! -d "$timing_dir" ]; then
+    echo "timing report not found: $timing_dir"
+    return
+  fi
+
+  timing_report="$(
+    find "$timing_dir" -type f -name 'cargo-timing*.html' ! -name 'cargo-timing.html' |
+      sort |
+      tail -n 1
+  )"
+  if [ -z "$timing_report" ] && [ -f "$timing_dir/cargo-timing.html" ]; then
+    timing_report="$timing_dir/cargo-timing.html"
+  fi
+  if [ -z "$timing_report" ]; then
+    echo "timing report not found: $timing_dir"
+    return
+  fi
+
+  mkdir -p /tmp/bbb-cargo-timings
+  copied_report="/tmp/bbb-cargo-timings/cargo-timing-${suffix}.html"
+  cp "$timing_report" "$copied_report"
+  echo "timing report copied: $copied_report"
+}
+
 run_sccache_eval() {
   if [ "$#" -lt 1 ]; then
     echo "sccache-eval requires a run suffix" >&2
@@ -151,6 +179,7 @@ EOF
     /usr/bin/time -p cargo test --workspace --timings --quiet
   )
   du -sh "$clean_target"
+  copy_timing_report "$clean_target" "sccache-clean-${run_suffix}"
   show_sccache_stats
 
   echo
@@ -182,6 +211,19 @@ EOF
     /usr/bin/time -p cargo test "$@"
   )
   show_sccache_stats
+
+  cat <<EOF
+
+Disposable measurement targets were kept for review:
+  $clean_target
+  $worker_target
+  $nosccache_worker_target
+
+Clean them after recording results with:
+  scripts/cargo-dev.sh clean-target ${clean_target}
+  scripts/cargo-dev.sh clean-target ${worker_target}
+  scripts/cargo-dev.sh clean-target ${nosccache_worker_target}
+EOF
 }
 
 if [ "$#" -eq 0 ]; then
