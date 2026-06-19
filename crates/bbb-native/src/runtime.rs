@@ -468,12 +468,15 @@ fn hotbar_item_icons(
     partial_tick: f32,
 ) -> [Option<HudItemIcon>; HUD_HOTBAR_SLOTS] {
     let mut icons = std::array::from_fn(|_| None);
+    let selected_slot = usize::from(world.local_player().selected_hotbar_slot.min(8));
+    let using_selected_item = world.local_player().interaction.using_item;
     for (slot_index, item) in world.inventory().hotbar_item_states().iter().enumerate() {
         icons[slot_index] = hud_item_icon_for_stack(
             world,
             item_runtime,
             &item.item,
             item.local_selected_bundle_item_index(),
+            using_selected_item && slot_index == selected_slot,
             partial_tick,
         );
     }
@@ -530,6 +533,7 @@ fn hud_inventory_screen_with_local_state(
                         &slot.item,
                         (slot.local_selected_bundle_item_index >= 0)
                             .then_some(slot.local_selected_bundle_item_index),
+                        false,
                         partial_tick,
                     )
                 }),
@@ -1355,7 +1359,9 @@ fn push_merchant_trade_item(
     y: i32,
     item: ItemStackSummary,
 ) {
-    if let Some(icon) = hud_item_icon_for_stack(world, item_runtime, &item, None, partial_tick) {
+    if let Some(icon) =
+        hud_item_icon_for_stack(world, item_runtime, &item, None, false, partial_tick)
+    {
         items.push(HudInventoryItem { x, y, icon });
     }
 }
@@ -1368,9 +1374,14 @@ fn hud_stonecutter_recipe_items(
 ) -> Vec<HudInventoryItem> {
     let mut items = Vec::new();
     for option in stonecutter_visible_recipe_option_stacks(world, scroll_row) {
-        if let Some(icon) =
-            hud_item_icon_for_stack(world, item_runtime, &option.stack, None, partial_tick)
-        {
+        if let Some(icon) = hud_item_icon_for_stack(
+            world,
+            item_runtime,
+            &option.stack,
+            None,
+            false,
+            partial_tick,
+        ) {
             items.push(HudInventoryItem {
                 x: option.x,
                 y: option.y,
@@ -2527,10 +2538,14 @@ fn hud_item_icon_for_stack(
     item_runtime: Option<&NativeItemRuntime>,
     item: &bbb_protocol::packets::ItemStackSummary,
     local_selected_bundle_item_index: Option<i32>,
+    using_item: bool,
     partial_tick: f32,
 ) -> Option<HudItemIcon> {
-    let icon = item_runtime?
-        .icon_for_stack_with_bundle_selected_item(item, local_selected_bundle_item_index)?;
+    let icon = item_runtime?.icon_for_stack_with_bundle_selected_item_and_using_item(
+        item,
+        local_selected_bundle_item_index,
+        using_item,
+    )?;
     Some(HudItemIcon {
         layers: icon
             .layers
@@ -3009,6 +3024,53 @@ mod tests {
         let offhand = screen.slots.iter().find(|slot| slot.slot_id == 45).unwrap();
         assert_eq!(offhand.x, 77);
         assert_eq!(offhand.y, 62);
+    }
+
+    #[test]
+    fn hotbar_item_icons_use_using_item_model_for_selected_slot_only() {
+        let root = unique_runtime_temp_dir("hotbar-using-item");
+        write_runtime_bow_item_assets(&root);
+        let item_runtime =
+            NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
+        let stack = item_stack(0, 1);
+        let normal_uv = item_runtime.icon_for_stack(&stack).unwrap().layers[0].uv;
+        let using_uv = item_runtime
+            .icon_for_stack_with_bundle_selected_item_and_using_item(&stack, None, true)
+            .unwrap()
+            .layers[0]
+            .uv;
+        assert_ne!(normal_uv, using_uv);
+
+        let mut world = WorldStore::new();
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 0,
+            item: stack.clone(),
+        });
+        world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {
+            slot: 1,
+            item: stack,
+        });
+        assert!(world.set_local_selected_hotbar_slot(0));
+        world.set_local_using_item(true);
+
+        let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
+
+        assert_eq!(
+            icons[0].as_ref().unwrap().layers[0].uv,
+            HudUvRect {
+                min: using_uv.min,
+                max: using_uv.max,
+            }
+        );
+        assert_eq!(
+            icons[1].as_ref().unwrap().layers[0].uv,
+            HudUvRect {
+                min: normal_uv.min,
+                max: normal_uv.max,
+            }
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -6122,6 +6184,107 @@ mod tests {
             r#"public class Items {
                 public static final Item TEST_COMBO = registerItem("test_combo");
             }"#,
+        );
+    }
+
+    fn write_runtime_bow_item_assets(root: &Path) {
+        let assets = runtime_assets_dir(root);
+        write_runtime_json(
+            &assets.join("atlases").join("items.json"),
+            r#"{
+                "sources": [
+                    {
+                        "type": "minecraft:directory",
+                        "prefix": "item/",
+                        "source": "item"
+                    }
+                ]
+            }"#,
+        );
+        write_runtime_json(
+            &assets.join("atlases").join("blocks.json"),
+            r#"{
+                "sources": []
+            }"#,
+        );
+        write_runtime_json(
+            &assets.join("items").join("bow.json"),
+            r#"{
+                "model": {
+                    "type": "minecraft:condition",
+                    "property": "minecraft:using_item",
+                    "on_false": {
+                        "type": "minecraft:model",
+                        "model": "minecraft:item/bow"
+                    },
+                    "on_true": {
+                        "type": "minecraft:range_dispatch",
+                        "property": "minecraft:use_duration",
+                        "scale": 0.05,
+                        "entries": [
+                            {
+                                "threshold": 0.65,
+                                "model": {
+                                    "type": "minecraft:model",
+                                    "model": "minecraft:item/bow_pulling_1"
+                                }
+                            },
+                            {
+                                "threshold": 0.9,
+                                "model": {
+                                    "type": "minecraft:model",
+                                    "model": "minecraft:item/bow_pulling_2"
+                                }
+                            }
+                        ],
+                        "fallback": {
+                            "type": "minecraft:model",
+                            "model": "minecraft:item/bow_pulling_0"
+                        }
+                    }
+                }
+            }"#,
+        );
+        write_flat_runtime_item_model_and_texture(&assets, "bow", &[80, 120, 160, 255]);
+        write_flat_runtime_item_model_and_texture(&assets, "bow_pulling_0", &[160, 80, 120, 255]);
+        write_flat_runtime_item_model_and_texture(&assets, "bow_pulling_1", &[120, 160, 80, 255]);
+        write_flat_runtime_item_model_and_texture(&assets, "bow_pulling_2", &[160, 120, 80, 255]);
+        write_runtime_json(&assets.join("lang").join("en_us.json"), "{}");
+        write_runtime_json(
+            &root
+                .join("sources")
+                .join(bbb_pack::MC_VERSION)
+                .join("net")
+                .join("minecraft")
+                .join("world")
+                .join("item")
+                .join("Items.java"),
+            r#"public class Items {
+                public static final Item BOW = registerItem("bow");
+            }"#,
+        );
+    }
+
+    fn write_flat_runtime_item_model_and_texture(assets: &Path, model_id: &str, rgba: &[u8]) {
+        write_runtime_json(
+            &assets
+                .join("models")
+                .join("item")
+                .join(format!("{model_id}.json")),
+            &format!(
+                r#"{{
+                "textures": {{
+                    "layer0": "minecraft:item/{model_id}"
+                }}
+            }}"#
+            ),
+        );
+        write_runtime_png(
+            &assets
+                .join("textures")
+                .join("item")
+                .join(format!("{model_id}.png")),
+            rgba,
         );
     }
 

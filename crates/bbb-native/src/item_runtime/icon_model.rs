@@ -101,12 +101,14 @@ impl ItemIconModel {
         component_patch: Option<&DataComponentPatchSummary>,
         default_max_damage: Option<i32>,
         bundle_selected_item_index: Option<i32>,
+        using_item: bool,
     ) -> Vec<ItemIconTextureLayer> {
         let mut no_bundle_selected_item = || Vec::new();
         self.icon_layers_with_bundle_resolver(
             component_patch,
             default_max_damage,
             bundle_selected_item_index,
+            using_item,
             &mut no_bundle_selected_item,
         )
     }
@@ -116,6 +118,7 @@ impl ItemIconModel {
         component_patch: Option<&DataComponentPatchSummary>,
         default_max_damage: Option<i32>,
         bundle_selected_item_index: Option<i32>,
+        using_item: bool,
         resolve_bundle_selected_item: &mut impl FnMut() -> Vec<ItemIconTextureLayer>,
     ) -> Vec<ItemIconTextureLayer> {
         match self {
@@ -158,12 +161,14 @@ impl ItemIconModel {
                     {
                         on_true
                     }
+                    ItemModelPropertyKind::UsingItem if using_item => on_true,
                     _ => on_false,
                 };
                 branch.icon_layers_with_bundle_resolver(
                     component_patch,
                     default_max_damage,
                     bundle_selected_item_index,
+                    using_item,
                     resolve_bundle_selected_item,
                 )
             }
@@ -174,6 +179,7 @@ impl ItemIconModel {
                         component_patch,
                         default_max_damage,
                         bundle_selected_item_index,
+                        using_item,
                         resolve_bundle_selected_item,
                     )
                 })
@@ -200,6 +206,7 @@ pub(super) fn contains_runtime_condition(model: &ItemModelDefinition) -> bool {
                     | ItemModelPropertyKind::Damaged
                     | ItemModelPropertyKind::BundleHasSelectedItem
                     | ItemModelPropertyKind::HasComponent
+                    | ItemModelPropertyKind::UsingItem
             ) || contains_runtime_condition(on_true)
                 || contains_runtime_condition(on_false)
         }
@@ -261,6 +268,7 @@ pub(super) fn item_icon_model_ref_for_definition(
                     | ItemModelPropertyKind::Damaged
                     | ItemModelPropertyKind::BundleHasSelectedItem
                     | ItemModelPropertyKind::HasComponent
+                    | ItemModelPropertyKind::UsingItem
             ) {
                 ItemIconModelRef::Condition {
                     property: property.clone(),

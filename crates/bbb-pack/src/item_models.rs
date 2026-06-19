@@ -249,6 +249,7 @@ pub enum ItemModelPropertyKind {
     BundleHasSelectedItem,
     Damaged,
     HasComponent,
+    UsingItem,
     Other,
 }
 
@@ -267,6 +268,7 @@ impl ItemModelProperty {
             "minecraft:bundle/has_selected_item" => ItemModelPropertyKind::BundleHasSelectedItem,
             "minecraft:damaged" => ItemModelPropertyKind::Damaged,
             "minecraft:has_component" => ItemModelPropertyKind::HasComponent,
+            "minecraft:using_item" => ItemModelPropertyKind::UsingItem,
             _ => ItemModelPropertyKind::Other,
         }
     }
@@ -1721,6 +1723,51 @@ mod tests {
         );
         assert!(matches!(on_true.as_ref(), ItemModelDefinition::Empty));
         assert!(matches!(on_false.as_ref(), ItemModelDefinition::Empty));
+    }
+
+    #[test]
+    fn item_model_catalog_structures_unit_using_item_condition_property() {
+        let definition = ClientItemDefinition::from_json_bytes(
+            br#"{
+              "model": {
+                "type": "minecraft:condition",
+                "property": "minecraft:using_item",
+                "on_false": {
+                  "type": "minecraft:model",
+                  "model": "minecraft:item/bow"
+                },
+                "on_true": {
+                  "type": "minecraft:model",
+                  "model": "minecraft:item/bow_pulling_0"
+                }
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let ItemModelDefinition::Condition {
+            property,
+            on_true,
+            on_false,
+            ..
+        } = &definition.model
+        else {
+            panic!("root should parse as a using-item condition item model");
+        };
+        assert_eq!(property.property_type, "minecraft:using_item");
+        assert_eq!(property.kind(), ItemModelPropertyKind::UsingItem);
+        assert_eq!(
+            property.raw(),
+            &serde_json::json!({"property": "minecraft:using_item"})
+        );
+        assert!(matches!(
+            on_true.as_ref(),
+            ItemModelDefinition::Model { model, .. } if model == "minecraft:item/bow_pulling_0"
+        ));
+        assert!(matches!(
+            on_false.as_ref(),
+            ItemModelDefinition::Model { model, .. } if model == "minecraft:item/bow"
+        ));
     }
 
     #[test]

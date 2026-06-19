@@ -341,7 +341,12 @@ impl NativeItemRuntime {
         Some(
             self.item_icon_models
                 .get(item_id)
-                .and_then(|model| model.icon_layers(None, None, None).into_iter().next())
+                .and_then(|model| {
+                    model
+                        .icon_layers(None, None, None, false)
+                        .into_iter()
+                        .next()
+                })
                 .map(|layer| layer.texture_index)
                 .unwrap_or(self.textures.fallback_index()),
         )
@@ -396,18 +401,32 @@ impl NativeItemRuntime {
         stack: &ItemStackSummary,
         bundle_selected_item_index: Option<i32>,
     ) -> Option<ItemAtlasIcon> {
+        self.icon_for_stack_with_bundle_selected_item_and_using_item(
+            stack,
+            bundle_selected_item_index,
+            false,
+        )
+    }
+
+    pub(crate) fn icon_for_stack_with_bundle_selected_item_and_using_item(
+        &self,
+        stack: &ItemStackSummary,
+        bundle_selected_item_index: Option<i32>,
+        using_item: bool,
+    ) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(stack.item_id?)?;
         self.icon_for_resource_id(
             item_id,
             Some(&stack.component_patch),
             bundle_selected_item_index,
+            using_item,
         )
     }
 
     #[cfg(test)]
     pub(crate) fn icon_for_protocol_id(&self, protocol_id: i32) -> Option<ItemAtlasIcon> {
         let item_id = self.registry.as_ref()?.resource_id(protocol_id)?;
-        self.icon_for_resource_id(item_id, None, None)
+        self.icon_for_resource_id(item_id, None, None, false)
     }
 
     fn icon_for_resource_id(
@@ -415,6 +434,7 @@ impl NativeItemRuntime {
         item_id: &str,
         component_patch: Option<&DataComponentPatchSummary>,
         bundle_selected_item_index: Option<i32>,
+        using_item: bool,
     ) -> Option<ItemAtlasIcon> {
         let default_max_damage = self
             .registry
@@ -429,6 +449,7 @@ impl NativeItemRuntime {
                     component_patch,
                     default_max_damage,
                     bundle_selected_item_index,
+                    using_item,
                     0,
                 )
             })
@@ -453,6 +474,7 @@ impl NativeItemRuntime {
         component_patch: Option<&DataComponentPatchSummary>,
         default_max_damage: Option<i32>,
         bundle_selected_item_index: Option<i32>,
+        using_item: bool,
         depth: usize,
     ) -> Vec<ItemIconTextureLayer> {
         if depth >= ITEM_ICON_RECURSION_LIMIT {
@@ -465,6 +487,7 @@ impl NativeItemRuntime {
             component_patch,
             default_max_damage,
             bundle_selected_item_index,
+            using_item,
             &mut resolve_bundle_selected_item,
         )
     }
@@ -515,6 +538,7 @@ impl NativeItemRuntime {
                     Some(&template.component_patch),
                     default_max_damage,
                     None,
+                    false,
                     depth,
                 )
             })
