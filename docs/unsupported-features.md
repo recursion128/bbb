@@ -501,6 +501,7 @@ When an agent does any of the following, update this file in the same slice:
       - copper golem statue
       - dragon egg
       - decorated pot
+      - sign / hanging sign
       - chest
       - bed
       - cauldron
@@ -546,6 +547,9 @@ When an agent does any of the following, update this file in the same slice:
         `CopperGolemStatueBlock` collision: fixed
         `Block.column(10.0, 0.0, 14.0)` independent of pose, facing,
         waterlogged, weathered, or waxed state.
+      - standing signs, wall signs, ceiling hanging signs, and wall hanging
+        signs follow vanilla `.noCollision()` registration; their outline
+        shapes remain renderer/crosshair selection data only.
       - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
         registration so they do not block local movement.
       - `cobweb` applies vanilla `entityInside` stuck movement multipliers:

@@ -1778,6 +1778,10 @@ mod tests {
     const OAK_TOP_OPEN_NORTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7117;
     const OAK_TOP_OPEN_SOUTH_TRAPDOOR_BLOCK_STATE_ID: i32 = 7133;
     const STONE_PRESSURE_PLATE_BLOCK_STATE_ID: i32 = 6796;
+    const OAK_SIGN_ROTATION_0_BLOCK_STATE_ID: i32 = 5336;
+    const OAK_WALL_SIGN_NORTH_BLOCK_STATE_ID: i32 = 5828;
+    const OAK_HANGING_SIGN_ATTACHED_ROTATION_0_BLOCK_STATE_ID: i32 = 5908;
+    const OAK_WALL_HANGING_SIGN_NORTH_BLOCK_STATE_ID: i32 = 6676;
     const OAK_NORTH_FENCE_BLOCK_STATE_ID: i32 = 6988;
     const OAK_CLOSED_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8653;
     const OAK_OPEN_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8651;
@@ -3102,6 +3106,37 @@ mod tests {
         assert!(pose.position.z > 1.0, "position was {:?}", pose.position);
         assert!(!pose.horizontal_collision);
         assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_does_not_collide_with_sign_outline() {
+        let cases = [
+            ("standing sign", OAK_SIGN_ROTATION_0_BLOCK_STATE_ID),
+            ("wall sign", OAK_WALL_SIGN_NORTH_BLOCK_STATE_ID),
+            (
+                "ceiling hanging sign",
+                OAK_HANGING_SIGN_ATTACHED_ROTATION_0_BLOCK_STATE_ID,
+            ),
+            (
+                "wall hanging sign",
+                OAK_WALL_HANGING_SIGN_NORTH_BLOCK_STATE_ID,
+            ),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
     }
 
     #[test]

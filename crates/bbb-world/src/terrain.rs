@@ -254,6 +254,7 @@ fn is_cutout_block_name(name: &str) -> bool {
         || is_lever_block_name(name)
         || is_button_block_name(name)
         || is_pressure_plate_block_name(name)
+        || is_sign_block_name(name)
         || is_lantern_block_name(name)
         || is_lightning_rod_block_name(name)
         || is_end_rod_block_name(name)
@@ -417,6 +418,11 @@ fn is_pressure_plate_block_name(name: &str) -> bool {
             | "minecraft:heavy_weighted_pressure_plate"
             | "minecraft:polished_blackstone_pressure_plate"
     )
+}
+
+fn is_sign_block_name(name: &str) -> bool {
+    name.strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_sign"))
 }
 
 fn is_lantern_block_name(name: &str) -> bool {
@@ -671,6 +677,21 @@ mod tests {
             "minecraft:light_weighted_pressure_plate",
             "minecraft:heavy_weighted_pressure_plate",
             "minecraft:polished_blackstone_pressure_plate",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:oak_sign",
+            "minecraft:crimson_sign",
+            "minecraft:oak_wall_sign",
+            "minecraft:warped_wall_sign",
+            "minecraft:oak_hanging_sign",
+            "minecraft:bamboo_hanging_sign",
+            "minecraft:oak_wall_hanging_sign",
+            "minecraft:crimson_wall_hanging_sign",
         ] {
             assert_eq!(
                 classify_terrain_material(Some(name)),
