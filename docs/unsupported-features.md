@@ -165,19 +165,23 @@ When an agent does any of the following, update this file in the same slice:
     - atlas mip animation
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
-      smoke side effects
+      simple smoke/flame/explosion/cloud side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
     - Drains level-particle spawn batches.
-    - Emits renderer spawn batches for vanilla `LevelEventHandler` smoke side
-      effects:
+    - Emits renderer spawn batches for simple vanilla `LevelEventHandler`
+      side effects:
       - event `1501`: eight `minecraft:large_smoke` particles above lava
         extinguish
       - event `1502`: five `minecraft:smoke` particles inside redstone torch
         burnout
       - event `1503`: sixteen `minecraft:smoke` particles above end portal
         frame fill
+      - event `2004`: twenty paired `minecraft:smoke` and `minecraft:flame`
+        particles around the block center
+      - event `2008`: one centered `minecraft:explosion` particle
+      - event `2009`: eight `minecraft:cloud` particles above the block
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size

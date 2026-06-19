@@ -75,6 +75,13 @@ struct ParticleCommandResolver {
 }
 
 #[derive(Debug, Clone)]
+struct SimpleParticleTemplate {
+    particle_type: ParticleTypeInfo,
+    sprite_ids: Vec<String>,
+    missing_sprite_count: usize,
+}
+
+#[derive(Debug, Clone)]
 struct NativeParticleAtlas {
     width: u32,
     height: u32,
@@ -261,6 +268,63 @@ impl ParticleCommandResolver {
                 }
                 self.simple_particle_batch(SMOKE_PARTICLE_TYPE_ID, spawns)
             }
+            BLAZE_SMOKE_LEVEL_EVENT => {
+                let mut batch = ParticleSpawnBatch::default();
+                let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
+                let flame = self.simple_particle_template(FLAME_PARTICLE_TYPE_ID);
+                let smoke = self.append_template_result(&mut batch, smoke);
+                let flame = self.append_template_result(&mut batch, flame);
+
+                for _ in 0..20 {
+                    let position = Vec3d {
+                        x: f64::from(event.pos.x) + 0.5 + (random.next_double() - 0.5) * 2.0,
+                        y: f64::from(event.pos.y) + 0.5 + (random.next_double() - 0.5) * 2.0,
+                        z: f64::from(event.pos.z) + 0.5 + (random.next_double() - 0.5) * 2.0,
+                    };
+                    if let Some(smoke) = smoke.as_ref() {
+                        batch.commands.push(self.command_from_template(
+                            smoke,
+                            position,
+                            Vec3d::default(),
+                            false,
+                        ));
+                    }
+                    if let Some(flame) = flame.as_ref() {
+                        batch.commands.push(self.command_from_template(
+                            flame,
+                            position,
+                            Vec3d::default(),
+                            false,
+                        ));
+                    }
+                }
+                batch
+            }
+            EXPLOSION_LEVEL_EVENT => self.simple_particle_batch(
+                EXPLOSION_PARTICLE_TYPE_ID,
+                vec![(
+                    Vec3d {
+                        x: f64::from(event.pos.x) + 0.5,
+                        y: f64::from(event.pos.y) + 0.5,
+                        z: f64::from(event.pos.z) + 0.5,
+                    },
+                    Vec3d::default(),
+                )],
+            ),
+            SPLASH_CLOUD_LEVEL_EVENT => {
+                let mut spawns = Vec::with_capacity(8);
+                for _ in 0..8 {
+                    spawns.push((
+                        Vec3d {
+                            x: f64::from(event.pos.x) + random.next_double(),
+                            y: f64::from(event.pos.y) + 1.2,
+                            z: f64::from(event.pos.z) + random.next_double(),
+                        },
+                        Vec3d::default(),
+                    ));
+                }
+                self.simple_particle_batch(CLOUD_PARTICLE_TYPE_ID, spawns)
+            }
             _ => ParticleSpawnBatch::default(),
         }
     }
@@ -273,17 +337,39 @@ impl ParticleCommandResolver {
         if spawns.is_empty() {
             return ParticleSpawnBatch::default();
         }
+        let template = match self.simple_particle_template(particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let commands = spawns
+            .into_iter()
+            .map(|(position, velocity)| {
+                self.command_from_template(&template, position, velocity, false)
+            })
+            .collect();
+
+        ParticleSpawnBatch {
+            commands,
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        }
+    }
+
+    fn simple_particle_template(
+        &self,
+        particle_type_id: i32,
+    ) -> Result<SimpleParticleTemplate, ParticleSpawnBatch> {
         let Some(particle_type) = vanilla_particle_type(particle_type_id) else {
-            return ParticleSpawnBatch {
+            return Err(ParticleSpawnBatch {
                 unknown_particle_type_count: 1,
                 ..ParticleSpawnBatch::default()
-            };
+            });
         };
         let Some(definition) = self.definitions.definition(particle_type.name) else {
-            return ParticleSpawnBatch {
+            return Err(ParticleSpawnBatch {
                 missing_definition_count: 1,
                 ..ParticleSpawnBatch::default()
-            };
+            });
         };
 
         let sprite_ids = definition.textures.clone();
@@ -291,26 +377,46 @@ impl ParticleCommandResolver {
             .iter()
             .filter(|sprite_id| self.sprites.sprite(sprite_id).is_none())
             .count();
-        let commands = spawns
-            .into_iter()
-            .map(|(position, velocity)| {
-                self.command_for_type(
-                    particle_type,
-                    &sprite_ids,
-                    position,
-                    velocity,
-                    particle_type.override_limiter,
-                    false,
-                    0,
-                )
-            })
-            .collect();
-
-        ParticleSpawnBatch {
-            commands,
+        Ok(SimpleParticleTemplate {
+            particle_type,
+            sprite_ids,
             missing_sprite_count,
-            ..ParticleSpawnBatch::default()
+        })
+    }
+
+    fn append_template_result(
+        &self,
+        batch: &mut ParticleSpawnBatch,
+        result: Result<SimpleParticleTemplate, ParticleSpawnBatch>,
+    ) -> Option<SimpleParticleTemplate> {
+        match result {
+            Ok(template) => {
+                batch.missing_sprite_count += template.missing_sprite_count;
+                Some(template)
+            }
+            Err(diagnostic) => {
+                append_particle_batch(batch, diagnostic);
+                None
+            }
         }
+    }
+
+    fn command_from_template(
+        &self,
+        template: &SimpleParticleTemplate,
+        position: Vec3d,
+        velocity: Vec3d,
+        always_show: bool,
+    ) -> ParticleSpawnCommand {
+        self.command_for_type(
+            template.particle_type,
+            &template.sprite_ids,
+            position,
+            velocity,
+            template.particle_type.override_limiter,
+            always_show,
+            0,
+        )
     }
 
     fn command(
@@ -357,9 +463,22 @@ impl ParticleCommandResolver {
     }
 }
 
+fn append_particle_batch(batch: &mut ParticleSpawnBatch, mut other: ParticleSpawnBatch) {
+    batch.commands.append(&mut other.commands);
+    batch.missing_definition_count += other.missing_definition_count;
+    batch.missing_sprite_count += other.missing_sprite_count;
+    batch.unknown_particle_type_count += other.unknown_particle_type_count;
+}
+
 const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const END_PORTAL_FRAME_FILL_LEVEL_EVENT: i32 = 1503;
+const BLAZE_SMOKE_LEVEL_EVENT: i32 = 2004;
+const EXPLOSION_LEVEL_EVENT: i32 = 2008;
+const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
+const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
+const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
+const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 
@@ -532,7 +651,7 @@ mod tests {
     }
 
     #[test]
-    fn level_event_particles_map_vanilla_smoke_side_effects() {
+    fn level_event_particles_map_vanilla_simple_side_effects() {
         let resolver = test_resolver(0);
 
         let mut lava_random = LevelEventSoundRandomState::with_seed(0);
@@ -544,6 +663,7 @@ mod tests {
             55,
             "minecraft:large_smoke",
             [10.730_967_787_376_657, 65.2, -2.759_463_584_328_514],
+            false,
         );
 
         let mut burnout_random = LevelEventSoundRandomState::with_seed(0);
@@ -566,6 +686,7 @@ mod tests {
                 64.582_450_455_210_06,
                 -2.469_737_796_929_42,
             ],
+            false,
         );
 
         let mut frame_fill_random = LevelEventSoundRandomState::with_seed(0);
@@ -582,6 +703,73 @@ mod tests {
             62,
             "minecraft:smoke",
             [10.586_612_920_266_246, 64.8125, -2.597_298_844_123_192_6],
+            false,
+        );
+
+        let mut blaze_random = LevelEventSoundRandomState::with_seed(0);
+        let blaze = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2004,
+                ..level_event_packet(2004)
+            },
+            &mut blaze_random,
+        );
+        assert_eq!(blaze.len(), 40);
+        assert_particle_command(
+            &blaze.commands[0],
+            62,
+            "minecraft:smoke",
+            [
+                10.961_935_574_753_314,
+                63.981_072_831_342_97,
+                -2.225_165_149_299_783_7,
+            ],
+            false,
+        );
+        assert_particle_command(
+            &blaze.commands[1],
+            32,
+            "minecraft:flame",
+            [
+                10.961_935_574_753_314,
+                63.981_072_831_342_97,
+                -2.225_165_149_299_783_7,
+            ],
+            false,
+        );
+
+        let mut explosion_random = LevelEventSoundRandomState::with_seed(0);
+        let explosion = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2008,
+                ..level_event_packet(2008)
+            },
+            &mut explosion_random,
+        );
+        assert_eq!(explosion.len(), 1);
+        assert_particle_command(
+            &explosion.commands[0],
+            23,
+            "minecraft:explosion",
+            [10.5, 64.5, -2.5],
+            true,
+        );
+
+        let mut cloud_random = LevelEventSoundRandomState::with_seed(0);
+        let cloud = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 2009,
+                ..level_event_packet(2009)
+            },
+            &mut cloud_random,
+        );
+        assert_eq!(cloud.len(), 8);
+        assert_particle_command(
+            &cloud.commands[0],
+            4,
+            "minecraft:cloud",
+            [10.730_967_787_376_657, 65.2, -2.759_463_584_328_514],
+            false,
         );
     }
 
@@ -622,6 +810,7 @@ mod tests {
                 "generic_7",
                 "generic_6",
                 "flame",
+                "explosion_0",
                 "smoke_0",
                 "large_smoke_0",
             ],
@@ -655,6 +844,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:flame"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("explosion.json"),
+            r#"{
+              "textures": [
+                "minecraft:explosion_0"
               ]
             }"#,
         );
@@ -728,6 +925,7 @@ mod tests {
         particle_type_id: i32,
         particle_id: &str,
         position: [f64; 3],
+        override_limiter: bool,
     ) {
         assert_eq!(command.particle_type_id, particle_type_id);
         assert_eq!(command.particle_id, particle_id);
@@ -735,7 +933,7 @@ mod tests {
             assert_close(*actual, expected);
         }
         assert_eq!(command.velocity, [0.0, 0.0, 0.0]);
-        assert!(!command.override_limiter);
+        assert_eq!(command.override_limiter, override_limiter);
         assert!(!command.always_show);
         assert_eq!(command.raw_options_len, 0);
     }
