@@ -301,11 +301,6 @@ When an agent does any of the following, update this file in the same slice:
         - in-world powder snow contact freezing/unfreezing tick updates
         - full vanilla post-`Entity.move` `deltaMovement` travel ordering
           beyond the current direct local walking prediction
-      - remaining status-effect movement cases beyond local support for:
-        - local Speed/Slowness movement-speed modifiers
-        - local Jump Boost jump impulse
-        - local Slow Falling gravity clamp
-        - local Levitation vertical velocity targeting
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
         walking and passenger player packet thresholds
   - Block destroy:
@@ -434,6 +429,9 @@ When an agent does any of the following, update this file in the same slice:
           interpolates the block factor back toward `1.0`
         - `minecraft:water` and `minecraft:bubble_column` at the current
           player block position do not fall back to the block below
+      - vanilla block jump factor for local jumps:
+        - `minecraft:honey_block` applies `0.5` to the base jump strength
+        - Jump Boost remains additive after the block jump factor
       - jumps only from ground
       - local player `movement_speed` / `sneaking_speed` attributes with the
         vanilla default sneaking-speed reduction

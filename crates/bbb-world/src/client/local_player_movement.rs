@@ -89,6 +89,8 @@ const LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE: f64 = 140.0;
 const POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE: f64 = -0.05;
 const SLOW_BLOCK_SPEED_FACTOR: f64 = 0.4;
 const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
+const HONEY_BLOCK_JUMP_FACTOR: f64 = 0.5;
+const DEFAULT_BLOCK_JUMP_FACTOR: f64 = 1.0;
 
 pub(super) fn integrate_local_player_input_pose(
     world: &WorldStore,
@@ -174,7 +176,7 @@ fn advance_local_player_physics_step(
     }
 
     if flying.is_none() && input.focused && input.jump && pose.on_ground {
-        let jump_velocity = local_player_jump_velocity(world);
+        let jump_velocity = local_player_jump_velocity(world, pose);
         if jump_velocity > 1.0e-5 {
             pose.delta_movement.y = pose.delta_movement.y.max(jump_velocity);
         }
@@ -1065,15 +1067,47 @@ fn local_player_powder_snow_speed_modifier(world: &WorldStore) -> f64 {
     POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE * frozen_percent
 }
 
-fn local_player_jump_velocity(world: &WorldStore) -> f64 {
+fn local_player_jump_velocity(world: &WorldStore, pose: LocalPlayerPoseState) -> f64 {
     let mut velocity = local_player_attribute_value(world, VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID)
         .unwrap_or(LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE)
-        .max(0.0);
+        .max(0.0)
+        * local_player_block_jump_factor(world, pose);
     if let Some(amplifier) = local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_JUMP_BOOST_ID)
     {
         velocity += amplified_effect_amount(amplifier, JUMP_BOOST_VELOCITY_PER_LEVEL);
     }
     velocity
+}
+
+fn local_player_block_jump_factor(world: &WorldStore, pose: LocalPlayerPoseState) -> f64 {
+    let here_pos = BlockPos {
+        x: local_player_block_floor(pose.position.x),
+        y: local_player_block_floor(pose.position.y),
+        z: local_player_block_floor(pose.position.z),
+    };
+    let here_factor = world
+        .probe_block(here_pos)
+        .and_then(|block| block.block_name.as_deref().map(block_jump_factor))
+        .unwrap_or(DEFAULT_BLOCK_JUMP_FACTOR);
+    if (here_factor - DEFAULT_BLOCK_JUMP_FACTOR).abs() > f64::EPSILON {
+        return here_factor;
+    }
+
+    let below_pos = BlockPos {
+        y: local_player_block_floor(pose.position.y - 0.500001),
+        ..here_pos
+    };
+    world
+        .probe_block(below_pos)
+        .and_then(|block| block.block_name.as_deref().map(block_jump_factor))
+        .unwrap_or(DEFAULT_BLOCK_JUMP_FACTOR)
+}
+
+fn block_jump_factor(block_name: &str) -> f64 {
+    match block_name {
+        "minecraft:honey_block" => HONEY_BLOCK_JUMP_FACTOR,
+        _ => DEFAULT_BLOCK_JUMP_FACTOR,
+    }
 }
 
 fn local_player_airborne_vertical_velocity(
@@ -3995,6 +4029,69 @@ mod tests {
             .unwrap();
 
         assert_f64_near(pose.position.y, 1.7, 0.000001);
+        assert!(!pose.on_ground);
+        assert!(pose.delta_movement.y > 0.0);
+    }
+
+    #[test]
+    fn local_player_honey_block_jump_factor_scales_base_jump() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, HONEY_BLOCK_STATE_ID);
+        let honey_top_y = 15.0 / 16.0;
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, honey_top_y, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_jump = LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE * HONEY_BLOCK_JUMP_FACTOR;
+        assert_f64_near(pose.position.y, honey_top_y + expected_jump, 0.000001);
+        assert!(!pose.on_ground);
+        assert!(pose.delta_movement.y > 0.0);
+    }
+
+    #[test]
+    fn local_player_honey_block_jump_factor_keeps_jump_boost_additive() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, HONEY_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_mob_effect(mob_effect(
+            123,
+            VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
+            0,
+        )));
+        let honey_top_y = 15.0 / 16.0;
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, honey_top_y, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    jump: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_jump = LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE * HONEY_BLOCK_JUMP_FACTOR
+            + JUMP_BOOST_VELOCITY_PER_LEVEL;
+        assert_f64_near(pose.position.y, honey_top_y + expected_jump, 0.000001);
         assert!(!pose.on_ground);
         assert!(pose.delta_movement.y > 0.0);
     }
