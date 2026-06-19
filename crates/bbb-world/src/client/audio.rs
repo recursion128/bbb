@@ -180,6 +180,24 @@ impl WorldStore {
         ))
     }
 
+    pub fn level_event_sound_with_random(
+        &self,
+        event: ProtocolLevelEvent,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        if let Some(state) = self.level_event_sound(event) {
+            return Some(state);
+        }
+        let sound = random_level_event_sound(event.event_type, event.data, &mut next_float)?;
+        Some(block_sound_state(
+            crate::protocol_block_pos(event.pos),
+            sound.event_id,
+            sound.volume,
+            sound.pitch,
+            sound.source,
+        ))
+    }
+
     fn level_event_block_break_sound_state(
         &self,
         event: ProtocolLevelEvent,
@@ -284,6 +302,140 @@ fn fixed_level_event_sound(event_type: i32) -> Option<FixedLevelEventSound> {
         _ => return None,
     };
     Some(sound)
+}
+
+fn random_level_event_sound(
+    event_type: i32,
+    data: i32,
+    next_float: &mut impl FnMut() -> f32,
+) -> Option<FixedLevelEventSound> {
+    let sound = match event_type {
+        1009 if data == 0 => FixedLevelEventSound {
+            event_id: "minecraft:block.fire.extinguish",
+            source: "block",
+            volume: 0.5,
+            pitch: triangle_pitch(2.6, 0.8, next_float),
+        },
+        1009 if data == 1 => FixedLevelEventSound {
+            event_id: "minecraft:entity.generic.extinguish_fire",
+            source: "block",
+            volume: 0.7,
+            pitch: triangle_pitch(1.6, 0.4, next_float),
+        },
+        1015 => hostile_triangle("minecraft:entity.ghast.warn", 10.0, next_float),
+        1016 => hostile_triangle("minecraft:entity.ghast.shoot", 10.0, next_float),
+        1017 => hostile_triangle("minecraft:entity.ender_dragon.shoot", 10.0, next_float),
+        1018 => hostile_triangle("minecraft:entity.blaze.shoot", 2.0, next_float),
+        1019 => hostile_triangle(
+            "minecraft:entity.zombie.attack_wooden_door",
+            2.0,
+            next_float,
+        ),
+        1020 => hostile_triangle("minecraft:entity.zombie.attack_iron_door", 2.0, next_float),
+        1021 => hostile_triangle("minecraft:entity.zombie.break_wooden_door", 2.0, next_float),
+        1022 => hostile_triangle("minecraft:entity.wither.break_block", 2.0, next_float),
+        1024 => hostile_triangle("minecraft:entity.wither.shoot", 2.0, next_float),
+        1025 => FixedLevelEventSound {
+            event_id: "minecraft:entity.bat.takeoff",
+            source: "neutral",
+            volume: 0.05,
+            pitch: triangle_pitch(1.0, 0.2, next_float),
+        },
+        1026 => hostile_triangle("minecraft:entity.zombie.infect", 2.0, next_float),
+        1027 => hostile_triangle(
+            "minecraft:entity.zombie_villager.converted",
+            2.0,
+            next_float,
+        ),
+        1029 => block_ranged("minecraft:block.anvil.destroy", 1.0, next_float),
+        1030 => block_ranged("minecraft:block.anvil.use", 1.0, next_float),
+        1031 => block_ranged("minecraft:block.anvil.land", 0.3, next_float),
+        1039 => FixedLevelEventSound {
+            event_id: "minecraft:entity.phantom.bite",
+            source: "hostile",
+            volume: 0.3,
+            pitch: ranged_pitch(0.9, 0.1, next_float),
+        },
+        1040 => hostile_triangle(
+            "minecraft:entity.zombie.converted_to_drowned",
+            2.0,
+            next_float,
+        ),
+        1041 => hostile_triangle("minecraft:entity.husk.converted_to_zombie", 2.0, next_float),
+        1042 => block_ranged("minecraft:block.grindstone.use", 1.0, next_float),
+        1043 => block_ranged("minecraft:item.book.page_turn", 1.0, next_float),
+        1044 => block_ranged("minecraft:block.smithing_table.use", 1.0, next_float),
+        1045 => block_ranged("minecraft:block.pointed_dripstone.land", 2.0, next_float),
+        1046 => block_ranged(
+            "minecraft:block.pointed_dripstone.drip_lava_into_cauldron",
+            2.0,
+            next_float,
+        ),
+        1047 => block_ranged(
+            "minecraft:block.pointed_dripstone.drip_water_into_cauldron",
+            2.0,
+            next_float,
+        ),
+        1048 => hostile_triangle(
+            "minecraft:entity.skeleton.converted_to_stray",
+            2.0,
+            next_float,
+        ),
+        1051 => FixedLevelEventSound {
+            event_id: "minecraft:entity.wind_charge.throw",
+            source: "block",
+            volume: 0.5,
+            pitch: 0.4 / (next_float().clamp(0.0, 1.0) * 0.4 + 0.8),
+        },
+        1501 => FixedLevelEventSound {
+            event_id: "minecraft:block.lava.extinguish",
+            source: "block",
+            volume: 0.5,
+            pitch: triangle_pitch(2.6, 0.8, next_float),
+        },
+        1502 => FixedLevelEventSound {
+            event_id: "minecraft:block.redstone_torch.burnout",
+            source: "block",
+            volume: 0.5,
+            pitch: triangle_pitch(2.6, 0.8, next_float),
+        },
+        _ => return None,
+    };
+    Some(sound)
+}
+
+fn hostile_triangle(
+    event_id: &'static str,
+    volume: f32,
+    next_float: &mut impl FnMut() -> f32,
+) -> FixedLevelEventSound {
+    FixedLevelEventSound {
+        event_id,
+        source: "hostile",
+        volume,
+        pitch: triangle_pitch(1.0, 0.2, next_float),
+    }
+}
+
+fn block_ranged(
+    event_id: &'static str,
+    volume: f32,
+    next_float: &mut impl FnMut() -> f32,
+) -> FixedLevelEventSound {
+    FixedLevelEventSound {
+        event_id,
+        source: "block",
+        volume,
+        pitch: ranged_pitch(0.9, 0.1, next_float),
+    }
+}
+
+fn triangle_pitch(mean: f32, spread: f32, next_float: &mut impl FnMut() -> f32) -> f32 {
+    mean + (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * spread
+}
+
+fn ranged_pitch(min: f32, range: f32, next_float: &mut impl FnMut() -> f32) -> f32 {
+    next_float().clamp(0.0, 1.0) * range + min
 }
 
 fn block_sound_state(
@@ -626,6 +778,66 @@ mod tests {
             .is_none());
     }
 
+    #[test]
+    fn level_event_sound_with_random_maps_randomized_vanilla_audio() {
+        let store = WorldStore::new();
+
+        let fire_extinguish = random_level_event_sound(&store, 1009, 0, &[0.25, 0.75]);
+        assert_eq!(
+            fire_extinguish.sound.location.as_deref(),
+            Some("minecraft:block.fire.extinguish")
+        );
+        assert_eq!(fire_extinguish.source, "block");
+        assert_close(fire_extinguish.volume, 0.5);
+        assert_close(fire_extinguish.pitch, 2.2);
+
+        let generic_extinguish = random_level_event_sound(&store, 1009, 1, &[0.25, 0.75]);
+        assert_eq!(
+            generic_extinguish.sound.location.as_deref(),
+            Some("minecraft:entity.generic.extinguish_fire")
+        );
+        assert_close(generic_extinguish.volume, 0.7);
+        assert_close(generic_extinguish.pitch, 1.4);
+
+        let ghast_warn = random_level_event_sound(&store, 1015, 0, &[0.75, 0.25]);
+        assert_eq!(
+            ghast_warn.sound.location.as_deref(),
+            Some("minecraft:entity.ghast.warn")
+        );
+        assert_eq!(ghast_warn.source, "hostile");
+        assert_close(ghast_warn.volume, 10.0);
+        assert_close(ghast_warn.pitch, 1.1);
+
+        let anvil_destroy = random_level_event_sound(&store, 1029, 0, &[0.5]);
+        assert_eq!(
+            anvil_destroy.sound.location.as_deref(),
+            Some("minecraft:block.anvil.destroy")
+        );
+        assert_close(anvil_destroy.volume, 1.0);
+        assert_close(anvil_destroy.pitch, 0.95);
+
+        let wind_charge = random_level_event_sound(&store, 1051, 0, &[0.5]);
+        assert_eq!(
+            wind_charge.sound.location.as_deref(),
+            Some("minecraft:entity.wind_charge.throw")
+        );
+        assert_eq!(wind_charge.source, "block");
+        assert_close(wind_charge.volume, 0.5);
+        assert_close(wind_charge.pitch, 0.4);
+
+        assert!(store
+            .level_event_sound_with_random(
+                LevelEvent {
+                    event_type: 1032,
+                    pos: ProtocolBlockPos { x: 0, y: 0, z: 0 },
+                    data: 0,
+                    global: false,
+                },
+                || 0.5,
+            )
+            .is_none());
+    }
+
     fn protocol_add_entity(id: i32) -> AddEntity {
         AddEntity {
             id,
@@ -649,5 +861,25 @@ mod tests {
 
     fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
         ProtocolVec3d { x, y, z }
+    }
+
+    fn random_level_event_sound(
+        store: &WorldStore,
+        event_type: i32,
+        data: i32,
+        samples: &[f32],
+    ) -> SoundEventState {
+        let mut samples = samples.iter().copied();
+        store
+            .level_event_sound_with_random(
+                LevelEvent {
+                    event_type,
+                    pos: ProtocolBlockPos { x: -1, y: 70, z: 4 },
+                    data,
+                    global: false,
+                },
+                || samples.next().unwrap(),
+            )
+            .unwrap()
     }
 }

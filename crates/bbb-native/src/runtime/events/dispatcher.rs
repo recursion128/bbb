@@ -1,3 +1,8 @@
+use std::{
+    sync::atomic::{AtomicU64, Ordering},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use bbb_audio::SoundEventRegistry;
 use bbb_control::NetCounters;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
@@ -12,6 +17,61 @@ use crate::particle_runtime::ParticleEventSink;
 use super::client_state::*;
 use super::control_state::apply_control_projection_event;
 
+const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
+const RANDOM_INCREMENT: u64 = 11;
+const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
+const RANDOM_FLOAT_MULTIPLIER: f32 = 5.960_464_5e-8;
+const SEED_UNIQUIFIER_INITIAL: u64 = 8_682_522_807_148_012;
+const SEED_UNIQUIFIER_MULTIPLIER: u64 = 1_181_783_497_276_652_981;
+
+static SEED_UNIQUIFIER: AtomicU64 = AtomicU64::new(SEED_UNIQUIFIER_INITIAL);
+
+#[derive(Debug, Clone)]
+pub(crate) struct LevelEventSoundRandomState {
+    seed: u64,
+}
+
+impl LevelEventSoundRandomState {
+    pub(crate) fn with_seed(seed: i64) -> Self {
+        Self {
+            seed: ((seed as u64) ^ RANDOM_MULTIPLIER) & RANDOM_MASK,
+        }
+    }
+
+    fn next_float(&mut self) -> f32 {
+        (self.next_bits(24) as f32) * RANDOM_FLOAT_MULTIPLIER
+    }
+
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        self.seed = self
+            .seed
+            .wrapping_mul(RANDOM_MULTIPLIER)
+            .wrapping_add(RANDOM_INCREMENT)
+            & RANDOM_MASK;
+        (self.seed >> (48 - bits)) as u32
+    }
+}
+
+impl Default for LevelEventSoundRandomState {
+    fn default() -> Self {
+        Self::with_seed(generate_unique_seed())
+    }
+}
+
+fn generate_unique_seed() -> i64 {
+    let unique = SEED_UNIQUIFIER
+        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |current| {
+            Some(current.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER))
+        })
+        .map(|previous| previous.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER))
+        .unwrap_or_else(|current| current.wrapping_mul(SEED_UNIQUIFIER_MULTIPLIER));
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos() as u64)
+        .unwrap_or(0);
+    (unique ^ nanos) as i64
+}
+
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
     rx: &mut mpsc::Receiver<NetEvent>,
@@ -19,7 +79,17 @@ pub(in crate::runtime) fn drain_net_events(
     counters: &mut NetCounters,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
 ) -> usize {
-    drain_net_events_with_sinks(rx, world, counters, net_commands, None, None, None)
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+    drain_net_events_with_sinks(
+        rx,
+        world,
+        counters,
+        net_commands,
+        None,
+        None,
+        None,
+        &mut level_event_sound_random,
+    )
 }
 
 #[cfg(test)]
@@ -30,7 +100,17 @@ pub(in crate::runtime) fn drain_net_events_with_audio(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     audio_events: Option<&mut dyn AudioEventSink>,
 ) -> usize {
-    drain_net_events_with_sinks(rx, world, counters, net_commands, audio_events, None, None)
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+    drain_net_events_with_sinks(
+        rx,
+        world,
+        counters,
+        net_commands,
+        audio_events,
+        None,
+        None,
+        &mut level_event_sound_random,
+    )
 }
 
 pub(in crate::runtime) fn drain_net_events_with_sinks(
@@ -41,6 +121,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
     mut audio_events: Option<&mut dyn AudioEventSink>,
     mut particle_events: Option<&mut dyn ParticleEventSink>,
     mut particle_renderer: Option<&mut bbb_renderer::Renderer>,
+    level_event_sound_random: &mut LevelEventSoundRandomState,
 ) -> usize {
     let mut drained = 0;
     while drained < 4096 {
@@ -304,7 +385,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::LevelEvent(event) => {
                 world.apply_level_event(event);
-                if let Some(state) = world.level_event_sound(event) {
+                if let Some(state) = world
+                    .level_event_sound_with_random(event, || level_event_sound_random.next_float())
+                {
                     emit_positioned_sound(&mut audio_events, &state);
                 }
             }

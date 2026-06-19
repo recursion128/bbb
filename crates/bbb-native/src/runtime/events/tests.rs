@@ -2867,6 +2867,7 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
     let mut world = WorldStore::new();
     let mut counters = NetCounters::default();
     let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
 
     assert_eq!(
         drain_net_events_with_sinks(
@@ -2877,6 +2878,7 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
             None,
             Some(&mut particles),
             None,
+            &mut level_event_sound_random,
         ),
         1
     );
@@ -3263,6 +3265,39 @@ fn fixed_level_event_emits_vanilla_positioned_sound() {
     assert_eq!(command.position, [8.5, 64.5, -1.5]);
     assert_close(command.packet_volume, 1.0);
     assert_close(command.packet_pitch, 1.2);
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
+fn randomized_level_event_emits_vanilla_positioned_sound() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1015,
+        pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+        data: 0,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:entity.ghast.warn");
+    assert_eq!(command.category, AudioCategory::Hostile);
+    assert_eq!(command.position, [-3.5, 70.5, 9.5]);
+    assert_close(command.packet_volume, 10.0);
+    assert_close(command.packet_pitch, 0.979_905_37);
     assert_eq!(world.counters().level_events_received, 1);
 }
 
@@ -4548,6 +4583,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "entity.firework_rocket.shoot": {
                 "sounds": ["fireworks/launch1"]
+            },
+            "entity.ghast.warn": {
+                "sounds": ["mob/ghast/affectionate_scream"]
             }
         }"#,
     )

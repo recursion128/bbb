@@ -232,7 +232,10 @@ When an agent does any of the following, update this file in the same slice:
     - source/category mapping
     - spatial/entity-following sounds
     - stop semantics
-    - randomized level-event sounds
+    - remaining level-event audio:
+      - jukebox song start/stop
+      - portal local ambience
+      - particle-coupled level-event side effects
     - device/runtime diagnostics
 - Evidence / boundary:
   - `bbb-audio` has:
@@ -247,6 +250,12 @@ When an agent does any of the following, update this file in the same slice:
       - crafter craft/fail
       - end portal frame fill
       - bone meal use
+    - native dispatcher playback for randomized vanilla `LevelEventHandler`
+      sounds using a runtime-local `LegacyRandomSource`-shaped `nextFloat()`:
+      - fire extinguish / generic extinguish
+      - ghast/blaze/dragon/wither/zombie/skeleton/phantom hostile effects
+      - anvil, grindstone, book, smithing table, dripstone, wind charge
+      - lava extinguish and redstone torch burnout sounds
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage

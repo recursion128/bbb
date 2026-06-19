@@ -46,6 +46,7 @@ use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     clear_color_for_world, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
     snapshot_is_running, take_control_screenshot, ClientAnimationTickState,
+    LevelEventSoundRandomState,
 };
 use startup::{
     build_window, create_event_loop, init_tracing, load_pack_roots, parse_args,
@@ -208,6 +209,7 @@ fn main() -> Result<()> {
     let exit_after_screenshot = args.exit_after_screenshot;
     let mut terrain_upload = TerrainUploadState::default();
     let mut client_animation_ticks = ClientAnimationTickState::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::default();
     let mut net_disconnect_requested = false;
     let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();
     let mut cursor_position = None;
@@ -429,6 +431,7 @@ fn main() -> Result<()> {
                         &mut renderer,
                         &mut net_counters,
                         &mut client_animation_ticks,
+                        &mut level_event_sound_random,
                         &mut terrain_upload,
                         &terrain_textures,
                         item_runtime.as_ref(),
@@ -548,6 +551,7 @@ fn main() -> Result<()> {
                     &mut renderer,
                     &mut net_counters,
                     &mut client_animation_ticks,
+                    &mut level_event_sound_random,
                     &mut terrain_upload,
                     &terrain_textures,
                     item_runtime.as_ref(),

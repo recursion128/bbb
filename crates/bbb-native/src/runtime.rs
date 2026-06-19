@@ -240,6 +240,7 @@ struct InventoryHudLocalState {
 }
 
 pub(crate) use control_requests::pump_control_net_requests;
+pub(crate) use events::LevelEventSoundRandomState;
 
 #[derive(Debug, Default)]
 pub(crate) struct ClientAnimationTickState {
@@ -297,6 +298,7 @@ pub(crate) fn pump_network_and_terrain(
     renderer: &mut bbb_renderer::Renderer,
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
+    level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_upload: &mut TerrainUploadState,
     terrain_textures: &TerrainTextureState,
     item_runtime: Option<&NativeItemRuntime>,
@@ -320,6 +322,7 @@ pub(crate) fn pump_network_and_terrain(
             audio_events_for_drain,
             particle_events_for_drain,
             Some(renderer),
+            level_event_sound_random,
         );
     }
     pump_control_net_requests(snapshot, net_commands, net_counters, world, code_of_conduct);
