@@ -169,6 +169,9 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if block_name == "minecraft:moving_piston" {
             return None;
         }
+        if block_name == "minecraft:nether_portal" {
+            return None;
+        }
         if block_name == "minecraft:big_dripleaf" {
             return big_dripleaf_collision_shape(&block.block_properties);
         }

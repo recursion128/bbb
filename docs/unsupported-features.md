@@ -505,6 +505,7 @@ When an agent does any of the following, update this file in the same slice:
       - decorated pot
       - sign / hanging sign
       - banner / wall banner
+      - nether portal plane
       - chest
       - bed
       - cauldron
@@ -565,6 +566,9 @@ When an agent does any of the following, update this file in the same slice:
       - standing banners and wall banners follow vanilla `.noCollision()`
         registration; their banner pole/cloth outline remains selection data
         and does not block local movement.
+      - `nether_portal` is translucent terrain and follows vanilla
+        `.noCollision()` local movement. Portal travel remains server/runtime
+        behavior driven by entity-inside semantics, not terrain collision.
       - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
         registration so they do not block local movement.
       - `cobweb` applies vanilla `entityInside` stuck movement multipliers:

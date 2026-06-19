@@ -556,7 +556,8 @@ fn is_pointed_dripstone_block_name(name: &str) -> bool {
 }
 
 fn is_translucent_block_name(name: &str) -> bool {
-    name.contains("glass")
+    name == "minecraft:nether_portal"
+        || name.contains("glass")
         || name.contains("ice")
         || name.contains("slime")
         || name.contains("honey")
@@ -575,6 +576,10 @@ mod tests {
         assert_eq!(
             classify_terrain_material(Some("minecraft:grass_block")),
             TerrainMaterialClass::Opaque
+        );
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:nether_portal")),
+            TerrainMaterialClass::Translucent
         );
         assert_eq!(
             classify_terrain_material(Some("minecraft:short_grass")),

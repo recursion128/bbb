@@ -1758,6 +1758,8 @@ mod tests {
     const SNOW_6_LAYERS_BLOCK_STATE_ID: i32 = 6924;
     const CACTUS_AGE_0_BLOCK_STATE_ID: i32 = 6929;
     const SOUL_SAND_BLOCK_STATE_ID: i32 = 6998;
+    const NETHER_PORTAL_X_BLOCK_STATE_ID: i32 = 7017;
+    const NETHER_PORTAL_Z_BLOCK_STATE_ID: i32 = 7018;
     const CAKE_BITES_0_BLOCK_STATE_ID: i32 = 7027;
     const CAKE_BITES_3_BLOCK_STATE_ID: i32 = 7030;
     const END_PORTAL_FRAME_EYE_NORTH_BLOCK_STATE_ID: i32 = 9469;
@@ -3208,6 +3210,29 @@ mod tests {
         let cases = [
             ("standing banner", WHITE_BANNER_ROTATION_0_BLOCK_STATE_ID),
             ("wall banner", WHITE_WALL_BANNER_NORTH_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_walks_through_nether_portal_plane() {
+        let cases = [
+            ("x-axis nether portal", NETHER_PORTAL_X_BLOCK_STATE_ID),
+            ("z-axis nether portal", NETHER_PORTAL_Z_BLOCK_STATE_ID),
         ];
 
         for (name, block_state_id) in cases {
