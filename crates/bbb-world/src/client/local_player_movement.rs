@@ -112,6 +112,13 @@ pub(super) fn apply_local_player_input_look(
     pose
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LocalPlayerBodyPose {
+    Standing,
+    Crouching,
+    Swimming,
+}
+
 fn advance_local_player_physics_step(
     world: &WorldStore,
     mut pose: LocalPlayerPoseState,
@@ -140,7 +147,7 @@ fn advance_local_player_physics_step(
     }
 
     let flying = local_player_flying_abilities(world);
-    pose.sneaking = local_player_should_crouch(world, pose, input, flying);
+    pose = local_player_update_body_pose(world, pose, input, flying);
     let initial_fluid_contact = local_player_fluid_contact(world, pose);
     if flying.is_none() && (initial_fluid_contact.in_water() || initial_fluid_contact.in_lava()) {
         return advance_local_player_fluid_physics_step(
@@ -734,36 +741,73 @@ fn next_local_player_fall_distance(previous: f64, vertical_movement: f64, on_gro
     }
 }
 
-fn local_player_should_crouch(
+fn local_player_update_body_pose(
     world: &WorldStore,
     pose: LocalPlayerPoseState,
     input: LocalPlayerInputState,
     flying: Option<LocalPlayerAbilitiesState>,
-) -> bool {
+) -> LocalPlayerPoseState {
     if flying.is_some() || world.local_player_vehicle_id().is_some() {
-        return false;
+        return local_player_with_body_pose(pose, LocalPlayerBodyPose::Standing);
     }
 
-    let crouching_pose = LocalPlayerPoseState {
-        sneaking: true,
-        ..pose
-    };
-    if !local_player_pose_fits(world, crouching_pose) {
-        return false;
+    let swimming_pose = local_player_with_body_pose(pose, LocalPlayerBodyPose::Swimming);
+    if !local_player_pose_fits(world, swimming_pose) {
+        return pose;
     }
 
-    input.focused && input.sneak
-        || !local_player_pose_fits(
-            world,
-            LocalPlayerPoseState {
-                sneaking: false,
-                ..pose
-            },
-        )
+    let desired_pose =
+        local_player_with_body_pose(pose, local_player_desired_body_pose(world, pose, input));
+    if local_player_pose_fits(world, desired_pose) {
+        return desired_pose;
+    }
+
+    let crouching_pose = local_player_with_body_pose(pose, LocalPlayerBodyPose::Crouching);
+    if local_player_pose_fits(world, crouching_pose) {
+        crouching_pose
+    } else {
+        swimming_pose
+    }
 }
 
 fn local_player_pose_fits(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
     !local_player_collides(world, LocalPlayerBounds::for_pose(pose))
+}
+
+fn local_player_desired_body_pose(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+) -> LocalPlayerBodyPose {
+    if local_player_should_swim(world, pose, input) {
+        LocalPlayerBodyPose::Swimming
+    } else if input.focused && input.sneak {
+        LocalPlayerBodyPose::Crouching
+    } else {
+        LocalPlayerBodyPose::Standing
+    }
+}
+
+fn local_player_should_swim(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+) -> bool {
+    if !input.focused || !input.sprint {
+        return false;
+    }
+
+    let fluid_contact = local_player_fluid_contact(world, pose);
+    fluid_contact.in_water() && (pose.swimming || fluid_contact.eye_in_water)
+}
+
+fn local_player_with_body_pose(
+    mut pose: LocalPlayerPoseState,
+    body_pose: LocalPlayerBodyPose,
+) -> LocalPlayerPoseState {
+    pose.sneaking = matches!(body_pose, LocalPlayerBodyPose::Crouching);
+    pose.swimming = matches!(body_pose, LocalPlayerBodyPose::Swimming);
+    pose
 }
 
 fn local_player_horizontal_speed(
@@ -781,7 +825,7 @@ fn local_player_horizontal_speed(
     if input.sprint {
         speed *= LOCAL_INPUT_SPRINT_SPEED_MULTIPLIER;
     }
-    if pose.sneaking {
+    if pose.sneaking || pose.swimming {
         speed *= local_player_attribute_value(world, VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID)
             .unwrap_or(LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER)
             .clamp(0.0, 1.0);
@@ -1825,6 +1869,7 @@ mod tests {
             standing.position
         );
         assert!(!standing.sneaking);
+        assert!(!standing.swimming);
 
         let mut crouching_world = flat_collision_world();
         set_test_block(&mut crouching_world, 0, 2, 1, OAK_TOP_SLAB_BLOCK_STATE_ID);
@@ -1853,6 +1898,7 @@ mod tests {
             crouching.position
         );
         assert!(crouching.sneaking);
+        assert!(!crouching.swimming);
         assert!(!crouching.horizontal_collision);
     }
 
@@ -1882,9 +1928,74 @@ mod tests {
             * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
             * LOCAL_PHYSICS_TICK_SECONDS;
         assert!(pose.sneaking);
+        assert!(!pose.swimming);
         assert!(!pose.horizontal_collision);
         assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
         assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
+    fn local_player_low_tunnel_forces_crawling_swimming_pose() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 2, 0, GRASS_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
+            * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
+            * LOCAL_PHYSICS_TICK_SECONDS;
+        assert!(!pose.sneaking);
+        assert!(pose.swimming);
+        assert!(!pose.horizontal_collision);
+        assert_f64_near(pose.body_height(), 0.6, 0.000001);
+        assert_f64_near(pose.eye_height(), 0.4, 0.000001);
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
+    fn local_player_underwater_sprint_uses_swimming_pose() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 2, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(!pose.sneaking);
+        assert!(pose.swimming);
+        assert_f64_near(pose.body_height(), 0.6, 0.000001);
+        assert_f64_near(pose.eye_height(), 0.4, 0.000001);
     }
 
     #[test]
@@ -1910,6 +2021,34 @@ mod tests {
             .unwrap();
 
         assert!(!pose.sneaking);
+        assert!(!pose.swimming);
+        assert_f64_near(pose.position.y, 1.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_low_tunnel_does_not_force_crawling_while_flying() {
+        let mut world = flat_collision_world();
+        apply_flying_abilities(&mut world, 0.05);
+        set_test_block(&mut world, 0, 2, 0, GRASS_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(!pose.sneaking);
+        assert!(!pose.swimming);
         assert_f64_near(pose.position.y, 1.0, 0.000001);
     }
 

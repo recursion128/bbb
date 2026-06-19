@@ -17,8 +17,10 @@ use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
 
 const STANDING_EYE_HEIGHT: f64 = 1.62;
 const CROUCHING_EYE_HEIGHT: f64 = 1.27;
+const SWIMMING_EYE_HEIGHT: f64 = 0.4;
 const STANDING_BODY_HEIGHT: f64 = 1.8;
 const CROUCHING_BODY_HEIGHT: f64 = 1.5;
+const SWIMMING_BODY_HEIGHT: f64 = 0.6;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocalPlayerState {
@@ -134,6 +136,8 @@ pub struct LocalPlayerPoseState {
     pub fall_distance: f64,
     #[serde(default)]
     pub sneaking: bool,
+    #[serde(default)]
+    pub swimming: bool,
     pub y_rot: f32,
     pub x_rot: f32,
     pub last_teleport_id: i32,
@@ -164,7 +168,9 @@ impl LocalPlayerPoseState {
     }
 
     pub fn eye_height(self) -> f64 {
-        if self.sneaking {
+        if self.swimming {
+            SWIMMING_EYE_HEIGHT
+        } else if self.sneaking {
             CROUCHING_EYE_HEIGHT
         } else {
             STANDING_EYE_HEIGHT
@@ -172,7 +178,9 @@ impl LocalPlayerPoseState {
     }
 
     pub fn body_height(self) -> f64 {
-        if self.sneaking {
+        if self.swimming {
+            SWIMMING_BODY_HEIGHT
+        } else if self.sneaking {
             CROUCHING_BODY_HEIGHT
         } else {
             STANDING_BODY_HEIGHT
@@ -187,6 +195,7 @@ impl LocalPlayerPoseState {
             horizontal_collision: false,
             fall_distance: 0.0,
             sneaking: false,
+            swimming: false,
             y_rot: state.y_rot,
             x_rot: state.x_rot,
             last_teleport_id,
@@ -349,6 +358,7 @@ impl WorldStore {
         let state = packet.apply_to_state(current);
         let pose = LocalPlayerPoseState {
             sneaking: current_pose.sneaking,
+            swimming: current_pose.swimming,
             ..LocalPlayerPoseState::from_position_state(state, packet.id)
         };
         self.local_player.pose = Some(pose);
@@ -364,6 +374,7 @@ impl WorldStore {
         let state = packet.apply_to_state(current_pose.position_state());
         let pose = LocalPlayerPoseState {
             sneaking: current_pose.sneaking,
+            swimming: current_pose.swimming,
             ..LocalPlayerPoseState::from_position_state(state, current_pose.last_teleport_id)
         };
         self.local_player.pose = Some(pose);
@@ -886,6 +897,14 @@ mod tests {
             .eye_height(),
             CROUCHING_EYE_HEIGHT
         );
+        assert_eq!(
+            LocalPlayerPoseState {
+                swimming: true,
+                ..LocalPlayerPoseState::default()
+            }
+            .eye_height(),
+            SWIMMING_EYE_HEIGHT
+        );
     }
 
     #[test]
@@ -901,6 +920,14 @@ mod tests {
             }
             .body_height(),
             CROUCHING_BODY_HEIGHT
+        );
+        assert_eq!(
+            LocalPlayerPoseState {
+                swimming: true,
+                ..LocalPlayerPoseState::default()
+            }
+            .body_height(),
+            SWIMMING_BODY_HEIGHT
         );
     }
 
@@ -1073,6 +1100,38 @@ mod tests {
         let counters = store.counters();
         assert_eq!(counters.player_position_packets, 2);
         assert_eq!(counters.player_rotation_packets, 1);
+    }
+
+    #[test]
+    fn local_player_position_and_rotation_preserve_swimming_pose() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            swimming: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = store
+            .apply_player_position(ProtocolPlayerPositionUpdate {
+                id: 7,
+                position: vec3(10.0, 64.0, -5.0),
+                delta_movement: vec3(0.125, 0.0, 0.0),
+                y_rot: 90.0,
+                x_rot: 15.0,
+                relatives_mask: 0,
+            })
+            .unwrap();
+        assert!(!pose.sneaking);
+        assert!(pose.swimming);
+
+        let pose = store.apply_player_rotation(ProtocolPlayerRotationUpdate {
+            y_rot: -10.0,
+            relative_y: true,
+            x_rot: 30.0,
+            relative_x: false,
+        });
+        assert!(!pose.sneaking);
+        assert!(pose.swimming);
+        assert_eq!(store.local_player_pose(), Some(pose));
     }
 
     #[test]

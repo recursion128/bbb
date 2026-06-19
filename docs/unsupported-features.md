@@ -294,14 +294,13 @@ When an agent does any of the following, update this file in the same slice:
       - full fixed 20Hz survival physics
       - remaining vanilla voxel collision shapes
       - remaining fluid movement work beyond current still water/lava support:
-        - swimming pose / sprint-swim camera and movement nuance
+        - sprint-swim camera and movement nuance beyond canonical swimming
+          pose selection
       - remaining status-effect movement cases beyond local support for:
         - local Speed/Slowness movement-speed modifiers
         - local Jump Boost jump impulse
         - local Slow Falling gravity clamp
         - local Levitation vertical velocity targeting
-      - remaining sneak pose details beyond local crouching eye height:
-        - swimming/crawling pose priority
       - full flying friction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
         walking and passenger player packet thresholds
@@ -441,12 +440,17 @@ When an agent does any of the following, update this file in the same slice:
       - canonical local player `sneaking` pose state when:
         - focused sneak is active and the player is not flying
         - a low ceiling blocks standing bounds but allows crouching bounds
-      - vanilla local player standing/crouching eye heights:
+      - canonical local player `swimming` visual pose state when:
+        - sprinting while underwater in water contact
+        - standing and crouching bounds are blocked but swimming bounds fit
+      - vanilla local player standing/crouching/swimming eye heights:
         - standing `1.62`
         - crouching `1.27`
-      - vanilla local player standing/crouching body heights:
+        - swimming/crawling `0.4`
+      - vanilla local player standing/crouching/swimming body heights:
         - standing `1.8`
         - crouching `1.5`
+        - swimming/crawling `0.6`
       - local player collision, step-up, support probing, fluid body contact,
         fluid jump-out clearance, and bubble-column contact all consume the
         canonical local body height
