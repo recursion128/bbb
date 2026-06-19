@@ -926,6 +926,229 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_passive_world_apply_packets_emit_matching_events() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(8);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let projectile_power = packets::ProjectilePower {
+            entity_id: 42,
+            acceleration_power: 1.5,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ProjectilePower(projectile_power))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("projectile power event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::ProjectilePower(update) if update == projectile_power
+        ));
+
+        let waypoint = packets::TrackedWaypointPacket {
+            operation: packets::WaypointOperation::Track,
+            waypoint: packets::TrackedWaypoint {
+                identifier: packets::WaypointIdentifier::Name("base".to_string()),
+                icon: packets::WaypointIcon {
+                    style: "minecraft:default".to_string(),
+                    color_rgb: Some(0x33_66_99),
+                },
+                data: packets::WaypointData::Position(packets::WaypointVec3i {
+                    x: 12,
+                    y: 64,
+                    z: -8,
+                }),
+            },
+        };
+        stream
+            .handle_play_packet(PlayClientbound::Waypoint(waypoint.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("waypoint event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::Waypoint(update) if update == waypoint));
+
+        let recipe_id = packets::RecipeDisplayId { index: 7 };
+        let recipe_book_add = packets::RecipeBookAdd {
+            entries: vec![packets::RecipeBookAddEntry {
+                contents: packets::RecipeDisplayEntry {
+                    id: recipe_id,
+                    display: packets::RecipeDisplaySummary {
+                        display_type: packets::RecipeDisplayType::Stonecutter,
+                        raw_body: vec![1, 2, 3],
+                    },
+                    group: Some(4),
+                    category_id: 2,
+                    crafting_requirements: Some(vec![packets::IngredientSummary {
+                        tag: None,
+                        item_ids: vec![3, 5],
+                    }]),
+                },
+                flags: 0b11,
+                notification: true,
+                highlight: true,
+            }],
+            replace: true,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::RecipeBookAdd(recipe_book_add.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("recipe book add event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::RecipeBookAdd(update) if update == recipe_book_add
+        ));
+
+        let recipe_book_remove = packets::RecipeBookRemove {
+            recipe_ids: vec![recipe_id],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::RecipeBookRemove(
+                recipe_book_remove.clone(),
+            ))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("recipe book remove event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::RecipeBookRemove(update) if update == recipe_book_remove
+        ));
+
+        let recipe_book_settings = packets::RecipeBookSettings {
+            crafting: packets::RecipeBookTypeSettings {
+                open: true,
+                filtering: false,
+            },
+            furnace: packets::RecipeBookTypeSettings {
+                open: false,
+                filtering: true,
+            },
+            blast_furnace: packets::RecipeBookTypeSettings {
+                open: true,
+                filtering: true,
+            },
+            smoker: packets::RecipeBookTypeSettings {
+                open: false,
+                filtering: false,
+            },
+        };
+        stream
+            .handle_play_packet(PlayClientbound::RecipeBookSettings(recipe_book_settings))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("recipe book settings event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::RecipeBookSettings(update) if update == recipe_book_settings
+        ));
+
+        let update_advancements = packets::UpdateAdvancements {
+            reset: true,
+            added: Vec::new(),
+            removed: vec!["minecraft:story/root".to_string()],
+            progress: Vec::new(),
+            show_advancements: true,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::UpdateAdvancements(
+                update_advancements.clone(),
+            ))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("advancements update event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::UpdateAdvancements(update) if update == update_advancements
+        ));
+
+        let select_advancements_tab = packets::SelectAdvancementsTab {
+            tab: Some("minecraft:story/root".to_string()),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SelectAdvancementsTab(
+                select_advancements_tab.clone(),
+            ))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("select advancements tab event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::SelectAdvancementsTab(update) if update == select_advancements_tab
+        ));
+
+        let update_recipes = packets::UpdateRecipes {
+            property_sets: vec![packets::RecipePropertySetSummary {
+                key: "minecraft:planks".to_string(),
+                item_ids: vec![5, 6],
+            }],
+            stonecutter_recipes: vec![packets::StonecutterSelectableRecipeSummary {
+                input: packets::IngredientSummary {
+                    tag: Some("minecraft:stone_tool_materials".to_string()),
+                    item_ids: vec![1],
+                },
+                option_display: packets::SlotDisplaySummary {
+                    display_type_id: 2,
+                    raw_payload: vec![9, 8, 7],
+                },
+            }],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::UpdateRecipes(update_recipes.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("recipes update event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::UpdateRecipes(update) if update == update_recipes
+        ));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "passive world-apply packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_unknown_packets_emit_unsupported_packet_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(1);
