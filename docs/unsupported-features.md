@@ -1159,13 +1159,12 @@ When an agent does any of the following, update this file in the same slice:
           server `ContainerSetData`, lapis slot count, and local experience
         - input and lapis slots quick-move back to the player inventory with
           vanilla reverse-fill ordering
-        - player-inventory lapis quick-move routing is locally predicted when
-          native item runtime provides the vanilla lapis lazuli protocol id
-        - player-inventory quick-move paths are kept server-authoritative
-          until:
-          - enchantable-item checks
-          - single-item movement into the enchantment input
-          - enchantment result side effects
+        - player-inventory quick-move routing is locally predicted when
+          native item runtime provides the vanilla lapis lazuli protocol id:
+          - lapis lazuli stacks route to the lapis slot
+          - other item stacks move one item into an empty enchantment input
+            slot, matching vanilla slot0 behavior
+        - enchantment result side effects remain server-authoritative.
         - deferred presentation parity work:
           - animated book model
           - enchanting glyph text and its disabled/highlight coloring

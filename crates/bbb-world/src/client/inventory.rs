@@ -3011,7 +3011,7 @@ fn enchantment_quick_move_requires_server_authority(
     if enchantment_lapis_lazuli_item_ids.is_empty() {
         return true;
     }
-    !item_stack_item_id_in_set(source_item, enchantment_lapis_lazuli_item_ids)
+    false
 }
 
 fn apply_enchantment_menu_quick_move_to_slots(
@@ -3036,7 +3036,8 @@ fn apply_enchantment_menu_quick_move_to_slots(
         ENCHANTMENT_INPUT_SLOT | ENCHANTMENT_LAPIS_SLOT => {
             Some((ENCHANTMENT_PLAYER_MAIN_START, ENCHANTMENT_HOTBAR_END, true))
         }
-        slot if (ENCHANTMENT_PLAYER_MAIN_START..ENCHANTMENT_HOTBAR_END).contains(&slot)
+        slot if !enchantment_lapis_lazuli_item_ids.is_empty()
+            && (ENCHANTMENT_PLAYER_MAIN_START..ENCHANTMENT_HOTBAR_END).contains(&slot)
             && item_stack_item_id_in_set(&source_item, enchantment_lapis_lazuli_item_ids) =>
         {
             Some((ENCHANTMENT_LAPIS_SLOT, ENCHANTMENT_PLAYER_MAIN_START, true))
@@ -3044,6 +3045,23 @@ fn apply_enchantment_menu_quick_move_to_slots(
         _ => None,
     };
     let Some((start_slot, end_slot, backwards)) = target else {
+        if enchantment_lapis_lazuli_item_ids.is_empty()
+            || !(ENCHANTMENT_PLAYER_MAIN_START..ENCHANTMENT_HOTBAR_END).contains(&slot_num)
+            || inventory_menu_slot_has_item(slots, ENCHANTMENT_INPUT_SLOT)
+        {
+            return;
+        }
+        let Some(input_index) = slots
+            .iter()
+            .position(|slot| slot.slot == ENCHANTMENT_INPUT_SLOT)
+        else {
+            return;
+        };
+        let mut moving = source_item;
+        move_stack_count(&mut moving, &mut slots[input_index].item, 1);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+        normalize_container_slot_selection(&mut slots[input_index]);
         return;
     };
 
@@ -7629,7 +7647,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_enchantment_quick_move_routes_lapis_to_lapis_slot() {
+    fn apply_local_enchantment_quick_move_routes_player_items_to_lapis_and_input_slots() {
         const ENCHANTMENT_HOTBAR_START: i16 = 29;
 
         let mut store = WorldStore::new();
@@ -7642,7 +7660,7 @@ mod tests {
         let mut items =
             vec![ProtocolItemStackSummary::empty(); ENCHANTMENT_TOTAL_SLOT_COUNT as usize];
         items[ENCHANTMENT_HOTBAR_START as usize] = item_stack(43, 3);
-        items[(ENCHANTMENT_HOTBAR_START + 1) as usize] = item_stack(50, 1);
+        items[(ENCHANTMENT_HOTBAR_START + 1) as usize] = item_stack(50, 2);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 12,
@@ -7665,19 +7683,35 @@ mod tests {
                 (ENCHANTMENT_HOTBAR_START, ProtocolHashedStack::Empty),
             ])
         );
-        assert_eq!(
-            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+        let input_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
                 slot_num: ENCHANTMENT_HOTBAR_START + 1,
                 button_num: 0,
                 input: ProtocolContainerInput::QuickMove,
-            }),
-            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                ProtocolContainerInput::QuickMove
-            ))
+            })
+            .unwrap();
+        assert_eq!(
+            input_move.changed_slots,
+            BTreeMap::from([
+                (ENCHANTMENT_INPUT_SLOT, hashed_item_stack(50, 1)),
+                (ENCHANTMENT_HOTBAR_START + 1, hashed_item_stack(50, 1)),
+            ])
         );
+        let occupied_input_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: ENCHANTMENT_HOTBAR_START + 1,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(occupied_input_move.changed_slots, BTreeMap::new());
         assert_eq!(
             open_container_slot_item(&store, ENCHANTMENT_LAPIS_SLOT),
             item_stack(43, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, ENCHANTMENT_INPUT_SLOT),
+            item_stack(50, 1)
         );
         assert_eq!(
             open_container_slot_item(&store, ENCHANTMENT_HOTBAR_START),
