@@ -1130,10 +1130,11 @@ When an agent does any of the following, update this file in the same slice:
         - confirm queues `ServerboundSetBeaconPacket` from the current local
           primary/secondary selection when payment and primary selection make
           the vanilla button active, then closes the container.
-        - quick-move paths are kept server-authoritative until:
-          - beacon payment item tag routing
-          - max-stack-one payment slot prediction
-          - payment consumption from `SetBeacon`
+        - quick-move paths are locally predicted for:
+          - vanilla slot ranges
+          - single-item payment routing from `minecraft:beacon_payment_items`
+          - max-stack-one payment slot behavior
+        - payment consumption from `SetBeacon` remains server-authoritative.
         - deferred presentation parity work:
           - confirm/cancel hover state
           - effect highlighted hover state

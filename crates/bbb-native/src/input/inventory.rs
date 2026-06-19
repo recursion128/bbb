@@ -3261,9 +3261,10 @@ mod tests {
         ContainerSetContent, ContainerSetData, ContainerSlotStateChanged, EntityDataValue,
         EntityDataValueKind, HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary,
         ItemCostSummary, ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen,
-        OpenScreen, PlayerAbilities, RecipePropertySetSummary, SelectBundleItem,
+        OpenScreen, PlayerAbilities, RecipePropertySetSummary, RegistryTags, SelectBundleItem,
         SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData, SetPlayerInventory,
-        SlotDisplaySummary, StonecutterSelectableRecipeSummary, UpdateRecipes, Vec3d,
+        SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload, UpdateRecipes,
+        UpdateTags, Vec3d,
     };
     use uuid::Uuid;
 
@@ -7191,6 +7192,65 @@ mod tests {
     }
 
     #[test]
+    fn beacon_shift_click_single_payment_item_queues_predicted_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        apply_item_tags(
+            &mut world,
+            vec![("minecraft:beacon_payment_items", vec![42])],
+        );
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: BEACON_MENU_TYPE_ID,
+            title: "Beacon".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 37];
+        items[1] = item_stack(42, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(569.0, 396.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 1,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Item(hashed_item(42, 1))),
+                    (1, HashedStack::Empty),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(42, 1));
+        assert_eq!(slots[1].item, ItemStackSummary::empty());
+    }
+
+    #[test]
     fn brewing_stand_shift_click_potion_item_queues_predicted_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -8588,6 +8648,21 @@ mod tests {
                 raw_payload: Vec::new(),
             },
         }
+    }
+
+    fn apply_item_tags(world: &mut WorldStore, tags: Vec<(&str, Vec<i32>)>) {
+        world.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: tags
+                    .into_iter()
+                    .map(|(tag, entries)| TagNetworkPayload {
+                        tag: tag.to_string(),
+                        entries,
+                    })
+                    .collect(),
+            }],
+        });
     }
 
     fn loom_world_with_banner_and_dye() -> WorldStore {
