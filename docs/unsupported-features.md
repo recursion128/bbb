@@ -1208,7 +1208,12 @@ When an agent does any of the following, update this file in the same slice:
           until:
           - component-hashable grindstone item/result prediction
           - result side effects and input consumption
-      - hopper
+      - HopperMenu:
+        - quick-move paths are locally predicted for:
+          - hopper slots back to player inventory with vanilla reverse-fill
+            ordering
+          - player inventory/hotbar slots into the hopper with vanilla
+            forward-fill ordering
       - LoomMenu:
         - selectable pattern grid renders official pattern button sprites when
           banner and dye slots are populated:
@@ -1261,7 +1266,12 @@ When an agent does any of the following, update this file in the same slice:
           - rich text styles and click events
           - exact vanilla font wrapping
           - text filtering toggle behavior
-      - shulker box
+      - ShulkerBoxMenu:
+        - quick-move paths are locally predicted for:
+          - shulker slots back to player inventory with vanilla reverse-fill
+            ordering
+          - player inventory/hotbar slots into the shulker box with vanilla
+            forward-fill ordering
       - SmithingMenu:
         - input slots quick-move back to the player inventory with vanilla
           forward-fill ordering
