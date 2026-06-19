@@ -105,7 +105,9 @@ Every worker prompt should include:
   - `scripts/worker-worktree.sh shell-env world`
   - `scripts/worker-worktree.sh cleanup world`
   The helper creates `../bbb-wt-<name>`, branch `bbb-worker-<name>`, and reports
-  `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`.
+  `BBB_CARGO_TARGET_NAME=<name>` plus
+  `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`. Worker focused tests should prefer
+  `scripts/cargo-dev.sh test -p <crate> <filter>`.
 - Do not delete assigned Cargo target caches after every slice. Clean them
   periodically or when measuring a clean build, reclaiming disk, or abandoning a
   disposable one-off target.

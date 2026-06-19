@@ -95,14 +95,17 @@ print_worker_env() {
 worker=$name
 worktree=$path
 branch=$branch
+BBB_CARGO_TARGET_NAME=$name
 CARGO_TARGET_DIR=$target
 EOF
 }
 
 print_worker_shell_env() {
-  path="$1"
-  target="$2"
+  name="$1"
+  path="$2"
+  target="$3"
   printf 'cd %s\n' "$(shell_quote "$path")"
+  printf 'export BBB_CARGO_TARGET_NAME=%s\n' "$(shell_quote "$name")"
   printf 'export CARGO_TARGET_DIR=%s\n' "$(shell_quote "$target")"
 }
 
@@ -132,7 +135,7 @@ create_worker() {
 
 Run focused tests with:
   cd "$path"
-  CARGO_TARGET_DIR=$target cargo test -p <crate> <filter>
+  BBB_CARGO_TARGET_NAME=$name scripts/cargo-dev.sh test -p <crate> <filter>
 EOF
 }
 
@@ -272,6 +275,7 @@ shell_env_worker() {
   validate_name "$name"
   root="$(repo_root)"
   print_worker_shell_env \
+    "$name" \
     "$(worktree_path "$root" "$name")" \
     "$(target_dir "$name")"
 }

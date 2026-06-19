@@ -69,12 +69,17 @@ The helper uses these conventions:
 
 - worktree: `../bbb-wt-<name>`
 - branch: `bbb-worker-<name>`
+- cargo target name: `<name>`
 - target: `/tmp/bbb-target-<name>`
 
 `cleanup <name>` refuses dirty worker worktrees, removes the worktree, safely
 deletes the temporary branch when Git allows it, and keeps the matching target
 directory for future focused tests. Use `cleanup <name> --remove-target` only
 when the worker target is intentionally disposable or disk pressure matters.
+
+`create <name>` prints a ready-to-run focused-test command using
+`scripts/cargo-dev.sh` and `BBB_CARGO_TARGET_NAME=<name>`, so worker prompts
+can use the same test entry as the main worktree.
 
 ## Helper Script
 
@@ -915,3 +920,51 @@ This live recheck keeps `sccache` opt-in. The new worker focused test was
 2.08s faster without `sccache`, Rust cache hits remained zero, and warm focused
 iteration came from the stable `/tmp/bbb-target-main` cache rather than from
 `sccache`.
+
+Requested Recheck:
+
+- Command:
+  `scripts/cargo-dev.sh sccache-eval 20260619161103 -p bbb-world command_tree --quiet`
+- Clean full workspace with `sccache`:
+  - Wall time: 170.77s.
+  - Target size before cleanup: 3.2G.
+  - Result: all tests passed.
+  - Timing report copied to:
+    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619161103.html`
+  - `sccache` stats:
+    - compile requests: 217
+    - executed: 156
+    - cache hits: 1 C/C++ hit
+    - Rust cache hits: 0
+    - Rust cache misses: 155
+    - non-cacheable calls: 59
+    - cache size after run: 2 GiB
+- New worker target focused test with `sccache`:
+  - Wall time: 51.87s.
+  - Target size before cleanup: 647M.
+  - Result: 1 test passed.
+  - `sccache` stats:
+    - compile requests: 46
+    - executed: 29
+    - cache hits: 0
+    - Rust cache misses: 29
+    - non-cacheable calls: 17
+- New worker target focused test without `sccache`:
+  - Wall time: 50.94s.
+  - Target size before cleanup: 647M.
+  - Result: 1 test passed.
+- Warm focused default with `sccache` on `/tmp/bbb-target-main`:
+  - Wall time: 5.87s.
+  - Result: 1 test passed.
+  - `sccache` compile requests: 5
+  - `sccache` executed compilations: 0
+- Disposable measurement targets removed after recording:
+  - `/tmp/bbb-target-sccache-clean-20260619161103`
+  - `/tmp/bbb-target-sccache-worker-20260619161103`
+  - `/tmp/bbb-target-nosccache-worker-20260619161103`
+
+This requested recheck keeps the policy unchanged. `sccache` is installed and
+usable through environment variables, but it did not reduce the measured worker
+cold focused test time and still produced zero Rust cache hits. Keep it opt-in
+through `RUSTC_WRAPPER=sccache` or `BBB_USE_SCCACHE=1`; do not add a
+repo-local `.cargo/config.toml` wrapper setting.

@@ -103,9 +103,12 @@ Every worker prompt must include:
   `/tmp/bbb-target-net`.
 - Use `scripts/worker-worktree.sh create <name>` for standard workers. It
   creates `../bbb-wt-<name>` on branch `bbb-worker-<name>` and reports
+  `BBB_CARGO_TARGET_NAME=<name>` plus
   `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`.
 - Use `scripts/worker-worktree.sh shell-env <name>` when a worker prompt needs
-  copyable shell setup lines for its assigned worktree and target cache.
+  copyable shell setup lines for its assigned worktree and target cache. Worker
+  focused tests should prefer `scripts/cargo-dev.sh test -p <crate> <filter>`
+  after that setup.
 - Use `scripts/worker-worktree.sh cleanup <name>` only after reviewing the
   worker diff. It refuses dirty worktrees and uses safe branch deletion; it does
   not delete the external Cargo target cache.
