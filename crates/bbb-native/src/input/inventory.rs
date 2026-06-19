@@ -2097,7 +2097,24 @@ fn anvil_initial_rename_text(
         .and_then(|runtime| runtime.tooltip_lines_for_stack(input))
         .and_then(|lines| lines.into_iter().next())
         .map(|line| line.text)
+        .or_else(|| anvil_component_hover_name(input))
         .unwrap_or_default()
+}
+
+fn anvil_component_hover_name(stack: &ItemStackSummary) -> Option<String> {
+    if let Some(name) = &stack.component_patch.custom_name {
+        return Some(name.clone());
+    }
+    if let Some(title) = stack
+        .component_patch
+        .written_book
+        .as_ref()
+        .map(|book| book.title.as_str())
+        .filter(|title| !title.trim().is_empty())
+    {
+        return Some(title.to_string());
+    }
+    stack.component_patch.item_name.clone()
 }
 
 fn anvil_screen_is_open(world: &WorldStore) -> bool {

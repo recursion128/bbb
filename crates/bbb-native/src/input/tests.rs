@@ -13,7 +13,7 @@ use bbb_protocol::packets::{
     SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
     SetEntityData as ProtocolSetEntityData, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, SignUpdate, SignedMessageBody,
-    Vec3d as ProtocolVec3d,
+    Vec3d as ProtocolVec3d, WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_world::{
@@ -1799,6 +1799,90 @@ fn anvil_text_input_starts_from_default_hover_name_when_item_runtime_is_availabl
     assert!(rx.try_recv().is_err());
 
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn anvil_text_input_starts_from_decoded_custom_name_without_item_runtime() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut stack = test_item_stack(42, 1);
+    stack.component_patch.custom_name = Some("Custom Pick".to_string());
+    stack.component_patch.item_name = Some("Ignored Item Name".to_string());
+    let mut world = anvil_container_world(7, 12, Some(stack));
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "!");
+
+    assert_eq!(input.anvil_rename_text(), "Custom Pick!");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Custom Pick!".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn anvil_text_input_starts_from_written_book_title_without_item_runtime() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut stack = test_item_stack(42, 1);
+    stack.component_patch.written_book = Some(WrittenBookContentSummary {
+        title: "Book Title".to_string(),
+        author: "Author".to_string(),
+        generation: 0,
+        pages: Vec::new(),
+        resolved: true,
+    });
+    stack.component_patch.item_name = Some("Ignored Item Name".to_string());
+    let mut world = anvil_container_world(7, 12, Some(stack));
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "!");
+
+    assert_eq!(input.anvil_rename_text(), "Book Title!");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Book Title!".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn anvil_text_input_starts_from_decoded_item_name_without_item_runtime() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut stack = test_item_stack(42, 1);
+    stack.component_patch.written_book = Some(WrittenBookContentSummary {
+        title: "   ".to_string(),
+        author: "Author".to_string(),
+        generation: 0,
+        pages: Vec::new(),
+        resolved: true,
+    });
+    stack.component_patch.item_name = Some("Component Item".to_string());
+    let mut world = anvil_container_world(7, 12, Some(stack));
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "!");
+
+    assert_eq!(input.anvil_rename_text(), "Component Item!");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Component Item!".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]
