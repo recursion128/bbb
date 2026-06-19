@@ -481,6 +481,7 @@ When an agent does any of the following, update this file in the same slice:
       - copper grate
       - piston / sticky piston
       - piston head
+      - big dripleaf leaf
       - end portal frame
       - daylight detector
       - sculk sensor / calibrated sculk sensor / sculk shrieker
@@ -502,6 +503,9 @@ When an agent does any of the following, update this file in the same slice:
       - `moving_piston` without a canonical moving-piston block entity is
         treated as empty, matching vanilla's empty fallback when no block entity
         supplies dynamic collision.
+      - `big_dripleaf_stem` is treated as empty, matching vanilla
+        `noCollision`; `big_dripleaf` leaf collision follows vanilla
+        `tilt=none|unstable|partial|full` heights.
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which

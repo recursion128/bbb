@@ -1760,6 +1760,10 @@ mod tests {
     const POINTED_DRIPSTONE_TIP_DOWN_BLOCK_STATE_ID: i32 = 27742;
     const POINTED_DRIPSTONE_BASE_UP_BLOCK_STATE_ID: i32 = 27752;
     const DECORATED_POT_NORTH_DRY_BLOCK_STATE_ID: i32 = 29602;
+    const BIG_DRIPLEAF_NORTH_NONE_DRY_BLOCK_STATE_ID: i32 = 27864;
+    const BIG_DRIPLEAF_NORTH_PARTIAL_DRY_BLOCK_STATE_ID: i32 = 27868;
+    const BIG_DRIPLEAF_NORTH_FULL_DRY_BLOCK_STATE_ID: i32 = 27870;
+    const BIG_DRIPLEAF_STEM_NORTH_DRY_BLOCK_STATE_ID: i32 = 27896;
     const MUD_BLOCK_STATE_ID: i32 = 27922;
     const HEAVY_CORE_DRY_BLOCK_STATE_ID: i32 = 29702;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
@@ -2530,6 +2534,78 @@ mod tests {
                 .unwrap();
 
             assert_f64_near(pose.position.y, expected_y, 0.0005);
+            assert!(pose.on_ground, "{name}");
+            assert!(!pose.horizontal_collision, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_lands_on_big_dripleaf_leaf_collision_shapes() {
+        let cases = [
+            (
+                "none tilt",
+                BIG_DRIPLEAF_NORTH_NONE_DRY_BLOCK_STATE_ID,
+                1.9375,
+            ),
+            (
+                "partial tilt",
+                BIG_DRIPLEAF_NORTH_PARTIAL_DRY_BLOCK_STATE_ID,
+                1.8125,
+            ),
+        ];
+
+        for (name, block_state_id, expected_y) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 0, block_state_id);
+            world.set_local_player_pose(LocalPlayerPoseState {
+                position: vec3(0.5, 3.0, 0.5),
+                on_ground: false,
+                ..LocalPlayerPoseState::default()
+            });
+
+            let pose = world
+                .advance_local_player_input(
+                    LocalPlayerInputState {
+                        focused: true,
+                        ..LocalPlayerInputState::default()
+                    },
+                    2.0,
+                )
+                .unwrap();
+
+            assert_f64_near(pose.position.y, expected_y, 0.0005);
+            assert!(pose.on_ground, "{name}");
+            assert!(!pose.horizontal_collision, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_ignores_full_tilt_big_dripleaf_and_stem_collision() {
+        let cases = [
+            ("full tilt leaf", BIG_DRIPLEAF_NORTH_FULL_DRY_BLOCK_STATE_ID),
+            ("stem", BIG_DRIPLEAF_STEM_NORTH_DRY_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 0, block_state_id);
+            world.set_local_player_pose(LocalPlayerPoseState {
+                position: vec3(0.5, 3.0, 0.5),
+                on_ground: false,
+                ..LocalPlayerPoseState::default()
+            });
+
+            let pose = world
+                .advance_local_player_input(
+                    LocalPlayerInputState {
+                        focused: true,
+                        ..LocalPlayerInputState::default()
+                    },
+                    2.0,
+                )
+                .unwrap();
+
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
             assert!(pose.on_ground, "{name}");
             assert!(!pose.horizontal_collision, "{name}");
         }

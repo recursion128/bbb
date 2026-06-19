@@ -137,6 +137,12 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if block_name == "minecraft:moving_piston" {
             return None;
         }
+        if block_name == "minecraft:big_dripleaf" {
+            return big_dripleaf_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:big_dripleaf_stem" {
+            return None;
+        }
         if is_flower_pot_block_name(block_name) {
             return Some(BlockCollisionShape::single(
                 BlockCollisionBox::centered_column(6.0, 6.0, 0.0, 6.0),
@@ -628,6 +634,20 @@ fn piston_head_collision_shape(
         ])
         .rotate_all_from_north(facing),
     )
+}
+
+fn big_dripleaf_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let height_px = match properties.get("tilt").map(String::as_str)? {
+        "none" | "unstable" => 15.0,
+        "partial" => 13.0,
+        "full" => return None,
+        _ => return None,
+    };
+    Some(BlockCollisionShape::single(
+        BlockCollisionBox::centered_column(16.0, 16.0, 11.0, height_px),
+    ))
 }
 
 fn scaffolding_collision_shape(
