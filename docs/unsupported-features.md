@@ -460,6 +460,7 @@ When an agent does any of the following, update this file in the same slice:
       - leaves
       - snow layer
       - flat carpet
+      - pale moss carpet base
       - cactus
       - farmland / dirt path
       - soul sand / mud
@@ -506,6 +507,9 @@ When an agent does any of the following, update this file in the same slice:
       - `big_dripleaf_stem` is treated as empty, matching vanilla
         `noCollision`; `big_dripleaf` leaf collision follows vanilla
         `tilt=none|unstable|partial|full` heights.
+      - `pale_moss_carpet` follows vanilla `MossyCarpetBlock` collision:
+        `bottom=true` uses the default 1px carpet base and `bottom=false`
+        is empty even when side outline faces are present.
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which

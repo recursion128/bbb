@@ -125,6 +125,9 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if is_flat_carpet_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::CARPET));
         }
+        if block_name == "minecraft:pale_moss_carpet" {
+            return pale_moss_carpet_collision_shape(&block.block_properties);
+        }
         if is_copper_grate_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
@@ -648,6 +651,16 @@ fn big_dripleaf_collision_shape(
     Some(BlockCollisionShape::single(
         BlockCollisionBox::centered_column(16.0, 16.0, 11.0, height_px),
     ))
+}
+
+fn pale_moss_carpet_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    match properties.get("bottom").map(String::as_str)? {
+        "true" => Some(BlockCollisionShape::single(BlockCollisionBox::CARPET)),
+        "false" => None,
+        _ => None,
+    }
 }
 
 fn scaffolding_collision_shape(

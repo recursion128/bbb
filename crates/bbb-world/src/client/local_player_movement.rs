@@ -1760,6 +1760,8 @@ mod tests {
     const POINTED_DRIPSTONE_TIP_DOWN_BLOCK_STATE_ID: i32 = 27742;
     const POINTED_DRIPSTONE_BASE_UP_BLOCK_STATE_ID: i32 = 27752;
     const DECORATED_POT_NORTH_DRY_BLOCK_STATE_ID: i32 = 29602;
+    const PALE_MOSS_CARPET_BOTTOM_NO_SIDES_BLOCK_STATE_ID: i32 = 29704;
+    const PALE_MOSS_CARPET_TOPPER_WITH_SIDES_BLOCK_STATE_ID: i32 = 29830;
     const BIG_DRIPLEAF_NORTH_NONE_DRY_BLOCK_STATE_ID: i32 = 27864;
     const BIG_DRIPLEAF_NORTH_PARTIAL_DRY_BLOCK_STATE_ID: i32 = 27868;
     const BIG_DRIPLEAF_NORTH_FULL_DRY_BLOCK_STATE_ID: i32 = 27870;
@@ -2405,6 +2407,11 @@ mod tests {
     fn local_player_steps_over_thin_ground_shapes() {
         let cases = [
             ("white carpet", WHITE_CARPET_BLOCK_STATE_ID, 1.0625),
+            (
+                "pale moss carpet base",
+                PALE_MOSS_CARPET_BOTTOM_NO_SIDES_BLOCK_STATE_ID,
+                1.0625,
+            ),
             ("five snow layers", SNOW_5_LAYERS_BLOCK_STATE_ID, 1.5),
         ];
 
@@ -2537,6 +2544,37 @@ mod tests {
             assert!(pose.on_ground, "{name}");
             assert!(!pose.horizontal_collision, "{name}");
         }
+    }
+
+    #[test]
+    fn local_player_ignores_pale_moss_carpet_topper_collision() {
+        let mut world = flat_collision_world();
+        set_test_block(
+            &mut world,
+            0,
+            1,
+            0,
+            PALE_MOSS_CARPET_TOPPER_WITH_SIDES_BLOCK_STATE_ID,
+        );
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                2.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.on_ground);
+        assert!(!pose.horizontal_collision);
     }
 
     #[test]
