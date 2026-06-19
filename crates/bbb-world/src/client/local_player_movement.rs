@@ -140,7 +140,7 @@ fn advance_local_player_physics_step(
     }
 
     let flying = local_player_flying_abilities(world);
-    pose.sneaking = input.focused && input.sneak && flying.is_none();
+    pose.sneaking = local_player_should_crouch(world, pose, input, flying);
     let initial_fluid_contact = local_player_fluid_contact(world, pose);
     if flying.is_none() && (initial_fluid_contact.in_water() || initial_fluid_contact.in_lava()) {
         return advance_local_player_fluid_physics_step(
@@ -162,7 +162,7 @@ fn advance_local_player_physics_step(
     }
 
     let step_ticks = step_seconds / LOCAL_PHYSICS_TICK_SECONDS;
-    let speed = local_player_horizontal_speed(world, input);
+    let speed = local_player_horizontal_speed(world, pose, input);
     let mut requested_x = move_x * speed * step_seconds;
     let requested_y = match flying {
         Some(abilities) => {
@@ -734,7 +734,43 @@ fn next_local_player_fall_distance(previous: f64, vertical_movement: f64, on_gro
     }
 }
 
-fn local_player_horizontal_speed(world: &WorldStore, input: LocalPlayerInputState) -> f64 {
+fn local_player_should_crouch(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+    flying: Option<LocalPlayerAbilitiesState>,
+) -> bool {
+    if flying.is_some() || world.local_player_vehicle_id().is_some() {
+        return false;
+    }
+
+    let crouching_pose = LocalPlayerPoseState {
+        sneaking: true,
+        ..pose
+    };
+    if !local_player_pose_fits(world, crouching_pose) {
+        return false;
+    }
+
+    input.focused && input.sneak
+        || !local_player_pose_fits(
+            world,
+            LocalPlayerPoseState {
+                sneaking: false,
+                ..pose
+            },
+        )
+}
+
+fn local_player_pose_fits(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
+    !local_player_collides(world, LocalPlayerBounds::for_pose(pose))
+}
+
+fn local_player_horizontal_speed(
+    world: &WorldStore,
+    pose: LocalPlayerPoseState,
+    input: LocalPlayerInputState,
+) -> f64 {
     if let Some(abilities) = local_player_flying_abilities(world) {
         return local_player_flying_horizontal_speed(abilities, input);
     }
@@ -745,7 +781,7 @@ fn local_player_horizontal_speed(world: &WorldStore, input: LocalPlayerInputStat
     if input.sprint {
         speed *= LOCAL_INPUT_SPRINT_SPEED_MULTIPLIER;
     }
-    if input.sneak && !local_player_is_flying(world) {
+    if pose.sneaking {
         speed *= local_player_attribute_value(world, VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID)
             .unwrap_or(LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER)
             .clamp(0.0, 1.0);
@@ -1818,6 +1854,63 @@ mod tests {
         );
         assert!(crouching.sneaking);
         assert!(!crouching.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_low_ceiling_forces_crouching_pose() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 2, 0, OAK_TOP_SLAB_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
+            * LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER
+            * LOCAL_PHYSICS_TICK_SECONDS;
+        assert!(pose.sneaking);
+        assert!(!pose.horizontal_collision);
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
+    fn local_player_low_ceiling_does_not_force_crouch_while_flying() {
+        let mut world = flat_collision_world();
+        apply_flying_abilities(&mut world, 0.05);
+        set_test_block(&mut world, 0, 2, 0, OAK_TOP_SLAB_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert!(!pose.sneaking);
+        assert_f64_near(pose.position.y, 1.0, 0.000001);
     }
 
     #[test]
