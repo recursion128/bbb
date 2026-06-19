@@ -372,6 +372,12 @@ impl ParticleCommandResolver {
                 EGG_CRACK_PARTICLE_MAX,
                 random,
             ),
+            TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT => {
+                self.trial_spawn_particle_batch(event, random)
+            }
+            TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT => {
+                self.trial_eject_item_particle_batch(event, random)
+            }
             SPLASH_CLOUD_LEVEL_EVENT => {
                 let mut spawns = Vec::with_capacity(8);
                 for _ in 0..8 {
@@ -428,6 +434,91 @@ impl ParticleCommandResolver {
             spawns.push((position, velocity));
         }
         self.simple_particle_batch(particle_type_id, spawns)
+    }
+
+    fn trial_spawn_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let flame_particle_type_id = match event.data {
+            1 => SOUL_FIRE_FLAME_PARTICLE_TYPE_ID,
+            _ => FLAME_PARTICLE_TYPE_ID,
+        };
+        let mut batch = ParticleSpawnBatch::default();
+        let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
+        let flame = self.simple_particle_template(flame_particle_type_id);
+        let smoke = self.append_template_result(&mut batch, smoke);
+        let flame = self.append_template_result(&mut batch, flame);
+
+        for _ in 0..20 {
+            let position = Vec3d {
+                x: f64::from(event.pos.x) + 0.5 + (random.next_double() - 0.5) * 2.0,
+                y: f64::from(event.pos.y) + 0.5 + (random.next_double() - 0.5) * 2.0,
+                z: f64::from(event.pos.z) + 0.5 + (random.next_double() - 0.5) * 2.0,
+            };
+            if let Some(smoke) = smoke.as_ref() {
+                batch.commands.push(self.command_from_template(
+                    smoke,
+                    position,
+                    Vec3d::default(),
+                    false,
+                ));
+            }
+            if let Some(flame) = flame.as_ref() {
+                batch.commands.push(self.command_from_template(
+                    flame,
+                    position,
+                    Vec3d::default(),
+                    false,
+                ));
+            }
+        }
+
+        batch
+    }
+
+    fn trial_eject_item_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let mut batch = ParticleSpawnBatch::default();
+        let small_flame = self.simple_particle_template(SMALL_FLAME_PARTICLE_TYPE_ID);
+        let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
+        let small_flame = self.append_template_result(&mut batch, small_flame);
+        let smoke = self.append_template_result(&mut batch, smoke);
+
+        for _ in 0..20 {
+            let position = Vec3d {
+                x: f64::from(event.pos.x) + 0.4 + random.next_double() * 0.2,
+                y: f64::from(event.pos.y) + 0.4 + random.next_double() * 0.2,
+                z: f64::from(event.pos.z) + 0.4 + random.next_double() * 0.2,
+            };
+            let velocity = Vec3d {
+                x: random.next_gaussian() * 0.02,
+                y: random.next_gaussian() * 0.02,
+                z: random.next_gaussian() * 0.02,
+            };
+            if let Some(small_flame) = small_flame.as_ref() {
+                batch.commands.push(self.command_from_template(
+                    small_flame,
+                    position,
+                    Vec3d {
+                        z: velocity.z * 0.25,
+                        ..velocity
+                    },
+                    false,
+                ));
+            }
+            if let Some(smoke) = smoke.as_ref() {
+                batch
+                    .commands
+                    .push(self.command_from_template(smoke, position, velocity, false));
+            }
+        }
+
+        batch
     }
 
     fn block_face_particle_batch(
@@ -757,13 +848,17 @@ const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const SCRAPE_LEVEL_EVENT: i32 = 3005;
 const EGG_CRACK_LEVEL_EVENT: i32 = 3009;
+const TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT: i32 = 3011;
+const TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT: i32 = 3017;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
+const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
+const SMALL_FLAME_PARTICLE_TYPE_ID: i32 = 93;
 const ELECTRIC_SPARK_PARTICLE_TYPE_ID: i32 = 103;
 const WAX_ON_PARTICLE_TYPE_ID: i32 = 101;
 const WAX_OFF_PARTICLE_TYPE_ID: i32 = 102;
@@ -1203,6 +1298,99 @@ mod tests {
         assert_eq!(egg_crack.commands[0].particle_id, "minecraft:egg_crack");
         assert!(!egg_crack.commands[0].override_limiter);
 
+        let mut trial_spawn_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_spawn = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3011,
+                data: 0,
+                ..level_event_packet(3011)
+            },
+            &mut trial_spawn_random,
+        );
+        assert_eq!(trial_spawn.len(), 40);
+        assert_particle_command(
+            &trial_spawn.commands[0],
+            62,
+            "minecraft:smoke",
+            [
+                10.961_935_574_753_314,
+                63.981_072_831_342_97,
+                -2.225_165_149_299_783_7,
+            ],
+            [0.0, 0.0, 0.0],
+            false,
+        );
+        assert_particle_command(
+            &trial_spawn.commands[1],
+            32,
+            "minecraft:flame",
+            [
+                10.961_935_574_753_314,
+                63.981_072_831_342_97,
+                -2.225_165_149_299_783_7,
+            ],
+            [0.0, 0.0, 0.0],
+            false,
+        );
+
+        let mut trial_spawn_ominous_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_spawn_ominous = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3011,
+                data: 1,
+                ..level_event_packet(3011)
+            },
+            &mut trial_spawn_ominous_random,
+        );
+        assert_eq!(trial_spawn_ominous.len(), 40);
+        assert_eq!(trial_spawn_ominous.commands[1].particle_type_id, 40);
+        assert_eq!(
+            trial_spawn_ominous.commands[1].particle_id,
+            "minecraft:soul_fire_flame"
+        );
+
+        let mut trial_eject_random = LevelEventSoundRandomState::with_seed(0);
+        let trial_eject = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3017,
+                ..level_event_packet(3017)
+            },
+            &mut trial_eject_random,
+        );
+        assert_eq!(trial_eject.len(), 40);
+        assert_particle_command(
+            &trial_eject.commands[0],
+            93,
+            "minecraft:small_flame",
+            [
+                10.546_193_557_475_332,
+                64.448_107_283_134_3,
+                -2.472_516_514_929_978_4,
+            ],
+            [
+                0.022_619_280_994_487_918,
+                0.043_745_738_729_615_43,
+                -0.007_831_529_827_929_628,
+            ],
+            false,
+        );
+        assert_particle_command(
+            &trial_eject.commands[1],
+            62,
+            "minecraft:smoke",
+            [
+                10.546_193_557_475_332,
+                64.448_107_283_134_3,
+                -2.472_516_514_929_978_4,
+            ],
+            [
+                0.022_619_280_994_487_918,
+                0.043_745_738_729_615_43,
+                -0.031_326_119_311_718_51,
+            ],
+            false,
+        );
+
         let mut cloud_random = LevelEventSoundRandomState::with_seed(0);
         let cloud = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -1317,11 +1505,13 @@ mod tests {
                 "generic_7",
                 "generic_6",
                 "flame",
+                "soul_fire_flame",
                 "explosion_emitter_0",
                 "explosion_0",
                 "smoke_0",
                 "large_smoke_0",
                 "white_smoke_0",
+                "small_flame",
                 "electric_spark_0",
                 "wax_on_0",
                 "wax_off_0",
@@ -1362,6 +1552,14 @@ mod tests {
             }"#,
         );
         write_json(
+            &particle_dir(&root).join("soul_fire_flame.json"),
+            r#"{
+              "textures": [
+                "minecraft:soul_fire_flame"
+              ]
+            }"#,
+        );
+        write_json(
             &particle_dir(&root).join("explosion.json"),
             r#"{
               "textures": [
@@ -1398,6 +1596,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:white_smoke_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("small_flame.json"),
+            r#"{
+              "textures": [
+                "minecraft:small_flame"
               ]
             }"#,
         );

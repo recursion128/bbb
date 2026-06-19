@@ -165,7 +165,8 @@ When an agent does any of the following, update this file in the same slice:
     - atlas mip animation
     - terrain/item particle option rendering
     - remaining level-event particle effects beyond the currently covered
-      simple smoke/white-smoke/flame/explosion/cloud/block-face side effects
+      simple smoke/white-smoke/flame/explosion/cloud/block-face/trial-spawner
+      side effects
   - Preserve missing definition/sprite diagnostics.
 - Evidence / boundary:
   - Current runtime:
@@ -193,6 +194,10 @@ When an agent does any of the following, update this file in the same slice:
       - event `3004`: vanilla block-face `minecraft:wax_off` particles
       - event `3005`: vanilla block-face `minecraft:scrape` particles
       - event `3009`: vanilla block-face `minecraft:egg_crack` particles
+      - event `3011`: trial spawner smoke plus normal/ominous flame spawn
+        particles
+      - event `3017`: trial spawner eject-item `minecraft:small_flame` and
+        `minecraft:smoke` particles
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size
