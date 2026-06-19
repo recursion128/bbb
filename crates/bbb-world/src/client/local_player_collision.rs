@@ -140,6 +140,12 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if block_name == "minecraft:bamboo_sapling" {
             return None;
         }
+        if block_name == "minecraft:chorus_plant" {
+            return chorus_plant_collision_shape(&block.block_properties);
+        }
+        if block_name == "minecraft:chorus_flower" {
+            return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
+        }
         if is_copper_grate_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
@@ -679,6 +685,47 @@ fn bamboo_collision_shape(pos: BlockPos) -> BlockCollisionShape {
     let (offset_x, offset_z) = vanilla_xz_offset(pos, 0.25);
     BlockCollisionShape::single(BlockCollisionBox::centered_column(3.0, 3.0, 0.0, 16.0))
         .offset(offset_x, 0.0, offset_z)
+}
+
+fn chorus_plant_collision_shape(
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let mut builder = BlockCollisionShapeBuilder::new();
+    builder.push(BlockCollisionBox::from_pixels(
+        [3.0, 3.0, 3.0],
+        [13.0, 13.0, 13.0],
+    ));
+    push_chorus_plant_arm_if_connected(properties, &mut builder, "north", BlockDirection::North)?;
+    push_chorus_plant_arm_if_connected(properties, &mut builder, "east", BlockDirection::East)?;
+    push_chorus_plant_arm_if_connected(properties, &mut builder, "south", BlockDirection::South)?;
+    push_chorus_plant_arm_if_connected(properties, &mut builder, "west", BlockDirection::West)?;
+    push_chorus_plant_arm_if_connected(properties, &mut builder, "up", BlockDirection::Up)?;
+    push_chorus_plant_arm_if_connected(properties, &mut builder, "down", BlockDirection::Down)?;
+    Some(builder.build())
+}
+
+fn push_chorus_plant_arm_if_connected(
+    properties: &BTreeMap<String, String>,
+    builder: &mut BlockCollisionShapeBuilder,
+    key: &str,
+    direction: BlockDirection,
+) -> Option<()> {
+    if bool_property(properties, key)? {
+        builder.push(chorus_plant_arm_collision_box(direction));
+    }
+    Some(())
+}
+
+fn chorus_plant_arm_collision_box(direction: BlockDirection) -> BlockCollisionBox {
+    let north_arm = BlockCollisionBox::from_pixels([3.0, 3.0, 0.0], [13.0, 13.0, 8.0]);
+    match direction {
+        BlockDirection::North => north_arm,
+        BlockDirection::East => north_arm.rotate_to_direction(HorizontalDirection::East),
+        BlockDirection::South => north_arm.rotate_to_direction(HorizontalDirection::South),
+        BlockDirection::West => north_arm.rotate_to_direction(HorizontalDirection::West),
+        BlockDirection::Up => north_arm.rotate_x_270(),
+        BlockDirection::Down => north_arm.rotate_x_90(),
+    }
 }
 
 fn scaffolding_collision_shape(

@@ -1756,6 +1756,9 @@ mod tests {
     const DRIED_GHAST_NORTH_DRY_BLOCK_STATE_ID: i32 = 15106;
     const SEA_PICKLE_ONE_DRY_BLOCK_STATE_ID: i32 = 15268;
     const SEA_PICKLE_FOUR_DRY_BLOCK_STATE_ID: i32 = 15274;
+    const CHORUS_PLANT_NORTH_BLOCK_STATE_ID: i32 = 14697;
+    const CHORUS_PLANT_NONE_BLOCK_STATE_ID: i32 = 14705;
+    const CHORUS_FLOWER_AGE_0_BLOCK_STATE_ID: i32 = 14706;
     const BAMBOO_SAPLING_BLOCK_STATE_ID: i32 = 15278;
     const BAMBOO_AGE_0_NO_LEAVES_STAGE_0_BLOCK_STATE_ID: i32 = 15279;
     const CANDLE_ONE_DRY_UNLIT_BLOCK_STATE_ID: i32 = 23099;
@@ -2462,6 +2465,37 @@ mod tests {
     }
 
     #[test]
+    fn local_player_does_not_walk_through_chorus_collision() {
+        let cases = [
+            (
+                "chorus plant center cube",
+                CHORUS_PLANT_NONE_BLOCK_STATE_ID,
+                0.888,
+            ),
+            (
+                "chorus plant north arm",
+                CHORUS_PLANT_NORTH_BLOCK_STATE_ID,
+                0.7005,
+            ),
+            ("chorus flower", CHORUS_FLOWER_AGE_0_BLOCK_STATE_ID, 0.7005),
+        ];
+
+        for (name, block_state_id, max_z) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
     fn local_player_steps_over_thin_ground_shapes() {
         let cases = [
             ("white carpet", WHITE_CARPET_BLOCK_STATE_ID, 1.0625),
@@ -2577,6 +2611,8 @@ mod tests {
             ),
             ("candle cake", CANDLE_CAKE_UNLIT_BLOCK_STATE_ID, 1.875),
             ("decorated pot", DECORATED_POT_NORTH_DRY_BLOCK_STATE_ID, 2.0),
+            ("chorus plant", CHORUS_PLANT_NONE_BLOCK_STATE_ID, 1.8125),
+            ("chorus flower", CHORUS_FLOWER_AGE_0_BLOCK_STATE_ID, 2.0),
         ];
 
         for (name, block_state_id, expected_y) in cases {

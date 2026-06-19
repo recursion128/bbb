@@ -460,6 +460,7 @@ When an agent does any of the following, update this file in the same slice:
       - leaves
       - mangrove roots / muddy mangrove roots
       - bamboo stalk
+      - chorus plant / chorus flower
       - snow layer
       - flat carpet
       - pale moss carpet base
@@ -517,6 +518,9 @@ When an agent does any of the following, update this file in the same slice:
         `noCollision` registration.
       - `mangrove_roots` and `muddy_mangrove_roots` use vanilla default
         full-block collision even though their render material is cutout.
+      - `chorus_plant` follows vanilla `PipeBlock(10.0F)` center cube plus
+        connected six-direction arms; `chorus_flower` uses vanilla default
+        full-block collision.
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which
