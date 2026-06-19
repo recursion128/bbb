@@ -150,7 +150,7 @@ where
 {
     let eye = ray.eye;
     let block_hit = crosshair_block_hit_from_ray(world, ray);
-    if let Some(attack_range) = selected_crosshair_attack_range(world) {
+    if let Some(attack_range) = selected_crosshair_attack_range(world, ray) {
         if let Some(target) = attack_range_target_from_ray(
             world,
             ray,
@@ -183,17 +183,23 @@ struct CrosshairAttackRange {
     min_reach: f64,
     max_reach: f64,
     hitbox_margin: f64,
+    movement_extension: f64,
 }
 
-fn selected_crosshair_attack_range(world: &WorldStore) -> Option<CrosshairAttackRange> {
+fn selected_crosshair_attack_range(
+    world: &WorldStore,
+    ray: CrosshairRay,
+) -> Option<CrosshairAttackRange> {
     let range = world.local_selected_main_hand_attack_range()?;
-    Some(crosshair_attack_range_from_item(
+    let mut attack_range = crosshair_attack_range_from_item(
         range,
         world
             .local_player()
             .abilities
             .is_some_and(|abilities| abilities.instabuild),
-    ))
+    );
+    attack_range.movement_extension = crosshair_attack_range_movement_extension(world, ray);
+    Some(attack_range)
 }
 
 fn crosshair_attack_range_from_item(
@@ -209,6 +215,25 @@ fn crosshair_attack_range_from_item(
         min_reach: f64::from(min_reach.max(0.0)),
         max_reach: f64::from(max_reach.max(min_reach).max(0.0)),
         hitbox_margin: f64::from(range.hitbox_margin.max(0.0)),
+        movement_extension: 0.0,
+    }
+}
+
+fn crosshair_attack_range_movement_extension(world: &WorldStore, ray: CrosshairRay) -> f64 {
+    let Some(pose) = world.local_player_pose() else {
+        return 0.0;
+    };
+    let direction = look_direction_from_crosshair_ray(ray);
+    if direction == [0.0, 0.0, 0.0] {
+        return 0.0;
+    }
+    let movement = pose.delta_movement;
+    let component =
+        movement.x * direction[0] + movement.y * direction[1] + movement.z * direction[2];
+    if component.is_finite() {
+        component.max(0.0)
+    } else {
+        0.0
     }
 }
 
@@ -222,12 +247,13 @@ fn attack_range_target_from_ray<F>(
 where
     F: FnMut(i32) -> bool,
 {
-    if attack_range.max_reach <= 0.0 {
+    let max_search_reach = attack_range.max_reach + attack_range.movement_extension;
+    if max_search_reach <= 0.0 {
         return None;
     }
 
     let eye = ray.eye;
-    let block_hit = raycast_crosshair_block_hit_from_ray(ray, attack_range.max_reach, |pos| {
+    let block_hit = raycast_crosshair_block_hit_from_ray(ray, max_search_reach, |pos| {
         world
             .probe_block(pos)
             .map(|probe| BlockOutlineTarget::from_probe(&probe))
@@ -241,7 +267,7 @@ where
             .map(CrosshairTarget::Block);
     }
 
-    let entity_end_distance = block_distance.min(attack_range.max_reach);
+    let entity_end_distance = block_distance.min(max_search_reach);
     let entity_hit = crosshair_entity_hit_between_from_ray(
         world,
         ray,
@@ -1421,6 +1447,45 @@ mod tests {
     }
 
     #[test]
+    fn crosshair_target_attack_range_extends_max_reach_by_forward_movement() {
+        let mut world = WorldStore::new();
+        set_selected_attack_range(&mut world, 0.0, 3.5, 0.0, 3.5, 0.0);
+        let pose = player_pose_with_delta(0.0, 0.0, 0.0, [0.0, 0.0, 0.25]);
+        world.set_local_player_pose(pose);
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 4.0],
+        ));
+
+        let target = crosshair_target_from_world(&world, Some(pose));
+
+        let CrosshairTarget::Entity(hit) = target.unwrap() else {
+            panic!("expected entity hit from movement-extended attack range");
+        };
+        assert_eq!(hit.entity_id, 12);
+        assert_vec3_close(
+            hit.location,
+            [0.0, LocalPlayerPoseState::default().eye_height(), 3.51],
+        );
+    }
+
+    #[test]
+    fn crosshair_target_attack_range_does_not_extend_max_reach_by_backward_movement() {
+        let mut world = WorldStore::new();
+        set_selected_attack_range(&mut world, 0.0, 3.5, 0.0, 3.5, 0.0);
+        let pose = player_pose_with_delta(0.0, 0.0, 0.0, [0.0, 0.0, -0.25]);
+        world.set_local_player_pose(pose);
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [0.0, 1.0, 4.0],
+        ));
+
+        assert_eq!(crosshair_target_from_world(&world, Some(pose)), None);
+    }
+
+    #[test]
     fn crosshair_target_attack_range_uses_hitbox_margin() {
         let mut world = WorldStore::new();
         set_selected_attack_range(&mut world, 0.0, 3.3, 0.0, 3.3, 0.25);
@@ -1685,6 +1750,22 @@ mod tests {
 
     fn player_pose(y_rot: f32, x_rot: f32, z: f64) -> LocalPlayerPoseState {
         player_pose_at([0.0, 0.0, z], y_rot, x_rot)
+    }
+
+    fn player_pose_with_delta(
+        y_rot: f32,
+        x_rot: f32,
+        z: f64,
+        delta_movement: [f64; 3],
+    ) -> LocalPlayerPoseState {
+        LocalPlayerPoseState {
+            delta_movement: ProtocolVec3d {
+                x: delta_movement[0],
+                y: delta_movement[1],
+                z: delta_movement[2],
+            },
+            ..player_pose(y_rot, x_rot, z)
+        }
     }
 
     fn player_pose_at(position: [f64; 3], y_rot: f32, x_rot: f32) -> LocalPlayerPoseState {

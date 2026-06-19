@@ -412,10 +412,11 @@ When an agent does any of the following, update this file in the same slice:
         - participate in crosshair entity selection for extended custom reach
         - use custom min/max reach, creative reach, hitbox margin, and block
           outline clipping before entity hits
+        - follow vanilla `AttackRange.getClosesetHit` movement extension by
+          adding the positive local movement component along the look vector to
+          crosshair entity search reach
         - suppress out-of-range `AttackEntity` packets for the current entity
           hit
-        - still need remaining vanilla `AttackRange.getClosesetHit` parity:
-          - movement-extended max reach
   - Inventory:
     - Implement:
       - remaining rich tooltip behavior:
