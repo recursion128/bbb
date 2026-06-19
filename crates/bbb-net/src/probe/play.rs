@@ -1,8 +1,10 @@
 use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, PlayClientbound, Vec3d as ProtocolVec3d};
-use bbb_world::{ChunkPos, WorldStore};
+use bbb_world::{advance_cobweb_place_particle_randoms, ChunkPos, WorldStore};
 
 use crate::{probe::ProbeContext, resource_pack::response_action_for_push, types::ConnectionState};
+
+const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 
 impl ProbeContext {
     pub(super) async fn handle_play_packet(
@@ -384,6 +386,7 @@ impl ProbeContext {
                         self.world.global_level_event_sound(event, camera_position)
                     })
                 {
+                    let state = self.with_level_event_sound_seed(state);
                     self.world.record_positioned_sound(state);
                 }
                 if let Some(state) = self.world.level_event_local_sound_with_random(event, || {
@@ -391,9 +394,21 @@ impl ProbeContext {
                 }) {
                     self.world.record_local_sound(state);
                 }
-                if let Some(state) = self.world.level_event_sound_with_random(event, || {
+                if event.event_type == COBWEB_PLACE_LEVEL_EVENT {
+                    advance_cobweb_place_particle_randoms(&mut self.level_event_sound_random);
+                    if let Some(state) = self
+                        .world
+                        .cobweb_place_level_event_sound_with_random(event, || {
+                            self.level_event_sound_random.next_float()
+                        })
+                    {
+                        let state = self.with_level_event_sound_seed(state);
+                        self.world.record_positioned_sound(state);
+                    }
+                } else if let Some(state) = self.world.level_event_sound_with_random(event, || {
                     self.level_event_sound_random.next_float()
                 }) {
+                    let state = self.with_level_event_sound_seed(state);
                     self.world.record_positioned_sound(state);
                 }
             }
@@ -520,6 +535,14 @@ impl ProbeContext {
             }
         }
         Ok(None)
+    }
+
+    fn with_level_event_sound_seed(
+        &mut self,
+        mut state: bbb_world::SoundEventState,
+    ) -> bbb_world::SoundEventState {
+        state.seed = self.level_event_sound_random.next_long();
+        state
     }
 }
 
@@ -1013,6 +1036,7 @@ mod tests {
                 volume: 0.75,
                 pitch: 1.25,
                 seed: 123456789,
+                distance_delay: false,
             })
         );
         assert_eq!(report.world_counters.sound_entity_packets, 1);
@@ -3600,7 +3624,46 @@ mod tests {
         );
         assert_close(sound.volume, 10.0);
         assert_close(sound.pitch, 0.979_905_37);
-        assert_eq!(sound.seed, 0);
+        assert_eq!(sound.seed, 4_437_113_781_045_784_766);
+    }
+
+    #[tokio::test]
+    async fn probe_records_cobweb_place_sound_after_particle_randoms() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 3018,
+                pos: ProtocolBlockPos { x: 2, y: 64, z: -5 },
+                data: 0,
+                global: false,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.level_events_received, 1);
+        assert_eq!(report.world_counters.sound_packets, 0);
+        let sound = report.world.last_sound().unwrap();
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.cobweb.place")
+        );
+        assert_eq!(sound.source, "block");
+        assert_eq!(
+            sound.position,
+            ProtocolVec3d {
+                x: 2.5,
+                y: 64.5,
+                z: -4.5,
+            }
+        );
+        assert_close(sound.volume, 1.0);
+        assert_close(sound.pitch, 1.013_698_2);
+        assert_eq!(sound.seed, 536_938_910_405_906_015);
+        assert!(sound.distance_delay);
     }
 
     #[tokio::test]
@@ -3641,7 +3704,7 @@ mod tests {
         assert!((sound.position.z - 0.5).abs() < 1.0e-6);
         assert_close(sound.volume, 5.0);
         assert_close(sound.pitch, 1.0);
-        assert_eq!(sound.seed, 0);
+        assert_eq!(sound.seed, -4_962_768_465_676_381_896);
     }
 
     #[tokio::test]

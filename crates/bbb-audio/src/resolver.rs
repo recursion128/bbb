@@ -108,6 +108,7 @@ impl<'a> AudioCommandResolver<'a> {
                 position: [state.position.x, state.position.y, state.position.z],
                 seed: state.seed,
                 fixed_range,
+                distance_delay: state.distance_delay,
                 category,
                 sound,
             },
@@ -498,6 +499,7 @@ mod tests {
                 volume: 0.5,
                 pitch: 2.0,
                 seed: 0,
+                distance_delay: true,
             })
             .unwrap();
 
@@ -518,6 +520,7 @@ mod tests {
         assert_near(play.gain, 0.3);
         assert_near(play.playback_rate, 2.4);
         assert_eq!(play.fixed_range, Some(24.0));
+        assert!(play.distance_delay);
     }
 
     #[test]
@@ -622,6 +625,7 @@ mod tests {
                 volume: 2.0,
                 pitch: 3.0,
                 seed: 0,
+                distance_delay: false,
             })
             .unwrap();
 
@@ -683,6 +687,7 @@ mod tests {
                 volume: 2.0,
                 pitch: 1.0,
                 seed: 0,
+                distance_delay: false,
             })
             .unwrap();
 
@@ -742,6 +747,7 @@ mod tests {
                 volume: 1.0,
                 pitch: 1.0,
                 seed: 0,
+                distance_delay: false,
             })
             .unwrap();
 
@@ -823,6 +829,7 @@ mod tests {
                 volume: 1.0,
                 pitch: 1.0,
                 seed: 0,
+                distance_delay: false,
             })
             .unwrap();
 

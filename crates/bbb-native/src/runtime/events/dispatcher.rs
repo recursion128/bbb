@@ -2,7 +2,9 @@ use bbb_audio::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_control::NetCounters;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_protocol::packets::{RegistryData, Vec3d as ProtocolVec3d};
-use bbb_world::{ChunkPos, LevelEventSoundRandomState, WorldStore};
+use bbb_world::{
+    advance_cobweb_place_particle_randoms, ChunkPos, LevelEventSoundRandomState, WorldStore,
+};
 use tokio::sync::mpsc;
 
 use crate::audio_runtime::AudioEventSink;
@@ -11,6 +13,8 @@ use crate::particle_runtime::ParticleEventSink;
 
 use super::client_state::*;
 use super::control_state::apply_control_projection_event;
+
+const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 
 #[cfg(test)]
 pub(in crate::runtime) fn drain_net_events(
@@ -333,7 +337,10 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                         world.global_level_event_sound(event, camera_position)
                     })
                 {
-                    let state = world.record_positioned_sound(state);
+                    let state = world.record_positioned_sound(with_level_event_sound_seed(
+                        state,
+                        level_event_sound_random,
+                    ));
                     emit_positioned_sound(&mut audio_events, &state);
                 }
                 if let Some(state) = world
@@ -344,18 +351,44 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 {
                     emit_local_sound(&mut audio_events, &state);
                 }
-                if let Some(state) = world
-                    .level_event_sound_with_random(event, || level_event_sound_random.next_float())
-                {
-                    let state = world.record_positioned_sound(state);
-                    emit_positioned_sound(&mut audio_events, &state);
+                if event.event_type == COBWEB_PLACE_LEVEL_EVENT {
+                    let particles_consumed_random = emit_level_event_particles(
+                        &mut particle_events,
+                        &mut particle_renderer,
+                        &event,
+                        level_event_sound_random,
+                    );
+                    if !particles_consumed_random {
+                        advance_cobweb_place_particle_randoms(level_event_sound_random);
+                    }
+                    if let Some(state) = world
+                        .cobweb_place_level_event_sound_with_random(event, || {
+                            level_event_sound_random.next_float()
+                        })
+                    {
+                        let state = world.record_positioned_sound(with_level_event_sound_seed(
+                            state,
+                            level_event_sound_random,
+                        ));
+                        emit_positioned_sound(&mut audio_events, &state);
+                    }
+                } else {
+                    if let Some(state) = world.level_event_sound_with_random(event, || {
+                        level_event_sound_random.next_float()
+                    }) {
+                        let state = world.record_positioned_sound(with_level_event_sound_seed(
+                            state,
+                            level_event_sound_random,
+                        ));
+                        emit_positioned_sound(&mut audio_events, &state);
+                    }
+                    emit_level_event_particles(
+                        &mut particle_events,
+                        &mut particle_renderer,
+                        &event,
+                        level_event_sound_random,
+                    );
                 }
-                emit_level_event_particles(
-                    &mut particle_events,
-                    &mut particle_renderer,
-                    &event,
-                    level_event_sound_random,
-                );
             }
             NetEvent::InitializeBorder(border) => {
                 world.apply_initialize_border(border);
@@ -690,13 +723,23 @@ fn emit_level_event_particles(
     particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
     event: &bbb_protocol::packets::LevelEvent,
     random: &mut LevelEventSoundRandomState,
-) {
+) -> bool {
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch = particle_events.spawn_level_event_particles(event, random);
         if let Some(renderer) = particle_renderer.as_deref_mut() {
             renderer.submit_particle_spawns(batch);
         }
+        return true;
     }
+    false
+}
+
+fn with_level_event_sound_seed(
+    mut state: bbb_world::SoundEventState,
+    random: &mut LevelEventSoundRandomState,
+) -> bbb_world::SoundEventState {
+    state.seed = random.next_long();
+    state
 }
 
 fn audio_position(position: bbb_world::EntityVec3) -> [f64; 3] {

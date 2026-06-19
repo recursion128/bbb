@@ -37,6 +37,8 @@ pub struct PlayPositionedSoundCommand {
     pub playback_rate: f32,
     pub seed: i64,
     pub fixed_range: Option<f32>,
+    #[serde(default)]
+    pub distance_delay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

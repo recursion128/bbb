@@ -265,6 +265,8 @@ When an agent does any of the following, update this file in the same slice:
     - stop semantics
     - remaining level-event audio that is still coupled to unimplemented
       particle/provider side effects
+    - Kira-side delayed playback for preserved positioned-sound
+      `distanceDelay` metadata
     - device/runtime diagnostics
 - Evidence / boundary:
   - `bbb-audio` has:
@@ -291,6 +293,13 @@ When an agent does any of the following, update this file in the same slice:
         and the randomized charged branch
       - lava extinguish and redstone torch burnout now share the dispatcher
         path with renderer smoke side effects for events `1501` and `1502`
+      - cobweb place event `3018` consumes the vanilla poof-particle random
+        sequence before recording/playing:
+        - `minecraft:block.cobweb.place`
+        - `SoundSource.BLOCKS`
+        - volume `1.0`
+        - pitch `(nextFloat - nextFloat) * 0.2 + 1.0`
+        - `distanceDelay=true`
     - native dispatcher and offline probe recording/playback for
       `LevelEventHandler` portal travel local ambience:
       - event `1032`
@@ -305,6 +314,8 @@ When an agent does any of the following, update this file in the same slice:
         when a camera pose is available
       - LevelEvent-derived sound recording does not increment Sound-packet
         counters
+      - positioned sound state and audio commands preserve vanilla
+        `distanceDelay` metadata for delayed-local-sound follow-up work
     - native dispatcher playback for vanilla `globalLevelEvent` sounds:
       - wither spawn event `1023`
       - ender dragon death event `1028`

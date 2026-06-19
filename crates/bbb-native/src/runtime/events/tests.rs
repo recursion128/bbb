@@ -42,8 +42,8 @@ use bbb_protocol::packets::{
     WaypointVec3i,
 };
 use bbb_world::{
-    BlockPos, ChunkPos, LocalPlayerPoseState, RegistryPacketEntry, WorldBlockSoundProfile,
-    WorldStore,
+    advance_cobweb_place_particle_randoms, BlockPos, ChunkPos, LocalPlayerPoseState,
+    RegistryPacketEntry, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -2502,6 +2502,7 @@ fn client_audio_events_update_world_counters() {
             volume: 0.75,
             pitch: 1.25,
             seed: 123456789,
+            distance_delay: false,
         })
     );
     assert_eq!(world.counters().sound_entity_packets, 1);
@@ -3264,7 +3265,7 @@ fn level_event_2001_emits_vanilla_block_break_sound() {
     assert_eq!(command.position, [2.5, 3.5, -3.5]);
     assert_close(command.packet_volume, 0.9);
     assert_close(command.packet_pitch, 0.96);
-    assert_eq!(command.seed, 0);
+    assert_eq!(command.seed, -4_962_768_465_676_381_896);
     assert_eq!(world.counters().level_events_received, 1);
     assert_eq!(world.counters().level_events_tracked, 1);
 }
@@ -3302,6 +3303,7 @@ fn fixed_level_event_emits_vanilla_positioned_sound() {
     assert_eq!(command.position, [8.5, 64.5, -1.5]);
     assert_close(command.packet_volume, 1.0);
     assert_close(command.packet_pitch, 1.2);
+    assert_eq!(command.seed, -4_962_768_465_676_381_896);
     let recorded = world.last_sound().unwrap();
     assert_eq!(
         recorded.sound.location.as_deref(),
@@ -3318,6 +3320,7 @@ fn fixed_level_event_emits_vanilla_positioned_sound() {
     );
     assert_close(recorded.volume, 1.0);
     assert_close(recorded.pitch, 1.2);
+    assert_eq!(recorded.seed, -4_962_768_465_676_381_896);
     assert_eq!(world.counters().sound_packets, 0);
     assert_eq!(world.counters().level_events_received, 1);
 }
@@ -3352,6 +3355,7 @@ fn randomized_level_event_emits_vanilla_positioned_sound() {
     assert_eq!(command.position, [-3.5, 70.5, 9.5]);
     assert_close(command.packet_volume, 10.0);
     assert_close(command.packet_pitch, 0.979_905_37);
+    assert_eq!(command.seed, 4_437_113_781_045_784_766);
     let recorded = world.last_sound().unwrap();
     assert_eq!(
         recorded.sound.location.as_deref(),
@@ -3368,6 +3372,7 @@ fn randomized_level_event_emits_vanilla_positioned_sound() {
     );
     assert_close(recorded.volume, 10.0);
     assert_close(recorded.pitch, 0.979_905_37);
+    assert_eq!(recorded.seed, 4_437_113_781_045_784_766);
     assert_eq!(world.counters().sound_packets, 0);
     assert_eq!(world.counters().level_events_received, 1);
 }
@@ -3402,6 +3407,7 @@ fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
     assert_eq!(command.position, [-1.5, 68.5, 3.5]);
     assert_close(command.packet_volume, 0.565_720_5);
     assert_close(command.packet_pitch, 0.760_804_6);
+    assert_eq!(command.seed, -7_261_648_964_369_397_258);
     assert_eq!(world.counters().level_events_received, 1);
 }
 
@@ -3446,8 +3452,65 @@ fn end_gateway_level_event_emits_vanilla_sound_and_particles() {
     assert_eq!(command.position, [8.5, 64.5, -1.5]);
     assert_close(command.packet_volume, 10.0);
     assert_close(command.packet_pitch, 0.685_933_77);
+    assert_eq!(command.seed, 4_437_113_781_045_784_766);
     assert_eq!(particles.level_events, vec![event]);
     assert_eq!(particles.batches.len(), 1);
+    assert_eq!(world.counters().level_events_received, 1);
+    assert_eq!(world.counters().level_events_tracked, 1);
+}
+
+#[test]
+fn cobweb_place_level_event_emits_particles_before_distance_delayed_sound() {
+    let event = LevelEvent {
+        event_type: 3018,
+        pos: ProtocolBlockPos { x: 2, y: 64, z: -5 },
+        data: 0,
+        global: false,
+    };
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(event)).unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            Some(&mut audio),
+            Some(&mut particles),
+            None,
+            &mut level_event_sound_random,
+        ),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(particles.level_events, vec![event]);
+    assert_eq!(particles.batches.len(), 1);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(command.sound.event_id, "minecraft:block.cobweb.place");
+    assert_eq!(command.category, AudioCategory::Blocks);
+    assert_eq!(command.position, [2.5, 64.5, -4.5]);
+    assert_close(command.packet_volume, 1.0);
+    assert_close(command.packet_pitch, 1.013_698_2);
+    assert_eq!(command.seed, 536_938_910_405_906_015);
+    assert!(command.distance_delay);
+    let sound = world.last_sound().unwrap();
+    assert_eq!(
+        sound.sound.location.as_deref(),
+        Some("minecraft:block.cobweb.place")
+    );
+    assert_eq!(sound.seed, 536_938_910_405_906_015);
+    assert!(sound.distance_delay);
     assert_eq!(world.counters().level_events_received, 1);
     assert_eq!(world.counters().level_events_tracked, 1);
 }
@@ -3493,6 +3556,7 @@ fn wax_on_level_event_emits_vanilla_sound_and_particles() {
     assert_eq!(command.position, [-2.5, 72.5, 5.5]);
     assert_close(command.packet_volume, 1.0);
     assert_close(command.packet_pitch, 1.0);
+    assert_eq!(command.seed, -4_962_768_465_676_381_896);
     assert_eq!(particles.level_events, vec![event]);
     assert_eq!(particles.batches.len(), 1);
     assert_eq!(world.counters().level_events_received, 1);
@@ -3542,6 +3606,7 @@ fn global_level_event_emits_vanilla_camera_relative_sound() {
     assert!((command.position[2] - 0.5).abs() < 1.0e-6);
     assert_close(command.packet_volume, 5.0);
     assert_close(command.packet_pitch, 1.0);
+    assert_eq!(command.seed, -4_962_768_465_676_381_896);
     let recorded = world.last_sound().unwrap();
     assert_eq!(
         recorded.sound.location.as_deref(),
@@ -3553,6 +3618,7 @@ fn global_level_event_emits_vanilla_camera_relative_sound() {
     assert!((recorded.position.z - 0.5).abs() < 1.0e-6);
     assert_close(recorded.volume, 5.0);
     assert_close(recorded.pitch, 1.0);
+    assert_eq!(recorded.seed, -4_962_768_465_676_381_896);
     assert_eq!(world.counters().sound_packets, 0);
     assert_eq!(world.counters().level_events_received, 1);
 }
@@ -5160,8 +5226,11 @@ impl ParticleEventSink for RecordingParticleSink {
     fn spawn_level_event_particles(
         &mut self,
         event: &LevelEvent,
-        _random: &mut LevelEventSoundRandomState,
+        random: &mut LevelEventSoundRandomState,
     ) -> bbb_renderer::ParticleSpawnBatch {
+        if event.event_type == 3018 {
+            advance_cobweb_place_particle_randoms(random);
+        }
         self.level_events.push(*event);
         let batch = bbb_renderer::ParticleSpawnBatch {
             missing_sprite_count: 1,
@@ -5213,6 +5282,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "block.sculk.charge": {
                 "sounds": ["block/sculk/charge"]
+            },
+            "block.cobweb.place": {
+                "sounds": ["block/cobweb/place"]
             },
             "block.end_portal.spawn": {
                 "sounds": ["portal/endportal"]

@@ -527,15 +527,7 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
-            Ok(template) => template,
-            Err(batch) => return batch,
-        };
-        let mut batch = ParticleSpawnBatch {
-            missing_sprite_count: template.missing_sprite_count,
-            ..ParticleSpawnBatch::default()
-        };
-
+        let mut spawns = Vec::with_capacity(10);
         for _ in 0..10 {
             let velocity = Vec3d {
                 x: random.next_gaussian() * 0.02,
@@ -547,6 +539,19 @@ impl ParticleCommandResolver {
                 y: f64::from(event.pos.y) + random.next_double(),
                 z: f64::from(event.pos.z) + random.next_double(),
             };
+            spawns.push((position, velocity));
+        }
+
+        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for (position, velocity) in spawns {
             batch
                 .commands
                 .push(self.command_from_template(&template, position, velocity, false));

@@ -16,6 +16,7 @@ use crate::WorldStore;
 const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
 const JUKEBOX_STOP_LEVEL_EVENT: i32 = 1011;
 const BLOCK_BREAK_LEVEL_EVENT: i32 = 2001;
+const COBWEB_PLACE_LEVEL_EVENT: i32 = 3018;
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
 const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
 const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
@@ -65,6 +66,12 @@ impl LevelEventSoundRandomState {
         let high = (self.next_bits(26) as u64) << 27;
         let low = self.next_bits(27) as u64;
         (high + low) as f64 / RANDOM_DOUBLE_DIVISOR
+    }
+
+    pub fn next_long(&mut self) -> i64 {
+        let high = (self.next_bits(32) as i32 as i64) << 32;
+        let low = self.next_bits(32) as i32 as i64;
+        high.wrapping_add(low)
     }
 
     pub fn next_gaussian(&mut self) -> f64 {
@@ -138,6 +145,8 @@ pub struct SoundEventState {
     pub volume: f32,
     pub pitch: f32,
     pub seed: i64,
+    #[serde(default)]
+    pub distance_delay: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -228,6 +237,7 @@ impl WorldStore {
             volume: packet.volume,
             pitch: packet.pitch,
             seed: packet.seed,
+            distance_delay: false,
         };
         self.client_audio.last_sound = Some(state.clone());
         state
@@ -388,6 +398,24 @@ impl WorldStore {
         ))
     }
 
+    pub fn cobweb_place_level_event_sound_with_random(
+        &self,
+        event: ProtocolLevelEvent,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        if event.event_type != COBWEB_PLACE_LEVEL_EVENT {
+            return None;
+        }
+        Some(block_sound_state_with_distance_delay(
+            crate::protocol_block_pos(event.pos),
+            "minecraft:block.cobweb.place",
+            1.0,
+            triangle_pitch(1.0, 0.2, &mut next_float),
+            "block",
+            true,
+        ))
+    }
+
     pub fn global_level_event_sound(
         &self,
         event: ProtocolLevelEvent,
@@ -407,6 +435,7 @@ impl WorldStore {
             volume: sound.volume,
             pitch: sound.pitch,
             seed: 0,
+            distance_delay: false,
         })
     }
 
@@ -805,6 +834,17 @@ fn block_sound_state(
     pitch: f32,
     source: &str,
 ) -> SoundEventState {
+    block_sound_state_with_distance_delay(pos, sound, volume, pitch, source, false)
+}
+
+fn block_sound_state_with_distance_delay(
+    pos: crate::BlockPos,
+    sound: &str,
+    volume: f32,
+    pitch: f32,
+    source: &str,
+    distance_delay: bool,
+) -> SoundEventState {
     SoundEventState {
         sound: SoundHolderState {
             kind: "direct".to_string(),
@@ -821,6 +861,18 @@ fn block_sound_state(
         volume,
         pitch,
         seed: 0,
+        distance_delay,
+    }
+}
+
+pub fn advance_cobweb_place_particle_randoms(random: &mut LevelEventSoundRandomState) {
+    for _ in 0..10 {
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_gaussian();
+        let _ = random.next_double();
+        let _ = random.next_double();
+        let _ = random.next_double();
     }
 }
 
@@ -878,6 +930,10 @@ mod tests {
         assert_close_f64(random.next_double(), 0.637_417_425_350_108_3);
 
         let mut random = LevelEventSoundRandomState::with_seed(0);
+        assert_eq!(random.next_long(), -4_962_768_465_676_381_896);
+        assert_eq!(random.next_long(), 4_437_113_781_045_784_766);
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
         assert_eq!(random.next_int_bound(3), 0);
         assert_eq!(random.next_int_bound(3), 1);
         assert_eq!(random.next_int_bound(4), 0);
@@ -921,6 +977,7 @@ mod tests {
             volume: 0.75,
             pitch: 1.25,
             seed: 123456789,
+            distance_delay: false,
         };
         assert_eq!(sound, expected_sound);
         assert_eq!(store.last_sound(), Some(&expected_sound));
@@ -1331,6 +1388,45 @@ mod tests {
     }
 
     #[test]
+    fn cobweb_place_level_event_sound_uses_post_particle_random_pitch_and_distance_delay() {
+        let store = WorldStore::new();
+        let event = LevelEvent {
+            event_type: 3018,
+            pos: ProtocolBlockPos { x: 2, y: 64, z: -5 },
+            data: 0,
+            global: false,
+        };
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        advance_cobweb_place_particle_randoms(&mut random);
+
+        let sound = store
+            .cobweb_place_level_event_sound_with_random(event, || random.next_float())
+            .unwrap();
+
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:block.cobweb.place")
+        );
+        assert_eq!(sound.source, "block");
+        assert_eq!(
+            sound.position,
+            ProtocolVec3d {
+                x: 2.5,
+                y: 64.5,
+                z: -4.5,
+            }
+        );
+        assert_close(sound.volume, 1.0);
+        assert_close(sound.pitch, 1.013_698_2);
+        assert_eq!(sound.seed, 0);
+        assert!(sound.distance_delay);
+
+        assert!(store
+            .level_event_sound_with_random(event, || panic!("3018 sound requires particle order"))
+            .is_none());
+    }
+
+    #[test]
     fn level_event_local_sound_with_random_maps_portal_travel_ambience() {
         let mut store = WorldStore::new();
         let sound = store
@@ -1379,6 +1475,7 @@ mod tests {
             volume: 1.0,
             pitch: 1.2,
             seed: 0,
+            distance_delay: false,
         };
 
         let recorded = store.record_positioned_sound(sound);
