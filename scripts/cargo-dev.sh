@@ -13,6 +13,7 @@ Usage:
   scripts/cargo-dev.sh clean-target <target-suffix|/tmp/bbb-target-...>
   scripts/cargo-dev.sh env
   scripts/cargo-dev.sh sccache-status
+  scripts/cargo-dev.sh sccache-zero-stats
   scripts/cargo-dev.sh cargo [cargo args...]
 
 Environment:
@@ -25,6 +26,8 @@ Examples:
   scripts/cargo-dev.sh fast-test -p bbb-world command_tree
   BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world command_tree
   scripts/cargo-dev.sh timings --workspace --timings
+  BBB_USE_SCCACHE=1 scripts/cargo-dev.sh timings-clean sccache-clean-20260619 --workspace --timings
+  BBB_USE_SCCACHE=1 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world command_tree
   scripts/cargo-dev.sh timings-clean clean-baseline-20260619 --workspace --timings
   scripts/cargo-dev.sh clean-target clean-baseline-20260619
   scripts/cargo-dev.sh gate
@@ -166,6 +169,13 @@ case "$cmd" in
     fi
     sccache --version
     sccache --show-stats || true
+    ;;
+  sccache-zero-stats)
+    if ! command -v sccache >/dev/null 2>&1; then
+      echo "sccache is not on PATH" >&2
+      exit 2
+    fi
+    sccache --zero-stats
     ;;
   cargo)
     exec cargo "$@"

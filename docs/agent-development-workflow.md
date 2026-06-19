@@ -28,6 +28,10 @@ configuration UI.
    - `../bbb-wt-renderer`
    - `../bbb-wt-world`
    - `../bbb-wt-protocol`
+   The preferred helper is:
+   - `scripts/worker-worktree.sh create world`
+   - `scripts/worker-worktree.sh status`
+   - `scripts/worker-worktree.sh cleanup world`
 6. Main agent gives each worker an exact write scope and a distinct external
    `CARGO_TARGET_DIR` when focused tests may run in parallel.
 7. Main agent keeps one critical-path task local while workers run.
@@ -96,6 +100,12 @@ Every worker prompt must include:
   `target` directories. The main worktree uses `/tmp/bbb-target-main`; common
   worker targets are `/tmp/bbb-target-renderer`, `/tmp/bbb-target-world`, and
   `/tmp/bbb-target-net`.
+- Use `scripts/worker-worktree.sh create <name>` for standard workers. It
+  creates `../bbb-wt-<name>` on branch `bbb-worker-<name>` and reports
+  `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`.
+- Use `scripts/worker-worktree.sh cleanup <name>` only after reviewing the
+  worker diff. It refuses dirty worktrees and uses safe branch deletion; it does
+  not delete the external Cargo target cache.
 - Do not delete assigned Cargo target caches after every slice. Clean them
   periodically or when measuring a clean build, reclaiming disk, or abandoning a
   disposable one-off target.

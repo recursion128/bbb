@@ -458,9 +458,10 @@ Measured commands:
     `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260619T000416951Z-14ffed61c5c1036c.html`
 
 The current workflow is already using retained external target caches, opt-in
-`fast-test`, and per-worker target directories. The next build-performance
-change should be measured `sccache` adoption after installing it locally; keep
-`rustc-wrapper` out of repo-local Cargo config until that comparison exists.
+`fast-test`, and per-worker target directories. `sccache` should stay explicit
+and optional; the 2026-06-19 measurement below did not show a multi-target
+cold-compile improvement on this machine. Keep `rustc-wrapper` out of
+repo-local Cargo config unless future measurements show a stable benefit.
 
 ## Warm Update: 2026-06-19 After Sprint Jump Slice
 
@@ -569,3 +570,73 @@ The cache policy is behaving as intended for fast focused tests, but the main
 target is now large enough that periodic size checks should stay part of the
 workflow. Do not clean it automatically at slice boundaries; clean only for
 real disk pressure, toolchain changes, or disposable clean-baseline runs.
+
+## sccache Evaluation: 2026-06-19
+
+Environment:
+
+- `sccache 0.15.0` installed at `/opt/homebrew/bin/sccache`.
+- `cargo 1.96.0-nightly (cbb9bb8bd 2026-03-13)`.
+- `rustc 1.96.0-nightly (bcf3d36c9 2026-03-19)`.
+- `RUSTC_WRAPPER=sccache` or `BBB_USE_SCCACHE=1` was used only through
+  environment variables. No repo-local `.cargo/config.toml` was added.
+- `sccache` stats were zeroed before each measured `sccache` run with
+  `scripts/cargo-dev.sh sccache-zero-stats`.
+- Disposable measurement targets were removed after recording the numbers to
+  avoid growing `/tmp` by another 4G+.
+
+Measured commands:
+
+- Clean full workspace with `sccache`:
+  `RUSTC_WRAPPER=sccache scripts/cargo-dev.sh timings-clean sccache-clean-20260619110904 --workspace --timings --quiet`
+  - Wall time: 171.76s.
+  - Target size: 3.2G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-sccache-clean-20260619110904/cargo-timings/cargo-timing-20260619T030913544Z-14ffed61c5c1036c.html`
+    before the disposable target was removed.
+  - `sccache` stats:
+    - compile requests: 217
+    - executed: 156
+    - cache hits: 0
+    - cache misses: 156
+    - non-cacheable calls: 59
+    - cache size after run: 216M
+- New worker target focused test with `sccache`:
+  `BBB_USE_SCCACHE=1 BBB_CARGO_TARGET_NAME=sccache-worker-world-20260619110904 scripts/cargo-dev.sh test -p bbb-world local_player_respects_piglin_wall_head_wider_collision --quiet`
+  - Wall time: 50.71s.
+  - Target size: 636M.
+  - Result: 1 test passed.
+  - `sccache` stats:
+    - compile requests: 46
+    - executed: 29
+    - cache hits: 0
+    - cache misses: 29
+    - non-cacheable calls: 17
+    - cache size after run: 240M
+- New worker target focused test without `sccache` for comparison:
+  `CARGO_TARGET_DIR=/tmp/bbb-target-nosccache-worker-world-20260619110904 cargo test -p bbb-world local_player_respects_piglin_wall_head_wider_collision --quiet`
+  - Wall time: 50.39s.
+  - Target size: 635M.
+  - Result: 1 test passed.
+- Warm focused default with `sccache` on the stable main target:
+  `RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world local_player_respects_piglin_wall_head_wider_collision --quiet`
+  - Wall time: 0.24s.
+  - Result: 1 test passed.
+  - `sccache` stats:
+    - compile requests: 3
+    - executed: 0
+    - cache hits: 0
+    - cache misses: 0
+
+Conclusion:
+
+- This measurement did not confirm a `sccache` benefit for multi-worktree cold
+  focused tests. The new worker target with `sccache` was effectively the same
+  wall time as the no-`sccache` comparison and reported zero cache hits.
+- Do not make `sccache` the default repo setting.
+- Keep using stable external `CARGO_TARGET_DIR` values as the main speedup.
+- Keep `BBB_USE_SCCACHE=1` available for explicit future experiments, especially
+  after dependency/profile/toolchain changes.
+- Remove disposable measurement targets after recording results when disk
+  pressure matters.

@@ -57,6 +57,7 @@ committer.
    - `../bbb-wt-renderer`
    - `../bbb-wt-world`
    - `../bbb-wt-protocol`
+   Use `scripts/worker-worktree.sh create <name>` for the standard path.
 6. Give each worker worktree a temporary branch and, when tests may run in
    parallel, a distinct external `CARGO_TARGET_DIR` to avoid Cargo lock
    contention and preserve build cache.
@@ -98,6 +99,12 @@ Every worker prompt should include:
   `/tmp/bbb-target-main`; workers should use stable per-domain directories such
   as `/tmp/bbb-target-renderer`, `/tmp/bbb-target-world`, or
   `/tmp/bbb-target-net`.
+- Standard worker setup:
+  - `scripts/worker-worktree.sh create world`
+  - `scripts/worker-worktree.sh status`
+  - `scripts/worker-worktree.sh cleanup world`
+  The helper creates `../bbb-wt-<name>`, branch `bbb-worker-<name>`, and reports
+  `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`.
 - Do not delete assigned Cargo target caches after every slice. Clean them
   periodically or when measuring a clean build, reclaiming disk, or abandoning a
   disposable one-off target.
