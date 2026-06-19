@@ -155,10 +155,32 @@ impl WorldStore {
             &profile.hit_sound,
             (profile.volume + 1.0) / 8.0,
             profile.pitch * 0.5,
+            "block",
         ))
     }
 
     pub fn level_event_block_break_sound(
+        &self,
+        event: ProtocolLevelEvent,
+    ) -> Option<SoundEventState> {
+        self.level_event_block_break_sound_state(event)
+    }
+
+    pub fn level_event_sound(&self, event: ProtocolLevelEvent) -> Option<SoundEventState> {
+        if let Some(state) = self.level_event_block_break_sound_state(event) {
+            return Some(state);
+        }
+        let sound = fixed_level_event_sound(event.event_type)?;
+        Some(block_sound_state(
+            crate::protocol_block_pos(event.pos),
+            sound.event_id,
+            sound.volume,
+            sound.pitch,
+            sound.source,
+        ))
+    }
+
+    fn level_event_block_break_sound_state(
         &self,
         event: ProtocolLevelEvent,
     ) -> Option<SoundEventState> {
@@ -178,8 +200,90 @@ impl WorldStore {
             &profile.break_sound,
             (profile.volume + 1.0) / 2.0,
             profile.pitch * 0.8,
+            "block",
         ))
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct FixedLevelEventSound {
+    event_id: &'static str,
+    source: &'static str,
+    volume: f32,
+    pitch: f32,
+}
+
+fn fixed_level_event_sound(event_type: i32) -> Option<FixedLevelEventSound> {
+    let sound = match event_type {
+        1000 => FixedLevelEventSound {
+            event_id: "minecraft:block.dispenser.dispense",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        1001 => FixedLevelEventSound {
+            event_id: "minecraft:block.dispenser.fail",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.2,
+        },
+        1002 => FixedLevelEventSound {
+            event_id: "minecraft:block.dispenser.launch",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.2,
+        },
+        1004 => FixedLevelEventSound {
+            event_id: "minecraft:entity.firework_rocket.shoot",
+            source: "neutral",
+            volume: 1.0,
+            pitch: 1.2,
+        },
+        1033 => FixedLevelEventSound {
+            event_id: "minecraft:block.chorus_flower.grow",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        1034 => FixedLevelEventSound {
+            event_id: "minecraft:block.chorus_flower.death",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        1035 => FixedLevelEventSound {
+            event_id: "minecraft:block.brewing_stand.brew",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        1049 => FixedLevelEventSound {
+            event_id: "minecraft:block.crafter.craft",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        1050 => FixedLevelEventSound {
+            event_id: "minecraft:block.crafter.fail",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        1503 => FixedLevelEventSound {
+            event_id: "minecraft:block.end_portal_frame.fill",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        1505 => FixedLevelEventSound {
+            event_id: "minecraft:item.bone_meal.use",
+            source: "block",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        _ => return None,
+    };
+    Some(sound)
 }
 
 fn block_sound_state(
@@ -187,6 +291,7 @@ fn block_sound_state(
     sound: &str,
     volume: f32,
     pitch: f32,
+    source: &str,
 ) -> SoundEventState {
     SoundEventState {
         sound: SoundHolderState {
@@ -195,7 +300,7 @@ fn block_sound_state(
             location: Some(sound.to_string()),
             fixed_range: None,
         },
-        source: "block".to_string(),
+        source: source.to_string(),
         position: ProtocolVec3d {
             x: f64::from(pos.x) + 0.5,
             y: f64::from(pos.y) + 0.5,
@@ -407,6 +512,15 @@ mod tests {
         assert_close(sound.volume, 0.9);
         assert_close(sound.pitch, 0.96);
         assert_eq!(sound.seed, 0);
+        assert_eq!(
+            store.level_event_sound(LevelEvent {
+                event_type: 2001,
+                pos: ProtocolBlockPos { x: 2, y: 3, z: -4 },
+                data: 9,
+                global: false,
+            }),
+            Some(sound)
+        );
 
         assert!(store
             .level_event_block_break_sound(LevelEvent {
@@ -420,6 +534,92 @@ mod tests {
             .level_event_block_break_sound(LevelEvent {
                 event_type: 2001,
                 pos: ProtocolBlockPos { x: 2, y: 3, z: -4 },
+                data: 0,
+                global: false,
+            })
+            .is_none());
+    }
+
+    #[test]
+    fn level_event_sound_maps_fixed_vanilla_level_event_audio() {
+        let store = WorldStore::new();
+
+        for (event_type, event_id, source, volume, pitch) in [
+            (
+                1000,
+                "minecraft:block.dispenser.dispense",
+                "block",
+                1.0,
+                1.0,
+            ),
+            (1001, "minecraft:block.dispenser.fail", "block", 1.0, 1.2),
+            (1002, "minecraft:block.dispenser.launch", "block", 1.0, 1.2),
+            (
+                1004,
+                "minecraft:entity.firework_rocket.shoot",
+                "neutral",
+                1.0,
+                1.2,
+            ),
+            (
+                1033,
+                "minecraft:block.chorus_flower.grow",
+                "block",
+                1.0,
+                1.0,
+            ),
+            (
+                1034,
+                "minecraft:block.chorus_flower.death",
+                "block",
+                1.0,
+                1.0,
+            ),
+            (
+                1035,
+                "minecraft:block.brewing_stand.brew",
+                "block",
+                1.0,
+                1.0,
+            ),
+            (1049, "minecraft:block.crafter.craft", "block", 1.0, 1.0),
+            (1050, "minecraft:block.crafter.fail", "block", 1.0, 1.0),
+            (
+                1503,
+                "minecraft:block.end_portal_frame.fill",
+                "block",
+                1.0,
+                1.0,
+            ),
+            (1505, "minecraft:item.bone_meal.use", "block", 1.0, 1.0),
+        ] {
+            let sound = store
+                .level_event_sound(LevelEvent {
+                    event_type,
+                    pos: ProtocolBlockPos { x: -1, y: 70, z: 4 },
+                    data: 7,
+                    global: false,
+                })
+                .unwrap();
+            assert_eq!(sound.sound.location.as_deref(), Some(event_id));
+            assert_eq!(sound.source, source);
+            assert_eq!(sound.position, vec3(-0.5, 70.5, 4.5));
+            assert_close(sound.volume, volume);
+            assert_close(sound.pitch, pitch);
+        }
+
+        assert!(store
+            .level_event_sound(LevelEvent {
+                event_type: 1015,
+                pos: ProtocolBlockPos { x: -1, y: 70, z: 4 },
+                data: 0,
+                global: false,
+            })
+            .is_none());
+        assert!(store
+            .level_event_sound(LevelEvent {
+                event_type: 1501,
+                pos: ProtocolBlockPos { x: -1, y: 70, z: 4 },
                 data: 0,
                 global: false,
             })
@@ -445,5 +645,9 @@ mod tests {
             (actual - expected).abs() < 1.0e-6,
             "expected {expected}, got {actual}"
         );
+    }
+
+    fn vec3(x: f64, y: f64, z: f64) -> ProtocolVec3d {
+        ProtocolVec3d { x, y, z }
     }
 }

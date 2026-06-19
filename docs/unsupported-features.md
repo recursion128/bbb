@@ -232,11 +232,21 @@ When an agent does any of the following, update this file in the same slice:
     - source/category mapping
     - spatial/entity-following sounds
     - stop semantics
+    - randomized level-event sounds
     - device/runtime diagnostics
 - Evidence / boundary:
   - `bbb-audio` has:
     - Kira-backed command/runtime boundaries
     - pack-driven sound lookup
+    - native dispatcher playback for fixed-pitch vanilla `LevelEventHandler`
+      sounds:
+      - dispenser dispense/fail/launch
+      - firework rocket shoot
+      - chorus flower grow/death
+      - brewing stand brew
+      - crafter craft/fail
+      - end portal frame fill
+      - bone meal use
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage
