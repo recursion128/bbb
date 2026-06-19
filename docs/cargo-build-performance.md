@@ -461,3 +461,38 @@ The current workflow is already using retained external target caches, opt-in
 `fast-test`, and per-worker target directories. The next build-performance
 change should be measured `sccache` adoption after installing it locally; keep
 `rustc-wrapper` out of repo-local Cargo config until that comparison exists.
+
+## Warm Update: 2026-06-19 After Sprint Jump Slice
+
+Environment:
+
+- `sccache` is still not installed on `PATH`.
+- Stable target caches found:
+  - `/tmp/bbb-target-main`: 16G.
+  - `/tmp/bbb-target-native`: 3.3G.
+  - `/tmp/bbb-target-net`: 720M.
+  - `/tmp/bbb-target-pack`: 438M.
+  - `/tmp/bbb-target-renderer`: 2.0G.
+  - `/tmp/bbb-target-world`: 3.0G.
+- No clean target was created for this update. The slice did not change Cargo
+  profiles, dependencies, or cache policy, so the clean full-workspace baseline
+  remains the 2026-06-18 disposable-target measurement above.
+
+Measured commands:
+
+- Warm focused default:
+  `scripts/cargo-dev.sh test -p bbb-world local_player_sprint_jump --quiet`
+  - Wall time: 0.13s.
+  - Result: 1 test passed.
+- Warm full workspace:
+  `scripts/cargo-dev.sh timings --workspace --timings --quiet`
+  - Wall time: 3.67s.
+  - Target size: 16G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260619T014734366Z-14ffed61c5c1036c.html`
+
+The target cache is larger than earlier updates because it is now deliberately
+retained across native-client slices. Keep using explicit external
+`CARGO_TARGET_DIR` values and only clean stable targets when disk pressure is
+real or a cache becomes misleading.
