@@ -18,6 +18,7 @@ mod commands;
 mod inventory;
 mod mouse;
 mod movement;
+mod text_edit;
 
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::item_runtime::NativeItemRuntime;
@@ -925,14 +926,23 @@ fn handle_sign_editor_key(
             }
         }
         KeyCode::ArrowLeft => {
+            let control_down = input.control_down();
             if let Some(editor) = &mut input.sign_editor {
-                editor.cursor = editor.cursor.saturating_sub(1);
+                editor.cursor = if control_down {
+                    text_edit::word_position(&editor.lines[editor.line], editor.cursor, -1)
+                } else {
+                    editor.cursor.saturating_sub(1)
+                };
             }
         }
         KeyCode::ArrowRight => {
+            let control_down = input.control_down();
             if let Some(editor) = &mut input.sign_editor {
-                editor.cursor =
-                    (editor.cursor + 1).min(sign_line_char_len(&editor.lines[editor.line]));
+                editor.cursor = if control_down {
+                    text_edit::word_position(&editor.lines[editor.line], editor.cursor, 1)
+                } else {
+                    (editor.cursor + 1).min(sign_line_char_len(&editor.lines[editor.line]))
+                };
             }
         }
         KeyCode::Home => {
@@ -946,13 +956,29 @@ fn handle_sign_editor_key(
             }
         }
         KeyCode::Backspace => {
+            let control_down = input.control_down();
             if let Some(editor) = &mut input.sign_editor {
-                remove_sign_char_before_cursor(&mut editor.lines[editor.line], &mut editor.cursor);
+                if control_down {
+                    text_edit::remove_word_before_cursor(
+                        &mut editor.lines[editor.line],
+                        &mut editor.cursor,
+                    );
+                } else {
+                    remove_sign_char_before_cursor(
+                        &mut editor.lines[editor.line],
+                        &mut editor.cursor,
+                    );
+                }
             }
         }
         KeyCode::Delete => {
+            let control_down = input.control_down();
             if let Some(editor) = &mut input.sign_editor {
-                remove_sign_char_at_cursor(&mut editor.lines[editor.line], editor.cursor);
+                if control_down {
+                    text_edit::remove_word_at_cursor(&mut editor.lines[editor.line], editor.cursor);
+                } else {
+                    remove_sign_char_at_cursor(&mut editor.lines[editor.line], editor.cursor);
+                }
             }
         }
         _ => {}

@@ -2095,6 +2095,91 @@ fn anvil_cursor_keys_edit_rename_text_inside_line() {
 }
 
 #[test]
+fn anvil_control_word_keys_edit_rename_text() {
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "alpha beta gamma",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowRight),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+
+    assert_eq!(input.anvil_rename_text(), "alpha ");
+    assert_eq!(counters.rename_item_commands_queued, 3);
+    for name in ["alpha beta gamma", "alpha gamma", "alpha "] {
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RenameItem(RenameItem {
+                name: name.to_string(),
+            })
+        );
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn anvil_delete_at_end_is_consumed_without_rename_command() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
@@ -2422,6 +2507,107 @@ fn sign_editor_cursor_keys_edit_inside_current_line() {
             is_front_text: true,
             lines: [
                 ">abd<".to_string(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ],
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn sign_editor_control_word_keys_edit_current_line() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+        is_front_text: false,
+    });
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "alpha beta gamma",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowRight),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate {
+            pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+            is_front_text: false,
+            lines: [
+                "alpha ".to_string(),
                 String::new(),
                 String::new(),
                 String::new(),
