@@ -1837,6 +1837,109 @@ fn anvil_backspace_queues_updated_rename_item_command() {
 }
 
 #[test]
+fn anvil_cursor_keys_edit_rename_text_inside_line() {
+    let (tx, mut rx) = mpsc::channel(8);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "abcd");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "X");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Home),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, ">");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::End),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "<");
+
+    assert_eq!(input.anvil_rename_text(), ">abd<");
+    assert_eq!(counters.rename_item_commands_queued, 6);
+    for name in ["abcd", "abXcd", "abXd", "abd", ">abd", ">abd<"] {
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RenameItem(RenameItem {
+                name: name.to_string(),
+            })
+        );
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn anvil_delete_at_end_is_consumed_without_rename_command() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "Axe");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(input.anvil_rename_text(), "Axe");
+    assert_eq!(counters.rename_item_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::RenameItem(RenameItem {
+            name: "Axe".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn anvil_rename_field_consumes_inventory_key_when_editable() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

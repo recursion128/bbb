@@ -98,6 +98,7 @@ pub(crate) struct ClientInputState {
     beacon_secondary_effect: Option<i32>,
     anvil_rename_input: Option<AnvilRenameInputSignature>,
     anvil_rename_text: String,
+    anvil_rename_cursor: usize,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
     merchant_trade_scrolling: bool,
@@ -179,6 +180,7 @@ impl ClientInputState {
         self.stonecutter_recipe_scrolling = false;
         self.anvil_rename_input = None;
         self.anvil_rename_text.clear();
+        self.anvil_rename_cursor = 0;
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
         self.last_paddle_boat_command_at = None;

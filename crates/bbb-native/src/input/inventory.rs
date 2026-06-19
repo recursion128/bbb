@@ -1935,7 +1935,11 @@ pub(crate) fn handle_inventory_text_input(
     }
 
     let before = input.anvil_rename_text.clone();
-    push_anvil_rename_text(&mut input.anvil_rename_text, text);
+    insert_anvil_rename_text(
+        &mut input.anvil_rename_text,
+        &mut input.anvil_rename_cursor,
+        text,
+    );
     if input.anvil_rename_text != before {
         queue_anvil_rename(input, counters, net_commands);
     }
@@ -2005,14 +2009,63 @@ fn handle_anvil_rename_key_input(
     }
 
     match code {
-        KeyCode::Backspace => {
+        KeyCode::ArrowLeft => {
             sync_anvil_rename_input(input, world, item_runtime);
-            if input.anvil_rename_input.is_some() && input.anvil_rename_text.pop().is_some() {
-                queue_anvil_rename(input, counters, net_commands);
+            if input.anvil_rename_input.is_some() {
+                input.anvil_rename_cursor = input.anvil_rename_cursor.saturating_sub(1);
             }
             true
         }
-        KeyCode::Delete => true,
+        KeyCode::ArrowRight => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                input.anvil_rename_cursor = (input.anvil_rename_cursor + 1)
+                    .min(anvil_rename_char_len(&input.anvil_rename_text));
+            }
+            true
+        }
+        KeyCode::Home => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                input.anvil_rename_cursor = 0;
+            }
+            true
+        }
+        KeyCode::End => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                input.anvil_rename_cursor = anvil_rename_char_len(&input.anvil_rename_text);
+            }
+            true
+        }
+        KeyCode::Backspace => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                let before = input.anvil_rename_text.clone();
+                remove_anvil_rename_char_before_cursor(
+                    &mut input.anvil_rename_text,
+                    &mut input.anvil_rename_cursor,
+                );
+                if input.anvil_rename_text != before {
+                    queue_anvil_rename(input, counters, net_commands);
+                }
+            }
+            true
+        }
+        KeyCode::Delete => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                let before = input.anvil_rename_text.clone();
+                remove_anvil_rename_char_at_cursor(
+                    &mut input.anvil_rename_text,
+                    input.anvil_rename_cursor,
+                );
+                if input.anvil_rename_text != before {
+                    queue_anvil_rename(input, counters, net_commands);
+                }
+            }
+            true
+        }
         _ => false,
     }
 }
@@ -2026,6 +2079,7 @@ fn sync_anvil_rename_input(
     if input.anvil_rename_input != next {
         input.anvil_rename_input = next;
         input.anvil_rename_text = anvil_initial_rename_text(world, item_runtime);
+        input.anvil_rename_cursor = anvil_rename_char_len(&input.anvil_rename_text);
     }
 }
 
@@ -2083,14 +2137,17 @@ fn anvil_input_slot_item(world: &WorldStore) -> Option<&ItemStackSummary> {
     (!item_stack_is_empty(item)).then_some(item)
 }
 
-fn push_anvil_rename_text(current: &mut String, text: &str) {
+fn insert_anvil_rename_text(current: &mut String, cursor: &mut usize, text: &str) {
+    *cursor = (*cursor).min(anvil_rename_char_len(current));
     let mut remaining = ANVIL_RENAME_MAX_LENGTH.saturating_sub(anvil_rename_len(current));
     for ch in text.chars().filter(|ch| is_anvil_rename_char(*ch)) {
         let len = ch.len_utf16();
         if len > remaining {
             break;
         }
-        current.push(ch);
+        let insert_at = anvil_rename_byte_index(current, *cursor);
+        current.insert(insert_at, ch);
+        *cursor += 1;
         remaining -= len;
     }
 }
@@ -2115,6 +2172,35 @@ fn is_anvil_rename_char(ch: char) -> bool {
 
 fn anvil_rename_len(text: &str) -> usize {
     text.encode_utf16().count()
+}
+
+fn anvil_rename_char_len(text: &str) -> usize {
+    text.chars().count()
+}
+
+fn anvil_rename_byte_index(text: &str, char_index: usize) -> usize {
+    text.char_indices()
+        .nth(char_index)
+        .map_or(text.len(), |(index, _)| index)
+}
+
+fn remove_anvil_rename_char_before_cursor(current: &mut String, cursor: &mut usize) {
+    if *cursor == 0 {
+        return;
+    }
+    let start = anvil_rename_byte_index(current, *cursor - 1);
+    let end = anvil_rename_byte_index(current, *cursor);
+    current.replace_range(start..end, "");
+    *cursor -= 1;
+}
+
+fn remove_anvil_rename_char_at_cursor(current: &mut String, cursor: usize) {
+    if cursor >= anvil_rename_char_len(current) {
+        return;
+    }
+    let start = anvil_rename_byte_index(current, cursor);
+    let end = anvil_rename_byte_index(current, cursor + 1);
+    current.replace_range(start..end, "");
 }
 
 fn local_inventory_swap_button_num(code: KeyCode) -> Option<i8> {
