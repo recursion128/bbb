@@ -757,3 +757,33 @@ This installed recheck again does not support making `sccache` the default.
 The new worker focused test was slightly faster without `sccache`, and measured
 Rust cache hits stayed at zero. Keep `sccache` explicit through
 `RUSTC_WRAPPER=sccache` or `BBB_USE_SCCACHE=1`.
+
+Installed Recheck 2:
+
+- Command:
+  `scripts/cargo-dev.sh sccache-eval 20260619-r2 -p bbb-world command_tree --quiet`
+- Clean full workspace with `sccache`:
+  - Wall time: 169.42s.
+  - Target size before cleanup: 3.2G.
+  - Result: all tests passed.
+  - Rust cache hits: 0.
+- New worker target focused test with `sccache`:
+  - Wall time: 50.31s.
+  - Target size before cleanup: 638M.
+  - Result: 1 test passed.
+  - Rust cache hits: 0.
+- New worker target focused test without `sccache`:
+  - Wall time: 49.08s.
+  - Target size before cleanup: 638M.
+  - Result: 1 test passed.
+- Warm focused default with `sccache` on `/tmp/bbb-target-main`:
+  - Wall time: 1.42s.
+  - Result: 1 test passed.
+- Disposable measurement targets removed after recording:
+  - `/tmp/bbb-target-sccache-clean-20260619-r2`
+  - `/tmp/bbb-target-sccache-worker-20260619-r2`
+  - `/tmp/bbb-target-nosccache-worker-20260619-r2`
+
+This repeat run keeps the policy unchanged: `sccache` is available for explicit
+experiments, but stable external target directories remain the practical speed
+path for day-to-day focused tests and worker worktrees.

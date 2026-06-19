@@ -263,15 +263,28 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-pack`
 - Status: `partial`
 - Next action:
-  - Implement unsupported declaration shapes as official assets or resource
-    packs require them:
-    - atlas
-    - item model
-    - item tint
-    - registry declaration
+  - Keep parser coverage aligned with official assets by running local vanilla
+    coverage tests when changing pack loaders:
+    - `loads_all_local_vanilla_atlases`
+    - `loads_local_vanilla_item_model_catalog`
+    - `loads_local_vanilla_item_registry`
+    - `loads_local_vanilla_equipment_asset_catalog`
+  - Add new parser support only when an official asset or resource-pack
+    declaration fails those coverage tests or a focused resource-pack fixture.
+  - Advance renderer/runtime consumption of parsed assets:
+    - atlas mip animation metadata beyond current static sprite use
+    - full item tint parity for dynamic sources in every item rendering path
+    - equipment asset layers for future armor/equipment rendering
   - Keep resource-pack precedence/filter tests close to loaders.
 - Evidence / boundary:
-  - Loaders report unsupported atlas/item declarations.
+  - Local vanilla 26.1 parser coverage passes for:
+    - atlases
+    - item model declarations
+    - item tint source declarations
+    - item registry declarations
+    - equipment assets
+  - Loaders still reject malformed or unsupported custom resource-pack
+    declarations intentionally.
   - Equipment assets under `assets/minecraft/equipment/*.json` are parsed into
     `EquipmentAssetCatalog`, including:
     - dyeable armor layers

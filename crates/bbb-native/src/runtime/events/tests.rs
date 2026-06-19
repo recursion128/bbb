@@ -4065,6 +4065,87 @@ fn login_tracks_local_player_id_in_world() {
 }
 
 #[test]
+fn respawn_event_resets_local_player_runtime_state() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::Respawn(Respawn {
+        common_spawn_info: protocol_play_login(9).common_spawn_info,
+        data_to_keep: 0,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_login(&protocol_play_login(9));
+    world.apply_add_entity(protocol_add_entity(9));
+    world.apply_add_entity(protocol_add_entity(55));
+    world.apply_player_health(bbb_protocol::packets::PlayerHealth {
+        health: 4.0,
+        food: 7,
+        saturation: 0.5,
+    });
+    world.apply_player_experience(bbb_protocol::packets::PlayerExperience {
+        progress: 0.25,
+        level: 3,
+        total: 40,
+    });
+    assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 55 }));
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 10.0,
+            y: 65.0,
+            z: -4.0,
+        },
+        delta_movement: ProtocolVec3d {
+            x: 0.1,
+            y: -0.2,
+            z: 0.3,
+        },
+        on_ground: true,
+        horizontal_collision: true,
+        fall_distance: 8.0,
+        sneaking: true,
+        swimming: true,
+        y_rot: 90.0,
+        x_rot: 20.0,
+        last_teleport_id: 77,
+    });
+    world.set_local_destroying_block(BlockPos { x: 1, y: 2, z: 3 });
+    world.set_local_using_item(true);
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 9,
+        values: vec![EntityDataValue {
+            data_id: 0,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(0x02),
+        }],
+    }));
+    assert!(world.apply_update_mob_effect(protocol_update_mob_effect(9, 3)));
+
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+
+    assert_eq!(world.local_player_id(), Some(9));
+    assert_eq!(world.counters().respawns_received, 1);
+    assert!(world.local_player().health.is_none());
+    assert!(world.local_player().experience.is_none());
+    assert_eq!(world.local_player_pose(), None);
+    assert_eq!(
+        world.local_player().camera,
+        bbb_world::CameraState::default()
+    );
+    assert_eq!(
+        world.local_player().interaction,
+        bbb_world::LocalPlayerInteractionState::default()
+    );
+    let entity = world.probe_entity(9).unwrap();
+    assert!(entity.data_values.is_empty());
+    assert!(entity.mob_effects.is_empty());
+    assert_eq!(world.counters().active_mob_effects_tracked, 0);
+}
+
+#[test]
 fn player_position_and_rotation_events_update_world_pose() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::PlayerPosition(PlayerPositionUpdate {

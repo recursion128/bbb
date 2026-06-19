@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use crate::WorldStore;
 
 const VANILLA_SPECTATOR_GAME_TYPE_ID: i32 = 3;
+const RESPAWN_KEEP_ATTRIBUTE_MODIFIERS: i8 = 1;
+const RESPAWN_KEEP_ENTITY_DATA: i8 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldDimension {
@@ -156,6 +158,7 @@ impl WorldStore {
 
     pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) {
         self.counters.respawns_received += 1;
+        self.reset_local_player_for_respawn(respawn.data_to_keep);
         self.apply_spawn_info(&respawn.common_spawn_info);
     }
 
@@ -302,6 +305,60 @@ impl WorldStore {
         }
     }
 
+    fn reset_local_player_for_respawn(&mut self, data_to_keep: i8) {
+        let keep_entity_data = data_to_keep & RESPAWN_KEEP_ENTITY_DATA != 0;
+        let keep_attribute_modifiers = data_to_keep & RESPAWN_KEEP_ATTRIBUTE_MODIFIERS != 0;
+        let old_pose = self.local_player.pose;
+
+        self.local_player.health = None;
+        self.local_player.experience = None;
+        self.local_player.camera = crate::CameraState::default();
+        self.local_player.last_look_at = None;
+        self.local_player.interaction = crate::LocalPlayerInteractionState::default();
+        self.local_player.pose = keep_entity_data.then_some(old_pose).flatten().map(|pose| {
+            crate::LocalPlayerPoseState {
+                on_ground: false,
+                horizontal_collision: false,
+                fall_distance: 0.0,
+                ..pose
+            }
+        });
+
+        let Some(local_player_id) = self.local_player_id else {
+            self.local_player_vehicle_id = None;
+            return;
+        };
+        self.clear_local_player_mount(local_player_id);
+        self.entities
+            .with_mob_effects_mut(local_player_id, |effects| {
+                effects.effects.clear();
+            });
+        self.entities
+            .with_transient_events_mut(local_player_id, |events| {
+                events.last_animation_action = None;
+                events.last_event_id = None;
+                events.last_hurt_yaw = None;
+            });
+        self.entities.with_damage_mut(local_player_id, |damage| {
+            damage.last_damage = None;
+        });
+        if !keep_entity_data {
+            self.entities
+                .with_metadata_mut(local_player_id, |metadata| {
+                    metadata.data_values.clear();
+                });
+        }
+        if !keep_attribute_modifiers {
+            self.entities
+                .with_attributes_mut(local_player_id, |attributes| {
+                    for attribute in &mut attributes.attributes {
+                        attribute.modifiers.clear();
+                    }
+                });
+        }
+        self.update_active_mob_effect_count();
+    }
+
     fn set_game_type_from_game_event_param(&mut self, param: f32) {
         let game_type = canonical_game_type_id(rounded_game_event_param(param));
         if self.gameplay.game_type != game_type {
@@ -432,13 +489,22 @@ fn game_type_name(id: i32) -> &'static str {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, BlockDestruction as ProtocolBlockDestruction,
-        BlockEvent as ProtocolBlockEvent, BlockPos as ProtocolBlockPos,
-        LevelEvent as ProtocolLevelEvent, Vec3d as ProtocolVec3d,
+        AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
+        AttributeSnapshot as ProtocolAttributeSnapshot,
+        BlockDestruction as ProtocolBlockDestruction, BlockEvent as ProtocolBlockEvent,
+        BlockPos as ProtocolBlockPos, EntityDataValue as ProtocolEntityDataValue,
+        EntityDataValueKind, LevelEvent as ProtocolLevelEvent, MobEffectFlags,
+        PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
+        SetCamera as ProtocolSetCamera, SetEntityData as ProtocolSetEntityData,
+        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
+        Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
-    use crate::{ChunkColumn, ChunkPos, ChunkState, LightData};
+    use crate::entities::VANILLA_ENTITY_TYPE_PLAYER_ID;
+    use crate::{
+        BlockPos, CameraState, ChunkColumn, ChunkPos, ChunkState, LightData, LocalPlayerPoseState,
+    };
 
     #[test]
     fn play_login_updates_world_dimension_and_level_info() {
@@ -574,6 +640,70 @@ mod tests {
         assert_eq!(
             store.gameplay().previous_game_type_name.as_deref(),
             Some("creative")
+        );
+    }
+
+    #[test]
+    fn respawn_without_keep_data_resets_local_player_runtime_state() {
+        let mut store = respawn_state_with_local_player_data();
+
+        store.apply_respawn(&respawn_packet(0));
+
+        assert!(store.local_player().health.is_none());
+        assert!(store.local_player().experience.is_none());
+        assert_eq!(store.local_player_pose(), None);
+        assert_eq!(store.local_player().camera, CameraState::default());
+        assert_eq!(
+            store.local_player().interaction,
+            crate::LocalPlayerInteractionState::default()
+        );
+
+        let entity = store.probe_entity(123).unwrap();
+        assert!(entity.data_values.is_empty());
+        assert!(entity.mob_effects.is_empty());
+        assert_eq!(store.counters().active_mob_effects_tracked, 0);
+        assert_eq!(entity.attributes.len(), 1);
+        assert_eq!(entity.attributes[0].base, 0.1);
+        assert!(entity.attributes[0].modifiers.is_empty());
+    }
+
+    #[test]
+    fn respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers() {
+        let mut store = respawn_state_with_local_player_data();
+        let old_pose = store.local_player_pose().unwrap();
+
+        store.apply_respawn(&respawn_packet(3));
+
+        assert!(store.local_player().health.is_none());
+        assert!(store.local_player().experience.is_none());
+        assert_eq!(
+            store.local_player_pose(),
+            Some(LocalPlayerPoseState {
+                on_ground: false,
+                horizontal_collision: false,
+                fall_distance: 0.0,
+                ..old_pose
+            })
+        );
+        assert_eq!(store.local_player().camera, CameraState::default());
+        assert_eq!(
+            store.local_player().interaction,
+            crate::LocalPlayerInteractionState::default()
+        );
+
+        let entity = store.probe_entity(123).unwrap();
+        assert_eq!(entity.data_values, vec![entity_byte_data(0, 0x02)]);
+        assert!(entity.mob_effects.is_empty());
+        assert_eq!(store.counters().active_mob_effects_tracked, 0);
+        assert_eq!(entity.attributes.len(), 1);
+        assert_eq!(entity.attributes[0].base, 0.1);
+        assert_eq!(
+            entity.attributes[0].modifiers,
+            vec![ProtocolAttributeModifier {
+                id: "minecraft:test_speed".to_string(),
+                amount: 0.25,
+                operation_id: 1,
+            }]
         );
     }
 
@@ -816,6 +946,104 @@ mod tests {
             }
         );
         assert_eq!(store.counters().game_event_packets, 3);
+    }
+
+    fn respawn_state_with_local_player_data() -> WorldStore {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(123);
+        store.apply_add_entity(local_player_entity(123));
+        store.apply_add_entity(protocol_add_entity(456));
+        assert!(store.apply_set_camera(ProtocolSetCamera { camera_id: 456 }));
+        store.apply_player_health(ProtocolPlayerHealth {
+            health: 4.0,
+            food: 7,
+            saturation: 0.5,
+        });
+        store.apply_player_experience(ProtocolPlayerExperience {
+            progress: 0.25,
+            level: 3,
+            total: 40,
+        });
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: 10.0,
+                y: 65.0,
+                z: -4.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.1,
+                y: -0.2,
+                z: 0.3,
+            },
+            on_ground: true,
+            horizontal_collision: true,
+            fall_distance: 8.0,
+            sneaking: true,
+            swimming: true,
+            y_rot: 90.0,
+            x_rot: 20.0,
+            last_teleport_id: 77,
+        });
+        store.set_local_destroying_block(BlockPos { x: 1, y: 2, z: 3 });
+        store.set_local_using_item(true);
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id: 123,
+            values: vec![entity_byte_data(0, 0x02)],
+        }));
+        assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: 21,
+                base: 0.1,
+                modifiers: vec![ProtocolAttributeModifier {
+                    id: "minecraft:test_speed".to_string(),
+                    amount: 0.25,
+                    operation_id: 1,
+                }],
+            }],
+        }));
+        assert!(store.apply_update_mob_effect(ProtocolUpdateMobEffect {
+            entity_id: 123,
+            effect_id: 3,
+            amplifier: 1,
+            duration_ticks: 200,
+            flags: MobEffectFlags::default(),
+        }));
+        assert_eq!(store.counters().active_mob_effects_tracked, 1);
+        store
+    }
+
+    fn respawn_packet(data_to_keep: i8) -> ProtocolRespawn {
+        ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 12345,
+                game_type: 0,
+                previous_game_type: 0,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            data_to_keep,
+        }
+    }
+
+    fn entity_byte_data(data_id: u8, value: i8) -> ProtocolEntityDataValue {
+        ProtocolEntityDataValue {
+            data_id,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(value),
+        }
+    }
+
+    fn local_player_entity(id: i32) -> ProtocolAddEntity {
+        ProtocolAddEntity {
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            ..protocol_add_entity(id)
+        }
     }
 
     fn stale_chunk() -> ChunkColumn {
