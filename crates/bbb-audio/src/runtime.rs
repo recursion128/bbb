@@ -14,7 +14,7 @@ use kira::{
 
 use crate::{
     AudioCategory, AudioCommand, AudioListenerState, EntitySoundPosition, ResolvedSound,
-    StopSoundCommand, TickEntitySoundPositionsCommand,
+    StopJukeboxSongCommand, StopSoundCommand, TickEntitySoundPositionsCommand,
 };
 
 const MIN_SPATIAL_DISTANCE: f32 = 1.0;
@@ -29,6 +29,7 @@ struct KiraPlayingSound {
     event_id: String,
     category: AudioCategory,
     entity_id: Option<i32>,
+    jukebox_pos: Option<[i32; 3]>,
     handle: KiraSoundHandle,
     track: Option<SpatialTrackHandle>,
 }
@@ -69,6 +70,7 @@ impl KiraAudioRuntime {
                 command.channel_gain,
                 command.playback_rate,
                 command.fixed_range,
+                None,
             ),
             AudioCommand::PlayEntitySound(command) => self.play_spatial_sound(
                 &command.sound,
@@ -79,7 +81,21 @@ impl KiraAudioRuntime {
                 command.channel_gain,
                 command.playback_rate,
                 command.fixed_range,
+                None,
             ),
+            AudioCommand::PlayJukeboxSong(command) => self.play_jukebox_song(
+                &command.sound,
+                command.category.clone(),
+                command.position,
+                command.jukebox_pos,
+                command.gain,
+                command.channel_gain,
+                command.playback_rate,
+            ),
+            AudioCommand::StopJukeboxSong(command) => {
+                self.stop_jukebox_song(command);
+                Ok(())
+            }
             AudioCommand::StopSound(command) => {
                 self.stop_sounds(command);
                 Ok(())
@@ -119,6 +135,7 @@ impl KiraAudioRuntime {
             event_id: sound.event_id.clone(),
             category,
             entity_id: None,
+            jukebox_pos: None,
             handle,
             track: None,
         });
@@ -135,6 +152,7 @@ impl KiraAudioRuntime {
         channel_gain: f32,
         playback_rate: f32,
         fixed_range: Option<f32>,
+        jukebox_pos: Option<[i32; 3]>,
     ) -> Result<()> {
         self.retain_active_sounds();
         if !sound_should_start(channel_gain, &category) {
@@ -167,16 +185,53 @@ impl KiraAudioRuntime {
             event_id: sound.event_id.clone(),
             category,
             entity_id,
+            jukebox_pos,
             handle,
             track: Some(track),
         });
         Ok(())
     }
 
+    fn play_jukebox_song(
+        &mut self,
+        sound: &ResolvedSound,
+        category: AudioCategory,
+        position: [f64; 3],
+        jukebox_pos: [i32; 3],
+        gain: f32,
+        channel_gain: f32,
+        playback_rate: f32,
+    ) -> Result<()> {
+        self.stop_jukebox_song(&StopJukeboxSongCommand { jukebox_pos });
+        self.play_spatial_sound(
+            sound,
+            category,
+            None,
+            position,
+            gain,
+            channel_gain,
+            playback_rate,
+            None,
+            Some(jukebox_pos),
+        )
+    }
+
     fn stop_sounds(&mut self, command: &StopSoundCommand) {
         let mut retained = Vec::with_capacity(self.playing.len());
         for mut sound in self.playing.drain(..) {
             if sound_matches_stop(&sound, command) {
+                sound.handle.stop();
+            } else {
+                retained.push(sound);
+            }
+        }
+        self.playing = retained;
+    }
+
+    fn stop_jukebox_song(&mut self, command: &StopJukeboxSongCommand) {
+        let mut retained = Vec::with_capacity(self.playing.len());
+        for mut sound in self.playing.drain(..) {
+            if sound.jukebox_pos == Some(command.jukebox_pos) {
                 sound.handle.stop();
             } else {
                 retained.push(sound);

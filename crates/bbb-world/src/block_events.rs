@@ -4,7 +4,7 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{protocol_block_pos, BlockPos, WorldStore};
+use crate::{protocol_block_pos, BlockPos, JukeboxLevelEventState, WorldStore};
 
 const BLOCK_DESTRUCTION_EXPIRY_SCAN_INTERVAL_TICKS: u32 = 20;
 const BLOCK_DESTRUCTION_EXPIRY_TICKS: u32 = 400;
@@ -128,7 +128,10 @@ impl WorldStore {
         self.counters.block_events_tracked = self.block_events.len();
     }
 
-    pub fn apply_level_event(&mut self, event: ProtocolLevelEvent) {
+    pub fn apply_level_event(
+        &mut self,
+        event: ProtocolLevelEvent,
+    ) -> Option<JukeboxLevelEventState> {
         self.counters.level_events_received += 1;
         self.level_events.push(LevelEventRecord {
             event_type: event.event_type,
@@ -137,7 +140,7 @@ impl WorldStore {
             global: event.global,
         });
         self.counters.level_events_tracked = self.level_events.len();
-        self.record_jukebox_level_event(event);
+        self.record_jukebox_level_event(event)
     }
 
     pub fn block_destructions(&self) -> &[BlockDestructionProgress] {

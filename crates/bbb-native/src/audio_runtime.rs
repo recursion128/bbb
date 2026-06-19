@@ -1,20 +1,24 @@
 use anyhow::{Context, Result};
 use bbb_audio::{
-    AudioCommand, AudioCommandResolver, AudioResolveError, KiraAudioRuntime, SoundEventRegistry,
-    TickEntitySoundPositionsCommand,
+    AudioCommand, AudioCommandResolver, AudioResolveError, JukeboxSongRegistry, KiraAudioRuntime,
+    SoundEventRegistry, TickEntitySoundPositionsCommand,
 };
 use bbb_control::AudioCounters;
 use bbb_pack::{PackRoots, SoundCatalog};
 use bbb_world::{
-    LocalSoundEventState, SoundEntityEventState, SoundEventState, StopSoundEventState,
+    JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState, SoundEventState,
+    StopSoundEventState,
 };
 
 pub(crate) trait AudioEventSink {
     fn counters(&self) -> AudioCounters;
     fn set_sound_event_registry(&mut self, registry: SoundEventRegistry);
+    fn set_jukebox_song_registry(&mut self, registry: JukeboxSongRegistry);
     fn play_local_sound(&mut self, state: &LocalSoundEventState);
     fn play_positioned_sound(&mut self, state: &SoundEventState);
     fn play_entity_sound(&mut self, state: &SoundEntityEventState, position: Option<[f64; 3]>);
+    fn play_jukebox_song(&mut self, state: &JukeboxLevelEventState);
+    fn stop_jukebox_song(&mut self, state: &JukeboxLevelEventState);
     fn stop_sound(&mut self, state: &StopSoundEventState);
     fn tick_entity_sound_positions(&mut self, command: TickEntitySoundPositionsCommand);
 }
@@ -22,6 +26,7 @@ pub(crate) trait AudioEventSink {
 pub(crate) struct NativeAudioRuntime {
     catalog: SoundCatalog,
     registry: SoundEventRegistry,
+    jukebox_registry: JukeboxSongRegistry,
     playback: KiraAudioRuntime,
     counters: AudioCounters,
 }
@@ -30,6 +35,7 @@ impl NativeAudioRuntime {
     pub(crate) fn load(roots: &PackRoots) -> Result<Self> {
         let catalog = load_required_native_sound_catalog(roots)?;
         let registry = SoundEventRegistry::vanilla_26_1();
+        let jukebox_registry = JukeboxSongRegistry::vanilla_26_1();
         let playback = KiraAudioRuntime::new().context("initialize Kira audio runtime")?;
         let counters = AudioCounters {
             enabled: true,
@@ -40,6 +46,7 @@ impl NativeAudioRuntime {
         Ok(Self {
             catalog,
             registry,
+            jukebox_registry,
             playback,
             counters,
         })
@@ -94,9 +101,18 @@ impl AudioEventSink for NativeAudioRuntime {
         self.registry = registry;
     }
 
+    fn set_jukebox_song_registry(&mut self, registry: JukeboxSongRegistry) {
+        self.jukebox_registry = registry;
+    }
+
     fn play_local_sound(&mut self, state: &LocalSoundEventState) {
         let command = {
-            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
             resolver.play_local_sound(state)
         };
         self.handle_resolved_command(command);
@@ -104,7 +120,12 @@ impl AudioEventSink for NativeAudioRuntime {
 
     fn play_positioned_sound(&mut self, state: &SoundEventState) {
         let command = {
-            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
             resolver.play_positioned_sound(state)
         };
         self.handle_resolved_command(command);
@@ -112,15 +133,51 @@ impl AudioEventSink for NativeAudioRuntime {
 
     fn play_entity_sound(&mut self, state: &SoundEntityEventState, position: Option<[f64; 3]>) {
         let command = {
-            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
             resolver.play_entity_sound_at(state, position)
         };
         self.handle_resolved_command(command);
     }
 
+    fn play_jukebox_song(&mut self, state: &JukeboxLevelEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
+            resolver.play_jukebox_song(state)
+        };
+        self.handle_resolved_command(command);
+    }
+
+    fn stop_jukebox_song(&mut self, state: &JukeboxLevelEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
+            resolver.stop_jukebox_song(state)
+        };
+        self.submit_command(command);
+    }
+
     fn stop_sound(&mut self, state: &StopSoundEventState) {
         let command = {
-            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
             resolver.stop_sound(state)
         };
         self.submit_command(command);

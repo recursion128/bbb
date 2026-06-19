@@ -233,8 +233,6 @@ When an agent does any of the following, update this file in the same slice:
     - spatial/entity-following sounds
     - stop semantics
     - remaining level-event audio:
-      - Kira playback for jukebox song start/stop after resolving
-        `JukeboxSong` registry entries to sound events and descriptions
       - particle-coupled level-event side effects
     - device/runtime diagnostics
 - Evidence / boundary:
@@ -267,6 +265,16 @@ When an agent does any of the following, update this file in the same slice:
       - event `1010` records active jukebox song registry id at block position
       - event `1011` stops the active jukebox song at that block position
       - active jukebox songs are cleared with client-level teardown
+    - Kira-backed jukebox playback commands for `LevelEventHandler` jukebox
+      start/stop:
+      - event `1010` resolves vanilla 26.1 `JukeboxSongs.bootstrap` registry
+        ids to sound events
+      - registry data for `minecraft:jukebox_song` updates the runtime mapping
+        for known vanilla song entry ids
+      - play commands use `SoundSource.RECORDS`, volume `4.0`, pitch `1.0`,
+        and the jukebox block center
+      - stop commands target the matching jukebox block position without
+        stopping all record sounds
   - Full vanilla playback parity remains phase 7 work.
 
 ### Official 26.1 Resource-Pack Coverage

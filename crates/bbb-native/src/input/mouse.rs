@@ -665,6 +665,8 @@ mod tests {
 
         fn set_sound_event_registry(&mut self, _registry: bbb_audio::SoundEventRegistry) {}
 
+        fn set_jukebox_song_registry(&mut self, _registry: bbb_audio::JukeboxSongRegistry) {}
+
         fn play_local_sound(&mut self, _state: &bbb_world::LocalSoundEventState) {}
 
         fn play_positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
@@ -677,6 +679,10 @@ mod tests {
             _position: Option<[f64; 3]>,
         ) {
         }
+
+        fn play_jukebox_song(&mut self, _state: &bbb_world::JukeboxLevelEventState) {}
+
+        fn stop_jukebox_song(&mut self, _state: &bbb_world::JukeboxLevelEventState) {}
 
         fn stop_sound(&mut self, _state: &bbb_world::StopSoundEventState) {}
 

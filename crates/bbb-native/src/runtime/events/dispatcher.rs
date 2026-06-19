@@ -1,4 +1,4 @@
-use bbb_audio::SoundEventRegistry;
+use bbb_audio::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_control::NetCounters;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
 use bbb_protocol::packets::RegistryData;
@@ -324,7 +324,10 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 world.apply_block_event(event);
             }
             NetEvent::LevelEvent(event) => {
-                world.apply_level_event(event);
+                let jukebox_event = world.apply_level_event(event);
+                if let Some(jukebox_event) = jukebox_event {
+                    emit_jukebox_level_event(&mut audio_events, &jukebox_event);
+                }
                 if let Some(state) = world
                     .level_event_local_sound_with_random(event, || {
                         level_event_sound_random.next_float()
@@ -443,11 +446,15 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
             }
             NetEvent::RegistryData(update) => {
                 let sound_event_registry = sound_event_registry_from_registry_data(&update);
+                let jukebox_song_registry = jukebox_song_registry_from_registry_data(&update);
                 world.record_registry_data(update);
-                if let (Some(audio_events), Some(registry)) =
-                    (audio_events.as_mut(), sound_event_registry)
-                {
-                    audio_events.set_sound_event_registry(registry);
+                if let Some(audio_events) = audio_events.as_mut() {
+                    if let Some(registry) = sound_event_registry {
+                        audio_events.set_sound_event_registry(registry);
+                    }
+                    if let Some(registry) = jukebox_song_registry {
+                        audio_events.set_jukebox_song_registry(registry);
+                    }
                 }
             }
             NetEvent::UpdateTags(update) => {
@@ -577,6 +584,15 @@ fn sound_event_registry_from_registry_data(update: &RegistryData) -> Option<Soun
     ))
 }
 
+fn jukebox_song_registry_from_registry_data(update: &RegistryData) -> Option<JukeboxSongRegistry> {
+    if update.registry != "minecraft:jukebox_song" || update.entries.is_empty() {
+        return None;
+    }
+    Some(JukeboxSongRegistry::from_registry_entry_ids(
+        update.entries.iter().map(|entry| entry.id.as_str()),
+    ))
+}
+
 fn emit_positioned_sound(
     audio_events: &mut Option<&mut dyn AudioEventSink>,
     state: &bbb_world::SoundEventState,
@@ -592,6 +608,18 @@ fn emit_local_sound(
 ) {
     if let Some(audio_events) = audio_events.as_deref_mut() {
         audio_events.play_local_sound(state);
+    }
+}
+
+fn emit_jukebox_level_event(
+    audio_events: &mut Option<&mut dyn AudioEventSink>,
+    state: &bbb_world::JukeboxLevelEventState,
+) {
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        match state.action {
+            bbb_world::JukeboxLevelEventAction::Start => audio_events.play_jukebox_song(state),
+            bbb_world::JukeboxLevelEventAction::Stop => audio_events.stop_jukebox_song(state),
+        }
     }
 }
 

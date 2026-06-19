@@ -1,4 +1,5 @@
 mod command;
+mod jukebox;
 mod random;
 mod registry;
 mod resolver;
@@ -8,9 +9,11 @@ mod runtime;
 
 pub use command::{
     AudioCategory, AudioCommand, AudioListenerState, AudioVolumeSettings, EntitySoundPosition,
-    PlayEntitySoundCommand, PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound,
-    StopSoundCommand, TickEntitySoundPositionsCommand,
+    PlayEntitySoundCommand, PlayJukeboxSongCommand, PlayLocalSoundCommand,
+    PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand, StopSoundCommand,
+    TickEntitySoundPositionsCommand,
 };
+pub use jukebox::JukeboxSongRegistry;
 pub use registry::SoundEventRegistry;
 pub use resolver::{AudioCommandResolver, AudioResolveError};
 

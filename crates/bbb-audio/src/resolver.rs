@@ -1,20 +1,24 @@
+use std::sync::OnceLock;
+
 use bbb_pack::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
 use bbb_world::{
-    LocalSoundEventState, SoundEntityEventState, SoundEventState, SoundHolderState,
-    StopSoundEventState,
+    JukeboxLevelEventAction, JukeboxLevelEventState, LocalSoundEventState, SoundEntityEventState,
+    SoundEventState, SoundHolderState, StopSoundEventState,
 };
 use thiserror::Error;
 
 use crate::{
     command::{
         AudioCategory, AudioCommand, AudioVolumeSettings, PlayEntitySoundCommand,
-        PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound, StopSoundCommand,
+        PlayJukeboxSongCommand, PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound,
+        StopJukeboxSongCommand, StopSoundCommand,
     },
     random::LegacyRandom,
-    SoundEventRegistry,
+    JukeboxSongRegistry, SoundEventRegistry,
 };
 
 const MAX_SOUND_EVENT_DEPTH: usize = 32;
+static VANILLA_JUKEBOX_REGISTRY: OnceLock<JukeboxSongRegistry> = OnceLock::new();
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum AudioResolveError {
@@ -22,6 +26,10 @@ pub enum AudioResolveError {
     InvalidSoundHolder { kind: String },
     #[error("unknown sound event registry id {registry_id}")]
     UnknownSoundRegistryId { registry_id: i32 },
+    #[error("unknown jukebox song registry id {registry_id}")]
+    UnknownJukeboxSongRegistryId { registry_id: i32 },
+    #[error("invalid jukebox level event")]
+    InvalidJukeboxLevelEvent,
     #[error("missing sound event {event_id}")]
     MissingSoundEvent { event_id: String },
     #[error("empty sound event {event_id}")]
@@ -40,12 +48,18 @@ pub enum AudioResolveError {
 pub struct AudioCommandResolver<'a> {
     catalog: &'a SoundCatalog,
     registry: &'a SoundEventRegistry,
+    jukebox_registry: &'a JukeboxSongRegistry,
     volume_settings: AudioVolumeSettings,
 }
 
 impl<'a> AudioCommandResolver<'a> {
     pub fn new(catalog: &'a SoundCatalog, registry: &'a SoundEventRegistry) -> Self {
-        Self::with_volume_settings(catalog, registry, AudioVolumeSettings::default())
+        Self::with_jukebox_registry(
+            catalog,
+            registry,
+            vanilla_jukebox_registry(),
+            AudioVolumeSettings::default(),
+        )
     }
 
     pub fn with_volume_settings(
@@ -53,9 +67,24 @@ impl<'a> AudioCommandResolver<'a> {
         registry: &'a SoundEventRegistry,
         volume_settings: AudioVolumeSettings,
     ) -> Self {
+        Self::with_jukebox_registry(
+            catalog,
+            registry,
+            vanilla_jukebox_registry(),
+            volume_settings,
+        )
+    }
+
+    pub fn with_jukebox_registry(
+        catalog: &'a SoundCatalog,
+        registry: &'a SoundEventRegistry,
+        jukebox_registry: &'a JukeboxSongRegistry,
+        volume_settings: AudioVolumeSettings,
+    ) -> Self {
         Self {
             catalog,
             registry,
+            jukebox_registry,
             volume_settings,
         }
     }
@@ -145,6 +174,53 @@ impl<'a> AudioCommandResolver<'a> {
                 .as_deref()
                 .map(AudioCategory::from_world_source),
             name: state.name.clone(),
+        })
+    }
+
+    pub fn play_jukebox_song(
+        &self,
+        state: &JukeboxLevelEventState,
+    ) -> Result<AudioCommand, AudioResolveError> {
+        if state.action != JukeboxLevelEventAction::Start {
+            return Err(AudioResolveError::InvalidJukeboxLevelEvent);
+        }
+        let song_registry_id = state
+            .song_registry_id
+            .ok_or(AudioResolveError::InvalidJukeboxLevelEvent)?;
+        let event_id = self
+            .jukebox_registry
+            .sound_event_id(song_registry_id)
+            .ok_or(AudioResolveError::UnknownJukeboxSongRegistryId {
+                registry_id: song_registry_id,
+            })?;
+        let seed = 0;
+        let sound = self.resolve_event_for_seed(event_id, seed)?;
+        let category = AudioCategory::Records;
+        let packet_volume = 4.0;
+        let packet_pitch = 1.0;
+        let gain = packet_volume * sound.entry_volume;
+        let channel_gain = self.volume_settings.channel_gain(gain, &category);
+        Ok(AudioCommand::PlayJukeboxSong(PlayJukeboxSongCommand {
+            gain,
+            channel_gain,
+            playback_rate: packet_pitch * sound.entry_pitch,
+            packet_volume,
+            packet_pitch,
+            seed,
+            category,
+            position: [
+                f64::from(state.pos.x) + 0.5,
+                f64::from(state.pos.y) + 0.5,
+                f64::from(state.pos.z) + 0.5,
+            ],
+            jukebox_pos: [state.pos.x, state.pos.y, state.pos.z],
+            sound,
+        }))
+    }
+
+    pub fn stop_jukebox_song(&self, state: &JukeboxLevelEventState) -> AudioCommand {
+        AudioCommand::StopJukeboxSong(StopJukeboxSongCommand {
+            jukebox_pos: [state.pos.x, state.pos.y, state.pos.z],
         })
     }
 
@@ -306,6 +382,10 @@ impl<'a> AudioCommandResolver<'a> {
         path.pop();
         Ok(total)
     }
+}
+
+fn vanilla_jukebox_registry() -> &'static JukeboxSongRegistry {
+    VANILLA_JUKEBOX_REGISTRY.get_or_init(JukeboxSongRegistry::vanilla_26_1)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -755,6 +835,85 @@ mod tests {
         assert_eq!(
             play.sound.ogg_path,
             assets_dir.join("sounds").join("ambient/cave/cave1.ogg")
+        );
+    }
+
+    #[test]
+    fn resolves_jukebox_song_as_record_positioned_sound() {
+        let assets_dir = unique_assets_dir("jukebox-song");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "music_disc.cat": {
+                "sounds": [
+                  {
+                    "name": "records/cat",
+                    "stream": true,
+                    "attenuation_distance": 16
+                  }
+                ]
+              }
+            }"#,
+        );
+        let registry = SoundEventRegistry::default();
+        let jukebox_registry =
+            JukeboxSongRegistry::from_sound_event_ids([Some("minecraft:music_disc.cat")]);
+        let resolver = AudioCommandResolver::with_jukebox_registry(
+            &catalog,
+            &registry,
+            &jukebox_registry,
+            AudioVolumeSettings::default(),
+        );
+
+        let command = resolver
+            .play_jukebox_song(&JukeboxLevelEventState {
+                action: JukeboxLevelEventAction::Start,
+                pos: bbb_world::BlockPos { x: 4, y: 64, z: -7 },
+                song_registry_id: Some(0),
+                stopped_existing: false,
+            })
+            .unwrap();
+
+        let AudioCommand::PlayJukeboxSong(play) = command else {
+            panic!("expected jukebox song command");
+        };
+        assert_eq!(play.category, AudioCategory::Records);
+        assert_eq!(play.position, [4.5, 64.5, -6.5]);
+        assert_eq!(play.jukebox_pos, [4, 64, -7]);
+        assert_eq!(play.sound.event_id, "minecraft:music_disc.cat");
+        assert_eq!(play.sound.sound_name, "minecraft:records/cat");
+        assert!(play.sound.stream);
+        assert_eq!(play.packet_volume, 4.0);
+        assert_eq!(play.packet_pitch, 1.0);
+        assert_near(play.gain, 4.0);
+        assert_near(play.playback_rate, 1.0);
+    }
+
+    #[test]
+    fn rejects_unknown_jukebox_song_registry_id() {
+        let assets_dir = unique_assets_dir("unknown-jukebox-song");
+        let catalog = test_catalog(&assets_dir, br#"{}"#);
+        let registry = SoundEventRegistry::default();
+        let jukebox_registry = JukeboxSongRegistry::default();
+        let resolver = AudioCommandResolver::with_jukebox_registry(
+            &catalog,
+            &registry,
+            &jukebox_registry,
+            AudioVolumeSettings::default(),
+        );
+
+        let err = resolver
+            .play_jukebox_song(&JukeboxLevelEventState {
+                action: JukeboxLevelEventAction::Start,
+                pos: bbb_world::BlockPos { x: 0, y: 0, z: 0 },
+                song_registry_id: Some(42),
+                stopped_existing: false,
+            })
+            .unwrap_err();
+
+        assert_eq!(
+            err,
+            AudioResolveError::UnknownJukeboxSongRegistryId { registry_id: 42 }
         );
     }
 

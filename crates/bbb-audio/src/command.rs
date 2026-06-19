@@ -7,6 +7,8 @@ pub enum AudioCommand {
     PlayLocalSound(PlayLocalSoundCommand),
     PlayPositionedSound(PlayPositionedSoundCommand),
     PlayEntitySound(PlayEntitySoundCommand),
+    PlayJukeboxSong(PlayJukeboxSongCommand),
+    StopJukeboxSong(StopJukeboxSongCommand),
     StopSound(StopSoundCommand),
     TickEntitySoundPositions(TickEntitySoundPositionsCommand),
 }
@@ -50,6 +52,25 @@ pub struct PlayEntitySoundCommand {
     pub playback_rate: f32,
     pub seed: i64,
     pub fixed_range: Option<f32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlayJukeboxSongCommand {
+    pub sound: ResolvedSound,
+    pub category: AudioCategory,
+    pub position: [f64; 3],
+    pub jukebox_pos: [i32; 3],
+    pub packet_volume: f32,
+    pub packet_pitch: f32,
+    pub gain: f32,
+    pub channel_gain: f32,
+    pub playback_rate: f32,
+    pub seed: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StopJukeboxSongCommand {
+    pub jukebox_pos: [i32; 3],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -2,7 +2,8 @@ use super::*;
 use crate::particle_runtime::ParticleEventSink;
 use crate::runtime::{clear_color_for_day_time, clear_color_for_world};
 use bbb_audio::{
-    AudioCategory, AudioCommand, AudioCommandResolver, AudioResolveError, SoundEventRegistry,
+    AudioCategory, AudioCommand, AudioCommandResolver, AudioResolveError, JukeboxSongRegistry,
+    SoundEventRegistry,
 };
 use bbb_control::{AudioCounters, NetCounters};
 use bbb_net::{NetCommand, NetEvent};
@@ -3376,6 +3377,101 @@ fn jukebox_level_events_update_world_audio_state() {
 }
 
 #[test]
+fn jukebox_level_events_emit_runtime_audio_commands() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: 4, y: 64, z: -7 },
+        data: 1,
+        global: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1011,
+        pos: ProtocolBlockPos { x: 4, y: 64, z: -7 },
+        data: 0,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayJukeboxSong(play) = &audio.commands[0] else {
+        panic!("expected jukebox play command, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(play.sound.event_id, "minecraft:music_disc.cat");
+    assert_eq!(play.sound.sound_name, "minecraft:records/cat");
+    assert_eq!(play.category, AudioCategory::Records);
+    assert_eq!(play.position, [4.5, 64.5, -6.5]);
+    assert_eq!(play.jukebox_pos, [4, 64, -7]);
+    assert_close(play.packet_volume, 4.0);
+    assert_close(play.packet_pitch, 1.0);
+
+    let AudioCommand::StopJukeboxSong(stop) = &audio.commands[1] else {
+        panic!("expected jukebox stop command, got {:?}", audio.commands[1]);
+    };
+    assert_eq!(stop.jukebox_pos, [4, 64, -7]);
+    assert!(world.playing_jukebox_songs().is_empty());
+    assert_eq!(world.counters().level_events_received, 2);
+}
+
+#[test]
+fn jukebox_song_registry_data_updates_audio_resolution() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::RegistryData(RegistryData {
+        registry: "minecraft:jukebox_song".to_string(),
+        raw_payload_len: 48,
+        entries: vec![RegistryDataEntry {
+            id: "minecraft:tears".to_string(),
+            raw_data: None,
+        }],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
+        data: 0,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(world.counters().registries_seen, 1);
+    assert_eq!(
+        world
+            .registry_content("minecraft:jukebox_song")
+            .unwrap()
+            .entries[0]
+            .id,
+        "minecraft:tears"
+    );
+    let AudioCommand::PlayJukeboxSong(play) = &audio.commands[0] else {
+        panic!("expected jukebox play command, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(play.sound.event_id, "minecraft:music_disc.tears");
+    assert_eq!(play.sound.sound_name, "minecraft:records/tears");
+    assert_eq!(play.jukebox_pos, [1, 2, 3]);
+}
+
+#[test]
 fn border_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(6);
     tx.try_send(NetEvent::InitializeBorder(
@@ -4627,6 +4723,7 @@ fn player_chat_with_signature(global_index: i32, signature: MessageSignature) ->
 struct RecordingAudioSink {
     catalog: SoundCatalog,
     registry: SoundEventRegistry,
+    jukebox_registry: JukeboxSongRegistry,
     commands: Vec<AudioCommand>,
     errors: Vec<String>,
 }
@@ -4636,6 +4733,7 @@ impl RecordingAudioSink {
         Self {
             catalog,
             registry,
+            jukebox_registry: JukeboxSongRegistry::vanilla_26_1(),
             commands: Vec::new(),
             errors: Vec::new(),
         }
@@ -4666,9 +4764,18 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
         self.registry = registry;
     }
 
+    fn set_jukebox_song_registry(&mut self, registry: JukeboxSongRegistry) {
+        self.jukebox_registry = registry;
+    }
+
     fn play_local_sound(&mut self, state: &bbb_world::LocalSoundEventState) {
         let command = {
-            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
             resolver.play_local_sound(state)
         };
         self.record(command);
@@ -4676,7 +4783,12 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
 
     fn play_positioned_sound(&mut self, state: &bbb_world::SoundEventState) {
         let command = {
-            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
             resolver.play_positioned_sound(state)
         };
         self.record(command);
@@ -4688,15 +4800,51 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
         position: Option<[f64; 3]>,
     ) {
         let command = {
-            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
             resolver.play_entity_sound_at(state, position)
         };
         self.record(command);
     }
 
+    fn play_jukebox_song(&mut self, state: &bbb_world::JukeboxLevelEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
+            resolver.play_jukebox_song(state)
+        };
+        self.record(command);
+    }
+
+    fn stop_jukebox_song(&mut self, state: &bbb_world::JukeboxLevelEventState) {
+        let command = {
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
+            resolver.stop_jukebox_song(state)
+        };
+        self.commands.push(command);
+    }
+
     fn stop_sound(&mut self, state: &bbb_world::StopSoundEventState) {
         let command = {
-            let resolver = AudioCommandResolver::new(&self.catalog, &self.registry);
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
             resolver.stop_sound(state)
         };
         self.commands.push(command);
@@ -4752,6 +4900,12 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "block.portal.travel": {
                 "sounds": ["portal/travel"]
+            },
+            "music_disc.cat": {
+                "sounds": ["records/cat"]
+            },
+            "music_disc.tears": {
+                "sounds": ["records/tears"]
             }
         }"#,
     )
