@@ -10,7 +10,8 @@ use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use crate::audio_runtime::AudioEventSink;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::{
-    crosshair_target_from_camera_at_partial_tick, CrosshairBlockHit, CrosshairTarget,
+    crosshair_target_from_camera_at_partial_tick, CrosshairBlockHit, CrosshairEntityHit,
+    CrosshairTarget,
 };
 
 use super::{
@@ -231,10 +232,18 @@ fn start_use_item(
     if world.local_player_is_spectator() && camera_target.is_none() {
         return false;
     }
-    if let Some(CrosshairTarget::Block(hit)) = camera_target {
-        if !block_target_within_world_border(world, hit.pos) {
-            return false;
+    match camera_target {
+        Some(CrosshairTarget::Entity(hit)) => {
+            if !entity_target_within_world_border(world, hit) {
+                return false;
+            }
         }
+        Some(CrosshairTarget::Block(hit)) => {
+            if !block_target_within_world_border(world, hit.pos) {
+                return false;
+            }
+        }
+        None => {}
     }
 
     input.use_item_repeat_delay_ticks = USE_ITEM_REPEAT_DELAY_TICKS;
@@ -287,6 +296,19 @@ fn block_use_hand(world: &WorldStore) -> InteractionHand {
     } else {
         item_use_hand(world)
     }
+}
+
+fn entity_target_within_world_border(world: &WorldStore, hit: CrosshairEntityHit) -> bool {
+    let (x, y, z) = if let Some(entity) = world.probe_entity(hit.entity_id) {
+        (entity.position.x, entity.position.y, entity.position.z)
+    } else {
+        (hit.location.x, hit.location.y, hit.location.z)
+    };
+    world.world_border().contains_block_pos(WorldBlockPos {
+        x: x.floor() as i32,
+        y: y.floor() as i32,
+        z: z.floor() as i32,
+    })
 }
 
 fn block_target_within_world_border(world: &WorldStore, pos: WorldBlockPos) -> bool {
@@ -1834,6 +1856,31 @@ mod tests {
                 using_secondary_action: true,
             })
         );
+    }
+
+    #[test]
+    fn right_mouse_press_on_entity_outside_world_border_does_not_interact() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        set_world_border_excluding_crosshair_block(&mut world);
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert!(!world.local_player().interaction.using_item);
+        assert!(input.use_item_held);
+        assert_eq!(input.use_item_repeat_delay_ticks, 0);
+        assert_eq!(counters.interact_entity_commands_queued, 0);
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
