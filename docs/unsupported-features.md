@@ -198,6 +198,7 @@ When an agent does any of the following, update this file in the same slice:
         particles
       - event `3017`: trial spawner eject-item `minecraft:small_flame` and
         `minecraft:smoke` particles
+      - event `3018`: cobweb-place `minecraft:poof` particles
     - Advances CPU-side common particles.
     - Samples vanilla-shaped curves for common particle providers:
       - size

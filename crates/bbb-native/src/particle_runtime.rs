@@ -378,6 +378,7 @@ impl ParticleCommandResolver {
             TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT => {
                 self.trial_eject_item_particle_batch(event, random)
             }
+            COBWEB_PLACE_PARTICLES_LEVEL_EVENT => self.cobweb_poof_particle_batch(event, random),
             SPLASH_CLOUD_LEVEL_EVENT => {
                 let mut spawns = Vec::with_capacity(8);
                 for _ in 0..8 {
@@ -516,6 +517,39 @@ impl ParticleCommandResolver {
                     .commands
                     .push(self.command_from_template(smoke, position, velocity, false));
             }
+        }
+
+        batch
+    }
+
+    fn cobweb_poof_particle_batch(
+        &self,
+        event: &LevelEvent,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+
+        for _ in 0..10 {
+            let velocity = Vec3d {
+                x: random.next_gaussian() * 0.02,
+                y: random.next_gaussian() * 0.02,
+                z: random.next_gaussian() * 0.02,
+            };
+            let position = Vec3d {
+                x: f64::from(event.pos.x) + random.next_double(),
+                y: f64::from(event.pos.y) + random.next_double(),
+                z: f64::from(event.pos.z) + random.next_double(),
+            };
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
         }
 
         batch
@@ -850,12 +884,14 @@ const SCRAPE_LEVEL_EVENT: i32 = 3005;
 const EGG_CRACK_LEVEL_EVENT: i32 = 3009;
 const TRIAL_SPAWNER_SPAWN_PARTICLES_LEVEL_EVENT: i32 = 3011;
 const TRIAL_SPAWNER_EJECT_ITEM_PARTICLES_LEVEL_EVENT: i32 = 3017;
+const COBWEB_PLACE_PARTICLES_LEVEL_EVENT: i32 = 3018;
 const CLOUD_PARTICLE_TYPE_ID: i32 = 4;
 const EXPLOSION_EMITTER_PARTICLE_TYPE_ID: i32 = 22;
 const EXPLOSION_PARTICLE_TYPE_ID: i32 = 23;
 const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const SOUL_FIRE_FLAME_PARTICLE_TYPE_ID: i32 = 40;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
+const POOF_PARTICLE_TYPE_ID: i32 = 59;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
 const SMALL_FLAME_PARTICLE_TYPE_ID: i32 = 93;
@@ -1391,6 +1427,32 @@ mod tests {
             false,
         );
 
+        let mut cobweb_poof_random = LevelEventSoundRandomState::with_seed(0);
+        let cobweb_poof = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3018,
+                ..level_event_packet(3018)
+            },
+            &mut cobweb_poof_random,
+        );
+        assert_eq!(cobweb_poof.len(), 10);
+        assert_particle_command(
+            &cobweb_poof.commands[0],
+            59,
+            "minecraft:poof",
+            [
+                10.597_545_277_797_202,
+                64.333_218_399_476_65,
+                -2.614_810_815_259_281_7,
+            ],
+            [
+                0.016_050_661_274_780_612,
+                -0.018_030_921_768_350_243,
+                0.041_618_415_808_563_26,
+            ],
+            true,
+        );
+
         let mut cloud_random = LevelEventSoundRandomState::with_seed(0);
         let cloud = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -1511,6 +1573,7 @@ mod tests {
                 "smoke_0",
                 "large_smoke_0",
                 "white_smoke_0",
+                "poof_0",
                 "small_flame",
                 "electric_spark_0",
                 "wax_on_0",
@@ -1596,6 +1659,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:white_smoke_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("poof.json"),
+            r#"{
+              "textures": [
+                "minecraft:poof_0"
               ]
             }"#,
         );
