@@ -1673,6 +1673,7 @@ mod tests {
     const OAK_BOTTOM_STRAIGHT_NORTH_STAIR_BLOCK_STATE_ID: i32 = 3918;
     const OAK_BOTTOM_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3938;
     const OAK_LEAVES_BLOCK_STATE_ID: i32 = 255;
+    const COBWEB_BLOCK_STATE_ID: i32 = 2247;
     const MANGROVE_ROOTS_WATERLOGGED_BLOCK_STATE_ID: i32 = 163;
     const MANGROVE_ROOTS_DRY_BLOCK_STATE_ID: i32 = 164;
     const MUDDY_MANGROVE_ROOTS_X_BLOCK_STATE_ID: i32 = 165;
@@ -1716,6 +1717,7 @@ mod tests {
     const DIRT_PATH_BLOCK_STATE_ID: i32 = 14815;
     const SCAFFOLDING_BOTTOM_DISTANCE_0_BLOCK_STATE_ID: i32 = 20707;
     const SCAFFOLDING_BOTTOM_DISTANCE_1_BLOCK_STATE_ID: i32 = 20709;
+    const SWEET_BERRY_BUSH_AGE_3_BLOCK_STATE_ID: i32 = 20944;
     const LANTERN_STANDING_BLOCK_STATE_ID: i32 = 20840;
     const CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID: i32 = 20880;
     const HONEY_BLOCK_STATE_ID: i32 = 21816;
@@ -2729,6 +2731,29 @@ mod tests {
         assert_f64_near(pose.position.y, 1.0, 0.0005);
         assert!(pose.on_ground);
         assert!(!pose.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_ignores_vanilla_no_collision_hazard_blocks() {
+        let cases = [
+            ("cobweb", COBWEB_BLOCK_STATE_ID),
+            ("sweet berry bush", SWEET_BERRY_BUSH_AGE_3_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 0.2);
+
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
     }
 
     #[test]

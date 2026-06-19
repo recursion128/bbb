@@ -353,6 +353,10 @@ When an agent does any of the following, update this file in the same slice:
         - remaining powder-snow `canFreeze` nuance beyond local player:
           - non-player freeze-immune entity type exceptions if locally
             controlled entity freezing is added later
+        - remaining no-collision hazard `entityInside` effects:
+          - cobweb stuck speed multipliers, including Weaving effect nuance
+          - sweet berry bush stuck speed, age-gated damage, and fox/bee
+            exceptions
         - full vanilla post-`Entity.move` `deltaMovement` travel ordering
           beyond the current direct local walking prediction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
@@ -526,6 +530,9 @@ When an agent does any of the following, update this file in the same slice:
       - `conduit` follows vanilla `Block.cube(6.0)` collision.
       - `azalea` and `flowering_azalea` follow vanilla `AzaleaBlock` collision:
         an 8px-tall full-width crown plus a 4px center stem.
+      - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
+        registration so they do not block local movement; their stuck/damage
+        `entityInside` side effects remain follow-up movement-factor work.
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which

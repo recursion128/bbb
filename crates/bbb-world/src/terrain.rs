@@ -241,6 +241,8 @@ fn is_cutout_block_name(name: &str) -> bool {
         || name.contains("vine")
         || name.contains("kelp")
         || name.contains("seagrass")
+        || name == "minecraft:cobweb"
+        || name == "minecraft:sweet_berry_bush"
         || is_copper_grate_block_name(name)
         || is_bar_block_name(name)
         || is_chain_block_name(name)
@@ -484,6 +486,12 @@ mod tests {
             classify_terrain_material(Some("minecraft:short_grass")),
             TerrainMaterialClass::Cutout
         );
+        for name in ["minecraft:cobweb", "minecraft:sweet_berry_bush"] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
         for name in [
             "minecraft:copper_grate",
             "minecraft:exposed_copper_grate",
