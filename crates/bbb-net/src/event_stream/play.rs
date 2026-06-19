@@ -276,6 +276,13 @@ impl EventStreamContext {
             PlayClientbound::PlayerRotation(update) => {
                 self.player_position_state = update.apply_to_state(self.player_position_state);
                 emit(&self.events, NetEvent::PlayerRotation(update)).await?;
+                let (id, payload) = packets::encode_play_move_player_rot(
+                    self.player_position_state.y_rot,
+                    self.player_position_state.x_rot,
+                    false,
+                    false,
+                );
+                self.conn.send_packet(id, &payload).await?;
             }
             PlayClientbound::PlayerInfoUpdate(update) => {
                 emit(&self.events, NetEvent::PlayerInfoUpdate(update)).await?;

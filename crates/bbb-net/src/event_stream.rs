@@ -1308,6 +1308,57 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_player_rotation_sends_vanilla_rot_ack() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: true,
+            player_position_state: PlayerPositionState {
+                y_rot: 30.0,
+                x_rot: 5.0,
+                ..PlayerPositionState::default()
+            },
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+        let update = packets::PlayerRotationUpdate {
+            y_rot: 15.0,
+            relative_y: true,
+            x_rot: -10.0,
+            relative_x: false,
+        };
+
+        stream
+            .handle_play_packet(PlayClientbound::PlayerRotation(update))
+            .await
+            .unwrap();
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player rotation event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::PlayerRotation(event_update) if event_update == update));
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("move player rot ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_ROT);
+        assert_move_player_rot_payload(&payload, 45.0, -10.0, 0);
+        assert_eq!(stream.player_position_state.y_rot, 45.0);
+        assert_eq!(stream.player_position_state.x_rot, -10.0);
+    }
+
+    #[tokio::test]
     async fn play_start_configuration_acknowledges_and_resets_configuration_dedup_state() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
@@ -1501,6 +1552,14 @@ mod tests {
         assert_eq!(decoder.read_f64().unwrap(), x);
         assert_eq!(decoder.read_f64().unwrap(), y);
         assert_eq!(decoder.read_f64().unwrap(), z);
+        assert_eq!(decoder.read_f32().unwrap(), y_rot);
+        assert_eq!(decoder.read_f32().unwrap(), x_rot);
+        assert_eq!(decoder.read_u8().unwrap(), flags);
+        assert!(decoder.is_empty());
+    }
+
+    fn assert_move_player_rot_payload(payload: &[u8], y_rot: f32, x_rot: f32, flags: u8) {
+        let mut decoder = Decoder::new(payload);
         assert_eq!(decoder.read_f32().unwrap(), y_rot);
         assert_eq!(decoder.read_f32().unwrap(), x_rot);
         assert_eq!(decoder.read_u8().unwrap(), flags);

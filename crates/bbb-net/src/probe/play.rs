@@ -421,6 +421,13 @@ impl ProbeContext {
             PlayClientbound::PlayerRotation(update) => {
                 self.world.apply_player_rotation(update);
                 self.player_position_state = update.apply_to_state(self.player_position_state);
+                let (id, payload) = packets::encode_play_move_player_rot(
+                    self.player_position_state.y_rot,
+                    self.player_position_state.x_rot,
+                    false,
+                    false,
+                );
+                self.conn.send_packet(id, &payload).await?;
             }
             PlayClientbound::PlayerInfoUpdate(update) => {
                 self.world.apply_player_info_update(update);
@@ -3664,6 +3671,37 @@ mod tests {
         assert_eq!(pose.y_rot, 100.0);
         assert_eq!(pose.x_rot, -5.0);
         assert_eq!(pose.last_teleport_id, 23);
+    }
+
+    #[tokio::test]
+    async fn probe_player_rotation_sends_vanilla_rot_ack() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe.player_position_state.y_rot = 30.0;
+        probe.player_position_state.x_rot = 5.0;
+        probe
+            .handle_play_packet(PlayClientbound::PlayerRotation(PlayerRotationUpdate {
+                y_rot: 15.0,
+                relative_y: true,
+                x_rot: -10.0,
+                relative_x: false,
+            }))
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("move player rot ack should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_MOVE_PLAYER_ROT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_f32().unwrap(), 45.0);
+        assert_eq!(decoder.read_f32().unwrap(), -10.0);
+        assert_eq!(decoder.read_u8().unwrap(), 0);
+        assert!(decoder.is_empty());
+        assert_eq!(probe.player_position_state.y_rot, 45.0);
+        assert_eq!(probe.player_position_state.x_rot, -10.0);
     }
 
     #[tokio::test]
