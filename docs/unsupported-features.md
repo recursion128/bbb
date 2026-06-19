@@ -1114,7 +1114,10 @@ When an agent does any of the following, update this file in the same slice:
           runtime assets are available
         - XP cost and `Too Expensive!` labels render from server
           `ContainerSetData` cost plus local game mode / experience state
-        - quick-move and result-slot paths are kept server-authoritative until:
+        - input slots quick-move back to the player inventory with vanilla
+          forward-fill ordering
+        - player-inventory quick-move and result-slot paths are kept
+          server-authoritative until:
           - repair/enchantment result prediction
           - repair-cost component updates
           - material consumption
