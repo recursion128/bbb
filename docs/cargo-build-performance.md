@@ -426,3 +426,38 @@ Measured commands:
 Running two focused tests concurrently against `/tmp/bbb-target-main` showed
 Cargo package/build lock waits. Keep worker tests on distinct external target
 directories when parallelism matters.
+
+## Warm Update: 2026-06-19 Cargo Efficiency Check
+
+Environment:
+
+- `sccache` is still not installed on `PATH`.
+- Stable target caches found:
+  - `/tmp/bbb-target-main`: 14G.
+  - `/tmp/bbb-target-native`: 3.3G.
+  - `/tmp/bbb-target-net`: 721M.
+  - `/tmp/bbb-target-pack`: 443M.
+  - `/tmp/bbb-target-renderer`: 2.0G.
+  - `/tmp/bbb-target-world`: 3.0G.
+- No clean target was created for this update. The slice did not change Cargo
+  profiles, dependencies, or cache policy, so the clean full-workspace baseline
+  remains the 2026-06-18 disposable-target measurement above.
+
+Measured commands:
+
+- Warm focused default:
+  `scripts/cargo-dev.sh test -p bbb-world water_movement_efficiency --quiet`
+  - Wall time: 0.09s.
+  - Result: 3 tests passed.
+- Warm full workspace:
+  `scripts/cargo-dev.sh timings --workspace --timings --quiet`
+  - Wall time: 3.71s.
+  - Target size: 14G.
+  - Result: all tests passed.
+  - Timing report:
+    `/tmp/bbb-target-main/cargo-timings/cargo-timing-20260619T000416951Z-14ffed61c5c1036c.html`
+
+The current workflow is already using retained external target caches, opt-in
+`fast-test`, and per-worker target directories. The next build-performance
+change should be measured `sccache` adoption after installing it locally; keep
+`rustc-wrapper` out of repo-local Cargo config until that comparison exists.
