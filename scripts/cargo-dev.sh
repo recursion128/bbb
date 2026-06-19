@@ -8,6 +8,7 @@ Usage:
   scripts/cargo-dev.sh fast-test [cargo test args...]
   scripts/cargo-dev.sh timings [cargo test args...]
   scripts/cargo-dev.sh timings-clean <target-suffix> [cargo test args...]
+  scripts/cargo-dev.sh sccache-eval <run-suffix> [focused cargo test args...]
   scripts/cargo-dev.sh gate
   scripts/cargo-dev.sh size
   scripts/cargo-dev.sh clean-target <target-suffix|/tmp/bbb-target-...>
@@ -27,6 +28,7 @@ Examples:
   BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world command_tree
   scripts/cargo-dev.sh timings --workspace --timings
   BBB_USE_SCCACHE=1 scripts/cargo-dev.sh timings-clean sccache-clean-20260619 --workspace --timings
+  scripts/cargo-dev.sh sccache-eval 20260619 -p bbb-world command_tree --quiet
   BBB_USE_SCCACHE=1 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world command_tree
   scripts/cargo-dev.sh timings-clean clean-baseline-20260619 --workspace --timings
   scripts/cargo-dev.sh clean-target clean-baseline-20260619
@@ -68,6 +70,109 @@ ensure_safe_target_dir() {
       exit 2
       ;;
   esac
+}
+
+refuse_existing_target_dir() {
+  dir="$1"
+  if [ -e "$dir" ]; then
+    echo "refusing to use existing measurement target: $dir" >&2
+    echo "remove it explicitly with: scripts/cargo-dev.sh clean-target ${dir}" >&2
+    exit 2
+  fi
+}
+
+require_sccache() {
+  if ! command -v sccache >/dev/null 2>&1; then
+    echo "sccache is not on PATH" >&2
+    exit 2
+  fi
+}
+
+show_sccache_stats() {
+  sccache --show-stats || true
+}
+
+run_sccache_eval() {
+  if [ "$#" -lt 1 ]; then
+    echo "sccache-eval requires a run suffix" >&2
+    usage >&2
+    exit 2
+  fi
+
+  run_suffix="$1"
+  shift
+  case "$run_suffix" in
+    ""|*[!A-Za-z0-9_-]*)
+      echo "run suffix may contain only letters, digits, '_' and '-': $run_suffix" >&2
+      exit 2
+      ;;
+  esac
+
+  if [ "$#" -eq 0 ]; then
+    set -- -p bbb-world command_tree --quiet
+  fi
+
+  require_sccache
+
+  clean_target="$(target_dir_for_arg "sccache-clean-${run_suffix}")"
+  worker_target="$(target_dir_for_arg "sccache-worker-${run_suffix}")"
+  nosccache_worker_target="$(target_dir_for_arg "nosccache-worker-${run_suffix}")"
+  ensure_safe_target_dir "$clean_target"
+  ensure_safe_target_dir "$worker_target"
+  ensure_safe_target_dir "$nosccache_worker_target"
+  refuse_existing_target_dir "$clean_target"
+  refuse_existing_target_dir "$worker_target"
+  refuse_existing_target_dir "$nosccache_worker_target"
+
+  cat <<EOF
+sccache evaluation run: $run_suffix
+focused cargo test args: $*
+clean target: $clean_target
+sccache worker target: $worker_target
+no-sccache worker target: $nosccache_worker_target
+warm main target: /tmp/bbb-target-main
+EOF
+
+  echo
+  echo "== clean full workspace with sccache =="
+  sccache --zero-stats
+  (
+    export RUSTC_WRAPPER=sccache
+    export CARGO_TARGET_DIR="$clean_target"
+    /usr/bin/time -p cargo test --workspace --timings --quiet
+  )
+  du -sh "$clean_target"
+  show_sccache_stats
+
+  echo
+  echo "== new worker focused test with sccache =="
+  sccache --zero-stats
+  (
+    export RUSTC_WRAPPER=sccache
+    export CARGO_TARGET_DIR="$worker_target"
+    /usr/bin/time -p cargo test "$@"
+  )
+  du -sh "$worker_target"
+  show_sccache_stats
+
+  echo
+  echo "== new worker focused test without sccache =="
+  (
+    unset RUSTC_WRAPPER
+    export CARGO_TARGET_DIR="$nosccache_worker_target"
+    /usr/bin/time -p cargo test "$@"
+  )
+  du -sh "$nosccache_worker_target"
+
+  echo
+  echo "== warm focused default profile with sccache on main target =="
+  sccache --zero-stats
+  (
+    export RUSTC_WRAPPER=sccache
+    export CARGO_TARGET_DIR=/tmp/bbb-target-main
+    /usr/bin/time -p cargo test "$@"
+  )
+  show_sccache_stats
 }
 
 if [ "$#" -eq 0 ]; then
@@ -122,6 +227,9 @@ case "$cmd" in
     fi
     echo "CARGO_TARGET_DIR=${CARGO_TARGET_DIR}"
     exec /usr/bin/time -p cargo test "$@"
+    ;;
+  sccache-eval)
+    run_sccache_eval "$@"
     ;;
   gate)
     export CARGO_TARGET_DIR=/tmp/bbb-target-main

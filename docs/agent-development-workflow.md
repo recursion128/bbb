@@ -31,6 +31,7 @@ configuration UI.
    The preferred helper is:
    - `scripts/worker-worktree.sh create world`
    - `scripts/worker-worktree.sh status`
+   - `scripts/worker-worktree.sh shell-env world`
    - `scripts/worker-worktree.sh cleanup world`
 6. Main agent gives each worker an exact write scope and a distinct external
    `CARGO_TARGET_DIR` when focused tests may run in parallel.
@@ -103,6 +104,8 @@ Every worker prompt must include:
 - Use `scripts/worker-worktree.sh create <name>` for standard workers. It
   creates `../bbb-wt-<name>` on branch `bbb-worker-<name>` and reports
   `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`.
+- Use `scripts/worker-worktree.sh shell-env <name>` when a worker prompt needs
+  copyable shell setup lines for its assigned worktree and target cache.
 - Use `scripts/worker-worktree.sh cleanup <name>` only after reviewing the
   worker diff. It refuses dirty worktrees and uses safe branch deletion; it does
   not delete the external Cargo target cache.
@@ -148,6 +151,7 @@ Agents may use the helper script for the same workflow:
 ```sh
 scripts/cargo-dev.sh test -p bbb-world <filter>
 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
+scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world <filter> --quiet
 ```
 
 Do not run parallel Cargo commands against the same `CARGO_TARGET_DIR`. Assign

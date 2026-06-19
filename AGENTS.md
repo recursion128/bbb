@@ -102,6 +102,7 @@ Every worker prompt should include:
 - Standard worker setup:
   - `scripts/worker-worktree.sh create world`
   - `scripts/worker-worktree.sh status`
+  - `scripts/worker-worktree.sh shell-env world`
   - `scripts/worker-worktree.sh cleanup world`
   The helper creates `../bbb-wt-<name>`, branch `bbb-worker-<name>`, and reports
   `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`.
@@ -129,7 +130,8 @@ workspace test suite. If a command cannot run, state the reason and the residual
 For daily focused tests, agents may use `cargo test --profile fast-test` with an
 assigned external `CARGO_TARGET_DIR`; this does not replace the merge gate.
 Agents may use `scripts/cargo-dev.sh` for focused tests, fast-test, timings,
-target-size inspection, and the same final gate commands.
+`sccache` evaluation/status, target-size inspection, and the same final gate
+commands.
 
 ## Implementation Guidance
 

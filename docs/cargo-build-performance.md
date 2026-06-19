@@ -63,6 +63,7 @@ scripts/cargo-dev.sh fast-test -p bbb-world <filter>
 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
 scripts/cargo-dev.sh timings --workspace --timings
 scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings
+scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world command_tree --quiet
 scripts/cargo-dev.sh size
 scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD
 scripts/cargo-dev.sh sccache-status
@@ -86,6 +87,20 @@ invalidate the measurement.
 `/tmp/bbb-target-*`. It is for explicit periodic cleanup and disposable
 baselines, not end-of-slice worker cleanup.
 
+`scripts/cargo-dev.sh sccache-eval <run-suffix> [focused cargo test args...]`
+runs the repeatable local `sccache` experiment:
+
+- clean full workspace with `RUSTC_WRAPPER=sccache`
+- new worker target focused test with `RUSTC_WRAPPER=sccache`
+- new worker target focused test without `sccache` for comparison
+- warm focused default-profile test on `/tmp/bbb-target-main` with `sccache`
+
+The focused test defaults to `-p bbb-world command_tree --quiet` when no cargo
+test arguments are supplied. The command refuses to reuse existing disposable
+measurement targets so warm cache state cannot accidentally invalidate the
+result. Remove those disposable targets with `scripts/cargo-dev.sh clean-target`
+after recording the numbers and timing report paths.
+
 ## Command Matrix
 
 Use these commands as the default local workflow:
@@ -100,6 +115,8 @@ Use these commands as the default local workflow:
   `scripts/cargo-dev.sh timings --workspace --timings`
 - Clean full workspace baseline:
   `scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings`
+- `sccache` evaluation:
+  `scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world command_tree --quiet`
 - Target cache size:
   `scripts/cargo-dev.sh size`
 - Disposable target cleanup:
@@ -121,6 +138,7 @@ Use it explicitly when installed:
 ```sh
 RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
 BBB_USE_SCCACHE=1 scripts/cargo-dev.sh test -p bbb-world <filter>
+scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world <filter> --quiet
 scripts/cargo-dev.sh sccache-status
 ```
 
@@ -640,3 +658,55 @@ Conclusion:
   after dependency/profile/toolchain changes.
 - Remove disposable measurement targets after recording results when disk
   pressure matters.
+
+Follow-up measurement with `scripts/cargo-dev.sh sccache-eval`:
+
+- Command:
+  `scripts/cargo-dev.sh sccache-eval 20260619123234 -p bbb-world command_tree --quiet`
+- Clean full workspace with `sccache`:
+  - Wall time: 164.61s.
+  - Target size before cleanup: 3.2G.
+  - Result: all tests passed.
+  - Timing report copied to:
+    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619123234.html`
+  - `sccache` stats:
+    - compile requests: 217
+    - executed: 156
+    - cache hits: 1 C/C++ hit
+    - Rust cache hits: 0
+    - Rust cache misses: 155
+    - non-cacheable calls: 59
+    - cache size after run: 457M
+- New worker target focused test with `sccache`:
+  - Command:
+    `RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-sccache-worker-20260619123234 cargo test -p bbb-world command_tree --quiet`
+  - Wall time: 50.20s.
+  - Target size before cleanup: 637M.
+  - Result: 1 test passed.
+  - `sccache` stats:
+    - compile requests: 46
+    - executed: 29
+    - cache hits: 0
+    - Rust cache misses: 29
+    - non-cacheable calls: 17
+    - cache size after run: 481M
+- New worker target focused test without `sccache`:
+  - Command:
+    `CARGO_TARGET_DIR=/tmp/bbb-target-nosccache-worker-20260619123234 cargo test -p bbb-world command_tree --quiet`
+  - Wall time: 49.99s.
+  - Target size before cleanup: 637M.
+  - Result: 1 test passed.
+- Warm focused default with `sccache` on `/tmp/bbb-target-main`:
+  - Command:
+    `RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world command_tree --quiet`
+  - Wall time: 0.22s.
+  - Result: 1 test passed.
+  - `sccache` compile requests: 0
+- Disposable measurement targets removed after recording:
+  - `/tmp/bbb-target-sccache-clean-20260619123234`
+  - `/tmp/bbb-target-sccache-worker-20260619123234`
+  - `/tmp/bbb-target-nosccache-worker-20260619123234`
+
+This second measurement keeps the same conclusion: `sccache` should not be made
+default for this repo yet. It did not reduce the new worker target focused test
+time, and Rust cache hits remained zero for the measured focused workload.

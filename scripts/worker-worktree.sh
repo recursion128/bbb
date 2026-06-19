@@ -8,11 +8,13 @@ Usage:
   scripts/worker-worktree.sh status [name]
   scripts/worker-worktree.sh cleanup <name>
   scripts/worker-worktree.sh env <name>
+  scripts/worker-worktree.sh shell-env <name>
 
 Examples:
   scripts/worker-worktree.sh create world
   scripts/worker-worktree.sh status
   scripts/worker-worktree.sh env world
+  scripts/worker-worktree.sh shell-env world
   scripts/worker-worktree.sh cleanup world
 
 Conventions:
@@ -57,6 +59,10 @@ target_dir() {
   printf '/tmp/bbb-target-%s\n' "$name"
 }
 
+shell_quote() {
+  printf "%s" "$1" | sed "s/'/'\\\\''/g; s/^/'/; s/$/'/"
+}
+
 print_worker_env() {
   name="$1"
   path="$2"
@@ -68,6 +74,13 @@ worktree=$path
 branch=$branch
 CARGO_TARGET_DIR=$target
 EOF
+}
+
+print_worker_shell_env() {
+  path="$1"
+  target="$2"
+  printf 'cd %s\n' "$(shell_quote "$path")"
+  printf 'export CARGO_TARGET_DIR=%s\n' "$(shell_quote "$target")"
 }
 
 create_worker() {
@@ -197,6 +210,15 @@ env_worker() {
     "$(target_dir "$name")"
 }
 
+shell_env_worker() {
+  name="$1"
+  validate_name "$name"
+  root="$(repo_root)"
+  print_worker_shell_env \
+    "$(worktree_path "$root" "$name")" \
+    "$(target_dir "$name")"
+}
+
 if [ "$#" -eq 0 ]; then
   usage >&2
   exit 2
@@ -233,6 +255,13 @@ case "$cmd" in
       exit 2
     fi
     env_worker "$1"
+    ;;
+  shell-env)
+    if [ "$#" -ne 1 ]; then
+      usage >&2
+      exit 2
+    fi
+    shell_env_worker "$1"
     ;;
   -h|--help|help)
     usage
