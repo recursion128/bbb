@@ -1184,11 +1184,7 @@ impl WorldStore {
         let mut slots_after = slots_before.clone();
         let mut cursor_after = self.inventory.cursor_item.clone();
         let mut quick_craft_after = self.inventory.local_quick_craft.clone();
-        if menu_result_slot_requires_server_authority(menu_type_id, request.slot_num)
-            && matches!(
-                request.input,
-                ProtocolContainerInput::Pickup | ProtocolContainerInput::QuickMove
-            )
+        if menu_result_slot_requires_server_authority(menu_type_id, request.slot_num, request.input)
         {
             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                 request.input,
@@ -2618,7 +2614,27 @@ fn shulker_box_container_slot_count(menu_type_id: Option<i32>) -> Option<i16> {
         .then_some(SHULKER_BOX_CONTAINER_SLOT_COUNT)
 }
 
-fn menu_result_slot_requires_server_authority(menu_type_id: Option<i32>, slot_num: i16) -> bool {
+fn menu_result_slot_requires_server_authority(
+    menu_type_id: Option<i32>,
+    slot_num: i16,
+    input: ProtocolContainerInput,
+) -> bool {
+    if !matches!(
+        input,
+        ProtocolContainerInput::Pickup | ProtocolContainerInput::QuickMove
+    ) {
+        return false;
+    }
+    if matches!(
+        (menu_type_id, slot_num, input),
+        (
+            Some(VANILLA_MENU_TYPE_STONECUTTER_ID),
+            STONECUTTER_RESULT_SLOT,
+            ProtocolContainerInput::QuickMove
+        )
+    ) {
+        return false;
+    }
     matches!(
         (menu_type_id, slot_num),
         (Some(VANILLA_MENU_TYPE_ANVIL_ID), ANVIL_RESULT_SLOT)
@@ -4171,8 +4187,15 @@ fn apply_stonecutter_menu_quick_move_to_slots(
     stonecutter_recipes: &[ProtocolStonecutterSelectableRecipeSummary],
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if !(0..STONECUTTER_TOTAL_SLOT_COUNT).contains(&slot_num) || slot_num == STONECUTTER_RESULT_SLOT
-    {
+    if !(0..STONECUTTER_TOTAL_SLOT_COUNT).contains(&slot_num) {
+        return;
+    }
+    if slot_num == STONECUTTER_RESULT_SLOT {
+        apply_stonecutter_result_quick_move_to_slots(
+            container_id,
+            slots,
+            default_item_max_stack_sizes,
+        );
         return;
     }
     let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
@@ -4221,6 +4244,58 @@ fn apply_stonecutter_menu_quick_move_to_slots(
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
     }
+}
+
+fn apply_stonecutter_result_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    let Some(source_index) = slots
+        .iter()
+        .position(|slot| slot.slot == STONECUTTER_RESULT_SLOT)
+    else {
+        return;
+    };
+    let Some(input_index) = slots
+        .iter()
+        .position(|slot| slot.slot == STONECUTTER_INPUT_SLOT)
+    else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item)
+        || item_stack_is_empty(&slots[input_index].item)
+    {
+        return;
+    }
+
+    let source_item = slots[source_index].item.clone();
+    let mut trial = slots.to_vec();
+    let mut moving = source_item.clone();
+    if !move_item_stack_to_slots(
+        container_id,
+        &mut trial,
+        source_index,
+        &mut moving,
+        STONECUTTER_PLAYER_MAIN_START,
+        STONECUTTER_HOTBAR_END,
+        true,
+        default_item_max_stack_sizes,
+    ) || !item_stack_is_empty(&moving)
+    {
+        return;
+    }
+
+    trial[input_index].item.count -= 1;
+    normalize_item_stack(&mut trial[input_index].item);
+    normalize_container_slot_selection(&mut trial[input_index]);
+    trial[source_index].item = if item_stack_is_empty(&trial[input_index].item) {
+        ProtocolItemStackSummary::empty()
+    } else {
+        source_item
+    };
+    normalize_container_slot_selection(&mut trial[source_index]);
+    slots.clone_from_slice(&trial);
 }
 
 fn stonecutter_accepts_input(
@@ -9478,7 +9553,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_stonecutter_result_pickup_and_quick_move_require_server_authority() {
+    fn apply_local_stonecutter_result_pickup_requires_server_authority_and_quick_move_predicts() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
@@ -9496,28 +9571,78 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
-        for input in [
-            ProtocolContainerInput::Pickup,
-            ProtocolContainerInput::QuickMove,
-        ] {
-            assert_eq!(
-                store.apply_local_container_click_slot(ContainerClickSlotRequest {
-                    slot_num: STONECUTTER_RESULT_SLOT,
-                    button_num: 0,
-                    input,
-                }),
-                Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
-            );
-        }
-        let click = store
-            .build_container_click_slot(ContainerClickSlotRequest {
+        assert_eq!(
+            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: STONECUTTER_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::Pickup,
+            }),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::Pickup
+            ))
+        );
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
                 slot_num: STONECUTTER_RESULT_SLOT,
                 button_num: 0,
                 input: ProtocolContainerInput::QuickMove,
             })
             .unwrap();
-        assert_eq!(click.changed_slots, BTreeMap::new());
-        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (STONECUTTER_INPUT_SLOT, ProtocolHashedStack::Empty),
+                (STONECUTTER_RESULT_SLOT, ProtocolHashedStack::Empty),
+                (STONECUTTER_HOTBAR_END - 1, hashed_item_stack(90, 1)),
+            ])
+        );
+        assert_eq!(quick_move.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_INPUT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_RESULT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, STONECUTTER_HOTBAR_END - 1),
+            item_stack(90, 1)
+        );
+    }
+
+    #[test]
+    fn apply_local_stonecutter_result_quick_move_keeps_blocked_transfer_server_authoritative() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
+            title: "Stonecutter".to_string(),
+        });
+        let mut items =
+            vec![ProtocolItemStackSummary::empty(); STONECUTTER_TOTAL_SLOT_COUNT as usize];
+        items[STONECUTTER_INPUT_SLOT as usize] = item_stack(42, 1);
+        items[STONECUTTER_RESULT_SLOT as usize] = item_stack(90, 1);
+        for slot in STONECUTTER_PLAYER_MAIN_START..STONECUTTER_HOTBAR_END {
+            items[slot as usize] = item_stack(91, 64);
+        }
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 15,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: STONECUTTER_RESULT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(quick_move.changed_slots, BTreeMap::new());
         assert_eq!(
             open_container_slot_item(&store, STONECUTTER_INPUT_SLOT),
             item_stack(42, 1)

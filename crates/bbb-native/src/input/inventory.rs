@@ -8178,7 +8178,7 @@ mod tests {
     }
 
     #[test]
-    fn stonecutter_shift_click_result_slot_queues_server_authoritative_click() {
+    fn stonecutter_shift_click_result_slot_queues_predicted_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
@@ -8220,13 +8220,19 @@ mod tests {
                 slot_num: 1,
                 button_num: 0,
                 input: ContainerInput::QuickMove,
-                changed_slots: BTreeMap::new(),
+                changed_slots: [
+                    (0, HashedStack::Empty),
+                    (1, HashedStack::Empty),
+                    (37, HashedStack::Item(hashed_item(90, 1))),
+                ]
+                .into(),
                 carried_item: HashedStack::Empty,
             })
         );
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
-        assert_eq!(slots[0].item, item_stack(42, 1));
-        assert_eq!(slots[1].item, item_stack(90, 1));
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[1].item, ItemStackSummary::empty());
+        assert_eq!(slots[37].item, item_stack(90, 1));
     }
 
     #[test]

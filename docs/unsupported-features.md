@@ -1314,12 +1314,16 @@ When an agent does any of the following, update this file in the same slice:
         - non-result slots
         - vanilla slot ranges
         - decoded item-id recipe input routing
+        - result-slot quick-move into the player inventory is locally
+          predicted from the current server-provided result stack when the
+          transfer fully fits and the input/result stacks are hashable.
         - recipe grid wheel scroll and button clicks queue
           `ServerboundContainerButtonClickPacket`
         - recipe option icons and enabled/disabled scroller sprites are rendered
           from native HUD state
-        - result-slot clicks kept server-authoritative until:
-          - recipe result side effects are locally modeled
+        - result-slot pickup, partial/full-inventory result transfers, recipe
+          used bookkeeping, input-specific result recomputation, and take-result
+          sound side effects remain server-authoritative.
       - FurnaceMenu/BlastFurnaceMenu/SmokerMenu, including:
         - vanilla slot ranges
         - result-to-player transfer order
