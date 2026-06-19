@@ -2720,7 +2720,7 @@ fn audio_listener_state_from_world(world: &WorldStore) -> Option<AudioListenerSt
     world.local_player_pose().map(|pose| AudioListenerState {
         position: [
             pose.position.x,
-            pose.position.y + f64::from(CameraPose::STANDING_EYE_HEIGHT),
+            pose.position.y + pose.eye_height(),
             pose.position.z,
         ],
         y_rot: pose.y_rot,
@@ -2769,9 +2769,9 @@ mod tests {
     }
 
     #[test]
-    fn camera_pose_uses_standing_eye_height() {
+    fn camera_pose_uses_local_player_eye_height() {
         let mut world = WorldStore::new();
-        world.set_local_player_pose(LocalPlayerPoseState {
+        let standing_pose = LocalPlayerPoseState {
             position: bbb_protocol::packets::Vec3d {
                 x: 1.0,
                 y: 2.0,
@@ -2780,13 +2780,22 @@ mod tests {
             y_rot: 45.0,
             x_rot: -10.0,
             ..LocalPlayerPoseState::default()
-        });
+        };
+        world.set_local_player_pose(standing_pose);
         let pose = camera_pose_from_world(&world).unwrap();
 
         assert_eq!(pose.position, [1.0, 2.0, 3.0]);
         assert_eq!(pose.y_rot, 45.0);
         assert_eq!(pose.x_rot, -10.0);
         assert_eq!(pose.eye_height, CameraPose::STANDING_EYE_HEIGHT);
+
+        let sneaking_pose = LocalPlayerPoseState {
+            sneaking: true,
+            ..standing_pose
+        };
+        world.set_local_player_pose(sneaking_pose);
+        let pose = camera_pose_from_world(&world).unwrap();
+        assert_eq!(pose.eye_height, sneaking_pose.eye_height() as f32);
     }
 
     #[test]
@@ -2872,7 +2881,8 @@ mod tests {
     #[test]
     fn audio_scene_command_tracks_listener_and_entity_positions() {
         let mut world = WorldStore::new();
-        world.set_local_player_pose(local_player_pose([10.0, 64.0, -5.0], 90.0, -10.0));
+        let standing_pose = local_player_pose([10.0, 64.0, -5.0], 90.0, -10.0);
+        world.set_local_player_pose(standing_pose);
         world.apply_add_entity(bbb_protocol::packets::AddEntity {
             id: 123,
             uuid: uuid::Uuid::from_u128(123),
@@ -2894,11 +2904,7 @@ mod tests {
         assert_eq!(
             command.listener,
             Some(AudioListenerState {
-                position: [
-                    10.0,
-                    64.0 + f64::from(CameraPose::STANDING_EYE_HEIGHT),
-                    -5.0
-                ],
+                position: [10.0, 64.0 + standing_pose.eye_height(), -5.0],
                 y_rot: 90.0,
                 x_rot: -10.0,
             })
@@ -2909,6 +2915,21 @@ mod tests {
                 entity_id: 123,
                 position: [1.0, 2.0, 3.0],
             }]
+        );
+
+        let sneaking_pose = LocalPlayerPoseState {
+            sneaking: true,
+            ..local_player_pose([10.0, 64.0, -5.0], 90.0, -10.0)
+        };
+        world.set_local_player_pose(sneaking_pose);
+        let command = audio_scene_command_from_world(&world);
+        assert_eq!(
+            command.listener,
+            Some(AudioListenerState {
+                position: [10.0, 64.0 + sneaking_pose.eye_height(), -5.0],
+                y_rot: 90.0,
+                x_rot: -10.0,
+            })
         );
 
         assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 123 }));
@@ -2933,11 +2954,7 @@ mod tests {
         assert_eq!(
             command.listener,
             Some(AudioListenerState {
-                position: [
-                    10.0,
-                    64.0 + f64::from(CameraPose::STANDING_EYE_HEIGHT),
-                    -5.0
-                ],
+                position: [10.0, 64.0 + sneaking_pose.eye_height(), -5.0],
                 y_rot: 90.0,
                 x_rot: -10.0,
             })

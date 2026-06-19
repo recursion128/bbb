@@ -34,6 +34,6 @@ fn camera_pose_from_local_player_pose(player: LocalPlayerPoseState) -> CameraPos
         ],
         y_rot: player.y_rot,
         x_rot: player.x_rot,
-        eye_height: CameraPose::STANDING_EYE_HEIGHT,
+        eye_height: player.eye_height() as f32,
     }
 }

@@ -140,6 +140,7 @@ fn advance_local_player_physics_step(
     }
 
     let flying = local_player_flying_abilities(world);
+    pose.sneaking = input.focused && input.sneak && flying.is_none();
     let initial_fluid_contact = local_player_fluid_contact(world, pose);
     if flying.is_none() && (initial_fluid_contact.in_water() || initial_fluid_contact.in_lava()) {
         return advance_local_player_fluid_physics_step(
@@ -1774,6 +1775,7 @@ mod tests {
             "position was {:?}",
             pose.position
         );
+        assert!(pose.sneaking);
         assert!(pose.on_ground);
         assert!(!pose.horizontal_collision);
     }
@@ -2640,6 +2642,7 @@ mod tests {
             .unwrap();
 
         assert!(pose.position.z > 1.3, "position was {:?}", pose.position);
+        assert!(!pose.sneaking);
     }
 
     #[test]
@@ -2708,6 +2711,7 @@ mod tests {
             .unwrap();
         assert_f64_near(downward.position.y, 2.85, 0.000001);
         assert_f64_near(downward.delta_movement.y, -0.09, 0.000001);
+        assert!(!downward.sneaking);
         assert!(!downward.on_ground);
     }
 

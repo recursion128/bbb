@@ -16,6 +16,7 @@ use super::local_player_movement::{
 use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
 
 const STANDING_EYE_HEIGHT: f64 = 1.62;
+const CROUCHING_EYE_HEIGHT: f64 = 1.27;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocalPlayerState {
@@ -129,6 +130,8 @@ pub struct LocalPlayerPoseState {
     pub horizontal_collision: bool,
     #[serde(default)]
     pub fall_distance: f64,
+    #[serde(default)]
+    pub sneaking: bool,
     pub y_rot: f32,
     pub x_rot: f32,
     pub last_teleport_id: i32,
@@ -158,6 +161,14 @@ impl LocalPlayerPoseState {
         }
     }
 
+    pub fn eye_height(self) -> f64 {
+        if self.sneaking {
+            CROUCHING_EYE_HEIGHT
+        } else {
+            STANDING_EYE_HEIGHT
+        }
+    }
+
     pub fn from_position_state(state: ProtocolPlayerPositionState, last_teleport_id: i32) -> Self {
         Self {
             position: state.position,
@@ -165,6 +176,7 @@ impl LocalPlayerPoseState {
             on_ground: false,
             horizontal_collision: false,
             fall_distance: 0.0,
+            sneaking: false,
             y_rot: state.y_rot,
             x_rot: state.x_rot,
             last_teleport_id,
@@ -322,13 +334,13 @@ impl WorldStore {
         if self.local_player_vehicle_id.is_some() {
             return None;
         }
-        let current = self
-            .local_player
-            .pose
-            .map(LocalPlayerPoseState::position_state)
-            .unwrap_or_default();
+        let current_pose = self.local_player.pose.unwrap_or_default();
+        let current = current_pose.position_state();
         let state = packet.apply_to_state(current);
-        let pose = LocalPlayerPoseState::from_position_state(state, packet.id);
+        let pose = LocalPlayerPoseState {
+            sneaking: current_pose.sneaking,
+            ..LocalPlayerPoseState::from_position_state(state, packet.id)
+        };
         self.local_player.pose = Some(pose);
         Some(pose)
     }
@@ -340,7 +352,10 @@ impl WorldStore {
         self.counters.player_rotation_packets += 1;
         let current_pose = self.local_player.pose.unwrap_or_default();
         let state = packet.apply_to_state(current_pose.position_state());
-        let pose = LocalPlayerPoseState::from_position_state(state, current_pose.last_teleport_id);
+        let pose = LocalPlayerPoseState {
+            sneaking: current_pose.sneaking,
+            ..LocalPlayerPoseState::from_position_state(state, current_pose.last_teleport_id)
+        };
         self.local_player.pose = Some(pose);
         pose
     }
@@ -508,7 +523,7 @@ fn apply_look_at_to_pose(
 ) -> LocalPlayerPoseState {
     let from_y = match from_anchor {
         EntityAnchor::Feet => pose.position.y,
-        EntityAnchor::Eyes => pose.position.y + STANDING_EYE_HEIGHT,
+        EntityAnchor::Eyes => pose.position.y + pose.eye_height(),
     };
     let dx = target_position.x - pose.position.x;
     let dy = target_position.y - from_y;
@@ -848,6 +863,22 @@ mod tests {
     }
 
     #[test]
+    fn local_player_pose_eye_height_tracks_sneaking() {
+        assert_eq!(
+            LocalPlayerPoseState::default().eye_height(),
+            STANDING_EYE_HEIGHT
+        );
+        assert_eq!(
+            LocalPlayerPoseState {
+                sneaking: true,
+                ..LocalPlayerPoseState::default()
+            }
+            .eye_height(),
+            CROUCHING_EYE_HEIGHT
+        );
+    }
+
+    #[test]
     fn local_interaction_state_tracks_prediction_destroy_and_use_item() {
         let mut store = WorldStore::new();
 
@@ -959,6 +990,10 @@ mod tests {
     #[test]
     fn local_player_position_and_rotation_update_canonical_pose() {
         let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            sneaking: true,
+            ..LocalPlayerPoseState::default()
+        });
 
         let pose = store
             .apply_player_position(ProtocolPlayerPositionUpdate {
@@ -972,6 +1007,7 @@ mod tests {
             .unwrap();
         assert_eq!(pose.position, vec3(10.0, 64.0, -5.0));
         assert_eq!(pose.delta_movement, vec3(0.125, 0.0, 0.0));
+        assert!(pose.sneaking);
         assert_eq!(pose.last_teleport_id, 7);
 
         let pose = store
@@ -991,6 +1027,7 @@ mod tests {
         assert_eq!(pose.delta_movement, vec3(0.375, 0.5, 0.75));
         assert_eq!(pose.y_rot, 110.0);
         assert_eq!(pose.x_rot, -90.0);
+        assert!(pose.sneaking);
         assert_eq!(pose.last_teleport_id, 8);
 
         let pose = store.apply_player_rotation(ProtocolPlayerRotationUpdate {
@@ -1003,6 +1040,7 @@ mod tests {
         assert_eq!(pose.delta_movement, vec3(0.375, 0.5, 0.75));
         assert_eq!(pose.y_rot, 100.0);
         assert_eq!(pose.x_rot, 30.0);
+        assert!(pose.sneaking);
         assert_eq!(pose.last_teleport_id, 8);
         assert_eq!(store.local_player_pose(), Some(pose));
 
@@ -1078,6 +1116,31 @@ mod tests {
             })
         );
         assert_eq!(store.counters().player_look_at_packets, 1);
+    }
+
+    #[test]
+    fn local_player_look_at_uses_crouching_eye_height_when_sneaking() {
+        let mut store = WorldStore::new();
+        store.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            sneaking: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = store
+            .apply_player_look_at(ProtocolPlayerLookAt {
+                from_anchor: EntityAnchor::Eyes,
+                position: vec3(0.0, 70.0, 10.0),
+                target: None,
+            })
+            .unwrap();
+
+        let expected_x_rot = -((70.0 - (64.0 + CROUCHING_EYE_HEIGHT))
+            .atan2(10.0)
+            .to_degrees() as f32);
+        assert!((pose.y_rot - 0.0).abs() < 0.001);
+        assert!((pose.x_rot - expected_x_rot).abs() < 0.001);
+        assert!(pose.sneaking);
     }
 
     fn protocol_add_entity(id: i32) -> ProtocolAddEntity {

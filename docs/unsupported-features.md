@@ -300,7 +300,10 @@ When an agent does any of the following, update this file in the same slice:
         - local Jump Boost jump impulse
         - local Slow Falling gravity clamp
         - local Levitation vertical velocity targeting
-      - sneak pose details
+      - remaining sneak pose details beyond local crouching eye height:
+        - crouching collision/body dimensions
+        - low-ceiling forced crouch
+        - swimming/crawling pose priority
       - full flying friction
       - remaining vehicle movement send edge cases beyond the vanilla-shaped
         walking and passenger player packet thresholds
@@ -437,6 +440,13 @@ When an agent does any of the following, update this file in the same slice:
       - a basic vanilla-shaped sneak edge backoff
       - the vanilla near-ground `fallDistance < maxUpStep` branch of sneak edge
         backoff, backed by canonical local pose `fall_distance`
+      - canonical local player `sneaking` pose state when focused sneak is active
+        and the player is not flying
+      - vanilla local player standing/crouching eye heights:
+        - standing `1.62`
+        - crouching `1.27`
+      - local player camera pose, audio listener, crosshair ray, fluid eye probing,
+        and `LookAt` eye anchor all consume the canonical local eye height
       - vanilla-shaped local player fluid contact probing for water/lava
         height and eye-in-fluid checks:
         - `FlowingFluid` height uses `amount / 9.0`

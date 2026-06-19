@@ -6,7 +6,6 @@ use crate::{
     BlockPos, BlockProbe, TerrainFluidKind, TerrainFluidState, TerrainMaterialClass, WorldStore,
 };
 
-const LOCAL_PLAYER_STANDING_EYE_HEIGHT: f64 = 1.62;
 const FLUID_INTERACTION_BOX_DEFLATE: f64 = 0.001;
 const FLUID_DOWNWARD_FLOW_WEIGHT: f64 = 6.0;
 const FLUID_FALLING_HEIGHT_OFFSET: f64 = 8.0 / 9.0;
@@ -38,7 +37,7 @@ pub(super) fn local_player_fluid_contact(
     pose: LocalPlayerPoseState,
 ) -> LocalPlayerFluidContactState {
     let bounds = LocalPlayerBounds::at(pose.position).deflated(FLUID_INTERACTION_BOX_DEFLATE);
-    let eye_y = pose.position.y + LOCAL_PLAYER_STANDING_EYE_HEIGHT;
+    let eye_y = pose.position.y + pose.eye_height();
     let eye_block_x = block_floor(pose.position.x);
     let eye_block_z = block_floor(pose.position.z);
     local_player_fluid_contact_in_bounds(
@@ -423,6 +422,35 @@ mod tests {
         assert!(contact.eye_in_water);
         assert_eq!(contact.lava_height, 0.0);
         assert!(!contact.eye_in_lava);
+    }
+
+    #[test]
+    fn local_player_fluid_contact_uses_canonical_eye_height() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 1, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+
+        let standing = local_player_fluid_contact(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 0.5, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+        let crouching = local_player_fluid_contact(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 0.5, 0.5),
+                sneaking: true,
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert!(!standing.eye_in_water);
+        assert!(crouching.eye_in_water);
     }
 
     #[test]

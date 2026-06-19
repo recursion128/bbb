@@ -608,7 +608,7 @@ pub(crate) fn protocol_block_hit_result_from_crosshair_hit(
 fn eye_position_from_player_pose(pose: LocalPlayerPoseState) -> [f64; 3] {
     [
         pose.position.x,
-        pose.position.y + f64::from(CameraPose::STANDING_EYE_HEIGHT),
+        pose.position.y + pose.eye_height(),
         pose.position.z,
     ]
 }
@@ -825,11 +825,12 @@ mod tests {
         let CrosshairTarget::Entity(hit) = target.unwrap() else {
             panic!("expected entity hit");
         };
+        let eye_height = LocalPlayerPoseState::default().eye_height();
         assert_eq!(hit.entity_id, 10);
-        assert_vec3_close(hit.location, [0.0, 1.6200000047683716, 2.509999990463257]);
+        assert_vec3_close(hit.location, [0.0, eye_height, 2.509999990463257]);
         assert_vec3_close(
             hit.relative_location,
-            [0.0, 0.6200000047683716, -0.49000000953674316],
+            [0.0, eye_height - 1.0, -0.49000000953674316],
         );
     }
 
@@ -921,9 +922,10 @@ mod tests {
         let CrosshairTarget::Entity(hit) = target.unwrap() else {
             panic!("expected dragon part entity hit");
         };
+        let eye_height = LocalPlayerPoseState::default().eye_height();
         assert_eq!(hit.entity_id, 101);
-        assert_vec3_close(hit.location, [0.0, 1.6200000047683716, 2.0]);
-        assert_vec3_close(hit.relative_location, [0.0, 0.6200000047683716, -0.5]);
+        assert_vec3_close(hit.location, [0.0, eye_height, 2.0]);
+        assert_vec3_close(hit.relative_location, [0.0, eye_height - 1.0, -0.5]);
     }
 
     #[test]
@@ -938,7 +940,8 @@ mod tests {
         ));
         world.advance_entity_client_animations(1);
 
-        let tail_pose = player_pose_at([0.0, 4.5 - 1.6200000047683716, 11.25], 0.0, 0.0);
+        let eye_height = LocalPlayerPoseState::default().eye_height();
+        let tail_pose = player_pose_at([0.0, 4.5 - eye_height, 11.25], 0.0, 0.0);
         let CrosshairTarget::Entity(tail_hit) =
             crosshair_target_from_world(&world, Some(tail_pose)).unwrap()
         else {
@@ -948,7 +951,7 @@ mod tests {
         assert_vec3_close(tail_hit.location, [0.0, 4.5, 11.5]);
         assert_vec3_close(tail_hit.relative_location, [0.0, 1.0, -1.0]);
 
-        let wing_pose = player_pose_at([4.5, 5.0 - 1.6200000047683716, 6.0], 0.0, 0.0);
+        let wing_pose = player_pose_at([4.5, 5.0 - eye_height, 6.0], 0.0, 0.0);
         let CrosshairTarget::Entity(wing_hit) =
             crosshair_target_from_world(&world, Some(wing_pose)).unwrap()
         else {
@@ -995,7 +998,11 @@ mod tests {
         world.advance_entity_client_animations(1);
 
         let pose = player_pose_at(
-            [7.5, 64.0 - f64::from(CameraPose::STANDING_EYE_HEIGHT), -5.0],
+            [
+                7.5,
+                64.0 - LocalPlayerPoseState::default().eye_height(),
+                -5.0,
+            ],
             0.0,
             0.0,
         );
@@ -1030,9 +1037,10 @@ mod tests {
         let CrosshairTarget::Entity(hit) = target.unwrap() else {
             panic!("expected item frame entity hit");
         };
+        let eye_height = LocalPlayerPoseState::default().eye_height();
         assert_eq!(hit.entity_id, 13);
-        assert_vec3_close(hit.location, [0.5, 1.6200000047683716, 2.9375]);
-        assert_vec3_close(hit.relative_location, [0.0, 0.12000000476837158, -0.03125]);
+        assert_vec3_close(hit.location, [0.5, eye_height, 2.9375]);
+        assert_vec3_close(hit.relative_location, [0.0, eye_height - 1.5, -0.03125]);
     }
 
     #[test]
@@ -1056,7 +1064,7 @@ mod tests {
 
     #[test]
     fn crosshair_target_keeps_block_when_block_is_nearer_than_entity() {
-        let eye = [0.0, 1.6200000047683716, 0.0];
+        let eye = [0.0, LocalPlayerPoseState::default().eye_height(), 0.0];
         let block = CrosshairBlockHit {
             pos: BlockPos { x: 0, y: 1, z: 2 },
             face: ProtocolDirection::North,
@@ -1093,7 +1101,7 @@ mod tests {
 
     #[test]
     fn crosshair_target_prefers_entity_when_entity_is_nearer_than_block() {
-        let eye = [0.0, 1.6200000047683716, 0.0];
+        let eye = [0.0, LocalPlayerPoseState::default().eye_height(), 0.0];
         let block = CrosshairBlockHit {
             pos: BlockPos { x: 0, y: 1, z: 3 },
             face: ProtocolDirection::North,
@@ -1131,7 +1139,7 @@ mod tests {
 
     #[test]
     fn crosshair_target_misses_when_nearer_entity_exceeds_entity_interaction_range() {
-        let eye = [0.0, 1.6200000047683716, 0.0];
+        let eye = [0.0, LocalPlayerPoseState::default().eye_height(), 0.0];
         let block = CrosshairBlockHit {
             pos: BlockPos { x: 0, y: 1, z: 4 },
             face: ProtocolDirection::North,
@@ -1187,6 +1195,18 @@ mod tests {
         let hit = hit.expect("camera ray should hit the low block");
         assert_eq!(hit.pos, BlockPos { x: 0, y: 0, z: 3 });
         assert!((hit.cursor[1] - 0.2751).abs() < 0.0001);
+    }
+
+    #[test]
+    fn player_pose_crosshair_ray_uses_local_player_eye_height() {
+        let pose = LocalPlayerPoseState {
+            sneaking: true,
+            ..player_pose_at([0.0, 64.0, 0.0], 0.0, 0.0)
+        };
+
+        let ray = crosshair_ray_from_player_pose(pose);
+
+        assert_eq!(ray.eye, [0.0, 64.0 + pose.eye_height(), 0.0]);
     }
 
     #[test]
