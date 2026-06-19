@@ -1194,10 +1194,13 @@ When an agent does any of the following, update this file in the same slice:
           - invalid-transform prediction when item runtime or map state is not
             available
       - GrindstoneMenu:
+        - input slots back to player inventory
         - player inventory/hotbar range movement when both input slots are
           occupied
-        - input/result-side paths are kept server-authoritative until:
-          - component-hashable grindstone item prediction
+        - player-to-input and result-slot paths are kept server-authoritative
+          until:
+          - component-hashable grindstone item/result prediction
+          - result side effects and input consumption
       - hopper
       - LoomMenu:
         - selectable pattern grid renders official pattern button sprites when

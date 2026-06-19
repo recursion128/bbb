@@ -2989,6 +2989,9 @@ fn apply_grindstone_menu_quick_move_to_slots(
 
     let source_item = slots[source_index].item.clone();
     let target = match slot_num {
+        GRINDSTONE_INPUT_SLOT | GRINDSTONE_ADDITIONAL_SLOT => {
+            Some((GRINDSTONE_PLAYER_MAIN_START, GRINDSTONE_HOTBAR_END, false))
+        }
         slot if (GRINDSTONE_PLAYER_MAIN_START..GRINDSTONE_PLAYER_MAIN_END).contains(&slot) => {
             Some((GRINDSTONE_HOTBAR_START, GRINDSTONE_HOTBAR_END, false))
         }
@@ -3024,11 +3027,14 @@ fn grindstone_quick_move_requires_server_authority(slots: &[ContainerSlot], slot
     if !(0..GRINDSTONE_TOTAL_SLOT_COUNT).contains(&slot_num) {
         return false;
     }
-    if matches!(
-        slot_num,
-        GRINDSTONE_INPUT_SLOT | GRINDSTONE_ADDITIONAL_SLOT | GRINDSTONE_RESULT_SLOT
-    ) {
+    if slot_num == GRINDSTONE_RESULT_SLOT {
         return true;
+    }
+    if matches!(slot_num, GRINDSTONE_INPUT_SLOT | GRINDSTONE_ADDITIONAL_SLOT) {
+        return false;
+    }
+    if !(GRINDSTONE_PLAYER_MAIN_START..GRINDSTONE_HOTBAR_END).contains(&slot_num) {
+        return false;
     }
     let inputs_full = inventory_menu_slot_has_item(slots, GRINDSTONE_INPUT_SLOT)
         && inventory_menu_slot_has_item(slots, GRINDSTONE_ADDITIONAL_SLOT);
@@ -7636,7 +7642,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_grindstone_input_quick_move_requires_server_authority() {
+    fn apply_local_grindstone_input_quick_move_moves_inputs_to_player_forward() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
@@ -7646,6 +7652,7 @@ mod tests {
         let mut items =
             vec![ProtocolItemStackSummary::empty(); GRINDSTONE_TOTAL_SLOT_COUNT as usize];
         items[GRINDSTONE_INPUT_SLOT as usize] = item_stack(42, 1);
+        items[GRINDSTONE_ADDITIONAL_SLOT as usize] = item_stack(43, 2);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 12,
@@ -7653,27 +7660,50 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
-        let request = ContainerClickSlotRequest {
-            slot_num: GRINDSTONE_INPUT_SLOT,
-            button_num: 0,
-            input: ProtocolContainerInput::QuickMove,
-        };
+        let input_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: GRINDSTONE_INPUT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
         assert_eq!(
-            store.apply_local_container_click_slot(request),
-            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                ProtocolContainerInput::QuickMove
-            ))
+            input_move.changed_slots,
+            BTreeMap::from([
+                (GRINDSTONE_INPUT_SLOT, ProtocolHashedStack::Empty),
+                (GRINDSTONE_PLAYER_MAIN_START, hashed_item_stack(42, 1)),
+            ])
         );
-        let click = store.build_container_click_slot(request).unwrap();
-        assert_eq!(click.changed_slots, BTreeMap::new());
-        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+
+        let additional_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: GRINDSTONE_ADDITIONAL_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            additional_move.changed_slots,
+            BTreeMap::from([
+                (GRINDSTONE_ADDITIONAL_SLOT, ProtocolHashedStack::Empty),
+                (GRINDSTONE_PLAYER_MAIN_START + 1, hashed_item_stack(43, 2)),
+            ])
+        );
         assert_eq!(
             open_container_slot_item(&store, GRINDSTONE_INPUT_SLOT),
-            item_stack(42, 1)
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_ADDITIONAL_SLOT),
+            ProtocolItemStackSummary::empty()
         );
         assert_eq!(
             open_container_slot_item(&store, GRINDSTONE_PLAYER_MAIN_START),
-            ProtocolItemStackSummary::empty()
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, GRINDSTONE_PLAYER_MAIN_START + 1),
+            item_stack(43, 2)
         );
     }
 
