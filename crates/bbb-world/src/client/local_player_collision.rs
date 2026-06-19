@@ -192,6 +192,9 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if block_name == "minecraft:sea_pickle" {
             return sea_pickle_collision_shape(&block.block_properties);
         }
+        if is_amethyst_cluster_block_name(block_name) {
+            return amethyst_cluster_collision_shape(block_name, &block.block_properties);
+        }
         if is_shelf_block_name(block_name) {
             return shelf_collision_shape(&block.block_properties);
         }
@@ -443,6 +446,16 @@ fn is_shelf_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_shelf"))
+}
+
+fn is_amethyst_cluster_block_name(block_name: &str) -> bool {
+    matches!(
+        block_name,
+        "minecraft:amethyst_cluster"
+            | "minecraft:large_amethyst_bud"
+            | "minecraft:medium_amethyst_bud"
+            | "minecraft:small_amethyst_bud"
+    )
 }
 
 fn is_sculk_sensor_block_name(block_name: &str) -> bool {
@@ -961,6 +974,31 @@ fn sea_pickle_collision_shape(
         _ => return None,
     };
     Some(BlockCollisionShape::single(shape_box))
+}
+
+fn amethyst_cluster_collision_shape(
+    block_name: &str,
+    properties: &BTreeMap<String, String>,
+) -> Option<BlockCollisionShape> {
+    let facing = BlockDirection::parse(properties.get("facing")?)?;
+    let (height_px, width_px) = match block_name {
+        "minecraft:amethyst_cluster" => (7.0, 10.0),
+        "minecraft:large_amethyst_bud" => (5.0, 10.0),
+        "minecraft:medium_amethyst_bud" => (4.0, 10.0),
+        "minecraft:small_amethyst_bud" => (3.0, 8.0),
+        _ => return None,
+    };
+    Some(
+        BlockCollisionShape::single(BlockCollisionBox::from_pixels(
+            [
+                (16.0 - width_px) * 0.5,
+                (16.0 - width_px) * 0.5,
+                16.0 - height_px,
+            ],
+            [(16.0 + width_px) * 0.5, (16.0 + width_px) * 0.5, 16.0],
+        ))
+        .rotate_all_from_north(facing),
+    )
 }
 
 fn shelf_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
@@ -2568,6 +2606,52 @@ mod tests {
         assert_f64_near(boxes[1].max_z, 3.0 * PX);
         assert_f64_near(boxes[2].min_z, 3.0 * PX);
         assert_f64_near(boxes[2].max_z, 5.0 * PX);
+    }
+
+    #[test]
+    fn amethyst_cluster_shape_matches_vanilla_size_and_facing() {
+        let mut properties = BTreeMap::new();
+        properties.insert("facing".to_owned(), "north".to_owned());
+
+        let shape = amethyst_cluster_collision_shape("minecraft:amethyst_cluster", &properties)
+            .expect("north amethyst cluster shape");
+        let mut boxes = shape.boxes();
+        let shape_box = boxes.next().expect("shape box");
+        assert!(boxes.next().is_none());
+
+        assert_f64_near(shape_box.min_x, 3.0 * PX);
+        assert_f64_near(shape_box.min_y, 3.0 * PX);
+        assert_f64_near(shape_box.min_z, 9.0 * PX);
+        assert_f64_near(shape_box.max_x, 13.0 * PX);
+        assert_f64_near(shape_box.max_y, 13.0 * PX);
+        assert_f64_near(shape_box.max_z, 1.0);
+
+        properties.insert("facing".to_owned(), "up".to_owned());
+        let shape = amethyst_cluster_collision_shape("minecraft:amethyst_cluster", &properties)
+            .expect("up amethyst cluster shape");
+        let mut boxes = shape.boxes();
+        let shape_box = boxes.next().expect("shape box");
+        assert!(boxes.next().is_none());
+
+        assert_f64_near(shape_box.min_x, 3.0 * PX);
+        assert_f64_near(shape_box.min_y, 0.0);
+        assert_f64_near(shape_box.min_z, 3.0 * PX);
+        assert_f64_near(shape_box.max_x, 13.0 * PX);
+        assert_f64_near(shape_box.max_y, 7.0 * PX);
+        assert_f64_near(shape_box.max_z, 13.0 * PX);
+
+        let shape = amethyst_cluster_collision_shape("minecraft:small_amethyst_bud", &properties)
+            .expect("up small amethyst bud shape");
+        let mut boxes = shape.boxes();
+        let shape_box = boxes.next().expect("shape box");
+        assert!(boxes.next().is_none());
+
+        assert_f64_near(shape_box.min_x, 4.0 * PX);
+        assert_f64_near(shape_box.min_y, 0.0);
+        assert_f64_near(shape_box.min_z, 4.0 * PX);
+        assert_f64_near(shape_box.max_x, 12.0 * PX);
+        assert_f64_near(shape_box.max_y, 3.0 * PX);
+        assert_f64_near(shape_box.max_z, 12.0 * PX);
     }
 
     #[test]

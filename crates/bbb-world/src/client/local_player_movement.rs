@@ -1760,6 +1760,10 @@ mod tests {
     const COCOA_AGE_2_SOUTH_BLOCK_STATE_ID: i32 = 9490;
     const OAK_SHELF_NORTH_BLOCK_STATE_ID: i32 = 3121;
     const OAK_SHELF_SOUTH_BLOCK_STATE_ID: i32 = 3137;
+    const AMETHYST_CLUSTER_NORTH_BLOCK_STATE_ID: i32 = 23405;
+    const AMETHYST_CLUSTER_SOUTH_BLOCK_STATE_ID: i32 = 23409;
+    const AMETHYST_CLUSTER_UP_BLOCK_STATE_ID: i32 = 23413;
+    const SMALL_AMETHYST_BUD_UP_BLOCK_STATE_ID: i32 = 23449;
     const SLIME_BLOCK_STATE_ID: i32 = 12532;
     const FLOWER_POT_BLOCK_STATE_ID: i32 = 10629;
     const POTTED_DANDELION_BLOCK_STATE_ID: i32 = 10641;
@@ -2703,6 +2707,16 @@ mod tests {
             ("sculk shrieker", SCULK_SHRIEKER_IDLE_BLOCK_STATE_ID, 1.5),
             ("heavy core", HEAVY_CORE_DRY_BLOCK_STATE_ID, 1.5),
             (
+                "up-facing amethyst cluster",
+                AMETHYST_CLUSTER_UP_BLOCK_STATE_ID,
+                1.4375,
+            ),
+            (
+                "up-facing small amethyst bud",
+                SMALL_AMETHYST_BUD_UP_BLOCK_STATE_ID,
+                1.1875,
+            ),
+            (
                 "empty end portal frame",
                 END_PORTAL_FRAME_EMPTY_NORTH_BLOCK_STATE_ID,
                 1.8125,
@@ -2990,6 +3004,39 @@ mod tests {
             (
                 "south-facing shelf",
                 OAK_SHELF_SOUTH_BLOCK_STATE_ID,
+                0.699,
+                0.7005,
+            ),
+        ];
+
+        for (name, block_state_id, min_z, max_z) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z > min_z && pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_respects_amethyst_cluster_collision() {
+        let cases = [
+            (
+                "north-facing amethyst cluster",
+                AMETHYST_CLUSTER_NORTH_BLOCK_STATE_ID,
+                1.25,
+                1.263,
+            ),
+            (
+                "south-facing amethyst cluster",
+                AMETHYST_CLUSTER_SOUTH_BLOCK_STATE_ID,
                 0.699,
                 0.7005,
             ),

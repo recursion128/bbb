@@ -475,6 +475,7 @@ When an agent does any of the following, update this file in the same slice:
       - honey block
       - cake
       - lily pad
+      - amethyst cluster / bud
       - flower pot
       - candle / candle cake
       - cocoa
@@ -537,6 +538,9 @@ When an agent does any of the following, update this file in the same slice:
       - `shelf` follows vanilla `ShelfBlock` collision:
         a horizontal-facing backboard plus top and bottom lips from
         `Shapes.rotateHorizontal`.
+      - `amethyst_cluster`, `large_amethyst_bud`, `medium_amethyst_bud`, and
+        `small_amethyst_bud` follow vanilla `AmethystClusterBlock` collision:
+        `Block.boxZ(width, 16 - height, 16)` rotated with `Shapes.rotateAll`.
       - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
         registration so they do not block local movement.
       - `cobweb` applies vanilla `entityInside` stuck movement multipliers:
