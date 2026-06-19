@@ -31,13 +31,13 @@ to relax correctness checks. The preferred order is:
 
 ## Target Directories
 
-Use stable external target directories:
+Use stable external target directories through the helper script:
 
 ```sh
-CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
-CARGO_TARGET_DIR=/tmp/bbb-target-renderer cargo test -p bbb-renderer <filter>
-CARGO_TARGET_DIR=/tmp/bbb-target-world cargo test -p bbb-world <filter>
-CARGO_TARGET_DIR=/tmp/bbb-target-net cargo test -p bbb-net <filter>
+scripts/cargo-dev.sh test -p bbb-world <filter>
+BBB_CARGO_TARGET_NAME=renderer scripts/cargo-dev.sh test -p bbb-renderer <filter>
+BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
+BBB_CARGO_TARGET_NAME=net scripts/cargo-dev.sh test -p bbb-net <filter>
 ```
 
 Do not run parallel Cargo commands against the same target directory. Cargo will
@@ -46,8 +46,8 @@ workers.
 
 Do not commit a repo-local `.cargo/config.toml` that forces one target
 directory. It would make independent worker worktrees share the same cache and
-lock unexpectedly. Prefer explicit `CARGO_TARGET_DIR` in commands and worker
-prompts.
+lock unexpectedly. Prefer `BBB_CARGO_TARGET_NAME` or explicit
+`CARGO_TARGET_DIR` in commands and worker prompts.
 
 Repo-local `target` stays ignored and should not be generated during normal
 agent work.
@@ -174,8 +174,8 @@ would fail before compiling.
 Use it explicitly when installed:
 
 ```sh
-RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
 BBB_USE_SCCACHE=1 scripts/cargo-dev.sh test -p bbb-world <filter>
+RUSTC_WRAPPER=sccache scripts/cargo-dev.sh test -p bbb-world <filter>
 scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world <filter> --quiet
 scripts/cargo-dev.sh sccache-status
 ```
@@ -190,7 +190,7 @@ The default `test` profile remains the authoritative gate. The workspace also
 has an opt-in `fast-test` profile for daily focused tests:
 
 ```sh
-CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --profile fast-test -p bbb-world <filter>
+scripts/cargo-dev.sh fast-test -p bbb-world <filter>
 ```
 
 `fast-test` has its own profile output directory. Its first run can be slower
@@ -203,7 +203,7 @@ not as a replacement for the final gate.
 Warm full workspace timing:
 
 ```sh
-/usr/bin/time -p env CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace --timings
+scripts/cargo-dev.sh timings --workspace --timings
 ```
 
 Clean full workspace timing should use a disposable external target:
@@ -1119,13 +1119,13 @@ speed strategy.
 Requested Recheck 4:
 
 - Command:
-  `scripts/cargo-dev.sh sccache-eval 20260619-agent -p bbb-world command_tree --quiet`
+  `scripts/cargo-dev.sh sccache-eval 20260619T132708 -p bbb-world command_tree --quiet`
 - Clean full workspace with `sccache`:
-  - Wall time: 182.95s.
+  - Wall time: 175.27s.
   - Target size before cleanup: 3.3G.
   - Result: all tests passed.
   - Timing report copied to:
-    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619-agent.html`
+    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619T132708.html`
   - `sccache` stats:
     - compile requests: 217
     - executed: 156
@@ -1133,10 +1133,10 @@ Requested Recheck 4:
     - Rust cache hits: 0
     - Rust cache misses: 155
     - non-cacheable calls: 59
-    - cache size after run: 3 GiB
+    - cache size after run: 4 GiB
 - New worker target focused test with `sccache`:
-  - Wall time: 53.54s.
-  - Target size before cleanup: 651M.
+  - Wall time: 53.30s.
+  - Target size before cleanup: 655M.
   - Result: 1 test passed.
   - `sccache` stats:
     - compile requests: 46
@@ -1145,16 +1145,17 @@ Requested Recheck 4:
     - Rust cache misses: 29
     - non-cacheable calls: 17
 - New worker target focused test without `sccache`:
-  - Wall time: 53.11s.
-  - Target size before cleanup: 652M.
+  - Wall time: 51.06s.
+  - Target size before cleanup: 655M.
   - Result: 1 test passed.
 - Warm focused default with `sccache` on `/tmp/bbb-target-main`:
-  - Wall time: 42.22s.
+  - Wall time: 0.22s.
   - Result: 1 test passed.
-  - `sccache` compile requests: 5
+  - `sccache` compile requests: 3
   - `sccache` executed compilations: 0
 
 This installed recheck keeps the same conclusion: `sccache` is available but
-did not reduce the measured new-worker cold focused test. Keep it opt-in
-through `RUSTC_WRAPPER=sccache` or `BBB_USE_SCCACHE=1`; do not add a
+did not reduce the measured new-worker cold focused test. The no-`sccache`
+worker focused run was 2.24s faster, and Rust cache hits stayed at zero. Keep
+it opt-in through `RUSTC_WRAPPER=sccache` or `BBB_USE_SCCACHE=1`; do not add a
 repo-local mandatory `rustc-wrapper`.

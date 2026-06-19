@@ -167,6 +167,22 @@ print_worker_shell_env() {
   printf 'export CARGO_TARGET_DIR=%s\n' "$(shell_quote "$target")"
 }
 
+worker_env_branch() {
+  root="$1"
+  name="$2"
+  path="$(worktree_path "$root" "$name")"
+  branch="$(branch_name "$name")"
+
+  if git -C "$path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    current_branch="$(git -C "$path" branch --show-current 2>/dev/null || true)"
+    if [ -n "$current_branch" ]; then
+      branch="$current_branch"
+    fi
+  fi
+
+  printf '%s\n' "$branch"
+}
+
 create_worker() {
   name="$1"
   base_ref="${2:-HEAD}"
@@ -356,7 +372,7 @@ env_worker() {
   print_worker_env \
     "$name" \
     "$(worktree_path "$root" "$name")" \
-    "$(branch_name "$name")" \
+    "$(worker_env_branch "$root" "$name")" \
     "$(target_dir "$name")"
 }
 

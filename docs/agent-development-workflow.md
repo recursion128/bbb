@@ -143,19 +143,14 @@ A slice is ready to commit only when:
 See `docs/cargo-build-performance.md` for the current timing baseline,
 external target policy, and optional `sccache` workflow.
 
-Use cached external target directories for daily work:
-
-```sh
-CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
-CARGO_TARGET_DIR=/tmp/bbb-target-world cargo test -p bbb-world <filter>
-CARGO_TARGET_DIR=/tmp/bbb-target-net cargo test -p bbb-net <filter>
-```
-
-Agents may use the helper script for the same workflow:
+Use `scripts/cargo-dev.sh` for daily work. It defaults the main worktree to
+`/tmp/bbb-target-main`, and `BBB_CARGO_TARGET_NAME=<name>` selects a stable
+worker target such as `/tmp/bbb-target-world`:
 
 ```sh
 scripts/cargo-dev.sh test -p bbb-world <filter>
 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
+BBB_CARGO_TARGET_NAME=net scripts/cargo-dev.sh test -p bbb-net <filter>
 scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world <filter> --quiet
 ```
 
@@ -171,7 +166,6 @@ Focused tests may use the opt-in `fast-test` profile when the goal is quick
 iteration and not final validation:
 
 ```sh
-CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --profile fast-test -p bbb-world <filter>
 scripts/cargo-dev.sh fast-test -p bbb-world <filter>
 ```
 
@@ -191,8 +185,8 @@ the same gate commands with the main external target directory.
 compiling. If installed, use it explicitly:
 
 ```sh
-RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world <filter>
 BBB_USE_SCCACHE=1 scripts/cargo-dev.sh test -p bbb-world <filter>
+RUSTC_WRAPPER=sccache scripts/cargo-dev.sh test -p bbb-world <filter>
 ```
 
 Before changing build profiles or cache policy, record:
