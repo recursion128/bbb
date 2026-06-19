@@ -187,6 +187,8 @@ When an agent does any of the following, update this file in the same slice:
       - event `2009`: eight `minecraft:cloud` particles above the block
       - event `3000`: one always-visible centered
         `minecraft:explosion_emitter` particle
+      - event `3002`: vanilla axis or block-face
+        `minecraft:electric_spark` particles
       - event `3003`: vanilla block-face `minecraft:wax_on` particles
       - event `3004`: vanilla block-face `minecraft:wax_off` particles
       - event `3005`: vanilla block-face `minecraft:scrape` particles

@@ -326,6 +326,24 @@ impl ParticleCommandResolver {
                 )],
                 true,
             ),
+            ELECTRIC_SPARK_LEVEL_EVENT => match event.data {
+                0..=2 => self.axis_particle_batch(
+                    event,
+                    ELECTRIC_SPARK_PARTICLE_TYPE_ID,
+                    event.data,
+                    ELECTRIC_SPARK_AXIS_RADIUS,
+                    ELECTRIC_SPARK_AXIS_MIN,
+                    ELECTRIC_SPARK_AXIS_MAX,
+                    random,
+                ),
+                _ => self.block_face_particle_batch(
+                    event,
+                    ELECTRIC_SPARK_PARTICLE_TYPE_ID,
+                    BLOCK_FACE_PARTICLE_MIN,
+                    BLOCK_FACE_PARTICLE_MAX,
+                    random,
+                ),
+            },
             WAX_ON_LEVEL_EVENT => self.block_face_particle_batch(
                 event,
                 WAX_ON_PARTICLE_TYPE_ID,
@@ -445,6 +463,37 @@ impl ParticleCommandResolver {
                     .commands
                     .push(self.command_from_template(&template, position, velocity, false));
             }
+        }
+
+        batch
+    }
+
+    fn axis_particle_batch(
+        &self,
+        event: &LevelEvent,
+        particle_type_id: i32,
+        axis: i32,
+        radius: f64,
+        min_particles: i32,
+        max_particles: i32,
+        random: &mut LevelEventSoundRandomState,
+    ) -> ParticleSpawnBatch {
+        let template = match self.simple_particle_template(particle_type_id) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        let particle_count =
+            random.next_int_bound(max_particles - min_particles + 1) + min_particles;
+
+        for _ in 0..particle_count {
+            let (position, velocity) = axis_particle(event, axis, radius, random);
+            batch
+                .commands
+                .push(self.command_from_template(&template, position, velocity, false));
         }
 
         batch
@@ -651,6 +700,45 @@ fn block_face_particle(
     (position, velocity)
 }
 
+fn axis_particle(
+    event: &LevelEvent,
+    axis: i32,
+    radius: f64,
+    random: &mut LevelEventSoundRandomState,
+) -> (Vec3d, Vec3d) {
+    let center = Vec3d {
+        x: f64::from(event.pos.x) + 0.5,
+        y: f64::from(event.pos.y) + 0.5,
+        z: f64::from(event.pos.z) + 0.5,
+    };
+    let step_x = axis == 0;
+    let step_y = axis == 1;
+    let step_z = axis == 2;
+    let position = Vec3d {
+        x: center.x + random_between(random, -1.0, 1.0) * if step_x { 0.5 } else { radius },
+        y: center.y + random_between(random, -1.0, 1.0) * if step_y { 0.5 } else { radius },
+        z: center.z + random_between(random, -1.0, 1.0) * if step_z { 0.5 } else { radius },
+    };
+    let velocity = Vec3d {
+        x: if step_x {
+            random_between(random, -1.0, 1.0)
+        } else {
+            0.0
+        },
+        y: if step_y {
+            random_between(random, -1.0, 1.0)
+        } else {
+            0.0
+        },
+        z: if step_z {
+            random_between(random, -1.0, 1.0)
+        } else {
+            0.0
+        },
+    };
+    (position, velocity)
+}
+
 fn random_between(random: &mut LevelEventSoundRandomState, min: f64, max: f64) -> f64 {
     random.next_double() * (max - min) + min
 }
@@ -664,6 +752,7 @@ const EXPLOSION_LEVEL_EVENT: i32 = 2008;
 const SPLASH_CLOUD_LEVEL_EVENT: i32 = 2009;
 const DISPENSER_WHITE_SMOKE_LEVEL_EVENT: i32 = 2010;
 const END_GATEWAY_SPAWN_LEVEL_EVENT: i32 = 3000;
+const ELECTRIC_SPARK_LEVEL_EVENT: i32 = 3002;
 const WAX_ON_LEVEL_EVENT: i32 = 3003;
 const WAX_OFF_LEVEL_EVENT: i32 = 3004;
 const SCRAPE_LEVEL_EVENT: i32 = 3005;
@@ -675,6 +764,7 @@ const FLAME_PARTICLE_TYPE_ID: i32 = 32;
 const LARGE_SMOKE_PARTICLE_TYPE_ID: i32 = 55;
 const SMOKE_PARTICLE_TYPE_ID: i32 = 62;
 const WHITE_SMOKE_PARTICLE_TYPE_ID: i32 = 63;
+const ELECTRIC_SPARK_PARTICLE_TYPE_ID: i32 = 103;
 const WAX_ON_PARTICLE_TYPE_ID: i32 = 101;
 const WAX_OFF_PARTICLE_TYPE_ID: i32 = 102;
 const SCRAPE_PARTICLE_TYPE_ID: i32 = 104;
@@ -690,6 +780,9 @@ const BLOCK_FACE_DIRECTIONS: &[(i32, i32, i32)] = &[
 const BLOCK_FACE_STEP_FACTOR: f64 = 0.55;
 const BLOCK_FACE_PARTICLE_MIN: i32 = 3;
 const BLOCK_FACE_PARTICLE_MAX: i32 = 5;
+const ELECTRIC_SPARK_AXIS_RADIUS: f64 = 0.125;
+const ELECTRIC_SPARK_AXIS_MIN: i32 = 10;
+const ELECTRIC_SPARK_AXIS_MAX: i32 = 19;
 const EGG_CRACK_PARTICLE_MAX: i32 = 6;
 
 fn default_particle_seed() -> i64 {
@@ -990,6 +1083,71 @@ mod tests {
             true,
         );
 
+        let mut electric_x_random = LevelEventSoundRandomState::with_seed(0);
+        let electric_x = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3002,
+                data: 0,
+                ..level_event_packet(3002)
+            },
+            &mut electric_x_random,
+        );
+        assert_eq!(electric_x.len(), 10);
+        assert_particle_command(
+            &electric_x.commands[0],
+            103,
+            "minecraft:electric_spark",
+            [
+                10.831_440_988_787_062,
+                64.526_586_303_999_34,
+                -2.547_737_357_950_073,
+            ],
+            [-0.765_986_782_385_549_7, 0.0, 0.0],
+            true,
+        );
+
+        let mut electric_z_random = LevelEventSoundRandomState::with_seed(0);
+        let electric_z = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3002,
+                data: 2,
+                ..level_event_packet(3002)
+            },
+            &mut electric_z_random,
+        );
+        assert_eq!(electric_z.len(), 10);
+        assert_particle_command(
+            &electric_z.commands[0],
+            103,
+            "minecraft:electric_spark",
+            [
+                10.582_860_247_196_765,
+                64.526_586_303_999_34,
+                -2.690_949_431_800_291,
+            ],
+            [0.0, 0.0, -0.765_986_782_385_549_7],
+            true,
+        );
+
+        let mut electric_fallback_random = LevelEventSoundRandomState::with_seed(0);
+        let electric_fallback = resolver.resolve_level_event_particles(
+            &LevelEvent {
+                event_type: 3002,
+                data: 3,
+                ..level_event_packet(3002)
+            },
+            &mut electric_fallback_random,
+        );
+        assert_eq!(electric_fallback.len(), 23);
+        assert_particle_command(
+            &electric_fallback.commands[0],
+            103,
+            "minecraft:electric_spark",
+            [10.117_006_608_807_225, 63.95, -2.218_465_367_954_695_3],
+            [0.331_440_988_787_061_2, 0.0, -0.190_949_431_800_290_78],
+            true,
+        );
+
         let mut wax_on_random = LevelEventSoundRandomState::with_seed(0);
         let wax_on = resolver.resolve_level_event_particles(
             &LevelEvent {
@@ -1164,6 +1322,7 @@ mod tests {
                 "smoke_0",
                 "large_smoke_0",
                 "white_smoke_0",
+                "electric_spark_0",
                 "wax_on_0",
                 "wax_off_0",
                 "scrape_0",
@@ -1239,6 +1398,14 @@ mod tests {
             r#"{
               "textures": [
                 "minecraft:white_smoke_0"
+              ]
+            }"#,
+        );
+        write_json(
+            &particle_dir(&root).join("electric_spark.json"),
+            r#"{
+              "textures": [
+                "minecraft:electric_spark_0"
               ]
             }"#,
         );
