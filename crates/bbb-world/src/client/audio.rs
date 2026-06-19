@@ -388,6 +388,18 @@ impl WorldStore {
         if let Some(state) = self.level_event_sound(event) {
             return Some(state);
         }
+        if let Some(sound) =
+            random_distance_delayed_level_event_sound(event.event_type, event.data, &mut next_float)
+        {
+            return Some(block_sound_state_with_distance_delay(
+                crate::protocol_block_pos(event.pos),
+                sound.event_id,
+                sound.volume,
+                sound.pitch,
+                sound.source,
+                true,
+            ));
+        }
         let sound = random_level_event_sound(event.event_type, event.data, &mut next_float)?;
         Some(block_sound_state(
             crate::protocol_block_pos(event.pos),
@@ -711,6 +723,30 @@ fn random_level_event_sound(
     Some(sound)
 }
 
+fn random_distance_delayed_level_event_sound(
+    event_type: i32,
+    data: i32,
+    next_float: &mut impl FnMut() -> f32,
+) -> Option<FixedLevelEventSound> {
+    let sound = match event_type {
+        3012 => trial_spawner_triangle("minecraft:block.trial_spawner.spawn_mob", 1.0, next_float),
+        3013 | 3019 => trial_spawner_triangle(
+            "minecraft:block.trial_spawner.detect_player",
+            1.0,
+            next_float,
+        ),
+        3014 => trial_spawner_triangle("minecraft:block.trial_spawner.eject_item", 1.0, next_float),
+        3020 => trial_spawner_triangle(
+            "minecraft:block.trial_spawner.ominous_activate",
+            if data == 0 { 0.3 } else { 1.0 },
+            next_float,
+        ),
+        3021 => trial_spawner_triangle("minecraft:block.trial_spawner.spawn_item", 1.0, next_float),
+        _ => return None,
+    };
+    Some(sound)
+}
+
 fn local_level_event_sound(
     event_type: i32,
     next_float: &mut impl FnMut() -> f32,
@@ -801,6 +837,19 @@ fn block_ranged(
         source: "block",
         volume,
         pitch: ranged_pitch(0.9, 0.1, next_float),
+    }
+}
+
+fn trial_spawner_triangle(
+    event_id: &'static str,
+    volume: f32,
+    next_float: &mut impl FnMut() -> f32,
+) -> FixedLevelEventSound {
+    FixedLevelEventSound {
+        event_id,
+        source: "block",
+        volume,
+        pitch: triangle_pitch(1.0, 0.2, next_float),
     }
 }
 
@@ -1375,6 +1424,59 @@ mod tests {
                 || panic!("2006 without data=1 has no sound")
             )
             .is_none());
+
+        for (event_type, data, event_id, volume, expected_pitch) in [
+            (3012, 0, "minecraft:block.trial_spawner.spawn_mob", 1.0, 1.1),
+            (
+                3013,
+                0,
+                "minecraft:block.trial_spawner.detect_player",
+                1.0,
+                1.1,
+            ),
+            (
+                3014,
+                0,
+                "minecraft:block.trial_spawner.eject_item",
+                1.0,
+                1.1,
+            ),
+            (
+                3019,
+                0,
+                "minecraft:block.trial_spawner.detect_player",
+                1.0,
+                1.1,
+            ),
+            (
+                3020,
+                0,
+                "minecraft:block.trial_spawner.ominous_activate",
+                0.3,
+                1.1,
+            ),
+            (
+                3020,
+                1,
+                "minecraft:block.trial_spawner.ominous_activate",
+                1.0,
+                1.1,
+            ),
+            (
+                3021,
+                0,
+                "minecraft:block.trial_spawner.spawn_item",
+                1.0,
+                1.1,
+            ),
+        ] {
+            let sound = random_level_event_sound(&store, event_type, data, &[0.75, 0.25]);
+            assert_eq!(sound.sound.location.as_deref(), Some(event_id));
+            assert_eq!(sound.source, "block");
+            assert_close(sound.volume, volume);
+            assert_close(sound.pitch, expected_pitch);
+            assert!(sound.distance_delay);
+        }
 
         let end_gateway_spawn = random_level_event_sound(&store, 3000, 0, &[0.75, 0.25]);
         assert_eq!(

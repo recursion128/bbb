@@ -288,6 +288,8 @@ When an agent does any of the following, update this file in the same slice:
       - lava extinguish and redstone torch burnout sounds
       - splash/instant-effect potion break sounds for events `2002` and `2007`
       - dragon fireball explode sound for event `2006` when `data == 1`
+      - distance-delayed trial spawner sounds for events `3012`, `3013`,
+        `3014`, `3019`, `3020`, and `3021`
       - end gateway spawn and ender dragon growl sounds
       - sculk charge sounds for event `3006`, including the fixed pop branch
         and the randomized charged branch

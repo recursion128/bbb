@@ -3453,6 +3453,86 @@ fn potion_and_dragon_fireball_level_events_emit_vanilla_sounds() {
 }
 
 #[test]
+fn trial_spawner_level_events_emit_distance_delayed_vanilla_sounds() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 3012,
+        pos: ProtocolBlockPos { x: 4, y: 65, z: -6 },
+        data: 0,
+        global: false,
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 3020,
+        pos: ProtocolBlockPos { x: -8, y: 70, z: 2 },
+        data: 0,
+        global: false,
+    }))
+    .unwrap();
+
+    let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+    let expected_spawn_pitch =
+        1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
+    let expected_spawn_seed = expected_random.next_long();
+    let expected_ominous_pitch =
+        1.0 + (expected_random.next_float() - expected_random.next_float()) * 0.2;
+    let expected_ominous_seed = expected_random.next_long();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayPositionedSound(spawn) = &audio.commands[0] else {
+        panic!(
+            "expected positioned trial spawner sound, got {:?}",
+            audio.commands[0]
+        );
+    };
+    assert_eq!(
+        spawn.sound.event_id,
+        "minecraft:block.trial_spawner.spawn_mob"
+    );
+    assert_eq!(spawn.category, AudioCategory::Blocks);
+    assert_eq!(spawn.position, [4.5, 65.5, -5.5]);
+    assert_close(spawn.packet_volume, 1.0);
+    assert_close(spawn.packet_pitch, expected_spawn_pitch);
+    assert_eq!(spawn.seed, expected_spawn_seed);
+    assert!(spawn.distance_delay);
+
+    let AudioCommand::PlayPositionedSound(ominous) = &audio.commands[1] else {
+        panic!(
+            "expected positioned trial spawner ominous sound, got {:?}",
+            audio.commands[1]
+        );
+    };
+    assert_eq!(
+        ominous.sound.event_id,
+        "minecraft:block.trial_spawner.ominous_activate"
+    );
+    assert_eq!(ominous.category, AudioCategory::Blocks);
+    assert_eq!(ominous.position, [-7.5, 70.5, 2.5]);
+    assert_close(ominous.packet_volume, 0.3);
+    assert_close(ominous.packet_pitch, expected_ominous_pitch);
+    assert_eq!(ominous.seed, expected_ominous_seed);
+    assert!(ominous.distance_delay);
+    assert_eq!(
+        world.last_sound().unwrap().sound.location.as_deref(),
+        Some("minecraft:block.trial_spawner.ominous_activate")
+    );
+    assert!(world.last_sound().unwrap().distance_delay);
+    assert_eq!(world.counters().sound_packets, 0);
+    assert_eq!(world.counters().level_events_received, 2);
+    assert_eq!(world.counters().level_events_tracked, 2);
+}
+
+#[test]
 fn sculk_charge_level_event_emits_vanilla_randomized_sound() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::LevelEvent(LevelEvent {
@@ -5357,6 +5437,21 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "block.end_gateway.spawn": {
                 "sounds": ["block/end_gateway/spawn"]
+            },
+            "block.trial_spawner.spawn_mob": {
+                "sounds": ["block/trial_spawner/spawn_mob"]
+            },
+            "block.trial_spawner.detect_player": {
+                "sounds": ["block/trial_spawner/detect_player"]
+            },
+            "block.trial_spawner.eject_item": {
+                "sounds": ["block/trial_spawner/eject_item"]
+            },
+            "block.trial_spawner.ominous_activate": {
+                "sounds": ["block/trial_spawner/ominous_activate"]
+            },
+            "block.trial_spawner.spawn_item": {
+                "sounds": ["block/trial_spawner/spawn_item"]
             },
             "item.honeycomb.wax_on": {
                 "sounds": ["item/honeycomb/wax_on"]
