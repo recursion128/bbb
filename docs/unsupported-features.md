@@ -478,6 +478,7 @@ When an agent does any of the following, update this file in the same slice:
       - flower pot
       - candle / candle cake
       - cocoa
+      - shelf
       - sea pickle
       - pointed dripstone
       - skull / wall skull
@@ -533,6 +534,9 @@ When an agent does any of the following, update this file in the same slice:
       - `cocoa` follows vanilla `CocoaBlock` age-scaled wall-pod collision:
         age `0..2` uses a north-facing baseline at z `1..5/7/9` px and is
         rotated by the `facing` property.
+      - `shelf` follows vanilla `ShelfBlock` collision:
+        a horizontal-facing backboard plus top and bottom lips from
+        `Shapes.rotateHorizontal`.
       - `cobweb` and `sweet_berry_bush` use vanilla `noCollision`
         registration so they do not block local movement.
       - `cobweb` applies vanilla `entityInside` stuck movement multipliers:

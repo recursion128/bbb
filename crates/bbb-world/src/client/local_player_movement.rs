@@ -1758,6 +1758,8 @@ mod tests {
     const DRAGON_EGG_BLOCK_STATE_ID: i32 = 9478;
     const COCOA_AGE_2_NORTH_BLOCK_STATE_ID: i32 = 9489;
     const COCOA_AGE_2_SOUTH_BLOCK_STATE_ID: i32 = 9490;
+    const OAK_SHELF_NORTH_BLOCK_STATE_ID: i32 = 3121;
+    const OAK_SHELF_SOUTH_BLOCK_STATE_ID: i32 = 3137;
     const SLIME_BLOCK_STATE_ID: i32 = 12532;
     const FLOWER_POT_BLOCK_STATE_ID: i32 = 10629;
     const POTTED_DANDELION_BLOCK_STATE_ID: i32 = 10641;
@@ -2711,6 +2713,7 @@ mod tests {
                 2.0,
             ),
             ("candle cake", CANDLE_CAKE_UNLIT_BLOCK_STATE_ID, 1.875),
+            ("oak shelf", OAK_SHELF_NORTH_BLOCK_STATE_ID, 2.0),
             ("decorated pot", DECORATED_POT_NORTH_DRY_BLOCK_STATE_ID, 2.0),
             ("chorus plant", CHORUS_PLANT_NONE_BLOCK_STATE_ID, 1.8125),
             ("chorus flower", CHORUS_FLOWER_AGE_0_BLOCK_STATE_ID, 2.0),
@@ -2966,6 +2969,39 @@ mod tests {
 
             assert!(
                 pose.position.z > 0.7005 && pose.position.z <= max_z,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_respects_shelf_collision() {
+        let cases = [
+            (
+                "north-facing shelf",
+                OAK_SHELF_NORTH_BLOCK_STATE_ID,
+                1.38,
+                1.388,
+            ),
+            (
+                "south-facing shelf",
+                OAK_SHELF_SOUTH_BLOCK_STATE_ID,
+                0.699,
+                0.7005,
+            ),
+        ];
+
+        for (name, block_state_id, min_z, max_z) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert!(
+                pose.position.z > min_z && pose.position.z <= max_z,
                 "{name} position was {:?}",
                 pose.position
             );

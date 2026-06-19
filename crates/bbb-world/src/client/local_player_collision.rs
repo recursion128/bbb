@@ -192,6 +192,9 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if block_name == "minecraft:sea_pickle" {
             return sea_pickle_collision_shape(&block.block_properties);
         }
+        if is_shelf_block_name(block_name) {
+            return shelf_collision_shape(&block.block_properties);
+        }
         if is_floor_skull_block_name(block_name) {
             return Some(BlockCollisionShape::single(floor_skull_collision_box(
                 block_name,
@@ -434,6 +437,12 @@ fn is_candle_cake_block_name(block_name: &str) -> bool {
     block_name
         .strip_prefix("minecraft:")
         .is_some_and(|path| path == "candle_cake" || path.ends_with("_candle_cake"))
+}
+
+fn is_shelf_block_name(block_name: &str) -> bool {
+    block_name
+        .strip_prefix("minecraft:")
+        .is_some_and(|path| path.ends_with("_shelf"))
 }
 
 fn is_sculk_sensor_block_name(block_name: &str) -> bool {
@@ -952,6 +961,27 @@ fn sea_pickle_collision_shape(
         _ => return None,
     };
     Some(BlockCollisionShape::single(shape_box))
+}
+
+fn shelf_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
+    let facing = HorizontalDirection::parse(properties.get("facing")?)?;
+    Some(
+        BlockCollisionShape::from_boxes([
+            Some(BlockCollisionBox::from_pixels(
+                [0.0, 12.0, 11.0],
+                [16.0, 16.0, 13.0],
+            )),
+            Some(BlockCollisionBox::from_pixels(
+                [0.0, 0.0, 13.0],
+                [16.0, 16.0, 16.0],
+            )),
+            Some(BlockCollisionBox::from_pixels(
+                [0.0, 0.0, 11.0],
+                [16.0, 4.0, 13.0],
+            )),
+        ])
+        .rotate_to_direction(facing),
+    )
 }
 
 fn floor_skull_collision_box(block_name: &str) -> BlockCollisionBox {
@@ -2495,6 +2525,49 @@ mod tests {
         assert_f64_near(shape_box.max_x, 12.0 * PX);
         assert_f64_near(shape_box.max_y, 12.0 * PX);
         assert_f64_near(shape_box.max_z, 15.0 * PX);
+    }
+
+    #[test]
+    fn shelf_shape_matches_vanilla_backboard_and_lips() {
+        let mut properties = BTreeMap::new();
+        properties.insert("facing".to_owned(), "north".to_owned());
+
+        let shape = shelf_collision_shape(&properties).expect("north shelf shape");
+        let boxes = shape.boxes().collect::<Vec<_>>();
+        assert_eq!(boxes.len(), 3);
+
+        assert_f64_near(boxes[0].min_x, 0.0);
+        assert_f64_near(boxes[0].min_y, 12.0 * PX);
+        assert_f64_near(boxes[0].min_z, 11.0 * PX);
+        assert_f64_near(boxes[0].max_x, 1.0);
+        assert_f64_near(boxes[0].max_y, 1.0);
+        assert_f64_near(boxes[0].max_z, 13.0 * PX);
+
+        assert_f64_near(boxes[1].min_x, 0.0);
+        assert_f64_near(boxes[1].min_y, 0.0);
+        assert_f64_near(boxes[1].min_z, 13.0 * PX);
+        assert_f64_near(boxes[1].max_x, 1.0);
+        assert_f64_near(boxes[1].max_y, 1.0);
+        assert_f64_near(boxes[1].max_z, 1.0);
+
+        assert_f64_near(boxes[2].min_x, 0.0);
+        assert_f64_near(boxes[2].min_y, 0.0);
+        assert_f64_near(boxes[2].min_z, 11.0 * PX);
+        assert_f64_near(boxes[2].max_x, 1.0);
+        assert_f64_near(boxes[2].max_y, 4.0 * PX);
+        assert_f64_near(boxes[2].max_z, 13.0 * PX);
+
+        properties.insert("facing".to_owned(), "south".to_owned());
+        let shape = shelf_collision_shape(&properties).expect("south shelf shape");
+        let boxes = shape.boxes().collect::<Vec<_>>();
+        assert_eq!(boxes.len(), 3);
+
+        assert_f64_near(boxes[0].min_z, 3.0 * PX);
+        assert_f64_near(boxes[0].max_z, 5.0 * PX);
+        assert_f64_near(boxes[1].min_z, 0.0);
+        assert_f64_near(boxes[1].max_z, 3.0 * PX);
+        assert_f64_near(boxes[2].min_z, 3.0 * PX);
+        assert_f64_near(boxes[2].max_z, 5.0 * PX);
     }
 
     #[test]
