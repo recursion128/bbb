@@ -253,11 +253,12 @@ fn start_use_item(
     input.use_item_repeat_delay_ticks = USE_ITEM_REPEAT_DELAY_TICKS;
     match camera_target {
         Some(CrosshairTarget::Entity(hit)) => {
+            let hand = item_use_hand(world);
             queue_interact_entity_command(
                 counters,
                 net_commands,
                 hit.entity_id,
-                InteractionHand::MainHand,
+                hand,
                 hit.relative_location,
                 input.sneak,
             );
@@ -1976,6 +1977,43 @@ mod tests {
                     z: -0.49000000953674316,
                 },
                 using_secondary_action: true,
+            })
+        );
+    }
+
+    #[test]
+    fn right_mouse_press_on_entity_uses_offhand_when_selected_hotbar_slot_is_empty() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            item: item_stack(99, 1),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Right,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(counters.interact_entity_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::InteractEntity(InteractEntity {
+                entity_id: 123,
+                hand: InteractionHand::OffHand,
+                location: ProtocolVec3d {
+                    x: 0.0,
+                    y: 0.6200000047683716,
+                    z: -0.49000000953674316,
+                },
+                using_secondary_action: false,
             })
         );
     }
