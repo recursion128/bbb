@@ -65,6 +65,7 @@ const BREWING_INGREDIENT_ITEM_IDS: &[&str] = &[
     "minecraft:blaze_powder",
     "minecraft:phantom_membrane",
 ];
+const ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS: &[&str] = &["minecraft:lapis_lazuli"];
 const CARTOGRAPHY_ADDITIONAL_ITEM_IDS: &[&str] =
     &["minecraft:paper", "minecraft:map", "minecraft:glass_pane"];
 
@@ -387,6 +388,20 @@ impl NativeItemRuntime {
 
     pub(crate) fn brewing_ingredient_item_count(&self) -> usize {
         self.brewing_ingredient_item_ids_by_protocol_id().len()
+    }
+
+    pub(crate) fn enchantment_lapis_lazuli_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {
+        self.registry
+            .as_ref()
+            .map(|registry| {
+                protocol_ids_for_resource_ids(registry, ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS)
+            })
+            .unwrap_or_default()
+    }
+
+    pub(crate) fn enchantment_lapis_lazuli_item_count(&self) -> usize {
+        self.enchantment_lapis_lazuli_item_ids_by_protocol_id()
+            .len()
     }
 
     pub(crate) fn cartography_additional_item_ids_by_protocol_id(&self) -> BTreeSet<i32> {

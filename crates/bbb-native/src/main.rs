@@ -136,6 +136,9 @@ fn main() -> Result<()> {
         world.set_furnace_fuel_item_ids(items.furnace_fuel_item_ids_by_protocol_id());
         world.set_brewing_potion_item_ids(items.brewing_potion_item_ids_by_protocol_id());
         world.set_brewing_ingredient_item_ids(items.brewing_ingredient_item_ids_by_protocol_id());
+        world.set_enchantment_lapis_lazuli_item_ids(
+            items.enchantment_lapis_lazuli_item_ids_by_protocol_id(),
+        );
         world.set_cartography_additional_item_ids(
             items.cartography_additional_item_ids_by_protocol_id(),
         );
@@ -162,6 +165,7 @@ fn main() -> Result<()> {
             furnace_fuel_items = items.furnace_fuel_item_count(),
             brewing_potion_items = items.brewing_potion_item_count(),
             brewing_ingredient_items = items.brewing_ingredient_item_count(),
+            enchantment_lapis_lazuli_items = items.enchantment_lapis_lazuli_item_count(),
             cartography_additional_items = items.cartography_additional_item_count(),
             freeze_immune_wearable_items = items.freeze_immune_wearable_item_count(),
             powder_snow_walkable_foot_items = items.powder_snow_walkable_foot_item_count(),
