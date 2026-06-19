@@ -11,6 +11,9 @@ pub use crate::block_sound_profiles::{BlockSoundProfile, BlockSoundProfileCatalo
 pub use crate::colors::{
     BiomeColorCatalog, BiomeColorProfile, ColorMapImage, GrassColorModifier, TerrainColorMaps,
 };
+pub use crate::equipment_assets::{
+    EquipmentAsset, EquipmentAssetCatalog, EquipmentDyeable, EquipmentLayer, EquipmentLayerType,
+};
 pub use crate::freeze_immune_wearables::FreezeImmuneWearableCatalog;
 pub use crate::furnace_fuels::FurnaceFuelCatalog;
 pub use crate::item_cuboid_models::{

@@ -9,6 +9,7 @@ use crate::{
     block_models::BlockModelCatalog,
     block_sound_profiles::BlockSoundProfileCatalog,
     colors::{BiomeColorCatalog, ColorMapImage, TerrainColorMaps},
+    equipment_assets::EquipmentAssetCatalog,
     item_cuboid_models::ItemCuboidModelCatalog,
     item_models::ItemModelCatalog,
     item_registry::ItemRegistryCatalog,
@@ -246,6 +247,10 @@ impl PackRoots {
 
     pub fn load_block_sound_profile_catalog(&self) -> Result<BlockSoundProfileCatalog> {
         BlockSoundProfileCatalog::load(self)
+    }
+
+    pub fn load_equipment_asset_catalog(&self) -> Result<EquipmentAssetCatalog> {
+        EquipmentAssetCatalog::load(self)
     }
 
     pub fn load_waypoint_style_catalog(&self) -> Result<WaypointStyleCatalog> {

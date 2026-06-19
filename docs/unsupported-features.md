@@ -266,15 +266,14 @@ When an agent does any of the following, update this file in the same slice:
   - Implement unsupported declaration shapes as official assets or resource
     packs require them:
     - atlas
-    - equipment asset
     - item model
     - item tint
     - registry declaration
   - Keep resource-pack precedence/filter tests close to loaders.
 - Evidence / boundary:
   - Loaders report unsupported atlas/item declarations.
-  - Equipment assets under `assets/minecraft/equipment/*.json` are not yet
-    loaded into a catalog. Official examples include:
+  - Equipment assets under `assets/minecraft/equipment/*.json` are parsed into
+    `EquipmentAssetCatalog`, including:
     - dyeable armor layers
     - `use_player_texture` elytra layers
     - wolf/horse/body armor layer declarations

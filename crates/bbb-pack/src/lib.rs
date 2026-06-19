@@ -4,6 +4,7 @@ mod block_destroy_profiles;
 mod block_models;
 mod block_sound_profiles;
 mod colors;
+mod equipment_assets;
 mod exports;
 mod freeze_immune_wearables;
 mod furnace_fuels;
