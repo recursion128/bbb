@@ -1074,7 +1074,15 @@ When an agent does any of the following, update this file in the same slice:
       - hotbar slots
     - Mount saddle/body slot rendering and hit-testing respect vanilla
       active-slot conditions from entity type tags plus baby/tame metadata.
-    - Mount Shift-click queues server-authoritative `QUICK_MOVE` clicks.
+    - Mount Shift-click routes locally for:
+      - mount-owned slots back to the player inventory with vanilla
+        reverse-fill ordering
+      - non-equipment player items into mount chest slots when present
+      - player main-inventory/hotbar range movement when no mount slot accepts
+        the stack
+    - Mount saddle/body-equipment-priority Shift-click paths remain
+      server-authoritative until component/entity-specific equippable
+      predicates are modeled locally.
     - Mount entity preview rendering remains follow-up presentation work.
     - FurnaceMenu/BlastFurnaceMenu/SmokerMenu screens also render official
       progress sprites:

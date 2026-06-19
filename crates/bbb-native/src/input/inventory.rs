@@ -6696,7 +6696,7 @@ mod tests {
     }
 
     #[test]
-    fn mount_horse_shift_click_queues_server_authoritative_quick_move() {
+    fn mount_horse_shift_click_queues_predicted_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
@@ -6738,14 +6738,17 @@ mod tests {
                 slot_num: 2,
                 button_num: 0,
                 input: ContainerInput::QuickMove,
-                changed_slots: BTreeMap::new(),
+                changed_slots: [
+                    (2, HashedStack::Empty),
+                    (52, HashedStack::Item(hashed_item(42, 3))),
+                ]
+                .into(),
                 carried_item: HashedStack::Empty,
             })
         );
-        assert_eq!(
-            world.inventory().open_container.as_ref().unwrap().slots[2].item,
-            item_stack(42, 3)
-        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[2].item, ItemStackSummary::empty());
+        assert_eq!(slots[52].item, item_stack(42, 3));
     }
 
     #[test]

@@ -512,6 +512,16 @@ fn max_stack_size_for_declaration(expression: &str) -> Result<i32> {
 }
 
 fn equipment_slot_for_declaration(expression: &str) -> Result<Option<ItemEquipmentSlot>> {
+    if expression.contains("Equippable.saddle()") {
+        return Ok(Some(ItemEquipmentSlot::Saddle));
+    }
+    if expression.contains(".horseArmor(")
+        || expression.contains(".nautilusArmor(")
+        || expression.contains(".wolfArmor(")
+    {
+        return Ok(Some(ItemEquipmentSlot::Body));
+    }
+
     for pattern in [
         r#"Equippable\.builder\(\s*EquipmentSlot\.([A-Z_]+)\s*\)"#,
         r#"\.equippableUnswappable\(\s*EquipmentSlot\.([A-Z_]+)\s*\)"#,
@@ -1009,6 +1019,10 @@ mod tests {
                public static final Item DIAMOND_LEGGINGS = registerItem("diamond_leggings", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.LEGGINGS));
                public static final Item DIAMOND_BOOTS = registerItem("diamond_boots", new Item.Properties().humanoidArmor(ArmorMaterials.DIAMOND, ArmorType.BOOTS));
                public static final Item BODY_ARMOR = registerItem("body_armor", new Item.Properties().humanoidArmor(ArmorMaterials.LEATHER, ArmorType.BODY));
+               public static final Item SADDLE = registerItem("saddle", new Item.Properties().stacksTo(1).component(DataComponents.EQUIPPABLE, Equippable.saddle()));
+               public static final Item HORSE_ARMOR = registerItem("horse_armor", new Item.Properties().horseArmor(ArmorMaterials.DIAMOND));
+               public static final Item NAUTILUS_ARMOR = registerItem("nautilus_armor", new Item.Properties().nautilusArmor(ArmorMaterials.IRON));
+               public static final Item WOLF_ARMOR = registerItem("wolf_armor", new Item.Properties().wolfArmor(ArmorMaterials.ARMADILLO_SCUTE));
                public static final Item CARVED_PUMPKIN = registerBlock(
                   Blocks.CARVED_PUMPKIN,
                   p -> p.component(
@@ -1065,6 +1079,22 @@ mod tests {
             Some(528)
         );
         assert_eq!(catalog.max_damage("minecraft:body_armor"), Some(80));
+        assert_eq!(
+            catalog.equipment_slot("minecraft:saddle"),
+            Some(ItemEquipmentSlot::Saddle)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:horse_armor"),
+            Some(ItemEquipmentSlot::Body)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:nautilus_armor"),
+            Some(ItemEquipmentSlot::Body)
+        );
+        assert_eq!(
+            catalog.equipment_slot("minecraft:wolf_armor"),
+            Some(ItemEquipmentSlot::Body)
+        );
         assert_eq!(
             catalog.equipment_slot("minecraft:carved_pumpkin"),
             Some(ItemEquipmentSlot::Head)

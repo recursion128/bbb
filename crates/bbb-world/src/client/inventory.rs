@@ -113,6 +113,11 @@ const LOOM_PLAYER_MAIN_END: i16 = 31;
 const LOOM_HOTBAR_START: i16 = 31;
 const LOOM_HOTBAR_END: i16 = 40;
 const LOOM_TOTAL_SLOT_COUNT: i16 = 40;
+const MOUNT_SADDLE_SLOT: i16 = 0;
+const MOUNT_BODY_ARMOR_SLOT: i16 = 1;
+const MOUNT_INVENTORY_START: i16 = 2;
+const MOUNT_PLAYER_SLOT_COUNT: i16 = 36;
+const MOUNT_PLAYER_MAIN_SLOT_COUNT: i16 = 27;
 const LOOM_BANNER_ITEM_TAG: &str = "minecraft:banners";
 const LOOM_DYE_ITEM_TAG: &str = "minecraft:loom_dyes";
 const LOOM_PATTERN_ITEM_TAG: &str = "minecraft:loom_patterns";
@@ -1134,7 +1139,15 @@ impl WorldStore {
         &mut self,
         request: ContainerClickSlotRequest,
     ) -> Result<ProtocolContainerClick, ContainerClickBuildError> {
-        let (container_id, state_id, menu_type_id, slots_before, data_values) = {
+        let (
+            container_id,
+            state_id,
+            menu_type_id,
+            mount,
+            slots_before,
+            data_values,
+            mount_equipment_slots,
+        ) = {
             let Some(container) = self.active_container() else {
                 return Err(ContainerClickBuildError::NoOpenContainer);
             };
@@ -1145,8 +1158,12 @@ impl WorldStore {
                 container.container_id,
                 container.state_id,
                 container.menu_type_id,
+                container.mount,
                 container.slots.clone(),
                 container.data_values.clone(),
+                container
+                    .mount
+                    .and_then(|_| self.open_mount_equipment_slot_visibility()),
             )
         };
         let mut slots_after = slots_before.clone();
@@ -1207,6 +1224,25 @@ impl WorldStore {
                             &mut slots_after,
                             request.slot_num,
                             container_slot_count,
+                            &self.default_item_max_stack_sizes,
+                        )
+                    } else if mount.is_some() {
+                        if mount_inventory_quick_move_requires_server_authority(
+                            &slots_after,
+                            request.slot_num,
+                            mount_equipment_slots,
+                            &self.default_item_equipment_slots,
+                        ) {
+                            return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                                ProtocolContainerInput::QuickMove,
+                            ));
+                        }
+                        apply_mount_inventory_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            mount_equipment_slots,
+                            &self.default_item_equipment_slots,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if let Some(container_slot_count) =
@@ -2601,6 +2637,160 @@ fn apply_quick_move_to_slots(
         normalize_item_stack(&mut moving);
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn apply_mount_inventory_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    mount_equipment_slots: Option<MountEquipmentSlotVisibility>,
+    default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+    let Some(player_start) = mount_inventory_player_start_slot(slots) else {
+        return;
+    };
+    let player_end = player_start + MOUNT_PLAYER_SLOT_COUNT;
+    if !(0..player_end).contains(&slot_num) {
+        return;
+    }
+
+    let source_item = slots[source_index].item.clone();
+    let mut moving = source_item.clone();
+    let mut changed = false;
+    if slot_num < player_start {
+        changed = move_item_stack_to_slots(
+            container_id,
+            slots,
+            source_index,
+            &mut moving,
+            player_start,
+            player_end,
+            true,
+            default_item_max_stack_sizes,
+        );
+    } else {
+        if mount_equipment_quick_move_target(
+            &source_item,
+            slots,
+            mount_equipment_slots,
+            default_item_equipment_slots,
+        )
+        .is_some()
+        {
+            return;
+        }
+
+        if player_start > MOUNT_INVENTORY_START {
+            changed = move_item_stack_to_slots(
+                container_id,
+                slots,
+                source_index,
+                &mut moving,
+                MOUNT_INVENTORY_START,
+                player_start,
+                false,
+                default_item_max_stack_sizes,
+            );
+        }
+
+        if !changed {
+            let player_main_end = player_start + MOUNT_PLAYER_MAIN_SLOT_COUNT;
+            let target = if (player_main_end..player_end).contains(&slot_num) {
+                Some((player_start, player_main_end))
+            } else if (player_start..player_main_end).contains(&slot_num) {
+                Some((player_main_end, player_end))
+            } else {
+                None
+            };
+            if let Some((start_slot, end_slot)) = target {
+                changed = move_item_stack_to_slots(
+                    container_id,
+                    slots,
+                    source_index,
+                    &mut moving,
+                    start_slot,
+                    end_slot,
+                    false,
+                    default_item_max_stack_sizes,
+                );
+            }
+        }
+    }
+
+    if changed {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn mount_inventory_quick_move_requires_server_authority(
+    slots: &[ContainerSlot],
+    slot_num: i16,
+    mount_equipment_slots: Option<MountEquipmentSlotVisibility>,
+    default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+) -> bool {
+    let Some(player_start) = mount_inventory_player_start_slot(slots) else {
+        return false;
+    };
+    let player_end = player_start + MOUNT_PLAYER_SLOT_COUNT;
+    if !(player_start..player_end).contains(&slot_num) {
+        return false;
+    }
+    let Some(source) = slots.iter().find(|slot| slot.slot == slot_num) else {
+        return false;
+    };
+    if item_stack_is_empty(&source.item) {
+        return false;
+    }
+    if default_item_equipment_slots.is_empty() || mount_equipment_slots.is_none() {
+        return true;
+    }
+
+    mount_equipment_quick_move_target(
+        &source.item,
+        slots,
+        mount_equipment_slots,
+        default_item_equipment_slots,
+    )
+    .is_some()
+}
+
+fn mount_inventory_player_start_slot(slots: &[ContainerSlot]) -> Option<i16> {
+    let slot_count = i16::try_from(slots.len()).ok()?;
+    (slot_count >= MOUNT_INVENTORY_START + MOUNT_PLAYER_SLOT_COUNT)
+        .then_some(slot_count - MOUNT_PLAYER_SLOT_COUNT)
+}
+
+fn mount_equipment_quick_move_target(
+    stack: &ProtocolItemStackSummary,
+    slots: &[ContainerSlot],
+    mount_equipment_slots: Option<MountEquipmentSlotVisibility>,
+    default_item_equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+) -> Option<i16> {
+    let item_id = stack.item_id?;
+    let visibility = mount_equipment_slots?;
+    match default_item_equipment_slots.get(&item_id).copied()? {
+        ItemEquipmentSlot::Body
+            if visibility.body.is_some()
+                && !inventory_menu_slot_has_item(slots, MOUNT_BODY_ARMOR_SLOT) =>
+        {
+            Some(MOUNT_BODY_ARMOR_SLOT)
+        }
+        ItemEquipmentSlot::Saddle
+            if visibility.saddle && !inventory_menu_slot_has_item(slots, MOUNT_SADDLE_SLOT) =>
+        {
+            Some(MOUNT_SADDLE_SLOT)
+        }
+        _ => None,
     }
 }
 
@@ -4513,6 +4703,139 @@ mod tests {
                 body: None,
             })
         );
+    }
+
+    #[test]
+    fn apply_local_mount_quick_move_moves_mount_slots_to_player_reverse() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(
+            42,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+        ));
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 53];
+        items[MOUNT_INVENTORY_START as usize] = item_stack(43, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: MOUNT_INVENTORY_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (MOUNT_INVENTORY_START, ProtocolHashedStack::Empty),
+                (52, hashed_item_stack(43, 3)),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, MOUNT_INVENTORY_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(open_container_slot_item(&store, 52), item_stack(43, 3));
+    }
+
+    #[test]
+    fn apply_local_mount_quick_move_routes_non_equipment_player_item_to_mount_inventory() {
+        let mut store = WorldStore::new();
+        store.set_default_item_equipment_slots(BTreeMap::from([(90, ItemEquipmentSlot::Saddle)]));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            42,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+        ));
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 53];
+        items[17] = item_stack(43, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let quick_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 17,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+
+        assert_eq!(
+            quick_move.changed_slots,
+            BTreeMap::from([
+                (MOUNT_INVENTORY_START, hashed_item_stack(43, 3)),
+                (17, ProtocolHashedStack::Empty),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, MOUNT_INVENTORY_START),
+            item_stack(43, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, 17),
+            ProtocolItemStackSummary::empty()
+        );
+    }
+
+    #[test]
+    fn apply_local_mount_quick_move_keeps_equipment_priority_server_authoritative() {
+        let mut store = WorldStore::new();
+        store.set_default_item_equipment_slots(BTreeMap::from([(90, ItemEquipmentSlot::Saddle)]));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            42,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+        ));
+        store.apply_mount_screen_open(ProtocolMountScreenOpen {
+            container_id: 7,
+            inventory_columns: 5,
+            entity_id: 42,
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); 53];
+        items[17] = item_stack(90, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 14,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let request = ContainerClickSlotRequest {
+            slot_num: 17,
+            button_num: 0,
+            input: ProtocolContainerInput::QuickMove,
+        };
+        assert_eq!(
+            store.apply_local_container_click_slot(request),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickMove
+            ))
+        );
+        let click = store.build_container_click_slot(request).unwrap();
+        assert_eq!(click.changed_slots, BTreeMap::new());
+        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            open_container_slot_item(&store, 0),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(open_container_slot_item(&store, 17), item_stack(90, 1));
     }
 
     #[test]
