@@ -438,6 +438,7 @@ The rewrite is complete only when current evidence proves all of the following:
 - Native input, movement, interaction, inventory, and command flows work through
   encoded serverbound packets.
 - Control snapshots and counters are derived from canonical world/runtime state.
-- `cargo fmt --check`, `git diff --check`, and `cargo test --workspace` pass.
+- `cargo fmt --check`, `git diff --check`, and
+  `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace` pass.
 - Any remaining unsupported features are explicitly documented with owner,
   status, and next action.

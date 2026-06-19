@@ -161,6 +161,10 @@ Do not run parallel Cargo commands against the same `CARGO_TARGET_DIR`. Assign
 each worker a stable per-domain target directory so package and build locks do
 not serialize the work.
 
+Keep `sccache` opt-in. The 2026-06-19 local measurement did not show a worker
+cold-compile improvement, so worker prompts should not default to
+`BBB_USE_SCCACHE=1` unless a later slice records better data.
+
 Focused tests may use the opt-in `fast-test` profile when the goal is quick
 iteration and not final validation:
 

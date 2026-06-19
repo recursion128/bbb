@@ -332,11 +332,68 @@ Top cold timing entries included:
 - `bbb-native` test unit: 26.0s.
 - `wgpu-core`: 25.8s.
 
+## sccache Evaluation: 2026-06-19
+
+Environment:
+
+- macOS development machine.
+- `cargo 1.96.0-nightly (cbb9bb8bd 2026-03-13)`.
+- `rustc 1.96.0-nightly (bcf3d36c9 2026-03-19)`.
+- `sccache 0.15.0`.
+- `RUSTC_WRAPPER` is unset by default. No repo-local `.cargo/config.toml`
+  enables `sccache`.
+
+Measured command:
+
+- `scripts/cargo-dev.sh sccache-eval 20260619 -p bbb-world command_tree --quiet`
+
+Results:
+
+- Clean full workspace with `sccache`:
+  `RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-sccache-clean-20260619 cargo test --workspace --timings --quiet`
+  - Wall time: 171.69s.
+  - Target size: 3.3G.
+  - Timing report:
+    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619.html`
+  - Result: all tests passed.
+  - `sccache` stats: 217 compile requests, 156 executed, 155 Rust misses,
+    0 Rust hits.
+- New worker target focused test with `sccache`:
+  `RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-sccache-worker-20260619 cargo test -p bbb-world command_tree --quiet`
+  - Wall time: 51.41s.
+  - Target size: 646M.
+  - Result: 1 test passed.
+  - `sccache` stats: 46 compile requests, 29 executed, 29 Rust misses,
+    0 Rust hits.
+- New worker target focused test without `sccache`:
+  `CARGO_TARGET_DIR=/tmp/bbb-target-nosccache-worker-20260619 cargo test -p bbb-world command_tree --quiet`
+  - Wall time: 51.04s.
+  - Target size: 646M.
+  - Result: 1 test passed.
+- Warm focused default-profile test on `/tmp/bbb-target-main` with `sccache`:
+  `RUSTC_WRAPPER=sccache CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test -p bbb-world command_tree --quiet`
+  - Wall time: 0.22s.
+  - Result: 1 test passed.
+  - No compilations were executed.
+
+Conclusion:
+
+- This measurement does not show a clean-workspace or new-worker focused-test
+  improvement from `sccache` on the current macOS workload.
+- Keep `sccache` explicit and opt-in with `RUSTC_WRAPPER=sccache` or
+  `BBB_USE_SCCACHE=1`; do not add a repo-local mandatory `rustc-wrapper`.
+- Do not default worker prompts to `BBB_USE_SCCACHE=1` unless a later
+  measurement shows a real benefit for that slice.
+- Multi-worktree throughput should continue to rely on stable external target
+  directories and not deleting warm caches after every slice.
+- The disposable measurement targets were removed after recording these
+  numbers.
+
 ## Next Evaluation Points
 
 - Recheck `sccache` only after dependency, profile, or toolchain changes. Local
-  2026-06-19 measurements did not show Rust cache hits or a worker cold-compile
-  improvement.
+  2026-06-19 measurements with `sccache 0.15.0` did not show Rust cache hits or
+  a worker cold-compile improvement.
 - Recheck whether dependency opt-level settings in `[profile.dev.package."*"]`
   are worth the cold compile cost for the current test mix.
 - Keep renderer/audio dependency work focused. `wgpu`, `naga`, `image`, `cpal`,
