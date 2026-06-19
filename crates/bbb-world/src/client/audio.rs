@@ -430,6 +430,11 @@ impl WorldStore {
         state
     }
 
+    pub fn record_positioned_sound(&mut self, state: SoundEventState) -> SoundEventState {
+        self.client_audio.last_sound = Some(state.clone());
+        state
+    }
+
     fn level_event_block_break_sound_state(
         &self,
         event: ProtocolLevelEvent,
@@ -1352,6 +1357,34 @@ mod tests {
 
         let recorded = store.record_local_sound(sound);
         assert_eq!(store.last_local_sound(), Some(&recorded));
+    }
+
+    #[test]
+    fn record_positioned_sound_updates_last_sound_without_counting_sound_packet() {
+        let mut store = WorldStore::new();
+
+        let sound = SoundEventState {
+            sound: SoundHolderState {
+                kind: "direct".to_string(),
+                registry_id: None,
+                location: Some("minecraft:block.dispenser.fail".to_string()),
+                fixed_range: None,
+            },
+            source: "block".to_string(),
+            position: ProtocolVec3d {
+                x: 1.5,
+                y: 2.5,
+                z: -3.5,
+            },
+            volume: 1.0,
+            pitch: 1.2,
+            seed: 0,
+        };
+
+        let recorded = store.record_positioned_sound(sound);
+
+        assert_eq!(store.last_sound(), Some(&recorded));
+        assert_eq!(store.counters().sound_packets, 0);
     }
 
     #[test]

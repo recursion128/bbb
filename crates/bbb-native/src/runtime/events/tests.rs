@@ -3302,6 +3302,23 @@ fn fixed_level_event_emits_vanilla_positioned_sound() {
     assert_eq!(command.position, [8.5, 64.5, -1.5]);
     assert_close(command.packet_volume, 1.0);
     assert_close(command.packet_pitch, 1.2);
+    let recorded = world.last_sound().unwrap();
+    assert_eq!(
+        recorded.sound.location.as_deref(),
+        Some("minecraft:entity.firework_rocket.shoot")
+    );
+    assert_eq!(recorded.source, "neutral");
+    assert_eq!(
+        recorded.position,
+        ProtocolVec3d {
+            x: 8.5,
+            y: 64.5,
+            z: -1.5,
+        }
+    );
+    assert_close(recorded.volume, 1.0);
+    assert_close(recorded.pitch, 1.2);
+    assert_eq!(world.counters().sound_packets, 0);
     assert_eq!(world.counters().level_events_received, 1);
 }
 
@@ -3335,6 +3352,23 @@ fn randomized_level_event_emits_vanilla_positioned_sound() {
     assert_eq!(command.position, [-3.5, 70.5, 9.5]);
     assert_close(command.packet_volume, 10.0);
     assert_close(command.packet_pitch, 0.979_905_37);
+    let recorded = world.last_sound().unwrap();
+    assert_eq!(
+        recorded.sound.location.as_deref(),
+        Some("minecraft:entity.ghast.warn")
+    );
+    assert_eq!(recorded.source, "hostile");
+    assert_eq!(
+        recorded.position,
+        ProtocolVec3d {
+            x: -3.5,
+            y: 70.5,
+            z: 9.5,
+        }
+    );
+    assert_close(recorded.volume, 10.0);
+    assert_close(recorded.pitch, 0.979_905_37);
+    assert_eq!(world.counters().sound_packets, 0);
     assert_eq!(world.counters().level_events_received, 1);
 }
 
@@ -3508,6 +3542,18 @@ fn global_level_event_emits_vanilla_camera_relative_sound() {
     assert!((command.position[2] - 0.5).abs() < 1.0e-6);
     assert_close(command.packet_volume, 5.0);
     assert_close(command.packet_pitch, 1.0);
+    let recorded = world.last_sound().unwrap();
+    assert_eq!(
+        recorded.sound.location.as_deref(),
+        Some("minecraft:entity.ender_dragon.death")
+    );
+    assert_eq!(recorded.source, "hostile");
+    assert!((recorded.position.x - 2.5).abs() < 1.0e-6);
+    assert!((recorded.position.y - 0.5).abs() < 1.0e-6);
+    assert!((recorded.position.z - 0.5).abs() < 1.0e-6);
+    assert_close(recorded.volume, 5.0);
+    assert_close(recorded.pitch, 1.0);
+    assert_eq!(world.counters().sound_packets, 0);
     assert_eq!(world.counters().level_events_received, 1);
 }
 

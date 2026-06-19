@@ -333,6 +333,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                         world.global_level_event_sound(event, camera_position)
                     })
                 {
+                    let state = world.record_positioned_sound(state);
                     emit_positioned_sound(&mut audio_events, &state);
                 }
                 if let Some(state) = world
@@ -346,6 +347,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 if let Some(state) = world
                     .level_event_sound_with_random(event, || level_event_sound_random.next_float())
                 {
+                    let state = world.record_positioned_sound(state);
                     emit_positioned_sound(&mut audio_events, &state);
                 }
                 emit_level_event_particles(

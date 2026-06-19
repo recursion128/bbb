@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
-use bbb_protocol::packets::{self, PlayClientbound};
-use bbb_world::ChunkPos;
+use bbb_protocol::packets::{self, PlayClientbound, Vec3d as ProtocolVec3d};
+use bbb_world::{ChunkPos, WorldStore};
 
 use crate::{probe::ProbeContext, resource_pack::response_action_for_push, types::ConnectionState};
 
@@ -379,10 +379,22 @@ impl ProbeContext {
             }
             PlayClientbound::LevelEvent(event) => {
                 self.world.apply_level_event(event);
+                if let Some(state) =
+                    probe_camera_audio_position(&self.world).and_then(|camera_position| {
+                        self.world.global_level_event_sound(event, camera_position)
+                    })
+                {
+                    self.world.record_positioned_sound(state);
+                }
                 if let Some(state) = self.world.level_event_local_sound_with_random(event, || {
                     self.level_event_sound_random.next_float()
                 }) {
                     self.world.record_local_sound(state);
+                }
+                if let Some(state) = self.world.level_event_sound_with_random(event, || {
+                    self.level_event_sound_random.next_float()
+                }) {
+                    self.world.record_positioned_sound(state);
                 }
             }
             PlayClientbound::GameEvent(update) => {
@@ -509,6 +521,27 @@ impl ProbeContext {
         }
         Ok(None)
     }
+}
+
+fn probe_camera_audio_position(world: &WorldStore) -> Option<ProtocolVec3d> {
+    let camera = world.local_player().camera;
+    if let Some(camera_id) = camera.entity_id {
+        if !camera.follows_player {
+            if let Some(camera_pose) = world.probe_entity_camera_pose(camera_id) {
+                return Some(ProtocolVec3d {
+                    x: camera_pose.position.x,
+                    y: camera_pose.position.y + f64::from(camera_pose.eye_height),
+                    z: camera_pose.position.z,
+                });
+            }
+        }
+    }
+
+    world.local_player_pose().map(|pose| ProtocolVec3d {
+        x: pose.position.x,
+        y: pose.position.y + pose.eye_height(),
+        z: pose.position.z,
+    })
 }
 
 #[cfg(test)]
@@ -3529,6 +3562,85 @@ mod tests {
         assert_eq!(sound.source, "ambient");
         assert_close(sound.volume, 0.25);
         assert_close(sound.pitch, 1.092_387_1);
+        assert_eq!(sound.seed, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_records_positioned_level_event_sound_in_world_audio_state() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 1015,
+                pos: ProtocolBlockPos { x: -4, y: 70, z: 9 },
+                data: 0,
+                global: false,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.level_events_received, 1);
+        assert_eq!(report.world_counters.sound_packets, 0);
+        let sound = report.world.last_sound().unwrap();
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.ghast.warn")
+        );
+        assert_eq!(sound.source, "hostile");
+        assert_eq!(
+            sound.position,
+            ProtocolVec3d {
+                x: -3.5,
+                y: 70.5,
+                z: 9.5,
+            }
+        );
+        assert_close(sound.volume, 10.0);
+        assert_close(sound.pitch, 0.979_905_37);
+        assert_eq!(sound.seed, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_records_global_level_event_sound_when_camera_pose_is_known() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.world.set_local_player_pose(LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: 0.5,
+                y: -1.12,
+                z: 0.5,
+            },
+            ..LocalPlayerPoseState::default()
+        });
+
+        probe
+            .handle_play_packet(PlayClientbound::LevelEvent(LevelEvent {
+                event_type: 1028,
+                pos: ProtocolBlockPos { x: 10, y: 0, z: 0 },
+                data: 0,
+                global: true,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world_counters.level_events_received, 1);
+        assert_eq!(report.world_counters.sound_packets, 0);
+        let sound = report.world.last_sound().unwrap();
+        assert_eq!(
+            sound.sound.location.as_deref(),
+            Some("minecraft:entity.ender_dragon.death")
+        );
+        assert_eq!(sound.source, "hostile");
+        assert!((sound.position.x - 2.5).abs() < 1.0e-6);
+        assert!((sound.position.y - 0.5).abs() < 1.0e-6);
+        assert!((sound.position.z - 0.5).abs() < 1.0e-6);
+        assert_close(sound.volume, 5.0);
+        assert_close(sound.pitch, 1.0);
         assert_eq!(sound.seed, 0);
     }
 

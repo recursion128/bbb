@@ -297,6 +297,14 @@ When an agent does any of the following, update this file in the same slice:
       - `minecraft:block.portal.travel`
       - ambient source
       - non-spatial local sound command
+    - canonical world/probe/native observed audio state for LevelEvent-derived
+      positioned sounds:
+      - fixed-pitch and randomized `LevelEventHandler` positioned sounds update
+        `world.client_audio.last_sound`
+      - vanilla `globalLevelEvent` sounds update `world.client_audio.last_sound`
+        when a camera pose is available
+      - LevelEvent-derived sound recording does not increment Sound-packet
+        counters
     - native dispatcher playback for vanilla `globalLevelEvent` sounds:
       - wither spawn event `1023`
       - ender dragon death event `1028`
