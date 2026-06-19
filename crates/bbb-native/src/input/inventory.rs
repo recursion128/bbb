@@ -7309,7 +7309,7 @@ mod tests {
     }
 
     #[test]
-    fn anvil_shift_click_queues_server_authoritative_click() {
+    fn anvil_shift_click_player_item_queues_predicted_input_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
@@ -7350,12 +7350,17 @@ mod tests {
                 slot_num: 30,
                 button_num: 0,
                 input: ContainerInput::QuickMove,
-                changed_slots: BTreeMap::new(),
+                changed_slots: [
+                    (0, HashedStack::Item(hashed_item(42, 3))),
+                    (30, HashedStack::Empty),
+                ]
+                .into(),
                 carried_item: HashedStack::Empty,
             })
         );
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
-        assert_eq!(slots[30].item, item_stack(42, 3));
+        assert_eq!(slots[0].item, item_stack(42, 3));
+        assert_eq!(slots[30].item, ItemStackSummary::empty());
     }
 
     #[test]

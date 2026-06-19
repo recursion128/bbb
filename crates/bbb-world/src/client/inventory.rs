@@ -2896,7 +2896,7 @@ fn crafter_disabled_slots(data_values: &[ContainerDataValue]) -> BTreeSet<i16> {
         .collect()
 }
 
-fn anvil_quick_move_requires_server_authority(slots: &[ContainerSlot], slot_num: i16) -> bool {
+fn anvil_quick_move_requires_server_authority(_slots: &[ContainerSlot], slot_num: i16) -> bool {
     if !(0..ANVIL_TOTAL_SLOT_COUNT).contains(&slot_num) {
         return false;
     }
@@ -2906,7 +2906,7 @@ fn anvil_quick_move_requires_server_authority(slots: &[ContainerSlot], slot_num:
     if matches!(slot_num, ANVIL_INPUT_SLOT | ANVIL_ADDITIONAL_SLOT) {
         return false;
     }
-    inventory_menu_slot_has_item(slots, slot_num)
+    false
 }
 
 fn apply_anvil_menu_quick_move_to_slots(
@@ -2915,7 +2915,7 @@ fn apply_anvil_menu_quick_move_to_slots(
     slot_num: i16,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if !matches!(slot_num, ANVIL_INPUT_SLOT | ANVIL_ADDITIONAL_SLOT) {
+    if !(0..ANVIL_TOTAL_SLOT_COUNT).contains(&slot_num) || slot_num == ANVIL_RESULT_SLOT {
         return;
     }
     let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
@@ -2925,15 +2925,29 @@ fn apply_anvil_menu_quick_move_to_slots(
         return;
     }
 
-    let mut moving = slots[source_index].item.clone();
+    let source_item = slots[source_index].item.clone();
+    let target = match slot_num {
+        ANVIL_INPUT_SLOT | ANVIL_ADDITIONAL_SLOT => {
+            Some((ANVIL_PLAYER_MAIN_START, ANVIL_HOTBAR_END, false))
+        }
+        slot if (ANVIL_PLAYER_MAIN_START..ANVIL_HOTBAR_END).contains(&slot) => {
+            Some((ANVIL_INPUT_SLOT, ANVIL_RESULT_SLOT, false))
+        }
+        _ => None,
+    };
+    let Some((start_slot, end_slot, backwards)) = target else {
+        return;
+    };
+
+    let mut moving = source_item;
     if move_item_stack_to_slots(
         container_id,
         slots,
         source_index,
         &mut moving,
-        ANVIL_PLAYER_MAIN_START,
-        ANVIL_HOTBAR_END,
-        false,
+        start_slot,
+        end_slot,
+        backwards,
         default_item_max_stack_sizes,
     ) {
         normalize_item_stack(&mut moving);
@@ -7059,6 +7073,8 @@ mod tests {
 
     #[test]
     fn apply_local_anvil_input_quick_move_moves_input_slots_to_player_forward() {
+        const ANVIL_HOTBAR_START: i16 = 30;
+
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
@@ -7069,7 +7085,8 @@ mod tests {
         items[ANVIL_INPUT_SLOT as usize] = item_stack(42, 1);
         items[ANVIL_ADDITIONAL_SLOT as usize] = item_stack(43, 2);
         items[ANVIL_RESULT_SLOT as usize] = item_stack(90, 1);
-        items[30] = item_stack(44, 3);
+        items[ANVIL_HOTBAR_START as usize] = item_stack(44, 3);
+        items[(ANVIL_HOTBAR_START + 1) as usize] = item_stack(45, 2);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 13,
@@ -7120,38 +7137,55 @@ mod tests {
                 Err(ContainerClickBuildError::UnsupportedLocalClickInput(input))
             );
         }
-        assert_eq!(
-            store.apply_local_container_click_slot(ContainerClickSlotRequest {
-                slot_num: 30,
-                button_num: 0,
-                input: ProtocolContainerInput::QuickMove,
-            }),
-            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                ProtocolContainerInput::QuickMove
-            ))
-        );
-        let click = store
-            .build_container_click_slot(ContainerClickSlotRequest {
-                slot_num: 30,
+        let player_to_input = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: ANVIL_HOTBAR_START,
                 button_num: 0,
                 input: ProtocolContainerInput::QuickMove,
             })
             .unwrap();
-        assert_eq!(click.changed_slots, BTreeMap::new());
-        assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
+        assert_eq!(
+            player_to_input.changed_slots,
+            BTreeMap::from([
+                (ANVIL_INPUT_SLOT, hashed_item_stack(44, 3)),
+                (ANVIL_HOTBAR_START, ProtocolHashedStack::Empty),
+            ])
+        );
+
+        let player_to_additional = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: ANVIL_HOTBAR_START + 1,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            player_to_additional.changed_slots,
+            BTreeMap::from([
+                (ANVIL_ADDITIONAL_SLOT, hashed_item_stack(45, 2)),
+                (ANVIL_HOTBAR_START + 1, ProtocolHashedStack::Empty),
+            ])
+        );
         assert_eq!(
             open_container_slot_item(&store, ANVIL_INPUT_SLOT),
-            ProtocolItemStackSummary::empty()
+            item_stack(44, 3)
         );
         assert_eq!(
             open_container_slot_item(&store, ANVIL_ADDITIONAL_SLOT),
-            ProtocolItemStackSummary::empty()
+            item_stack(45, 2)
         );
         assert_eq!(
             open_container_slot_item(&store, ANVIL_RESULT_SLOT),
             item_stack(90, 1)
         );
-        assert_eq!(open_container_slot_item(&store, 30), item_stack(44, 3));
+        assert_eq!(
+            open_container_slot_item(&store, ANVIL_HOTBAR_START),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, ANVIL_HOTBAR_START + 1),
+            ProtocolItemStackSummary::empty()
+        );
         assert_eq!(
             open_container_slot_item(&store, ANVIL_PLAYER_MAIN_START),
             item_stack(42, 1)

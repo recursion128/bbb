@@ -1116,8 +1116,9 @@ When an agent does any of the following, update this file in the same slice:
           `ContainerSetData` cost plus local game mode / experience state
         - input slots quick-move back to the player inventory with vanilla
           forward-fill ordering
-        - player-inventory quick-move and result-slot paths are kept
-          server-authoritative until:
+        - player-inventory quick-move into the two input slots is locally
+          predicted with vanilla `ItemCombinerMenu` ordering
+        - result-slot paths are kept server-authoritative until:
           - repair/enchantment result prediction
           - repair-cost component updates
           - material consumption
