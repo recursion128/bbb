@@ -15,10 +15,11 @@ use super::{
 };
 
 const MOVE_COMMAND_INTERVAL: Duration = Duration::from_millis(50);
-const MOVE_COMMAND_POSITION_REMINDER_INTERVAL: Duration = Duration::from_secs(1);
 const MOVE_COMMAND_POSITION_THRESHOLD: f64 = 2.0E-4;
 const MOVE_COMMAND_POSITION_THRESHOLD_SQUARED: f64 =
     MOVE_COMMAND_POSITION_THRESHOLD * MOVE_COMMAND_POSITION_THRESHOLD;
+const MOVE_COMMAND_POSITION_REMINDER_TICKS: u32 = 20;
+const LOCAL_PLAYER_MOVEMENT_TICK_SECONDS: f64 = 0.05;
 const RIDING_JUMP_TICK_SECONDS: f64 = 0.05;
 
 impl ClientInputState {
@@ -57,6 +58,7 @@ pub(crate) fn advance_player_input(
     maybe_enable_spectator_flying(counters, world, net_commands);
 
     if world.local_player_root_vehicle_id().is_some() {
+        input.local_player_movement_tick_accumulator_seconds = 0.0;
         let input_state = input.local_player_input();
         if let Some(pose) = world.advance_local_player_look_input(input_state) {
             maybe_queue_passenger_rotation_command(input, counters, net_commands, pose, now);
@@ -71,8 +73,7 @@ pub(crate) fn advance_player_input(
     input.last_paddle_boat_command_at = None;
     input.riding_jump_charge_seconds = None;
 
-    let Some(pose) = world.advance_local_player_input(input.local_player_input(), dt_seconds)
-    else {
+    let Some(pose) = advance_unmounted_local_player_input(input, world, dt_seconds) else {
         input.mouse_delta_x = 0.0;
         input.mouse_delta_y = 0.0;
         return;
@@ -81,6 +82,31 @@ pub(crate) fn advance_player_input(
     input.mouse_delta_x = 0.0;
     input.mouse_delta_y = 0.0;
     maybe_queue_player_move_command(input, counters, net_commands, pose, now);
+}
+
+fn advance_unmounted_local_player_input(
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    dt_seconds: f64,
+) -> Option<LocalPlayerPoseState> {
+    let input_state = input.local_player_input();
+    let mut pose = world.advance_local_player_look_input(input_state)?;
+    let mut movement_input = input_state;
+    movement_input.mouse_delta_x = 0.0;
+    movement_input.mouse_delta_y = 0.0;
+
+    input.local_player_movement_tick_accumulator_seconds =
+        (input.local_player_movement_tick_accumulator_seconds + dt_seconds.max(0.0))
+            .min(0.25 + LOCAL_PLAYER_MOVEMENT_TICK_SECONDS);
+    while input.local_player_movement_tick_accumulator_seconds + f64::EPSILON
+        >= LOCAL_PLAYER_MOVEMENT_TICK_SECONDS
+    {
+        input.local_player_movement_tick_accumulator_seconds -= LOCAL_PLAYER_MOVEMENT_TICK_SECONDS;
+        pose =
+            world.advance_local_player_input(movement_input, LOCAL_PLAYER_MOVEMENT_TICK_SECONDS)?;
+    }
+
+    Some(pose)
 }
 
 fn maybe_enable_spectator_flying(
@@ -234,13 +260,11 @@ fn maybe_queue_player_move_command(
     if !command_due {
         return;
     }
+    input.move_position_reminder_ticks = input.move_position_reminder_ticks.saturating_add(1);
 
     let last_pose = input.last_move_command_pose;
     let force_position = last_pose.is_some()
-        && input
-            .last_move_position_command_at
-            .and_then(|last| now.checked_duration_since(last))
-            .is_some_and(|elapsed| elapsed >= MOVE_COMMAND_POSITION_REMINDER_INTERVAL);
+        && input.move_position_reminder_ticks >= MOVE_COMMAND_POSITION_REMINDER_TICKS;
     let (send_position, send_rotation) = match last_pose {
         Some(last_pose) => {
             let send_position = position_delta_squared(last_pose.position, pose.position)
@@ -293,7 +317,7 @@ fn maybe_queue_player_move_command(
 
         input.last_move_command_at = Some(now);
         if send_position {
-            input.last_move_position_command_at = Some(now);
+            input.move_position_reminder_ticks = 0;
         }
         input.last_move_command_pose = Some(remembered_pose);
         counters.player_move_commands_queued += 1;
@@ -400,6 +424,59 @@ mod tests {
     }
 
     #[test]
+    fn advance_player_input_uses_fixed_movement_tick_accumulator() {
+        let (tx, mut rx) = mpsc::channel(4);
+        let commands = Some(tx);
+        let start = Instant::now();
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.0, 64.0, 0.0),
+            ..LocalPlayerPoseState::default()
+        });
+        let mut counters = NetCounters::default();
+
+        advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
+        assert!(matches!(rx.try_recv().unwrap(), NetCommand::MovePlayer(_)));
+        let initial_pose = world.local_player_pose().unwrap();
+
+        input.forward = true;
+        input.mouse_delta_x = 100.0;
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + Duration::from_millis(25),
+        );
+        assert!(rx.try_recv().is_err());
+        let half_tick_pose = world.local_player_pose().unwrap();
+        assert_eq!(half_tick_pose.position, initial_pose.position);
+        assert_eq!(half_tick_pose.y_rot, 12.0);
+
+        advance_player_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            start + Duration::from_millis(50),
+        );
+        let fixed_tick = match rx.try_recv().unwrap() {
+            NetCommand::MovePlayer(command) => command,
+            other => panic!("expected move command, got {other:?}"),
+        };
+        assert_ne!(
+            world.local_player_pose().unwrap().position,
+            initial_pose.position
+        );
+        assert_eq!(
+            fixed_tick.state.position,
+            world.local_player_pose().unwrap().position
+        );
+        assert_eq!(counters.player_move_commands_queued, 2);
+    }
+
+    #[test]
     fn advance_player_input_enables_spectator_flying_when_server_allows() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
@@ -478,21 +555,23 @@ mod tests {
         };
         assert!(!first.force_position);
 
-        maybe_queue_player_move_command(
-            &mut input,
-            &mut counters,
-            &commands,
-            pose,
-            start + MOVE_COMMAND_POSITION_REMINDER_INTERVAL - Duration::from_millis(1),
-        );
-        assert!(rx.try_recv().is_err());
+        for tick in 1..20 {
+            maybe_queue_player_move_command(
+                &mut input,
+                &mut counters,
+                &commands,
+                pose,
+                start + MOVE_COMMAND_INTERVAL * tick,
+            );
+            assert!(rx.try_recv().is_err(), "tick {tick}");
+        }
 
         maybe_queue_player_move_command(
             &mut input,
             &mut counters,
             &commands,
             pose,
-            start + MOVE_COMMAND_POSITION_REMINDER_INTERVAL,
+            start + MOVE_COMMAND_INTERVAL * MOVE_COMMAND_POSITION_REMINDER_TICKS,
         );
         let reminder = match rx.try_recv().unwrap() {
             NetCommand::MovePlayer(command) => command,
@@ -545,7 +624,7 @@ mod tests {
             &mut counters,
             &commands,
             pose,
-            start + MOVE_COMMAND_POSITION_REMINDER_INTERVAL,
+            start + MOVE_COMMAND_INTERVAL * MOVE_COMMAND_POSITION_REMINDER_TICKS,
         );
         let reminder = match rx.try_recv().unwrap() {
             NetCommand::MovePlayer(command) => command,
@@ -560,7 +639,7 @@ mod tests {
             &mut counters,
             &commands,
             pose,
-            start + MOVE_COMMAND_POSITION_REMINDER_INTERVAL + MOVE_COMMAND_INTERVAL,
+            start + MOVE_COMMAND_INTERVAL * (MOVE_COMMAND_POSITION_REMINDER_TICKS + 1),
         );
         let rotation_after_reminder = match rx.try_recv().unwrap() {
             NetCommand::MovePlayer(command) => command,

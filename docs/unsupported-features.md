@@ -423,7 +423,8 @@ When an agent does any of the following, update this file in the same slice:
 - Next action:
   - Movement:
     - Extend the current basic AABB collision and gravity/jump slice to cover:
-      - full fixed 20Hz survival physics
+      - remaining vanilla survival physics details beyond the current native
+        fixed 20Hz local movement cadence
       - remaining vanilla voxel collision shapes
       - remaining fluid movement work beyond current still water/lava support:
         - sprint-swim camera, animation, and presentation nuance beyond
@@ -535,6 +536,11 @@ When an agent does any of the following, update this file in the same slice:
   - Movement:
     - Native movement projects world-computed `on_ground` and
       `horizontal_collision` into serverbound move commands.
+    - Native unmounted local player movement accumulates elapsed time into
+      fixed 20Hz physics steps while preserving per-frame look updates.
+    - Serverbound movement packets use vanilla's strict position threshold and
+      20-sendPosition-call position reminder semantics; rotation-only and
+      status-only packets do not reset the reminder.
     - It clips local player movement with a basic AABB solver against simple
       full-block terrain plus common non-full-block shapes:
       - slab

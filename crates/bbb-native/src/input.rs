@@ -103,8 +103,9 @@ pub(crate) struct ClientInputState {
     merchant_trade_scrolling: bool,
     chat_entry: Option<ChatEntryState>,
     last_step: Option<Instant>,
+    local_player_movement_tick_accumulator_seconds: f64,
     last_move_command_at: Option<Instant>,
-    last_move_position_command_at: Option<Instant>,
+    move_position_reminder_ticks: u32,
     last_move_command_pose: Option<LocalPlayerPoseState>,
     last_paddle_boat_command_at: Option<Instant>,
     riding_jump_charge_seconds: Option<f64>,
@@ -179,6 +180,7 @@ impl ClientInputState {
         self.anvil_rename_input = None;
         self.anvil_rename_text.clear();
         self.chat_entry = None;
+        self.local_player_movement_tick_accumulator_seconds = 0.0;
         self.last_paddle_boat_command_at = None;
         self.riding_jump_charge_seconds = None;
         self.clear_sprint_trigger();
