@@ -1278,15 +1278,14 @@ When an agent does any of the following, update this file in the same slice:
       - SmithingMenu:
         - input slots quick-move back to the player inventory with vanilla
           forward-fill ordering
-        - player-inventory quick-move paths are kept server-authoritative
-          until:
-          - smithing recipe property sets
-          - input slot routing
+        - player-inventory quick-move paths are locally predicted when
+          `UpdateRecipes` provides the three vanilla smithing property sets:
+          - template/base/addition input slot routing
+          - ordinary player inventory/hotbar range movement
+        - result-slot clicks are kept server-authoritative until:
           - result prediction
           - input consumption
           - level event side effects
-        - result-slot clicks are kept server-authoritative until smithing
-          `onTake` side effects are modeled
         - deferred presentation parity work:
           - armor stand preview
           - cycling empty-slot icons

@@ -130,8 +130,13 @@ const SMITHING_BASE_SLOT: i16 = 1;
 const SMITHING_ADDITIONAL_SLOT: i16 = 2;
 const SMITHING_RESULT_SLOT: i16 = 3;
 const SMITHING_PLAYER_MAIN_START: i16 = 4;
+const SMITHING_PLAYER_MAIN_END: i16 = 31;
+const SMITHING_HOTBAR_START: i16 = 31;
 const SMITHING_HOTBAR_END: i16 = 40;
 const SMITHING_TOTAL_SLOT_COUNT: i16 = 40;
+const SMITHING_TEMPLATE_PROPERTY_SET: &str = "minecraft:smithing_template";
+const SMITHING_BASE_PROPERTY_SET: &str = "minecraft:smithing_base";
+const SMITHING_ADDITION_PROPERTY_SET: &str = "minecraft:smithing_addition";
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
@@ -1301,6 +1306,7 @@ impl WorldStore {
                         if smithing_quick_move_requires_server_authority(
                             &slots_after,
                             request.slot_num,
+                            &self.recipes.property_sets,
                         ) {
                             return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
                                 ProtocolContainerInput::QuickMove,
@@ -1310,6 +1316,7 @@ impl WorldStore {
                             container_id,
                             &mut slots_after,
                             request.slot_num,
+                            &self.recipes.property_sets,
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID) {
@@ -3281,7 +3288,11 @@ fn grindstone_quick_move_requires_server_authority(slots: &[ContainerSlot], slot
     !inputs_full
 }
 
-fn smithing_quick_move_requires_server_authority(slots: &[ContainerSlot], slot_num: i16) -> bool {
+fn smithing_quick_move_requires_server_authority(
+    slots: &[ContainerSlot],
+    slot_num: i16,
+    recipe_property_sets: &BTreeMap<String, Vec<i32>>,
+) -> bool {
     if !(0..SMITHING_TOTAL_SLOT_COUNT).contains(&slot_num) {
         return false;
     }
@@ -3294,19 +3305,23 @@ fn smithing_quick_move_requires_server_authority(slots: &[ContainerSlot], slot_n
     ) {
         return false;
     }
-    inventory_menu_slot_has_item(slots, slot_num)
+    if !(SMITHING_PLAYER_MAIN_START..SMITHING_HOTBAR_END).contains(&slot_num) {
+        return false;
+    }
+    if !inventory_menu_slot_has_item(slots, slot_num) {
+        return false;
+    }
+    !smithing_recipe_property_sets_available(recipe_property_sets)
 }
 
 fn apply_smithing_menu_quick_move_to_slots(
     container_id: i32,
     slots: &mut [ContainerSlot],
     slot_num: i16,
+    recipe_property_sets: &BTreeMap<String, Vec<i32>>,
     default_item_max_stack_sizes: &BTreeMap<i32, i32>,
 ) {
-    if !matches!(
-        slot_num,
-        SMITHING_TEMPLATE_SLOT | SMITHING_BASE_SLOT | SMITHING_ADDITIONAL_SLOT
-    ) {
+    if !(0..SMITHING_TOTAL_SLOT_COUNT).contains(&slot_num) || slot_num == SMITHING_RESULT_SLOT {
         return;
     }
     let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
@@ -3316,20 +3331,120 @@ fn apply_smithing_menu_quick_move_to_slots(
         return;
     }
 
-    let mut moving = slots[source_index].item.clone();
-    if move_item_stack_to_slots(
-        container_id,
-        slots,
-        source_index,
-        &mut moving,
-        SMITHING_PLAYER_MAIN_START,
-        SMITHING_HOTBAR_END,
-        false,
-        default_item_max_stack_sizes,
+    let source_item = slots[source_index].item.clone();
+    let mut moving = source_item.clone();
+    let moved = if matches!(
+        slot_num,
+        SMITHING_TEMPLATE_SLOT | SMITHING_BASE_SLOT | SMITHING_ADDITIONAL_SLOT
     ) {
+        move_item_stack_to_slots(
+            container_id,
+            slots,
+            source_index,
+            &mut moving,
+            SMITHING_PLAYER_MAIN_START,
+            SMITHING_HOTBAR_END,
+            false,
+            default_item_max_stack_sizes,
+        )
+    } else if !smithing_recipe_property_sets_available(recipe_property_sets) {
+        false
+    } else if smithing_can_move_into_input_slots(&source_item, slots, recipe_property_sets) {
+        move_item_stack_to_slots_where(
+            container_id,
+            slots,
+            source_index,
+            &mut moving,
+            SMITHING_TEMPLATE_SLOT,
+            SMITHING_RESULT_SLOT,
+            false,
+            |dest_slot| {
+                smithing_input_slot_accepts_stack(dest_slot, &source_item, recipe_property_sets)
+            },
+            default_item_max_stack_sizes,
+        )
+    } else if (SMITHING_PLAYER_MAIN_START..SMITHING_PLAYER_MAIN_END).contains(&slot_num) {
+        move_item_stack_to_slots(
+            container_id,
+            slots,
+            source_index,
+            &mut moving,
+            SMITHING_HOTBAR_START,
+            SMITHING_HOTBAR_END,
+            false,
+            default_item_max_stack_sizes,
+        )
+    } else {
+        move_item_stack_to_slots(
+            container_id,
+            slots,
+            source_index,
+            &mut moving,
+            SMITHING_PLAYER_MAIN_START,
+            SMITHING_PLAYER_MAIN_END,
+            false,
+            default_item_max_stack_sizes,
+        )
+    };
+
+    if moved {
         normalize_item_stack(&mut moving);
         slots[source_index].item = moving;
         normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn smithing_recipe_property_sets_available(
+    recipe_property_sets: &BTreeMap<String, Vec<i32>>,
+) -> bool {
+    [
+        SMITHING_TEMPLATE_PROPERTY_SET,
+        SMITHING_BASE_PROPERTY_SET,
+        SMITHING_ADDITION_PROPERTY_SET,
+    ]
+    .into_iter()
+    .all(|property_set| recipe_property_sets.contains_key(property_set))
+}
+
+fn smithing_can_move_into_input_slots(
+    stack: &ProtocolItemStackSummary,
+    slots: &[ContainerSlot],
+    recipe_property_sets: &BTreeMap<String, Vec<i32>>,
+) -> bool {
+    [
+        SMITHING_TEMPLATE_SLOT,
+        SMITHING_BASE_SLOT,
+        SMITHING_ADDITIONAL_SLOT,
+    ]
+    .into_iter()
+    .any(|slot_num| {
+        !inventory_menu_slot_has_item(slots, slot_num)
+            && smithing_input_slot_accepts_stack(slot_num, stack, recipe_property_sets)
+    })
+}
+
+fn smithing_input_slot_accepts_stack(
+    slot_num: i16,
+    stack: &ProtocolItemStackSummary,
+    recipe_property_sets: &BTreeMap<String, Vec<i32>>,
+) -> bool {
+    let Some(item_id) = stack.item_id else {
+        return false;
+    };
+    let Some(property_set) = smithing_input_slot_property_set(slot_num) else {
+        return false;
+    };
+    recipe_property_sets
+        .get(property_set)
+        .is_some_and(|items| items.contains(&item_id))
+}
+
+fn smithing_input_slot_property_set(slot_num: i16) -> Option<&'static str> {
+    match slot_num {
+        SMITHING_TEMPLATE_SLOT => Some(SMITHING_TEMPLATE_PROPERTY_SET),
+        SMITHING_BASE_SLOT => Some(SMITHING_BASE_PROPERTY_SET),
+        SMITHING_ADDITIONAL_SLOT => Some(SMITHING_ADDITION_PROPERTY_SET),
+        _ => None,
     }
 }
 
@@ -7849,6 +7964,108 @@ mod tests {
         assert_eq!(
             open_container_slot_item(&store, SMITHING_PLAYER_MAIN_START + 2),
             item_stack(44, 3)
+        );
+    }
+
+    #[test]
+    fn apply_local_smithing_quick_move_routes_property_set_items_to_inputs_and_player_ranges() {
+        let mut store = WorldStore::new();
+        store.apply_update_recipes(update_recipes(vec![
+            (SMITHING_TEMPLATE_PROPERTY_SET, vec![42]),
+            (SMITHING_BASE_PROPERTY_SET, vec![43]),
+            (SMITHING_ADDITION_PROPERTY_SET, vec![44]),
+        ]));
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
+            title: "Smithing".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
+        items[SMITHING_PLAYER_MAIN_START as usize] = item_stack(50, 2);
+        items[SMITHING_HOTBAR_START as usize] = item_stack(42, 1);
+        items[(SMITHING_HOTBAR_START + 1) as usize] = item_stack(43, 2);
+        items[(SMITHING_HOTBAR_START + 2) as usize] = item_stack(44, 3);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 13,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        let template_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: SMITHING_HOTBAR_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            template_move.changed_slots,
+            BTreeMap::from([
+                (SMITHING_TEMPLATE_SLOT, hashed_item_stack(42, 1)),
+                (SMITHING_HOTBAR_START, ProtocolHashedStack::Empty),
+            ])
+        );
+
+        let base_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: SMITHING_HOTBAR_START + 1,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            base_move.changed_slots,
+            BTreeMap::from([
+                (SMITHING_BASE_SLOT, hashed_item_stack(43, 2)),
+                (SMITHING_HOTBAR_START + 1, ProtocolHashedStack::Empty),
+            ])
+        );
+
+        let additional_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: SMITHING_HOTBAR_START + 2,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            additional_move.changed_slots,
+            BTreeMap::from([
+                (SMITHING_ADDITIONAL_SLOT, hashed_item_stack(44, 3)),
+                (SMITHING_HOTBAR_START + 2, ProtocolHashedStack::Empty),
+            ])
+        );
+
+        let range_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: SMITHING_PLAYER_MAIN_START,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            range_move.changed_slots,
+            BTreeMap::from([
+                (SMITHING_PLAYER_MAIN_START, ProtocolHashedStack::Empty),
+                (SMITHING_HOTBAR_START, hashed_item_stack(50, 2)),
+            ])
+        );
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_TEMPLATE_SLOT),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_BASE_SLOT),
+            item_stack(43, 2)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_ADDITIONAL_SLOT),
+            item_stack(44, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_HOTBAR_START),
+            item_stack(50, 2)
         );
     }
 
