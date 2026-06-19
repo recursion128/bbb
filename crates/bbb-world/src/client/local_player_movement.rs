@@ -16,6 +16,7 @@ pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
 pub(super) const LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND: f64 = 5.612;
 
 const VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID: i32 = 22;
+const VANILLA_ATTRIBUTE_MOVEMENT_EFFICIENCY_ID: i32 = 21;
 const VANILLA_ATTRIBUTE_GRAVITY_ID: i32 = 14;
 const VANILLA_ATTRIBUTE_JUMP_STRENGTH_ID: i32 = 15;
 const VANILLA_ATTRIBUTE_SNEAKING_SPEED_ID: i32 = 26;
@@ -86,6 +87,8 @@ const VANILLA_SLOWNESS_EFFECT_MODIFIER_ID: &str = "minecraft:effect.slowness";
 const VANILLA_POWDER_SNOW_SPEED_MODIFIER_ID: &str = "minecraft:powder_snow";
 const LOCAL_PLAYER_TICKS_REQUIRED_TO_FREEZE: f64 = 140.0;
 const POWDER_SNOW_MOVEMENT_SPEED_MODIFIER_AT_FULL_FREEZE: f64 = -0.05;
+const SLOW_BLOCK_SPEED_FACTOR: f64 = 0.4;
+const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
 
 pub(super) fn integrate_local_player_input_pose(
     world: &WorldStore,
@@ -958,7 +961,59 @@ fn local_player_horizontal_speed(
             .unwrap_or(LOCAL_INPUT_SNEAKING_SPEED_MULTIPLIER)
             .clamp(0.0, 1.0);
     }
+    speed *= local_player_block_speed_factor(world, pose);
     speed
+}
+
+fn local_player_block_speed_factor(world: &WorldStore, pose: LocalPlayerPoseState) -> f64 {
+    let raw_factor = local_player_raw_block_speed_factor(world, pose);
+    let movement_efficiency =
+        local_player_attribute_value(world, VANILLA_ATTRIBUTE_MOVEMENT_EFFICIENCY_ID)
+            .unwrap_or(0.0)
+            .clamp(0.0, 1.0);
+    raw_factor + (DEFAULT_BLOCK_SPEED_FACTOR - raw_factor) * movement_efficiency
+}
+
+fn local_player_raw_block_speed_factor(world: &WorldStore, pose: LocalPlayerPoseState) -> f64 {
+    let here_pos = BlockPos {
+        x: local_player_block_floor(pose.position.x),
+        y: local_player_block_floor(pose.position.y),
+        z: local_player_block_floor(pose.position.z),
+    };
+    let here_block = world.probe_block(here_pos);
+    let here_factor = here_block
+        .as_ref()
+        .and_then(|block| block.block_name.as_deref())
+        .map(block_speed_factor)
+        .unwrap_or(DEFAULT_BLOCK_SPEED_FACTOR);
+    if here_block
+        .as_ref()
+        .and_then(|block| block.block_name.as_deref())
+        .is_some_and(|block_name| {
+            matches!(block_name, "minecraft:water" | "minecraft:bubble_column")
+        })
+    {
+        return here_factor;
+    }
+    if (here_factor - DEFAULT_BLOCK_SPEED_FACTOR).abs() > f64::EPSILON {
+        return here_factor;
+    }
+
+    let below_pos = BlockPos {
+        y: local_player_block_floor(pose.position.y - 0.500001),
+        ..here_pos
+    };
+    world
+        .probe_block(below_pos)
+        .and_then(|block| block.block_name.as_deref().map(block_speed_factor))
+        .unwrap_or(DEFAULT_BLOCK_SPEED_FACTOR)
+}
+
+fn block_speed_factor(block_name: &str) -> f64 {
+    match block_name {
+        "minecraft:soul_sand" | "minecraft:honey_block" => SLOW_BLOCK_SPEED_FACTOR,
+        _ => DEFAULT_BLOCK_SPEED_FACTOR,
+    }
 }
 
 fn local_player_movement_speed_attribute_value(world: &WorldStore) -> f64 {
@@ -3571,6 +3626,92 @@ mod tests {
         assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
         assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
         assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_slow_block_speed_factor_scales_horizontal_movement() {
+        for (name, block_state_id, player_y) in [
+            ("soul sand", SOUL_SAND_BLOCK_STATE_ID, 0.875),
+            ("honey block", HONEY_BLOCK_STATE_ID, 0.9375),
+        ] {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 0, 0, block_state_id);
+            world.set_local_player_pose(LocalPlayerPoseState {
+                position: vec3(0.5, player_y, 0.5),
+                on_ground: true,
+                ..LocalPlayerPoseState::default()
+            });
+
+            let pose = world
+                .advance_local_player_input(
+                    LocalPlayerInputState {
+                        focused: true,
+                        forward: true,
+                        ..LocalPlayerInputState::default()
+                    },
+                    LOCAL_PHYSICS_TICK_SECONDS,
+                )
+                .unwrap();
+
+            let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND
+                * SLOW_BLOCK_SPEED_FACTOR
+                * LOCAL_PHYSICS_TICK_SECONDS;
+            assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+            assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_movement_efficiency_offsets_slow_block_speed_factor() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, SOUL_SAND_BLOCK_STATE_ID);
+        attach_local_player_entity(&mut world, 123);
+        assert!(world.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id: 123,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_MOVEMENT_EFFICIENCY_ID,
+                base: 1.0,
+                modifiers: Vec::new(),
+            }],
+        }));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 0.875, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step = LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_block_speed_factor_does_not_fallback_through_water() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 0, 0, SOUL_SAND_BLOCK_STATE_ID);
+        set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        let factor = local_player_block_speed_factor(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 1.0, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert_f64_near(factor, DEFAULT_BLOCK_SPEED_FACTOR, 0.000001);
     }
 
     #[test]

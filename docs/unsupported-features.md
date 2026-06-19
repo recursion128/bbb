@@ -299,7 +299,8 @@ When an agent does any of the following, update this file in the same slice:
       - remaining block-state movement factors beyond the synced frozen-tick
         powder-snow slowdown:
         - in-world powder snow contact freezing/unfreezing tick updates
-        - generic block speed factor interpolation through `movement_efficiency`
+        - full vanilla post-`Entity.move` `deltaMovement` travel ordering
+          beyond the current direct local walking prediction
       - remaining status-effect movement cases beyond local support for:
         - local Speed/Slowness movement-speed modifiers
         - local Jump Boost jump impulse
@@ -427,6 +428,12 @@ When an agent does any of the following, update this file in the same slice:
         - amount is `-0.05 * min(ticks_frozen, 140) / 140`
         - skipped when the server already syncs the `minecraft:powder_snow`
           movement-speed modifier
+      - vanilla block speed factor for local walking prediction:
+        - `minecraft:soul_sand` and `minecraft:honey_block` apply `0.4`
+        - synced local player `movement_efficiency` attribute id `21`
+          interpolates the block factor back toward `1.0`
+        - `minecraft:water` and `minecraft:bubble_column` at the current
+          player block position do not fall back to the block below
       - jumps only from ground
       - local player `movement_speed` / `sneaking_speed` attributes with the
         vanilla default sneaking-speed reduction
