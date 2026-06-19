@@ -414,6 +414,7 @@ impl WorldStore {
             pos,
             server_block_state_id,
             predicted_block_state_id,
+            self.local_player.pose.map(|pose| pose.position),
         );
         true
     }
@@ -429,12 +430,30 @@ impl WorldStore {
                 continue;
             }
             if self.set_block_state_id(prediction.pos, prediction.server_block_state_id) {
+                self.snap_local_player_to_prediction_position_if_colliding(*prediction);
                 continue;
             } else {
                 self.counters.local_block_predictions_failed += 1;
             }
         }
         ended
+    }
+
+    fn snap_local_player_to_prediction_position_if_colliding(
+        &mut self,
+        prediction: crate::LocalBlockPredictionState,
+    ) {
+        let Some(predicted_position) = prediction.player_position else {
+            return;
+        };
+        let Some(mut pose) = self.local_player.pose else {
+            return;
+        };
+        if !self.local_player_pose_collides_with_block(prediction.pos, pose) {
+            return;
+        }
+        pose.position = predicted_position;
+        self.local_player.pose = Some(pose);
     }
 
     fn set_block_state_id(&mut self, pos: BlockPos, block_state_id: i32) -> bool {

@@ -36,6 +36,19 @@ pub(super) fn local_player_block_collision_is_empty(block: &BlockProbe) -> bool 
     block_collision_shape(block).is_none()
 }
 
+impl WorldStore {
+    pub(crate) fn local_player_pose_collides_with_block(
+        &self,
+        pos: BlockPos,
+        pose: LocalPlayerPoseState,
+    ) -> bool {
+        let Some(block) = self.probe_block(pos) else {
+            return false;
+        };
+        block_collides_with_local_player_bounds(&block, pos, LocalPlayerBounds::for_pose(pose))
+    }
+}
+
 fn block_collides_with_local_player_bounds(
     block: &BlockProbe,
     pos: BlockPos,

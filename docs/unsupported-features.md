@@ -312,7 +312,6 @@ When an agent does any of the following, update this file in the same slice:
     - Close remaining vanilla player destroy-speed gaps:
       - validate exact pose/fluid nuance beyond the current standing-eye
         water probe
-    - collision-aware rollback position handling
     - hit effects
     - full model-shaped crack decals with vanilla crumbling blend/depth-bias
       behavior
@@ -1018,6 +1017,9 @@ When an agent does any of the following, update this file in the same slice:
     - It reconciles local block-destroy predictions by:
       - deferring server block updates into pending prediction state
       - resolving predictions on `BlockChangedAck`
+      - storing the prediction-start local player position
+      - snapping the local player back to that position when a rejected ack
+        restores a colliding block, matching vanilla `ClientLevel.syncBlockState`
   - Completion requires full vanilla movement and these flows to work through
     encoded serverbound packets end to end.
 

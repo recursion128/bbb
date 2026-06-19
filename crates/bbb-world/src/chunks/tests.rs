@@ -7,6 +7,7 @@ use crate::{
     TerrainMaterialClass, WorldDimension, WorldStore,
 };
 
+use crate::LocalPlayerPoseState;
 use bbb_protocol::codec::Encoder;
 use bbb_protocol::packets::{
     BlockChangedAck as ProtocolBlockChangedAck, BlockEntityData as ProtocolBlockEntityData,
@@ -16,7 +17,7 @@ use bbb_protocol::packets::{
     LevelChunkWithLight, LightUpdate as ProtocolLightUpdate,
     LightUpdateData as ProtocolLightUpdateData, SectionBlocksUpdate as ProtocolSectionBlocksUpdate,
     SetChunkCacheCenter as ProtocolSetChunkCacheCenter,
-    SetChunkCacheRadius as ProtocolSetChunkCacheRadius,
+    SetChunkCacheRadius as ProtocolSetChunkCacheRadius, Vec3d as ProtocolVec3d,
 };
 
 mod terrain;
@@ -433,6 +434,96 @@ fn local_destroy_prediction_defers_server_block_update_until_ack() {
         1
     );
     assert_eq!(store.counters().local_block_predictions_tracked, 0);
+}
+
+#[test]
+fn local_destroy_prediction_rejected_ack_snaps_colliding_player_to_prediction_position() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    let predicted_position = ProtocolVec3d {
+        x: 34.5,
+        y: 2.0,
+        z: -44.5,
+    };
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: predicted_position,
+        ..LocalPlayerPoseState::default()
+    });
+
+    assert!(store.predict_local_destroy_block(pos, 7));
+    assert_eq!(
+        store.local_block_predictions()[0].player_position,
+        Some(predicted_position)
+    );
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 34.5,
+            y: 1.2,
+            z: -44.5,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 7 });
+
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 9);
+    assert_eq!(
+        store.local_player_pose().unwrap().position,
+        predicted_position
+    );
+}
+
+#[test]
+fn local_destroy_prediction_rejected_ack_keeps_non_colliding_player_position() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let pos = BlockPos {
+        x: 34,
+        y: 1,
+        z: -45,
+    };
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 34.5,
+            y: 2.0,
+            z: -44.5,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    assert!(store.predict_local_destroy_block(pos, 7));
+
+    let non_colliding_position = ProtocolVec3d {
+        x: 36.5,
+        y: 1.2,
+        z: -44.5,
+    };
+    store.set_local_player_pose(LocalPlayerPoseState {
+        position: non_colliding_position,
+        ..LocalPlayerPoseState::default()
+    });
+
+    store.apply_block_changed_ack(ProtocolBlockChangedAck { sequence: 7 });
+
+    assert_eq!(store.probe_block(pos).unwrap().block_state_id, 9);
+    assert_eq!(
+        store.local_player_pose().unwrap().position,
+        non_colliding_position
+    );
 }
 
 #[test]

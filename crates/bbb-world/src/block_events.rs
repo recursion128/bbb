@@ -1,6 +1,6 @@
 use bbb_protocol::packets::{
     BlockChangedAck as ProtocolBlockChangedAck, BlockDestruction as ProtocolBlockDestruction,
-    BlockEvent as ProtocolBlockEvent, LevelEvent as ProtocolLevelEvent,
+    BlockEvent as ProtocolBlockEvent, LevelEvent as ProtocolLevelEvent, Vec3d as ProtocolVec3d,
 };
 use serde::{Deserialize, Serialize};
 
@@ -39,12 +39,14 @@ pub struct BlockChangedAckState {
     pub sequence: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct LocalBlockPredictionState {
     pub sequence: i32,
     pub pos: BlockPos,
     pub server_block_state_id: i32,
     pub predicted_block_state_id: i32,
+    #[serde(default)]
+    pub player_position: Option<ProtocolVec3d>,
 }
 
 impl WorldStore {
@@ -169,6 +171,7 @@ impl WorldStore {
         pos: BlockPos,
         server_block_state_id: i32,
         predicted_block_state_id: i32,
+        player_position: Option<ProtocolVec3d>,
     ) {
         self.local_block_predictions
             .retain(|prediction| prediction.sequence != sequence && prediction.pos != pos);
@@ -178,6 +181,7 @@ impl WorldStore {
                 pos,
                 server_block_state_id,
                 predicted_block_state_id,
+                player_position,
             });
         self.local_block_predictions
             .sort_by_key(|prediction| prediction.sequence);
