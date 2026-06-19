@@ -1232,8 +1232,10 @@ When an agent does any of the following, update this file in the same slice:
           - banner preview
           - max-pattern error overlay
       - MerchantMenu:
-        - result-slot pickup and quick-move paths are kept server-authoritative
-          until:
+        - payment slots quick-move back to the player inventory
+        - player inventory/hotbar quick-move range movement
+        - result-slot pickup/quick-move and trade-row payment autofill are kept
+          server-authoritative until:
           - payment slot routing from `MerchantOffer` costs
           - result prediction
           - input consumption
