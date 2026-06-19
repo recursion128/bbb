@@ -3,17 +3,19 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use anyhow::{Context, Result};
 use bbb_pack::{
     AtlasImage, AtlasLayout, AtlasPacker, AtlasSprite, FreezeImmuneWearableCatalog,
-    FurnaceFuelCatalog, ItemCuboidModel, ItemCuboidModelCatalog, ItemCuboidModelSet,
-    ItemCuboidTextureImageCatalog, ItemEquipmentSlot as PackItemEquipmentSlot,
-    ItemMiningProfile as PackItemMiningProfile, ItemMiningRule as PackItemMiningRule,
-    ItemModelCatalog, ItemModelDefinition, ItemRegistryCatalog, ItemTintSource, LanguageCatalog,
-    PackRoots, SpriteImage, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
+    FurnaceFuelCatalog, ItemAttackRange as PackItemAttackRange, ItemCuboidModel,
+    ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
+    ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
+    ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
+    ItemRegistryCatalog, ItemTintSource, LanguageCatalog, PackRoots, SpriteImage, TerrainColorMaps,
+    DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
 };
 use bbb_world::{
-    ItemEquipmentSlot as WorldItemEquipmentSlot, WorldItemMiningProfile, WorldItemMiningRule,
+    ItemAttackRange as WorldItemAttackRange, ItemEquipmentSlot as WorldItemEquipmentSlot,
+    WorldItemMiningProfile, WorldItemMiningRule,
 };
 
 mod icon_model;
@@ -268,6 +270,24 @@ impl NativeItemRuntime {
 
     pub(crate) fn default_piercing_weapon_item_count(&self) -> usize {
         self.default_piercing_weapon_item_ids_by_protocol_id().len()
+    }
+
+    pub(crate) fn item_attack_ranges_by_protocol_id(&self) -> BTreeMap<i32, WorldItemAttackRange> {
+        let mut ranges = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return ranges;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(range) = registry.default_attack_range(resource_id) else {
+                continue;
+            };
+            ranges.insert(protocol_id as i32, world_item_attack_range(range));
+        }
+        ranges
+    }
+
+    pub(crate) fn item_attack_range_count(&self) -> usize {
+        self.item_attack_ranges_by_protocol_id().len()
     }
 
     pub(crate) fn item_mining_profiles_by_protocol_id(
@@ -668,6 +688,17 @@ fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentS
         PackItemEquipmentSlot::Head => WorldItemEquipmentSlot::Head,
         PackItemEquipmentSlot::Body => WorldItemEquipmentSlot::Body,
         PackItemEquipmentSlot::Saddle => WorldItemEquipmentSlot::Saddle,
+    }
+}
+
+fn world_item_attack_range(range: PackItemAttackRange) -> WorldItemAttackRange {
+    WorldItemAttackRange {
+        min_reach: range.min_reach,
+        max_reach: range.max_reach,
+        min_creative_reach: range.min_creative_reach,
+        max_creative_reach: range.max_creative_reach,
+        hitbox_margin: range.hitbox_margin,
+        mob_factor: range.mob_factor,
     }
 }
 

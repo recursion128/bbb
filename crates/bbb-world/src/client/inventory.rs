@@ -1,6 +1,7 @@
 use bbb_protocol::packets::{
-    ContainerClick as ProtocolContainerClick, ContainerClose as ProtocolContainerClose,
-    ContainerInput as ProtocolContainerInput, ContainerSetContent as ProtocolContainerSetContent,
+    AttackRangeSummary as ProtocolAttackRangeSummary, ContainerClick as ProtocolContainerClick,
+    ContainerClose as ProtocolContainerClose, ContainerInput as ProtocolContainerInput,
+    ContainerSetContent as ProtocolContainerSetContent,
     ContainerSetData as ProtocolContainerSetData, ContainerSetSlot as ProtocolContainerSetSlot,
     DataComponentPatchSummary as ProtocolDataComponentPatchSummary,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
@@ -95,6 +96,7 @@ const INVENTORY_MENU_HOTBAR_START: i16 = 36;
 const INVENTORY_MENU_HOTBAR_END: i16 = 45;
 const INVENTORY_MENU_OFFHAND_SLOT: i16 = 45;
 const VANILLA_MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
+const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
 const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
@@ -145,6 +147,29 @@ pub enum ItemEquipmentSlot {
     Body,
     Saddle,
 }
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ItemAttackRange {
+    pub min_reach: f32,
+    pub max_reach: f32,
+    pub min_creative_reach: f32,
+    pub max_creative_reach: f32,
+    pub hitbox_margin: f32,
+    pub mob_factor: f32,
+}
+
+impl PartialEq for ItemAttackRange {
+    fn eq(&self, other: &Self) -> bool {
+        self.min_reach.to_bits() == other.min_reach.to_bits()
+            && self.max_reach.to_bits() == other.max_reach.to_bits()
+            && self.min_creative_reach.to_bits() == other.min_creative_reach.to_bits()
+            && self.max_creative_reach.to_bits() == other.max_creative_reach.to_bits()
+            && self.hitbox_margin.to_bits() == other.hitbox_margin.to_bits()
+            && self.mob_factor.to_bits() == other.mob_factor.to_bits()
+    }
+}
+
+impl Eq for ItemAttackRange {}
 
 impl Default for HotbarItemState {
     fn default() -> Self {
@@ -769,6 +794,16 @@ impl WorldStore {
             })
     }
 
+    pub fn local_selected_main_hand_attack_range(&self) -> Option<ItemAttackRange> {
+        let selected_slot = self.local_player.selected_hotbar_slot;
+        if selected_slot > 8 {
+            return None;
+        }
+
+        self.local_player_inventory_item(i32::from(selected_slot))
+            .and_then(|item| item_stack_attack_range(item, &self.default_item_attack_ranges))
+    }
+
     pub fn drop_local_selected_hotbar_item(&mut self, all: bool) -> bool {
         let selected_slot = self.local_player.selected_hotbar_slot;
         if selected_slot > 8 {
@@ -882,6 +917,16 @@ impl WorldStore {
         self.default_piercing_weapon_item_ids = item_ids
             .into_iter()
             .filter(|item_id| *item_id >= 0)
+            .collect();
+    }
+
+    pub fn set_default_item_attack_ranges(
+        &mut self,
+        attack_ranges: BTreeMap<i32, ItemAttackRange>,
+    ) {
+        self.default_item_attack_ranges = attack_ranges
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
             .collect();
     }
 
@@ -1519,6 +1564,38 @@ fn item_stack_has_piercing_weapon(
             .component_patch
             .added_type_ids
             .contains(&VANILLA_PIERCING_WEAPON_COMPONENT_ID)
+}
+
+fn item_stack_attack_range(
+    stack: &ProtocolItemStackSummary,
+    default_item_attack_ranges: &BTreeMap<i32, ItemAttackRange>,
+) -> Option<ItemAttackRange> {
+    if item_stack_is_empty(stack)
+        || stack
+            .component_patch
+            .removed_type_ids
+            .contains(&VANILLA_ATTACK_RANGE_COMPONENT_ID)
+    {
+        return None;
+    }
+
+    if let Some(attack_range) = stack.component_patch.attack_range {
+        return Some(item_attack_range_from_protocol(attack_range));
+    }
+
+    let item_id = stack.item_id.filter(|item_id| *item_id >= 0)?;
+    default_item_attack_ranges.get(&item_id).copied()
+}
+
+fn item_attack_range_from_protocol(attack_range: ProtocolAttackRangeSummary) -> ItemAttackRange {
+    ItemAttackRange {
+        min_reach: attack_range.min_reach,
+        max_reach: attack_range.max_reach,
+        min_creative_reach: attack_range.min_creative_reach,
+        max_creative_reach: attack_range.max_creative_reach,
+        hitbox_margin: attack_range.hitbox_margin,
+        mob_factor: attack_range.mob_factor,
+    }
 }
 
 fn component_patch_can_be_hashed_from_summary(patch: &ProtocolDataComponentPatchSummary) -> bool {
@@ -3655,6 +3732,113 @@ mod tests {
         assert!(store.local_selected_main_hand_has_piercing_weapon());
         assert!(store.set_local_selected_hotbar_slot(1));
         assert!(!store.local_selected_main_hand_has_piercing_weapon());
+    }
+
+    #[test]
+    fn local_selected_main_hand_attack_range_reads_default_and_patch_components() {
+        let mut store = WorldStore::new();
+        let default_range = item_attack_range(2.0, 4.5);
+        let patch_range = ProtocolAttackRangeSummary {
+            min_reach: 1.0,
+            max_reach: 2.25,
+            min_creative_reach: 1.0,
+            max_creative_reach: 3.0,
+            hitbox_margin: 0.25,
+            mob_factor: 0.75,
+        };
+        store.set_default_item_attack_ranges(BTreeMap::from([
+            (-1, default_range),
+            (42, default_range),
+        ]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+
+        assert_eq!(
+            store.local_selected_main_hand_attack_range(),
+            Some(default_range)
+        );
+
+        let mut patched = item_stack(99, 1);
+        patched.component_patch.added = 1;
+        patched.component_patch.added_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+        patched.component_patch.attack_range = Some(patch_range);
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: patched,
+        });
+
+        assert_eq!(
+            store.local_selected_main_hand_attack_range(),
+            Some(ItemAttackRange {
+                min_reach: 1.0,
+                max_reach: 2.25,
+                min_creative_reach: 1.0,
+                max_creative_reach: 3.0,
+                hitbox_margin: 0.25,
+                mob_factor: 0.75,
+            })
+        );
+    }
+
+    #[test]
+    fn local_selected_main_hand_attack_range_removed_component_overrides_default_and_added() {
+        let mut store = WorldStore::new();
+        store.set_default_item_attack_ranges(BTreeMap::from([(42, item_attack_range(2.0, 4.5))]));
+        let mut item = item_stack(42, 1);
+        item.component_patch.added = 1;
+        item.component_patch.added_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+        item.component_patch.attack_range = Some(ProtocolAttackRangeSummary {
+            min_reach: 1.0,
+            max_reach: 2.25,
+            min_creative_reach: 1.0,
+            max_creative_reach: 3.0,
+            hitbox_margin: 0.25,
+            mob_factor: 0.75,
+        });
+        item.component_patch.removed_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory { slot: 0, item });
+
+        assert_eq!(store.local_selected_main_hand_attack_range(), None);
+    }
+
+    #[test]
+    fn local_selected_main_hand_attack_range_respects_empty_invalid_and_selected_slot() {
+        let mut store = WorldStore::new();
+        store.set_default_item_attack_ranges(BTreeMap::from([
+            (-1, item_attack_range(2.0, 4.5)),
+            (42, item_attack_range(2.0, 4.5)),
+        ]));
+
+        assert_eq!(store.local_selected_main_hand_attack_range(), None);
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 0),
+        });
+        assert_eq!(store.local_selected_main_hand_attack_range(), None);
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(-1, 1),
+        });
+        assert_eq!(store.local_selected_main_hand_attack_range(), None);
+
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 1,
+            item: item_stack(99, 1),
+        });
+        assert_eq!(
+            store.local_selected_main_hand_attack_range(),
+            Some(item_attack_range(2.0, 4.5))
+        );
+        assert!(store.set_local_selected_hotbar_slot(1));
+        assert_eq!(store.local_selected_main_hand_attack_range(), None);
     }
 
     #[test]
@@ -7636,6 +7820,17 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn item_attack_range(min_reach: f32, max_reach: f32) -> ItemAttackRange {
+        ItemAttackRange {
+            min_reach,
+            max_reach,
+            min_creative_reach: min_reach,
+            max_creative_reach: max_reach,
+            hitbox_margin: 0.125,
+            mob_factor: 1.0,
         }
     }
 

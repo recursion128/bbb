@@ -26,7 +26,7 @@ pub use crate::item_models::{
     ItemTintSource, RangeDispatchEntry, SelectCase,
 };
 pub use crate::item_registry::{
-    ItemEquipmentSlot, ItemMiningProfile, ItemMiningRule, ItemRegistryCatalog,
+    ItemAttackRange, ItemEquipmentSlot, ItemMiningProfile, ItemMiningRule, ItemRegistryCatalog,
 };
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};

@@ -28,9 +28,9 @@ pub use crate::client::hud::{
 };
 pub use crate::client::inventory::{
     ContainerClickBuildError, ContainerClickSlotRequest, ContainerDataValue, ContainerSlot,
-    ContainerState, HotbarItemState, InventorySlot, InventoryState, ItemEquipmentSlot,
-    MerchantOfferState, MerchantOffersState, MountArmorSlotKind, MountEquipmentSlotVisibility,
-    MountInventoryKind,
+    ContainerState, HotbarItemState, InventorySlot, InventoryState, ItemAttackRange,
+    ItemEquipmentSlot, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
+    MountEquipmentSlotVisibility, MountInventoryKind,
 };
 pub use crate::client::local_player::{
     CameraState, DefaultSpawnState, LocalPlayerAbilitiesState, LocalPlayerExperienceState,

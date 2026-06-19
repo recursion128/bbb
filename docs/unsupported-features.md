@@ -403,6 +403,16 @@ When an agent does any of the following, update this file in the same slice:
       - Spectator right-click without a target does not send `UseItem`.
       - Spectator right-click on a block sends main-hand `UseItemOn` even when
         offhand would be preferred for non-spectator item use.
+      - Main-hand `attack_range` item components:
+        - are decoded from network item patches
+        - are parsed from official 26.1 default item declarations
+        - suppress out-of-range `AttackEntity` packets for the current entity
+          hit
+        - still need full vanilla `AttackRange.getClosesetHit` raycast parity:
+          - custom min/max reach ray origins
+          - block clipping before entity hits
+          - movement-extended max reach
+          - renderer-visible target updates for extended custom ranges
   - Inventory:
     - Implement:
       - remaining rich tooltip behavior:

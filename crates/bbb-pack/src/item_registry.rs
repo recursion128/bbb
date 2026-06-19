@@ -48,8 +48,33 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_piercing_weapon_ids: BTreeSet<String>,
     #[serde(default)]
+    default_attack_ranges: BTreeMap<String, ItemAttackRange>,
+    #[serde(default)]
     mining_profiles: BTreeMap<String, ItemMiningProfile>,
 }
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ItemAttackRange {
+    pub min_reach: f32,
+    pub max_reach: f32,
+    pub min_creative_reach: f32,
+    pub max_creative_reach: f32,
+    pub hitbox_margin: f32,
+    pub mob_factor: f32,
+}
+
+impl PartialEq for ItemAttackRange {
+    fn eq(&self, other: &Self) -> bool {
+        self.min_reach.to_bits() == other.min_reach.to_bits()
+            && self.max_reach.to_bits() == other.max_reach.to_bits()
+            && self.min_creative_reach.to_bits() == other.min_creative_reach.to_bits()
+            && self.max_creative_reach.to_bits() == other.max_creative_reach.to_bits()
+            && self.hitbox_margin.to_bits() == other.hitbox_margin.to_bits()
+            && self.mob_factor.to_bits() == other.mob_factor.to_bits()
+    }
+}
+
+impl Eq for ItemAttackRange {}
 
 impl ItemRegistryCatalog {
     pub fn load(roots: &PackRoots) -> Result<Self> {
@@ -117,6 +142,7 @@ impl ItemRegistryCatalog {
         let mut max_stack_size = BTreeMap::new();
         let mut default_equipment_slots = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
+        let mut default_attack_ranges = BTreeMap::new();
         let mut mining_profiles = BTreeMap::new();
         for capture in declaration.captures_iter(source) {
             let kind = capture.get(1).unwrap().as_str();
@@ -126,6 +152,7 @@ impl ItemRegistryCatalog {
             let stack_size = max_stack_size_for_declaration(expression)?;
             let equipment_slot = equipment_slot_for_declaration(expression)?;
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
+            let default_attack_range = default_attack_range_for_declaration(expression)?;
             let mining_profile = mining_profile_for_declaration(expression, block_tags)?;
             if let Some(durability) = durability_for_declaration(expression)? {
                 for resource_id in &ids {
@@ -139,6 +166,9 @@ impl ItemRegistryCatalog {
                 }
                 if default_piercing_weapon {
                     default_piercing_weapon_ids.insert(resource_id.clone());
+                }
+                if let Some(default_attack_range) = default_attack_range {
+                    default_attack_ranges.insert(resource_id.clone(), default_attack_range);
                 }
                 if let Some(profile) = &mining_profile {
                     mining_profiles.insert(resource_id.clone(), profile.clone());
@@ -168,6 +198,7 @@ impl ItemRegistryCatalog {
             max_stack_size,
             default_equipment_slots,
             default_piercing_weapon_ids,
+            default_attack_ranges,
             mining_profiles,
         })
     }
@@ -215,6 +246,11 @@ impl ItemRegistryCatalog {
             .iter()
             .filter_map(|resource_id| self.protocol_ids.get(resource_id).copied())
             .collect()
+    }
+
+    pub fn default_attack_range(&self, resource_id: &str) -> Option<ItemAttackRange> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_attack_ranges.get(&resource_id).copied()
     }
 
     pub fn mining_profile(&self, resource_id: &str) -> Option<&ItemMiningProfile> {
@@ -377,6 +413,36 @@ fn equipment_slot_for_declaration(expression: &str) -> Result<Option<ItemEquipme
 
 fn default_piercing_weapon_for_declaration(expression: &str) -> bool {
     expression.contains(".spear(")
+}
+
+fn default_attack_range_for_declaration(expression: &str) -> Result<Option<ItemAttackRange>> {
+    if expression.contains(".spear(") {
+        return Ok(Some(ItemAttackRange {
+            min_reach: 2.0,
+            max_reach: 4.5,
+            min_creative_reach: 2.0,
+            max_creative_reach: 6.5,
+            hitbox_margin: 0.125,
+            mob_factor: 0.5,
+        }));
+    }
+
+    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
+    let pattern = format!(
+        r#"(?s)\.component\(\s*DataComponents\.ATTACK_RANGE\s*,\s*new\s+AttackRange\(\s*({float})\s*,\s*({float})\s*,\s*({float})\s*,\s*({float})\s*,\s*({float})\s*,\s*({float})\s*\)\s*\)"#
+    );
+    let regex = Regex::new(&pattern)?;
+    let Some(capture) = regex.captures(expression) else {
+        return Ok(None);
+    };
+    Ok(Some(ItemAttackRange {
+        min_reach: parse_java_float_literal(capture.get(1).unwrap().as_str())?,
+        max_reach: parse_java_float_literal(capture.get(2).unwrap().as_str())?,
+        min_creative_reach: parse_java_float_literal(capture.get(3).unwrap().as_str())?,
+        max_creative_reach: parse_java_float_literal(capture.get(4).unwrap().as_str())?,
+        hitbox_margin: parse_java_float_literal(capture.get(5).unwrap().as_str())?,
+        mob_factor: parse_java_float_literal(capture.get(6).unwrap().as_str())?,
+    }))
 }
 
 fn mining_profile_for_declaration(
@@ -593,6 +659,10 @@ fn optional_capture(pattern: &str, expression: &str) -> Result<Option<String>> {
         .map(|capture| capture.as_str().to_string()))
 }
 
+fn parse_java_float_literal(value: &str) -> Result<f32> {
+    value.trim_end_matches('F').parse().map_err(Into::into)
+}
+
 fn minecraft_id(path: &str) -> Result<String> {
     ResourceLocation::new("minecraft", path).map(|location| location.id())
 }
@@ -693,6 +763,37 @@ mod tests {
         }))
         .unwrap();
         assert!(decoded.default_piercing_weapon_protocol_ids().is_empty());
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_default_attack_range() {
+        let source = r#"
+            public class Items {
+               public static final Item WOODEN_SPEAR = registerItem(
+                  "wooden_spear",
+                  new Item.Properties()
+                     .spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
+                     .component(DataComponents.ATTACK_RANGE, new AttackRange(2.0F, 4.5F, 2.0F, 6.5F, 0.125F, 0.5F))
+               );
+               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+
+        assert_eq!(
+            catalog.default_attack_range("minecraft:wooden_spear"),
+            Some(ItemAttackRange {
+                min_reach: 2.0,
+                max_reach: 4.5,
+                min_creative_reach: 2.0,
+                max_creative_reach: 6.5,
+                hitbox_margin: 0.125,
+                mob_factor: 0.5,
+            })
+        );
+        assert_eq!(catalog.default_attack_range("minecraft:iron_sword"), None);
     }
 
     #[test]
@@ -933,6 +1034,21 @@ mod tests {
         assert_eq!(catalog.max_stack_size("minecraft:ender_pearl"), Some(16));
         assert_eq!(catalog.max_stack_size("minecraft:diamond_sword"), Some(1));
         assert_eq!(catalog.max_stack_size("minecraft:diamond_shovel"), Some(1));
+        assert_eq!(
+            catalog.default_attack_range("minecraft:wooden_spear"),
+            Some(ItemAttackRange {
+                min_reach: 2.0,
+                max_reach: 4.5,
+                min_creative_reach: 2.0,
+                max_creative_reach: 6.5,
+                hitbox_margin: 0.125,
+                mob_factor: 0.5,
+            })
+        );
+        assert_eq!(
+            catalog.default_attack_range("minecraft:diamond_sword"),
+            None
+        );
         assert!(catalog
             .mining_profile("minecraft:diamond_pickaxe")
             .is_some());

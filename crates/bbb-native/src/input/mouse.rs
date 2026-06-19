@@ -3,7 +3,10 @@ use bbb_net::NetCommand;
 use bbb_protocol::packets::{
     Direction as ProtocolDirection, InteractionHand, PlayerActionKind, SpectateEntity,
 };
-use bbb_world::{BlockPos as WorldBlockPos, LocalDestroyBlockFinished, WorldStore};
+use bbb_world::{
+    BlockPos as WorldBlockPos, ItemAttackRange, LocalDestroyBlockFinished, LocalPlayerPoseState,
+    WorldStore,
+};
 use tokio::sync::mpsc;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 
@@ -100,7 +103,9 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
             input.destroy_block_held = true;
             match camera_target {
                 Some(CrosshairTarget::Entity(hit)) => {
-                    queue_attack_entity_command(counters, net_commands, hit.entity_id);
+                    if selected_attack_range_allows_entity_hit(world, player_pose, hit) {
+                        queue_attack_entity_command(counters, net_commands, hit.entity_id);
+                    }
                 }
                 Some(CrosshairTarget::Block(hit)) => {
                     if block_target_within_world_border(world, hit.pos) {
@@ -312,6 +317,53 @@ fn entity_target_within_world_border(world: &WorldStore, hit: CrosshairEntityHit
 
 fn block_target_within_world_border(world: &WorldStore, pos: WorldBlockPos) -> bool {
     world.world_border().contains_block_pos(pos)
+}
+
+fn selected_attack_range_allows_entity_hit(
+    world: &WorldStore,
+    player_pose: Option<LocalPlayerPoseState>,
+    hit: CrosshairEntityHit,
+) -> bool {
+    let Some(attack_range) = world.local_selected_main_hand_attack_range() else {
+        return true;
+    };
+    let Some(player_pose) = player_pose else {
+        return false;
+    };
+    attack_range_contains_hit(
+        attack_range,
+        local_player_eye(player_pose),
+        hit.location,
+        world,
+    )
+}
+
+fn attack_range_contains_hit(
+    attack_range: ItemAttackRange,
+    eye: bbb_protocol::packets::Vec3d,
+    hit: bbb_protocol::packets::Vec3d,
+    world: &WorldStore,
+) -> bool {
+    let distance =
+        ((hit.x - eye.x).powi(2) + (hit.y - eye.y).powi(2) + (hit.z - eye.z).powi(2)).sqrt();
+    let (min_reach, max_reach) = if local_player_instabuild(world) {
+        (
+            attack_range.min_creative_reach,
+            attack_range.max_creative_reach,
+        )
+    } else {
+        (attack_range.min_reach, attack_range.max_reach)
+    };
+    distance >= f64::from(min_reach - attack_range.hitbox_margin)
+        && distance <= f64::from(max_reach + attack_range.hitbox_margin)
+}
+
+fn local_player_eye(player_pose: LocalPlayerPoseState) -> bbb_protocol::packets::Vec3d {
+    bbb_protocol::packets::Vec3d {
+        x: player_pose.position.x,
+        y: player_pose.position.y + player_pose.eye_height(),
+        z: player_pose.position.z,
+    }
 }
 
 pub(crate) fn advance_destroying_block_at_partial_tick(
@@ -576,7 +628,7 @@ fn scroll_signum(value: f64) -> f64 {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, AttackEntity, BlockHitResult as ProtocolBlockHitResult,
+        AddEntity, AttackEntity, AttackRangeSummary, BlockHitResult as ProtocolBlockHitResult,
         BlockPos as ProtocolBlockPos, BlockUpdate, GameEvent as ProtocolGameEvent,
         InitializeBorder, InteractEntity, ItemStackSummary as ProtocolItemStackSummary,
         OpenSignEditor, PickItemFromBlock, PickItemFromEntity, PlayerAbilities, PlayerAction,
@@ -596,6 +648,7 @@ mod tests {
     const VANILLA_ENTITY_TYPE_AXOLOTL_ID: i32 = 7;
     const VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID: i32 = 43;
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
+    const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
     const VANILLA_PLAYER_OFFHAND_SLOT: i32 = 40;
     const VANILLA_WORLD_BORDER_ABSOLUTE_MAX_SIZE: i32 = 29_999_984;
 
@@ -949,6 +1002,38 @@ mod tests {
             rx.try_recv().unwrap(),
             NetCommand::Swing(InteractionHand::MainHand)
         );
+    }
+
+    #[test]
+    fn left_mouse_press_on_entity_outside_selected_attack_range_swings_without_attack() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_entity(123);
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack_with_attack_range(42, 1, 0.0, 1.0),
+        });
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert!(input.destroy_block_held);
+        assert_eq!(counters.attack_entity_commands_queued, 0);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+        assert!(rx.try_recv().is_err());
     }
 
     #[test]
@@ -2641,6 +2726,26 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn item_stack_with_attack_range(
+        item_id: i32,
+        count: i32,
+        min_reach: f32,
+        max_reach: f32,
+    ) -> ProtocolItemStackSummary {
+        let mut stack = item_stack(item_id, count);
+        stack.component_patch.added = 1;
+        stack.component_patch.added_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+        stack.component_patch.attack_range = Some(AttackRangeSummary {
+            min_reach,
+            max_reach,
+            min_creative_reach: min_reach,
+            max_creative_reach: max_reach,
+            hitbox_margin: 0.0,
+            mob_factor: 1.0,
+        });
+        stack
     }
 
     fn set_selected_piercing_weapon(world: &mut WorldStore, item_id: i32) {

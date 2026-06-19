@@ -52,6 +52,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub use_cooldown_group: Option<String>,
     #[serde(default)]
+    pub attack_range: Option<AttackRangeSummary>,
+    #[serde(default)]
     pub custom_model_data_colors: Vec<i32>,
     #[serde(default)]
     pub dyed_color: Option<i32>,
@@ -76,6 +78,29 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub written_book: Option<WrittenBookContentSummary>,
 }
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct AttackRangeSummary {
+    pub min_reach: f32,
+    pub max_reach: f32,
+    pub min_creative_reach: f32,
+    pub max_creative_reach: f32,
+    pub hitbox_margin: f32,
+    pub mob_factor: f32,
+}
+
+impl PartialEq for AttackRangeSummary {
+    fn eq(&self, other: &Self) -> bool {
+        self.min_reach.to_bits() == other.min_reach.to_bits()
+            && self.max_reach.to_bits() == other.max_reach.to_bits()
+            && self.min_creative_reach.to_bits() == other.min_creative_reach.to_bits()
+            && self.max_creative_reach.to_bits() == other.max_creative_reach.to_bits()
+            && self.hitbox_margin.to_bits() == other.hitbox_margin.to_bits()
+            && self.mob_factor.to_bits() == other.mob_factor.to_bits()
+    }
+}
+
+impl Eq for AttackRangeSummary {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemEnchantmentSummary {
@@ -200,6 +225,9 @@ fn decode_typed_data_component_patch_summary(
                 let cooldown = decode_use_cooldown_summary(decoder)?;
                 summary.use_cooldown_ticks = Some(cooldown.ticks);
                 summary.use_cooldown_group = cooldown.cooldown_group;
+            }
+            30 => {
+                summary.attack_range = Some(decode_attack_range_summary(decoder)?);
             }
             17 => {
                 summary.custom_model_data_colors = decode_custom_model_data(decoder)?;
@@ -782,10 +810,19 @@ fn decode_weapon(decoder: &mut Decoder<'_>) -> Result<()> {
 }
 
 fn decode_attack_range(decoder: &mut Decoder<'_>) -> Result<()> {
-    for _ in 0..6 {
-        decoder.read_f32()?;
-    }
+    let _ = decode_attack_range_summary(decoder)?;
     Ok(())
+}
+
+fn decode_attack_range_summary(decoder: &mut Decoder<'_>) -> Result<AttackRangeSummary> {
+    Ok(AttackRangeSummary {
+        min_reach: decoder.read_f32()?,
+        max_reach: decoder.read_f32()?,
+        min_creative_reach: decoder.read_f32()?,
+        max_creative_reach: decoder.read_f32()?,
+        hitbox_margin: decoder.read_f32()?,
+        mob_factor: decoder.read_f32()?,
+    })
 }
 
 fn decode_death_protection(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1299,6 +1336,44 @@ mod tests {
                 item_name: Some("Item Name".to_string()),
                 lore: vec!["Lore one".to_string(), "Lore two".to_string()],
                 rarity: Some(ItemRaritySummary::Rare),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn decodes_attack_range_component_summary() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(30);
+        payload.write_f32(2.0);
+        payload.write_f32(4.5);
+        payload.write_f32(2.0);
+        payload.write_f32(6.5);
+        payload.write_f32(0.125);
+        payload.write_f32(0.5);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![30],
+                removed_type_ids: Vec::new(),
+                attack_range: Some(AttackRangeSummary {
+                    min_reach: 2.0,
+                    max_reach: 4.5,
+                    min_creative_reach: 2.0,
+                    max_creative_reach: 6.5,
+                    hitbox_margin: 0.125,
+                    mob_factor: 0.5,
+                }),
                 ..DataComponentPatchSummary::default()
             }
         );
@@ -1948,6 +2023,14 @@ mod tests {
                 map_color: Some(0x445566),
                 use_cooldown_ticks: Some(25),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                attack_range: Some(AttackRangeSummary {
+                    min_reach: 0.0,
+                    max_reach: 3.0,
+                    min_creative_reach: 0.0,
+                    max_creative_reach: 5.0,
+                    hitbox_margin: 0.3,
+                    mob_factor: 1.0,
+                }),
                 potion_custom_color: Some(0x778899),
                 firework_explosion_colors: vec![0x010203, 0x040506],
                 writable_book_pages: vec!["raw page".to_string()],
