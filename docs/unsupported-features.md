@@ -433,6 +433,9 @@ When an agent does any of the following, update this file in the same slice:
         - `minecraft:honey_block` applies `0.5` to the base jump strength
         - Jump Boost remains additive after the block jump factor
       - jumps only from ground
+      - vanilla sprint jump horizontal impulse:
+        - adds `0.2` horizontal velocity in the local yaw forward direction
+        - uses the same effective sprint predicate as local movement
       - local player `movement_speed` / `sneaking_speed` attributes with the
         vanilla default sneaking-speed reduction
       - synced local player Speed effect id `0` and Slowness effect id `1`

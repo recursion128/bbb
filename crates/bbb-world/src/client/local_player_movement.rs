@@ -91,6 +91,7 @@ const SLOW_BLOCK_SPEED_FACTOR: f64 = 0.4;
 const DEFAULT_BLOCK_SPEED_FACTOR: f64 = 1.0;
 const HONEY_BLOCK_JUMP_FACTOR: f64 = 0.5;
 const DEFAULT_BLOCK_JUMP_FACTOR: f64 = 1.0;
+const SPRINT_JUMP_HORIZONTAL_IMPULSE: f64 = 0.2;
 
 pub(super) fn integrate_local_player_input_pose(
     world: &WorldStore,
@@ -175,10 +176,14 @@ fn advance_local_player_physics_step(
         );
     }
 
+    let mut jump_horizontal_impulse = (0.0, 0.0);
     if flying.is_none() && input.focused && input.jump && pose.on_ground {
         let jump_velocity = local_player_jump_velocity(world, pose);
         if jump_velocity > 1.0e-5 {
             pose.delta_movement.y = pose.delta_movement.y.max(jump_velocity);
+            if input.sprint {
+                jump_horizontal_impulse = local_player_sprint_jump_horizontal_impulse(pose);
+            }
         }
     }
 
@@ -204,8 +209,8 @@ fn advance_local_player_physics_step(
         None => {
             let speed = local_player_horizontal_speed(world, pose, input);
             (
-                move_x * speed * step_seconds,
-                move_z * speed * step_seconds,
+                move_x * speed * step_seconds + jump_horizontal_impulse.0 * step_ticks,
+                move_z * speed * step_seconds + jump_horizontal_impulse.1 * step_ticks,
                 None,
             )
         }
@@ -1077,6 +1082,14 @@ fn local_player_jump_velocity(world: &WorldStore, pose: LocalPlayerPoseState) ->
         velocity += amplified_effect_amount(amplifier, JUMP_BOOST_VELOCITY_PER_LEVEL);
     }
     velocity
+}
+
+fn local_player_sprint_jump_horizontal_impulse(pose: LocalPlayerPoseState) -> (f64, f64) {
+    let yaw = f64::from(pose.y_rot).to_radians();
+    (
+        -yaw.sin() * SPRINT_JUMP_HORIZONTAL_IMPULSE,
+        yaw.cos() * SPRINT_JUMP_HORIZONTAL_IMPULSE,
+    )
 }
 
 fn local_player_block_jump_factor(world: &WorldStore, pose: LocalPlayerPoseState) -> f64 {
@@ -4094,6 +4107,76 @@ mod tests {
         assert_f64_near(pose.position.y, honey_top_y + expected_jump, 0.000001);
         assert!(!pose.on_ground);
         assert!(pose.delta_movement.y > 0.0);
+    }
+
+    #[test]
+    fn local_player_sprint_jump_adds_vanilla_horizontal_impulse() {
+        let mut world = flat_collision_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    jump: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_z = 0.5
+            + LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS
+            + SPRINT_JUMP_HORIZONTAL_IMPULSE;
+        assert_f64_near(
+            pose.position.y,
+            1.0 + LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE,
+            0.000001,
+        );
+        assert_f64_near(pose.position.z, expected_z, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_z - 0.5, 0.000001);
+        assert!(!pose.on_ground);
+    }
+
+    #[test]
+    fn local_player_ineligible_sprint_jump_does_not_add_horizontal_impulse() {
+        let mut world = flat_collision_world();
+        apply_player_health(&mut world, 6);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    jump: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_z =
+            0.5 + LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(
+            pose.position.y,
+            1.0 + LOCAL_INPUT_DEFAULT_JUMP_STRENGTH_ATTRIBUTE,
+            0.000001,
+        );
+        assert_f64_near(pose.position.z, expected_z, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_z - 0.5, 0.000001);
+        assert!(!pose.on_ground);
     }
 
     #[test]
