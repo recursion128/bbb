@@ -295,7 +295,6 @@ When an agent does any of the following, update this file in the same slice:
       - remaining vanilla voxel collision shapes
       - remaining fluid movement work beyond current still water/lava support:
         - swimming pose / sprint-swim camera and movement nuance
-        - bubble column behavior
       - remaining status-effect movement cases beyond local support for:
         - local Speed/Slowness movement-speed modifiers
         - local Jump Boost jump impulse
@@ -466,6 +465,16 @@ When an agent does any of the following, update this file in the same slice:
           - requires the probed bounds to be free of block collision and any
             fluid block
           - sets vertical velocity to `0.3` when clear
+        - `minecraft:bubble_column` local player velocity:
+          - reads vanilla `drag` block-state property
+          - inside upward columns add `0.06` Y velocity capped at `0.7`
+          - above upward columns add `0.1` Y velocity capped at `1.8`
+          - inside drag-down columns subtract `0.03` Y velocity capped at
+            `-0.3`
+          - above drag-down columns subtract `0.03` Y velocity capped at
+            `-0.9`
+          - players with flying abilities active ignore the bubble-column
+            push, matching vanilla `Player` overrides
       - vanilla-shaped flow current push for local players affected by fluids:
         - `FlowingFluid.getFlow` horizontal own-height gradients
         - empty-neighbor falling-hole lookup with the vanilla `8/9` offset

@@ -32,6 +32,10 @@ pub(super) fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBound
     false
 }
 
+pub(super) fn local_player_block_collision_is_empty(block: &BlockProbe) -> bool {
+    block_collision_shape(block).is_none()
+}
+
 fn block_collides_with_local_player_bounds(
     block: &BlockProbe,
     pos: BlockPos,

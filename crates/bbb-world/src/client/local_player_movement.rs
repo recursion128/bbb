@@ -2,13 +2,14 @@ use bbb_protocol::packets::Vec3d as ProtocolVec3d;
 
 use super::local_player::{LocalPlayerAbilitiesState, LocalPlayerInputState, LocalPlayerPoseState};
 use super::local_player_collision::{
-    local_player_collides, CollisionAxis as Axis, LocalPlayerBounds, COLLISION_EPSILON,
+    local_player_block_collision_is_empty, local_player_collides, CollisionAxis as Axis,
+    LocalPlayerBounds, COLLISION_EPSILON,
 };
 use super::local_player_fluid::{
     local_player_bounds_contains_any_fluid, local_player_fluid_contact,
     LocalPlayerFluidContactState,
 };
-use crate::WorldStore;
+use crate::{BlockPos, WorldStore};
 
 pub(super) const LOCAL_INPUT_MOUSE_SENSITIVITY_DEGREES: f32 = 0.12;
 pub(super) const LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND: f64 = 4.317;
@@ -58,6 +59,13 @@ const LOCAL_INPUT_FLUID_CURRENT_MIN_PUSH_PER_TICK: f64 = 0.0045;
 const LOCAL_INPUT_FLUID_CURRENT_MIN_HORIZONTAL_VELOCITY_PER_TICK: f64 = 0.003;
 const LOCAL_INPUT_FLUID_CURRENT_APPLY_THRESHOLD_SQUARED: f64 = 1.0e-5;
 const LOCAL_INPUT_FLUID_JUMP_OUT_VELOCITY_PER_TICK: f64 = 0.3;
+const LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_PER_TICK: f64 = 0.06;
+const LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_LIMIT: f64 = 0.7;
+const LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_PER_TICK: f64 = 0.1;
+const LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_LIMIT: f64 = 1.8;
+const LOCAL_INPUT_BUBBLE_COLUMN_DRAG_DOWN_PER_TICK: f64 = 0.03;
+const LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_DRAG_DOWN_LIMIT: f64 = -0.3;
+const LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_DRAG_DOWN_LIMIT: f64 = -0.9;
 const LOCAL_PLAYER_FLUID_JUMP_THRESHOLD: f64 = 0.4;
 const LOCAL_PLAYER_STEP_HEIGHT: f64 = 0.6;
 const SUPPORT_EPSILON: f64 = 1.0e-3;
@@ -344,6 +352,13 @@ fn advance_local_player_fluid_physics_step(
         pose.delta_movement,
         horizontal_collision,
     );
+    if let Some(contact) = local_player_bubble_column_contact(world, pose.position) {
+        pose.delta_movement =
+            local_player_bubble_column_velocity(pose.delta_movement, contact, step_ticks);
+        if matches!(contact, BubbleColumnContact::Inside { .. }) {
+            pose.fall_distance = 0.0;
+        }
+    }
 
     pose.on_ground = on_ground;
     pose.horizontal_collision = horizontal_collision;
@@ -408,6 +423,81 @@ fn local_player_jump_out_of_fluid_velocity(
     } else {
         velocity
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BubbleColumnContact {
+    Inside { drag_down: bool },
+    Above { drag_down: bool },
+}
+
+fn local_player_bubble_column_velocity(
+    mut velocity: ProtocolVec3d,
+    contact: BubbleColumnContact,
+    step_ticks: f64,
+) -> ProtocolVec3d {
+    velocity.y = match contact {
+        BubbleColumnContact::Inside { drag_down: true } => (velocity.y
+            - LOCAL_INPUT_BUBBLE_COLUMN_DRAG_DOWN_PER_TICK * step_ticks)
+            .max(LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_DRAG_DOWN_LIMIT),
+        BubbleColumnContact::Inside { drag_down: false } => (velocity.y
+            + LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_PER_TICK * step_ticks)
+            .min(LOCAL_INPUT_BUBBLE_COLUMN_INSIDE_PUSH_UP_LIMIT),
+        BubbleColumnContact::Above { drag_down: true } => (velocity.y
+            - LOCAL_INPUT_BUBBLE_COLUMN_DRAG_DOWN_PER_TICK * step_ticks)
+            .max(LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_DRAG_DOWN_LIMIT),
+        BubbleColumnContact::Above { drag_down: false } => (velocity.y
+            + LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_PER_TICK * step_ticks)
+            .min(LOCAL_INPUT_BUBBLE_COLUMN_ABOVE_PUSH_UP_LIMIT),
+    };
+    velocity
+}
+
+fn local_player_bubble_column_contact(
+    world: &WorldStore,
+    position: ProtocolVec3d,
+) -> Option<BubbleColumnContact> {
+    let bounds = LocalPlayerBounds::at(position);
+    let min_x = bounds.min_x().floor() as i32;
+    let max_x = bounds.max_x().ceil() as i32;
+    let min_y = bounds.min_y().floor() as i32;
+    let max_y = bounds.max_y().ceil() as i32;
+    let min_z = bounds.min_z().floor() as i32;
+    let max_z = bounds.max_z().ceil() as i32;
+    let mut inside = None;
+
+    for y in min_y..max_y {
+        for z in min_z..max_z {
+            for x in min_x..max_x {
+                let pos = BlockPos { x, y, z };
+                let Some(block) = world.probe_block(pos) else {
+                    continue;
+                };
+                if block.block_name.as_deref() != Some("minecraft:bubble_column") {
+                    continue;
+                }
+                let drag_down = block
+                    .block_properties
+                    .get("drag")
+                    .map_or(true, |value| value == "true");
+                if bubble_column_has_open_above(world, pos) {
+                    return Some(BubbleColumnContact::Above { drag_down });
+                }
+                inside = Some(BubbleColumnContact::Inside { drag_down });
+            }
+        }
+    }
+
+    inside
+}
+
+fn bubble_column_has_open_above(world: &WorldStore, pos: BlockPos) -> bool {
+    let Some(y) = pos.y.checked_add(1) else {
+        return false;
+    };
+    world
+        .probe_block(BlockPos { y, ..pos })
+        .is_some_and(|block| block.fluid.is_none() && local_player_block_collision_is_empty(&block))
 }
 
 fn local_player_lava_current_push_per_tick(world: &WorldStore) -> f64 {
@@ -937,6 +1027,8 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
+
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
         AttributeSnapshot as ProtocolAttributeSnapshot, MobEffectFlags as ProtocolMobEffectFlags,
@@ -2106,6 +2198,102 @@ mod tests {
     }
 
     #[test]
+    fn local_player_inside_upward_bubble_column_applies_vanilla_push() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, bubble_column_block_state_id(false));
+        set_test_block(&mut world, 0, 2, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.delta_movement.y, 0.055, 0.000001);
+        assert_f64_near(pose.fall_distance, 0.0, 0.000001);
+    }
+
+    #[test]
+    fn local_player_above_upward_bubble_column_uses_surface_push() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, bubble_column_block_state_id(false));
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.delta_movement.y, 0.095, 0.000001);
+    }
+
+    #[test]
+    fn local_player_drag_down_bubble_column_applies_downward_velocity() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, bubble_column_block_state_id(true));
+        set_test_block(&mut world, 0, 2, 0, SOURCE_WATER_BLOCK_STATE_ID);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.delta_movement.y, -0.035, 0.000001);
+    }
+
+    #[test]
+    fn local_player_flying_ignores_bubble_column_push() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, bubble_column_block_state_id(false));
+        apply_flying_abilities(&mut world, 0.05);
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.1, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.delta_movement.y, 0.0, 0.000001);
+    }
+
+    #[test]
     fn local_player_in_water_jumps_out_when_horizontal_collision_has_clear_space() {
         let mut world = flat_collision_world();
         set_test_block(&mut world, 0, 1, 0, SOURCE_WATER_BLOCK_STATE_ID);
@@ -2937,6 +3125,15 @@ mod tests {
             flying_speed,
             walking_speed: 0.1,
         });
+    }
+
+    fn bubble_column_block_state_id(drag_down: bool) -> i32 {
+        let mut properties = BTreeMap::new();
+        properties.insert("drag".to_string(), drag_down.to_string());
+        crate::registries::BlockStateRegistry::vanilla_26_1()
+            .find_by_name_and_properties("minecraft:bubble_column", &properties)
+            .expect("vanilla 26.1 bubble_column block state exists")
+            .id
     }
 
     fn empty_test_chunk() -> ChunkColumn {
