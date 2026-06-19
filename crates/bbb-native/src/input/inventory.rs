@@ -3262,10 +3262,10 @@ mod tests {
         ContainerSetContent, ContainerSetData, ContainerSlotStateChanged, EntityDataValue,
         EntityDataValueKind, HashedComponentPatch, HashedItemStack, HashedStack, IngredientSummary,
         ItemCostSummary, ItemStackSummary, MerchantOffer, MerchantOffers, MountScreenOpen,
-        OpenScreen, PlayerAbilities, RecipePropertySetSummary, RegistryTags, SelectBundleItem,
-        SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData, SetPlayerInventory,
-        SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload, UpdateRecipes,
-        UpdateTags, Vec3d,
+        OpenScreen, PlayerAbilities, PlayerExperience, RecipePropertySetSummary, RegistryTags,
+        SelectBundleItem, SelectTradeCommand, SetBeacon, SetCursorItem, SetEntityData,
+        SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary,
+        TagNetworkPayload, UpdateRecipes, UpdateTags, Vec3d,
     };
     use uuid::Uuid;
 
@@ -7490,6 +7490,75 @@ mod tests {
         let slots = &world.inventory().open_container.as_ref().unwrap().slots;
         assert_eq!(slots[0].item, ItemStackSummary::empty());
         assert_eq!(slots[3].item, item_stack(42, 1));
+    }
+
+    #[test]
+    fn anvil_shift_click_result_slot_queues_predicted_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: ANVIL_MENU_TYPE_ID,
+            title: "Anvil".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 1);
+        items[2] = item_stack(90, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+        world.apply_container_set_data(ContainerSetData {
+            container_id: 7,
+            id: 0,
+            value: 1,
+        });
+        world.apply_player_experience(PlayerExperience {
+            progress: 0.0,
+            level: 1,
+            total: 0,
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(694.0, 332.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 2,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Empty),
+                    (2, HashedStack::Empty),
+                    (38, HashedStack::Item(hashed_item(90, 1))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[1].item, ItemStackSummary::empty());
+        assert_eq!(slots[2].item, ItemStackSummary::empty());
+        assert_eq!(slots[38].item, item_stack(90, 1));
     }
 
     #[test]

@@ -1128,10 +1128,17 @@ When an agent does any of the following, update this file in the same slice:
           forward-fill ordering
         - player-inventory quick-move into the two input slots is locally
           predicted with vanilla `ItemCombinerMenu` ordering
+        - result-slot quick-move into the player inventory is locally predicted
+          when the current server result fully fits, cost plus local
+          experience/creative state allow pickup, the additional slot is empty,
+          and the single input is consumed to empty.
         - result-slot paths are kept server-authoritative until:
+          - result-slot pickup
           - repair/enchantment result prediction
           - repair-cost component updates
-          - material consumption
+          - material/sacrifice consumption
+          - XP and cost data side effects
+          - blocked or partial result transfers
           - anvil damage side effects
       - BeaconMenu:
         - primary/secondary effect button grid renders official button sprites
