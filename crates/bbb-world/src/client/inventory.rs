@@ -85,6 +85,11 @@ const BEACON_HOTBAR_START: i16 = 28;
 const BEACON_HOTBAR_END: i16 = 37;
 const BEACON_TOTAL_SLOT_COUNT: i16 = 37;
 const BEACON_PAYMENT_ITEM_TAG: &str = "minecraft:beacon_payment_items";
+const ENCHANTMENT_INPUT_SLOT: i16 = 0;
+const ENCHANTMENT_LAPIS_SLOT: i16 = 1;
+const ENCHANTMENT_PLAYER_MAIN_START: i16 = 2;
+const ENCHANTMENT_HOTBAR_END: i16 = 38;
+const ENCHANTMENT_TOTAL_SLOT_COUNT: i16 = 38;
 const ANVIL_RESULT_SLOT: i16 = 2;
 const CARTOGRAPHY_TABLE_ADDITIONAL_SLOT: i16 = 1;
 const CARTOGRAPHY_TABLE_RESULT_SLOT: i16 = 2;
@@ -1194,9 +1199,20 @@ impl WorldStore {
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_ENCHANTMENT_ID) {
-                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                            ProtocolContainerInput::QuickMove,
-                        ));
+                        if enchantment_quick_move_requires_server_authority(
+                            &slots_after,
+                            request.slot_num,
+                        ) {
+                            return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                                ProtocolContainerInput::QuickMove,
+                            ));
+                        }
+                        apply_enchantment_menu_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            &self.default_item_max_stack_sizes,
+                        )
                     } else if furnace_family_menu_type(menu_type_id).is_some() {
                         apply_furnace_quick_move_to_slots(
                             container_id,
@@ -2834,6 +2850,52 @@ fn apply_beacon_menu_quick_move_to_slots(
         start_slot,
         end_slot,
         backwards,
+        default_item_max_stack_sizes,
+    ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
+}
+
+fn enchantment_quick_move_requires_server_authority(
+    slots: &[ContainerSlot],
+    slot_num: i16,
+) -> bool {
+    if !(0..ENCHANTMENT_TOTAL_SLOT_COUNT).contains(&slot_num) {
+        return false;
+    }
+    if matches!(slot_num, ENCHANTMENT_INPUT_SLOT | ENCHANTMENT_LAPIS_SLOT) {
+        return false;
+    }
+    inventory_menu_slot_has_item(slots, slot_num)
+}
+
+fn apply_enchantment_menu_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !matches!(slot_num, ENCHANTMENT_INPUT_SLOT | ENCHANTMENT_LAPIS_SLOT) {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let mut moving = slots[source_index].item.clone();
+    if move_item_stack_to_slots(
+        container_id,
+        slots,
+        source_index,
+        &mut moving,
+        ENCHANTMENT_PLAYER_MAIN_START,
+        ENCHANTMENT_HOTBAR_END,
+        true,
         default_item_max_stack_sizes,
     ) {
         normalize_item_stack(&mut moving);
@@ -7037,7 +7099,7 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_enchantment_quick_move_requires_server_authority() {
+    fn apply_local_enchantment_quick_move_moves_menu_slots_to_player_reverse() {
         const ENCHANTMENT_TOTAL_SLOT_COUNT: usize = 38;
 
         let mut store = WorldStore::new();
@@ -7057,18 +7119,45 @@ mod tests {
             carried_item: ProtocolItemStackSummary::empty(),
         });
 
-        for slot_num in [0, 1, 29] {
-            assert_eq!(
-                store.apply_local_container_click_slot(ContainerClickSlotRequest {
-                    slot_num,
-                    button_num: 0,
-                    input: ProtocolContainerInput::QuickMove,
-                }),
-                Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                    ProtocolContainerInput::QuickMove
-                ))
-            );
-        }
+        let input_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: ENCHANTMENT_INPUT_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            input_move.changed_slots,
+            BTreeMap::from([
+                (ENCHANTMENT_INPUT_SLOT, ProtocolHashedStack::Empty),
+                (ENCHANTMENT_HOTBAR_END - 1, hashed_item_stack(42, 1)),
+            ])
+        );
+
+        let lapis_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: ENCHANTMENT_LAPIS_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            lapis_move.changed_slots,
+            BTreeMap::from([
+                (ENCHANTMENT_LAPIS_SLOT, ProtocolHashedStack::Empty),
+                (ENCHANTMENT_HOTBAR_END - 2, hashed_item_stack(43, 3)),
+            ])
+        );
+        assert_eq!(
+            store.apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: 29,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            }),
+            Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                ProtocolContainerInput::QuickMove
+            ))
+        );
         let click = store
             .build_container_click_slot(ContainerClickSlotRequest {
                 slot_num: 29,
@@ -7078,9 +7167,23 @@ mod tests {
             .unwrap();
         assert_eq!(click.changed_slots, BTreeMap::new());
         assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
-        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 1));
-        assert_eq!(open_container_slot_item(&store, 1), item_stack(43, 3));
+        assert_eq!(
+            open_container_slot_item(&store, ENCHANTMENT_INPUT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, ENCHANTMENT_LAPIS_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
         assert_eq!(open_container_slot_item(&store, 29), item_stack(44, 2));
+        assert_eq!(
+            open_container_slot_item(&store, ENCHANTMENT_HOTBAR_END - 2),
+            item_stack(43, 3)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, ENCHANTMENT_HOTBAR_END - 1),
+            item_stack(42, 1)
+        );
     }
 
     #[test]
