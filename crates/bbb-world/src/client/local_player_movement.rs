@@ -1463,6 +1463,9 @@ mod tests {
     const CANDLE_ONE_DRY_UNLIT_BLOCK_STATE_ID: i32 = 23099;
     const CANDLE_FOUR_DRY_UNLIT_BLOCK_STATE_ID: i32 = 23111;
     const CANDLE_CAKE_UNLIT_BLOCK_STATE_ID: i32 = 23369;
+    const POINTED_DRIPSTONE_TIP_UP_BLOCK_STATE_ID: i32 = 27740;
+    const POINTED_DRIPSTONE_TIP_DOWN_BLOCK_STATE_ID: i32 = 27742;
+    const POINTED_DRIPSTONE_BASE_UP_BLOCK_STATE_ID: i32 = 27752;
     const DECORATED_POT_NORTH_DRY_BLOCK_STATE_ID: i32 = 29602;
     const MUD_BLOCK_STATE_ID: i32 = 27922;
     const HEAVY_CORE_DRY_BLOCK_STATE_ID: i32 = 29702;
@@ -1809,6 +1812,21 @@ mod tests {
                 SEA_PICKLE_FOUR_DRY_BLOCK_STATE_ID,
                 1.4375,
             ),
+            (
+                "pointed dripstone tip up",
+                POINTED_DRIPSTONE_TIP_UP_BLOCK_STATE_ID,
+                1.6875,
+            ),
+            (
+                "pointed dripstone tip down",
+                POINTED_DRIPSTONE_TIP_DOWN_BLOCK_STATE_ID,
+                2.0,
+            ),
+            (
+                "pointed dripstone base",
+                POINTED_DRIPSTONE_BASE_UP_BLOCK_STATE_ID,
+                2.0,
+            ),
             ("skeleton skull", SKELETON_SKULL_BLOCK_STATE_ID, 1.5),
             ("piglin head", PIGLIN_HEAD_BLOCK_STATE_ID, 1.5),
             ("one turtle egg", TURTLE_EGG_ONE_BLOCK_STATE_ID, 1.4375),
@@ -2136,6 +2154,11 @@ mod tests {
                 "north wall grindstone",
                 GRINDSTONE_WALL_NORTH_BLOCK_STATE_ID,
                 0.7005,
+            ),
+            (
+                "pointed dripstone base",
+                POINTED_DRIPSTONE_BASE_UP_BLOCK_STATE_ID,
+                0.909,
             ),
         ];
 

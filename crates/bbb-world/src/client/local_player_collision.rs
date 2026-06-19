@@ -33,7 +33,7 @@ pub(super) fn local_player_collides(world: &WorldStore, bounds: LocalPlayerBound
 }
 
 pub(super) fn local_player_block_collision_is_empty(block: &BlockProbe) -> bool {
-    block_collision_shape(block).is_none()
+    block_collision_shape(block, BlockPos { x: 0, y: 0, z: 0 }).is_none()
 }
 
 impl WorldStore {
@@ -54,13 +54,13 @@ fn block_collides_with_local_player_bounds(
     pos: BlockPos,
     bounds: LocalPlayerBounds,
 ) -> bool {
-    if let Some(shape) = block_collision_shape(block) {
+    if let Some(shape) = block_collision_shape(block, pos) {
         return bounds_intersects_block_shape(bounds, pos, shape);
     }
     false
 }
 
-fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
+fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockCollisionShape> {
     if is_slab_block(block) {
         return match block.block_properties.get("type").map(String::as_str) {
             Some("bottom") => Some(BlockCollisionShape::single(BlockCollisionBox::BOTTOM_SLAB)),
@@ -124,6 +124,9 @@ fn block_collision_shape(block: &BlockProbe) -> Option<BlockCollisionShape> {
             return Some(BlockCollisionShape::single(
                 BlockCollisionBox::centered_column(14.0, 14.0, 0.0, 16.0),
             ));
+        }
+        if block_name == "minecraft:pointed_dripstone" {
+            return pointed_dripstone_collision_shape(&block.block_properties, pos);
         }
         if block_name == "minecraft:end_portal_frame" {
             return end_portal_frame_collision_shape(&block.block_properties);
@@ -526,6 +529,48 @@ fn snow_layer_collision_shape(
     Some(BlockCollisionShape::single(BlockCollisionBox::column(
         0.0, 0.0, 1.0, height, 1.0,
     )))
+}
+
+fn pointed_dripstone_collision_shape(
+    properties: &BTreeMap<String, String>,
+    pos: BlockPos,
+) -> Option<BlockCollisionShape> {
+    let shape_box = match properties.get("thickness").map(String::as_str)? {
+        "tip_merge" => BlockCollisionBox::centered_column(6.0, 6.0, 0.0, 16.0),
+        "tip" => match properties.get("vertical_direction").map(String::as_str)? {
+            "down" => BlockCollisionBox::centered_column(6.0, 6.0, 5.0, 16.0),
+            "up" => BlockCollisionBox::centered_column(6.0, 6.0, 0.0, 11.0),
+            _ => return None,
+        },
+        "frustum" => BlockCollisionBox::centered_column(8.0, 8.0, 0.0, 16.0),
+        "middle" => BlockCollisionBox::centered_column(10.0, 10.0, 0.0, 16.0),
+        "base" => BlockCollisionBox::centered_column(12.0, 12.0, 0.0, 16.0),
+        _ => return None,
+    };
+    let (offset_x, offset_z) = pointed_dripstone_xz_offset(pos);
+    Some(BlockCollisionShape::single(shape_box).offset(offset_x, 0.0, offset_z))
+}
+
+fn pointed_dripstone_xz_offset(pos: BlockPos) -> (f64, f64) {
+    let seed = vanilla_block_seed(pos.x, 0, pos.z);
+    let max_horizontal_offset = 2.0 * PX;
+    let x = (((seed & 15) as f64 / 15.0) - 0.5) * 0.5;
+    let z = ((((seed >> 8) & 15) as f64 / 15.0) - 0.5) * 0.5;
+    (
+        x.clamp(-max_horizontal_offset, max_horizontal_offset),
+        z.clamp(-max_horizontal_offset, max_horizontal_offset),
+    )
+}
+
+fn vanilla_block_seed(x: i32, y: i32, z: i32) -> i64 {
+    let mut seed = i64::from(x).wrapping_mul(3_129_871)
+        ^ i64::from(z).wrapping_mul(116_129_781)
+        ^ i64::from(y);
+    seed = seed
+        .wrapping_mul(seed)
+        .wrapping_mul(42_317_861)
+        .wrapping_add(seed.wrapping_mul(11));
+    seed >> 16
 }
 
 fn chain_collision_shape(properties: &BTreeMap<String, String>) -> Option<BlockCollisionShape> {
@@ -1431,6 +1476,10 @@ impl BlockCollisionShape {
         }
     }
 
+    fn offset(self, x: f64, y: f64, z: f64) -> Self {
+        self.map_boxes(|shape_box| shape_box.offset(x, y, z))
+    }
+
     fn map_boxes(self, mut f: impl FnMut(BlockCollisionBox) -> BlockCollisionBox) -> Self {
         Self {
             boxes: self.boxes.map(|shape_box| shape_box.map(&mut f)),
@@ -1940,6 +1989,17 @@ impl BlockCollisionBox {
         }
     }
 
+    fn offset(self, x: f64, y: f64, z: f64) -> Self {
+        Self {
+            min_x: self.min_x + x,
+            min_y: self.min_y + y,
+            min_z: self.min_z + z,
+            max_x: self.max_x + x,
+            max_y: self.max_y + y,
+            max_z: self.max_z + z,
+        }
+    }
+
     fn rotate_y_90(self) -> Self {
         Self {
             min_x: 1.0 - self.max_z,
@@ -1957,5 +2017,48 @@ impl BlockCollisionBox {
             rotated = rotated.rotate_y_90();
         }
         rotated
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pointed_dripstone_xz_offset_matches_vanilla_seed() {
+        let (origin_x, origin_z) = pointed_dripstone_xz_offset(BlockPos { x: 0, y: 0, z: 0 });
+        assert_f64_near(origin_x, -0.125);
+        assert_f64_near(origin_z, -0.125);
+
+        let (offset_x, offset_z) = pointed_dripstone_xz_offset(BlockPos { x: 1, y: 99, z: 0 });
+        assert_f64_near(offset_x, 7.0 / 60.0);
+        assert_f64_near(offset_z, -1.0 / 60.0);
+    }
+
+    #[test]
+    fn pointed_dripstone_tip_up_shape_uses_direction_height_and_offset() {
+        let mut properties = BTreeMap::new();
+        properties.insert("thickness".to_owned(), "tip".to_owned());
+        properties.insert("vertical_direction".to_owned(), "up".to_owned());
+
+        let shape = pointed_dripstone_collision_shape(&properties, BlockPos { x: 0, y: 7, z: 0 })
+            .expect("pointed dripstone shape");
+        let mut boxes = shape.boxes();
+        let shape_box = boxes.next().expect("shape box");
+        assert!(boxes.next().is_none());
+
+        assert_f64_near(shape_box.min_x, 3.0 * PX);
+        assert_f64_near(shape_box.min_y, 0.0);
+        assert_f64_near(shape_box.min_z, 3.0 * PX);
+        assert_f64_near(shape_box.max_x, 9.0 * PX);
+        assert_f64_near(shape_box.max_y, 11.0 * PX);
+        assert_f64_near(shape_box.max_z, 9.0 * PX);
+    }
+
+    fn assert_f64_near(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() <= 1.0e-12,
+            "actual {actual} expected {expected}",
+        );
     }
 }

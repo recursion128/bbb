@@ -424,6 +424,7 @@ When an agent does any of the following, update this file in the same slice:
       - flower pot
       - candle / candle cake
       - sea pickle
+      - pointed dripstone
       - skull / wall skull
       - turtle egg
       - sniffer egg
