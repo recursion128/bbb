@@ -219,6 +219,22 @@ impl WorldStore {
             .map(|_| vehicle_id)
     }
 
+    pub fn local_player_sprintable_vehicle_id(&self) -> Option<i32> {
+        let (Some(local_player_id), Some(vehicle_id)) =
+            (self.local_player_id, self.local_player_vehicle_id)
+        else {
+            return None;
+        };
+        let mount = self.entities.mount(vehicle_id)?;
+        if mount.passengers.first().copied() != Some(local_player_id) {
+            return None;
+        }
+        self.entities
+            .entity_type_id(vehicle_id)
+            .filter(|entity_type_id| is_vanilla_sprintable_vehicle_type(*entity_type_id))
+            .map(|_| vehicle_id)
+    }
+
     pub fn local_player_server_controlled_inventory_vehicle_id(&self) -> Option<i32> {
         let vehicle_id = self.local_player_vehicle_id?;
         self.entities
@@ -293,6 +309,13 @@ fn is_vanilla_player_rideable_jumping_type(entity_type_id: i32) -> bool {
             | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
             | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
             | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID
+    )
+}
+
+fn is_vanilla_sprintable_vehicle_type(entity_type_id: i32) -> bool {
+    matches!(
+        entity_type_id,
+        VANILLA_ENTITY_TYPE_CAMEL_ID | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
     )
 }
 

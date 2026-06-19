@@ -568,6 +568,11 @@ When an agent does any of the following, update this file in the same slice:
         - treats synced `mayfly` / `can_fly` abilities as enough food
         - suppresses local sprint speed, sprint-swim pose, and sprinting fluid
           drag when sprinting is not eligible
+      - vanilla passenger sprint eligibility for local-authoritative vehicles:
+        - camel and camel_husk can sprint
+        - horse-family and boat mounts cannot sprint
+        - the local player must be the controlling passenger
+        - player food is ignored in the mounted vehicle branch
       - abilities-driven flying movement with no ordinary gravity
       - vanilla flying horizontal input:
         - uses synced abilities `flying_speed` as per-tick acceleration
@@ -669,7 +674,9 @@ When an agent does any of the following, update this file in the same slice:
     - Native sprint command queuing is derived from the same world-owned
       effective sprint predicate used by local movement:
       - forward impulse is required before `START_SPRINTING`
-      - low food suppresses `START_SPRINTING`
+      - low food suppresses unmounted `START_SPRINTING`
+      - camel and camel_husk mounts can queue `START_SPRINTING` while horse and
+        boat mounts only queue raw `PlayerInput`
       - releasing focus or input queues `STOP_SPRINTING` when effective sprint
         was active
     - Existing input modules queue many serverbound packets, including

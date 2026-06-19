@@ -1010,11 +1010,17 @@ pub(super) fn local_player_effective_sprint(
 }
 
 fn local_player_can_sprint(world: &WorldStore, input: LocalPlayerInputState) -> bool {
+    let sprint_source_is_eligible = if world.local_player_vehicle_id().is_some() {
+        world.local_player_sprintable_vehicle_id().is_some()
+    } else {
+        local_player_has_enough_food_to_sprint(world)
+    };
+
     input.focused
         && input.forward
         && !input.backward
         && local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_BLINDNESS_ID).is_none()
-        && local_player_has_enough_food_to_sprint(world)
+        && sprint_source_is_eligible
 }
 
 fn local_player_has_enough_food_to_sprint(world: &WorldStore) -> bool {
@@ -1645,15 +1651,18 @@ mod tests {
         EntityDataValueKind as ProtocolEntityDataValueKind, GameEvent as ProtocolGameEvent,
         ItemStackSummary as ProtocolItemStackSummary, MobEffectFlags as ProtocolMobEffectFlags,
         PlayerHealth as ProtocolPlayerHealth, SetEntityData as ProtocolSetEntityData,
-        SetPlayerInventory as ProtocolSetPlayerInventory,
+        SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
         UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
     };
     use uuid::Uuid;
 
     use crate::{
-        entities::VANILLA_ENTITY_TYPE_PLAYER_ID, BlockPos, ChunkColumn, ChunkSection, ChunkState,
-        LightData, PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension,
-        WorldLevelInfo,
+        entities::{
+            VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        },
+        BlockPos, ChunkColumn, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
+        PalettedContainerData, WorldDimension, WorldLevelInfo,
     };
 
     const AIR_BLOCK_STATE_ID: i32 = 0;
@@ -5264,6 +5273,80 @@ mod tests {
     }
 
     #[test]
+    fn local_player_effective_sprint_uses_sprintable_vehicle_instead_of_food_when_mounted() {
+        let input = LocalPlayerInputState {
+            focused: true,
+            forward: true,
+            sprint: true,
+            ..LocalPlayerInputState::default()
+        };
+
+        let mut camel_world = WorldStore::new();
+        apply_player_health(&mut camel_world, 1);
+        mount_local_player_on_entity(
+            &mut camel_world,
+            99,
+            10,
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            vec![99],
+        );
+        assert!(camel_world.local_player_effective_sprint(input));
+
+        let mut horse_world = WorldStore::new();
+        apply_player_health(&mut horse_world, 20);
+        mount_local_player_on_entity(
+            &mut horse_world,
+            99,
+            20,
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+            vec![99],
+        );
+        assert!(!horse_world.local_player_effective_sprint(input));
+
+        let mut boat_world = WorldStore::new();
+        apply_player_health(&mut boat_world, 20);
+        mount_local_player_on_entity(
+            &mut boat_world,
+            99,
+            30,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            vec![99],
+        );
+        assert!(!boat_world.local_player_effective_sprint(input));
+    }
+
+    #[test]
+    fn local_player_effective_sprint_requires_controlling_sprintable_vehicle_passenger() {
+        let mut world = WorldStore::new();
+        apply_player_health(&mut world, 20);
+        world.apply_add_entity(ProtocolAddEntity {
+            id: 123,
+            uuid: Uuid::from_u128(0x87654321876543218765432187654321),
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        mount_local_player_on_entity(
+            &mut world,
+            99,
+            10,
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            vec![123, 99],
+        );
+
+        assert!(!world.local_player_effective_sprint(LocalPlayerInputState {
+            focused: true,
+            forward: true,
+            sprint: true,
+            ..LocalPlayerInputState::default()
+        }));
+    }
+
+    #[test]
     fn local_player_speed_and_slowness_effects_scale_horizontal_movement() {
         let mut speed_world = flat_collision_world();
         attach_local_player_entity(&mut speed_world, 123);
@@ -5696,6 +5779,31 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         });
+    }
+
+    fn mount_local_player_on_entity(
+        world: &mut WorldStore,
+        player_id: i32,
+        vehicle_id: i32,
+        entity_type_id: i32,
+        passenger_ids: Vec<i32>,
+    ) {
+        attach_local_player_entity(world, player_id);
+        world.apply_add_entity(ProtocolAddEntity {
+            id: vehicle_id,
+            uuid: Uuid::from_u128(0x22345678123456781234567812345678),
+            entity_type_id,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(world.apply_set_passengers(ProtocolSetPassengers {
+            vehicle_id,
+            passenger_ids,
+        }));
     }
 
     fn mob_effect(entity_id: i32, effect_id: i32, amplifier: i32) -> ProtocolUpdateMobEffect {
