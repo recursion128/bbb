@@ -104,7 +104,7 @@ Every worker prompt should include:
   - `scripts/worker-worktree.sh status`
   - `scripts/worker-worktree.sh shell-env world`
   - `scripts/worker-worktree.sh cleanup world`
-  The helper creates `../bbb-wt-<name>`, branch `bbb-worker-<name>`, and reports
+  The helper creates `../bbb-wt-<name>`, branch `worker/<name>`, and reports
   `BBB_CARGO_TARGET_NAME=<name>` plus
   `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`. Worker focused tests should prefer
   `scripts/cargo-dev.sh test -p <crate> <filter>`.

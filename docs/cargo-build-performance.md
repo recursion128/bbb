@@ -68,14 +68,17 @@ scripts/worker-worktree.sh cleanup world
 The helper uses these conventions:
 
 - worktree: `../bbb-wt-<name>`
-- branch: `bbb-worker-<name>`
+- branch: `worker/<name>`
 - cargo target name: `<name>`
 - target: `/tmp/bbb-target-<name>`
 
-`cleanup <name>` refuses dirty worker worktrees, removes the worktree, safely
-deletes the temporary branch when Git allows it, and keeps the matching target
-directory for future focused tests. Use `cleanup <name> --remove-target` only
-when the worker target is intentionally disposable or disk pressure matters.
+If `worker/<name>` already exists, `create <name>` uses a timestamp-suffixed
+temporary branch. `cleanup <name>` refuses dirty worker worktrees, removes the
+worktree, safely deletes the temporary branch when Git allows it, and keeps the
+matching target directory for future focused tests. Use
+`cleanup <name> --remove-target` only when the worker target is intentionally
+disposable or disk pressure matters. Use `--force` only after the worker diff
+has been reviewed and discarded, integrated, or duplicated elsewhere.
 
 `create <name>` prints a ready-to-run focused-test command using
 `scripts/cargo-dev.sh` and `BBB_CARGO_TARGET_NAME=<name>`, so worker prompts

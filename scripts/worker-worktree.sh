@@ -6,9 +6,10 @@ usage() {
 Usage:
   scripts/worker-worktree.sh create <name> [base-ref]
   scripts/worker-worktree.sh status [name]
-  scripts/worker-worktree.sh cleanup <name> [--remove-target]
+  scripts/worker-worktree.sh cleanup <name> [--force|-f] [--remove-target]
   scripts/worker-worktree.sh env <name>
   scripts/worker-worktree.sh shell-env <name>
+  scripts/worker-worktree.sh --help
 
 Examples:
   scripts/worker-worktree.sh create world
@@ -16,15 +17,18 @@ Examples:
   scripts/worker-worktree.sh env world
   scripts/worker-worktree.sh shell-env world
   scripts/worker-worktree.sh cleanup world
+  scripts/worker-worktree.sh cleanup world --force
   scripts/worker-worktree.sh cleanup world --remove-target
 
 Conventions:
   worktree path: ../bbb-wt-<name>
-  branch:        bbb-worker-<name>
+  branch:        worker/<name>
   target dir:    /tmp/bbb-target-<name>
 
-cleanup removes the worker worktree, safely deletes the temporary branch when
-Git allows it, and keeps the matching target dir unless --remove-target is set.
+If worker/<name> already exists, create uses a timestamp-suffixed branch.
+cleanup refuses dirty worktrees unless --force is passed, deletes the temporary
+branch only when Git allows a safe delete, and keeps the matching target unless
+--remove-target is passed.
 EOF
 }
 
@@ -37,6 +41,10 @@ validate_name() {
   case "$name" in
     "")
       echo "worker name must not be empty" >&2
+      exit 2
+      ;;
+    -*)
+      echo "worker name must not start with '-': $name" >&2
       exit 2
       ;;
     *[!A-Za-z0-9_-]*)
@@ -55,12 +63,58 @@ worktree_path() {
 
 branch_name() {
   name="$1"
-  printf 'bbb-worker-%s\n' "$name"
+  printf 'worker/%s\n' "$name"
 }
 
 target_dir() {
   name="$1"
   printf '/tmp/bbb-target-%s\n' "$name"
+}
+
+branch_exists() {
+  root="$1"
+  branch="$2"
+  git -C "$root" show-ref --verify --quiet "refs/heads/$branch"
+}
+
+select_branch_name() {
+  root="$1"
+  name="$2"
+  branch="$(branch_name "$name")"
+
+  if ! branch_exists "$root" "$branch"; then
+    printf '%s\n' "$branch"
+    return
+  fi
+
+  stamp="$(date -u +%Y%m%d%H%M%S)"
+  suffix=1
+  while :; do
+    if [ "$suffix" = "1" ]; then
+      candidate="${branch}-${stamp}"
+    else
+      candidate="${branch}-${stamp}-${suffix}"
+    fi
+
+    if ! branch_exists "$root" "$candidate"; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+    suffix=$((suffix + 1))
+  done
+}
+
+is_worker_branch_for_name() {
+  name="$1"
+  branch="$2"
+  case "$branch" in
+    worker/"$name"|worker/"$name"-[0-9]*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 remove_target_dir() {
@@ -92,11 +146,15 @@ print_worker_env() {
   branch="$3"
   target="$4"
   cat <<EOF
-worker=$name
-worktree=$path
-branch=$branch
+worker: $name
+worktree: $path
+branch: $branch
 BBB_CARGO_TARGET_NAME=$name
 CARGO_TARGET_DIR=$target
+
+Export for focused tests:
+  export BBB_CARGO_TARGET_NAME=$(shell_quote "$name")
+  export CARGO_TARGET_DIR=$(shell_quote "$target")
 EOF
 }
 
@@ -116,17 +174,18 @@ create_worker() {
 
   root="$(repo_root)"
   path="$(worktree_path "$root" "$name")"
-  branch="$(branch_name "$name")"
+  default_branch="$(branch_name "$name")"
+  branch="$(select_branch_name "$root" "$name")"
   target="$(target_dir "$name")"
 
   if [ -e "$path" ]; then
     echo "worktree path already exists: $path" >&2
     exit 2
   fi
-  if git -C "$root" show-ref --verify --quiet "refs/heads/$branch"; then
-    echo "branch already exists: $branch" >&2
-    echo "run status/cleanup or choose another worker name" >&2
-    exit 2
+
+  if [ "$branch" != "$default_branch" ]; then
+    echo "branch already exists: $default_branch" >&2
+    echo "using temporary branch: $branch" >&2
   fi
 
   git -C "$root" worktree add -b "$branch" "$path" "$base_ref"
@@ -134,8 +193,10 @@ create_worker() {
   cat <<EOF
 
 Run focused tests with:
-  cd "$path"
-  BBB_CARGO_TARGET_NAME=$name scripts/cargo-dev.sh test -p <crate> <filter>
+  cd $(shell_quote "$path")
+  export BBB_CARGO_TARGET_NAME=$(shell_quote "$name")
+  export CARGO_TARGET_DIR=$(shell_quote "$target")
+  scripts/cargo-dev.sh test -p <crate> <filter>
 EOF
 }
 
@@ -144,31 +205,37 @@ status_one() {
   name="$2"
   validate_name "$name"
   path="$(worktree_path "$root" "$name")"
-  branch="$(branch_name "$name")"
   target="$(target_dir "$name")"
+  target_status="target=missing"
+  if [ -e "$target" ]; then
+    target_status="target=present"
+  fi
 
-  print_worker_env "$name" "$path" "$branch" "$target"
-  if [ -d "$path/.git" ] || [ -f "$path/.git" ]; then
-    head="$(git -C "$path" rev-parse --short HEAD 2>/dev/null || true)"
-    current_branch="$(git -C "$path" branch --show-current 2>/dev/null || true)"
-    dirty="$(git -C "$path" status --short 2>/dev/null || true)"
-    echo "exists=yes"
-    echo "current_branch=$current_branch"
-    echo "head=$head"
-    if [ -n "$dirty" ]; then
-      echo "dirty=yes"
-      printf '%s\n' "$dirty"
+  if ! git -C "$path" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    if [ -e "$path" ]; then
+      printf '%s: status=not-git path=%s %s\n' "$name" "$path" "$target_status"
     else
-      echo "dirty=no"
+      printf '%s: status=missing path=%s %s\n' "$name" "$path" "$target_status"
     fi
-  else
-    echo "exists=no"
+    return
   fi
-  if [ -d "$target" ]; then
-    du -sh "$target"
+
+  head="$(git -C "$path" rev-parse --short HEAD 2>/dev/null || true)"
+  current_branch="$(git -C "$path" branch --show-current 2>/dev/null || true)"
+  dirty="$(git -C "$path" status --short 2>/dev/null || true)"
+  if [ -n "$dirty" ]; then
+    dirty_count="$(printf '%s\n' "$dirty" | wc -l | tr -d ' ')"
+    state="dirty(${dirty_count})"
   else
-    echo "target_exists=no"
+    state="clean"
   fi
+
+  if [ -z "$current_branch" ]; then
+    current_branch="detached"
+  fi
+
+  printf '%s: branch=%s status=%s head=%s path=%s %s\n' \
+    "$name" "$current_branch" "$state" "$head" "$path" "$target_status"
 }
 
 status_workers() {
@@ -194,22 +261,34 @@ status_workers() {
 
 cleanup_worker() {
   name="$1"
-  cleanup_target="${2:-}"
+  shift
   validate_name "$name"
-  case "$cleanup_target" in
-    ""|--keep-target|--remove-target)
-      ;;
-    *)
-      echo "unknown cleanup option: $cleanup_target" >&2
-      usage >&2
-      exit 2
-      ;;
-  esac
+  force=0
+  remove_target=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --force|-f)
+        force=1
+        ;;
+      --remove-target)
+        remove_target=1
+        ;;
+      --keep-target)
+        remove_target=0
+        ;;
+      *)
+        echo "unknown cleanup option: $1" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+    shift
+  done
 
   root="$(repo_root)"
   path="$(worktree_path "$root" "$name")"
-  branch="$(branch_name "$name")"
   target="$(target_dir "$name")"
+  branch=""
   branch_cleanup_failed=0
 
   if [ ! -e "$path" ]; then
@@ -220,23 +299,29 @@ cleanup_worker() {
       exit 2
     fi
     current_branch="$(git -C "$path" branch --show-current)"
-    if [ "$current_branch" != "$branch" ]; then
+    if ! is_worker_branch_for_name "$name" "$current_branch"; then
       echo "refusing to remove worktree on unexpected branch: $path" >&2
-      echo "expected: $branch" >&2
+      echo "expected: $(branch_name "$name") or timestamp-suffixed variant" >&2
       echo "actual: ${current_branch:-detached HEAD}" >&2
       exit 2
     fi
+    branch="$current_branch"
     dirty="$(git -C "$path" status --short)"
-    if [ -n "$dirty" ]; then
+    if [ -n "$dirty" ] && [ "$force" = "0" ]; then
       echo "refusing to remove dirty worktree: $path" >&2
       printf '%s\n' "$dirty" >&2
+      echo "rerun with --force only if these changes can be discarded" >&2
       exit 2
     fi
-    git -C "$root" worktree remove "$path"
+    if [ "$force" = "1" ]; then
+      git -C "$root" worktree remove --force "$path"
+    else
+      git -C "$root" worktree remove "$path"
+    fi
     echo "removed worktree: $path"
   fi
 
-  if git -C "$root" show-ref --verify --quiet "refs/heads/$branch"; then
+  if [ -n "$branch" ] && branch_exists "$root" "$branch"; then
     if git -C "$root" branch -d "$branch"; then
       echo "deleted branch: $branch"
     else
@@ -244,11 +329,13 @@ cleanup_worker() {
       echo "review/integrate it before deleting manually" >&2
       branch_cleanup_failed=1
     fi
-  else
+  elif [ -n "$branch" ]; then
     echo "branch not found: $branch"
+  else
+    echo "branch cleanup skipped because no worker branch was identified"
   fi
 
-  if [ "$cleanup_target" = "--remove-target" ]; then
+  if [ "$remove_target" = "1" ]; then
     if [ "$branch_cleanup_failed" = "1" ]; then
       echo "kept target because branch cleanup did not complete safely: $target" >&2
       exit 1
@@ -256,6 +343,9 @@ cleanup_worker() {
     remove_target_dir "$target"
   else
     echo "kept target: $target"
+  fi
+  if [ "$branch_cleanup_failed" = "1" ]; then
+    exit 1
   fi
 }
 
@@ -304,7 +394,7 @@ case "$cmd" in
     status_workers "$@"
     ;;
   cleanup)
-    if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
       usage >&2
       exit 2
     fi

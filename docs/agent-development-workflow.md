@@ -102,7 +102,7 @@ Every worker prompt must include:
   worker targets are `/tmp/bbb-target-renderer`, `/tmp/bbb-target-world`, and
   `/tmp/bbb-target-net`.
 - Use `scripts/worker-worktree.sh create <name>` for standard workers. It
-  creates `../bbb-wt-<name>` on branch `bbb-worker-<name>` and reports
+  creates `../bbb-wt-<name>` on branch `worker/<name>` and reports
   `BBB_CARGO_TARGET_NAME=<name>` plus
   `CARGO_TARGET_DIR=/tmp/bbb-target-<name>`.
 - Use `scripts/worker-worktree.sh shell-env <name>` when a worker prompt needs
@@ -112,6 +112,8 @@ Every worker prompt must include:
 - Use `scripts/worker-worktree.sh cleanup <name>` only after reviewing the
   worker diff. It refuses dirty worktrees and uses safe branch deletion; it does
   not delete the external Cargo target cache.
+- Use `scripts/worker-worktree.sh cleanup <name> --remove-target` only when the
+  worker target is disposable or disk pressure matters.
 - Do not delete assigned Cargo target caches after every slice. Clean them
   periodically or when measuring a clean build, reclaiming disk, or abandoning a
   disposable one-off target.
