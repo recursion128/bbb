@@ -132,6 +132,7 @@ fn main() -> Result<()> {
         world.set_default_piercing_weapon_item_ids(
             items.default_piercing_weapon_item_ids_by_protocol_id(),
         );
+        world.set_default_item_use_effects(items.item_use_effects_by_protocol_id());
         world.set_furnace_fuel_item_ids(items.furnace_fuel_item_ids_by_protocol_id());
         world.set_freeze_immune_wearable_item_ids(
             items.freeze_immune_wearable_item_ids_by_protocol_id(),
@@ -151,6 +152,7 @@ fn main() -> Result<()> {
             item_equipment_slots = items.item_equipment_slot_count(),
             default_attack_range_items = items.item_attack_range_count(),
             default_piercing_weapon_items = items.default_piercing_weapon_item_count(),
+            default_use_effect_items = items.item_use_effect_count(),
             item_mining_profiles = items.item_mining_profile_count(),
             furnace_fuel_items = items.furnace_fuel_item_count(),
             freeze_immune_wearable_items = items.freeze_immune_wearable_item_count(),

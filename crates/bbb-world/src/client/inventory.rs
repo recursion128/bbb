@@ -848,7 +848,7 @@ impl WorldStore {
             }
         }?;
 
-        item_stack_use_effects(item)
+        item_stack_use_effects(item, &self.default_item_use_effects)
     }
 
     pub fn drop_local_selected_hotbar_item(&mut self, all: bool) -> bool {
@@ -972,6 +972,13 @@ impl WorldStore {
         attack_ranges: BTreeMap<i32, ItemAttackRange>,
     ) {
         self.default_item_attack_ranges = attack_ranges
+            .into_iter()
+            .filter(|(item_id, _)| *item_id >= 0)
+            .collect();
+    }
+
+    pub fn set_default_item_use_effects(&mut self, use_effects: BTreeMap<i32, ItemUseEffects>) {
+        self.default_item_use_effects = use_effects
             .into_iter()
             .filter(|(item_id, _)| *item_id >= 0)
             .collect();
@@ -1645,7 +1652,10 @@ fn item_attack_range_from_protocol(attack_range: ProtocolAttackRangeSummary) -> 
     }
 }
 
-fn item_stack_use_effects(stack: &ProtocolItemStackSummary) -> Option<ItemUseEffects> {
+fn item_stack_use_effects(
+    stack: &ProtocolItemStackSummary,
+    default_item_use_effects: &BTreeMap<i32, ItemUseEffects>,
+) -> Option<ItemUseEffects> {
     if item_stack_is_empty(stack) {
         return None;
     }
@@ -1658,17 +1668,20 @@ fn item_stack_use_effects(stack: &ProtocolItemStackSummary) -> Option<ItemUseEff
         return Some(ItemUseEffects::default());
     }
 
-    Some(
-        stack
-            .component_patch
-            .use_effects
-            .map(|effects| ItemUseEffects {
-                can_sprint: effects.can_sprint,
-                interact_vibrations: effects.interact_vibrations,
-                speed_multiplier: effects.speed_multiplier,
-            })
-            .unwrap_or_default(),
-    )
+    if let Some(effects) = stack.component_patch.use_effects {
+        return Some(ItemUseEffects {
+            can_sprint: effects.can_sprint,
+            interact_vibrations: effects.interact_vibrations,
+            speed_multiplier: effects.speed_multiplier,
+        });
+    }
+
+    let default_effects = stack
+        .item_id
+        .filter(|item_id| *item_id >= 0)
+        .and_then(|item_id| default_item_use_effects.get(&item_id).copied())
+        .unwrap_or_default();
+    Some(default_effects)
 }
 
 fn component_patch_can_be_hashed_from_summary(patch: &ProtocolDataComponentPatchSummary) -> bool {
@@ -3361,7 +3374,7 @@ mod tests {
         PlayerAbilities as ProtocolPlayerAbilities, RecipePropertySetSummary,
         SetEntityData as ProtocolSetEntityData, SlotDisplaySummary,
         StonecutterSelectableRecipeSummary, UpdateRecipes as ProtocolUpdateRecipes,
-        Vec3d as ProtocolVec3d,
+        UseEffectsSummary as ProtocolUseEffectsSummary, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -3912,6 +3925,71 @@ mod tests {
         );
         assert!(store.set_local_selected_hotbar_slot(1));
         assert_eq!(store.local_selected_main_hand_attack_range(), None);
+    }
+
+    #[test]
+    fn local_using_item_use_effects_reads_default_and_patch_components() {
+        let mut store = WorldStore::new();
+        let default_effects = ItemUseEffects {
+            can_sprint: true,
+            interact_vibrations: false,
+            speed_multiplier: 1.0,
+        };
+        store.set_default_item_use_effects(BTreeMap::from([
+            (-1, default_effects),
+            (42, default_effects),
+        ]));
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        store.set_local_using_item(true);
+
+        assert_eq!(store.local_using_item_use_effects(), Some(default_effects));
+
+        let mut patched = item_stack(99, 1);
+        patched.component_patch.added = 1;
+        patched.component_patch.added_type_ids = vec![VANILLA_USE_EFFECTS_COMPONENT_ID];
+        patched.component_patch.use_effects = Some(ProtocolUseEffectsSummary {
+            can_sprint: false,
+            interact_vibrations: true,
+            speed_multiplier: 0.5,
+        });
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: patched,
+        });
+
+        assert_eq!(
+            store.local_using_item_use_effects(),
+            Some(ItemUseEffects {
+                can_sprint: false,
+                interact_vibrations: true,
+                speed_multiplier: 0.5,
+            })
+        );
+    }
+
+    #[test]
+    fn local_using_item_use_effects_removed_component_falls_back_to_vanilla_default() {
+        let mut store = WorldStore::new();
+        store.set_default_item_use_effects(BTreeMap::from([(
+            42,
+            ItemUseEffects {
+                can_sprint: true,
+                interact_vibrations: false,
+                speed_multiplier: 1.0,
+            },
+        )]));
+        let mut item = item_stack(42, 1);
+        item.component_patch.removed_type_ids = vec![VANILLA_USE_EFFECTS_COMPONENT_ID];
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory { slot: 0, item });
+        store.set_local_using_item(true);
+
+        assert_eq!(
+            store.local_using_item_use_effects(),
+            Some(ItemUseEffects::default())
+        );
     }
 
     #[test]

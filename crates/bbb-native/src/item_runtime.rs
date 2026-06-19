@@ -7,15 +7,15 @@ use bbb_pack::{
     ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTextureImageCatalog,
     ItemEquipmentSlot as PackItemEquipmentSlot, ItemMiningProfile as PackItemMiningProfile,
     ItemMiningRule as PackItemMiningRule, ItemModelCatalog, ItemModelDefinition,
-    ItemRegistryCatalog, ItemTintSource, LanguageCatalog, PackRoots, SpriteImage, TerrainColorMaps,
-    DEFAULT_LANGUAGE_CODE,
+    ItemRegistryCatalog, ItemTintSource, ItemUseEffects as PackItemUseEffects, LanguageCatalog,
+    PackRoots, SpriteImage, TerrainColorMaps, DEFAULT_LANGUAGE_CODE,
 };
 use bbb_protocol::packets::{
     DataComponentPatchSummary, ItemRaritySummary, ItemStackSummary, ItemStackTemplateSummary,
 };
 use bbb_world::{
     ItemAttackRange as WorldItemAttackRange, ItemEquipmentSlot as WorldItemEquipmentSlot,
-    WorldItemMiningProfile, WorldItemMiningRule,
+    ItemUseEffects as WorldItemUseEffects, WorldItemMiningProfile, WorldItemMiningRule,
 };
 
 mod icon_model;
@@ -288,6 +288,24 @@ impl NativeItemRuntime {
 
     pub(crate) fn item_attack_range_count(&self) -> usize {
         self.item_attack_ranges_by_protocol_id().len()
+    }
+
+    pub(crate) fn item_use_effects_by_protocol_id(&self) -> BTreeMap<i32, WorldItemUseEffects> {
+        let mut use_effects = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return use_effects;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(effects) = registry.default_use_effects(resource_id) else {
+                continue;
+            };
+            use_effects.insert(protocol_id as i32, world_item_use_effects(effects));
+        }
+        use_effects
+    }
+
+    pub(crate) fn item_use_effect_count(&self) -> usize {
+        self.item_use_effects_by_protocol_id().len()
     }
 
     pub(crate) fn item_mining_profiles_by_protocol_id(
@@ -699,6 +717,14 @@ fn world_item_attack_range(range: PackItemAttackRange) -> WorldItemAttackRange {
         max_creative_reach: range.max_creative_reach,
         hitbox_margin: range.hitbox_margin,
         mob_factor: range.mob_factor,
+    }
+}
+
+fn world_item_use_effects(effects: PackItemUseEffects) -> WorldItemUseEffects {
+    WorldItemUseEffects {
+        can_sprint: effects.can_sprint,
+        interact_vibrations: effects.interact_vibrations,
+        speed_multiplier: effects.speed_multiplier,
     }
 }
 

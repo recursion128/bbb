@@ -50,6 +50,8 @@ pub struct ItemRegistryCatalog {
     #[serde(default)]
     default_attack_ranges: BTreeMap<String, ItemAttackRange>,
     #[serde(default)]
+    default_use_effects: BTreeMap<String, ItemUseEffects>,
+    #[serde(default)]
     mining_profiles: BTreeMap<String, ItemMiningProfile>,
 }
 
@@ -75,6 +77,23 @@ impl PartialEq for ItemAttackRange {
 }
 
 impl Eq for ItemAttackRange {}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ItemUseEffects {
+    pub can_sprint: bool,
+    pub interact_vibrations: bool,
+    pub speed_multiplier: f32,
+}
+
+impl PartialEq for ItemUseEffects {
+    fn eq(&self, other: &Self) -> bool {
+        self.can_sprint == other.can_sprint
+            && self.interact_vibrations == other.interact_vibrations
+            && self.speed_multiplier.to_bits() == other.speed_multiplier.to_bits()
+    }
+}
+
+impl Eq for ItemUseEffects {}
 
 impl ItemRegistryCatalog {
     pub fn load(roots: &PackRoots) -> Result<Self> {
@@ -143,6 +162,7 @@ impl ItemRegistryCatalog {
         let mut default_equipment_slots = BTreeMap::new();
         let mut default_piercing_weapon_ids = BTreeSet::new();
         let mut default_attack_ranges = BTreeMap::new();
+        let mut default_use_effects = BTreeMap::new();
         let mut mining_profiles = BTreeMap::new();
         for capture in declaration.captures_iter(source) {
             let kind = capture.get(1).unwrap().as_str();
@@ -153,6 +173,7 @@ impl ItemRegistryCatalog {
             let equipment_slot = equipment_slot_for_declaration(expression)?;
             let default_piercing_weapon = default_piercing_weapon_for_declaration(expression);
             let default_attack_range = default_attack_range_for_declaration(expression)?;
+            let default_use_effect = default_use_effects_for_declaration(expression)?;
             let mining_profile = mining_profile_for_declaration(expression, block_tags)?;
             if let Some(durability) = durability_for_declaration(expression)? {
                 for resource_id in &ids {
@@ -169,6 +190,9 @@ impl ItemRegistryCatalog {
                 }
                 if let Some(default_attack_range) = default_attack_range {
                     default_attack_ranges.insert(resource_id.clone(), default_attack_range);
+                }
+                if let Some(default_use_effect) = default_use_effect {
+                    default_use_effects.insert(resource_id.clone(), default_use_effect);
                 }
                 if let Some(profile) = &mining_profile {
                     mining_profiles.insert(resource_id.clone(), profile.clone());
@@ -199,6 +223,7 @@ impl ItemRegistryCatalog {
             default_equipment_slots,
             default_piercing_weapon_ids,
             default_attack_ranges,
+            default_use_effects,
             mining_profiles,
         })
     }
@@ -251,6 +276,11 @@ impl ItemRegistryCatalog {
     pub fn default_attack_range(&self, resource_id: &str) -> Option<ItemAttackRange> {
         let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
         self.default_attack_ranges.get(&resource_id).copied()
+    }
+
+    pub fn default_use_effects(&self, resource_id: &str) -> Option<ItemUseEffects> {
+        let resource_id = ResourceLocation::parse(resource_id).ok()?.id();
+        self.default_use_effects.get(&resource_id).copied()
     }
 
     pub fn mining_profile(&self, resource_id: &str) -> Option<&ItemMiningProfile> {
@@ -442,6 +472,31 @@ fn default_attack_range_for_declaration(expression: &str) -> Result<Option<ItemA
         max_creative_reach: parse_java_float_literal(capture.get(4).unwrap().as_str())?,
         hitbox_margin: parse_java_float_literal(capture.get(5).unwrap().as_str())?,
         mob_factor: parse_java_float_literal(capture.get(6).unwrap().as_str())?,
+    }))
+}
+
+fn default_use_effects_for_declaration(expression: &str) -> Result<Option<ItemUseEffects>> {
+    if expression.contains(".spear(") {
+        return Ok(Some(ItemUseEffects {
+            can_sprint: true,
+            interact_vibrations: false,
+            speed_multiplier: 1.0,
+        }));
+    }
+
+    let bool = r#"(true|false)"#;
+    let float = r#"-?[0-9]+(?:\.[0-9]+)?F?"#;
+    let pattern = format!(
+        r#"(?s)\.component\(\s*DataComponents\.USE_EFFECTS\s*,\s*new\s+UseEffects\(\s*{bool}\s*,\s*{bool}\s*,\s*({float})\s*\)\s*\)"#
+    );
+    let regex = Regex::new(&pattern)?;
+    let Some(capture) = regex.captures(expression) else {
+        return Ok(None);
+    };
+    Ok(Some(ItemUseEffects {
+        can_sprint: parse_java_bool_literal(capture.get(1).unwrap().as_str())?,
+        interact_vibrations: parse_java_bool_literal(capture.get(2).unwrap().as_str())?,
+        speed_multiplier: parse_java_float_literal(capture.get(3).unwrap().as_str())?,
     }))
 }
 
@@ -663,6 +718,14 @@ fn parse_java_float_literal(value: &str) -> Result<f32> {
     value.trim_end_matches('F').parse().map_err(Into::into)
 }
 
+fn parse_java_bool_literal(value: &str) -> Result<bool> {
+    match value {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        other => bail!("invalid Java bool literal {other:?}"),
+    }
+}
+
 fn minecraft_id(path: &str) -> Result<String> {
     ResourceLocation::new("minecraft", path).map(|location| location.id())
 }
@@ -794,6 +857,52 @@ mod tests {
             })
         );
         assert_eq!(catalog.default_attack_range("minecraft:iron_sword"), None);
+    }
+
+    #[test]
+    fn item_registry_catalog_parses_default_use_effects() {
+        let source = r#"
+            public class Items {
+               public static final Item WOODEN_SPEAR = registerItem(
+                  "wooden_spear",
+                  new Item.Properties().spear(ToolMaterial.WOOD, 0.65F, 0.7F, 0.75F, 5.0F, 14.0F, 10.0F, 5.1F, 15.0F, 4.6F)
+               );
+               public static final Item TEST_DRINK = registerItem(
+                  "test_drink",
+                  new Item.Properties()
+                     .component(DataComponents.USE_EFFECTS, new UseEffects(false, true, 0.5F))
+               );
+               public static final Item IRON_SWORD = registerItem("iron_sword", new Item.Properties().sword(ToolMaterial.IRON, 3.0F, -2.4F));
+            }
+        "#;
+
+        let catalog =
+            ItemRegistryCatalog::from_items_java_source(source, &BTreeMap::new()).unwrap();
+
+        assert_eq!(
+            catalog.default_use_effects("minecraft:wooden_spear"),
+            Some(ItemUseEffects {
+                can_sprint: true,
+                interact_vibrations: false,
+                speed_multiplier: 1.0,
+            })
+        );
+        assert_eq!(
+            catalog.default_use_effects("test_drink"),
+            Some(ItemUseEffects {
+                can_sprint: false,
+                interact_vibrations: true,
+                speed_multiplier: 0.5,
+            })
+        );
+        assert_eq!(catalog.default_use_effects("minecraft:iron_sword"), None);
+
+        let decoded: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+            "resource_ids": ["minecraft:wooden_spear"],
+            "protocol_ids": {"minecraft:wooden_spear": 0}
+        }))
+        .unwrap();
+        assert_eq!(decoded.default_use_effects("minecraft:wooden_spear"), None);
     }
 
     #[test]
@@ -1049,6 +1158,15 @@ mod tests {
             catalog.default_attack_range("minecraft:diamond_sword"),
             None
         );
+        assert_eq!(
+            catalog.default_use_effects("minecraft:wooden_spear"),
+            Some(ItemUseEffects {
+                can_sprint: true,
+                interact_vibrations: false,
+                speed_multiplier: 1.0,
+            })
+        );
+        assert_eq!(catalog.default_use_effects("minecraft:diamond_sword"), None);
         assert!(catalog
             .mining_profile("minecraft:diamond_pickaxe")
             .is_some());

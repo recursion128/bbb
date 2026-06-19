@@ -27,6 +27,7 @@ pub use crate::item_models::{
 };
 pub use crate::item_registry::{
     ItemAttackRange, ItemEquipmentSlot, ItemMiningProfile, ItemMiningRule, ItemRegistryCatalog,
+    ItemUseEffects,
 };
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
