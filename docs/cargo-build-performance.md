@@ -710,3 +710,50 @@ Follow-up measurement with `scripts/cargo-dev.sh sccache-eval`:
 This second measurement keeps the same conclusion: `sccache` should not be made
 default for this repo yet. It did not reduce the new worker target focused test
 time, and Rust cache hits remained zero for the measured focused workload.
+
+Installed Recheck:
+
+- Command:
+  `scripts/cargo-dev.sh sccache-eval 20260619-installed3 -p bbb-world command_tree --quiet`
+- Clean full workspace with `sccache`:
+  - Wall time: 165.43s.
+  - Target size before cleanup: 3.2G.
+  - Result: all tests passed.
+  - Timing report copied to:
+    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619-installed3.html`
+  - `sccache` stats:
+    - compile requests: 217
+    - executed: 156
+    - cache hits: 1 C/C++ hit
+    - Rust cache hits: 0
+    - Rust cache misses: 155
+    - non-cacheable calls: 59
+    - cache size after run: 697M
+- New worker target focused test with `sccache`:
+  - Wall time: 50.46s.
+  - Target size before cleanup: 637M.
+  - Result: 1 test passed.
+  - `sccache` stats:
+    - compile requests: 46
+    - executed: 29
+    - cache hits: 0
+    - Rust cache misses: 29
+    - non-cacheable calls: 17
+    - cache size after run: 721M
+- New worker target focused test without `sccache`:
+  - Wall time: 49.29s.
+  - Target size before cleanup: 638M.
+  - Result: 1 test passed.
+- Warm focused default with `sccache` on `/tmp/bbb-target-main`:
+  - Wall time: 0.18s.
+  - Result: 1 test passed.
+  - `sccache` compile requests: 0
+- Disposable measurement targets removed after recording:
+  - `/tmp/bbb-target-sccache-clean-20260619-installed3`
+  - `/tmp/bbb-target-sccache-worker-20260619-installed3`
+  - `/tmp/bbb-target-nosccache-worker-20260619-installed3`
+
+This installed recheck again does not support making `sccache` the default.
+The new worker focused test was slightly faster without `sccache`, and measured
+Rust cache hits stayed at zero. Keep `sccache` explicit through
+`RUSTC_WRAPPER=sccache` or `BBB_USE_SCCACHE=1`.
