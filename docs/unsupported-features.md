@@ -1253,10 +1253,15 @@ When an agent does any of the following, update this file in the same slice:
           - input slots back to player inventory
           - player inventory/hotbar range movement
           - banner/dye/pattern input routing from vanilla item tags
+          - result-slot quick-move into the player inventory when the current
+            server result fully fits, the pattern slot is empty, and the single
+            banner/dye inputs are consumed to empty
         - result-slot paths are kept server-authoritative until:
+          - result-slot pickup
           - component-aware selectable banner pattern state
-          - result prediction
-          - input consumption
+          - result recomputation after partial input consumption
+          - pattern-item result quick-move
+          - partial/full-inventory result transfers
           - take-result sound side effects
         - deferred presentation parity work:
           - pattern-item component/tag lists beyond the single-pattern vanilla

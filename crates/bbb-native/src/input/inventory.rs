@@ -8559,6 +8559,67 @@ mod tests {
     }
 
     #[test]
+    fn loom_shift_click_result_slot_queues_predicted_quick_move() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        input.shift_left_down = true;
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: LOOM_MENU_TYPE_ID,
+            title: "Loom".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 40];
+        items[0] = item_stack(42, 1);
+        items[1] = item_stack(43, 1);
+        items[3] = item_stack(90, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(703.0, 342.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 3,
+                button_num: 0,
+                input: ContainerInput::QuickMove,
+                changed_slots: [
+                    (0, HashedStack::Empty),
+                    (1, HashedStack::Empty),
+                    (3, HashedStack::Empty),
+                    (39, HashedStack::Item(hashed_item(90, 1))),
+                ]
+                .into(),
+                carried_item: HashedStack::Empty,
+            })
+        );
+        let slots = &world.inventory().open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, ItemStackSummary::empty());
+        assert_eq!(slots[1].item, ItemStackSummary::empty());
+        assert_eq!(slots[3].item, ItemStackSummary::empty());
+        assert_eq!(slots[39].item, item_stack(90, 1));
+    }
+
+    #[test]
     fn hopper_shift_click_queues_bidirectional_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);
