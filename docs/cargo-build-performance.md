@@ -1069,3 +1069,46 @@ used explicitly through environment variables, but the current multi-worktree
 focused-test workload still shows zero Rust cache hits and no cold-worker
 improvement. Keep stable external `CARGO_TARGET_DIR` caches as the primary
 developer-speed path.
+
+Requested Recheck 3:
+
+- Command:
+  `scripts/cargo-dev.sh sccache-eval 20260619-efficiency -p bbb-world command_tree --quiet`
+- Clean full workspace with `sccache`:
+  - Wall time: 170.85s.
+  - Target size before cleanup: 3.3G.
+  - Result: all tests passed.
+  - Timing report copied to:
+    `/tmp/bbb-cargo-timings/cargo-timing-sccache-clean-20260619-efficiency.html`
+  - `sccache` stats:
+    - compile requests: 217
+    - executed: 156
+    - cache hits: 1 C/C++ hit
+    - Rust cache hits: 0
+    - Rust cache misses: 155
+    - non-cacheable calls: 59
+    - cache size after run: 3 GiB
+- New worker target focused test with `sccache`:
+  - Wall time: 51.79s.
+  - Target size before cleanup: 649M.
+  - Result: 1 test passed.
+  - `sccache` stats:
+    - compile requests: 46
+    - executed: 29
+    - cache hits: 0
+    - Rust cache misses: 29
+    - non-cacheable calls: 17
+- New worker target focused test without `sccache`:
+  - Wall time: 50.76s.
+  - Target size before cleanup: 651M.
+  - Result: 1 test passed.
+- Warm focused default with `sccache` on `/tmp/bbb-target-main`:
+  - Wall time: 8.54s.
+  - Result: 1 test passed.
+  - `sccache` compile requests: 4
+  - `sccache` executed compilations: 0
+
+This recheck again shows no cold-worker improvement from `sccache` for the
+current focused test path. Keep `sccache` optional and explicit, and continue
+using stable external Cargo target directories as the default development
+speed strategy.
