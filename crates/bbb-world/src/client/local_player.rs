@@ -17,6 +17,8 @@ use crate::{protocol_block_pos, BlockPos, EntityVec3, WorldStore};
 
 const STANDING_EYE_HEIGHT: f64 = 1.62;
 const CROUCHING_EYE_HEIGHT: f64 = 1.27;
+const STANDING_BODY_HEIGHT: f64 = 1.8;
+const CROUCHING_BODY_HEIGHT: f64 = 1.5;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocalPlayerState {
@@ -166,6 +168,14 @@ impl LocalPlayerPoseState {
             CROUCHING_EYE_HEIGHT
         } else {
             STANDING_EYE_HEIGHT
+        }
+    }
+
+    pub fn body_height(self) -> f64 {
+        if self.sneaking {
+            CROUCHING_BODY_HEIGHT
+        } else {
+            STANDING_BODY_HEIGHT
         }
     }
 
@@ -875,6 +885,22 @@ mod tests {
             }
             .eye_height(),
             CROUCHING_EYE_HEIGHT
+        );
+    }
+
+    #[test]
+    fn local_player_pose_body_height_tracks_sneaking() {
+        assert_eq!(
+            LocalPlayerPoseState::default().body_height(),
+            STANDING_BODY_HEIGHT
+        );
+        assert_eq!(
+            LocalPlayerPoseState {
+                sneaking: true,
+                ..LocalPlayerPoseState::default()
+            }
+            .body_height(),
+            CROUCHING_BODY_HEIGHT
         );
     }
 

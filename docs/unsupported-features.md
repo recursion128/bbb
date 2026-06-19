@@ -301,7 +301,6 @@ When an agent does any of the following, update this file in the same slice:
         - local Slow Falling gravity clamp
         - local Levitation vertical velocity targeting
       - remaining sneak pose details beyond local crouching eye height:
-        - crouching collision/body dimensions
         - low-ceiling forced crouch
         - swimming/crawling pose priority
       - full flying friction
@@ -445,6 +444,12 @@ When an agent does any of the following, update this file in the same slice:
       - vanilla local player standing/crouching eye heights:
         - standing `1.62`
         - crouching `1.27`
+      - vanilla local player standing/crouching body heights:
+        - standing `1.8`
+        - crouching `1.5`
+      - local player collision, step-up, support probing, fluid body contact,
+        fluid jump-out clearance, and bubble-column contact all consume the
+        canonical local body height
       - local player camera pose, audio listener, crosshair ray, fluid eye probing,
         and `LookAt` eye anchor all consume the canonical local eye height
       - vanilla-shaped local player fluid contact probing for water/lava

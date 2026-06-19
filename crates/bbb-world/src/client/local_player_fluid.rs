@@ -36,7 +36,7 @@ pub(super) fn local_player_fluid_contact(
     world: &WorldStore,
     pose: LocalPlayerPoseState,
 ) -> LocalPlayerFluidContactState {
-    let bounds = LocalPlayerBounds::at(pose.position).deflated(FLUID_INTERACTION_BOX_DEFLATE);
+    let bounds = LocalPlayerBounds::for_pose(pose).deflated(FLUID_INTERACTION_BOX_DEFLATE);
     let eye_y = pose.position.y + pose.eye_height();
     let eye_block_x = block_floor(pose.position.x);
     let eye_block_z = block_floor(pose.position.z);
@@ -451,6 +451,35 @@ mod tests {
 
         assert!(!standing.eye_in_water);
         assert!(crouching.eye_in_water);
+    }
+
+    #[test]
+    fn local_player_fluid_contact_uses_canonical_body_height() {
+        let mut world = empty_world();
+        set_block(
+            &mut world,
+            BlockPos { x: 0, y: 2, z: 0 },
+            SOURCE_WATER_BLOCK_STATE_ID,
+        );
+
+        let standing = local_player_fluid_contact(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 0.5, 0.5),
+                ..LocalPlayerPoseState::default()
+            },
+        );
+        let crouching = local_player_fluid_contact(
+            &world,
+            LocalPlayerPoseState {
+                position: vec3(0.5, 0.5, 0.5),
+                sneaking: true,
+                ..LocalPlayerPoseState::default()
+            },
+        );
+
+        assert!(standing.in_water());
+        assert!(!crouching.in_water());
     }
 
     #[test]

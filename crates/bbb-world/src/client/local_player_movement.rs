@@ -181,12 +181,11 @@ fn advance_local_player_physics_step(
     };
     let mut requested_z = move_z * speed * step_seconds;
     if should_back_off_from_edge(world, pose, input, requested_y) {
-        (requested_x, requested_z) =
-            back_off_from_edge(world, pose.position, requested_x, requested_z);
+        (requested_x, requested_z) = back_off_from_edge(world, pose, requested_x, requested_z);
     }
     let movement = clip_local_player_movement(
         world,
-        pose.position,
+        pose,
         requested_x,
         requested_y,
         requested_z,
@@ -200,8 +199,7 @@ fn advance_local_player_physics_step(
     let horizontal_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON
         || (movement.z - requested_z).abs() > COLLISION_EPSILON;
     let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
-    let on_ground =
-        vertical_collision && requested_y < 0.0 || local_player_supported(world, pose.position);
+    let on_ground = vertical_collision && requested_y < 0.0 || local_player_supported(world, pose);
     let fluid_contact = local_player_fluid_contact(world, pose);
     pose.fall_distance = if fluid_contact.in_water() {
         0.0
@@ -283,13 +281,8 @@ fn advance_local_player_fluid_physics_step(
     let requested_x = pose.delta_movement.x * step_ticks;
     let requested_y = pose.delta_movement.y * step_ticks;
     let requested_z = pose.delta_movement.z * step_ticks;
-    let movement = clip_local_player_movement_without_step(
-        world,
-        pose.position,
-        requested_x,
-        requested_y,
-        requested_z,
-    );
+    let movement =
+        clip_local_player_movement_without_step(world, pose, requested_x, requested_y, requested_z);
     pose.position.x += movement.x;
     pose.position.y += movement.y;
     pose.position.z += movement.z;
@@ -298,8 +291,7 @@ fn advance_local_player_fluid_physics_step(
     let horizontal_collision = (movement.x - requested_x).abs() > COLLISION_EPSILON
         || (movement.z - requested_z).abs() > COLLISION_EPSILON;
     let vertical_collision = (movement.y - requested_y).abs() > COLLISION_EPSILON;
-    let on_ground =
-        vertical_collision && requested_y < 0.0 || local_player_supported(world, pose.position);
+    let on_ground = vertical_collision && requested_y < 0.0 || local_player_supported(world, pose);
     let fluid_contact = local_player_fluid_contact(world, pose);
     pose.fall_distance = if fluid_contact.in_water() {
         0.0
@@ -348,12 +340,12 @@ fn advance_local_player_fluid_physics_step(
     }
     pose.delta_movement = local_player_jump_out_of_fluid_velocity(
         world,
-        pose.position,
+        pose,
         old_y,
         pose.delta_movement,
         horizontal_collision,
     );
-    if let Some(contact) = local_player_bubble_column_contact(world, pose.position) {
+    if let Some(contact) = local_player_bubble_column_contact(world, pose) {
         pose.delta_movement =
             local_player_bubble_column_velocity(pose.delta_movement, contact, step_ticks);
         if matches!(contact, BubbleColumnContact::Inside { .. }) {
@@ -405,14 +397,14 @@ fn local_player_velocity_with_fluid_current(
 
 fn local_player_jump_out_of_fluid_velocity(
     world: &WorldStore,
-    position: ProtocolVec3d,
+    pose: LocalPlayerPoseState,
     old_y: f64,
     velocity: ProtocolVec3d,
     horizontal_collision: bool,
 ) -> ProtocolVec3d {
-    let jump_clearance_y = velocity.y + LOCAL_PLAYER_STEP_HEIGHT - position.y + old_y;
+    let jump_clearance_y = velocity.y + LOCAL_PLAYER_STEP_HEIGHT - pose.position.y + old_y;
     let clear_bounds =
-        LocalPlayerBounds::at(position).moved(velocity.x, jump_clearance_y, velocity.z);
+        LocalPlayerBounds::for_pose(pose).moved(velocity.x, jump_clearance_y, velocity.z);
     if horizontal_collision
         && !local_player_collides(world, clear_bounds)
         && !local_player_bounds_contains_any_fluid(world, clear_bounds)
@@ -456,9 +448,9 @@ fn local_player_bubble_column_velocity(
 
 fn local_player_bubble_column_contact(
     world: &WorldStore,
-    position: ProtocolVec3d,
+    pose: LocalPlayerPoseState,
 ) -> Option<BubbleColumnContact> {
-    let bounds = LocalPlayerBounds::at(position);
+    let bounds = LocalPlayerBounds::for_pose(pose);
     let min_x = bounds.min_x().floor() as i32;
     let max_x = bounds.max_x().ceil() as i32;
     let min_y = bounds.min_y().floor() as i32;
@@ -629,19 +621,14 @@ fn vec3_length_squared(vec: ProtocolVec3d) -> f64 {
 
 fn clip_local_player_movement(
     world: &WorldStore,
-    position: ProtocolVec3d,
+    pose: LocalPlayerPoseState,
     requested_x: f64,
     requested_y: f64,
     requested_z: f64,
     on_ground: bool,
 ) -> ProtocolVec3d {
-    let clipped = clip_local_player_movement_without_step(
-        world,
-        position,
-        requested_x,
-        requested_y,
-        requested_z,
-    );
+    let clipped =
+        clip_local_player_movement_without_step(world, pose, requested_x, requested_y, requested_z);
     if !on_ground
         || requested_y.abs() > COLLISION_EPSILON
         || ((clipped.x - requested_x).abs() <= COLLISION_EPSILON
@@ -650,8 +637,7 @@ fn clip_local_player_movement(
         return clipped;
     }
 
-    let Some(stepped) =
-        clip_local_player_step_up_movement(world, position, requested_x, requested_z)
+    let Some(stepped) = clip_local_player_step_up_movement(world, pose, requested_x, requested_z)
     else {
         return clipped;
     };
@@ -664,12 +650,12 @@ fn clip_local_player_movement(
 
 fn clip_local_player_movement_without_step(
     world: &WorldStore,
-    position: ProtocolVec3d,
+    pose: LocalPlayerPoseState,
     requested_x: f64,
     requested_y: f64,
     requested_z: f64,
 ) -> ProtocolVec3d {
-    let mut bounds = LocalPlayerBounds::at(position);
+    let mut bounds = LocalPlayerBounds::for_pose(pose);
     let clipped_y = clip_axis_delta(world, bounds, Axis::Y, requested_y);
     bounds = bounds.moved(0.0, clipped_y, 0.0);
     let clipped_x = clip_axis_delta(world, bounds, Axis::X, requested_x);
@@ -685,11 +671,11 @@ fn clip_local_player_movement_without_step(
 
 fn clip_local_player_step_up_movement(
     world: &WorldStore,
-    position: ProtocolVec3d,
+    pose: LocalPlayerPoseState,
     requested_x: f64,
     requested_z: f64,
 ) -> Option<ProtocolVec3d> {
-    let mut bounds = LocalPlayerBounds::at(position);
+    let mut bounds = LocalPlayerBounds::for_pose(pose);
     let clipped_up = clip_axis_delta(world, bounds, Axis::Y, LOCAL_PLAYER_STEP_HEIGHT);
     if clipped_up <= COLLISION_EPSILON {
         return None;
@@ -730,7 +716,7 @@ fn local_player_is_above_ground(world: &WorldStore, pose: LocalPlayerPoseState) 
         || (pose.fall_distance < LOCAL_PLAYER_STEP_HEIGHT
             && !local_player_can_fall_at_least(
                 world,
-                pose.position,
+                pose,
                 0.0,
                 0.0,
                 LOCAL_PLAYER_STEP_HEIGHT - pose.fall_distance,
@@ -899,7 +885,7 @@ fn local_player_is_flying(world: &WorldStore) -> bool {
 
 fn back_off_from_edge(
     world: &WorldStore,
-    position: ProtocolVec3d,
+    pose: LocalPlayerPoseState,
     requested_x: f64,
     requested_z: f64,
 ) -> (f64, f64) {
@@ -909,7 +895,7 @@ fn back_off_from_edge(
     let step_z = backed_z.signum() * EDGE_BACKOFF_STEP;
 
     while backed_x != 0.0
-        && local_player_can_fall_at_least(world, position, backed_x, 0.0, LOCAL_PLAYER_STEP_HEIGHT)
+        && local_player_can_fall_at_least(world, pose, backed_x, 0.0, LOCAL_PLAYER_STEP_HEIGHT)
     {
         if backed_x.abs() <= EDGE_BACKOFF_STEP {
             backed_x = 0.0;
@@ -919,7 +905,7 @@ fn back_off_from_edge(
     }
 
     while backed_z != 0.0
-        && local_player_can_fall_at_least(world, position, 0.0, backed_z, LOCAL_PLAYER_STEP_HEIGHT)
+        && local_player_can_fall_at_least(world, pose, 0.0, backed_z, LOCAL_PLAYER_STEP_HEIGHT)
     {
         if backed_z.abs() <= EDGE_BACKOFF_STEP {
             backed_z = 0.0;
@@ -930,13 +916,7 @@ fn back_off_from_edge(
 
     while backed_x != 0.0
         && backed_z != 0.0
-        && local_player_can_fall_at_least(
-            world,
-            position,
-            backed_x,
-            backed_z,
-            LOCAL_PLAYER_STEP_HEIGHT,
-        )
+        && local_player_can_fall_at_least(world, pose, backed_x, backed_z, LOCAL_PLAYER_STEP_HEIGHT)
     {
         if backed_x.abs() <= EDGE_BACKOFF_STEP {
             backed_x = 0.0;
@@ -956,14 +936,14 @@ fn back_off_from_edge(
 
 fn local_player_can_fall_at_least(
     world: &WorldStore,
-    position: ProtocolVec3d,
+    pose: LocalPlayerPoseState,
     delta_x: f64,
     delta_z: f64,
     min_height: f64,
 ) -> bool {
     !local_player_collides(
         world,
-        LocalPlayerBounds::at(position)
+        LocalPlayerBounds::for_pose(pose)
             .moved(delta_x, 0.0, delta_z)
             .edge_support_probe(min_height),
     )
@@ -999,10 +979,10 @@ fn clip_axis_delta(
     }
 }
 
-fn local_player_supported(world: &WorldStore, position: ProtocolVec3d) -> bool {
+fn local_player_supported(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {
     local_player_collides(
         world,
-        LocalPlayerBounds::at(position).moved(0.0, -SUPPORT_EPSILON, 0.0),
+        LocalPlayerBounds::for_pose(pose).moved(0.0, -SUPPORT_EPSILON, 0.0),
     )
 }
 
@@ -1778,6 +1758,66 @@ mod tests {
         assert!(pose.sneaking);
         assert!(pose.on_ground);
         assert!(!pose.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_sneak_uses_crouching_collision_height() {
+        let mut standing_world = flat_collision_world();
+        set_test_block(&mut standing_world, 0, 2, 1, OAK_TOP_SLAB_BLOCK_STATE_ID);
+        standing_world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let standing = standing_world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    ..LocalPlayerInputState::default()
+                },
+                1.0,
+            )
+            .unwrap();
+
+        assert!(standing.horizontal_collision);
+        assert!(
+            standing.position.z < 1.0,
+            "position was {:?}",
+            standing.position
+        );
+        assert!(!standing.sneaking);
+
+        let mut crouching_world = flat_collision_world();
+        set_test_block(&mut crouching_world, 0, 2, 1, OAK_TOP_SLAB_BLOCK_STATE_ID);
+        crouching_world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            y_rot: 0.0,
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let crouching = crouching_world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sneak: true,
+                    ..LocalPlayerInputState::default()
+                },
+                1.0,
+            )
+            .unwrap();
+
+        assert!(
+            crouching.position.z > 1.0,
+            "position was {:?}",
+            crouching.position
+        );
+        assert!(crouching.sneaking);
+        assert!(!crouching.horizontal_collision);
     }
 
     #[test]

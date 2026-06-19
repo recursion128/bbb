@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
+use super::local_player::LocalPlayerPoseState;
 use crate::{BlockPos, BlockProbe, TerrainMaterialClass, WorldStore};
 
 pub(super) const COLLISION_EPSILON: f64 = 1.0e-7;
 
 const LOCAL_PLAYER_HALF_WIDTH: f64 = 0.3;
-const LOCAL_PLAYER_HEIGHT: f64 = 1.8;
 const MAX_COLLISION_BOXES: usize = 16;
 const PX: f64 = 1.0 / 16.0;
 
@@ -946,13 +946,17 @@ pub(super) struct LocalPlayerBounds {
 }
 
 impl LocalPlayerBounds {
-    pub(super) fn at(position: bbb_protocol::packets::Vec3d) -> Self {
+    pub(super) fn for_pose(pose: LocalPlayerPoseState) -> Self {
+        Self::at_height(pose.position, pose.body_height())
+    }
+
+    fn at_height(position: bbb_protocol::packets::Vec3d, height: f64) -> Self {
         Self {
             min_x: position.x - LOCAL_PLAYER_HALF_WIDTH,
             min_y: position.y,
             min_z: position.z - LOCAL_PLAYER_HALF_WIDTH,
             max_x: position.x + LOCAL_PLAYER_HALF_WIDTH,
-            max_y: position.y + LOCAL_PLAYER_HEIGHT,
+            max_y: position.y + height,
             max_z: position.z + LOCAL_PLAYER_HALF_WIDTH,
         }
     }
