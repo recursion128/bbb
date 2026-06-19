@@ -1254,7 +1254,10 @@ When an agent does any of the following, update this file in the same slice:
           - text filtering toggle behavior
       - shulker box
       - SmithingMenu:
-        - quick-move paths are kept server-authoritative until:
+        - input slots quick-move back to the player inventory with vanilla
+          forward-fill ordering
+        - player-inventory quick-move paths are kept server-authoritative
+          until:
           - smithing recipe property sets
           - input slot routing
           - result prediction

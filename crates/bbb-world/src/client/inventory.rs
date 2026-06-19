@@ -110,7 +110,13 @@ const LOOM_DYE_ITEM_TAG: &str = "minecraft:loom_dyes";
 const LOOM_PATTERN_ITEM_TAG: &str = "minecraft:loom_patterns";
 const MERCHANT_RESULT_SLOT: i16 = 2;
 const MERCHANT_VISIBLE_OFFER_COUNT: usize = 7;
+const SMITHING_TEMPLATE_SLOT: i16 = 0;
+const SMITHING_BASE_SLOT: i16 = 1;
+const SMITHING_ADDITIONAL_SLOT: i16 = 2;
 const SMITHING_RESULT_SLOT: i16 = 3;
+const SMITHING_PLAYER_MAIN_START: i16 = 4;
+const SMITHING_HOTBAR_END: i16 = 40;
+const SMITHING_TOTAL_SLOT_COUNT: i16 = 40;
 const FURNACE_CONTAINER_SLOT_COUNT: i16 = 3;
 const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
@@ -1249,9 +1255,20 @@ impl WorldStore {
                             &self.default_item_max_stack_sizes,
                         )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_SMITHING_ID) {
-                        return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
-                            ProtocolContainerInput::QuickMove,
-                        ));
+                        if smithing_quick_move_requires_server_authority(
+                            &slots_after,
+                            request.slot_num,
+                        ) {
+                            return Err(ContainerClickBuildError::UnsupportedLocalClickInput(
+                                ProtocolContainerInput::QuickMove,
+                            ));
+                        }
+                        apply_smithing_menu_quick_move_to_slots(
+                            container_id,
+                            &mut slots_after,
+                            request.slot_num,
+                            &self.default_item_max_stack_sizes,
+                        )
                     } else if menu_type_id == Some(VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID) {
                         if cartography_table_quick_move_requires_server_authority(
                             &slots_after,
@@ -3101,6 +3118,58 @@ fn grindstone_quick_move_requires_server_authority(slots: &[ContainerSlot], slot
     let inputs_full = inventory_menu_slot_has_item(slots, GRINDSTONE_INPUT_SLOT)
         && inventory_menu_slot_has_item(slots, GRINDSTONE_ADDITIONAL_SLOT);
     !inputs_full
+}
+
+fn smithing_quick_move_requires_server_authority(slots: &[ContainerSlot], slot_num: i16) -> bool {
+    if !(0..SMITHING_TOTAL_SLOT_COUNT).contains(&slot_num) {
+        return false;
+    }
+    if slot_num == SMITHING_RESULT_SLOT {
+        return true;
+    }
+    if matches!(
+        slot_num,
+        SMITHING_TEMPLATE_SLOT | SMITHING_BASE_SLOT | SMITHING_ADDITIONAL_SLOT
+    ) {
+        return false;
+    }
+    inventory_menu_slot_has_item(slots, slot_num)
+}
+
+fn apply_smithing_menu_quick_move_to_slots(
+    container_id: i32,
+    slots: &mut [ContainerSlot],
+    slot_num: i16,
+    default_item_max_stack_sizes: &BTreeMap<i32, i32>,
+) {
+    if !matches!(
+        slot_num,
+        SMITHING_TEMPLATE_SLOT | SMITHING_BASE_SLOT | SMITHING_ADDITIONAL_SLOT
+    ) {
+        return;
+    }
+    let Some(source_index) = slots.iter().position(|slot| slot.slot == slot_num) else {
+        return;
+    };
+    if item_stack_is_empty(&slots[source_index].item) {
+        return;
+    }
+
+    let mut moving = slots[source_index].item.clone();
+    if move_item_stack_to_slots(
+        container_id,
+        slots,
+        source_index,
+        &mut moving,
+        SMITHING_PLAYER_MAIN_START,
+        SMITHING_HOTBAR_END,
+        false,
+        default_item_max_stack_sizes,
+    ) {
+        normalize_item_stack(&mut moving);
+        slots[source_index].item = moving;
+        normalize_container_slot_selection(&mut slots[source_index]);
+    }
 }
 
 fn cartography_table_quick_move_requires_server_authority(
@@ -7187,25 +7256,70 @@ mod tests {
     }
 
     #[test]
-    fn apply_local_smithing_result_and_quick_move_require_server_authority() {
-        const SMITHING_TOTAL_SLOT_COUNT: usize = 40;
-
+    fn apply_local_smithing_input_quick_move_moves_input_slots_to_player_forward() {
         let mut store = WorldStore::new();
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
             menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
             title: "Smithing".to_string(),
         });
-        let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT];
-        items[0] = item_stack(42, 1);
+        let mut items = vec![ProtocolItemStackSummary::empty(); SMITHING_TOTAL_SLOT_COUNT as usize];
+        items[SMITHING_TEMPLATE_SLOT as usize] = item_stack(42, 1);
+        items[SMITHING_BASE_SLOT as usize] = item_stack(43, 2);
+        items[SMITHING_ADDITIONAL_SLOT as usize] = item_stack(44, 3);
         items[SMITHING_RESULT_SLOT as usize] = item_stack(90, 1);
-        items[31] = item_stack(43, 3);
+        items[31] = item_stack(45, 4);
         store.apply_container_set_content(ProtocolContainerSetContent {
             container_id: 7,
             state_id: 13,
             items,
             carried_item: ProtocolItemStackSummary::empty(),
         });
+
+        let template_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: SMITHING_TEMPLATE_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            template_move.changed_slots,
+            BTreeMap::from([
+                (SMITHING_TEMPLATE_SLOT, ProtocolHashedStack::Empty),
+                (SMITHING_PLAYER_MAIN_START, hashed_item_stack(42, 1)),
+            ])
+        );
+
+        let base_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: SMITHING_BASE_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            base_move.changed_slots,
+            BTreeMap::from([
+                (SMITHING_BASE_SLOT, ProtocolHashedStack::Empty),
+                (SMITHING_PLAYER_MAIN_START + 1, hashed_item_stack(43, 2)),
+            ])
+        );
+
+        let additional_move = store
+            .apply_local_container_click_slot(ContainerClickSlotRequest {
+                slot_num: SMITHING_ADDITIONAL_SLOT,
+                button_num: 0,
+                input: ProtocolContainerInput::QuickMove,
+            })
+            .unwrap();
+        assert_eq!(
+            additional_move.changed_slots,
+            BTreeMap::from([
+                (SMITHING_ADDITIONAL_SLOT, ProtocolHashedStack::Empty),
+                (SMITHING_PLAYER_MAIN_START + 2, hashed_item_stack(44, 3)),
+            ])
+        );
 
         for input in [
             ProtocolContainerInput::Pickup,
@@ -7239,12 +7353,35 @@ mod tests {
             .unwrap();
         assert_eq!(click.changed_slots, BTreeMap::new());
         assert_eq!(click.carried_item, ProtocolHashedStack::Empty);
-        assert_eq!(open_container_slot_item(&store, 0), item_stack(42, 1));
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_TEMPLATE_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_BASE_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_ADDITIONAL_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
         assert_eq!(
             open_container_slot_item(&store, SMITHING_RESULT_SLOT),
             item_stack(90, 1)
         );
-        assert_eq!(open_container_slot_item(&store, 31), item_stack(43, 3));
+        assert_eq!(open_container_slot_item(&store, 31), item_stack(45, 4));
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_PLAYER_MAIN_START),
+            item_stack(42, 1)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_PLAYER_MAIN_START + 1),
+            item_stack(43, 2)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, SMITHING_PLAYER_MAIN_START + 2),
+            item_stack(44, 3)
+        );
     }
 
     #[test]
