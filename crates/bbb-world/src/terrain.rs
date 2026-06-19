@@ -243,6 +243,10 @@ fn is_cutout_block_name(name: &str) -> bool {
         || name.contains("seagrass")
         || name == "minecraft:cobweb"
         || name == "minecraft:sweet_berry_bush"
+        || is_no_collision_vegetation_block_name(name)
+        || is_no_collision_crop_block_name(name)
+        || is_no_collision_thin_overlay_block_name(name)
+        || is_no_collision_fire_or_wire_block_name(name)
         || is_copper_grate_block_name(name)
         || is_bar_block_name(name)
         || is_chain_block_name(name)
@@ -420,6 +424,84 @@ fn is_pressure_plate_block_name(name: &str) -> bool {
     )
 }
 
+fn is_no_collision_vegetation_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:dandelion"
+            | "minecraft:golden_dandelion"
+            | "minecraft:poppy"
+            | "minecraft:blue_orchid"
+            | "minecraft:allium"
+            | "minecraft:azure_bluet"
+            | "minecraft:red_tulip"
+            | "minecraft:orange_tulip"
+            | "minecraft:white_tulip"
+            | "minecraft:pink_tulip"
+            | "minecraft:oxeye_daisy"
+            | "minecraft:lily_of_the_valley"
+            | "minecraft:wither_rose"
+            | "minecraft:lilac"
+            | "minecraft:rose_bush"
+            | "minecraft:peony"
+            | "minecraft:pitcher_plant"
+            | "minecraft:open_eyeblossom"
+            | "minecraft:closed_eyeblossom"
+            | "minecraft:dead_bush"
+            | "minecraft:bush"
+            | "minecraft:firefly_bush"
+            | "minecraft:short_dry_grass"
+            | "minecraft:tall_dry_grass"
+            | "minecraft:mangrove_propagule"
+            | "minecraft:crimson_fungus"
+            | "minecraft:warped_fungus"
+            | "minecraft:nether_sprouts"
+            | "minecraft:small_dripleaf"
+            | "minecraft:big_dripleaf_stem"
+            | "minecraft:spore_blossom"
+            | "minecraft:pale_hanging_moss"
+    )
+}
+
+fn is_no_collision_crop_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:wheat"
+            | "minecraft:carrots"
+            | "minecraft:potatoes"
+            | "minecraft:beetroots"
+            | "minecraft:nether_wart"
+            | "minecraft:pitcher_crop"
+            | "minecraft:pumpkin_stem"
+            | "minecraft:melon_stem"
+            | "minecraft:attached_pumpkin_stem"
+            | "minecraft:attached_melon_stem"
+            | "minecraft:sugar_cane"
+    )
+}
+
+fn is_no_collision_thin_overlay_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:pink_petals"
+            | "minecraft:leaf_litter"
+            | "minecraft:sculk_vein"
+            | "minecraft:glow_lichen"
+            | "minecraft:resin_clump"
+            | "minecraft:frogspawn"
+    )
+}
+
+fn is_no_collision_fire_or_wire_block_name(name: &str) -> bool {
+    matches!(
+        name,
+        "minecraft:fire"
+            | "minecraft:soul_fire"
+            | "minecraft:redstone_wire"
+            | "minecraft:tripwire"
+            | "minecraft:tripwire_hook"
+    )
+}
+
 fn is_sign_block_name(name: &str) -> bool {
     name.strip_prefix("minecraft:")
         .is_some_and(|path| path.ends_with("_sign"))
@@ -498,6 +580,85 @@ mod tests {
                 TerrainMaterialClass::Cutout
             );
         }
+        for name in [
+            "minecraft:dandelion",
+            "minecraft:golden_dandelion",
+            "minecraft:poppy",
+            "minecraft:blue_orchid",
+            "minecraft:allium",
+            "minecraft:azure_bluet",
+            "minecraft:red_tulip",
+            "minecraft:orange_tulip",
+            "minecraft:white_tulip",
+            "minecraft:pink_tulip",
+            "minecraft:oxeye_daisy",
+            "minecraft:lily_of_the_valley",
+            "minecraft:wither_rose",
+            "minecraft:lilac",
+            "minecraft:rose_bush",
+            "minecraft:peony",
+            "minecraft:pitcher_plant",
+            "minecraft:open_eyeblossom",
+            "minecraft:closed_eyeblossom",
+            "minecraft:dead_bush",
+            "minecraft:bush",
+            "minecraft:firefly_bush",
+            "minecraft:short_dry_grass",
+            "minecraft:tall_dry_grass",
+            "minecraft:mangrove_propagule",
+            "minecraft:crimson_fungus",
+            "minecraft:warped_fungus",
+            "minecraft:nether_sprouts",
+            "minecraft:small_dripleaf",
+            "minecraft:big_dripleaf_stem",
+            "minecraft:spore_blossom",
+            "minecraft:pale_hanging_moss",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:wheat",
+            "minecraft:carrots",
+            "minecraft:potatoes",
+            "minecraft:beetroots",
+            "minecraft:nether_wart",
+            "minecraft:pitcher_crop",
+            "minecraft:pumpkin_stem",
+            "minecraft:melon_stem",
+            "minecraft:attached_pumpkin_stem",
+            "minecraft:attached_melon_stem",
+            "minecraft:sugar_cane",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        for name in [
+            "minecraft:pink_petals",
+            "minecraft:leaf_litter",
+            "minecraft:sculk_vein",
+            "minecraft:glow_lichen",
+            "minecraft:resin_clump",
+            "minecraft:frogspawn",
+            "minecraft:fire",
+            "minecraft:soul_fire",
+            "minecraft:redstone_wire",
+            "minecraft:tripwire",
+            "minecraft:tripwire_hook",
+        ] {
+            assert_eq!(
+                classify_terrain_material(Some(name)),
+                TerrainMaterialClass::Cutout
+            );
+        }
+        assert_eq!(
+            classify_terrain_material(Some("minecraft:nether_wart_block")),
+            TerrainMaterialClass::Opaque
+        );
         for name in [
             "minecraft:copper_grate",
             "minecraft:exposed_copper_grate",

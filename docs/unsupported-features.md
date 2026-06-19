@@ -469,6 +469,7 @@ When an agent does any of the following, update this file in the same slice:
       - snow layer
       - flat carpet
       - pale moss carpet base
+      - flowers / bushes / crops / thin ground overlays
       - cactus
       - farmland / dirt path
       - soul sand / mud
@@ -490,6 +491,7 @@ When an agent does any of the following, update this file in the same slice:
       - ladder
       - rod
       - campfire
+      - fire / redstone wire / tripwire
       - copper grate
       - piston / sticky piston
       - piston head
@@ -547,6 +549,15 @@ When an agent does any of the following, update this file in the same slice:
         `CopperGolemStatueBlock` collision: fixed
         `Block.column(10.0, 0.0, 14.0)` independent of pose, facing,
         waterlogged, weathered, or waxed state.
+      - common vanilla `.noCollision()` vegetation, crops, thin ground
+        overlays, fire, redstone wire, and tripwire are classified as cutout
+        non-blocking terrain for local movement. Covered examples include:
+        - ordinary flowers and dry vegetation
+        - bushes, fungi, sprouts, propagules, and dripleaf stems
+        - wheat, carrots, potatoes, beetroots, nether wart, stems, and
+          sugar cane
+        - pink petals, leaf litter, sculk vein, glow lichen, resin clump, and
+          frogspawn
       - standing signs, wall signs, ceiling hanging signs, and wall hanging
         signs follow vanilla `.noCollision()` registration; their outline
         shapes remain renderer/crosshair selection data only.

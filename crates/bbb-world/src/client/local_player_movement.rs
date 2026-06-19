@@ -1738,7 +1738,14 @@ mod tests {
     const OAK_BOTTOM_STRAIGHT_NORTH_STAIR_BLOCK_STATE_ID: i32 = 3918;
     const OAK_BOTTOM_STRAIGHT_SOUTH_STAIR_BLOCK_STATE_ID: i32 = 3938;
     const OAK_LEAVES_BLOCK_STATE_ID: i32 = 255;
+    const MANGROVE_PROPAGULE_AGE_4_DRY_BLOCK_STATE_ID: i32 = 82;
     const COBWEB_BLOCK_STATE_ID: i32 = 2247;
+    const DEAD_BUSH_BLOCK_STATE_ID: i32 = 2250;
+    const BUSH_BLOCK_STATE_ID: i32 = 2251;
+    const DANDELION_BLOCK_STATE_ID: i32 = 2321;
+    const FIRE_UP_AGE_0_BLOCK_STATE_ID: i32 = 3404;
+    const REDSTONE_WIRE_POWER_0_DOT_BLOCK_STATE_ID: i32 = 5171;
+    const WHEAT_AGE_7_BLOCK_STATE_ID: i32 = 5318;
     const MANGROVE_ROOTS_WATERLOGGED_BLOCK_STATE_ID: i32 = 163;
     const MANGROVE_ROOTS_DRY_BLOCK_STATE_ID: i32 = 164;
     const MUDDY_MANGROVE_ROOTS_X_BLOCK_STATE_ID: i32 = 165;
@@ -1786,6 +1793,11 @@ mod tests {
     const OAK_CLOSED_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8653;
     const OAK_OPEN_NORTH_FENCE_GATE_BLOCK_STATE_ID: i32 = 8651;
     const LILY_PAD_BLOCK_STATE_ID: i32 = 8920;
+    const SUGAR_CANE_AGE_0_BLOCK_STATE_ID: i32 = 6947;
+    const NETHER_WART_AGE_3_BLOCK_STATE_ID: i32 = 9450;
+    const TRIPWIRE_EMPTY_BLOCK_STATE_ID: i32 = 9726;
+    const CARROTS_AGE_7_BLOCK_STATE_ID: i32 = 10666;
+    const POTATOES_AGE_7_BLOCK_STATE_ID: i32 = 10674;
     const GLASS_NORTH_PANE_BLOCK_STATE_ID: i32 = 8323;
     const WHITE_CARPET_BLOCK_STATE_ID: i32 = 12896;
     const COBBLESTONE_NORTH_EAST_WALL_BLOCK_STATE_ID: i32 = 10236;
@@ -1799,6 +1811,8 @@ mod tests {
     const SWEET_BERRY_BUSH_AGE_3_BLOCK_STATE_ID: i32 = 20944;
     const LANTERN_STANDING_BLOCK_STATE_ID: i32 = 20840;
     const CAMPFIRE_NORTH_LIT_BLOCK_STATE_ID: i32 = 20880;
+    const NETHER_SPROUTS_BLOCK_STATE_ID: i32 = 20961;
+    const CRIMSON_FUNGUS_BLOCK_STATE_ID: i32 = 20975;
     const HONEY_BLOCK_STATE_ID: i32 = 21816;
     const POWDER_SNOW_BLOCK_STATE_ID: i32 = 24689;
     const FREEZE_IMMUNE_WEARABLE_ITEM_ID: i32 = 42;
@@ -1825,10 +1839,12 @@ mod tests {
     const STONECUTTER_NORTH_BLOCK_STATE_ID: i32 = 20801;
     const ANVIL_NORTH_BLOCK_STATE_ID: i32 = 11195;
     const COMPOSTER_LEVEL_7_BLOCK_STATE_ID: i32 = 21750;
+    const BEETROOTS_AGE_3_BLOCK_STATE_ID: i32 = 14814;
     const COPPER_GRATE_BLOCK_STATE_ID: i32 = 27048;
     const WAXED_COPPER_GRATE_BLOCK_STATE_ID: i32 = 27056;
     const SCULK_SENSOR_INACTIVE_BLOCK_STATE_ID: i32 = 24691;
     const CALIBRATED_SCULK_SENSOR_NORTH_INACTIVE_BLOCK_STATE_ID: i32 = 24787;
+    const SCULK_VEIN_UP_DRY_BLOCK_STATE_ID: i32 = 25294;
     const SCULK_SHRIEKER_IDLE_BLOCK_STATE_ID: i32 = 25304;
     const LIGHTNING_ROD_UP_UNPOWERED_BLOCK_STATE_ID: i32 = 27562;
     const TURTLE_EGG_ONE_BLOCK_STATE_ID: i32 = 15090;
@@ -1856,10 +1872,13 @@ mod tests {
     const BIG_DRIPLEAF_NORTH_PARTIAL_DRY_BLOCK_STATE_ID: i32 = 27868;
     const BIG_DRIPLEAF_NORTH_FULL_DRY_BLOCK_STATE_ID: i32 = 27870;
     const BIG_DRIPLEAF_STEM_NORTH_DRY_BLOCK_STATE_ID: i32 = 27896;
+    const PINK_PETALS_ONE_NORTH_BLOCK_STATE_ID: i32 = 27814;
+    const LEAF_LITTER_ONE_NORTH_BLOCK_STATE_ID: i32 = 27846;
     const MUD_BLOCK_STATE_ID: i32 = 27922;
     const AZALEA_BLOCK_STATE_ID: i32 = 27811;
     const FLOWERING_AZALEA_BLOCK_STATE_ID: i32 = 27812;
     const HEAVY_CORE_DRY_BLOCK_STATE_ID: i32 = 29702;
+    const FIREFLY_BUSH_BLOCK_STATE_ID: i32 = 29872;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
     const SOURCE_LAVA_BLOCK_STATE_ID: i32 = 102;
@@ -2833,6 +2852,49 @@ mod tests {
         let cases = [
             ("cobweb", COBWEB_BLOCK_STATE_ID),
             ("sweet berry bush", SWEET_BERRY_BUSH_AGE_3_BLOCK_STATE_ID),
+        ];
+
+        for (name, block_state_id) in cases {
+            let mut world = flat_collision_world();
+            set_test_block(&mut world, 0, 1, 1, block_state_id);
+            let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+            assert_f64_near(pose.position.y, 1.0, 0.0005);
+            assert!(
+                pose.position.z > 1.0,
+                "{name} position was {:?}",
+                pose.position
+            );
+            assert!(!pose.horizontal_collision, "{name}");
+            assert!(pose.on_ground, "{name}");
+        }
+    }
+
+    #[test]
+    fn local_player_ignores_vanilla_no_collision_vegetation_and_overlays() {
+        let cases = [
+            ("dandelion", DANDELION_BLOCK_STATE_ID),
+            ("dead bush", DEAD_BUSH_BLOCK_STATE_ID),
+            ("bush", BUSH_BLOCK_STATE_ID),
+            ("firefly bush", FIREFLY_BUSH_BLOCK_STATE_ID),
+            (
+                "mangrove propagule",
+                MANGROVE_PROPAGULE_AGE_4_DRY_BLOCK_STATE_ID,
+            ),
+            ("crimson fungus", CRIMSON_FUNGUS_BLOCK_STATE_ID),
+            ("nether sprouts", NETHER_SPROUTS_BLOCK_STATE_ID),
+            ("wheat", WHEAT_AGE_7_BLOCK_STATE_ID),
+            ("carrots", CARROTS_AGE_7_BLOCK_STATE_ID),
+            ("potatoes", POTATOES_AGE_7_BLOCK_STATE_ID),
+            ("beetroots", BEETROOTS_AGE_3_BLOCK_STATE_ID),
+            ("nether wart", NETHER_WART_AGE_3_BLOCK_STATE_ID),
+            ("sugar cane", SUGAR_CANE_AGE_0_BLOCK_STATE_ID),
+            ("pink petals", PINK_PETALS_ONE_NORTH_BLOCK_STATE_ID),
+            ("leaf litter", LEAF_LITTER_ONE_NORTH_BLOCK_STATE_ID),
+            ("sculk vein", SCULK_VEIN_UP_DRY_BLOCK_STATE_ID),
+            ("fire", FIRE_UP_AGE_0_BLOCK_STATE_ID),
+            ("redstone wire", REDSTONE_WIRE_POWER_0_DOT_BLOCK_STATE_ID),
+            ("tripwire", TRIPWIRE_EMPTY_BLOCK_STATE_ID),
         ];
 
         for (name, block_state_id) in cases {
