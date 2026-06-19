@@ -1753,6 +1753,8 @@ mod tests {
     const DRIED_GHAST_NORTH_DRY_BLOCK_STATE_ID: i32 = 15106;
     const SEA_PICKLE_ONE_DRY_BLOCK_STATE_ID: i32 = 15268;
     const SEA_PICKLE_FOUR_DRY_BLOCK_STATE_ID: i32 = 15274;
+    const BAMBOO_SAPLING_BLOCK_STATE_ID: i32 = 15278;
+    const BAMBOO_AGE_0_NO_LEAVES_STAGE_0_BLOCK_STATE_ID: i32 = 15279;
     const CANDLE_ONE_DRY_UNLIT_BLOCK_STATE_ID: i32 = 23099;
     const CANDLE_FOUR_DRY_UNLIT_BLOCK_STATE_ID: i32 = 23111;
     const CANDLE_CAKE_UNLIT_BLOCK_STATE_ID: i32 = 23369;
@@ -2404,6 +2406,30 @@ mod tests {
     }
 
     #[test]
+    fn local_player_does_not_walk_through_bamboo_stalk_collision() {
+        let mut world = flat_collision_world();
+        set_test_block(
+            &mut world,
+            0,
+            1,
+            1,
+            BAMBOO_AGE_0_NO_LEAVES_STAGE_0_BLOCK_STATE_ID,
+        );
+        set_test_block(
+            &mut world,
+            0,
+            2,
+            1,
+            BAMBOO_AGE_0_NO_LEAVES_STAGE_0_BLOCK_STATE_ID,
+        );
+        let pose = advance_forward_from_standard_start(&mut world, 1.0);
+
+        assert!(pose.position.z < 1.7, "position was {:?}", pose.position);
+        assert!(pose.horizontal_collision);
+        assert!(pose.on_ground);
+    }
+
+    #[test]
     fn local_player_steps_over_thin_ground_shapes() {
         let cases = [
             ("white carpet", WHITE_CARPET_BLOCK_STATE_ID, 1.0625),
@@ -2556,6 +2582,31 @@ mod tests {
             0,
             PALE_MOSS_CARPET_TOPPER_WITH_SIDES_BLOCK_STATE_ID,
         );
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 3.0, 0.5),
+            on_ground: false,
+            ..LocalPlayerPoseState::default()
+        });
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    ..LocalPlayerInputState::default()
+                },
+                2.0,
+            )
+            .unwrap();
+
+        assert_f64_near(pose.position.y, 1.0, 0.0005);
+        assert!(pose.on_ground);
+        assert!(!pose.horizontal_collision);
+    }
+
+    #[test]
+    fn local_player_ignores_bamboo_sapling_collision() {
+        let mut world = flat_collision_world();
+        set_test_block(&mut world, 0, 1, 0, BAMBOO_SAPLING_BLOCK_STATE_ID);
         world.set_local_player_pose(LocalPlayerPoseState {
             position: vec3(0.5, 3.0, 0.5),
             on_ground: false,

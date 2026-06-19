@@ -458,6 +458,7 @@ When an agent does any of the following, update this file in the same slice:
       - bars/pane
       - wall
       - leaves
+      - bamboo stalk
       - snow layer
       - flat carpet
       - pale moss carpet base
@@ -510,6 +511,9 @@ When an agent does any of the following, update this file in the same slice:
       - `pale_moss_carpet` follows vanilla `MossyCarpetBlock` collision:
         `bottom=true` uses the default 1px carpet base and `bottom=false`
         is empty even when side outline faces are present.
+      - `bamboo` follows vanilla `BambooStalkBlock` 3px offset collision
+        column; `bamboo_sapling` is empty, matching its vanilla
+        `noCollision` registration.
     - It applies:
       - synced local player `gravity` attribute id `14` and basic gravity
       - synced local player `NoGravity` entity metadata data id `5`, which

@@ -128,6 +128,12 @@ fn block_collision_shape(block: &BlockProbe, pos: BlockPos) -> Option<BlockColli
         if block_name == "minecraft:pale_moss_carpet" {
             return pale_moss_carpet_collision_shape(&block.block_properties);
         }
+        if block_name == "minecraft:bamboo" {
+            return Some(bamboo_collision_shape(pos));
+        }
+        if block_name == "minecraft:bamboo_sapling" {
+            return None;
+        }
         if is_copper_grate_block_name(block_name) {
             return Some(BlockCollisionShape::single(BlockCollisionBox::FULL));
         }
@@ -663,6 +669,12 @@ fn pale_moss_carpet_collision_shape(
     }
 }
 
+fn bamboo_collision_shape(pos: BlockPos) -> BlockCollisionShape {
+    let (offset_x, offset_z) = vanilla_xz_offset(pos, 0.25);
+    BlockCollisionShape::single(BlockCollisionBox::centered_column(3.0, 3.0, 0.0, 16.0))
+        .offset(offset_x, 0.0, offset_z)
+}
+
 fn scaffolding_collision_shape(
     properties: &BTreeMap<String, String>,
     pos: BlockPos,
@@ -728,8 +740,11 @@ fn pointed_dripstone_collision_shape(
 }
 
 fn pointed_dripstone_xz_offset(pos: BlockPos) -> (f64, f64) {
+    vanilla_xz_offset(pos, 2.0 * PX)
+}
+
+fn vanilla_xz_offset(pos: BlockPos, max_horizontal_offset: f64) -> (f64, f64) {
     let seed = vanilla_block_seed(pos.x, 0, pos.z);
-    let max_horizontal_offset = 2.0 * PX;
     let x = (((seed & 15) as f64 / 15.0) - 0.5) * 0.5;
     let z = ((((seed >> 8) & 15) as f64 / 15.0) - 0.5) * 0.5;
     (
