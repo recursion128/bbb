@@ -172,6 +172,9 @@ fn advance_local_player_physics_step(
         move_x /= horizontal_len;
         move_z /= horizontal_len;
     }
+    let use_speed_multiplier = local_player_using_item_speed_multiplier(world);
+    move_x *= use_speed_multiplier;
+    move_z *= use_speed_multiplier;
 
     let flying = local_player_flying_abilities(world);
     pose = local_player_update_body_pose(world, pose, input, flying);
@@ -1031,6 +1034,23 @@ fn local_player_can_sprint(world: &WorldStore, input: LocalPlayerInputState) -> 
         && !input.backward
         && local_player_effect_amplifier(world, VANILLA_MOB_EFFECT_BLINDNESS_ID).is_none()
         && sprint_source_is_eligible
+        && !local_player_is_slow_due_to_using_item(world)
+}
+
+fn local_player_is_slow_due_to_using_item(world: &WorldStore) -> bool {
+    world
+        .local_using_item_use_effects()
+        .is_some_and(|effects| !effects.can_sprint)
+}
+
+fn local_player_using_item_speed_multiplier(world: &WorldStore) -> f64 {
+    if world.local_player_vehicle_id().is_some() {
+        return 1.0;
+    }
+    world
+        .local_using_item_use_effects()
+        .map(|effects| f64::from(effects.speed_multiplier))
+        .unwrap_or(1.0)
 }
 
 fn local_player_has_enough_food_to_sprint(world: &WorldStore) -> bool {
@@ -1718,6 +1738,7 @@ mod tests {
         PlayerHealth as ProtocolPlayerHealth, SetEntityData as ProtocolSetEntityData,
         SetPassengers as ProtocolSetPassengers, SetPlayerInventory as ProtocolSetPlayerInventory,
         UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
+        UseEffectsSummary as ProtocolUseEffectsSummary,
     };
     use uuid::Uuid;
 
@@ -6137,6 +6158,69 @@ mod tests {
     }
 
     #[test]
+    fn local_player_using_item_applies_default_use_effects_slowdown_and_sprint_suppression() {
+        let mut world = flat_collision_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+        world.set_local_using_item(true);
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step =
+            LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND * 0.2 * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
+    fn local_player_using_item_can_sprint_override_preserves_sprint_speed() {
+        let mut world = flat_collision_world();
+        world.set_local_player_pose(LocalPlayerPoseState {
+            position: vec3(0.5, 1.0, 0.5),
+            on_ground: true,
+            ..LocalPlayerPoseState::default()
+        });
+        world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack_with_use_effects(42, 1, true, false, 1.0),
+        });
+        world.set_local_using_item(true);
+
+        let pose = world
+            .advance_local_player_input(
+                LocalPlayerInputState {
+                    focused: true,
+                    forward: true,
+                    sprint: true,
+                    ..LocalPlayerInputState::default()
+                },
+                LOCAL_PHYSICS_TICK_SECONDS,
+            )
+            .unwrap();
+
+        let expected_step = LOCAL_INPUT_SPRINT_SPEED_BLOCKS_PER_SECOND * LOCAL_PHYSICS_TICK_SECONDS;
+        assert_f64_near(pose.position.z, 0.5 + expected_step, 0.000001);
+        assert_f64_near(pose.delta_movement.z, expected_step, 0.000001);
+    }
+
+    #[test]
     fn local_player_effective_sprint_uses_sprintable_vehicle_instead_of_food_when_mounted() {
         let input = LocalPlayerInputState {
             focused: true,
@@ -6716,6 +6800,24 @@ mod tests {
             count,
             component_patch: bbb_protocol::packets::DataComponentPatchSummary::default(),
         }
+    }
+
+    fn item_stack_with_use_effects(
+        item_id: i32,
+        count: i32,
+        can_sprint: bool,
+        interact_vibrations: bool,
+        speed_multiplier: f32,
+    ) -> ProtocolItemStackSummary {
+        let mut stack = item_stack(item_id, count);
+        stack.component_patch.added = 1;
+        stack.component_patch.added_type_ids = vec![5];
+        stack.component_patch.use_effects = Some(ProtocolUseEffectsSummary {
+            can_sprint,
+            interact_vibrations,
+            speed_multiplier,
+        });
+        stack
     }
 
     fn equip_powder_snow_walkable_boots(world: &mut WorldStore, count: i32) {

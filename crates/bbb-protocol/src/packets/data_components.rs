@@ -52,6 +52,8 @@ pub struct DataComponentPatchSummary {
     #[serde(default)]
     pub use_cooldown_group: Option<String>,
     #[serde(default)]
+    pub use_effects: Option<UseEffectsSummary>,
+    #[serde(default)]
     pub attack_range: Option<AttackRangeSummary>,
     #[serde(default)]
     pub custom_model_data_colors: Vec<i32>,
@@ -101,6 +103,23 @@ impl PartialEq for AttackRangeSummary {
 }
 
 impl Eq for AttackRangeSummary {}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct UseEffectsSummary {
+    pub can_sprint: bool,
+    pub interact_vibrations: bool,
+    pub speed_multiplier: f32,
+}
+
+impl PartialEq for UseEffectsSummary {
+    fn eq(&self, other: &Self) -> bool {
+        self.can_sprint == other.can_sprint
+            && self.interact_vibrations == other.interact_vibrations
+            && self.speed_multiplier.to_bits() == other.speed_multiplier.to_bits()
+    }
+}
+
+impl Eq for UseEffectsSummary {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ItemEnchantmentSummary {
@@ -225,6 +244,9 @@ fn decode_typed_data_component_patch_summary(
                 let cooldown = decode_use_cooldown_summary(decoder)?;
                 summary.use_cooldown_ticks = Some(cooldown.ticks);
                 summary.use_cooldown_group = cooldown.cooldown_group;
+            }
+            5 => {
+                summary.use_effects = Some(decode_use_effects_summary(decoder)?);
             }
             30 => {
                 summary.attack_range = Some(decode_attack_range_summary(decoder)?);
@@ -669,10 +691,17 @@ fn decode_custom_model_data(decoder: &mut Decoder<'_>) -> Result<Vec<i32>> {
 }
 
 fn decode_use_effects(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_bool()?;
-    decoder.read_bool()?;
-    decoder.read_f32()?;
+    let _ = decode_use_effects_summary(decoder)?;
     Ok(())
+}
+
+fn decode_use_effects_summary(decoder: &mut Decoder<'_>) -> Result<UseEffectsSummary> {
+    let summary = UseEffectsSummary {
+        can_sprint: decoder.read_bool()?,
+        interact_vibrations: decoder.read_bool()?,
+        speed_multiplier: decoder.read_f32()?,
+    };
+    Ok(summary)
 }
 
 fn decode_food(decoder: &mut Decoder<'_>) -> Result<()> {
@@ -1381,6 +1410,38 @@ mod tests {
     }
 
     #[test]
+    fn decodes_use_effects_component_summary() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(0);
+
+        payload.write_var_i32(5);
+        payload.write_bool(true);
+        payload.write_bool(false);
+        payload.write_f32(1.0);
+
+        let payload = payload.into_inner();
+        let mut decoder = Decoder::new(&payload);
+        let patch = decode_data_component_patch_summary(&mut decoder).unwrap();
+
+        assert_eq!(
+            patch,
+            DataComponentPatchSummary {
+                added: 1,
+                added_type_ids: vec![5],
+                removed_type_ids: Vec::new(),
+                use_effects: Some(UseEffectsSummary {
+                    can_sprint: true,
+                    interact_vibrations: false,
+                    speed_multiplier: 1.0,
+                }),
+                ..DataComponentPatchSummary::default()
+            }
+        );
+        assert!(decoder.is_empty());
+    }
+
+    #[test]
     fn decodes_item_rarity_out_of_bounds_as_common() {
         let mut payload = Encoder::new();
         payload.write_var_i32(1);
@@ -2023,6 +2084,11 @@ mod tests {
                 map_color: Some(0x445566),
                 use_cooldown_ticks: Some(25),
                 use_cooldown_group: Some("minecraft:ender_pearl".to_string()),
+                use_effects: Some(UseEffectsSummary {
+                    can_sprint: true,
+                    interact_vibrations: false,
+                    speed_multiplier: 0.5,
+                }),
                 attack_range: Some(AttackRangeSummary {
                     min_reach: 0.0,
                     max_reach: 3.0,

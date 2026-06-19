@@ -7,10 +7,10 @@ use bbb_protocol::packets::{
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     HashedComponentPatch as ProtocolHashedComponentPatch,
     HashedItemStack as ProtocolHashedItemStack, HashedStack as ProtocolHashedStack,
-    ItemCostSummary as ProtocolItemCostSummary, ItemStackSummary as ProtocolItemStackSummary,
-    MerchantOffer as ProtocolMerchantOffer, MerchantOffers as ProtocolMerchantOffers,
-    OpenScreen as ProtocolOpenScreen, SetCursorItem as ProtocolSetCursorItem,
-    SetPlayerInventory as ProtocolSetPlayerInventory,
+    InteractionHand, ItemCostSummary as ProtocolItemCostSummary,
+    ItemStackSummary as ProtocolItemStackSummary, MerchantOffer as ProtocolMerchantOffer,
+    MerchantOffers as ProtocolMerchantOffers, OpenScreen as ProtocolOpenScreen,
+    SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
     StonecutterSelectableRecipeSummary as ProtocolStonecutterSelectableRecipeSummary,
 };
 use serde::{Deserialize, Serialize};
@@ -96,6 +96,7 @@ const INVENTORY_MENU_HOTBAR_START: i16 = 36;
 const INVENTORY_MENU_HOTBAR_END: i16 = 45;
 const INVENTORY_MENU_OFFHAND_SLOT: i16 = 45;
 const VANILLA_MAX_STACK_SIZE_COMPONENT_ID: i32 = 1;
+const VANILLA_USE_EFFECTS_COMPONENT_ID: i32 = 5;
 const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 = 30;
 const VANILLA_PIERCING_WEAPON_COMPONENT_ID: i32 = 38;
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
@@ -170,6 +171,33 @@ impl PartialEq for ItemAttackRange {
 }
 
 impl Eq for ItemAttackRange {}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ItemUseEffects {
+    pub can_sprint: bool,
+    pub interact_vibrations: bool,
+    pub speed_multiplier: f32,
+}
+
+impl Default for ItemUseEffects {
+    fn default() -> Self {
+        Self {
+            can_sprint: false,
+            interact_vibrations: true,
+            speed_multiplier: 0.2,
+        }
+    }
+}
+
+impl PartialEq for ItemUseEffects {
+    fn eq(&self, other: &Self) -> bool {
+        self.can_sprint == other.can_sprint
+            && self.interact_vibrations == other.interact_vibrations
+            && self.speed_multiplier.to_bits() == other.speed_multiplier.to_bits()
+    }
+}
+
+impl Eq for ItemUseEffects {}
 
 impl Default for HotbarItemState {
     fn default() -> Self {
@@ -802,6 +830,25 @@ impl WorldStore {
 
         self.local_player_inventory_item(i32::from(selected_slot))
             .and_then(|item| item_stack_attack_range(item, &self.default_item_attack_ranges))
+    }
+
+    pub(crate) fn local_using_item_use_effects(&self) -> Option<ItemUseEffects> {
+        if !self.local_player.interaction.using_item {
+            return None;
+        }
+
+        let item = match self.local_player.interaction.using_item_hand {
+            Some(InteractionHand::OffHand) => self.local_offhand_item(),
+            Some(InteractionHand::MainHand) | None => {
+                let selected_slot = self.local_player.selected_hotbar_slot;
+                if selected_slot > 8 {
+                    return None;
+                }
+                self.local_player_inventory_item(i32::from(selected_slot))
+            }
+        }?;
+
+        item_stack_use_effects(item)
     }
 
     pub fn drop_local_selected_hotbar_item(&mut self, all: bool) -> bool {
@@ -1596,6 +1643,32 @@ fn item_attack_range_from_protocol(attack_range: ProtocolAttackRangeSummary) -> 
         hitbox_margin: attack_range.hitbox_margin,
         mob_factor: attack_range.mob_factor,
     }
+}
+
+fn item_stack_use_effects(stack: &ProtocolItemStackSummary) -> Option<ItemUseEffects> {
+    if item_stack_is_empty(stack) {
+        return None;
+    }
+
+    if stack
+        .component_patch
+        .removed_type_ids
+        .contains(&VANILLA_USE_EFFECTS_COMPONENT_ID)
+    {
+        return Some(ItemUseEffects::default());
+    }
+
+    Some(
+        stack
+            .component_patch
+            .use_effects
+            .map(|effects| ItemUseEffects {
+                can_sprint: effects.can_sprint,
+                interact_vibrations: effects.interact_vibrations,
+                speed_multiplier: effects.speed_multiplier,
+            })
+            .unwrap_or_default(),
+    )
 }
 
 fn component_patch_can_be_hashed_from_summary(patch: &ProtocolDataComponentPatchSummary) -> bool {

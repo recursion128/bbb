@@ -10,7 +10,8 @@ const MAX_CONTAINER_ITEMS: usize = 1024;
 
 pub use data_components::{
     AttackRangeSummary, DataComponentPatchSummary, ItemEnchantmentSummary, ItemRaritySummary,
-    ItemStackTemplateSummary, MapPostProcessingSummary, WrittenBookContentSummary,
+    ItemStackTemplateSummary, MapPostProcessingSummary, UseEffectsSummary,
+    WrittenBookContentSummary,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

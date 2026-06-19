@@ -280,7 +280,7 @@ fn start_use_item(
                     pose.x_rot,
                     sequence,
                 );
-                world.set_local_using_item(using_item);
+                world.set_local_using_item_with_hand(using_item, hand);
             }
         }
     }

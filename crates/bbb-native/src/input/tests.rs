@@ -3008,6 +3008,42 @@ fn sprint_key_with_low_food_only_queues_raw_player_input() {
 }
 
 #[test]
+fn sprint_key_while_using_slow_item_only_queues_raw_player_input() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    input.forward = true;
+    let mut counters = NetCounters::default();
+    let mut world = world_with_local_player_id(77);
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: test_item_stack(42, 1),
+    });
+    world.set_local_using_item(true);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert_eq!(counters.player_command_commands_queued, 0);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            sprint: true,
+            ..PlayerInput::default()
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn sprint_key_on_horse_mount_only_queues_raw_player_input() {
     assert_sprint_key_on_mount_only_queues_raw_player_input(VANILLA_26_1_HORSE_ENTITY_TYPE_ID);
 }

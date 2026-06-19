@@ -1,5 +1,5 @@
 use bbb_protocol::packets::{
-    DataComponentPatchSummary, Direction as ProtocolDirection, EntityAnchor,
+    DataComponentPatchSummary, Direction as ProtocolDirection, EntityAnchor, InteractionHand,
     ItemStackSummary as ProtocolItemStackSummary, PlayerAbilities as ProtocolPlayerAbilities,
     PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
     PlayerLookAt as ProtocolPlayerLookAt, PlayerPositionState as ProtocolPlayerPositionState,
@@ -106,6 +106,8 @@ pub struct LocalPlayerInteractionState {
     pub destroy_delay_ticks: u8,
     #[serde(default)]
     pub using_item: bool,
+    #[serde(default)]
+    pub using_item_hand: Option<InteractionHand>,
     #[serde(default)]
     pub prediction_sequence: i32,
 }
@@ -521,11 +523,19 @@ impl WorldStore {
 
     pub fn set_local_using_item(&mut self, using_item: bool) {
         self.local_player.interaction.using_item = using_item;
+        self.local_player.interaction.using_item_hand =
+            using_item.then_some(InteractionHand::MainHand);
+    }
+
+    pub fn set_local_using_item_with_hand(&mut self, using_item: bool, hand: InteractionHand) {
+        self.local_player.interaction.using_item = using_item;
+        self.local_player.interaction.using_item_hand = using_item.then_some(hand);
     }
 
     pub fn take_local_using_item(&mut self) -> bool {
         let using_item = self.local_player.interaction.using_item;
         self.local_player.interaction.using_item = false;
+        self.local_player.interaction.using_item_hand = None;
         using_item
     }
 
@@ -1011,6 +1021,7 @@ mod tests {
                 destroying_block_ticks: 0,
                 destroy_delay_ticks: 0,
                 using_item: true,
+                using_item_hand: Some(InteractionHand::MainHand),
                 prediction_sequence: 1,
             }
         );
