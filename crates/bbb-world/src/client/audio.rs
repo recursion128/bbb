@@ -16,6 +16,8 @@ use crate::WorldStore;
 const JUKEBOX_PLAY_LEVEL_EVENT: i32 = 1010;
 const JUKEBOX_STOP_LEVEL_EVENT: i32 = 1011;
 const BLOCK_BREAK_LEVEL_EVENT: i32 = 2001;
+const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
+const VANILLA_VEC3_NORMALIZE_EPSILON: f64 = 1.0e-5;
 const RANDOM_MULTIPLIER: u64 = 25_214_903_917;
 const RANDOM_INCREMENT: u64 = 11;
 const RANDOM_MASK: u64 = (1_u64 << 48) - 1;
@@ -345,6 +347,28 @@ impl WorldStore {
         ))
     }
 
+    pub fn global_level_event_sound(
+        &self,
+        event: ProtocolLevelEvent,
+        camera_position: ProtocolVec3d,
+    ) -> Option<SoundEventState> {
+        if !event.global {
+            return None;
+        }
+        let sound = global_level_event_sound(event.event_type)?;
+        Some(SoundEventState {
+            sound: direct_sound_holder(sound.event_id),
+            source: sound.source.to_string(),
+            position: global_level_event_sound_position(
+                crate::protocol_block_pos(event.pos),
+                camera_position,
+            ),
+            volume: sound.volume,
+            pitch: sound.pitch,
+            seed: 0,
+        })
+    }
+
     pub fn level_event_local_sound_with_random(
         &self,
         event: ProtocolLevelEvent,
@@ -595,6 +619,57 @@ fn local_level_event_sound(
         _ => return None,
     };
     Some(sound)
+}
+
+fn global_level_event_sound(event_type: i32) -> Option<FixedLevelEventSound> {
+    let sound = match event_type {
+        1023 => FixedLevelEventSound {
+            event_id: "minecraft:entity.wither.spawn",
+            source: "hostile",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        1028 => FixedLevelEventSound {
+            event_id: "minecraft:entity.ender_dragon.death",
+            source: "hostile",
+            volume: 5.0,
+            pitch: 1.0,
+        },
+        1038 => FixedLevelEventSound {
+            event_id: "minecraft:block.end_portal.spawn",
+            source: "hostile",
+            volume: 1.0,
+            pitch: 1.0,
+        },
+        _ => return None,
+    };
+    Some(sound)
+}
+
+fn global_level_event_sound_position(
+    pos: crate::BlockPos,
+    camera_position: ProtocolVec3d,
+) -> ProtocolVec3d {
+    let event_center = ProtocolVec3d {
+        x: f64::from(pos.x) + 0.5,
+        y: f64::from(pos.y) + 0.5,
+        z: f64::from(pos.z) + 0.5,
+    };
+    let delta = ProtocolVec3d {
+        x: event_center.x - camera_position.x,
+        y: event_center.y - camera_position.y,
+        z: event_center.z - camera_position.z,
+    };
+    let distance = (delta.x * delta.x + delta.y * delta.y + delta.z * delta.z).sqrt();
+    if distance < VANILLA_VEC3_NORMALIZE_EPSILON {
+        return camera_position;
+    }
+
+    ProtocolVec3d {
+        x: camera_position.x + delta.x / distance * GLOBAL_LEVEL_EVENT_SOUND_DISTANCE,
+        y: camera_position.y + delta.y / distance * GLOBAL_LEVEL_EVENT_SOUND_DISTANCE,
+        z: camera_position.z + delta.z / distance * GLOBAL_LEVEL_EVENT_SOUND_DISTANCE,
+    }
 }
 
 fn hostile_triangle(
@@ -977,6 +1052,59 @@ mod tests {
                 data: 0,
                 global: false,
             })
+            .is_none());
+    }
+
+    #[test]
+    fn global_level_event_sound_maps_vanilla_camera_relative_audio() {
+        let store = WorldStore::new();
+        let camera_position = vec3(0.5, 64.5, 0.5);
+
+        for (event_type, event_id, volume) in [
+            (1023, "minecraft:entity.wither.spawn", 1.0),
+            (1028, "minecraft:entity.ender_dragon.death", 5.0),
+            (1038, "minecraft:block.end_portal.spawn", 1.0),
+        ] {
+            let sound = store
+                .global_level_event_sound(
+                    LevelEvent {
+                        event_type,
+                        pos: ProtocolBlockPos { x: 0, y: 64, z: 10 },
+                        data: 0,
+                        global: true,
+                    },
+                    camera_position,
+                )
+                .unwrap();
+            assert_eq!(sound.sound.location.as_deref(), Some(event_id));
+            assert_eq!(sound.source, "hostile");
+            assert_eq!(sound.position, vec3(0.5, 64.5, 2.5));
+            assert_close(sound.volume, volume);
+            assert_close(sound.pitch, 1.0);
+            assert_eq!(sound.seed, 0);
+        }
+
+        assert!(store
+            .global_level_event_sound(
+                LevelEvent {
+                    event_type: 1023,
+                    pos: ProtocolBlockPos { x: 0, y: 64, z: 10 },
+                    data: 0,
+                    global: false,
+                },
+                camera_position,
+            )
+            .is_none());
+        assert!(store
+            .global_level_event_sound(
+                LevelEvent {
+                    event_type: 1001,
+                    pos: ProtocolBlockPos { x: 0, y: 64, z: 10 },
+                    data: 0,
+                    global: true,
+                },
+                camera_position,
+            )
             .is_none());
     }
 

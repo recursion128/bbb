@@ -1,7 +1,7 @@
 use bbb_audio::{JukeboxSongRegistry, SoundEventRegistry};
 use bbb_control::NetCounters;
 use bbb_net::{ConnectionState, NetCommand, NetEvent};
-use bbb_protocol::packets::RegistryData;
+use bbb_protocol::packets::{RegistryData, Vec3d as ProtocolVec3d};
 use bbb_world::{ChunkPos, LevelEventSoundRandomState, WorldStore};
 use tokio::sync::mpsc;
 
@@ -327,6 +327,13 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
                 let jukebox_event = world.apply_level_event(event);
                 if let Some(jukebox_event) = jukebox_event {
                     emit_jukebox_level_event(&mut audio_events, &jukebox_event);
+                }
+                if let Some(state) =
+                    camera_audio_position_from_world(world).and_then(|camera_position| {
+                        world.global_level_event_sound(event, camera_position)
+                    })
+                {
+                    emit_positioned_sound(&mut audio_events, &state);
                 }
                 if let Some(state) = world
                     .level_event_local_sound_with_random(event, || {
@@ -672,4 +679,25 @@ fn emit_level_particles(
 
 fn audio_position(position: bbb_world::EntityVec3) -> [f64; 3] {
     [position.x, position.y, position.z]
+}
+
+fn camera_audio_position_from_world(world: &WorldStore) -> Option<ProtocolVec3d> {
+    let camera = world.local_player().camera;
+    if let Some(camera_id) = camera.entity_id {
+        if !camera.follows_player {
+            if let Some(camera_pose) = world.probe_entity_camera_pose(camera_id) {
+                return Some(ProtocolVec3d {
+                    x: camera_pose.position.x,
+                    y: camera_pose.position.y + f64::from(camera_pose.eye_height),
+                    z: camera_pose.position.z,
+                });
+            }
+        }
+    }
+
+    world.local_player_pose().map(|pose| ProtocolVec3d {
+        x: pose.position.x,
+        y: pose.position.y + pose.eye_height(),
+        z: pose.position.z,
+    })
 }

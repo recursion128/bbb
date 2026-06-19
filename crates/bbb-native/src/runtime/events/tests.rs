@@ -3303,6 +3303,77 @@ fn randomized_level_event_emits_vanilla_positioned_sound() {
 }
 
 #[test]
+fn global_level_event_emits_vanilla_camera_relative_sound() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1028,
+        pos: ProtocolBlockPos { x: 10, y: 0, z: 0 },
+        data: 0,
+        global: true,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 0.5,
+            y: -1.12,
+            z: 0.5,
+        },
+        ..LocalPlayerPoseState::default()
+    });
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 1);
+    let AudioCommand::PlayPositionedSound(command) = &audio.commands[0] else {
+        panic!("expected positioned sound, got {:?}", audio.commands[0]);
+    };
+    assert_eq!(
+        command.sound.event_id,
+        "minecraft:entity.ender_dragon.death"
+    );
+    assert_eq!(command.category, AudioCategory::Hostile);
+    assert!((command.position[0] - 2.5).abs() < 1.0e-6);
+    assert!((command.position[1] - 0.5).abs() < 1.0e-6);
+    assert!((command.position[2] - 0.5).abs() < 1.0e-6);
+    assert_close(command.packet_volume, 5.0);
+    assert_close(command.packet_pitch, 1.0);
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
+fn global_level_event_without_camera_does_not_emit_runtime_sound() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::LevelEvent(LevelEvent {
+        event_type: 1023,
+        pos: ProtocolBlockPos { x: 10, y: 0, z: 0 },
+        data: 0,
+        global: true,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        1
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert!(audio.commands.is_empty());
+    assert_eq!(world.counters().level_events_received, 1);
+}
+
+#[test]
 fn portal_travel_level_event_emits_vanilla_local_ambience() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::LevelEvent(LevelEvent {
@@ -4900,6 +4971,15 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "block.portal.travel": {
                 "sounds": ["portal/travel"]
+            },
+            "entity.wither.spawn": {
+                "sounds": ["mob/wither/spawn"]
+            },
+            "entity.ender_dragon.death": {
+                "sounds": ["mob/enderdragon/end"]
+            },
+            "block.end_portal.spawn": {
+                "sounds": ["portal/endportal"]
             },
             "music_disc.cat": {
                 "sounds": ["records/cat"]

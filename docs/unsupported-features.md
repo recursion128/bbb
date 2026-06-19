@@ -260,6 +260,11 @@ When an agent does any of the following, update this file in the same slice:
       - `minecraft:block.portal.travel`
       - ambient source
       - non-spatial local sound command
+    - native dispatcher playback for vanilla `globalLevelEvent` sounds:
+      - wither spawn event `1023`
+      - ender dragon death event `1028`
+      - end portal spawn event `1038`
+      - camera-relative sound position two blocks toward the event
     - canonical world/probe/native state for `LevelEventHandler` jukebox
       start/stop:
       - event `1010` records active jukebox song registry id at block position
