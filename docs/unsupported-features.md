@@ -469,8 +469,7 @@ When an agent does any of the following, update this file in the same slice:
       - sign editing
     - Sign editing follow-up work:
       - renderer presentation for the vanilla sign edit screen
-      - selection and clipboard parity once modifier-aware sign editor key
-        events are available
+      - clipboard parity for copy/cut/paste editing
     - Gameplay Q/Ctrl+Q drop input now follows vanilla 26.1 modifier
       semantics:
       - Ctrl, not sprint, selects `DROP_ALL_ITEMS`.
@@ -933,6 +932,8 @@ When an agent does any of the following, update this file in the same slice:
       - edit four pending lines
       - move the line cursor with left/right/home/end and edit at the cursor
         with text input/backspace/delete
+      - Ctrl+A selects the current line, and text/backspace/delete replace or
+        clear the selected range
       - cycle lines with vanilla-shaped up/down/confirmation keys
       - close by queueing `ServerboundSignUpdatePacket`
       - release cursor capture and suppress gameplay mouse input while open

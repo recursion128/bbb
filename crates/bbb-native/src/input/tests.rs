@@ -3078,6 +3078,172 @@ fn sign_editor_control_word_keys_edit_current_line() {
 }
 
 #[test]
+fn sign_editor_control_a_selection_replaces_and_deletes_current_line() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos { x: 2, y: 68, z: -7 },
+        is_front_text: true,
+    });
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "replace me",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "kept");
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "remove me",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "delete me",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate {
+            pos: ProtocolBlockPos { x: 2, y: 68, z: -7 },
+            is_front_text: true,
+            lines: [
+                "kept".to_string(),
+                String::new(),
+                String::new(),
+                String::new(),
+            ],
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn sign_editor_text_input_filters_invalid_chars_and_max_length() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
