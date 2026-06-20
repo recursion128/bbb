@@ -232,8 +232,9 @@ When an agent does any of the following, update this file in the same slice:
     - dropped-item icons
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
-      source-verified pig/cow/sheep/zombie/skeleton/creeper body-layer
-      geometry, primitive entity model families, and placeholder bounds
+      source-verified pig/cow/sheep/villager/wandering-trader/zombie,
+      skeleton, creeper, spider, and enderman body-layer geometry, primitive
+      entity model families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -309,6 +310,14 @@ When an agent does any of the following, update this file in the same slice:
       `SpiderRenderer` recorded; cave spider `MeshTransformer.scaling(0.7F)`,
       `spider_eyes.png` emissive layer, head/walk animation, and death flip
       remain unsupported
+    - enderman entities as renderer-owned vanilla 26.1
+      `EndermanModel.createBodyLayer()` geometry, including its
+      `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,
+      overwritten long limbs, shrunken hat cube, and the official
+      `textures/entity/enderman/enderman.png` texture reference from
+      `EndermanRenderer`; `enderman_eyes.png` emissive layer, carried-block
+      layer, carried-block arm pose, creepy head offset, creepy render jitter,
+      and humanoid walk/head animation remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -321,8 +330,9 @@ When an agent does any of the following, update this file in the same slice:
     presentation, pig saddle presentation, sheep wool presentation,
     villager profession/type/held-item/custom-head presentation,
     zombie/skeleton variant presentation, creeper swelling/powered overlays,
-    spider eyes/cave-spider presentation, and precise vanilla mesh parity for
-    primitive/placeholder entity families.
+    spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
+    presentation, and precise vanilla mesh parity for primitive/placeholder
+    entity families.
 
 ### Audio Runtime Parity
 

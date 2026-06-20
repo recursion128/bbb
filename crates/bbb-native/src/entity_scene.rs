@@ -266,8 +266,8 @@ fn entity_model_kind(
         | VANILLA_ENTITY_TYPE_PILLAGER_ID
         | VANILLA_ENTITY_TYPE_VINDICATOR_ID
         | VANILLA_ENTITY_TYPE_WITCH_ID => humanoid(HumanoidModelFamily::Illager, false),
-        VANILLA_ENTITY_TYPE_ENDERMAN_ID
-        | VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID => EntityModelKind::Enderman,
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID
         | VANILLA_ENTITY_TYPE_IRON_GOLEM_ID
         | VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => humanoid(HumanoidModelFamily::Player, false),
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
@@ -769,6 +769,26 @@ mod tests {
         assert_eq!(
             placeholder_name(entity_model_kind(VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, &[])),
             Some("todo_cave_spider_bounds")
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_enderman() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ENDERMAN_ID, &[]),
+            EntityModelKind::Enderman
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),
+            humanoid(HumanoidModelFamily::Player, false)
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, &[]),
+            humanoid(HumanoidModelFamily::Player, false)
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, &[]),
+            humanoid(HumanoidModelFamily::Player, false)
         );
     }
 

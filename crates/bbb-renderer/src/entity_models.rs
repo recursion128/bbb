@@ -36,6 +36,7 @@ pub enum EntityModelKind {
     },
     Creeper,
     Spider,
+    Enderman,
     Minecart,
     Boat {
         chest: bool,
@@ -183,6 +184,7 @@ impl EntityModelKind {
             } => "quadruped_wolf_baby",
             Self::Creeper => "creeper",
             Self::Spider => "spider",
+            Self::Enderman => "enderman",
             Self::Minecart => "minecart",
             Self::Boat { chest: false } => "boat",
             Self::Boat { chest: true } => "chest_boat",
@@ -202,6 +204,7 @@ impl EntityModelKind {
             Self::WanderingTrader => Some(WANDERING_TRADER_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
+            Self::Enderman => Some(ENDERMAN_TEXTURE_REF),
             _ => None,
         }
     }
@@ -280,6 +283,10 @@ impl EntityModelInstance {
 
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Spider, position, y_rot)
+    }
+
+    pub fn enderman(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Enderman, position, y_rot)
     }
 
     pub fn quadruped(
@@ -431,6 +438,7 @@ const HORSE_BROWN: [f32; 4] = [0.44, 0.27, 0.14, 1.0];
 const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
+const ENDERMAN_DARK: [f32; 4] = [0.08, 0.06, 0.10, 1.0];
 const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
@@ -482,6 +490,11 @@ const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const SPIDER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/spider/spider.png",
+    size: [64, 32],
+};
+
+const ENDERMAN_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/enderman/enderman.png",
     size: [64, 32],
 };
 
@@ -1912,6 +1925,94 @@ const SPIDER_PARTS: [ModelPartDesc; 11] = [
     },
 ];
 
+const ENDERMAN_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -8.0, -4.0],
+    size: [8.0, 8.0, 8.0],
+    color: ENDERMAN_DARK,
+}];
+
+const ENDERMAN_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.5, -7.5, -3.5],
+    size: [7.0, 7.0, 7.0],
+    color: ENDERMAN_DARK,
+}];
+
+const ENDERMAN_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -2.0],
+    size: [8.0, 12.0, 4.0],
+    color: ENDERMAN_DARK,
+}];
+
+const ENDERMAN_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -1.0],
+    size: [2.0, 30.0, 2.0],
+    color: ENDERMAN_DARK,
+}];
+
+const ENDERMAN_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 30.0, 2.0],
+    color: ENDERMAN_DARK,
+}];
+
+const ENDERMAN_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ENDERMAN_HAT,
+    children: &[],
+}];
+
+// Vanilla 26.1 EndermanModel.createBodyLayer().
+const ENDERMAN_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -13.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ENDERMAN_HEAD,
+        children: &ENDERMAN_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -14.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ENDERMAN_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, -12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ENDERMAN_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, -12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ENDERMAN_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -5.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ENDERMAN_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, -5.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ENDERMAN_LEG,
+        children: &[],
+    },
+];
+
 pub(crate) fn create_entity_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -2058,6 +2159,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             }
             EntityModelKind::Creeper => emit_creeper_model(&mut mesh, *instance),
             EntityModelKind::Spider => emit_spider_model(&mut mesh, *instance),
+            EntityModelKind::Enderman => emit_enderman_model(&mut mesh, *instance),
             EntityModelKind::Minecart => emit_minecart_model(&mut mesh, *instance),
             EntityModelKind::Boat { chest } => emit_boat_model(&mut mesh, *instance, chest),
             EntityModelKind::Placeholder { bounds, .. } => {
@@ -2330,6 +2432,10 @@ fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 
 fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &SPIDER_PARTS, entity_model_root_transform(instance));
+}
+
+fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    emit_model_parts(mesh, &ENDERMAN_PARTS, entity_model_root_transform(instance));
 }
 
 fn emit_minecart_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -3831,6 +3937,106 @@ mod tests {
     }
 
     #[test]
+    fn enderman_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            ENDERMAN_HEAD[0],
+            ModelCubeDesc {
+                min: [-4.0, -8.0, -4.0],
+                size: [8.0, 8.0, 8.0],
+                color: ENDERMAN_DARK,
+            }
+        );
+        assert_eq!(
+            ENDERMAN_HAT[0],
+            ModelCubeDesc {
+                min: [-3.5, -7.5, -3.5],
+                size: [7.0, 7.0, 7.0],
+                color: ENDERMAN_DARK,
+            }
+        );
+        assert_eq!(
+            ENDERMAN_BODY[0],
+            ModelCubeDesc {
+                min: [-4.0, 0.0, -2.0],
+                size: [8.0, 12.0, 4.0],
+                color: ENDERMAN_DARK,
+            }
+        );
+        assert_eq!(
+            ENDERMAN_ARM[0],
+            ModelCubeDesc {
+                min: [-1.0, -2.0, -1.0],
+                size: [2.0, 30.0, 2.0],
+                color: ENDERMAN_DARK,
+            }
+        );
+        assert_eq!(
+            ENDERMAN_LEG[0],
+            ModelCubeDesc {
+                min: [-1.0, 0.0, -1.0],
+                size: [2.0, 30.0, 2.0],
+                color: ENDERMAN_DARK,
+            }
+        );
+
+        assert_eq!(ENDERMAN_PARTS.len(), 6);
+        assert_part_tree(
+            &ENDERMAN_PARTS[0],
+            [0.0, -13.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ENDERMAN_HEAD.as_slice(),
+            ENDERMAN_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ENDERMAN_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ENDERMAN_HAT.as_slice(),
+        );
+        assert_part(
+            &ENDERMAN_PARTS[1],
+            [0.0, -14.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ENDERMAN_BODY.as_slice(),
+        );
+
+        let limb_specs = [
+            ([-5.0, -12.0, 0.0], ENDERMAN_ARM.as_slice()),
+            ([5.0, -12.0, 0.0], ENDERMAN_ARM.as_slice()),
+            ([-2.0, -5.0, 0.0], ENDERMAN_LEG.as_slice()),
+            ([2.0, -5.0, 0.0], ENDERMAN_LEG.as_slice()),
+        ];
+        for (part, (offset, cubes)) in ENDERMAN_PARTS[2..].iter().zip(limb_specs) {
+            assert_part(part, offset, [0.0, 0.0, 0.0], cubes);
+        }
+    }
+
+    #[test]
+    fn enderman_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::enderman(141, [0.0, 64.0, 0.0], 0.0)]);
+
+        assert_eq!(mesh.opaque_faces, 42);
+        assert_eq!(mesh.vertices.len(), 168);
+        assert_eq!(mesh.indices.len(), 252);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.375, 63.9385, -0.25]);
+        assert_close3(max, [0.375, 66.8135, 0.25]);
+    }
+
+    #[test]
+    fn enderman_texture_ref_matches_vanilla_renderer() {
+        assert_eq!(EntityModelKind::Enderman.model_key(), "enderman");
+        assert_eq!(
+            EntityModelKind::Enderman.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/enderman/enderman.png",
+                size: [64, 32],
+            })
+        );
+    }
+
+    #[test]
     fn entity_model_root_transform_rotates_instances_by_body_yaw() {
         let mesh = entity_model_mesh(&[EntityModelInstance::chicken(
             26,
@@ -3958,6 +4164,7 @@ mod tests {
             "wandering_trader"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
+        assert_eq!(EntityModelKind::Enderman.model_key(), "enderman");
         assert_eq!(
             EntityModelKind::Placeholder {
                 name: "todo_test_bounds",
