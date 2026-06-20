@@ -1107,6 +1107,173 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_inventory_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(8);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let open_screen = packets::OpenScreen {
+            container_id: 7,
+            menu_type_id: 19,
+            title: "Merchant".to_string(),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::OpenScreen(open_screen.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("open screen event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::OpenScreen(update) if update == open_screen));
+
+        let content = packets::ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items: vec![packets::ItemStackSummary::empty(), test_item_stack(42, 3)],
+            carried_item: test_item_stack(99, 1),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ContainerSetContent(content.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("container content event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::ContainerSetContent(update) if update == content
+        ));
+
+        let slot = packets::ContainerSetSlot {
+            container_id: 7,
+            state_id: 13,
+            slot: 1,
+            item: test_item_stack(43, 2),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ContainerSetSlot(slot.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("container slot event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::ContainerSetSlot(update) if update == slot));
+
+        let data = packets::ContainerSetData {
+            container_id: 7,
+            id: 2,
+            value: 10,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ContainerSetData(data))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("container data event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::ContainerSetData(update) if update == data));
+
+        let player_slot = packets::SetPlayerInventory {
+            slot: 36,
+            item: test_item_stack(44, 1),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SetPlayerInventory(player_slot.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player inventory event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::SetPlayerInventory(update) if update == player_slot
+        ));
+
+        let cursor = packets::SetCursorItem {
+            item: test_item_stack(45, 1),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SetCursorItem(cursor.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("cursor item event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::SetCursorItem(update) if update == cursor));
+
+        let offers = packets::MerchantOffers {
+            container_id: 7,
+            offers: vec![packets::MerchantOffer {
+                buy_a: packets::ItemCostSummary {
+                    item_id: 42,
+                    count: 3,
+                    component_predicate: packets::ItemCostComponentPredicateSummary::default(),
+                },
+                sell: test_item_stack(99, 1),
+                buy_b: None,
+                is_out_of_stock: false,
+                uses: 1,
+                max_uses: 8,
+                xp: 5,
+                special_price_diff: 0,
+                price_multiplier: 0.05,
+                demand: 2,
+            }],
+            villager_level: 3,
+            villager_xp: 120,
+            show_progress: true,
+            can_restock: false,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::MerchantOffers(offers.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("merchant offers event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::MerchantOffers(update) if update == offers));
+
+        let close = packets::ContainerClose { container_id: 7 };
+        stream
+            .handle_play_packet(PlayClientbound::ContainerClose(close))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("container close event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::ContainerClose(update) if update == close));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "inventory update packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_passive_world_apply_packets_emit_matching_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
@@ -1788,6 +1955,14 @@ mod tests {
             compression_threshold: None,
         };
         (client, server)
+    }
+
+    fn test_item_stack(item_id: i32, count: i32) -> packets::ItemStackSummary {
+        packets::ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: packets::DataComponentPatchSummary::default(),
+        }
     }
 
     fn assert_move_player_pos_rot_payload(
