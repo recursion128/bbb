@@ -6,6 +6,11 @@ use std::{
 
 use bbb_protocol::packets::{MerchantOffer, MerchantOffers};
 use bbb_world::LocalPlayerPoseState;
+use tokio::sync::mpsc;
+use winit::{
+    event::{ElementState, MouseButton},
+    keyboard::{KeyCode, PhysicalKey},
+};
 
 const TOOLTIP_TEST_WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const TOOLTIP_TEST_AQUA: [f32; 4] = [85.0 / 255.0, 1.0, 1.0, 1.0];
@@ -68,6 +73,94 @@ fn entity_animation_partial_tick_tracks_time_since_last_client_tick() {
         ticks.entity_partial_tick(now + Duration::from_millis(75)),
         1.0
     );
+}
+
+#[test]
+fn server_container_open_releases_held_movement() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    crate::input::handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(bbb_protocol::packets::PlayerInput {
+            forward: true,
+            ..bbb_protocol::packets::PlayerInput::default()
+        })
+    );
+
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+    });
+    release_input_if_container_opened(false, &mut input, &mut world, &mut counters, &commands);
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(bbb_protocol::packets::PlayerInput::default())
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn server_container_open_releases_held_mouse_actions() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    world.set_local_player_pose(local_player_pose([0.0, 64.0, 0.0], 30.0, -10.0));
+    let mut counters = NetCounters::default();
+
+    crate::input::handle_mouse_input_at_partial_tick(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Right,
+        ElementState::Pressed,
+        1.0,
+    );
+    world.set_local_destroying_block(bbb_world::BlockPos { x: 1, y: 2, z: 3 });
+
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::UseItem(_)));
+    world.apply_open_screen(bbb_protocol::packets::OpenScreen {
+        container_id: 7,
+        menu_type_id: 2,
+        title: "Chest".to_string(),
+    });
+    release_input_if_container_opened(false, &mut input, &mut world, &mut counters, &commands);
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerAction(bbb_protocol::packets::PlayerAction {
+            action: bbb_protocol::packets::PlayerActionKind::AbortDestroyBlock,
+            pos: bbb_protocol::packets::BlockPos { x: 1, y: 2, z: 3 },
+            direction: bbb_protocol::packets::Direction::Down,
+            sequence: 0,
+        })
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerAction(bbb_protocol::packets::PlayerAction {
+            action: bbb_protocol::packets::PlayerActionKind::ReleaseUseItem,
+            pos: bbb_protocol::packets::BlockPos { x: 0, y: 0, z: 0 },
+            direction: bbb_protocol::packets::Direction::Down,
+            sequence: 0,
+        })
+    );
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

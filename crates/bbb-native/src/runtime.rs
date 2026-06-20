@@ -31,7 +31,7 @@ use crate::{
     entity_scene::entity_scene_outline_from_world_at_partial_tick,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
-        advance_using_item_at_partial_tick, inventory_screen_layout,
+        advance_using_item_at_partial_tick, inventory_screen_layout, release_active_input,
         sync_beacon_effect_selection_state, sync_loom_pattern_state_for_hud,
         sync_stonecutter_recipe_scroll_state, ClientInputState, InventoryScreenBackground,
     },
@@ -307,6 +307,7 @@ pub(crate) fn pump_network_and_terrain(
 ) -> bool {
     let mut audio_events = audio_events;
     let mut particle_events = particle_events;
+    let container_was_open = world.open_container_id().is_some();
     if let Some(rx) = net_events.as_mut() {
         let audio_events_for_drain = audio_events
             .as_mut()
@@ -325,6 +326,7 @@ pub(crate) fn pump_network_and_terrain(
             level_event_sound_random,
         );
     }
+    release_input_if_container_opened(container_was_open, input, world, net_counters, net_commands);
     pump_control_net_requests(snapshot, net_commands, net_counters, world, code_of_conduct);
     let now = Instant::now();
     let advanced_ticks = advance_entity_client_animations(world, client_animation_ticks, now);
@@ -482,6 +484,18 @@ fn hotbar_item_icons(
     }
 
     icons
+}
+
+fn release_input_if_container_opened(
+    container_was_open: bool,
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+) {
+    if !container_was_open && world.open_container_id().is_some() {
+        release_active_input(input, world, counters, net_commands);
+    }
 }
 
 fn hud_inventory_screen(

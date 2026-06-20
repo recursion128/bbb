@@ -1105,6 +1105,9 @@ When an agent does any of the following, update this file in the same slice:
       supported fixed-slot screens:
       - hovered-slot Q/Ctrl+Q as `THROW`
       - hovered-slot number keys and F as `SWAP`
+    - Opening a server container releases active movement, item use, and block
+      destroy input through the native runtime, matching vanilla
+      `Minecraft.setScreen` screen-open input release.
     - MerchantMenu visible trade-row clicks queue
       `ServerboundSelectTradePacket` for the current visible offer window.
     - MerchantMenu mouse wheel input updates the local trade-list scroll offset
