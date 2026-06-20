@@ -1107,6 +1107,182 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_server_presentation_packets_emit_matching_events_and_cookie_response() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(8);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        stream
+            .handle_play_packet(PlayClientbound::StoreCookie(packets::StoreCookie {
+                key: "bbb:session".to_string(),
+                payload: vec![4, 5, 6],
+            }))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("store cookie event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::StoreCookie {
+                key,
+                payload_len: 3,
+                stored_cookie_count: 1,
+            } if key == "bbb:session"
+        ));
+
+        stream
+            .handle_play_packet(PlayClientbound::CookieRequest(packets::CookieRequest {
+                key: "bbb:session".to_string(),
+            }))
+            .await
+            .unwrap();
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("cookie response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_COOKIE_RESPONSE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_string(32767).unwrap(), "bbb:session");
+        assert!(decoder.read_bool().unwrap());
+        let len = decoder.read_len().unwrap();
+        assert_eq!(
+            decoder.read_exact(len, "cookie response").unwrap(),
+            &[4, 5, 6]
+        );
+        assert!(decoder.is_empty());
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("cookie request event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::CookieRequest {
+                key,
+                response_payload_present: true,
+            } if key == "bbb:session"
+        ));
+
+        let custom_payload = packets::CustomPayload {
+            id: "minecraft:brand".to_string(),
+            payload: packets::CustomPayloadBody::Brand {
+                brand: "vanilla".to_string(),
+            },
+        };
+        stream
+            .handle_play_packet(PlayClientbound::CustomPayload(custom_payload.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("custom payload event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::CustomPayload(update) if update == custom_payload));
+
+        let mut details = BTreeMap::new();
+        details.insert("Server".to_string(), "play".to_string());
+        let custom_report_details = packets::CustomReportDetails { details };
+        stream
+            .handle_play_packet(PlayClientbound::CustomReportDetails(
+                custom_report_details.clone(),
+            ))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("custom report details event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::CustomReportDetails(update) if update == custom_report_details
+        ));
+
+        let server_links = packets::ServerLinks {
+            links: vec![packets::ServerLinkEntry {
+                link_type: packets::ServerLinkType::Known(packets::ServerLinkKnownType::Website),
+                url: "https://example.invalid".to_string(),
+            }],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ServerLinks(server_links.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("server links event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::ServerLinks(update) if update == server_links));
+
+        let server_data = packets::ServerData {
+            motd: "Offline play server".to_string(),
+            icon_bytes: Some(vec![0x89, b'P', b'N', b'G']),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ServerData(server_data.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("server data event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::ServerData(update) if update == server_data));
+
+        let resource_pack_pop = packets::ResourcePackPop {
+            id: Some(uuid::Uuid::from_u128(
+                0x11111111_2222_3333_4444_555555555555,
+            )),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ResourcePackPop(resource_pack_pop.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("resource pack pop event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::ResourcePackPop(update) if update == resource_pack_pop
+        ));
+
+        let transfer = packets::Transfer {
+            host: "next.example.invalid".to_string(),
+            port: 25566,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::Transfer(transfer.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("transfer event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::Transfer(update) if update == transfer));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "server-presentation packets after cookie response must not send extra responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_inventory_packets_emit_matching_events_without_responses() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
