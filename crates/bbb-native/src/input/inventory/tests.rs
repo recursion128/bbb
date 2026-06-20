@@ -7036,6 +7036,48 @@ fn inventory_mouse_wheel_routes_bundle_selection_for_hovered_container_zero_slot
     );
 }
 
+#[test]
+fn server_opened_container_mouse_wheel_routes_bundle_selection_for_hovered_slot() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: GENERIC_CONTAINER_FIRST_MENU_TYPE_ID,
+        title: "Chest".to_string(),
+    });
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 12,
+        items: vec![bundle_stack(42, 1, 3)],
+        carried_item: ItemStackSummary::empty(),
+    });
+
+    assert!(handle_inventory_mouse_wheel(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseScrollDelta::LineDelta(0.0, 1.0),
+        Some(PhysicalPosition::new(568.0, 320.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(counters.select_bundle_item_commands_queued, 1);
+    assert_eq!(counters.container_click_commands_queued, 0);
+    assert_eq!(open_container_slot_bundle_selection(&world, 0), Some(2));
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SelectBundleItem(SelectBundleItem {
+            slot_id: 0,
+            selected_item_index: 2,
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
 fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary {
     StonecutterSelectableRecipeSummary {
         input: IngredientSummary {

@@ -397,10 +397,6 @@ When an agent does any of the following, update this file in the same slice:
 - Owner: `bbb-protocol` + `bbb-world` + `bbb-native` + `bbb-pack`
 - Status: `partial`
 - Next action:
-  - Connect native bundle slot mouse helpers to screen slot hit-testing when
-    that UI exists:
-    - inventory
-    - container
   - Expand renderer/UI coverage beyond hotbar icon snapshots.
 - Evidence / boundary:
   - Vanilla `BundleHasSelectedItem` checks
@@ -412,6 +408,8 @@ When an agent does any of the following, update this file in the same slice:
   - Control pumping and native bundle mouse helpers:
     - update canonical state
     - queue `ServerboundSelectBundleItemPacket`
+    - route mouse-wheel selection through hovered local inventory and
+      supported server-opened container slot hit-tests
     - clear selected bundle items before `QUICK_MOVE` and `SWAP`
       container clicks
   - The GUI item icon runtime:
@@ -981,7 +979,8 @@ When an agent does any of the following, update this file in the same slice:
         - in supported server-opened screens
       - updates cursor/slot state
       - fills `ServerboundContainerClickPacket(0)` changed-slot hashes
-      - supports bundle wheel selection on hovered local inventory slots
+      - supports bundle wheel selection on hovered local inventory and
+        server-opened container slots
       - clears selected bundle items before local and server-opened
         `QUICK_MOVE` / `SWAP` container clicks
       - projects hovered-slot default item tooltip names from official language
