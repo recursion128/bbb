@@ -234,8 +234,9 @@ When an agent does any of the following, update this file in the same slice:
     - precise vanilla meshes and textures beyond the source-verified
       player/player-slim/chicken normal/warm/cold adult and baby/
       pig temperate/warm/cold adult and baby/
+      cow temperate/warm/cold adult and baby/
       boat/chest-boat/raft/chest-raft/
-      cow/sheep/wolf/base-horse/donkey/mule/
+      sheep/wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
       goat/polar-bear/hoglin/zoglin/ravager/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
@@ -317,10 +318,17 @@ When an agent does any of the following, update this file in the same slice:
       equipment layer, boost/ridden/leg/head animation, variant sound metadata,
       custom/datapack pig variant asset decoding, lighting, and GPU texture
       binding remain unsupported
-    - base cow entities as renderer-owned vanilla 26.1 adult/baby body-layer
-      geometry from `CowModel`, `BabyCowModel`, and `CowRenderer`; dynamic
-      temperate/warm/cold variant textures remain unsupported until cow variant
-      metadata is projected into renderer state
+    - cow entities as renderer-owned vanilla 26.1 `CowModel`, `WarmCowModel`,
+      `ColdCowModel`, and `BabyCowModel` body-layer geometry from `CowModel`,
+      `WarmCowModel`, `ColdCowModel`, `BabyCowModel`, `CowRenderer`,
+      `CowVariants`, and `LayerDefinitions`, including warm adult horn
+      geometry, cold adult body overlay and nested horn geometry,
+      metadata-driven temperate/warm/cold variant projection through the
+      server-sent `minecraft:cow_variant` registry order, official adult/baby
+      variant texture references, and vanilla fallback to temperate when no
+      variant metadata is present; variant sound metadata, custom/datapack cow
+      variant asset decoding, walk/head animation, lighting, and GPU texture
+      binding remain unsupported
     - sheep entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `SheepModel`, `BabySheepModel`, and `SheepRenderer`, with
       official base texture references recorded; wool undercoat/outer layers,
@@ -528,9 +536,8 @@ When an agent does any of the following, update this file in the same slice:
       minecarts, plus named placeholder bounds for remaining entity types
   - Backend GPU resources stay outside `WorldStore`.
   - Full entity presentation remains phase 6 work, including texture assets,
-    variants, equipment, skins, animation, lighting, cow variant presentation,
-    pig saddle presentation, custom/datapack pig variant asset presentation,
-    sheep wool presentation,
+    variants, equipment, skins, animation, lighting, custom/datapack cow/pig
+    variant asset presentation, pig saddle presentation, sheep wool presentation,
     wolf variant/tame/angry/collar/armor/wet-tint/pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,

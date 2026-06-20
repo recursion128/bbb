@@ -65,6 +65,7 @@ pub enum EntityModelKind {
         family: SkeletonModelFamily,
     },
     Cow {
+        variant: CowModelVariant,
         baby: bool,
     },
     Sheep {
@@ -266,6 +267,13 @@ pub enum PigModelVariant {
     Cold,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CowModelVariant {
+    Temperate,
+    Warm,
+    Cold,
+}
+
 impl LlamaVariant {
     pub fn from_vanilla_id(id: i32) -> Self {
         match id.clamp(0, 3) {
@@ -425,8 +433,7 @@ impl EntityModelKind {
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Bogged { .. },
             } => "bogged",
-            Self::Cow { baby: false } => "cow",
-            Self::Cow { baby: true } => "cow_baby",
+            Self::Cow { variant, baby } => cow_model_key(variant, baby),
             Self::Sheep { baby: false } => "sheep",
             Self::Sheep { baby: true } => "sheep_baby",
             Self::Villager { baby: false } => "villager",
@@ -644,6 +651,7 @@ impl EntityModelKind {
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Bogged { .. },
             } => Some(BOGGED_TEXTURE_REF),
+            Self::Cow { variant, baby } => Some(cow_texture_ref(variant, baby)),
             Self::Sheep { baby: false } => Some(SHEEP_TEXTURE_REF),
             Self::Sheep { baby: true } => Some(SHEEP_BABY_TEXTURE_REF),
             Self::Villager { baby: false } => Some(VILLAGER_TEXTURE_REF),
@@ -930,7 +938,22 @@ impl EntityModelInstance {
     }
 
     pub fn cow(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
-        Self::new(entity_id, EntityModelKind::Cow { baby }, position, y_rot)
+        Self::cow_variant(entity_id, position, y_rot, CowModelVariant::Temperate, baby)
+    }
+
+    pub fn cow_variant(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        variant: CowModelVariant,
+        baby: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Cow { variant, baby },
+            position,
+            y_rot,
+        )
     }
 
     pub fn sheep(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
@@ -1256,6 +1279,7 @@ const ARMOR_STAND_WOOD: [f32; 4] = [0.55, 0.36, 0.19, 1.0];
 const PIG_PINK: [f32; 4] = [0.92, 0.55, 0.62, 1.0];
 const PIG_COLD_FUR: [f32; 4] = [0.82, 0.78, 0.70, 1.0];
 const COW_BROWN: [f32; 4] = [0.38, 0.25, 0.18, 1.0];
+const COW_COLD_FUR: [f32; 4] = [0.70, 0.66, 0.58, 1.0];
 const SHEEP_WOOL: [f32; 4] = [0.86, 0.86, 0.80, 1.0];
 const HORSE_BROWN: [f32; 4] = [0.44, 0.27, 0.14, 1.0];
 const DONKEY_GRAY: [f32; 4] = [0.46, 0.45, 0.42, 1.0];
@@ -4600,7 +4624,102 @@ const ADULT_COW_HEAD: [ModelCubeDesc; 4] = [
     },
 ];
 
+const WARM_COW_HEAD: [ModelCubeDesc; 6] = [
+    ModelCubeDesc {
+        min: [-4.0, -4.0, -6.0],
+        size: [8.0, 8.0, 6.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-3.0, 1.0, -7.0],
+        size: [6.0, 3.0, 1.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-8.0, -3.0, -5.0],
+        size: [4.0, 2.0, 2.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-8.0, -5.0, -5.0],
+        size: [2.0, 2.0, 2.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [4.0, -3.0, -5.0],
+        size: [4.0, 2.0, 2.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [6.0, -5.0, -5.0],
+        size: [2.0, 2.0, 2.0],
+        color: COW_BROWN,
+    },
+];
+
+const COLD_COW_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-4.0, -4.0, -6.0],
+        size: [8.0, 8.0, 6.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-3.0, 1.0, -7.0],
+        size: [6.0, 3.0, 1.0],
+        color: COW_BROWN,
+    },
+];
+
+const COLD_COW_RIGHT_HORN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -4.5, -0.5],
+    size: [2.0, 6.0, 2.0],
+    color: COW_COLD_FUR,
+}];
+
+const COLD_COW_LEFT_HORN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -3.0, -0.5],
+    size: [2.0, 6.0, 2.0],
+    color: COW_COLD_FUR,
+}];
+
+const COLD_COW_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.5, -2.5, -3.5],
+            rotation: [1.5708, 0.0, 0.0],
+        },
+        cubes: &COLD_COW_RIGHT_HORN,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.5, -2.5, -5.0],
+            rotation: [1.5708, 0.0, 0.0],
+        },
+        cubes: &COLD_COW_LEFT_HORN,
+        children: &[],
+    },
+];
+
 const ADULT_COW_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-6.0, -10.0, -7.0],
+        size: [12.0, 18.0, 10.0],
+        color: COW_BROWN,
+    },
+    ModelCubeDesc {
+        min: [-2.0, 2.0, -8.0],
+        size: [4.0, 6.0, 1.0],
+        color: COW_BROWN,
+    },
+];
+
+const COLD_COW_BODY: [ModelCubeDesc; 3] = [
+    ModelCubeDesc {
+        min: [-6.5, -10.5, -7.5],
+        size: [13.0, 19.0, 11.0],
+        color: COW_COLD_FUR,
+    },
     ModelCubeDesc {
         min: [-6.0, -10.0, -7.0],
         size: [12.0, 18.0, 10.0],
@@ -4635,6 +4754,110 @@ const ADULT_COW_PARTS: [ModelPartDesc; 6] = [
             rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
         },
         cubes: &ADULT_COW_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+];
+
+// Vanilla 26.1 WarmCowModel.createBodyLayer().
+const WARM_COW_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &WARM_COW_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 5.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 12.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 12.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_COW_LEG,
+        children: &[],
+    },
+];
+
+// Vanilla 26.1 ColdCowModel.createBodyLayer().
+const COLD_COW_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &COLD_COW_HEAD,
+        children: &COLD_COW_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 5.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &COLD_COW_BODY,
         children: &[],
     },
     ModelPartDesc {
@@ -8142,7 +8365,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::SkeletonVariant { family } => {
                 emit_skeleton_variant_model(&mut mesh, *instance, family)
             }
-            EntityModelKind::Cow { baby } => emit_cow_model(&mut mesh, *instance, baby),
+            EntityModelKind::Cow { variant, baby } => {
+                emit_cow_model(&mut mesh, *instance, variant, baby)
+            }
             EntityModelKind::Sheep { baby } => emit_sheep_model(&mut mesh, *instance, baby),
             EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
             EntityModelKind::WanderingTrader => emit_wandering_trader_model(&mut mesh, *instance),
@@ -8516,14 +8741,15 @@ fn emit_skeleton_variant_model(
     }
 }
 
-fn emit_cow_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+fn emit_cow_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    variant: CowModelVariant,
+    baby: bool,
+) {
     emit_model_parts(
         mesh,
-        if baby {
-            &BABY_COW_PARTS
-        } else {
-            &ADULT_COW_PARTS
-        },
+        cow_model_parts(variant, baby),
         entity_model_root_transform(instance),
     );
 }
@@ -9219,6 +9445,55 @@ fn pig_texture_ref(variant: PigModelVariant, baby: bool) -> EntityModelTextureRe
         (PigModelVariant::Cold, true) => EntityModelTextureRef {
             path: "textures/entity/pig/pig_cold_baby.png",
             size: [32, 32],
+        },
+    }
+}
+
+fn cow_model_parts(variant: CowModelVariant, baby: bool) -> &'static [ModelPartDesc] {
+    match (variant, baby) {
+        (_, true) => &BABY_COW_PARTS,
+        (CowModelVariant::Warm, false) => &WARM_COW_PARTS,
+        (CowModelVariant::Cold, false) => &COLD_COW_PARTS,
+        (CowModelVariant::Temperate, false) => &ADULT_COW_PARTS,
+    }
+}
+
+fn cow_model_key(variant: CowModelVariant, baby: bool) -> &'static str {
+    match (variant, baby) {
+        (CowModelVariant::Temperate, false) => "cow_temperate",
+        (CowModelVariant::Temperate, true) => "cow_temperate_baby",
+        (CowModelVariant::Warm, false) => "cow_warm",
+        (CowModelVariant::Warm, true) => "cow_warm_baby",
+        (CowModelVariant::Cold, false) => "cow_cold",
+        (CowModelVariant::Cold, true) => "cow_cold_baby",
+    }
+}
+
+fn cow_texture_ref(variant: CowModelVariant, baby: bool) -> EntityModelTextureRef {
+    match (variant, baby) {
+        (CowModelVariant::Temperate, false) => EntityModelTextureRef {
+            path: "textures/entity/cow/cow_temperate.png",
+            size: [64, 64],
+        },
+        (CowModelVariant::Temperate, true) => EntityModelTextureRef {
+            path: "textures/entity/cow/cow_temperate_baby.png",
+            size: [64, 64],
+        },
+        (CowModelVariant::Warm, false) => EntityModelTextureRef {
+            path: "textures/entity/cow/cow_warm.png",
+            size: [64, 64],
+        },
+        (CowModelVariant::Warm, true) => EntityModelTextureRef {
+            path: "textures/entity/cow/cow_warm_baby.png",
+            size: [64, 64],
+        },
+        (CowModelVariant::Cold, false) => EntityModelTextureRef {
+            path: "textures/entity/cow/cow_cold.png",
+            size: [64, 64],
+        },
+        (CowModelVariant::Cold, true) => EntityModelTextureRef {
+            path: "textures/entity/cow/cow_cold_baby.png",
+            size: [64, 64],
         },
     }
 }
@@ -11812,6 +12087,136 @@ mod tests {
     }
 
     #[test]
+    fn cow_warm_adult_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            WARM_COW_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-4.0, -4.0, -6.0],
+                    size: [8.0, 8.0, 6.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [-3.0, 1.0, -7.0],
+                    size: [6.0, 3.0, 1.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [-8.0, -3.0, -5.0],
+                    size: [4.0, 2.0, 2.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [-8.0, -5.0, -5.0],
+                    size: [2.0, 2.0, 2.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [4.0, -3.0, -5.0],
+                    size: [4.0, 2.0, 2.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [6.0, -5.0, -5.0],
+                    size: [2.0, 2.0, 2.0],
+                    color: COW_BROWN,
+                },
+            ]
+        );
+
+        assert_eq!(WARM_COW_PARTS.len(), 6);
+        assert_part(
+            &WARM_COW_PARTS[0],
+            [0.0, 4.0, -8.0],
+            [0.0, 0.0, 0.0],
+            WARM_COW_HEAD.as_slice(),
+        );
+        assert_part(
+            &WARM_COW_PARTS[1],
+            [0.0, 5.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_COW_BODY.as_slice(),
+        );
+    }
+
+    #[test]
+    fn cow_cold_adult_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            COLD_COW_BODY,
+            [
+                ModelCubeDesc {
+                    min: [-6.5, -10.5, -7.5],
+                    size: [13.0, 19.0, 11.0],
+                    color: COW_COLD_FUR,
+                },
+                ModelCubeDesc {
+                    min: [-6.0, -10.0, -7.0],
+                    size: [12.0, 18.0, 10.0],
+                    color: COW_BROWN,
+                },
+                ModelCubeDesc {
+                    min: [-2.0, 2.0, -8.0],
+                    size: [4.0, 6.0, 1.0],
+                    color: COW_BROWN,
+                },
+            ]
+        );
+        assert_eq!(
+            COLD_COW_HEAD_CHILDREN,
+            [
+                ModelPartDesc {
+                    pose: PartPose {
+                        offset: [-4.5, -2.5, -3.5],
+                        rotation: [1.5708, 0.0, 0.0],
+                    },
+                    cubes: &COLD_COW_RIGHT_HORN,
+                    children: &[],
+                },
+                ModelPartDesc {
+                    pose: PartPose {
+                        offset: [5.5, -2.5, -5.0],
+                        rotation: [1.5708, 0.0, 0.0],
+                    },
+                    cubes: &COLD_COW_LEFT_HORN,
+                    children: &[],
+                },
+            ]
+        );
+
+        assert_eq!(COLD_COW_PARTS.len(), 6);
+        assert_part_tree(
+            &COLD_COW_PARTS[0],
+            [0.0, 4.0, -8.0],
+            [0.0, 0.0, 0.0],
+            COLD_COW_HEAD.as_slice(),
+            COLD_COW_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &COLD_COW_PARTS[1],
+            [0.0, 5.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            COLD_COW_BODY.as_slice(),
+        );
+
+        assert_eq!(
+            cow_model_parts(CowModelVariant::Temperate, false),
+            ADULT_COW_PARTS.as_slice()
+        );
+        assert_eq!(
+            cow_model_parts(CowModelVariant::Warm, false),
+            WARM_COW_PARTS.as_slice()
+        );
+        assert_eq!(
+            cow_model_parts(CowModelVariant::Cold, false),
+            COLD_COW_PARTS.as_slice()
+        );
+        assert_eq!(
+            cow_model_parts(CowModelVariant::Cold, true),
+            BABY_COW_PARTS.as_slice()
+        );
+    }
+
+    #[test]
     fn cow_adult_model_mesh_uses_vanilla_body_layer_geometry() {
         let mesh = entity_model_mesh(&[EntityModelInstance::cow(92, [0.0, 64.0, 0.0], 0.0, false)]);
 
@@ -11822,6 +12227,48 @@ mod tests {
         let (min, max) = mesh_extents(&mesh);
         assert_close3(min, [-0.375, 64.001, -0.625]);
         assert_close3(max, [0.375, 65.5635, 0.9375]);
+    }
+
+    #[test]
+    fn cow_warm_adult_model_mesh_uses_vanilla_warm_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::cow_variant(
+            94,
+            [0.0, 64.0, 0.0],
+            0.0,
+            CowModelVariant::Warm,
+            false,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 72);
+        assert_eq!(mesh.vertices.len(), 288);
+        assert_eq!(mesh.indices.len(), 432);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.5, 64.001, -0.625]);
+        assert_close3(max, [0.5, 65.5635, 0.9375]);
+    }
+
+    #[test]
+    fn cow_cold_adult_model_mesh_uses_vanilla_cold_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::cow_variant(
+            95,
+            [0.0, 64.0, 0.0],
+            0.0,
+            CowModelVariant::Cold,
+            false,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 66);
+        assert_eq!(mesh.vertices.len(), 264);
+        assert_eq!(mesh.indices.len(), 396);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.40625, 64.001, -0.65625]);
+        assert_close3(max, [0.40625, 65.501, 1.0]);
+        assert!(mesh
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(COW_COLD_FUR, 0.78)));
     }
 
     #[test]
@@ -11998,12 +12445,67 @@ mod tests {
 
     #[test]
     fn cow_and_sheep_texture_refs_match_vanilla_renderers() {
-        assert_eq!(EntityModelKind::Cow { baby: false }.model_key(), "cow");
-        assert_eq!(EntityModelKind::Cow { baby: true }.model_key(), "cow_baby");
-        assert_eq!(
-            EntityModelKind::Cow { baby: false }.vanilla_texture_ref(),
-            None
-        );
+        let cow_cases = [
+            (
+                CowModelVariant::Temperate,
+                false,
+                "cow_temperate",
+                EntityModelTextureRef {
+                    path: "textures/entity/cow/cow_temperate.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                CowModelVariant::Temperate,
+                true,
+                "cow_temperate_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/cow/cow_temperate_baby.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                CowModelVariant::Warm,
+                false,
+                "cow_warm",
+                EntityModelTextureRef {
+                    path: "textures/entity/cow/cow_warm.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                CowModelVariant::Warm,
+                true,
+                "cow_warm_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/cow/cow_warm_baby.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                CowModelVariant::Cold,
+                false,
+                "cow_cold",
+                EntityModelTextureRef {
+                    path: "textures/entity/cow/cow_cold.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                CowModelVariant::Cold,
+                true,
+                "cow_cold_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/cow/cow_cold_baby.png",
+                    size: [64, 64],
+                },
+            ),
+        ];
+        for (variant, baby, model_key, texture) in cow_cases {
+            let kind = EntityModelKind::Cow { variant, baby };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
         assert_eq!(EntityModelKind::Sheep { baby: false }.model_key(), "sheep");
         assert_eq!(
             EntityModelKind::Sheep { baby: false }.vanilla_texture_ref(),
@@ -15606,7 +16108,22 @@ mod tests {
             .model_key(),
             "bogged"
         );
-        assert_eq!(EntityModelKind::Cow { baby: true }.model_key(), "cow_baby");
+        assert_eq!(
+            EntityModelKind::Cow {
+                variant: CowModelVariant::Warm,
+                baby: false
+            }
+            .model_key(),
+            "cow_warm"
+        );
+        assert_eq!(
+            EntityModelKind::Cow {
+                variant: CowModelVariant::Cold,
+                baby: true
+            }
+            .model_key(),
+            "cow_cold_baby"
+        );
         assert_eq!(
             EntityModelKind::Sheep { baby: true }.model_key(),
             "sheep_baby"
