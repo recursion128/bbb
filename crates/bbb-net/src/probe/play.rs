@@ -3353,6 +3353,7 @@ mod tests {
                     option_display: SlotDisplaySummary {
                         display_type_id: 4,
                         raw_payload: vec![4, 77],
+                        item_stack: None,
                     },
                 }],
             }))
@@ -5079,6 +5080,7 @@ mod tests {
                 display: RecipeDisplaySummary {
                     display_type: RecipeDisplayType::Stonecutter,
                     raw_body: vec![3, id as u8],
+                    crafting: None,
                 },
                 group: None,
                 category_id: id + 10,

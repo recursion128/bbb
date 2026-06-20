@@ -114,6 +114,7 @@ mod tests {
             option_display: SlotDisplaySummary {
                 display_type_id,
                 raw_payload,
+                item_stack: None,
             },
         }
     }

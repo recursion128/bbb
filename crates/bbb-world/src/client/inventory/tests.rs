@@ -4,12 +4,15 @@ use crate::entities::{
     VANILLA_ENTITY_TYPE_NAUTILUS_ID,
 };
 use bbb_protocol::packets::{
-    AddEntity as ProtocolAddEntity, EntityDataValue as ProtocolEntityDataValue,
-    EntityDataValueKind, IngredientSummary, MountScreenOpen as ProtocolMountScreenOpen,
-    PlayerAbilities as ProtocolPlayerAbilities, PlayerExperience as ProtocolPlayerExperience,
-    RecipePropertySetSummary, RegistryTags, SetEntityData as ProtocolSetEntityData,
-    SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload,
-    UpdateRecipes as ProtocolUpdateRecipes, UpdateTags as ProtocolUpdateTags,
+    AddEntity as ProtocolAddEntity, CraftingRecipeDisplaySummary,
+    EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, IngredientSummary,
+    MountScreenOpen as ProtocolMountScreenOpen, PlayerAbilities as ProtocolPlayerAbilities,
+    PlayerExperience as ProtocolPlayerExperience, RecipeBookAdd as ProtocolRecipeBookAdd,
+    RecipeBookAddEntry as ProtocolRecipeBookAddEntry,
+    RecipeDisplayEntry as ProtocolRecipeDisplayEntry, RecipeDisplayId, RecipeDisplaySummary,
+    RecipeDisplayType, RecipePropertySetSummary, RegistryTags,
+    SetEntityData as ProtocolSetEntityData, SlotDisplaySummary, StonecutterSelectableRecipeSummary,
+    TagNetworkPayload, UpdateRecipes as ProtocolUpdateRecipes, UpdateTags as ProtocolUpdateTags,
     UseEffectsSummary as ProtocolUseEffectsSummary, Vec3d as ProtocolVec3d,
 };
 use uuid::Uuid;
@@ -2655,6 +2658,98 @@ fn apply_local_container_quick_move_result_consumes_after_partial_transfer() {
     assert_eq!(inventory_menu_slot_item(&store, 44), item_stack(90, 1));
     assert_eq!(player_slot_item(&store, 7), item_stack(90, 1));
     assert_eq!(player_slot_item(&store, 8), item_stack(90, 1));
+}
+
+#[test]
+fn apply_local_container_click_recomputes_shaped_recipe_result_from_recipe_book() {
+    let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::new());
+    store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+        entries: vec![recipe_book_crafting_entry(
+            7,
+            CraftingRecipeDisplaySummary::Shaped {
+                width: 2,
+                height: 1,
+                ingredients: vec![slot_display_item(42), slot_display_item(43)],
+                result: slot_display_item_stack(90, 2),
+                crafting_station: slot_display_empty(),
+            },
+        )],
+        replace: true,
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[1] = item_stack(42, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: item_stack(43, 1),
+    });
+    assert!(store.open_local_inventory());
+
+    let pickup = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 2,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup.changed_slots,
+        BTreeMap::from([(0, hashed_item_stack(90, 2)), (2, hashed_item_stack(43, 1)),])
+    );
+    assert_eq!(pickup.carried_item, ProtocolHashedStack::Empty);
+    assert_eq!(inventory_menu_slot_item(&store, 0), item_stack(90, 2));
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 2), item_stack(43, 1));
+    assert_eq!(
+        store.inventory().cursor_item,
+        ProtocolItemStackSummary::empty()
+    );
+}
+
+#[test]
+fn apply_local_container_click_recomputes_shapeless_recipe_result_from_recipe_book() {
+    let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::new());
+    store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+        entries: vec![recipe_book_crafting_entry(
+            8,
+            CraftingRecipeDisplaySummary::Shapeless {
+                ingredients: vec![slot_display_item(42), slot_display_item(43)],
+                result: slot_display_item(91),
+                crafting_station: slot_display_empty(),
+            },
+        )],
+        replace: true,
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[4] = item_stack(43, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: item_stack(42, 1),
+    });
+    assert!(store.open_local_inventory());
+
+    let pickup = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 1,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup.changed_slots,
+        BTreeMap::from([(0, hashed_item_stack(91, 1)), (1, hashed_item_stack(42, 1)),])
+    );
+    assert_eq!(pickup.carried_item, ProtocolHashedStack::Empty);
+    assert_eq!(inventory_menu_slot_item(&store, 0), item_stack(91, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 4), item_stack(43, 1));
 }
 
 #[test]
@@ -8131,6 +8226,56 @@ fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
     }
 }
 
+fn slot_display_empty() -> SlotDisplaySummary {
+    SlotDisplaySummary {
+        display_type_id: 0,
+        raw_payload: vec![0],
+        item_stack: None,
+    }
+}
+
+fn slot_display_item(item_id: i32) -> SlotDisplaySummary {
+    SlotDisplaySummary {
+        display_type_id: 4,
+        raw_payload: vec![4, item_id as u8],
+        item_stack: Some(item_stack(item_id, 1)),
+    }
+}
+
+fn slot_display_item_stack(item_id: i32, count: i32) -> SlotDisplaySummary {
+    SlotDisplaySummary {
+        display_type_id: 5,
+        raw_payload: vec![5, item_id as u8, count as u8, 0, 0],
+        item_stack: Some(item_stack(item_id, count)),
+    }
+}
+
+fn recipe_book_crafting_entry(
+    id: i32,
+    crafting: CraftingRecipeDisplaySummary,
+) -> ProtocolRecipeBookAddEntry {
+    let display_type = match crafting {
+        CraftingRecipeDisplaySummary::Shapeless { .. } => RecipeDisplayType::CraftingShapeless,
+        CraftingRecipeDisplaySummary::Shaped { .. } => RecipeDisplayType::CraftingShaped,
+    };
+    ProtocolRecipeBookAddEntry {
+        contents: ProtocolRecipeDisplayEntry {
+            id: RecipeDisplayId { index: id },
+            display: RecipeDisplaySummary {
+                display_type,
+                raw_body: Vec::new(),
+                crafting: Some(crafting),
+            },
+            group: None,
+            category_id: 10,
+            crafting_requirements: None,
+        },
+        flags: 0,
+        notification: false,
+        highlight: false,
+    }
+}
+
 fn map_id_item_stack(item_id: i32, count: i32, map_id: i32) -> ProtocolItemStackSummary {
     let mut item = item_stack(item_id, count);
     item.component_patch.added = 1;
@@ -8253,6 +8398,7 @@ fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary 
         option_display: SlotDisplaySummary {
             display_type_id: 0,
             raw_payload: Vec::new(),
+            item_stack: None,
         },
     }
 }

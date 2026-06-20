@@ -3443,6 +3443,7 @@ mod tests {
                     display: packets::RecipeDisplaySummary {
                         display_type: packets::RecipeDisplayType::Stonecutter,
                         raw_body: vec![1, 2, 3],
+                        crafting: None,
                     },
                     group: Some(4),
                     category_id: 2,
@@ -3572,6 +3573,7 @@ mod tests {
                 option_display: packets::SlotDisplaySummary {
                     display_type_id: 2,
                     raw_payload: vec![9, 8, 7],
+                    item_stack: None,
                 },
             }],
         };

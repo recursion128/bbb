@@ -3088,6 +3088,7 @@ fn stonecutter_slot_display_item_stack_projects_direct_item_displays() {
         stonecutter_slot_display_item_stack(&bbb_protocol::packets::SlotDisplaySummary {
             display_type_id: 6,
             raw_payload: vec![6, 4, b't', b'e', b's', b't'],
+            item_stack: None,
         }),
         None
     );
@@ -3511,6 +3512,7 @@ fn stonecutter_item_display(item_id: i32) -> bbb_protocol::packets::SlotDisplayS
     bbb_protocol::packets::SlotDisplaySummary {
         display_type_id: 4,
         raw_payload,
+        item_stack: Some(item_stack(item_id, 1)),
     }
 }
 
@@ -3527,6 +3529,7 @@ fn stonecutter_item_stack_display(
     bbb_protocol::packets::SlotDisplaySummary {
         display_type_id: 5,
         raw_payload,
+        item_stack: Some(item_stack(item_id, count)),
     }
 }
 

@@ -2,7 +2,9 @@ use super::*;
 use crate::{
     codec::{Decoder, Encoder},
     ids,
-    packets::{decode_play_clientbound, DataComponentPatchSummary, PlayClientbound},
+    packets::{
+        decode_play_clientbound, DataComponentPatchSummary, ItemStackSummary, PlayClientbound,
+    },
 };
 
 #[test]
@@ -121,6 +123,7 @@ fn decodes_recipe_book_add_packet_wire_order() {
                     display: RecipeDisplaySummary {
                         display_type: RecipeDisplayType::Stonecutter,
                         raw_body: vec![3, 0, 0, 0],
+                        crafting: None,
                     },
                     group: Some(7),
                     category_id: 10,
@@ -134,6 +137,134 @@ fn decodes_recipe_book_add_packet_wire_order() {
                 highlight: true,
             }],
             replace: true,
+        })
+    );
+}
+
+#[test]
+fn decodes_recipe_book_add_with_structured_shaped_crafting_display() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(1);
+    payload.write_var_i32(200);
+    payload.write_var_i32(1);
+    payload.write_var_i32(2);
+    payload.write_var_i32(1);
+    payload.write_var_i32(2);
+    payload.write_var_i32(4);
+    payload.write_var_i32(42);
+    payload.write_var_i32(5);
+    payload.write_var_i32(43);
+    payload.write_var_i32(1);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(5);
+    payload.write_var_i32(90);
+    payload.write_var_i32(2);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(10);
+    payload.write_bool(false);
+    payload.write_u8(0);
+    payload.write_bool(false);
+
+    let PlayClientbound::RecipeBookAdd(packet) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_RECIPE_BOOK_ADD,
+        &payload.into_inner(),
+    )
+    .unwrap() else {
+        panic!("expected recipe book add packet");
+    };
+    let entry = &packet.entries[0].contents;
+    assert_eq!(
+        entry.display.display_type,
+        RecipeDisplayType::CraftingShaped
+    );
+    assert_eq!(
+        entry.display.crafting,
+        Some(CraftingRecipeDisplaySummary::Shaped {
+            width: 2,
+            height: 1,
+            ingredients: vec![
+                SlotDisplaySummary {
+                    display_type_id: 4,
+                    raw_payload: vec![4, 42],
+                    item_stack: Some(item_stack(42, 1)),
+                },
+                SlotDisplaySummary {
+                    display_type_id: 5,
+                    raw_payload: vec![5, 43, 1, 0, 0],
+                    item_stack: Some(item_stack(43, 1)),
+                },
+            ],
+            result: SlotDisplaySummary {
+                display_type_id: 5,
+                raw_payload: vec![5, 90, 2, 0, 0],
+                item_stack: Some(item_stack(90, 2)),
+            },
+            crafting_station: SlotDisplaySummary {
+                display_type_id: 0,
+                raw_payload: vec![0],
+                item_stack: None,
+            },
+        })
+    );
+}
+
+#[test]
+fn decodes_recipe_book_add_with_structured_shapeless_crafting_display() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(1);
+    payload.write_var_i32(201);
+    payload.write_var_i32(0);
+    payload.write_var_i32(2);
+    payload.write_var_i32(4);
+    payload.write_var_i32(42);
+    payload.write_var_i32(4);
+    payload.write_var_i32(43);
+    payload.write_var_i32(4);
+    payload.write_var_i32(91);
+    payload.write_var_i32(0);
+    payload.write_var_i32(0);
+    payload.write_var_i32(10);
+    payload.write_bool(false);
+    payload.write_u8(0);
+    payload.write_bool(false);
+
+    let PlayClientbound::RecipeBookAdd(packet) = decode_play_clientbound(
+        ids::play::CLIENTBOUND_RECIPE_BOOK_ADD,
+        &payload.into_inner(),
+    )
+    .unwrap() else {
+        panic!("expected recipe book add packet");
+    };
+    let entry = &packet.entries[0].contents;
+    assert_eq!(
+        entry.display.crafting,
+        Some(CraftingRecipeDisplaySummary::Shapeless {
+            ingredients: vec![
+                SlotDisplaySummary {
+                    display_type_id: 4,
+                    raw_payload: vec![4, 42],
+                    item_stack: Some(item_stack(42, 1)),
+                },
+                SlotDisplaySummary {
+                    display_type_id: 4,
+                    raw_payload: vec![4, 43],
+                    item_stack: Some(item_stack(43, 1)),
+                },
+            ],
+            result: SlotDisplaySummary {
+                display_type_id: 4,
+                raw_payload: vec![4, 91],
+                item_stack: Some(item_stack(91, 1)),
+            },
+            crafting_station: SlotDisplaySummary {
+                display_type_id: 0,
+                raw_payload: vec![0],
+                item_stack: None,
+            },
         })
     );
 }
@@ -239,6 +370,7 @@ fn decodes_update_recipes_packet_wire_order() {
                 option_display: SlotDisplaySummary {
                     display_type_id: 4,
                     raw_payload: vec![4, 77],
+                    item_stack: Some(item_stack(77, 1)),
                 },
             }],
         })
@@ -277,6 +409,7 @@ fn decodes_update_recipes_with_direct_trim_pattern_slot_display() {
                 option_display: SlotDisplaySummary {
                     display_type_id: 8,
                     raw_payload: option_display,
+                    item_stack: None,
                 },
             }],
         })
@@ -310,6 +443,7 @@ fn decodes_update_recipes_with_tag_slot_display() {
                 option_display: SlotDisplaySummary {
                     display_type_id: 6,
                     raw_payload: option_display,
+                    item_stack: None,
                 },
             }],
         })
@@ -668,6 +802,14 @@ fn rejects_null_tag_query_with_trailing_bytes() {
     assert!(err
         .to_string()
         .contains("trailing bytes after null tag query nbt"));
+}
+
+fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
+    ItemStackSummary {
+        item_id: Some(item_id),
+        count,
+        component_patch: DataComponentPatchSummary::default(),
+    }
 }
 
 fn compound_with_string(name: &str, value: &str) -> Vec<u8> {

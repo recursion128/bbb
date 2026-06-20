@@ -7304,6 +7304,7 @@ fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary 
         option_display: SlotDisplaySummary {
             display_type_id: 0,
             raw_payload: Vec::new(),
+            item_stack: None,
         },
     }
 }

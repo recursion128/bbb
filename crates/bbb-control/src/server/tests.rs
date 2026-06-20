@@ -2256,6 +2256,7 @@ fn client_recipes_reads_canonical_world_state() {
                 option_display: SlotDisplaySummary {
                     display_type_id: 4,
                     raw_payload: vec![4, 77],
+                    item_stack: None,
                 },
             }],
         });
@@ -3949,6 +3950,7 @@ fn recipe_book_entry(id: i32, notification: bool, highlight: bool) -> RecipeBook
             display: RecipeDisplaySummary {
                 display_type: RecipeDisplayType::Stonecutter,
                 raw_body: vec![3, 0, 0, 0],
+                crafting: None,
             },
             group: None,
             category_id: 10,

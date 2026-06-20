@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::codec::{Decoder, ProtocolError, Result};
 
 use super::super::read_resource_location;
+use super::super::{DataComponentPatchSummary, ItemStackSummary};
 
 const MAX_RECIPE_PROPERTY_SET_ITEMS: usize = 65_536;
 const MAX_RECIPE_PROPERTY_SETS: usize = 4096;
@@ -59,6 +60,7 @@ pub struct StonecutterSelectableRecipeSummary {
 pub struct SlotDisplaySummary {
     pub display_type_id: i32,
     pub raw_payload: Vec<u8>,
+    pub item_stack: Option<ItemStackSummary>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -79,12 +81,29 @@ pub struct RecipeDisplayEntry {
 pub struct RecipeDisplaySummary {
     pub display_type: RecipeDisplayType,
     pub raw_body: Vec<u8>,
+    pub crafting: Option<CraftingRecipeDisplaySummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IngredientSummary {
     pub tag: Option<String>,
     pub item_ids: Vec<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CraftingRecipeDisplaySummary {
+    Shapeless {
+        ingredients: Vec<SlotDisplaySummary>,
+        result: SlotDisplaySummary,
+        crafting_station: SlotDisplaySummary,
+    },
+    Shaped {
+        width: i32,
+        height: i32,
+        ingredients: Vec<SlotDisplaySummary>,
+        result: SlotDisplaySummary,
+        crafting_station: SlotDisplaySummary,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -293,18 +312,30 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
     let start_len = display_start.len();
     let display_type = RecipeDisplayType::from_id(decoder.read_var_i32()?)?;
 
-    match display_type {
+    let crafting = match display_type {
         RecipeDisplayType::CraftingShapeless => {
-            skip_slot_display_list(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
+            let ingredients = decode_slot_display_list(decoder)?;
+            let result = decode_slot_display_summary(decoder)?;
+            let crafting_station = decode_slot_display_summary(decoder)?;
+            Some(CraftingRecipeDisplaySummary::Shapeless {
+                ingredients,
+                result,
+                crafting_station,
+            })
         }
         RecipeDisplayType::CraftingShaped => {
-            decoder.read_var_i32()?;
-            decoder.read_var_i32()?;
-            skip_slot_display_list(decoder)?;
-            skip_slot_display(decoder)?;
-            skip_slot_display(decoder)?;
+            let width = decoder.read_var_i32()?;
+            let height = decoder.read_var_i32()?;
+            let ingredients = decode_slot_display_list(decoder)?;
+            let result = decode_slot_display_summary(decoder)?;
+            let crafting_station = decode_slot_display_summary(decoder)?;
+            Some(CraftingRecipeDisplaySummary::Shaped {
+                width,
+                height,
+                ingredients,
+                result,
+                crafting_station,
+            })
         }
         RecipeDisplayType::Furnace => {
             skip_slot_display(decoder)?;
@@ -313,11 +344,13 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
             skip_slot_display(decoder)?;
             decoder.read_var_i32()?;
             decoder.read_f32()?;
+            None
         }
         RecipeDisplayType::Stonecutter => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
+            None
         }
         RecipeDisplayType::Smithing => {
             skip_slot_display(decoder)?;
@@ -325,8 +358,9 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
+            None
         }
-    }
+    };
 
     let consumed = start_len.saturating_sub(decoder.remaining_len());
     if consumed > MAX_RECIPE_DISPLAY_BODY {
@@ -338,6 +372,7 @@ fn decode_recipe_display_summary(decoder: &mut Decoder<'_>) -> Result<RecipeDisp
     Ok(RecipeDisplaySummary {
         display_type,
         raw_body: display_start[..consumed].to_vec(),
+        crafting,
     })
 }
 
@@ -410,77 +445,100 @@ fn decode_slot_display_summary(decoder: &mut Decoder<'_>) -> Result<SlotDisplayS
     let display_start = decoder.remaining().to_vec();
     let before_len = decoder.remaining_len();
     let display_type_id = decoder.read_var_i32()?;
-    skip_slot_display_body(decoder, display_type_id)?;
+    let item_stack = decode_slot_display_body(decoder, display_type_id)?;
     let consumed = before_len - decoder.remaining_len();
     Ok(SlotDisplaySummary {
         display_type_id,
         raw_payload: display_start[..consumed].to_vec(),
+        item_stack,
     })
 }
 
-fn skip_slot_display_list(decoder: &mut Decoder<'_>) -> Result<()> {
+fn decode_slot_display_list(decoder: &mut Decoder<'_>) -> Result<Vec<SlotDisplaySummary>> {
     let count = read_bounded_len(
         decoder,
         MAX_RECIPE_BOOK_NESTED_LIST,
         "recipe book slot display list",
     )?;
+    let mut displays = Vec::with_capacity(count);
     for _ in 0..count {
-        skip_slot_display(decoder)?;
+        displays.push(decode_slot_display_summary(decoder)?);
     }
-    Ok(())
+    Ok(displays)
+}
+
+fn skip_slot_display_list(decoder: &mut Decoder<'_>) -> Result<()> {
+    decode_slot_display_list(decoder).map(drop)
 }
 
 fn skip_slot_display(decoder: &mut Decoder<'_>) -> Result<()> {
-    let display_type_id = decoder.read_var_i32()?;
-    skip_slot_display_body(decoder, display_type_id)
+    decode_slot_display_summary(decoder).map(drop)
 }
 
-fn skip_slot_display_body(decoder: &mut Decoder<'_>, display_type_id: i32) -> Result<()> {
+fn decode_slot_display_body(
+    decoder: &mut Decoder<'_>,
+    display_type_id: i32,
+) -> Result<Option<ItemStackSummary>> {
     match display_type_id {
-        0 | 1 => Ok(()),
-        2 => skip_slot_display(decoder),
+        0 | 1 => Ok(None),
+        2 => {
+            skip_slot_display(decoder)?;
+            Ok(None)
+        }
         3 => {
             skip_slot_display(decoder)?;
             decoder.read_var_i32()?;
-            Ok(())
+            Ok(None)
         }
-        4 => {
-            decoder.read_var_i32()?;
-            Ok(())
-        }
+        4 => Ok(Some(ItemStackSummary {
+            item_id: Some(decoder.read_var_i32()?),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        })),
         5 => {
-            skip_item_stack_template(decoder)?;
-            Ok(())
+            let item_id = decoder.read_var_i32()?;
+            let count = decoder.read_var_i32()?;
+            if count <= 0 {
+                return Err(ProtocolError::InvalidData(format!(
+                    "invalid item stack display count {count}"
+                )));
+            }
+            let component_patch =
+                super::super::inventory::decode_data_component_patch_summary(decoder)?;
+            Ok(Some(ItemStackSummary {
+                item_id: Some(item_id),
+                count,
+                component_patch,
+            }))
         }
         6 => {
             read_resource_location(decoder)?;
-            Ok(())
+            Ok(None)
         }
         7 => {
             skip_slot_display(decoder)?;
-            skip_slot_display(decoder)
+            skip_slot_display(decoder)?;
+            Ok(None)
         }
         8 => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
-            skip_trim_pattern_holder(decoder)
+            skip_trim_pattern_holder(decoder)?;
+            Ok(None)
         }
         9 => {
             skip_slot_display(decoder)?;
-            skip_slot_display(decoder)
+            skip_slot_display(decoder)?;
+            Ok(None)
         }
-        10 => skip_slot_display_list(decoder),
+        10 => {
+            skip_slot_display_list(decoder)?;
+            Ok(None)
+        }
         other => Err(ProtocolError::InvalidData(format!(
             "invalid slot display type id {other}"
         ))),
     }
-}
-
-fn skip_item_stack_template(decoder: &mut Decoder<'_>) -> Result<()> {
-    decoder.read_var_i32()?;
-    decoder.read_var_i32()?;
-    super::super::inventory::decode_data_component_patch_summary(decoder)?;
-    Ok(())
 }
 
 fn skip_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<()> {

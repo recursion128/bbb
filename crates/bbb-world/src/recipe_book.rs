@@ -141,6 +141,7 @@ mod tests {
                 display: RecipeDisplaySummary {
                     display_type: RecipeDisplayType::Stonecutter,
                     raw_body: vec![3, 0, 0, 0],
+                    crafting: None,
                 },
                 group: None,
                 category_id: 10,
