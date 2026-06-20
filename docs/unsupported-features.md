@@ -1132,8 +1132,12 @@ When an agent does any of the following, update this file in the same slice:
           when the current server result fully fits, cost plus local
           experience/creative state allow pickup, the additional slot is empty,
           and the single input is consumed to empty.
+        - result-slot primary pickup with an empty cursor is locally predicted
+          from the current server result when cost plus local experience/creative
+          state allow pickup, the additional slot is empty, and the single input
+          is consumed to empty.
         - result-slot paths are kept server-authoritative until:
-          - result-slot pickup
+          - carried-cursor or secondary result-slot pickup
           - repair/enchantment result prediction
           - repair-cost component updates
           - material/sacrifice consumption
