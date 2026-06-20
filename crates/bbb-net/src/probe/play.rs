@@ -577,7 +577,7 @@ mod tests {
         BlockEntityData, BlockEvent, BlockPos as ProtocolBlockPos, BlockUpdate, BossBarColor,
         BossBarOverlay, BossEvent, BossEventFlags, BossEventOperation, ChangeDifficulty,
         ChatFormatting, ChatTypeBound, ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData,
-        ChunkPos as ProtocolChunkPos, ChunksBiomes, ClockUpdate, CommandSuggestion,
+        ChunkPos as ProtocolChunkPos, ChunksBiomes, ClearTitles, ClockUpdate, CommandSuggestion,
         CommandSuggestions, CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent,
         ContainerSetData, ContainerSetSlot, CookieRequest, Cooldown, CustomChatCompletions,
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
@@ -602,14 +602,15 @@ mod tests {
         RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop, ResourcePackPush,
         ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot, SectionBlocksUpdate,
         SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
-        ServerLinks, SetBorderCenter, SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay,
-        SetBorderWarningDistance, SetCamera, SetChunkCacheCenter, SetChunkCacheRadius,
-        SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
-        SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetObjectiveMethod,
-        SetObjectiveParameters, SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore,
-        SetSimulationDistance, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
+        ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderSize,
+        SetBorderWarningDelay, SetBorderWarningDistance, SetCamera, SetChunkCacheCenter,
+        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective,
+        SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective,
+        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerInventory,
+        SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText, SetTitleText,
+        SetTitlesAnimation, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
         SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
-        StopSound, StoreCookie, TabList, TagQuery, TakeItemEntity, TeamCollisionRule,
+        StopSound, StoreCookie, SystemChat, TabList, TagQuery, TakeItemEntity, TeamCollisionRule,
         TeamVisibility, TeleportEntity, TestInstanceBlockStatus, TickingState, TickingStep,
         TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateAttributes,
         UpdateMobEffect, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
@@ -3255,6 +3256,91 @@ mod tests {
                 .world_border_warning_distance_updates_received,
             1
         );
+    }
+
+    #[tokio::test]
+    async fn probe_applies_hud_text_packets_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::SystemChat(SystemChat {
+                content: "Server restart soon".to_string(),
+                overlay: false,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SystemChat(SystemChat {
+                content: "Now entering camp".to_string(),
+                overlay: true,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetActionBarText(SetActionBarText {
+                content: "Action ready".to_string(),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetTitlesAnimation(SetTitlesAnimation {
+                fade_in: 5,
+                stay: 40,
+                fade_out: 15,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetTitleText(SetTitleText {
+                content: "Quest complete".to_string(),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetSubtitleText(SetSubtitleText {
+                content: "Return to camp".to_string(),
+            }))
+            .await
+            .unwrap();
+
+        let system_chat = probe.world.system_chat().unwrap();
+        assert_eq!(system_chat.content, "Now entering camp");
+        assert!(system_chat.overlay);
+        let action_bar = probe.world.action_bar().unwrap();
+        assert_eq!(action_bar.content, "Action ready");
+        assert_eq!(action_bar.display_ticks, 60);
+        assert_eq!(probe.world.title().title.as_deref(), Some("Quest complete"));
+        assert_eq!(
+            probe.world.title().subtitle.as_deref(),
+            Some("Return to camp")
+        );
+        assert_eq!(probe.world.title().fade_in, 5);
+        assert_eq!(probe.world.title().stay, 40);
+        assert_eq!(probe.world.title().fade_out, 15);
+        assert_eq!(probe.world.title().title_time, 60);
+
+        probe
+            .handle_play_packet(PlayClientbound::ClearTitles(ClearTitles {
+                reset_times: true,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(7, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(report.world.title().title, None);
+        assert_eq!(report.world.title().subtitle, None);
+        assert_eq!(report.world.title().fade_in, 10);
+        assert_eq!(report.world.title().stay, 70);
+        assert_eq!(report.world.title().fade_out, 20);
+        assert_eq!(report.world.title().title_time, 0);
+        assert_eq!(report.world_counters.system_chat_packets, 2);
+        assert_eq!(report.world_counters.action_bar_packets, 1);
+        assert_eq!(report.world_counters.titles_animation_packets, 1);
+        assert_eq!(report.world_counters.title_text_packets, 1);
+        assert_eq!(report.world_counters.subtitle_text_packets, 1);
+        assert_eq!(report.world_counters.clear_titles_packets, 1);
     }
 
     #[tokio::test]
