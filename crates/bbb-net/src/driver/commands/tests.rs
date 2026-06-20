@@ -1,11 +1,11 @@
 use super::{
     send_accept_code_of_conduct, send_attack_entity, send_block_entity_tag_query,
     send_change_difficulty, send_change_game_mode, send_chat_acknowledgement, send_chat_command,
-    send_chat_command_signed, send_chat_message, send_command_suggestion_request,
-    send_container_button_click, send_container_click, send_container_close,
-    send_container_slot_state_changed, send_custom_payload, send_edit_book, send_entity_tag_query,
-    send_interact_entity, send_lock_difficulty, send_paddle_boat, send_pick_item_from_block,
-    send_pick_item_from_entity, send_ping_request, send_place_recipe,
+    send_chat_command_signed, send_chat_message, send_client_command,
+    send_command_suggestion_request, send_container_button_click, send_container_click,
+    send_container_close, send_container_slot_state_changed, send_custom_payload, send_edit_book,
+    send_entity_tag_query, send_interact_entity, send_lock_difficulty, send_paddle_boat,
+    send_pick_item_from_block, send_pick_item_from_entity, send_ping_request, send_place_recipe,
     send_player_abilities_command, send_player_action, send_player_command,
     send_player_input_command, send_player_move_command, send_recipe_book_change_settings,
     send_recipe_book_seen_recipe, send_rename_item, send_seen_advancements,
@@ -23,15 +23,16 @@ use bbb_protocol::{
     packets::{
         AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand,
         ChangeGameModeCommand, ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage,
-        CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-        ContainerInput, ContainerSlotStateChanged, DataComponentPatchSummary, Difficulty, EditBook,
-        EntityTagQuery, GameType, HashedComponentPatch, HashedItemStack, HashedStack,
-        InteractEntity, InteractionHand, ItemStackSummary, LockDifficultyCommand, PaddleBoat,
-        PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
-        PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
-        RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements,
-        SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon,
-        SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
+        ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
+        ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged,
+        DataComponentPatchSummary, Difficulty, EditBook, EntityTagQuery, GameType,
+        HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
+        ItemStackSummary, LockDifficultyCommand, PaddleBoat, PickItemFromEntity,
+        PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput,
+        PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
+        RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem,
+        SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate,
+        SpectateEntity, TeleportToEntity, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -668,6 +669,47 @@ async fn send_custom_payload_rejects_oversized_unknown_payload() {
     assert!(err
         .to_string()
         .contains("packet length 32768 exceeds configured maximum 32767"));
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_client_command_encodes_client_command_actions() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        for (name, ordinal) in [
+            ("perform respawn", 0),
+            ("request stats", 1),
+            ("request game rule values", 2),
+        ] {
+            let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+                .await
+                .unwrap_or_else(|_| panic!("{name} command should be sent"))
+                .unwrap();
+            assert_eq!(packet_id, ids::play::SERVERBOUND_CLIENT_COMMAND);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_var_i32().unwrap(), ordinal);
+            assert!(decoder.is_empty());
+        }
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    for action in [
+        ClientCommandAction::PerformRespawn,
+        ClientCommandAction::RequestStats,
+        ClientCommandAction::RequestGameRuleValues,
+    ] {
+        send_client_command(&mut conn, action).await.unwrap();
+    }
+
     server.await.unwrap();
 }
 
