@@ -70,6 +70,25 @@ const BREWING_INGREDIENT_ITEM_IDS: &[&str] = &[
 const ENCHANTMENT_LAPIS_LAZULI_ITEM_IDS: &[&str] = &["minecraft:lapis_lazuli"];
 const CARTOGRAPHY_ADDITIONAL_ITEM_IDS: &[&str] =
     &["minecraft:paper", "minecraft:map", "minecraft:glass_pane"];
+const RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS: &[&str] = &[
+    "minecraft:white_banner",
+    "minecraft:orange_banner",
+    "minecraft:magenta_banner",
+    "minecraft:light_blue_banner",
+    "minecraft:yellow_banner",
+    "minecraft:lime_banner",
+    "minecraft:pink_banner",
+    "minecraft:gray_banner",
+    "minecraft:light_gray_banner",
+    "minecraft:cyan_banner",
+    "minecraft:purple_banner",
+    "minecraft:blue_banner",
+    "minecraft:brown_banner",
+    "minecraft:green_banner",
+    "minecraft:red_banner",
+    "minecraft:black_banner",
+    "minecraft:written_book",
+];
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct NativeItemTooltipLine {
@@ -87,6 +106,7 @@ pub(crate) struct NativeItemRuntime {
     furnace_fuel_item_ids: BTreeSet<i32>,
     freeze_immune_wearable_item_ids: BTreeSet<i32>,
     powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
+    recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
     item_icon_models: HashMap<String, ItemIconModel>,
     registry: Option<ItemRegistryCatalog>,
     language: LanguageCatalog,
@@ -147,6 +167,10 @@ impl NativeItemRuntime {
             .and_then(|registry| registry.protocol_id("minecraft:leather_boots"))
             .into_iter()
             .collect();
+        let recipe_specific_crafting_remainder_item_ids = registry
+            .as_ref()
+            .map(recipe_specific_crafting_remainder_item_ids)
+            .unwrap_or_default();
         let colormaps = roots
             .load_terrain_colormaps()
             .context("load terrain colormaps for item tints")
@@ -167,6 +191,7 @@ impl NativeItemRuntime {
             furnace_fuel_item_ids,
             freeze_immune_wearable_item_ids,
             powder_snow_walkable_foot_item_ids,
+            recipe_specific_crafting_remainder_item_ids,
             language,
         )
     }
@@ -180,6 +205,7 @@ impl NativeItemRuntime {
         furnace_fuel_item_ids: BTreeSet<i32>,
         freeze_immune_wearable_item_ids: BTreeSet<i32>,
         powder_snow_walkable_foot_item_ids: BTreeSet<i32>,
+        recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
         language: LanguageCatalog,
     ) -> Result<Self> {
         let mut texture_ids = BTreeSet::new();
@@ -246,6 +272,7 @@ impl NativeItemRuntime {
             furnace_fuel_item_ids,
             freeze_immune_wearable_item_ids,
             powder_snow_walkable_foot_item_ids,
+            recipe_specific_crafting_remainder_item_ids,
             item_icon_models,
             registry,
             language,
@@ -284,6 +311,16 @@ impl NativeItemRuntime {
 
     pub(crate) fn item_crafting_remainder_count(&self) -> usize {
         self.item_crafting_remainders_by_protocol_id().len()
+    }
+
+    pub(crate) fn recipe_specific_crafting_remainder_item_ids_by_protocol_id(
+        &self,
+    ) -> BTreeSet<i32> {
+        self.recipe_specific_crafting_remainder_item_ids.clone()
+    }
+
+    pub(crate) fn recipe_specific_crafting_remainder_item_count(&self) -> usize {
+        self.recipe_specific_crafting_remainder_item_ids.len()
     }
 
     pub(crate) fn item_equipment_slots_by_protocol_id(
@@ -831,6 +868,10 @@ fn protocol_ids_for_resource_ids(
         .iter()
         .filter_map(|resource_id| registry.protocol_id(resource_id))
         .collect()
+}
+
+fn recipe_specific_crafting_remainder_item_ids(registry: &ItemRegistryCatalog) -> BTreeSet<i32> {
+    protocol_ids_for_resource_ids(registry, RECIPE_SPECIFIC_CRAFTING_REMAINDER_ITEM_IDS)
 }
 
 fn world_item_equipment_slot(slot: PackItemEquipmentSlot) -> WorldItemEquipmentSlot {

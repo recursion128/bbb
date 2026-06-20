@@ -128,6 +128,9 @@ fn main() -> Result<()> {
     if let Some(items) = &item_runtime {
         world.set_default_item_max_stack_sizes(items.item_max_stack_sizes_by_protocol_id());
         world.set_default_item_crafting_remainders(items.item_crafting_remainders_by_protocol_id());
+        world.set_recipe_specific_crafting_remainder_item_ids(
+            items.recipe_specific_crafting_remainder_item_ids_by_protocol_id(),
+        );
         world.set_default_item_equipment_slots(items.item_equipment_slots_by_protocol_id());
         world.set_default_mount_body_armor_kinds(items.mount_body_armor_kinds_by_protocol_id());
         world.set_default_item_attack_ranges(items.item_attack_ranges_by_protocol_id());
@@ -166,6 +169,8 @@ fn main() -> Result<()> {
             default_piercing_weapon_items = items.default_piercing_weapon_item_count(),
             default_damageable_items = items.default_damageable_item_count(),
             item_crafting_remainders = items.item_crafting_remainder_count(),
+            recipe_specific_crafting_remainder_items =
+                items.recipe_specific_crafting_remainder_item_count(),
             default_use_effect_items = items.item_use_effect_count(),
             item_mining_profiles = items.item_mining_profile_count(),
             furnace_fuel_items = items.furnace_fuel_item_count(),

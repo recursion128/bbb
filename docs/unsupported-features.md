@@ -1171,12 +1171,16 @@ When an agent does any of the following, update this file in the same slice:
         - non-result slots
         - result-slot primary pickup with an empty cursor and result-slot
           quick-move are locally predicted from the current server result when
-          default crafting-remainder metadata is loaded, every non-empty
-          crafting-grid input has count `1`, and no input has a default
-          crafting remainder.
+          default crafting-remainder metadata is loaded and every non-empty
+          crafting-grid input has no default crafting remainder and is not one
+          of the known vanilla recipe-specific remainder inputs for banner
+          duplication or book cloning. Empty-cursor primary pickup leaves the
+          current result in place when the same input slots remain populated;
+          quick-move repeats while all resulting stacks fully fit the player
+          inventory.
         - result-slot paths are kept server-authoritative until:
           - carried-cursor or secondary result-slot pickup
-          - repeated result pickup/quick-move with remaining inputs
+          - blocked or partial result transfers
           - recipe recomputation
           - recipe-specific remainders are locally modeled
       - CrafterMenu grid/player inventory transfers:

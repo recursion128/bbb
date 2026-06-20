@@ -4079,7 +4079,7 @@ fn crafting_table_shift_click_result_slot_queues_predicted_quick_move() {
     });
     let mut items = vec![ItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
-    items[1] = item_stack(42, 1);
+    items[1] = item_stack(42, 2);
     world.apply_container_set_content(ContainerSetContent {
         container_id: 7,
         state_id: 13,
@@ -4110,7 +4110,7 @@ fn crafting_table_shift_click_result_slot_queues_predicted_quick_move() {
             changed_slots: [
                 (0, HashedStack::Empty),
                 (1, HashedStack::Empty),
-                (45, HashedStack::Item(hashed_item(90, 1))),
+                (45, HashedStack::Item(hashed_item(90, 2))),
             ]
             .into(),
             carried_item: HashedStack::Empty,
@@ -4119,7 +4119,7 @@ fn crafting_table_shift_click_result_slot_queues_predicted_quick_move() {
     let slots = &world.inventory().open_container.as_ref().unwrap().slots;
     assert_eq!(slots[0].item, ItemStackSummary::empty());
     assert_eq!(slots[1].item, ItemStackSummary::empty());
-    assert_eq!(slots[45].item, item_stack(90, 1));
+    assert_eq!(slots[45].item, item_stack(90, 2));
 }
 
 #[test]
@@ -4137,7 +4137,7 @@ fn crafting_table_left_click_result_slot_queues_predicted_pickup() {
     });
     let mut items = vec![ItemStackSummary::empty(); 46];
     items[0] = item_stack(90, 1);
-    items[1] = item_stack(42, 1);
+    items[1] = item_stack(42, 2);
     world.apply_container_set_content(ContainerSetContent {
         container_id: 7,
         state_id: 13,
@@ -4165,14 +4165,14 @@ fn crafting_table_left_click_result_slot_queues_predicted_pickup() {
             slot_num: 0,
             button_num: 0,
             input: ContainerInput::Pickup,
-            changed_slots: [(0, HashedStack::Empty), (1, HashedStack::Empty)].into(),
+            changed_slots: [(1, HashedStack::Item(hashed_item(42, 1)))].into(),
             carried_item: HashedStack::Item(hashed_item(90, 1)),
         })
     );
     let inventory = world.inventory();
     let slots = &inventory.open_container.as_ref().unwrap().slots;
-    assert_eq!(slots[0].item, ItemStackSummary::empty());
-    assert_eq!(slots[1].item, ItemStackSummary::empty());
+    assert_eq!(slots[0].item, item_stack(90, 1));
+    assert_eq!(slots[1].item, item_stack(42, 1));
     assert_eq!(inventory.cursor_item, item_stack(90, 1));
 }
 

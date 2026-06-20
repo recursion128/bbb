@@ -108,6 +108,8 @@ pub struct WorldStore {
     #[serde(default)]
     pub(crate) default_item_crafting_remainders_known: bool,
     #[serde(default)]
+    pub(crate) recipe_specific_crafting_remainder_item_ids: BTreeSet<i32>,
+    #[serde(default)]
     pub(crate) default_item_equipment_slots: BTreeMap<i32, ItemEquipmentSlot>,
     #[serde(default)]
     pub(crate) default_mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
