@@ -790,6 +790,56 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_keep_alive_and_ping_send_common_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, _events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        stream
+            .handle_play_packet(PlayClientbound::KeepAlive {
+                id: 0x1122_3344_5566_7788,
+            })
+            .await
+            .unwrap();
+        stream
+            .handle_play_packet(PlayClientbound::Ping { id: 0x0a0b_0c0d })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("keep alive response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_KEEP_ALIVE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 0x1122_3344_5566_7788);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("pong response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PONG);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i32().unwrap(), 0x0a0b_0c0d);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
     async fn play_resource_pack_push_emits_push_and_response_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(2);
