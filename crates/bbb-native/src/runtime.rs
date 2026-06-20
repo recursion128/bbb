@@ -28,7 +28,10 @@ use crate::{
     camera_pose::camera_pose_from_world,
     code_of_conduct::CodeOfConductAcceptance,
     crosshair::{entity_target_outline_from_camera_at_partial_tick, selection_outline_from_camera},
-    entity_scene::entity_scene_outline_from_world_at_partial_tick,
+    entity_scene::{
+        entity_model_instances_from_world_at_partial_tick,
+        entity_scene_outline_from_world_at_partial_tick,
+    },
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input,
         advance_using_item_at_partial_tick, inventory_screen_layout, release_active_input,
@@ -388,6 +391,10 @@ pub(crate) fn pump_network_and_terrain(
         entity_partial_tick,
     ));
     renderer.set_item_entity_billboards(item_entity_billboards_from_world(world, item_runtime));
+    renderer.set_entity_model_instances(entity_model_instances_from_world_at_partial_tick(
+        world,
+        entity_partial_tick,
+    ));
     let camera_pose = camera_pose_from_world(world);
     renderer.set_camera_pose(camera_pose);
     renderer.set_selection_outline(selection_outline_from_camera(world, camera_pose));

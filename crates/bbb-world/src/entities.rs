@@ -292,6 +292,15 @@ pub struct EntityPickTargetState {
     pub bounds: EntityPickBoundsState,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EntityModelSourceState {
+    pub entity_id: i32,
+    pub entity_type_id: i32,
+    pub position: EntityVec3,
+    pub y_rot: f32,
+    pub data_values: Vec<ProtocolEntityDataValue>,
+}
+
 impl EntityTransformState {
     pub(crate) fn from_components(identity: &EntityIdentity, transform: EntityTransform) -> Self {
         Self {
@@ -490,6 +499,19 @@ impl WorldStore {
                     || !self
                         .player_info_entry(identity.uuid)
                         .is_some_and(|info| info.is_spectator())
+            })
+            .collect()
+    }
+
+    pub fn entity_model_sources_at_partial_tick(
+        &self,
+        partial_ticks: f32,
+    ) -> Vec<EntityModelSourceState> {
+        self.entity_pick_targets_at_partial_tick(partial_ticks)
+            .into_iter()
+            .filter_map(|target| {
+                self.entities
+                    .model_source(target.entity_id, target.position)
             })
             .collect()
     }

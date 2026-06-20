@@ -106,14 +106,22 @@ pub(crate) struct TerrainBounds {
 
 impl TerrainBounds {
     pub(crate) fn from_vertices(vertices: &[terrain::TerrainVertex]) -> Option<Self> {
-        let mut vertices = vertices.iter();
-        let first = vertices.next()?;
+        Self::from_points(
+            vertices
+                .iter()
+                .map(|vertex| Vec3::from_array(vertex.position)),
+        )
+    }
+
+    pub(crate) fn from_points(points: impl IntoIterator<Item = Vec3>) -> Option<Self> {
+        let mut points = points.into_iter();
+        let first = points.next()?;
         let mut bounds = Self {
-            min: Vec3::from_array(first.position),
-            max: Vec3::from_array(first.position),
+            min: first,
+            max: first,
         };
-        for vertex in vertices {
-            bounds.include_point(Vec3::from_array(vertex.position));
+        for point in points {
+            bounds.include_point(point);
         }
         Some(bounds)
     }

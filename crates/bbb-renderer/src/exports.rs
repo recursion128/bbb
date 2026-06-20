@@ -1,5 +1,6 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{CameraPose, ClearColor};
+pub use crate::entity_models::{EntityModelInstance, EntityModelKind};
 pub use crate::hud::{
     HudAsciiGlyph, HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer,
     HudInventoryBackgroundTexture, HudInventoryItem, HudInventoryScreen, HudInventorySlot,

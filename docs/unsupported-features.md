@@ -231,7 +231,7 @@ When an agent does any of the following, update this file in the same slice:
     - entity bounds
     - dropped-item icons
   - Extract complete entity presentation data:
-    - model
+    - remaining models beyond the current chicken adult/baby cuboid model
     - equipment
     - skin
     - lighting
@@ -261,8 +261,12 @@ When an agent does any of the following, update this file in the same slice:
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
+    - chicken entities as renderer-owned vanilla adult/baby cuboid model
+      geometry, projected from canonical world entity state and rendered with
+      temporary vertex colors
   - Backend GPU resources stay outside `WorldStore`.
-  - Full entity presentation remains phase 6 work.
+  - Full entity presentation remains phase 6 work, including chicken texture
+    assets, variants, animation, lighting, and all non-chicken entity models.
 
 ### Audio Runtime Parity
 

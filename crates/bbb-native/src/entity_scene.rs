@@ -1,5 +1,9 @@
-use bbb_renderer::{SelectionBox, SelectionOutline};
-use bbb_world::{EntityPickTargetState, WorldStore};
+use bbb_protocol::packets::EntityDataValueKind;
+use bbb_renderer::{EntityModelInstance, SelectionBox, SelectionOutline};
+use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
+
+const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -18,6 +22,22 @@ pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     (!boxes.is_empty()).then(|| SelectionOutline::from_boxes(boxes))
 }
 
+pub(crate) fn entity_model_instances_from_world_at_partial_tick(
+    world: &WorldStore,
+    entity_partial_tick: f32,
+) -> Vec<EntityModelInstance> {
+    let local_player_id = world.local_player_id();
+    let camera_entity_id = world.local_player().camera.entity_id;
+    world
+        .entity_model_sources_at_partial_tick(entity_partial_tick.clamp(0.0, 1.0))
+        .into_iter()
+        .filter(|source| {
+            local_player_id != Some(source.entity_id) && camera_entity_id != Some(source.entity_id)
+        })
+        .filter_map(entity_model_instance)
+        .collect()
+}
+
 fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
     SelectionBox {
         min: [
@@ -33,10 +53,45 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
     }
 }
 
+fn entity_model_instance(source: EntityModelSourceState) -> Option<EntityModelInstance> {
+    match source.entity_type_id {
+        VANILLA_ENTITY_TYPE_CHICKEN_ID => Some(EntityModelInstance::chicken(
+            source.entity_id,
+            [
+                source.position.x as f32,
+                source.position.y as f32,
+                source.position.z as f32,
+            ],
+            source.y_rot,
+            entity_data_bool(&source.data_values, AGEABLE_MOB_BABY_DATA_ID, false),
+        )),
+        _ => None,
+    }
+}
+
+fn entity_data_bool(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: bool,
+) -> bool {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{AddEntity, CommonPlayerSpawnInfo, PlayLogin, SetCamera, Vec3d};
+    use bbb_protocol::packets::{
+        AddEntity, CommonPlayerSpawnInfo, EntityDataValue, PlayLogin, SetCamera, SetEntityData,
+        Vec3d,
+    };
     use bbb_world::{EntityPickBoundsState, EntityVec3};
     use uuid::Uuid;
 
@@ -119,6 +174,74 @@ mod tests {
         assert_selection_box_close(outline.boxes[0].max, [4.49, 1.7, 3.49]);
     }
 
+    #[test]
+    fn entity_model_instances_project_chicken_adult_and_baby_models() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            26,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            27,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            85,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+            [5.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 27,
+            values: vec![protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![
+                EntityModelInstance::chicken(26, [1.0, 64.0, -2.0], 0.0, false),
+                EntityModelInstance::chicken(27, [3.0, 64.0, -2.0], 0.0, true),
+            ]
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_filter_local_player_and_camera_entity() {
+        let mut world = WorldStore::new();
+        world.apply_login(&protocol_play_login(10));
+        world.apply_add_entity(protocol_add_entity(
+            10,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [0.0, 64.0, 0.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            11,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, 0.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            12,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [2.0, 64.0, 0.0],
+        ));
+        assert!(world.apply_set_camera(SetCamera { camera_id: 11 }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![EntityModelInstance::chicken(
+                12,
+                [2.0, 64.0, 0.0],
+                0.0,
+                false
+            )]
+        );
+    }
+
     fn protocol_add_entity(id: i32, entity_type_id: i32, position: [f64; 3]) -> AddEntity {
         AddEntity {
             id,
@@ -134,6 +257,14 @@ mod tests {
             y_rot: 0.0,
             y_head_rot: 0.0,
             data: 0,
+        }
+    }
+
+    fn protocol_bool_data(data_id: u8, value: bool) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 8,
+            value: EntityDataValueKind::Boolean(value),
         }
     }
 

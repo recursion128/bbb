@@ -867,6 +867,42 @@ fn entity_camera_pose_uses_vanilla_eye_height() {
 }
 
 #[test]
+fn entity_model_sources_project_narrow_render_state_from_pick_targets() {
+    const VANILLA_ENTITY_TYPE_CHICKEN_ID: i32 = 26;
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        35,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        135.0,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 35,
+        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+    }));
+
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+
+    assert_eq!(sources.len(), 1);
+    assert_eq!(sources[0].entity_id, 35);
+    assert_eq!(sources[0].entity_type_id, VANILLA_ENTITY_TYPE_CHICKEN_ID);
+    assert_eq!(
+        sources[0].position,
+        EntityVec3 {
+            x: 1.0,
+            y: 64.0,
+            z: -2.0,
+        }
+    );
+    assert_eq!(sources[0].y_rot, 135.0);
+    assert_eq!(
+        sources[0].data_values,
+        vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)]
+    );
+}
+
+#[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
 

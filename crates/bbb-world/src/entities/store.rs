@@ -9,10 +9,11 @@ use bbb_protocol::packets::EntityDataValueKind;
 use super::{
     EntityAttributes, EntityCameraPoseState, EntityClientAnimations, EntityDamage, EntityEquipment,
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityMount, EntityState, EntityTransform, EntityTransformState,
-    EntityTransientEvents, ItemEntityStackState, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityState, EntityTransform,
+    EntityTransformState, EntityTransientEvents, ItemEntityStackState,
+    VANILLA_ENTITY_NO_GRAVITY_DATA_ID, VANILLA_ENTITY_SILENT_DATA_ID,
+    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID,
 };
 use crate::entities::dimensions::{
     entity_data_pose, vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data,
@@ -263,6 +264,24 @@ impl EntityStore {
     pub(crate) fn transform_state(&self, id: i32) -> Option<EntityTransformState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         self.transform_state_for_entity(entity)
+    }
+
+    pub(crate) fn model_source(
+        &self,
+        id: i32,
+        position: super::EntityVec3,
+    ) -> Option<EntityModelSourceState> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(EntityModelSourceState {
+            entity_id: identity.id,
+            entity_type_id: identity.entity_type_id,
+            position,
+            y_rot: transform.y_rot,
+            data_values: metadata.data_values.clone(),
+        })
     }
 
     pub(crate) fn camera_pose_state(&self, id: i32) -> Option<EntityCameraPoseState> {

@@ -1,5 +1,6 @@
 mod block_destroy;
 mod camera;
+mod entity_models;
 mod exports;
 mod gpu;
 mod hud;

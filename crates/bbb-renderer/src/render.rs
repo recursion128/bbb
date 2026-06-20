@@ -29,6 +29,7 @@ impl Renderer {
         let mut cutout_draw_calls = 0;
         let mut translucent_draw_calls = 0;
         let mut block_destroy_overlay_draw_calls = 0;
+        let mut entity_model_draw_calls = 0;
         let mut particle_draw_calls = 0;
         let mut item_entity_draw_calls = 0;
         let mut selection_draw_calls = 0;
@@ -69,6 +70,15 @@ impl Renderer {
                     pass.draw_indexed(0..mesh.index_count as u32, 0, 0..1);
                     opaque_draw_calls += 1;
                 }
+            }
+            if let Some(mesh) = &self.entity_model_mesh {
+                pass.set_pipeline(&self.entity_model_pipeline);
+                pipeline_switches += 1;
+                pass.set_bind_group(0, &self.terrain_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                entity_model_draw_calls += 1;
             }
         }
 
@@ -351,13 +361,14 @@ impl Renderer {
         self.counters.particle_draw_calls = particle_draw_calls;
         self.counters.item_entity_draw_calls = item_entity_draw_calls;
         self.counters.selection_draw_calls = selection_draw_calls;
-        self.counters.entity_scene_draw_calls = entity_scene_draw_calls;
+        self.counters.entity_scene_draw_calls = entity_scene_draw_calls + entity_model_draw_calls;
         self.counters.entity_target_draw_calls = entity_target_draw_calls;
         self.counters.hud_draw_calls = hud_draw_calls;
         self.counters.draw_calls = opaque_draw_calls
             + cutout_draw_calls
             + translucent_draw_calls
             + block_destroy_overlay_draw_calls
+            + entity_model_draw_calls
             + particle_draw_calls
             + item_entity_draw_calls
             + selection_draw_calls
