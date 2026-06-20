@@ -1933,6 +1933,211 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_chunk_terrain_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(8);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let chunk = packets::LevelChunkWithLight {
+            x: 1,
+            z: -2,
+            chunk_data: packets::LevelChunkData {
+                heightmaps: vec![packets::ChunkHeightmapData {
+                    kind_id: 1,
+                    data: vec![42],
+                }],
+                section_data: vec![0, 1, 2],
+                block_entities: vec![packets::LevelChunkBlockEntity {
+                    packed_xz: 0,
+                    y: -64,
+                    block_entity_type_id: 7,
+                    raw_nbt: vec![0],
+                }],
+            },
+            light_data: packets::LightUpdateData {
+                sky_y_mask: Vec::new(),
+                block_y_mask: Vec::new(),
+                empty_sky_y_mask: Vec::new(),
+                empty_block_y_mask: Vec::new(),
+                sky_updates: Vec::new(),
+                block_updates: Vec::new(),
+            },
+        };
+        stream
+            .handle_play_packet(PlayClientbound::LevelChunkWithLight(chunk.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("level chunk event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::LevelChunkWithLight(update) if update == chunk
+        ));
+
+        let light = packets::LightUpdate {
+            chunk_x: 1,
+            chunk_z: -2,
+            light_data: packets::LightUpdateData {
+                sky_y_mask: vec![0b10],
+                block_y_mask: vec![0b10],
+                empty_sky_y_mask: Vec::new(),
+                empty_block_y_mask: Vec::new(),
+                sky_updates: vec![vec![4; 2048]],
+                block_updates: vec![vec![13; 2048]],
+            },
+        };
+        stream
+            .handle_play_packet(PlayClientbound::LightUpdate(light.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("light update event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::LightUpdate(update) if update == light));
+
+        let biomes = packets::ChunksBiomes {
+            chunks: vec![packets::ChunkBiomeData {
+                pos: packets::ChunkPos { x: 1, z: -2 },
+                raw_biomes: vec![0, 7],
+            }],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ChunksBiomes(biomes.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("chunk biome event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::ChunksBiomes(update) if update == biomes));
+
+        let forget = packets::ForgetLevelChunk {
+            pos: packets::ChunkPos { x: 1, z: -2 },
+        };
+        stream
+            .handle_play_packet(PlayClientbound::ForgetLevelChunk(forget))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("chunk forget event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::ForgetLevelChunk(update) if update == forget
+        ));
+
+        let block = packets::BlockUpdate {
+            pos: packets::BlockPos {
+                x: 16,
+                y: -64,
+                z: -32,
+            },
+            block_state_id: 9,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::BlockUpdate(block))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("block update event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::BlockUpdate(update) if update == block));
+
+        let section = packets::SectionBlocksUpdate {
+            section_x: 1,
+            section_y: -4,
+            section_z: -2,
+            updates: vec![
+                packets::BlockUpdate {
+                    pos: packets::BlockPos {
+                        x: 17,
+                        y: -64,
+                        z: -32,
+                    },
+                    block_state_id: 9,
+                },
+                packets::BlockUpdate {
+                    pos: packets::BlockPos {
+                        x: 18,
+                        y: -64,
+                        z: -32,
+                    },
+                    block_state_id: 9,
+                },
+            ],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SectionBlocksUpdate(section.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("section blocks update event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::SectionBlocksUpdate(update) if update == section
+        ));
+
+        let center = packets::SetChunkCacheCenter {
+            chunk_x: 1,
+            chunk_z: -2,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SetChunkCacheCenter(center))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("chunk cache center event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::SetChunkCacheCenter(update) if update == center
+        ));
+
+        let radius = packets::SetChunkCacheRadius { radius: 7 };
+        stream
+            .handle_play_packet(PlayClientbound::SetChunkCacheRadius(radius))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("chunk cache radius event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::SetChunkCacheRadius(update) if update == radius
+        ));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "chunk terrain packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_debug_game_packets_emit_matching_events_without_responses() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
