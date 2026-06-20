@@ -1274,6 +1274,182 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_command_and_chat_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(9);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let commands = command_tree_packet("say");
+        stream
+            .handle_play_packet(PlayClientbound::Commands(commands.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("commands event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::Commands(update) if update == commands));
+
+        let completions = packets::CustomChatCompletions {
+            action: packets::CustomChatCompletionsAction::Set,
+            entries: vec!["/spawn".to_string(), "/warp".to_string()],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::CustomChatCompletions(completions.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("custom chat completions event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::CustomChatCompletions(update) if update == completions
+        ));
+
+        let suggestions = packets::CommandSuggestions {
+            id: 77,
+            start: 1,
+            length: 4,
+            suggestions: vec![
+                packets::CommandSuggestion {
+                    text: "give".to_string(),
+                    tooltip: Some("Run give".to_string()),
+                },
+                packets::CommandSuggestion {
+                    text: "gamemode".to_string(),
+                    tooltip: None,
+                },
+            ],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::CommandSuggestions(suggestions.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("command suggestions event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::CommandSuggestions(update) if update == suggestions
+        ));
+
+        let tag_query = packets::TagQuery {
+            transaction_id: 12,
+            tag_present: true,
+            raw_nbt: vec![10, 0],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::TagQuery(tag_query.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("tag query event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::TagQuery(update) if update == tag_query));
+
+        let player_chat = player_chat_packet(3);
+        stream
+            .handle_play_packet(PlayClientbound::PlayerChat(player_chat.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player chat event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::PlayerChat(update) if update == player_chat));
+
+        let delete_chat = packets::DeleteChat {
+            message_signature: packets::PackedMessageSignature {
+                cache_id: Some(2),
+                full_signature: None,
+            },
+        };
+        stream
+            .handle_play_packet(PlayClientbound::DeleteChat(delete_chat.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("delete chat event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::DeleteChat(update) if update == delete_chat));
+
+        let disguised_chat = packets::DisguisedChat {
+            message: "Server says hi".to_string(),
+            chat_type: chat_type_bound("Server"),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::DisguisedChat(disguised_chat.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("disguised chat event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::DisguisedChat(update) if update == disguised_chat
+        ));
+
+        let system_chat = packets::SystemChat {
+            content: "Welcome".to_string(),
+            overlay: false,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SystemChat(system_chat.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("system chat event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::SystemChat(update) if update == system_chat));
+
+        let update_tags = packets::UpdateTags {
+            registries: vec![packets::RegistryTags {
+                registry: "minecraft:item".to_string(),
+                tags: vec![packets::TagNetworkPayload {
+                    tag: "minecraft:logs".to_string(),
+                    entries: vec![5, 6, 7],
+                }],
+            }],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::UpdateTags(update_tags.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("update tags event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::UpdateTags(update) if update == update_tags));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "command and chat client state packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_passive_world_apply_packets_emit_matching_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
@@ -1962,6 +2138,80 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: packets::DataComponentPatchSummary::default(),
+        }
+    }
+
+    fn command_tree_packet(literal: &str) -> packets::Commands {
+        packets::Commands {
+            root_index: 0,
+            nodes: vec![
+                packets::CommandNode {
+                    node_type: packets::CommandNodeType::Root,
+                    flags: 0,
+                    children: vec![1],
+                    redirect: None,
+                    name: None,
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                packets::CommandNode {
+                    node_type: packets::CommandNodeType::Literal,
+                    flags: 1,
+                    children: vec![2],
+                    redirect: None,
+                    name: Some(literal.to_string()),
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                packets::CommandNode {
+                    node_type: packets::CommandNodeType::Argument,
+                    flags: 54,
+                    children: Vec::new(),
+                    redirect: None,
+                    name: Some("message".to_string()),
+                    parser: Some(packets::CommandArgumentParser {
+                        type_id: 20,
+                        name: "minecraft:message".to_string(),
+                        properties: vec![2],
+                    }),
+                    suggestions: Some("minecraft:ask_server".to_string()),
+                    executable: true,
+                    restricted: true,
+                },
+            ],
+        }
+    }
+
+    fn player_chat_packet(global_index: i32) -> packets::PlayerChat {
+        packets::PlayerChat {
+            global_index,
+            sender: uuid::Uuid::from_u128(0x1234),
+            index: global_index,
+            signature: None,
+            body: packets::SignedMessageBody {
+                content: format!("message {global_index}"),
+                timestamp_millis: i64::from(global_index),
+                salt: i64::from(global_index) + 1,
+                last_seen: Vec::new(),
+            },
+            unsigned_content: None,
+            filter_mask: packets::FilterMask {
+                kind: packets::FilterMaskKind::PassThrough,
+                mask_words: Vec::new(),
+            },
+            chat_type: chat_type_bound("Alice"),
+        }
+    }
+
+    fn chat_type_bound(name: &str) -> packets::ChatTypeBound {
+        packets::ChatTypeBound {
+            chat_type: packets::ChatTypeHolder::Registry { id: 0 },
+            name: name.to_string(),
+            target_name: None,
         }
     }
 
