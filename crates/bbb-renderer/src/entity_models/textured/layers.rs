@@ -3,7 +3,8 @@ use super::super::{
         boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref,
         player_texture_ref, sheep_wool_layer_color, wolf_texture_ref, BoatModelFamily,
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelTextureRef,
-        PigModelVariant, PlayerModelPartVisibility, SheepWoolColor, SkeletonModelFamily,
+        HoglinModelFamily, PigModelVariant, PlayerModelPartVisibility, SheepWoolColor,
+        SkeletonModelFamily,
     },
     geometry::TexturedModelPartDesc,
     model_layers::*,
@@ -18,6 +19,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     EndermanBase,
     EndermanEyes,
     GoatBase,
+    HoglinBase,
     PigBase,
     PlayerBase,
     SheepBase,
@@ -270,6 +272,45 @@ pub(in crate::entity_models) fn polar_bear_textured_layer_passes(
         } else {
             &ADULT_POLAR_BEAR_TEXTURED_PARTS
         },
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn hoglin_textured_layer_passes(
+    family: HoglinModelFamily,
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    let (model_layer, texture, parts) = match (family, baby) {
+        (HoglinModelFamily::Hoglin, false) => (
+            MODEL_LAYER_HOGLIN,
+            HOGLIN_TEXTURE_REF,
+            ADULT_HOGLIN_TEXTURED_PARTS.as_slice(),
+        ),
+        (HoglinModelFamily::Hoglin, true) => (
+            MODEL_LAYER_HOGLIN_BABY,
+            HOGLIN_BABY_TEXTURE_REF,
+            BABY_HOGLIN_TEXTURED_PARTS.as_slice(),
+        ),
+        (HoglinModelFamily::Zoglin, false) => (
+            MODEL_LAYER_ZOGLIN,
+            ZOGLIN_TEXTURE_REF,
+            ADULT_HOGLIN_TEXTURED_PARTS.as_slice(),
+        ),
+        (HoglinModelFamily::Zoglin, true) => (
+            MODEL_LAYER_ZOGLIN_BABY,
+            ZOGLIN_BABY_TEXTURE_REF,
+            BABY_HOGLIN_TEXTURED_PARTS.as_slice(),
+        ),
+    };
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::HoglinBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer,
+        texture,
+        parts,
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

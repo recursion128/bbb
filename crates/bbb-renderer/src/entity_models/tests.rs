@@ -143,6 +143,15 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let magma_cube = EntityModelInstance::magma_cube(315, [22.0, 64.0, 0.0], 0.0, 3);
     let goat = EntityModelInstance::goat(316, [24.0, 64.0, 0.0], 0.0, false, true, false);
     let polar_bear = EntityModelInstance::polar_bear(317, [26.0, 64.0, 0.0], 0.0, false);
+    let hoglin = EntityModelInstance::hoglin(
+        318,
+        [28.0, 64.0, 0.0],
+        0.0,
+        HoglinModelFamily::Hoglin,
+        false,
+    );
+    let zoglin_baby =
+        EntityModelInstance::hoglin(319, [30.0, 64.0, 0.0], 0.0, HoglinModelFamily::Zoglin, true);
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -159,6 +168,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         magma_cube,
         goat,
         polar_bear,
+        hoglin,
+        zoglin_baby,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -192,6 +203,10 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_goat_geometry_guard.vertices.is_empty());
     let legacy_polar_bear_geometry_guard = entity_model_mesh(&[polar_bear]);
     assert!(!legacy_polar_bear_geometry_guard.vertices.is_empty());
+    let legacy_hoglin_geometry_guard = entity_model_mesh(&[hoglin]);
+    assert!(!legacy_hoglin_geometry_guard.vertices.is_empty());
+    let legacy_zoglin_baby_geometry_guard = entity_model_mesh(&[zoglin_baby]);
+    assert!(!legacy_zoglin_baby_geometry_guard.vertices.is_empty());
 }
 
 #[test]

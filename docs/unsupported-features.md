@@ -432,8 +432,9 @@ When an agent does any of the following, update this file in the same slice:
       `AbstractHoglinRenderer`, `HoglinRenderer`, and `ZoglinRenderer`,
       including shared `ModelLayers.HOGLIN` / `ZOGLIN` and `HOGLIN_BABY` /
       `ZOGLIN_BABY` layers plus official adult/baby hoglin/zoglin texture
-      references; headbutt attack animation, ear/head/walk animation, hoglin
-      converting shake, lighting, and GPU texture binding remain unsupported
+      references, texture-backed base layer pass emission, and official PNG
+      atlas upload/bind/sample path; headbutt attack animation, ear/head/walk
+      animation, hoglin converting shake, and lighting remain unsupported
     - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
       body-layer geometry from `RavagerModel` and `RavagerRenderer`,
       including nested neck/head/horn/mouth parts, official
