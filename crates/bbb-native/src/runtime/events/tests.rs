@@ -39,7 +39,7 @@ use bbb_protocol::packets::{
     TagQuery, TeleportEntity, TestInstanceBlockStatus, TrackedWaypoint, TrackedWaypointPacket,
     UpdateAdvancements, UpdateAttributes, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d,
     Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
-    WaypointVec3i,
+    WaypointVec3i, WrittenBookContentSummary,
 };
 use bbb_world::{
     advance_cobweb_place_particle_randoms, BlockPos, ChunkPos, LocalPlayerPoseState,
@@ -1073,6 +1073,42 @@ fn client_ui_events_update_world_and_world_counters() {
     assert_eq!(world_counters.open_book_packets, 1);
     assert_eq!(world_counters.open_sign_editor_packets, 1);
     assert_eq!(world_counters.pong_response_packets, 1);
+}
+
+#[test]
+fn open_book_event_uses_held_written_book_for_active_screen() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::SetPlayerInventory(SetPlayerInventory {
+        slot: 40,
+        item: written_book_stack(vec!["Native first", "Native second"]),
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::OpenBook(OpenBook {
+        hand: InteractionHand::OffHand,
+    }))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+    assert_eq!(
+        world.last_open_book(),
+        Some(&bbb_world::OpenBookState {
+            hand: "off_hand".to_string(),
+        })
+    );
+    assert_eq!(
+        world.current_book(),
+        Some(&bbb_world::BookScreenState {
+            hand: "off_hand".to_string(),
+            pages: vec!["Native first".to_string(), "Native second".to_string()],
+            current_page: 0,
+        })
+    );
 }
 
 #[test]
@@ -5146,6 +5182,18 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
         count,
         component_patch: Default::default(),
     }
+}
+
+fn written_book_stack(pages: Vec<&str>) -> ItemStackSummary {
+    let mut stack = item_stack(42, 1);
+    stack.component_patch.written_book = Some(WrittenBookContentSummary {
+        title: "Guide".to_string(),
+        author: "Alex".to_string(),
+        generation: 0,
+        pages: pages.into_iter().map(str::to_string).collect(),
+        resolved: true,
+    });
+    stack
 }
 
 fn item_cost(item_id: i32, count: i32) -> ItemCostSummary {

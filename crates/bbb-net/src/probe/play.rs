@@ -617,6 +617,7 @@ mod tests {
         TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateAttributes,
         UpdateMobEffect, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
         WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+        WrittenBookContentSummary,
     };
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -3450,6 +3451,43 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_open_book_uses_held_written_book_for_active_screen() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::SetPlayerInventory(SetPlayerInventory {
+                slot: 40,
+                item: written_book_stack(vec!["Probe first", "Probe second"]),
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::OpenBook(OpenBook {
+                hand: InteractionHand::OffHand,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
+
+        assert_eq!(
+            report.world.last_open_book(),
+            Some(&bbb_world::OpenBookState {
+                hand: "off_hand".to_string(),
+            })
+        );
+        assert_eq!(
+            report.world.current_book(),
+            Some(&bbb_world::BookScreenState {
+                hand: "off_hand".to_string(),
+                pages: vec!["Probe first".to_string(), "Probe second".to_string()],
+                current_page: 0,
+            })
+        );
+    }
+
+    #[tokio::test]
     async fn probe_applies_hud_text_packets_to_world() {
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
@@ -4759,6 +4797,18 @@ mod tests {
             count,
             component_patch: Default::default(),
         }
+    }
+
+    fn written_book_stack(pages: Vec<&str>) -> ItemStackSummary {
+        let mut stack = item_stack(42, 1);
+        stack.component_patch.written_book = Some(WrittenBookContentSummary {
+            title: "Guide".to_string(),
+            author: "Alex".to_string(),
+            generation: 0,
+            pages: pages.into_iter().map(str::to_string).collect(),
+            resolved: true,
+        });
+        stack
     }
 
     fn item_stack_entity_data(item: ItemStackSummary) -> EntityDataValue {
