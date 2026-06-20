@@ -1931,6 +1931,253 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_stats_cooldown_boss_and_combat_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(6);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        macro_rules! assert_matching_event {
+            ($packet:expr, $message:literal, $pattern:pat $(if $guard:expr)? ) => {{
+                stream.handle_play_packet($packet).await.unwrap();
+                let event = timeout(Duration::from_secs(1), events_rx.recv())
+                    .await
+                    .expect($message)
+                    .unwrap();
+                assert!(matches!(event, $pattern $(if $guard)?));
+            }};
+        }
+
+        let stats = packets::AwardStats {
+            stats: vec![
+                packets::StatUpdate {
+                    stat_type_id: 8,
+                    value_id: 10,
+                    amount: 3,
+                },
+                packets::StatUpdate {
+                    stat_type_id: 0,
+                    value_id: 4,
+                    amount: 11,
+                },
+            ],
+        };
+        assert_matching_event!(
+            PlayClientbound::AwardStats(stats.clone()),
+            "award stats event should be emitted",
+            NetEvent::AwardStats(update) if update == stats
+        );
+
+        let cooldown = packets::Cooldown {
+            cooldown_group: "minecraft:ender_pearl".to_string(),
+            duration: 20,
+        };
+        assert_matching_event!(
+            PlayClientbound::Cooldown(cooldown.clone()),
+            "cooldown event should be emitted",
+            NetEvent::Cooldown(update) if update == cooldown
+        );
+
+        let boss_event = packets::BossEvent {
+            id: uuid::Uuid::from_u128(1),
+            operation: packets::BossEventOperation::Add {
+                name: "Ender Dragon".to_string(),
+                progress: 0.75,
+                color: packets::BossBarColor::Purple,
+                overlay: packets::BossBarOverlay::Progress,
+                flags: packets::BossEventFlags {
+                    darken_screen: true,
+                    play_music: false,
+                    create_world_fog: true,
+                },
+            },
+        };
+        assert_matching_event!(
+            PlayClientbound::BossEvent(boss_event.clone()),
+            "boss event should be emitted",
+            NetEvent::BossEvent(update) if update == boss_event
+        );
+
+        assert_matching_event!(
+            PlayClientbound::PlayerCombatEnter,
+            "player combat enter event should be emitted",
+            NetEvent::PlayerCombatEnter
+        );
+
+        let combat_end = packets::PlayerCombatEnd { duration: 37 };
+        assert_matching_event!(
+            PlayClientbound::PlayerCombatEnd(combat_end),
+            "player combat end event should be emitted",
+            NetEvent::PlayerCombatEnd(update) if update == combat_end
+        );
+
+        let combat_kill = packets::PlayerCombatKill {
+            player_id: 123,
+            message: "You died".to_string(),
+        };
+        assert_matching_event!(
+            PlayClientbound::PlayerCombatKill(combat_kill.clone()),
+            "player combat kill event should be emitted",
+            NetEvent::PlayerCombatKill(update) if update == combat_kill
+        );
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "stats, cooldown, boss, and combat packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
+    async fn play_map_particle_and_audio_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(5);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        macro_rules! assert_matching_event {
+            ($packet:expr, $message:literal, $pattern:pat $(if $guard:expr)? ) => {{
+                stream.handle_play_packet($packet).await.unwrap();
+                let event = timeout(Duration::from_secs(1), events_rx.recv())
+                    .await
+                    .expect($message)
+                    .unwrap();
+                assert!(matches!(event, $pattern $(if $guard)?));
+            }};
+        }
+
+        let map = packets::MapItemData {
+            map_id: 12,
+            scale: 1,
+            locked: false,
+            decorations: Some(vec![packets::MapDecoration {
+                type_id: 4,
+                x: -8,
+                y: 9,
+                rot: 3,
+                name: Some("Camp".to_string()),
+            }]),
+            color_patch: Some(packets::MapColorPatch {
+                start_x: 5,
+                start_y: 6,
+                width: 2,
+                height: 1,
+                colors: vec![11, 12],
+            }),
+        };
+        assert_matching_event!(
+            PlayClientbound::MapItemData(map.clone()),
+            "map item data event should be emitted",
+            NetEvent::MapItemData(update) if update == map
+        );
+
+        let particles = packets::LevelParticles {
+            override_limiter: true,
+            always_show: false,
+            position: packets::Vec3d {
+                x: 10.0,
+                y: 64.5,
+                z: -3.25,
+            },
+            offset: packets::Vec3d {
+                x: 0.1,
+                y: 0.2,
+                z: 0.3,
+            },
+            max_speed: 0.4,
+            count: 12,
+            particle: packets::ParticlePayload {
+                particle_type_id: 7,
+                raw_options: vec![0x01, 0x02],
+            },
+        };
+        assert_matching_event!(
+            PlayClientbound::LevelParticles(particles.clone()),
+            "level particles event should be emitted",
+            NetEvent::LevelParticles(update) if update == particles
+        );
+
+        let sound = packets::SoundEvent {
+            sound: packets::SoundEventHolder::Reference { registry_id: 41 },
+            source: packets::SoundSource::Blocks,
+            position: packets::Vec3d {
+                x: 2.5,
+                y: -1.0,
+                z: 0.0,
+            },
+            volume: 0.75,
+            pitch: 1.25,
+            seed: 123456789,
+        };
+        assert_matching_event!(
+            PlayClientbound::Sound(sound.clone()),
+            "sound event should be emitted",
+            NetEvent::Sound(update) if update == sound
+        );
+
+        let entity_sound = packets::SoundEntityEvent {
+            sound: packets::SoundEventHolder::Direct {
+                location: "minecraft:entity.cat.ambient".to_string(),
+                fixed_range: Some(32.0),
+            },
+            source: packets::SoundSource::Neutral,
+            entity_id: 123,
+            volume: 1.0,
+            pitch: 0.5,
+            seed: -9,
+        };
+        assert_matching_event!(
+            PlayClientbound::SoundEntity(entity_sound.clone()),
+            "entity sound event should be emitted",
+            NetEvent::SoundEntity(update) if update == entity_sound
+        );
+
+        let stop_sound = packets::StopSound {
+            source: Some(packets::SoundSource::Music),
+            name: Some("minecraft:music.menu".to_string()),
+        };
+        assert_matching_event!(
+            PlayClientbound::StopSound(stop_sound.clone()),
+            "stop sound event should be emitted",
+            NetEvent::StopSound(update) if update == stop_sound
+        );
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "map, particle, and audio packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_inventory_packets_emit_matching_events_without_responses() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
