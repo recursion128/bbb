@@ -2001,6 +2001,30 @@ fn encodes_play_ping_request() {
 }
 
 #[test]
+fn encodes_play_connection_lifecycle_packets() {
+    let (id, payload) = encode_play_keep_alive(-123_456_789_012_345);
+    assert_eq!(id, ids::play::SERVERBOUND_KEEP_ALIVE);
+    assert_eq!(id, 28);
+    assert_eq!(payload.len(), 8);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i64().unwrap(), -123_456_789_012_345);
+    assert!(decoder.is_empty());
+
+    let (id, payload) = encode_play_pong(-1_234_567);
+    assert_eq!(id, ids::play::SERVERBOUND_PONG);
+    assert_eq!(id, 45);
+    assert_eq!(payload.len(), 4);
+    let mut decoder = Decoder::new(&payload);
+    assert_eq!(decoder.read_i32().unwrap(), -1_234_567);
+    assert!(decoder.is_empty());
+
+    let (id, payload) = encode_play_configuration_acknowledged();
+    assert_eq!(id, ids::play::SERVERBOUND_CONFIGURATION_ACKNOWLEDGED);
+    assert_eq!(id, 16);
+    assert!(payload.is_empty());
+}
+
+#[test]
 fn encodes_player_loaded() {
     let (id, payload) = encode_play_player_loaded();
     assert_eq!(id, ids::play::SERVERBOUND_PLAYER_LOADED);
