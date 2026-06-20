@@ -1,6 +1,6 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
-    ArmorStandModelPose, DonkeyModelFamily, EntityModelInstance, EntityModelKind,
+    ArmorStandModelPose, CamelModelFamily, DonkeyModelFamily, EntityModelInstance, EntityModelKind,
     HumanoidModelFamily, IllagerModelFamily, PiglinModelFamily, QuadrupedModelFamily, SelectionBox,
     SelectionOutline, SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
     DEFAULT_ARMOR_STAND_MODEL_POSE,
@@ -346,10 +346,16 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
             undead_horse_model_kind(UndeadHorseModelFamily::Zombie, data_values)
         }
+        VANILLA_ENTITY_TYPE_CAMEL_ID => EntityModelKind::Camel {
+            family: CamelModelFamily::Camel,
+            baby: ageable_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID => EntityModelKind::Camel {
+            family: CamelModelFamily::CamelHusk,
+            baby: false,
+        },
         VANILLA_ENTITY_TYPE_LLAMA_ID
         | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
-        | VANILLA_ENTITY_TYPE_CAMEL_ID
-        | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
         | VANILLA_ENTITY_TYPE_NAUTILUS_ID
         | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
@@ -1301,6 +1307,48 @@ mod tests {
             entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, &[]),
             EntityModelKind::UndeadHorse {
                 family: UndeadHorseModelFamily::Zombie,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_LLAMA_ID, &[]),
+            quadruped(QuadrupedModelFamily::Horse, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_camels() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_CAMEL_ID, &[]),
+            EntityModelKind::Camel {
+                family: CamelModelFamily::Camel,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_CAMEL_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Camel {
+                family: CamelModelFamily::Camel,
+                baby: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, &[]),
+            EntityModelKind::Camel {
+                family: CamelModelFamily::CamelHusk,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Camel {
+                family: CamelModelFamily::CamelHusk,
                 baby: false
             }
         );

@@ -232,8 +232,9 @@ When an agent does any of the following, update this file in the same slice:
     - dropped-item icons
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
-      source-verified pig/cow/sheep/wolf/base-horse/donkey/mule/villager/
-      wandering-trader/zombie and husk/drowned/zombie-villager variants,
+      source-verified pig/cow/sheep/wolf/base-horse/donkey/mule/
+      skeleton-horse/zombie-horse/camel/camel-husk/villager/wandering-trader/
+      zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
       zombified-piglin variants, skeleton and stray/parched/wither-skeleton/
       bogged variants, creeper, spider, enderman, iron-golem, snow-golem,
@@ -302,7 +303,7 @@ When an agent does any of the following, update this file in the same slice:
       `MeshTransformer.scaling(1.1F)` root transform and default
       `Variant.WHITE` adult/baby texture references recorded from official
       assets; horse variant textures, markings, armor, saddle,
-      ridden/eat/stand/mouth/tail/walk/head animation, and camel/llama family
+      ridden/eat/stand/mouth/tail/walk/head animation, and llama-family
       model parity remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
@@ -320,6 +321,13 @@ When an agent does any of the following, update this file in the same slice:
       texture references recorded from assets; undead horse body-armor layer,
       saddle layer, ridden/eat/stand/mouth/tail/walk/head animation, lighting,
       and GPU texture binding remain unsupported
+    - camel and camel_husk entities as renderer-owned vanilla 26.1 body-layer
+      geometry from `AdultCamelModel`, `BabyCamelModel`, `CamelRenderer`, and
+      `CamelHuskRenderer`, including normal camel adult/baby model selection,
+      camel_husk adult-only renderer selection, zero-thickness tail cubes, and
+      official camel/camel_baby/camel_husk texture references recorded from
+      assets; saddle equipment layers, ridden/sit/dash/idle/walk/head/jump
+      animation, lighting, and GPU texture binding remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`

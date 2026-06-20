@@ -74,6 +74,10 @@ pub enum EntityModelKind {
         family: UndeadHorseModelFamily,
         baby: bool,
     },
+    Camel {
+        family: CamelModelFamily,
+        baby: bool,
+    },
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
@@ -176,6 +180,12 @@ pub enum DonkeyModelFamily {
 pub enum UndeadHorseModelFamily {
     Skeleton,
     Zombie,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CamelModelFamily {
+    Camel,
+    CamelHusk,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -354,6 +364,18 @@ impl EntityModelKind {
                 family: UndeadHorseModelFamily::Zombie,
                 baby: true,
             } => "zombie_horse_baby",
+            Self::Camel {
+                family: CamelModelFamily::Camel,
+                baby: false,
+            } => "camel",
+            Self::Camel {
+                family: CamelModelFamily::Camel,
+                baby: true,
+            } => "camel_baby",
+            Self::Camel {
+                family: CamelModelFamily::CamelHusk,
+                ..
+            } => "camel_husk",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -529,6 +551,18 @@ impl EntityModelKind {
                 family: UndeadHorseModelFamily::Zombie,
                 baby: true,
             } => Some(ZOMBIE_HORSE_BABY_TEXTURE_REF),
+            Self::Camel {
+                family: CamelModelFamily::Camel,
+                baby: false,
+            } => Some(CAMEL_TEXTURE_REF),
+            Self::Camel {
+                family: CamelModelFamily::Camel,
+                baby: true,
+            } => Some(CAMEL_BABY_TEXTURE_REF),
+            Self::Camel {
+                family: CamelModelFamily::CamelHusk,
+                ..
+            } => Some(CAMEL_HUSK_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
@@ -746,6 +780,21 @@ impl EntityModelInstance {
         )
     }
 
+    pub fn camel(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: CamelModelFamily,
+        baby: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Camel { family, baby },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Spider, position, y_rot)
     }
@@ -945,6 +994,8 @@ const DONKEY_GRAY: [f32; 4] = [0.46, 0.45, 0.42, 1.0];
 const MULE_BROWN: [f32; 4] = [0.34, 0.24, 0.17, 1.0];
 const SKELETON_HORSE_BONE: [f32; 4] = [0.78, 0.78, 0.68, 1.0];
 const ZOMBIE_HORSE_GREEN: [f32; 4] = [0.32, 0.54, 0.32, 1.0];
+const CAMEL_TAN: [f32; 4] = [0.72, 0.50, 0.31, 1.0];
+const CAMEL_HUSK_BROWN: [f32; 4] = [0.42, 0.33, 0.25, 1.0];
 const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
@@ -1136,6 +1187,21 @@ const ZOMBIE_HORSE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const ZOMBIE_HORSE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/horse/horse_zombie_baby.png",
     size: [64, 64],
+};
+
+const CAMEL_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/camel/camel.png",
+    size: [128, 128],
+};
+
+const CAMEL_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/camel/camel_baby.png",
+    size: [64, 64],
+};
+
+const CAMEL_HUSK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/camel/camel_husk.png",
+    size: [128, 128],
 };
 
 const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -4378,6 +4444,298 @@ const BABY_DONKEY_PARTS: [ModelPartDesc; 1] = [ModelPartDesc {
     children: &BABY_DONKEY_BODY_CHILDREN,
 }];
 
+const ADULT_CAMEL_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-7.5, -12.0, -23.5],
+    size: [15.0, 12.0, 27.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_HUMP: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -5.0, -5.5],
+    size: [9.0, 5.0, 11.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_TAIL: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, 0.0, 0.0],
+    size: [3.0, 14.0, 0.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_HEAD: [ModelCubeDesc; 3] = [
+    ModelCubeDesc {
+        min: [-3.5, -7.0, -15.0],
+        size: [7.0, 8.0, 19.0],
+        color: CAMEL_TAN,
+    },
+    ModelCubeDesc {
+        min: [-3.5, -21.0, -15.0],
+        size: [7.0, 14.0, 7.0],
+        color: CAMEL_TAN,
+    },
+    ModelCubeDesc {
+        min: [-2.5, -21.0, -21.0],
+        size: [5.0, 5.0, 6.0],
+        color: CAMEL_TAN,
+    },
+];
+
+const ADULT_CAMEL_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-0.5, 0.5, -1.0],
+    size: [3.0, 1.0, 2.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, 0.5, -1.0],
+    size: [3.0, 1.0, 2.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_LEFT_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, 2.0, -2.5],
+    size: [5.0, 21.0, 5.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_RIGHT_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, 2.0, -2.5],
+    size: [5.0, 21.0, 5.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_LEFT_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, 2.0, -2.5],
+    size: [5.0, 21.0, 5.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_RIGHT_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.5, 2.0, -2.5],
+    size: [5.0, 21.0, 5.0],
+    color: CAMEL_TAN,
+}];
+
+const ADULT_CAMEL_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, -21.0, -9.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_LEFT_EAR,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, -21.0, -9.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_RIGHT_EAR,
+        children: &[],
+    },
+];
+
+const ADULT_CAMEL_BODY_CHILDREN: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -12.0, -10.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_HUMP,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -9.0, 3.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_TAIL,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -3.0, -19.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_HEAD,
+        children: &ADULT_CAMEL_HEAD_CHILDREN,
+    },
+];
+
+// Vanilla 26.1 ModelLayers.CAMEL: AdultCamelModel.createBodyLayer().
+const ADULT_CAMEL_PARTS: [ModelPartDesc; 5] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, 9.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_BODY,
+        children: &ADULT_CAMEL_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.9, 1.0, 9.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_LEFT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.9, 1.0, 9.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.9, 1.0, -10.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_LEFT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.9, 1.0, -10.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CAMEL_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+];
+
+const BABY_CAMEL_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -4.0, -8.0],
+    size: [9.0, 8.0, 16.0],
+    color: CAMEL_TAN,
+}];
+
+const BABY_CAMEL_TAIL: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -0.5, 0.0],
+    size: [3.0, 9.0, 0.0],
+    color: CAMEL_TAN,
+}];
+
+const BABY_CAMEL_HEAD: [ModelCubeDesc; 3] = [
+    ModelCubeDesc {
+        min: [-2.5, -3.0, -7.5],
+        size: [5.0, 5.0, 7.0],
+        color: CAMEL_TAN,
+    },
+    ModelCubeDesc {
+        min: [-2.5, -12.0, -7.5],
+        size: [5.0, 9.0, 5.0],
+        color: CAMEL_TAN,
+    },
+    ModelCubeDesc {
+        min: [-2.5, -12.0, -10.5],
+        size: [5.0, 4.0, 3.0],
+        color: CAMEL_TAN,
+    },
+];
+
+const BABY_CAMEL_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -0.5, -1.0],
+    size: [3.0, 1.0, 2.0],
+    color: CAMEL_TAN,
+}];
+
+const BABY_CAMEL_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, -0.5, -1.0],
+    size: [3.0, 1.0, 2.0],
+    color: CAMEL_TAN,
+}];
+
+const BABY_CAMEL_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -0.5, -1.5],
+    size: [3.0, 13.0, 3.0],
+    color: CAMEL_TAN,
+}];
+
+const BABY_CAMEL_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, -11.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_RIGHT_EAR,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, -11.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_LEFT_EAR,
+        children: &[],
+    },
+];
+
+const BABY_CAMEL_BODY_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -1.5, 8.05],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_TAIL,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 1.0, -7.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_HEAD,
+        children: &BABY_CAMEL_HEAD_CHILDREN,
+    },
+];
+
+// Vanilla 26.1 ModelLayers.CAMEL_BABY: BabyCamelModel.createBodyLayer().
+const BABY_CAMEL_PARTS: [ModelPartDesc; 5] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 7.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_BODY,
+        children: &BABY_CAMEL_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 11.5, -5.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 11.5, -5.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 11.5, 5.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 11.5, 5.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_CAMEL_LEG,
+        children: &[],
+    },
+];
+
 const ADULT_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -10.0, -4.0],
     size: [8.0, 10.0, 8.0],
@@ -5707,6 +6065,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::UndeadHorse { family, baby } => {
                 emit_undead_horse_model(&mut mesh, *instance, family, baby)
             }
+            EntityModelKind::Camel { family, baby } => {
+                emit_camel_model(&mut mesh, *instance, family, baby)
+            }
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -6126,6 +6487,24 @@ fn emit_undead_horse_model(
     );
 }
 
+fn emit_camel_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: CamelModelFamily,
+    baby: bool,
+) {
+    emit_model_parts_with_color(
+        mesh,
+        if family == CamelModelFamily::Camel && baby {
+            &BABY_CAMEL_PARTS
+        } else {
+            &ADULT_CAMEL_PARTS
+        },
+        entity_model_root_transform(instance),
+        camel_model_color(family),
+    );
+}
+
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
@@ -6519,6 +6898,13 @@ fn undead_horse_model_color(family: UndeadHorseModelFamily) -> [f32; 4] {
     match family {
         UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_BONE,
         UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_GREEN,
+    }
+}
+
+fn camel_model_color(family: CamelModelFamily) -> [f32; 4] {
+    match family {
+        CamelModelFamily::Camel => CAMEL_TAN,
+        CamelModelFamily::CamelHusk => CAMEL_HUSK_BROWN,
     }
 }
 
@@ -9094,6 +9480,232 @@ mod tests {
     }
 
     #[test]
+    fn camel_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            ADULT_CAMEL_TAIL[0],
+            ModelCubeDesc {
+                min: [-1.5, 0.0, 0.0],
+                size: [3.0, 14.0, 0.0],
+                color: CAMEL_TAN,
+            }
+        );
+        assert_eq!(ADULT_CAMEL_PARTS.len(), 5);
+        assert_part_tree(
+            &ADULT_CAMEL_PARTS[0],
+            [0.0, 4.0, 9.5],
+            [0.0, 0.0, 0.0],
+            ADULT_CAMEL_BODY.as_slice(),
+            ADULT_CAMEL_BODY_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_CAMEL_BODY_CHILDREN[0],
+            [0.0, -12.0, -10.0],
+            [0.0, 0.0, 0.0],
+            ADULT_CAMEL_HUMP.as_slice(),
+        );
+        assert_part(
+            &ADULT_CAMEL_BODY_CHILDREN[1],
+            [0.0, -9.0, 3.5],
+            [0.0, 0.0, 0.0],
+            ADULT_CAMEL_TAIL.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_CAMEL_BODY_CHILDREN[2],
+            [0.0, -3.0, -19.5],
+            [0.0, 0.0, 0.0],
+            ADULT_CAMEL_HEAD.as_slice(),
+            ADULT_CAMEL_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_CAMEL_HEAD_CHILDREN[0],
+            [2.5, -21.0, -9.5],
+            [0.0, 0.0, 0.0],
+            ADULT_CAMEL_LEFT_EAR.as_slice(),
+        );
+        assert_part(
+            &ADULT_CAMEL_HEAD_CHILDREN[1],
+            [-2.5, -21.0, -9.5],
+            [0.0, 0.0, 0.0],
+            ADULT_CAMEL_RIGHT_EAR.as_slice(),
+        );
+        for (part, expected_offset, expected_cubes) in [
+            (
+                &ADULT_CAMEL_PARTS[1],
+                [4.9, 1.0, 9.5],
+                ADULT_CAMEL_LEFT_HIND_LEG.as_slice(),
+            ),
+            (
+                &ADULT_CAMEL_PARTS[2],
+                [-4.9, 1.0, 9.5],
+                ADULT_CAMEL_RIGHT_HIND_LEG.as_slice(),
+            ),
+            (
+                &ADULT_CAMEL_PARTS[3],
+                [4.9, 1.0, -10.5],
+                ADULT_CAMEL_LEFT_FRONT_LEG.as_slice(),
+            ),
+            (
+                &ADULT_CAMEL_PARTS[4],
+                [-4.9, 1.0, -10.5],
+                ADULT_CAMEL_RIGHT_FRONT_LEG.as_slice(),
+            ),
+        ] {
+            assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
+        }
+
+        assert_eq!(
+            BABY_CAMEL_TAIL[0],
+            ModelCubeDesc {
+                min: [-1.5, -0.5, 0.0],
+                size: [3.0, 9.0, 0.0],
+                color: CAMEL_TAN,
+            }
+        );
+        assert_eq!(BABY_CAMEL_PARTS.len(), 5);
+        assert_part_tree(
+            &BABY_CAMEL_PARTS[0],
+            [0.0, 7.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_CAMEL_BODY.as_slice(),
+            BABY_CAMEL_BODY_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_CAMEL_BODY_CHILDREN[0],
+            [0.0, -1.5, 8.05],
+            [0.0, 0.0, 0.0],
+            BABY_CAMEL_TAIL.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_CAMEL_BODY_CHILDREN[1],
+            [0.0, 1.0, -7.5],
+            [0.0, 0.0, 0.0],
+            BABY_CAMEL_HEAD.as_slice(),
+            BABY_CAMEL_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_CAMEL_HEAD_CHILDREN[0],
+            [-2.5, -11.0, -4.0],
+            [0.0, 0.0, 0.0],
+            BABY_CAMEL_RIGHT_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_CAMEL_HEAD_CHILDREN[1],
+            [2.5, -11.0, -4.0],
+            [0.0, 0.0, 0.0],
+            BABY_CAMEL_LEFT_EAR.as_slice(),
+        );
+        for (part, expected_offset) in [
+            (&BABY_CAMEL_PARTS[1], [-3.0, 11.5, -5.5]),
+            (&BABY_CAMEL_PARTS[2], [3.0, 11.5, -5.5]),
+            (&BABY_CAMEL_PARTS[3], [3.0, 11.5, 5.5]),
+            (&BABY_CAMEL_PARTS[4], [-3.0, 11.5, 5.5]),
+        ] {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                BABY_CAMEL_LEG.as_slice(),
+            );
+        }
+    }
+
+    #[test]
+    fn camel_meshes_use_vanilla_body_layer_geometry() {
+        let adult = entity_model_mesh(&[EntityModelInstance::camel(
+            180,
+            [0.0, 64.0, 0.0],
+            0.0,
+            CamelModelFamily::Camel,
+            false,
+        )]);
+        assert_eq!(adult.opaque_faces, 72);
+        assert_eq!(adult.vertices.len(), 288);
+        assert_eq!(adult.indices.len(), 432);
+        assert!(adult
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(CAMEL_TAN, 0.78)));
+
+        let baby = entity_model_mesh(&[EntityModelInstance::camel(
+            181,
+            [0.0, 64.0, 0.0],
+            0.0,
+            CamelModelFamily::Camel,
+            true,
+        )]);
+        assert_eq!(baby.opaque_faces, 66);
+        assert_eq!(baby.vertices.len(), 264);
+        assert_eq!(baby.indices.len(), 396);
+
+        let husk = entity_model_mesh(&[EntityModelInstance::camel(
+            182,
+            [0.0, 64.0, 0.0],
+            0.0,
+            CamelModelFamily::CamelHusk,
+            true,
+        )]);
+        assert_eq!(husk.opaque_faces, 72);
+        assert_same_geometry(&husk, &adult);
+        assert!(husk
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(CAMEL_HUSK_BROWN, 0.78)));
+
+        let (adult_min, adult_max) = mesh_extents(&adult);
+        let (baby_min, baby_max) = mesh_extents(&baby);
+        assert!(adult_max[1] > baby_max[1]);
+        assert!(adult_min[2] < baby_min[2]);
+    }
+
+    #[test]
+    fn camel_texture_refs_match_vanilla_renderer() {
+        let cases = [
+            (
+                CamelModelFamily::Camel,
+                false,
+                "camel",
+                EntityModelTextureRef {
+                    path: "textures/entity/camel/camel.png",
+                    size: [128, 128],
+                },
+            ),
+            (
+                CamelModelFamily::Camel,
+                true,
+                "camel_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/camel/camel_baby.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                CamelModelFamily::CamelHusk,
+                false,
+                "camel_husk",
+                EntityModelTextureRef {
+                    path: "textures/entity/camel/camel_husk.png",
+                    size: [128, 128],
+                },
+            ),
+            (
+                CamelModelFamily::CamelHusk,
+                true,
+                "camel_husk",
+                EntityModelTextureRef {
+                    path: "textures/entity/camel/camel_husk.png",
+                    size: [128, 128],
+                },
+            ),
+        ];
+
+        for (family, baby, model_key, texture) in cases {
+            let kind = EntityModelKind::Camel { family, baby };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
+    }
+
+    #[test]
     fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             ADULT_VILLAGER_HAT[0],
@@ -10861,6 +11473,30 @@ mod tests {
             }
             .model_key(),
             "zombie_horse_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Camel {
+                family: CamelModelFamily::Camel,
+                baby: false
+            }
+            .model_key(),
+            "camel"
+        );
+        assert_eq!(
+            EntityModelKind::Camel {
+                family: CamelModelFamily::Camel,
+                baby: true
+            }
+            .model_key(),
+            "camel_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Camel {
+                family: CamelModelFamily::CamelHusk,
+                baby: true
+            }
+            .model_key(),
+            "camel_husk"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");
