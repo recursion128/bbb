@@ -70,6 +70,10 @@ pub enum EntityModelKind {
         baby: bool,
         has_chest: bool,
     },
+    UndeadHorse {
+        family: UndeadHorseModelFamily,
+        baby: bool,
+    },
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
@@ -166,6 +170,12 @@ pub enum QuadrupedModelFamily {
 pub enum DonkeyModelFamily {
     Donkey,
     Mule,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UndeadHorseModelFamily {
+    Skeleton,
+    Zombie,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -328,6 +338,22 @@ impl EntityModelKind {
                 baby: true,
                 ..
             } => "mule_baby",
+            Self::UndeadHorse {
+                family: UndeadHorseModelFamily::Skeleton,
+                baby: false,
+            } => "skeleton_horse",
+            Self::UndeadHorse {
+                family: UndeadHorseModelFamily::Skeleton,
+                baby: true,
+            } => "skeleton_horse_baby",
+            Self::UndeadHorse {
+                family: UndeadHorseModelFamily::Zombie,
+                baby: false,
+            } => "zombie_horse",
+            Self::UndeadHorse {
+                family: UndeadHorseModelFamily::Zombie,
+                baby: true,
+            } => "zombie_horse_baby",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -487,6 +513,22 @@ impl EntityModelKind {
                 baby: true,
                 ..
             } => Some(MULE_BABY_TEXTURE_REF),
+            Self::UndeadHorse {
+                family: UndeadHorseModelFamily::Skeleton,
+                baby: false,
+            } => Some(SKELETON_HORSE_TEXTURE_REF),
+            Self::UndeadHorse {
+                family: UndeadHorseModelFamily::Skeleton,
+                baby: true,
+            } => Some(SKELETON_HORSE_BABY_TEXTURE_REF),
+            Self::UndeadHorse {
+                family: UndeadHorseModelFamily::Zombie,
+                baby: false,
+            } => Some(ZOMBIE_HORSE_TEXTURE_REF),
+            Self::UndeadHorse {
+                family: UndeadHorseModelFamily::Zombie,
+                baby: true,
+            } => Some(ZOMBIE_HORSE_BABY_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
@@ -689,6 +731,21 @@ impl EntityModelInstance {
         )
     }
 
+    pub fn undead_horse(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: UndeadHorseModelFamily,
+        baby: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::UndeadHorse { family, baby },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Spider, position, y_rot)
     }
@@ -886,6 +943,8 @@ const SHEEP_WOOL: [f32; 4] = [0.86, 0.86, 0.80, 1.0];
 const HORSE_BROWN: [f32; 4] = [0.44, 0.27, 0.14, 1.0];
 const DONKEY_GRAY: [f32; 4] = [0.46, 0.45, 0.42, 1.0];
 const MULE_BROWN: [f32; 4] = [0.34, 0.24, 0.17, 1.0];
+const SKELETON_HORSE_BONE: [f32; 4] = [0.78, 0.78, 0.68, 1.0];
+const ZOMBIE_HORSE_GREEN: [f32; 4] = [0.32, 0.54, 0.32, 1.0];
 const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
@@ -1056,6 +1115,26 @@ const MULE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const MULE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/horse/mule_baby.png",
+    size: [64, 64],
+};
+
+const SKELETON_HORSE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_skeleton.png",
+    size: [64, 64],
+};
+
+const SKELETON_HORSE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_skeleton_baby.png",
+    size: [64, 64],
+};
+
+const ZOMBIE_HORSE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_zombie.png",
+    size: [64, 64],
+};
+
+const ZOMBIE_HORSE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_zombie_baby.png",
     size: [64, 64],
 };
 
@@ -5625,6 +5704,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 baby,
                 has_chest,
             } => emit_donkey_model(&mut mesh, *instance, family, baby, has_chest),
+            EntityModelKind::UndeadHorse { family, baby } => {
+                emit_undead_horse_model(&mut mesh, *instance, family, baby)
+            }
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -6026,6 +6108,24 @@ fn emit_donkey_model(
     emit_model_parts_with_color(mesh, parts, transform, donkey_model_color(family));
 }
 
+fn emit_undead_horse_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: UndeadHorseModelFamily,
+    baby: bool,
+) {
+    emit_model_parts_with_color(
+        mesh,
+        if baby {
+            &BABY_HORSE_PARTS
+        } else {
+            &ADULT_HORSE_PARTS
+        },
+        entity_model_root_transform(instance),
+        undead_horse_model_color(family),
+    );
+}
+
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
@@ -6412,6 +6512,13 @@ fn donkey_model_color(family: DonkeyModelFamily) -> [f32; 4] {
     match family {
         DonkeyModelFamily::Donkey => DONKEY_GRAY,
         DonkeyModelFamily::Mule => MULE_BROWN,
+    }
+}
+
+fn undead_horse_model_color(family: UndeadHorseModelFamily) -> [f32; 4] {
+    match family {
+        UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_BONE,
+        UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_GREEN,
     }
 }
 
@@ -8892,6 +8999,101 @@ mod tests {
     }
 
     #[test]
+    fn undead_horse_meshes_use_unscaled_vanilla_horse_layers() {
+        let skeleton_adult = entity_model_mesh(&[EntityModelInstance::undead_horse(
+            170,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Skeleton,
+            false,
+        )]);
+        assert_eq!(skeleton_adult.opaque_faces, 72);
+        assert_eq!(skeleton_adult.vertices.len(), 288);
+        assert_eq!(skeleton_adult.indices.len(), 432);
+        assert!(skeleton_adult
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(SKELETON_HORSE_BONE, 0.78)));
+        let (skeleton_min, skeleton_max) = mesh_extents(&skeleton_adult);
+        assert_close3(skeleton_min, [-0.31562507, 64.001625, -1.0915062]);
+        assert_close3(skeleton_max, [0.31562507, 66.11081, 1.4726361]);
+
+        let base_horse_adult = entity_model_mesh(&[EntityModelInstance::horse(
+            171,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )]);
+        let (horse_min, horse_max) = mesh_extents(&base_horse_adult);
+        assert!(horse_max[1] > skeleton_max[1]);
+        assert!(horse_min[2] < skeleton_min[2]);
+
+        let zombie_baby = entity_model_mesh(&[EntityModelInstance::undead_horse(
+            172,
+            [0.0, 64.0, 0.0],
+            0.0,
+            UndeadHorseModelFamily::Zombie,
+            true,
+        )]);
+        let base_horse_baby =
+            entity_model_mesh(&[EntityModelInstance::horse(173, [0.0, 64.0, 0.0], 0.0, true)]);
+        assert_eq!(zombie_baby.opaque_faces, 60);
+        assert_same_geometry(&zombie_baby, &base_horse_baby);
+        assert!(zombie_baby
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(ZOMBIE_HORSE_GREEN, 0.78)));
+    }
+
+    #[test]
+    fn undead_horse_texture_refs_match_vanilla_renderer() {
+        let cases = [
+            (
+                UndeadHorseModelFamily::Skeleton,
+                false,
+                "skeleton_horse",
+                EntityModelTextureRef {
+                    path: "textures/entity/horse/horse_skeleton.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                UndeadHorseModelFamily::Skeleton,
+                true,
+                "skeleton_horse_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/horse/horse_skeleton_baby.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                UndeadHorseModelFamily::Zombie,
+                false,
+                "zombie_horse",
+                EntityModelTextureRef {
+                    path: "textures/entity/horse/horse_zombie.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                UndeadHorseModelFamily::Zombie,
+                true,
+                "zombie_horse_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/horse/horse_zombie_baby.png",
+                    size: [64, 64],
+                },
+            ),
+        ];
+
+        for (family, baby, model_key, texture) in cases {
+            let kind = EntityModelKind::UndeadHorse { family, baby };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
+    }
+
+    #[test]
     fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             ADULT_VILLAGER_HAT[0],
@@ -10627,6 +10829,38 @@ mod tests {
             }
             .model_key(),
             "mule_baby"
+        );
+        assert_eq!(
+            EntityModelKind::UndeadHorse {
+                family: UndeadHorseModelFamily::Skeleton,
+                baby: false
+            }
+            .model_key(),
+            "skeleton_horse"
+        );
+        assert_eq!(
+            EntityModelKind::UndeadHorse {
+                family: UndeadHorseModelFamily::Skeleton,
+                baby: true
+            }
+            .model_key(),
+            "skeleton_horse_baby"
+        );
+        assert_eq!(
+            EntityModelKind::UndeadHorse {
+                family: UndeadHorseModelFamily::Zombie,
+                baby: false
+            }
+            .model_key(),
+            "zombie_horse"
+        );
+        assert_eq!(
+            EntityModelKind::UndeadHorse {
+                family: UndeadHorseModelFamily::Zombie,
+                baby: true
+            }
+            .model_key(),
+            "zombie_horse_baby"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");

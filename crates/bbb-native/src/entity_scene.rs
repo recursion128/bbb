@@ -2,7 +2,7 @@ use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
     ArmorStandModelPose, DonkeyModelFamily, EntityModelInstance, EntityModelKind,
     HumanoidModelFamily, IllagerModelFamily, PiglinModelFamily, QuadrupedModelFamily, SelectionBox,
-    SelectionOutline, SkeletonModelFamily, ZombieVariantModelFamily,
+    SelectionOutline, SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
     DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
@@ -340,9 +340,13 @@ fn entity_model_kind(
         },
         VANILLA_ENTITY_TYPE_DONKEY_ID => donkey_model_kind(DonkeyModelFamily::Donkey, data_values),
         VANILLA_ENTITY_TYPE_MULE_ID => donkey_model_kind(DonkeyModelFamily::Mule, data_values),
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
-        | VANILLA_ENTITY_TYPE_LLAMA_ID
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID => {
+            undead_horse_model_kind(UndeadHorseModelFamily::Skeleton, data_values)
+        }
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
+            undead_horse_model_kind(UndeadHorseModelFamily::Zombie, data_values)
+        }
+        VANILLA_ENTITY_TYPE_LLAMA_ID
         | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
         | VANILLA_ENTITY_TYPE_CAMEL_ID
         | VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
@@ -547,6 +551,16 @@ fn donkey_model_kind(
         family,
         baby: ageable_baby(values),
         has_chest: chested_horse_has_chest(values),
+    }
+}
+
+fn undead_horse_model_kind(
+    family: UndeadHorseModelFamily,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> EntityModelKind {
+    EntityModelKind::UndeadHorse {
+        family,
+        baby: ageable_baby(values),
     }
 }
 
@@ -1268,6 +1282,30 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, &[]),
+            EntityModelKind::UndeadHorse {
+                family: UndeadHorseModelFamily::Skeleton,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::UndeadHorse {
+                family: UndeadHorseModelFamily::Skeleton,
+                baby: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, &[]),
+            EntityModelKind::UndeadHorse {
+                family: UndeadHorseModelFamily::Zombie,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_LLAMA_ID, &[]),
             quadruped(QuadrupedModelFamily::Horse, false)
         );
     }

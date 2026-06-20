@@ -302,9 +302,8 @@ When an agent does any of the following, update this file in the same slice:
       `MeshTransformer.scaling(1.1F)` root transform and default
       `Variant.WHITE` adult/baby texture references recorded from official
       assets; horse variant textures, markings, armor, saddle,
-      ridden/eat/stand/mouth/tail/walk/head animation, and skeleton-horse/
-      zombie-horse/camel/llama family model parity remain
-      unsupported
+      ridden/eat/stand/mouth/tail/walk/head animation, and camel/llama family
+      model parity remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`, including adult `DONKEY_SCALE=0.87F` /
@@ -313,6 +312,14 @@ When an agent does any of the following, update this file in the same slice:
       and official adult/baby donkey/mule texture references recorded from
       assets; saddle equipment layer, ridden/eat/stand/mouth/tail/walk/head
       animation, lighting, and GPU texture binding remain unsupported
+    - skeleton horse and zombie horse entities as renderer-owned vanilla 26.1
+      adult/baby body-layer geometry from `AbstractEquineModel`,
+      `BabyHorseModel`, `HorseModel`, and `UndeadHorseRenderer`, including the
+      unscaled `ModelLayers.SKELETON_HORSE` / `ZOMBIE_HORSE` adult layers,
+      shared baby horse layer, and official adult/baby skeleton/zombie horse
+      texture references recorded from assets; undead horse body-armor layer,
+      saddle layer, ridden/eat/stand/mouth/tail/walk/head animation, lighting,
+      and GPU texture binding remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`
@@ -447,7 +454,8 @@ When an agent does any of the following, update this file in the same slice:
     presentation, pig saddle presentation, sheep wool presentation,
     wolf variant/tame/angry/collar/armor/wet-tint/pose presentation,
     horse variant/markings/saddle/armor/animation, donkey/mule saddle and
-    animation presentation, and remaining non-base-equine presentation,
+    animation presentation, undead horse body-armor/saddle/animation
+    presentation, and remaining non-base-equine presentation,
     villager profession/type/held-item/custom-head presentation,
     illager held-item/custom-head/arm-pose presentation, zombie-family
     armor/drowned outer-layer/swim/trident/zombie-villager overlays/no-hat/
