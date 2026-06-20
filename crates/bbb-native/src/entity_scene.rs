@@ -2,6 +2,7 @@ use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
     EntityModelInstance, EntityModelKind, HumanoidModelFamily, IllagerModelFamily,
     QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
+    ZombieVariantModelFamily,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
 
@@ -243,10 +244,15 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => EntityModelKind::Zombie {
             baby: zombie_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_DROWNED_ID
-        | VANILLA_ENTITY_TYPE_HUSK_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
+        VANILLA_ENTITY_TYPE_HUSK_ID => EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Husk,
+            baby: zombie_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_DROWNED_ID => EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::Drowned,
+            baby: zombie_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
             humanoid(HumanoidModelFamily::Zombie, zombie_baby(data_values))
         }
         VANILLA_ENTITY_TYPE_PIGLIN_ID => {
@@ -717,7 +723,37 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_HUSK_ID, &[]),
-            humanoid(HumanoidModelFamily::Zombie, false)
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_HUSK_ID,
+                &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_DROWNED_ID, &[]),
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_DROWNED_ID,
+                &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: true
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_STRAY_ID, &[]),

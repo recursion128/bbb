@@ -232,9 +232,9 @@ When an agent does any of the following, update this file in the same slice:
     - dropped-item icons
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
-      source-verified pig/cow/sheep/villager/wandering-trader/zombie,
-      skeleton and stray/parched/wither-skeleton variants, creeper, spider,
-      enderman, iron-golem, snow-golem, witch, and
+      source-verified pig/cow/sheep/villager/wandering-trader/zombie and
+      husk/drowned variants, skeleton and stray/parched/wither-skeleton
+      variants, creeper, spider, enderman, iron-golem, snow-golem, witch, and
       evoker/illusioner/pillager/vindicator illager body-layer geometry,
       primitive entity model families, and placeholder bounds
     - equipment
@@ -295,9 +295,17 @@ When an agent does any of the following, update this file in the same slice:
       unsupported
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
-      with official default texture references recorded; husk, drowned, zombie
-      villager, piglin, and zombified piglin variants still use generic
-      humanoid family geometry until their own model/texture paths are verified
+      with official default texture references recorded; husk entities use the
+      vanilla 26.1 adult `LayerDefinitions` `MeshTransformer.scaling(1.0625F)`
+      body layer, `HuskRenderer`'s official adult/baby texture references, and
+      the shared baby zombie body layer for baby husks; drowned entities use
+      vanilla 26.1 `DrownedModel.createBodyLayer(CubeDeformation.NONE)` /
+      `BabyDrownedModel.createBodyLayer(CubeDeformation.NONE)` geometry with
+      official adult/baby texture references; `DrownedOuterLayer`, drowned
+      swim rotation, trident throw arm pose, zombie-family armor, held
+      items, attack/head/walk animation, zombie villager variants, piglin
+      variants, zombified piglin variants, and GPU texture binding remain
+      unsupported
     - base skeleton and stray entities as renderer-owned vanilla 26.1
       `SkeletonModel.createBodyLayer()` geometry with official
       `SkeletonRenderer`/`StrayRenderer` texture references recorded; parched
@@ -372,8 +380,10 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, pig/cow variant
     presentation, pig saddle presentation, sheep wool presentation,
     villager profession/type/held-item/custom-head presentation,
-    illager held-item/custom-head/arm-pose presentation, zombie/skeleton
-    armor/overlay/bogged mushroom and sheared-state presentation,
+    illager held-item/custom-head/arm-pose presentation, zombie-family
+    armor/drowned outer-layer/swim/trident/zombie-villager/piglin
+    presentation, skeleton armor/overlay/bogged mushroom and sheared-state
+    presentation,
     creeper swelling/powered overlays,
     spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and

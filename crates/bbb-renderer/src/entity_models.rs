@@ -7,6 +7,7 @@ const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
 const MODEL_UNIT_SCALE: f32 = 1.0 / 16.0;
 const MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS: f32 = 24.016;
 const VILLAGER_LIKE_SCALE: f32 = 0.9375;
+const HUSK_SCALE: f32 = 1.0625;
 const WITHER_SKELETON_SCALE: f32 = 1.2;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
@@ -18,6 +19,10 @@ pub enum EntityModelKind {
         baby: bool,
     },
     Zombie {
+        baby: bool,
+    },
+    ZombieVariant {
+        family: ZombieVariantModelFamily,
         baby: bool,
     },
     Skeleton,
@@ -55,6 +60,12 @@ pub enum EntityModelKind {
         name: &'static str,
         bounds: EntityModelBounds,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZombieVariantModelFamily {
+    Husk,
+    Drowned,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,6 +170,22 @@ impl EntityModelKind {
             } => "humanoid_armor_stand_baby",
             Self::Zombie { baby: false } => "zombie",
             Self::Zombie { baby: true } => "zombie_baby",
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: false,
+            } => "husk",
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: true,
+            } => "husk_baby",
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: false,
+            } => "drowned",
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: true,
+            } => "drowned_baby",
             Self::Skeleton => "skeleton",
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Stray,
@@ -245,6 +272,22 @@ impl EntityModelKind {
         match self {
             Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
             Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: false,
+            } => Some(HUSK_TEXTURE_REF),
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: true,
+            } => Some(HUSK_BABY_TEXTURE_REF),
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: false,
+            } => Some(DROWNED_TEXTURE_REF),
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: true,
+            } => Some(DROWNED_BABY_TEXTURE_REF),
             Self::Skeleton => Some(SKELETON_TEXTURE_REF),
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Stray,
@@ -327,6 +370,21 @@ impl EntityModelInstance {
 
     pub fn zombie(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
         Self::new(entity_id, EntityModelKind::Zombie { baby }, position, y_rot)
+    }
+
+    pub fn zombie_variant(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: ZombieVariantModelFamily,
+        baby: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::ZombieVariant { family, baby },
+            position,
+            y_rot,
+        )
     }
 
     pub fn skeleton(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -540,6 +598,8 @@ const CHICKEN_RED: [f32; 4] = [0.86, 0.08, 0.08, 1.0];
 const CHICKEN_LEG: [f32; 4] = [0.82, 0.48, 0.12, 1.0];
 const PLAYER_BLUE: [f32; 4] = [0.22, 0.42, 0.78, 1.0];
 const ZOMBIE_GREEN: [f32; 4] = [0.33, 0.62, 0.34, 1.0];
+const HUSK_TAN: [f32; 4] = [0.60, 0.50, 0.31, 1.0];
+const DROWNED_BLUE: [f32; 4] = [0.23, 0.48, 0.55, 1.0];
 const SKELETON_BONE: [f32; 4] = [0.82, 0.82, 0.72, 1.0];
 const WITHER_SKELETON_DARK: [f32; 4] = [0.14, 0.14, 0.14, 1.0];
 const PARCHED_BONE: [f32; 4] = [0.70, 0.62, 0.48, 1.0];
@@ -571,6 +631,26 @@ const ZOMBIE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const ZOMBIE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/zombie/zombie_baby.png",
+    size: [64, 64],
+};
+
+const HUSK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/zombie/husk.png",
+    size: [64, 64],
+};
+
+const HUSK_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/zombie/husk_baby.png",
+    size: [64, 64],
+};
+
+const DROWNED_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/zombie/drowned.png",
+    size: [64, 64],
+};
+
+const DROWNED_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/zombie/drowned_baby.png",
     size: [64, 64],
 };
 
@@ -3011,6 +3091,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 emit_humanoid_model(&mut mesh, *instance, family, baby)
             }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
+            EntityModelKind::ZombieVariant { family, baby } => {
+                emit_zombie_variant_model(&mut mesh, *instance, family, baby)
+            }
             EntityModelKind::Skeleton => emit_skeleton_model(&mut mesh, *instance),
             EntityModelKind::SkeletonVariant { family } => {
                 emit_skeleton_variant_model(&mut mesh, *instance, family)
@@ -3129,6 +3212,40 @@ fn emit_zombie_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
         },
         entity_model_root_transform(instance),
     );
+}
+
+fn emit_zombie_variant_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: ZombieVariantModelFamily,
+    baby: bool,
+) {
+    match (family, baby) {
+        (ZombieVariantModelFamily::Husk, false) => emit_model_parts_with_color(
+            mesh,
+            &ADULT_ZOMBIE_PARTS,
+            mesh_transformer_scaled_model_root_transform(instance, HUSK_SCALE),
+            HUSK_TAN,
+        ),
+        (ZombieVariantModelFamily::Husk, true) => emit_model_parts_with_color(
+            mesh,
+            &BABY_ZOMBIE_PARTS,
+            entity_model_root_transform(instance),
+            HUSK_TAN,
+        ),
+        (ZombieVariantModelFamily::Drowned, false) => emit_model_parts_with_color(
+            mesh,
+            &ADULT_ZOMBIE_PARTS,
+            entity_model_root_transform(instance),
+            DROWNED_BLUE,
+        ),
+        (ZombieVariantModelFamily::Drowned, true) => emit_model_parts_with_color(
+            mesh,
+            &BABY_ZOMBIE_PARTS,
+            entity_model_root_transform(instance),
+            DROWNED_BLUE,
+        ),
+    }
 }
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -3909,6 +4026,79 @@ mod tests {
     }
 
     #[test]
+    fn zombie_variant_meshes_use_vanilla_body_layer_geometry() {
+        let zombie = entity_model_mesh(&[EntityModelInstance::zombie(
+            150,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )]);
+        let baby_zombie = entity_model_mesh(&[EntityModelInstance::zombie(
+            150,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+        )]);
+
+        let husk = entity_model_mesh(&[EntityModelInstance::zombie_variant(
+            67,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Husk,
+            false,
+        )]);
+        assert_eq!(husk.opaque_faces, 42);
+        assert_eq!(husk.vertices.len(), 168);
+        assert_eq!(husk.indices.len(), 252);
+        assert!(husk
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(HUSK_TAN, 0.78)));
+        let (husk_min, husk_max) = mesh_extents(&husk);
+        assert_close3(husk_min, [-0.53125, 64.00106, -0.29882815]);
+        assert_close3(husk_max, [0.53125, 66.15926, 0.29882815]);
+
+        let baby_husk = entity_model_mesh(&[EntityModelInstance::zombie_variant(
+            67,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Husk,
+            true,
+        )]);
+        assert_same_geometry(&baby_husk, &baby_zombie);
+        assert!(baby_husk
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(HUSK_TAN, 0.78)));
+
+        let drowned = entity_model_mesh(&[EntityModelInstance::zombie_variant(
+            38,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Drowned,
+            false,
+        )]);
+        assert_same_geometry(&drowned, &zombie);
+        assert!(drowned
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(DROWNED_BLUE, 0.78)));
+
+        let baby_drowned = entity_model_mesh(&[EntityModelInstance::zombie_variant(
+            38,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::Drowned,
+            true,
+        )]);
+        assert_same_geometry(&baby_drowned, &baby_zombie);
+        assert!(baby_drowned
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(DROWNED_BLUE, 0.78)));
+    }
+
+    #[test]
     fn skeleton_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             SKELETON_HAT[0],
@@ -3987,6 +4177,50 @@ mod tests {
             EntityModelKind::Zombie { baby: true }.vanilla_texture_ref(),
             Some(EntityModelTextureRef {
                 path: "textures/entity/zombie/zombie_baby.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: false,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/zombie/husk.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: true,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/zombie/husk_baby.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: false,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/zombie/drowned.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: true,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/zombie/drowned_baby.png",
                 size: [64, 64],
             })
         );
@@ -5792,6 +6026,38 @@ mod tests {
             EntityModelKind::Zombie { baby: true }.model_key(),
             "zombie_baby"
         );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: false
+            }
+            .model_key(),
+            "husk"
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: true
+            }
+            .model_key(),
+            "husk_baby"
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: false
+            }
+            .model_key(),
+            "drowned"
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: true
+            }
+            .model_key(),
+            "drowned_baby"
+        );
         assert_eq!(EntityModelKind::Skeleton.model_key(), "skeleton");
         assert_eq!(
             EntityModelKind::SkeletonVariant {
@@ -5918,6 +6184,15 @@ mod tests {
                 (actual - expected).abs() < 1.0e-4,
                 "expected {expected}, got {actual}"
             );
+        }
+    }
+
+    fn assert_same_geometry(actual: &EntityModelMesh, expected: &EntityModelMesh) {
+        assert_eq!(actual.opaque_faces, expected.opaque_faces);
+        assert_eq!(actual.indices, expected.indices);
+        assert_eq!(actual.vertices.len(), expected.vertices.len());
+        for (actual, expected) in actual.vertices.iter().zip(expected.vertices.iter()) {
+            assert_eq!(actual.position, expected.position);
         }
     }
 

@@ -2,7 +2,7 @@ pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{CameraPose, ClearColor};
 pub use crate::entity_models::{
     EntityModelBounds, EntityModelInstance, EntityModelKind, HumanoidModelFamily,
-    IllagerModelFamily, QuadrupedModelFamily, SkeletonModelFamily,
+    IllagerModelFamily, QuadrupedModelFamily, SkeletonModelFamily, ZombieVariantModelFamily,
 };
 pub use crate::hud::{
     HudAsciiGlyph, HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer,
