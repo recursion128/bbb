@@ -569,7 +569,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 59] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 61] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -609,6 +609,8 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     SPIDER_EYES_TEXTURE_REF,
     ENDERMAN_TEXTURE_REF,
     ENDERMAN_EYES_TEXTURE_REF,
+    SLIME_TEXTURE_REF,
+    MAGMA_CUBE_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,
@@ -910,3 +912,10 @@ pub(in crate::entity_models) const MAGMA_CUBE_TEXTURE_REF: EntityModelTextureRef
         path: "textures/entity/slime/magmacube.png",
         size: [64, 64],
     };
+
+pub(in crate::entity_models) const SLIME_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [SLIME_TEXTURE_REF, MAGMA_CUBE_TEXTURE_REF];
+
+pub fn slime_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &SLIME_ENTITY_TEXTURE_REFS
+}

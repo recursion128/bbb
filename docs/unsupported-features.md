@@ -565,15 +565,19 @@ When an agent does any of the following, update this file in the same slice:
     - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
       `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
       geometry, official `textures/entity/slime/slime.png` texture reference,
-      and renderer size scaling from slime size metadata; outer translucent
-      layer blending, squish interpolation, particle/audio coupling, lighting,
-      and GPU texture binding remain unsupported
+      renderer size scaling from slime size metadata, texture-backed base and
+      outer layer pass emission, the `SlimeOuterLayer` submit order `1`, and an
+      alpha-blended translucent GPU bucket; squish interpolation, invisible
+      glowing outline rendering, particle/audio coupling, lighting, overlay,
+      crumbling, and full render-graph sorting parity remain unsupported
     - magma cube entities as renderer-owned vanilla 26.1
       `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
       `textures/entity/slime/magmacube.png` texture reference, and renderer
-      size scaling from inherited slime size metadata; segment squish offsets,
-      full-bright block light, particle/audio coupling, and GPU texture binding
-      remain unsupported
+      size scaling from inherited slime size metadata, texture-backed base layer
+      pass emission, and official PNG atlas upload/bind/sample path; segment
+      squish offsets, full-bright block light, particle/audio coupling,
+      lighting, overlay, crumbling, and full render-graph sorting parity remain
+      unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -600,9 +604,9 @@ When an agent does any of the following, update this file in the same slice:
     spider animation/death-flip presentation, enderman carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
     snow golem pumpkin/animation presentation, armor stand equipment/custom
-    layers/wiggle/marker presentation, slime/magma-cube squish/translucency/
-    lighting presentation, and precise vanilla mesh parity for primitive/
-    placeholder entity families.
+    layers/wiggle/marker presentation, slime/magma-cube squish/full
+    render-state lighting/sorting presentation, and precise vanilla mesh parity
+    for primitive/placeholder entity families.
 
 ### Audio Runtime Parity
 

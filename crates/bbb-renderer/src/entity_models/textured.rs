@@ -9,8 +9,9 @@ use super::{
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
+    magma_cube_model_root_transform,
     model_layers::*,
-    player_model_root_transform,
+    player_model_root_transform, slime_model_root_transform,
 };
 use glam::Mat4;
 
@@ -27,6 +28,9 @@ pub(super) enum EntityModelLayerKind {
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
+    SlimeBase,
+    SlimeOuter,
+    MagmaCubeBase,
     SpiderBase,
     SpiderEyes,
     WolfBase,
@@ -36,6 +40,7 @@ pub(super) enum EntityModelLayerKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntityModelLayerRenderType {
     Cutout,
+    Translucent,
     Eyes,
 }
 
@@ -60,6 +65,7 @@ pub(super) struct EntityModelLayerPass {
 
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
+    pub(super) translucent: EntityModelTexturedMesh,
     pub(super) eyes: EntityModelTexturedMesh,
 }
 
@@ -67,6 +73,7 @@ impl EntityModelTexturedMeshes {
     fn new() -> Self {
         Self {
             cutout: EntityModelTexturedMesh::new(),
+            translucent: EntityModelTexturedMesh::new(),
             eyes: EntityModelTexturedMesh::new(),
         }
     }
@@ -77,6 +84,7 @@ impl EntityModelTexturedMeshes {
     ) -> &mut EntityModelTexturedMesh {
         match render_type {
             EntityModelLayerRenderType::Cutout => &mut self.cutout,
+            EntityModelLayerRenderType::Translucent => &mut self.translucent,
             EntityModelLayerRenderType::Eyes => &mut self.eyes,
         }
     }
@@ -117,6 +125,12 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::Enderman => {
                 emit_enderman_textured_model(&mut meshes, *instance, atlas);
+            }
+            EntityModelKind::Slime { size } => {
+                emit_slime_textured_model(&mut meshes, *instance, size, atlas);
+            }
+            EntityModelKind::MagmaCube { size } => {
+                emit_magma_cube_textured_model(&mut meshes, *instance, size, atlas);
             }
             EntityModelKind::Player { slim, parts } => {
                 emit_player_textured_model(&mut meshes, *instance, slim, parts, atlas);
@@ -239,6 +253,30 @@ fn emit_enderman_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     for pass in enderman_textured_layer_passes() {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_slime_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    size: i32,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = slime_model_root_transform(instance, size);
+    for pass in slime_textured_layer_passes() {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_magma_cube_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    size: i32,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = magma_cube_model_root_transform(instance, size);
+    for pass in magma_cube_textured_layer_passes() {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }
@@ -464,6 +502,47 @@ pub(super) fn enderman_textured_layer_passes() -> Vec<EntityModelLayerPass> {
             submit_sequence: 1,
         },
     ]
+}
+
+pub(super) fn slime_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::SlimeBase,
+            render_type: EntityModelLayerRenderType::Cutout,
+            model_layer: MODEL_LAYER_SLIME,
+            texture: SLIME_TEXTURE_REF,
+            parts: &SLIME_INNER_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 0,
+            submit_sequence: 0,
+        },
+        EntityModelLayerPass {
+            kind: EntityModelLayerKind::SlimeOuter,
+            render_type: EntityModelLayerRenderType::Translucent,
+            model_layer: MODEL_LAYER_SLIME_OUTER,
+            texture: SLIME_TEXTURE_REF,
+            parts: &SLIME_OUTER_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
+            tint: [1.0, 1.0, 1.0, 1.0],
+            collector_order: 1,
+            submit_sequence: 1,
+        },
+    ]
+}
+
+pub(super) fn magma_cube_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::MagmaCubeBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: MODEL_LAYER_MAGMA_CUBE,
+        texture: MAGMA_CUBE_TEXTURE_REF,
+        parts: &MAGMA_CUBE_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(super) fn player_textured_layer_passes(

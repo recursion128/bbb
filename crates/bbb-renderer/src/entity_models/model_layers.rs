@@ -90,7 +90,7 @@ pub use textures::{
     boat_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
     creeper_entity_texture_refs, enderman_entity_texture_refs, entity_model_texture_refs,
     pig_entity_texture_refs, player_entity_texture_refs, sheep_entity_texture_refs,
-    spider_entity_texture_refs, wolf_entity_texture_refs,
+    slime_entity_texture_refs, spider_entity_texture_refs, wolf_entity_texture_refs,
 };
 pub(super) use wolf::*;
 pub(super) use zombie::*;

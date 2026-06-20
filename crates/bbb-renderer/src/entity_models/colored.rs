@@ -69,9 +69,15 @@ fn entity_model_mesh_with_options(
                 show_base_plate,
                 pose,
             ),
-            EntityModelKind::Slime { size } => emit_slime_model(&mut mesh, *instance, size),
+            EntityModelKind::Slime { size } => {
+                if !skip_texture_backed_entities {
+                    emit_slime_model(&mut mesh, *instance, size);
+                }
+            }
             EntityModelKind::MagmaCube { size } => {
-                emit_magma_cube_model(&mut mesh, *instance, size)
+                if !skip_texture_backed_entities {
+                    emit_magma_cube_model(&mut mesh, *instance, size);
+                }
             }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
             EntityModelKind::ZombieVariant { family, baby } => {
@@ -249,22 +255,35 @@ fn emit_armor_stand_part(
 }
 
 fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
-    let size = size as f32;
-    let transform = living_entity_model_root_transform_with_renderer_transform(
-        instance,
-        Mat4::from_scale(Vec3::splat(0.999))
-            * Mat4::from_translation(Vec3::new(0.0, 0.001, 0.0))
-            * Mat4::from_scale(Vec3::splat(size)),
+    emit_model_parts(
+        mesh,
+        &SLIME_PARTS,
+        slime_model_root_transform(instance, size),
     );
-    emit_model_parts(mesh, &SLIME_PARTS, transform);
 }
 
 fn emit_magma_cube_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
-    let transform = living_entity_model_root_transform_with_renderer_transform(
+    emit_model_parts(
+        mesh,
+        &MAGMA_CUBE_PARTS,
+        magma_cube_model_root_transform(instance, size),
+    );
+}
+
+pub(super) fn slime_model_root_transform(instance: EntityModelInstance, size: i32) -> Mat4 {
+    living_entity_model_root_transform_with_renderer_transform(
+        instance,
+        Mat4::from_scale(Vec3::splat(0.999))
+            * Mat4::from_translation(Vec3::new(0.0, 0.001, 0.0))
+            * Mat4::from_scale(Vec3::splat(size as f32)),
+    )
+}
+
+pub(super) fn magma_cube_model_root_transform(instance: EntityModelInstance, size: i32) -> Mat4 {
+    living_entity_model_root_transform_with_renderer_transform(
         instance,
         Mat4::from_scale(Vec3::splat(size as f32)),
-    );
-    emit_model_parts(mesh, &MAGMA_CUBE_PARTS, transform);
+    )
 }
 
 fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {

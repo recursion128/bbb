@@ -245,6 +245,22 @@ pub(crate) fn create_entity_model_eyes_pipeline(
     )
 }
 
+pub(crate) fn create_entity_model_translucent_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        "bbb-entity-model-translucent",
+        ENTITY_MODEL_TEXTURED_SHADER,
+        Some(wgpu::BlendState::ALPHA_BLENDING),
+        true,
+    )
+}
+
 fn create_entity_model_textured_pipeline_with_depth(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -346,13 +362,22 @@ impl Renderer {
                 meshes.eyes,
                 "bbb-entity-model-eyes",
             );
+            self.entity_model_translucent_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.translucent,
+                "bbb-entity-model-translucent",
+            );
         } else {
             self.entity_model_textured_mesh = None;
+            self.entity_model_translucent_mesh = None;
             self.entity_model_eyes_mesh = None;
         }
         self.entity_model_bounds = merged_entity_model_bounds(&[
             self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds),
             self.entity_model_textured_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_translucent_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_eyes_mesh

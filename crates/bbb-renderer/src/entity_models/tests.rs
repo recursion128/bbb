@@ -553,6 +553,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let spider = EntityModelInstance::spider(311, [14.0, 64.0, 0.0], 0.0);
     let cave_spider = EntityModelInstance::cave_spider(312, [16.0, 64.0, 0.0], 0.0);
     let enderman = EntityModelInstance::enderman(313, [18.0, 64.0, 0.0], 0.0);
+    let slime = EntityModelInstance::slime(314, [20.0, 64.0, 0.0], 0.0, 1);
+    let magma_cube = EntityModelInstance::magma_cube(315, [22.0, 64.0, 0.0], 0.0, 3);
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -565,6 +567,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         spider,
         cave_spider,
         enderman,
+        slime,
+        magma_cube,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -590,6 +594,10 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_cave_spider_geometry_guard.vertices.is_empty());
     let legacy_enderman_geometry_guard = entity_model_mesh(&[enderman]);
     assert!(!legacy_enderman_geometry_guard.vertices.is_empty());
+    let legacy_slime_geometry_guard = entity_model_mesh(&[slime]);
+    assert!(!legacy_slime_geometry_guard.vertices.is_empty());
+    let legacy_magma_cube_geometry_guard = entity_model_mesh(&[magma_cube]);
+    assert!(!legacy_magma_cube_geometry_guard.vertices.is_empty());
 }
 
 #[test]
