@@ -27,6 +27,7 @@ const EMPTY_LAST_SEEN_MESSAGES_CHECKSUM: u8 = 1;
 const ARGUMENT_SIGNATURE_BYTES: usize = 256;
 const MAX_ARGUMENT_SIGNATURE_COUNT: usize = 8;
 const MAX_ARGUMENT_SIGNATURE_NAME_CHARS: usize = 16;
+const MAX_CHAT_MESSAGE_CHARS: usize = 256;
 const MAX_SERVERBOUND_CUSTOM_PAYLOAD: usize = 32767;
 const LP_VEC3_ABS_MAX_VALUE: f64 = 1.7179869183E10;
 const LP_VEC3_ABS_MIN_VALUE: f64 = 3.051944088384301E-5;
@@ -808,6 +809,11 @@ pub fn encode_play_chat_command_signed(packet: &ChatCommandSigned) -> (i32, Vec<
 }
 
 pub fn encode_play_chat_message(packet: &ChatMessage) -> (i32, Vec<u8>) {
+    assert!(
+        packet.message.chars().count() <= MAX_CHAT_MESSAGE_CHARS,
+        "chat message exceeds vanilla maximum of 256 characters"
+    );
+
     let mut out = Encoder::new();
     out.write_string(&packet.message);
     out.write_i64(packet.timestamp_millis);

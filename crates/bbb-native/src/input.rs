@@ -55,6 +55,7 @@ const CREATIVE_FLIGHT_JUMP_TRIGGER_TICKS: u8 = 7;
 const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
 const SPRINT_TRIGGER_TICKS: u8 = 7;
 const SPRINT_TRIGGER_TICK_SECONDS: f64 = 0.05;
+const CHAT_ENTRY_MAX_LENGTH: usize = 256;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
 const BOOK_SCREEN_WIDTH: i32 = 192;
 const BOOK_SCREEN_HEIGHT: i32 = 192;
@@ -1030,10 +1031,15 @@ fn update_chat_entry_after_text_change(
 
 fn insert_chat_entry_text(current: &mut String, cursor: &mut usize, text: &str) {
     *cursor = (*cursor).min(text_edit::char_len(current));
+    let mut remaining = CHAT_ENTRY_MAX_LENGTH.saturating_sub(text_edit::char_len(current));
     for ch in text.chars().filter(|ch| is_chat_text_char(*ch)) {
+        if remaining == 0 {
+            break;
+        }
         let insert_at = text_edit::byte_index(current, *cursor);
         current.insert(insert_at, ch);
         *cursor += 1;
+        remaining -= 1;
     }
 }
 

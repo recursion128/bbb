@@ -592,6 +592,95 @@ fn chat_key_opens_chat_entry_and_submits_unsigned_message() {
 }
 
 #[test]
+fn chat_entry_limits_message_text_to_vanilla_length() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "t");
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        &"a".repeat(CHAT_ENTRY_MAX_LENGTH + 20),
+    );
+
+    let entry = input.chat_entry.as_ref().unwrap();
+    assert_eq!(entry.text.chars().count(), CHAT_ENTRY_MAX_LENGTH);
+    assert_eq!(entry.cursor, CHAT_ENTRY_MAX_LENGTH);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    match rx.try_recv().unwrap() {
+        NetCommand::ChatMessage(packet) => {
+            assert_eq!(packet.message.chars().count(), CHAT_ENTRY_MAX_LENGTH);
+            assert_eq!(packet.message, "a".repeat(CHAT_ENTRY_MAX_LENGTH));
+        }
+        command => panic!("expected chat message command, got {command:?}"),
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn chat_entry_mid_cursor_insert_only_uses_remaining_vanilla_length() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "t");
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        &"b".repeat(CHAT_ENTRY_MAX_LENGTH - 1),
+    );
+    input.chat_entry.as_mut().unwrap().cursor = 10;
+
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "XYZ");
+
+    let entry = input.chat_entry.as_ref().unwrap();
+    let expected = format!(
+        "{}{}{}",
+        "b".repeat(10),
+        "X",
+        "b".repeat(CHAT_ENTRY_MAX_LENGTH - 11)
+    );
+    assert_eq!(entry.text.chars().count(), CHAT_ENTRY_MAX_LENGTH);
+    assert_eq!(entry.text, expected);
+    assert_eq!(entry.cursor, 11);
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn chat_key_submits_message_with_pending_last_seen_update() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

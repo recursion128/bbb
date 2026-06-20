@@ -1666,6 +1666,16 @@ fn encodes_unsigned_chat_message_packet() {
 }
 
 #[test]
+#[should_panic(expected = "chat message exceeds vanilla maximum of 256 characters")]
+fn rejects_oversized_unsigned_chat_message_packet() {
+    let _ = encode_play_chat_message(&ChatMessage::unsigned(
+        "a".repeat(257),
+        1_717_986_918_300,
+        0x0102_0304_0506_0708,
+    ));
+}
+
+#[test]
 fn encodes_chat_message_last_seen_update_bitset_little_endian() {
     let (id, payload) = encode_play_chat_message(&ChatMessage {
         message: "hello".to_string(),
