@@ -4,6 +4,7 @@ mod armor_stand;
 mod camel;
 mod chicken;
 mod cow;
+mod creeper;
 mod enderman;
 mod equine;
 mod goat;
@@ -481,190 +482,6 @@ fn villager_and_wandering_trader_texture_refs_match_vanilla_renderers() {
             size: [64, 64],
         })
     );
-}
-
-#[test]
-fn creeper_model_parts_match_vanilla_26_1_body_layer() {
-    assert_eq!(
-        CREEPER_HEAD[0],
-        ModelCubeDesc {
-            min: [-4.0, -8.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            color: CREEPER_GREEN
-        }
-    );
-    assert_eq!(
-        CREEPER_BODY[0],
-        ModelCubeDesc {
-            min: [-4.0, 0.0, -2.0],
-            size: [8.0, 12.0, 4.0],
-            color: CREEPER_GREEN
-        }
-    );
-    assert_eq!(
-        CREEPER_LEG[0],
-        ModelCubeDesc {
-            min: [-2.0, 0.0, -2.0],
-            size: [4.0, 6.0, 4.0],
-            color: CREEPER_GREEN
-        }
-    );
-
-    assert_eq!(CREEPER_PARTS.len(), 6);
-    assert_eq!(CREEPER_PARTS[0].pose.offset, [0.0, 6.0, 0.0]);
-    assert_eq!(CREEPER_PARTS[0].cubes, CREEPER_HEAD.as_slice());
-    assert_eq!(CREEPER_PARTS[1].pose.offset, [0.0, 6.0, 0.0]);
-    assert_eq!(CREEPER_PARTS[1].cubes, CREEPER_BODY.as_slice());
-
-    let leg_offsets = [
-        [-2.0, 18.0, 4.0],
-        [2.0, 18.0, 4.0],
-        [-2.0, 18.0, -4.0],
-        [2.0, 18.0, -4.0],
-    ];
-    for (part, expected_offset) in CREEPER_PARTS[2..].iter().zip(leg_offsets) {
-        assert_eq!(part.pose.offset, expected_offset);
-        assert_eq!(part.pose.rotation, [0.0, 0.0, 0.0]);
-        assert_eq!(part.cubes, CREEPER_LEG.as_slice());
-        assert!(part.children.is_empty());
-    }
-}
-
-#[test]
-fn creeper_model_mesh_uses_vanilla_body_layer_geometry() {
-    let mesh = entity_model_mesh(&[EntityModelInstance::new(
-        50,
-        EntityModelKind::Creeper,
-        [0.0, 64.0, 0.0],
-        0.0,
-    )]);
-
-    assert_eq!(mesh.opaque_faces, 36);
-    assert_eq!(mesh.vertices.len(), 144);
-    assert_eq!(mesh.indices.len(), 216);
-
-    let (min, max) = mesh_extents(&mesh);
-    assert_close3(min, [-0.25, 64.001, -0.375]);
-    assert_close3(max, [0.25, 65.626, 0.375]);
-}
-
-#[test]
-fn creeper_texture_ref_matches_vanilla_renderer() {
-    assert_eq!(EntityModelKind::Creeper.model_key(), "creeper");
-    assert_eq!(
-        EntityModelKind::Creeper.vanilla_texture_ref(),
-        Some(EntityModelTextureRef {
-            path: "textures/entity/creeper/creeper.png",
-            size: [64, 32],
-        })
-    );
-    assert_eq!(
-        EntityModelKind::Chicken {
-            variant: ChickenModelVariant::Temperate,
-            baby: false
-        }
-        .vanilla_texture_ref(),
-        Some(EntityModelTextureRef {
-            path: "textures/entity/chicken/chicken_temperate.png",
-            size: [64, 32],
-        })
-    );
-}
-
-#[test]
-fn creeper_textured_layer_passes_match_vanilla_renderer_model_layer() {
-    let passes = creeper_textured_layer_passes();
-    assert_eq!(passes.len(), 1);
-    assert_eq!(passes[0].kind, EntityModelLayerKind::CreeperBase);
-    assert_eq!(passes[0].model_layer, MODEL_LAYER_CREEPER);
-    assert_eq!(passes[0].texture, CREEPER_TEXTURE_REF);
-    assert_eq!(passes[0].parts, CREEPER_TEXTURED_PARTS.as_slice());
-    assert_eq!(passes[0].tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(
-        (passes[0].collector_order, passes[0].submit_sequence),
-        (0, 0)
-    );
-}
-
-#[test]
-fn creeper_textured_model_parts_match_vanilla_model_layer_uv_sources() {
-    assert_eq!(MODEL_LAYER_CREEPER, "minecraft:creeper#main");
-    assert_eq!(CREEPER_TEXTURED_PARTS.len(), 6);
-    assert_eq!(
-        CREEPER_TEXTURED_HEAD[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, -8.0, -4.0],
-            size: [8.0, 8.0, 8.0],
-            uv_size: [8.0, 8.0, 8.0],
-            tex: [0.0, 0.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        CREEPER_TEXTURED_BODY[0],
-        TexturedModelCubeDesc {
-            min: [-4.0, 0.0, -2.0],
-            size: [8.0, 12.0, 4.0],
-            uv_size: [8.0, 12.0, 4.0],
-            tex: [16.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(
-        CREEPER_TEXTURED_LEG[0],
-        TexturedModelCubeDesc {
-            min: [-2.0, 0.0, -2.0],
-            size: [4.0, 6.0, 4.0],
-            uv_size: [4.0, 6.0, 4.0],
-            tex: [0.0, 16.0],
-            mirror: false,
-        }
-    );
-    assert_eq!(CREEPER_TEXTURED_PARTS[0].pose, CREEPER_PARTS[0].pose);
-    assert_eq!(CREEPER_TEXTURED_PARTS[1].pose, CREEPER_PARTS[1].pose);
-    assert_eq!(CREEPER_TEXTURED_PARTS[5].pose, CREEPER_PARTS[5].pose);
-}
-
-#[test]
-fn entity_texture_atlas_stitches_official_creeper_png_slot() {
-    let (layout, rgba) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
-
-    assert_eq!(layout.width, 64);
-    assert_eq!(layout.height, 32);
-    assert_eq!(layout.entries.len(), 1);
-    assert_eq!(
-        layout.entries[0].texture.path,
-        "textures/entity/creeper/creeper.png"
-    );
-    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
-    assert_close2(layout.entries[0].uv.max, [1.0, 1.0]);
-    assert_eq!(&rgba[0..4], &[0; 4]);
-}
-
-#[test]
-fn creeper_textured_mesh_uses_vanilla_uvs_tints_and_body_layer_bounds() {
-    let (atlas, _) = build_entity_model_texture_atlas(&creeper_texture_images()).unwrap();
-    let mesh = entity_model_textured_mesh(
-        &[EntityModelInstance::new(
-            910,
-            EntityModelKind::Creeper,
-            [0.0, 64.0, 0.0],
-            0.0,
-        )],
-        &atlas,
-    );
-
-    assert_eq!(mesh.cutout_faces, 36);
-    assert_eq!(mesh.vertices.len(), 144);
-    assert_eq!(mesh.indices.len(), 216);
-    assert_close2(mesh.vertices[0].uv, [16.0 / 64.0, 0.0]);
-    assert!(mesh
-        .vertices
-        .iter()
-        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
-    let (min, max) = textured_mesh_extents(&mesh);
-    assert_close3(min, [-0.25, 64.001, -0.375]);
-    assert_close3(max, [0.25, 65.626, 0.375]);
 }
 
 #[test]
@@ -1839,17 +1656,6 @@ fn assert_close2(actual: [f32; 2], expected: [f32; 2]) {
             "expected {expected}, got {actual}"
         );
     }
-}
-
-fn creeper_texture_images() -> Vec<EntityModelTextureImage> {
-    creeper_entity_texture_refs()
-        .iter()
-        .enumerate()
-        .map(|(index, texture)| {
-            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
-            EntityModelTextureImage::new(*texture, vec![index as u8; len])
-        })
-        .collect()
 }
 
 fn spider_texture_images() -> Vec<EntityModelTextureImage> {
