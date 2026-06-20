@@ -170,4 +170,162 @@ fn spider_texture_refs_match_vanilla_renderers() {
             size: [64, 32],
         })
     );
+    assert_eq!(
+        spider_entity_texture_refs(),
+        [
+            EntityModelTextureRef {
+                path: "textures/entity/spider/spider.png",
+                size: [64, 32],
+            },
+            EntityModelTextureRef {
+                path: "textures/entity/spider/cave_spider.png",
+                size: [64, 32],
+            },
+        ]
+    );
+}
+
+#[test]
+fn spider_textured_layer_passes_match_vanilla_renderer_model_layers() {
+    let spider = spider_textured_layer_passes(false);
+    assert_eq!(spider.len(), 1);
+    assert_eq!(spider[0].kind, EntityModelLayerKind::SpiderBase);
+    assert_eq!(spider[0].model_layer, MODEL_LAYER_SPIDER);
+    assert_eq!(spider[0].texture, SPIDER_TEXTURE_REF);
+    assert_eq!(spider[0].parts, SPIDER_TEXTURED_PARTS.as_slice());
+    assert_eq!(spider[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (spider[0].collector_order, spider[0].submit_sequence),
+        (0, 0)
+    );
+
+    let cave = spider_textured_layer_passes(true);
+    assert_eq!(cave.len(), 1);
+    assert_eq!(cave[0].kind, EntityModelLayerKind::SpiderBase);
+    assert_eq!(cave[0].model_layer, MODEL_LAYER_CAVE_SPIDER);
+    assert_eq!(cave[0].texture, CAVE_SPIDER_TEXTURE_REF);
+    assert_eq!(cave[0].parts, SPIDER_TEXTURED_PARTS.as_slice());
+    assert_eq!(cave[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!((cave[0].collector_order, cave[0].submit_sequence), (0, 0));
+}
+
+#[test]
+fn spider_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_SPIDER, "minecraft:spider#main");
+    assert_eq!(MODEL_LAYER_CAVE_SPIDER, "minecraft:cave_spider#main");
+    assert_eq!(SPIDER_TEXTURED_PARTS.len(), 11);
+    assert_eq!(
+        SPIDER_TEXTURED_HEAD[0],
+        TexturedModelCubeDesc {
+            min: [-4.0, -4.0, -8.0],
+            size: [8.0, 8.0, 8.0],
+            uv_size: [8.0, 8.0, 8.0],
+            tex: [32.0, 4.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        SPIDER_TEXTURED_BODY_0[0],
+        TexturedModelCubeDesc {
+            min: [-3.0, -3.0, -3.0],
+            size: [6.0, 6.0, 6.0],
+            uv_size: [6.0, 6.0, 6.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        SPIDER_TEXTURED_BODY_1[0],
+        TexturedModelCubeDesc {
+            min: [-5.0, -4.0, -6.0],
+            size: [10.0, 8.0, 12.0],
+            uv_size: [10.0, 8.0, 12.0],
+            tex: [0.0, 12.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        SPIDER_TEXTURED_RIGHT_LEG[0],
+        TexturedModelCubeDesc {
+            min: [-15.0, -1.0, -1.0],
+            size: [16.0, 2.0, 2.0],
+            uv_size: [16.0, 2.0, 2.0],
+            tex: [18.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        SPIDER_TEXTURED_LEFT_LEG[0],
+        TexturedModelCubeDesc {
+            min: [-1.0, -1.0, -1.0],
+            size: [16.0, 2.0, 2.0],
+            uv_size: [16.0, 2.0, 2.0],
+            tex: [18.0, 0.0],
+            mirror: true,
+        }
+    );
+    assert_eq!(SPIDER_TEXTURED_PARTS[0].pose, SPIDER_PARTS[0].pose);
+    assert_eq!(SPIDER_TEXTURED_PARTS[3].pose, SPIDER_PARTS[3].pose);
+    assert_eq!(SPIDER_TEXTURED_PARTS[10].pose, SPIDER_PARTS[10].pose);
+}
+
+#[test]
+fn entity_texture_atlas_stitches_official_spider_png_slots() {
+    let (layout, rgba) = build_entity_model_texture_atlas(&spider_texture_images()).unwrap();
+
+    assert_eq!(layout.width, 64);
+    assert_eq!(layout.height, 64);
+    assert_eq!(layout.entries.len(), 2);
+    assert_eq!(
+        layout.entries[0].texture.path,
+        "textures/entity/spider/spider.png"
+    );
+    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
+    assert_close2(layout.entries[0].uv.max, [1.0, 0.5]);
+    assert_eq!(
+        layout.entries[1].texture.path,
+        "textures/entity/spider/cave_spider.png"
+    );
+    assert_close2(layout.entries[1].uv.min, [0.0, 0.5]);
+    assert_close2(layout.entries[1].uv.max, [1.0, 1.0]);
+    assert_eq!(&rgba[0..4], &[0; 4]);
+    let cave_start = rgba_offset(layout.width, 32, 0, "cave spider atlas row").unwrap();
+    assert_eq!(&rgba[cave_start..cave_start + 4], &[1; 4]);
+}
+
+#[test]
+fn spider_textured_mesh_uses_vanilla_uvs_tints_and_cave_scale() {
+    let (atlas, _) = build_entity_model_texture_atlas(&spider_texture_images()).unwrap();
+
+    let spider = entity_model_textured_mesh(
+        &[EntityModelInstance::spider(912, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert_eq!(spider.cutout_faces, 66);
+    assert_eq!(spider.vertices.len(), 264);
+    assert_eq!(spider.indices.len(), 396);
+    assert_close2(spider.vertices[0].uv, [48.0 / 64.0, 4.0 / 64.0]);
+    assert!(spider
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    let (min, max) = textured_mesh_extents(&spider);
+    assert_close3(min, [-1.0282283, 64.0193, -0.9375]);
+    assert_close3(max, [1.0282283, 64.8135, 0.7696068]);
+
+    let cave = entity_model_textured_mesh(
+        &[EntityModelInstance::cave_spider(913, [0.0, 64.0, 0.0], 0.0)],
+        &atlas,
+    );
+    assert_eq!(cave.cutout_faces, 66);
+    assert_eq!(cave.vertices.len(), 264);
+    assert_eq!(cave.indices.len(), 396);
+    assert_close2(cave.vertices[0].uv, [48.0 / 64.0, 0.5625]);
+    assert!(cave
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    let (min, max) = textured_mesh_extents(&cave);
+    assert_close3(min, [-0.71976, 64.01351, -0.65625]);
+    assert_close3(max, [0.71976, 64.56945, 0.5387248]);
 }

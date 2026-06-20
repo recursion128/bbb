@@ -143,8 +143,16 @@ fn entity_model_mesh_with_options(
                     emit_creeper_model(&mut mesh, *instance);
                 }
             }
-            EntityModelKind::Spider => emit_spider_model(&mut mesh, *instance),
-            EntityModelKind::CaveSpider => emit_cave_spider_model(&mut mesh, *instance),
+            EntityModelKind::Spider => {
+                if !skip_texture_backed_entities {
+                    emit_spider_model(&mut mesh, *instance);
+                }
+            }
+            EntityModelKind::CaveSpider => {
+                if !skip_texture_backed_entities {
+                    emit_cave_spider_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::Enderman => emit_enderman_model(&mut mesh, *instance),
             EntityModelKind::IronGolem => emit_iron_golem_model(&mut mesh, *instance),
             EntityModelKind::SnowGolem => emit_snow_golem_model(&mut mesh, *instance),
@@ -910,8 +918,12 @@ fn emit_cave_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     emit_model_parts(
         mesh,
         &SPIDER_PARTS,
-        mesh_transformer_scaled_model_root_transform(instance, CAVE_SPIDER_SCALE),
+        cave_spider_model_root_transform(instance),
     );
+}
+
+pub(super) fn cave_spider_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    mesh_transformer_scaled_model_root_transform(instance, CAVE_SPIDER_SCALE)
 }
 
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {

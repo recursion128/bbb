@@ -3960,8 +3960,20 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         EntityModelInstance::cow_variant(308, [8.0, 64.0, 0.0], 0.0, CowModelVariant::Warm, false);
     let player = EntityModelInstance::player(309, [10.0, 64.0, 0.0], 0.0, false);
     let creeper = EntityModelInstance::new(310, EntityModelKind::Creeper, [12.0, 64.0, 0.0], 0.0);
-    let colored =
-        entity_model_colored_runtime_mesh(&[chicken, sheep, wolf, boat, pig, cow, player, creeper]);
+    let spider = EntityModelInstance::spider(311, [14.0, 64.0, 0.0], 0.0);
+    let cave_spider = EntityModelInstance::cave_spider(312, [16.0, 64.0, 0.0], 0.0);
+    let colored = entity_model_colored_runtime_mesh(&[
+        chicken,
+        sheep,
+        wolf,
+        boat,
+        pig,
+        cow,
+        player,
+        creeper,
+        spider,
+        cave_spider,
+    ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
     let legacy_chicken_geometry_guard = entity_model_mesh(&[chicken]);
@@ -3980,6 +3992,10 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_player_geometry_guard.vertices.is_empty());
     let legacy_creeper_geometry_guard = entity_model_mesh(&[creeper]);
     assert!(!legacy_creeper_geometry_guard.vertices.is_empty());
+    let legacy_spider_geometry_guard = entity_model_mesh(&[spider]);
+    assert!(!legacy_spider_geometry_guard.vertices.is_empty());
+    let legacy_cave_spider_geometry_guard = entity_model_mesh(&[cave_spider]);
+    assert!(!legacy_cave_spider_geometry_guard.vertices.is_empty());
 }
 
 #[test]
@@ -8261,6 +8277,17 @@ fn player_texture_images() -> Vec<EntityModelTextureImage> {
 
 fn creeper_texture_images() -> Vec<EntityModelTextureImage> {
     creeper_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
+fn spider_texture_images() -> Vec<EntityModelTextureImage> {
+    spider_entity_texture_refs()
         .iter()
         .enumerate()
         .map(|(index, texture)| {

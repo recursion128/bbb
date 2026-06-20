@@ -129,6 +129,8 @@ mod tests {
                 "textures/entity/cow/cow_cold.png",
                 "textures/entity/cow/cow_cold_baby.png",
                 "textures/entity/creeper/creeper.png",
+                "textures/entity/spider/spider.png",
+                "textures/entity/spider/cave_spider.png",
                 "textures/entity/boat/acacia.png",
                 "textures/entity/chest_boat/acacia.png",
                 "textures/entity/boat/bamboo.png",

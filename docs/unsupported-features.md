@@ -492,14 +492,17 @@ When an agent does any of the following, update this file in the same slice:
       swelling scale, white overlay flash, head/walk animation, and lighting
       remain unsupported
     - base spider entities as renderer-owned vanilla 26.1
-      `SpiderModel.createSpiderBodyLayer()` geometry, with the official
+      `SpiderModel.createSpiderBodyLayer()` geometry, with
+      `ModelLayers.SPIDER`, the official
       `textures/entity/spider/spider.png` texture reference from
-      `SpiderRenderer` recorded; cave spider entities use the same vanilla
-      26.1 body layer through `ModelLayers.CAVE_SPIDER`
-      `MeshTransformer.scaling(0.7F)` and the official
+      `SpiderRenderer`, texture-backed base layer pass emission, and official
+      PNG atlas upload/bind/sample path; cave spider entities use the same
+      vanilla 26.1 body layer through `ModelLayers.CAVE_SPIDER`
+      `MeshTransformer.scaling(0.7F)`, the official
       `textures/entity/spider/cave_spider.png` texture reference from
-      `CaveSpiderRenderer`; `spider_eyes.png` emissive layer, head/walk
-      animation, and death flip remain unsupported
+      `CaveSpiderRenderer`, texture-backed base layer pass emission, and
+      official PNG atlas upload/bind/sample path; `spider_eyes.png` emissive
+      layer, head/walk animation, death flip, and lighting remain unsupported
     - enderman entities as renderer-owned vanilla 26.1
       `EndermanModel.createBodyLayer()` geometry, including its
       `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,

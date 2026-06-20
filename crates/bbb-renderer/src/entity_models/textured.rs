@@ -7,7 +7,7 @@ use super::{
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
         PigModelVariant, SheepWoolColor,
     },
-    entity_model_root_transform,
+    cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
     model_layers::*,
     player_model_root_transform,
@@ -24,6 +24,7 @@ pub(super) enum EntityModelLayerKind {
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
+    SpiderBase,
     WolfBase,
     WolfCollar,
 }
@@ -57,6 +58,12 @@ pub(super) fn entity_model_textured_mesh(
             }
             EntityModelKind::Creeper => {
                 emit_creeper_textured_model(&mut mesh, *instance, atlas);
+            }
+            EntityModelKind::Spider => {
+                emit_spider_textured_model(&mut mesh, *instance, false, atlas);
+            }
+            EntityModelKind::CaveSpider => {
+                emit_spider_textured_model(&mut mesh, *instance, true, atlas);
             }
             EntityModelKind::Player { slim } => {
                 emit_player_textured_model(&mut mesh, *instance, slim, atlas);
@@ -192,6 +199,32 @@ fn emit_creeper_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     for pass in creeper_textured_layer_passes() {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
+}
+
+fn emit_spider_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    cave: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = if cave {
+        cave_spider_model_root_transform(instance)
+    } else {
+        entity_model_root_transform(instance)
+    };
+    for pass in spider_textured_layer_passes(cave) {
         let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
             continue;
         };
@@ -343,6 +376,26 @@ pub(super) fn creeper_textured_layer_passes() -> Vec<EntityModelLayerPass> {
         model_layer: MODEL_LAYER_CREEPER,
         texture: CREEPER_TEXTURE_REF,
         parts: &CREEPER_TEXTURED_PARTS,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(super) fn spider_textured_layer_passes(cave: bool) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::SpiderBase,
+        model_layer: if cave {
+            MODEL_LAYER_CAVE_SPIDER
+        } else {
+            MODEL_LAYER_SPIDER
+        },
+        texture: if cave {
+            CAVE_SPIDER_TEXTURE_REF
+        } else {
+            SPIDER_TEXTURE_REF
+        },
+        parts: &SPIDER_TEXTURED_PARTS,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
