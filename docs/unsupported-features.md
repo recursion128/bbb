@@ -96,6 +96,7 @@ When an agent does any of the following, update this file in the same slice:
     - advancement update/select-tab state
     - recipe book add/remove/settings updates
     - recipe access `UpdateRecipes` property-set and stonecutter updates
+    - command tree and registry tag updates
     - HUD system chat, action-bar, title/subtitle, and title timing updates
     - world border initialize/center/size/warning updates
     - level chunk insert, block/section updates, chunk view, and chunk forgets

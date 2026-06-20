@@ -577,9 +577,10 @@ mod tests {
         BlockEntityData, BlockEvent, BlockPos as ProtocolBlockPos, BlockUpdate, BossBarColor,
         BossBarOverlay, BossEvent, BossEventFlags, BossEventOperation, ChangeDifficulty,
         ChatFormatting, ChatTypeBound, ChatTypeHolder, ChunkBiomeData, ChunkHeightmapData,
-        ChunkPos as ProtocolChunkPos, ChunksBiomes, ClearTitles, ClockUpdate, CommandSuggestion,
-        CommandSuggestions, CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent,
-        ContainerSetData, ContainerSetSlot, CookieRequest, Cooldown, CustomChatCompletions,
+        ChunkPos as ProtocolChunkPos, ChunksBiomes, ClearTitles, ClockUpdate,
+        CommandArgumentParser, CommandNode, CommandNodeType, CommandSuggestion, CommandSuggestions,
+        Commands, CommonPlayerSpawnInfo, ContainerClose, ContainerSetContent, ContainerSetData,
+        ContainerSetSlot, CookieRequest, Cooldown, CustomChatCompletions,
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
         DamageEvent, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample,
         DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor, EntityAnimation,
@@ -598,22 +599,23 @@ mod tests {
         PlayerPositionUpdate, PlayerRotationUpdate, PlayerTeamMethod, PlayerTeamParameters,
         PongResponse, ProjectilePower, RecipeBookAdd, RecipeBookAddEntry, RecipeBookRemove,
         RecipeBookSettings, RecipeBookTypeSettings, RecipeDisplayEntry, RecipeDisplayId,
-        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RemoteDebugSampleType,
-        RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop, ResourcePackPush,
-        ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot, SectionBlocksUpdate,
-        SelectAdvancementsTab, ServerData, ServerLinkEntry, ServerLinkKnownType, ServerLinkType,
-        ServerLinks, SetActionBarText, SetBorderCenter, SetBorderLerpSize, SetBorderSize,
-        SetBorderWarningDelay, SetBorderWarningDistance, SetCamera, SetChunkCacheCenter,
-        SetChunkCacheRadius, SetCursorItem, SetDefaultSpawnPosition, SetDisplayObjective,
-        SetEntityData, SetEntityLink, SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective,
-        SetObjectiveMethod, SetObjectiveParameters, SetPassengers, SetPlayerInventory,
-        SetPlayerTeam, SetScore, SetSimulationDistance, SetSubtitleText, SetTitleText,
-        SetTitlesAnimation, ShowDialog, SignedMessageBody, SlotDisplaySummary, SoundEntityEvent,
-        SoundEvent, SoundEventHolder, SoundSource, StatUpdate, StonecutterSelectableRecipeSummary,
-        StopSound, StoreCookie, SystemChat, TabList, TagQuery, TakeItemEntity, TeamCollisionRule,
+        RecipeDisplaySummary, RecipeDisplayType, RecipePropertySetSummary, RegistryTags,
+        RemoteDebugSampleType, RemoveEntities, RemoveMobEffect, ResetScore, ResourcePackPop,
+        ResourcePackPush, ResourcePackResponseAction, RotateHead, ScoreboardDisplaySlot,
+        SectionBlocksUpdate, SelectAdvancementsTab, ServerData, ServerLinkEntry,
+        ServerLinkKnownType, ServerLinkType, ServerLinks, SetActionBarText, SetBorderCenter,
+        SetBorderLerpSize, SetBorderSize, SetBorderWarningDelay, SetBorderWarningDistance,
+        SetCamera, SetChunkCacheCenter, SetChunkCacheRadius, SetCursorItem,
+        SetDefaultSpawnPosition, SetDisplayObjective, SetEntityData, SetEntityLink,
+        SetEntityMotion, SetEquipment, SetHeldSlot, SetObjective, SetObjectiveMethod,
+        SetObjectiveParameters, SetPassengers, SetPlayerInventory, SetPlayerTeam, SetScore,
+        SetSimulationDistance, SetSubtitleText, SetTitleText, SetTitlesAnimation, ShowDialog,
+        SignedMessageBody, SlotDisplaySummary, SoundEntityEvent, SoundEvent, SoundEventHolder,
+        SoundSource, StatUpdate, StonecutterSelectableRecipeSummary, StopSound, StoreCookie,
+        SystemChat, TabList, TagNetworkPayload, TagQuery, TakeItemEntity, TeamCollisionRule,
         TeamVisibility, TeleportEntity, TestInstanceBlockStatus, TickingState, TickingStep,
         TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements, UpdateAttributes,
-        UpdateMobEffect, UpdateRecipes, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
+        UpdateMobEffect, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d, Vec3i as ProtocolVec3i,
         WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
     };
     use bbb_protocol::{
@@ -918,6 +920,62 @@ mod tests {
         assert_eq!(report.world_counters.custom_chat_completions_tracked, 1);
         assert_eq!(report.world_counters.command_suggestion_packets, 1);
         assert_eq!(report.world_counters.command_suggestion_entries_tracked, 2);
+    }
+
+    #[tokio::test]
+    async fn probe_applies_command_tree_and_update_tags_to_world() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Commands(command_tree_packet("say")))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::UpdateTags(UpdateTags {
+                registries: vec![RegistryTags {
+                    registry: "minecraft:item".to_string(),
+                    tags: vec![TagNetworkPayload {
+                        tag: "minecraft:logs".to_string(),
+                        entries: vec![5, 6, 7],
+                    }],
+                }],
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(2, ChunkPos { x: 0, z: 0 });
+        let commands = report.world.commands();
+        assert_eq!(commands.root_index, 0);
+        assert_eq!(commands.nodes.len(), 3);
+        assert_eq!(commands.nodes[1].name.as_deref(), Some("say"));
+        assert_eq!(commands.nodes[2].name.as_deref(), Some("message"));
+        assert_eq!(
+            commands.nodes[2].parser.as_ref().unwrap().name,
+            "minecraft:message"
+        );
+        assert_eq!(
+            commands.nodes[2].suggestions.as_deref(),
+            Some("minecraft:ask_server")
+        );
+        assert!(commands.command_requires_signed_arguments("say hello world"));
+        assert_eq!(
+            report.world.registry_tags("minecraft:item").unwrap().tags["minecraft:logs"],
+            vec![5, 6, 7]
+        );
+        assert_eq!(report.world_counters.command_tree_packets, 1);
+        assert_eq!(report.world_counters.command_nodes_tracked, 3);
+        assert_eq!(report.world_counters.command_literal_nodes_tracked, 1);
+        assert_eq!(report.world_counters.command_argument_nodes_tracked, 1);
+        assert_eq!(report.world_counters.command_executable_nodes_tracked, 1);
+        assert_eq!(report.world_counters.command_restricted_nodes_tracked, 1);
+        assert_eq!(report.world_counters.update_tags_packets, 1);
+        assert_eq!(report.world_counters.last_update_tags_registry_count, 1);
+        assert_eq!(report.world_counters.last_update_tags_total_tag_count, 1);
+        assert_eq!(report.world_counters.last_update_tags_total_value_count, 3);
+        assert_eq!(report.world_counters.tag_registries_tracked, 1);
+        assert_eq!(report.world_counters.tags_tracked, 1);
+        assert_eq!(report.world_counters.tag_entries_tracked, 3);
     }
 
     #[tokio::test]
@@ -4475,6 +4533,51 @@ mod tests {
                 sea_level: 63,
             },
             enforces_secure_chat: false,
+        }
+    }
+
+    fn command_tree_packet(literal: &str) -> Commands {
+        Commands {
+            root_index: 0,
+            nodes: vec![
+                CommandNode {
+                    node_type: CommandNodeType::Root,
+                    flags: 0,
+                    children: vec![1],
+                    redirect: None,
+                    name: None,
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Literal,
+                    flags: 1,
+                    children: vec![2],
+                    redirect: None,
+                    name: Some(literal.to_string()),
+                    parser: None,
+                    suggestions: None,
+                    executable: false,
+                    restricted: false,
+                },
+                CommandNode {
+                    node_type: CommandNodeType::Argument,
+                    flags: 54,
+                    children: Vec::new(),
+                    redirect: None,
+                    name: Some("message".to_string()),
+                    parser: Some(CommandArgumentParser {
+                        type_id: 20,
+                        name: "minecraft:message".to_string(),
+                        properties: vec![2],
+                    }),
+                    suggestions: Some("minecraft:ask_server".to_string()),
+                    executable: true,
+                    restricted: true,
+                },
+            ],
         }
     }
 
