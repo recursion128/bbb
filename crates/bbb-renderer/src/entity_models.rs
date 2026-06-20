@@ -24,6 +24,12 @@ pub enum EntityModelKind {
         show_base_plate: bool,
         pose: ArmorStandModelPose,
     },
+    Slime {
+        size: i32,
+    },
+    MagmaCube {
+        size: i32,
+    },
     Zombie {
         baby: bool,
     },
@@ -207,6 +213,8 @@ impl EntityModelKind {
             } => "humanoid_armor_stand_baby",
             Self::ArmorStand { small: false, .. } => "armor_stand",
             Self::ArmorStand { small: true, .. } => "armor_stand_small",
+            Self::Slime { .. } => "slime",
+            Self::MagmaCube { .. } => "magma_cube",
             Self::Zombie { baby: false } => "zombie",
             Self::Zombie { baby: true } => "zombie_baby",
             Self::ZombieVariant {
@@ -338,6 +346,8 @@ impl EntityModelKind {
     pub fn vanilla_texture_ref(self) -> Option<EntityModelTextureRef> {
         match self {
             Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
+            Self::Slime { .. } => Some(SLIME_TEXTURE_REF),
+            Self::MagmaCube { .. } => Some(MAGMA_CUBE_TEXTURE_REF),
             Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
             Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
             Self::ZombieVariant {
@@ -481,6 +491,19 @@ impl EntityModelInstance {
                 show_base_plate,
                 pose,
             },
+            position,
+            y_rot,
+        )
+    }
+
+    pub fn slime(entity_id: i32, position: [f32; 3], y_rot: f32, size: i32) -> Self {
+        Self::new(entity_id, EntityModelKind::Slime { size }, position, y_rot)
+    }
+
+    pub fn magma_cube(entity_id: i32, position: [f32; 3], y_rot: f32, size: i32) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::MagmaCube { size },
             position,
             y_rot,
         )
@@ -759,6 +782,10 @@ const ILLAGER_ROBE: [f32; 4] = [0.38, 0.40, 0.44, 1.0];
 const ILLAGER_HAT_COLOR: [f32; 4] = [0.30, 0.31, 0.34, 1.0];
 const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
+const SLIME_GREEN: [f32; 4] = [0.42, 0.82, 0.30, 1.0];
+const SLIME_FEATURE_DARK: [f32; 4] = [0.16, 0.28, 0.10, 1.0];
+const MAGMA_CUBE_ORANGE: [f32; 4] = [0.92, 0.38, 0.12, 1.0];
+const MAGMA_CUBE_CORE: [f32; 4] = [0.98, 0.72, 0.22, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
 const ZOMBIE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -923,6 +950,16 @@ const VINDICATOR_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const ARMOR_STAND_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/armorstand/armorstand.png",
+    size: [64, 64],
+};
+
+const SLIME_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/slime/slime.png",
+    size: [64, 32],
+};
+
+const MAGMA_CUBE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/slime/magmacube.png",
     size: [64, 64],
 };
 
@@ -1188,6 +1225,168 @@ const SMALL_ARMOR_STAND_PARTS: [ModelPartDesc; 10] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &SMALL_ARMOR_STAND_BASE_PLATE,
+        children: &[],
+    },
+];
+
+const SLIME_INNER_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, 17.0, -3.0],
+    size: [6.0, 6.0, 6.0],
+    color: SLIME_GREEN,
+}];
+
+const SLIME_RIGHT_EYE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.25, 18.0, -3.5],
+    size: [2.0, 2.0, 2.0],
+    color: SLIME_FEATURE_DARK,
+}];
+
+const SLIME_LEFT_EYE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [1.25, 18.0, -3.5],
+    size: [2.0, 2.0, 2.0],
+    color: SLIME_FEATURE_DARK,
+}];
+
+const SLIME_MOUTH: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 21.0, -3.5],
+    size: [1.0, 1.0, 1.0],
+    color: SLIME_FEATURE_DARK,
+}];
+
+const SLIME_OUTER_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 16.0, -4.0],
+    size: [8.0, 8.0, 8.0],
+    color: SLIME_GREEN,
+}];
+
+// Vanilla 26.1 ModelLayers.SLIME plus ModelLayers.SLIME_OUTER.
+const SLIME_PARTS: [ModelPartDesc; 5] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SLIME_INNER_CUBE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SLIME_RIGHT_EYE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SLIME_LEFT_EYE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SLIME_MOUTH,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &SLIME_OUTER_CUBE,
+        children: &[],
+    },
+];
+
+const MAGMA_CUBE_SEGMENT_0: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 16.0, -4.0],
+    size: [8.0, 1.0, 8.0],
+    color: MAGMA_CUBE_ORANGE,
+}];
+
+const MAGMA_CUBE_SEGMENT_1: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 17.0, -4.0],
+    size: [8.0, 1.0, 8.0],
+    color: MAGMA_CUBE_ORANGE,
+}];
+
+const MAGMA_CUBE_SEGMENT_2: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 18.0, -4.0],
+    size: [8.0, 1.0, 8.0],
+    color: MAGMA_CUBE_ORANGE,
+}];
+
+const MAGMA_CUBE_SEGMENT_3: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 19.0, -4.0],
+    size: [8.0, 1.0, 8.0],
+    color: MAGMA_CUBE_ORANGE,
+}];
+
+const MAGMA_CUBE_SEGMENT_4: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 20.0, -4.0],
+    size: [8.0, 1.0, 8.0],
+    color: MAGMA_CUBE_ORANGE,
+}];
+
+const MAGMA_CUBE_SEGMENT_5: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 21.0, -4.0],
+    size: [8.0, 1.0, 8.0],
+    color: MAGMA_CUBE_ORANGE,
+}];
+
+const MAGMA_CUBE_SEGMENT_6: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 22.0, -4.0],
+    size: [8.0, 1.0, 8.0],
+    color: MAGMA_CUBE_ORANGE,
+}];
+
+const MAGMA_CUBE_SEGMENT_7: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 23.0, -4.0],
+    size: [8.0, 1.0, 8.0],
+    color: MAGMA_CUBE_ORANGE,
+}];
+
+const MAGMA_CUBE_INSIDE_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 18.0, -2.0],
+    size: [4.0, 4.0, 4.0],
+    color: MAGMA_CUBE_CORE,
+}];
+
+// Vanilla 26.1 MagmaCubeModel.createBodyLayer().
+const MAGMA_CUBE_PARTS: [ModelPartDesc; 9] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_SEGMENT_0,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_SEGMENT_1,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_SEGMENT_2,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_SEGMENT_3,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_SEGMENT_4,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_SEGMENT_5,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_SEGMENT_6,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_SEGMENT_7,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &MAGMA_CUBE_INSIDE_CUBE,
         children: &[],
     },
 ];
@@ -4096,6 +4295,10 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 show_base_plate,
                 pose,
             ),
+            EntityModelKind::Slime { size } => emit_slime_model(&mut mesh, *instance, size),
+            EntityModelKind::MagmaCube { size } => {
+                emit_magma_cube_model(&mut mesh, *instance, size)
+            }
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
             EntityModelKind::ZombieVariant { family, baby } => {
                 emit_zombie_variant_model(&mut mesh, *instance, family, baby)
@@ -4201,6 +4404,25 @@ fn emit_armor_stand_part(
         },
         part.cubes,
     );
+}
+
+fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
+    let size = size as f32;
+    let transform = living_entity_model_root_transform_with_renderer_transform(
+        instance,
+        Mat4::from_scale(Vec3::splat(0.999))
+            * Mat4::from_translation(Vec3::new(0.0, 0.001, 0.0))
+            * Mat4::from_scale(Vec3::splat(size)),
+    );
+    emit_model_parts(mesh, &SLIME_PARTS, transform);
+}
+
+fn emit_magma_cube_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
+    let transform = living_entity_model_root_transform_with_renderer_transform(
+        instance,
+        Mat4::from_scale(Vec3::splat(size as f32)),
+    );
+    emit_model_parts(mesh, &MAGMA_CUBE_PARTS, transform);
 }
 
 fn emit_humanoid_model(
@@ -4871,6 +5093,17 @@ fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
         * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
+}
+
+fn living_entity_model_root_transform_with_renderer_transform(
+    instance: EntityModelInstance,
+    renderer_transform: Mat4,
+) -> Mat4 {
+    Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
+        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
+        * renderer_transform
         * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
 }
 
@@ -6803,6 +7036,117 @@ mod tests {
     }
 
     #[test]
+    fn slime_and_magma_cube_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(SLIME_PARTS.len(), 5);
+        assert_part(
+            &SLIME_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SLIME_INNER_CUBE.as_slice(),
+        );
+        assert_part(
+            &SLIME_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SLIME_RIGHT_EYE.as_slice(),
+        );
+        assert_part(
+            &SLIME_PARTS[2],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SLIME_LEFT_EYE.as_slice(),
+        );
+        assert_part(
+            &SLIME_PARTS[3],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SLIME_MOUTH.as_slice(),
+        );
+        assert_part(
+            &SLIME_PARTS[4],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SLIME_OUTER_CUBE.as_slice(),
+        );
+
+        let magma_segments = [
+            MAGMA_CUBE_SEGMENT_0.as_slice(),
+            MAGMA_CUBE_SEGMENT_1.as_slice(),
+            MAGMA_CUBE_SEGMENT_2.as_slice(),
+            MAGMA_CUBE_SEGMENT_3.as_slice(),
+            MAGMA_CUBE_SEGMENT_4.as_slice(),
+            MAGMA_CUBE_SEGMENT_5.as_slice(),
+            MAGMA_CUBE_SEGMENT_6.as_slice(),
+            MAGMA_CUBE_SEGMENT_7.as_slice(),
+        ];
+        for (index, (part, cubes)) in MAGMA_CUBE_PARTS[..8].iter().zip(magma_segments).enumerate() {
+            assert_part(part, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], cubes);
+            assert_eq!(part.cubes[0].min, [-4.0, 16.0 + index as f32, -4.0]);
+            assert_eq!(part.cubes[0].size, [8.0, 1.0, 8.0]);
+        }
+        assert_part(
+            &MAGMA_CUBE_PARTS[8],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            MAGMA_CUBE_INSIDE_CUBE.as_slice(),
+        );
+    }
+
+    #[test]
+    fn slime_and_magma_cube_meshes_use_vanilla_size_scaling() {
+        let slime = entity_model_mesh(&[EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 1)]);
+        assert_eq!(slime.opaque_faces, 30);
+        assert_eq!(slime.vertices.len(), 120);
+        assert_eq!(slime.indices.len(), 180);
+        let (slime_min, slime_max) = mesh_extents(&slime);
+        assert_close3(slime_min, [-0.24975, 64.0, -0.24975]);
+        assert_close3(slime_max, [0.24975, 64.4995, 0.24975]);
+
+        let large_slime =
+            entity_model_mesh(&[EntityModelInstance::slime(117, [0.0, 64.0, 0.0], 0.0, 4)]);
+        assert_eq!(large_slime.opaque_faces, slime.opaque_faces);
+        let (large_slime_min, large_slime_max) = mesh_extents(&large_slime);
+        assert_close3(large_slime_min, [-0.999, 64.00299, -0.999]);
+        assert_close3(large_slime_max, [0.999, 66.00099, 0.999]);
+
+        let magma_cube = entity_model_mesh(&[EntityModelInstance::magma_cube(
+            80,
+            [0.0, 64.0, 0.0],
+            0.0,
+            3,
+        )]);
+        assert_eq!(magma_cube.opaque_faces, 54);
+        assert_eq!(magma_cube.vertices.len(), 216);
+        assert_eq!(magma_cube.indices.len(), 324);
+        let (magma_min, magma_max) = mesh_extents(&magma_cube);
+        assert_close3(magma_min, [-0.75, 64.003, -0.75]);
+        assert_close3(magma_max, [0.75, 65.503, 0.75]);
+    }
+
+    #[test]
+    fn slime_and_magma_cube_texture_refs_match_vanilla_renderers() {
+        assert_eq!(EntityModelKind::Slime { size: 4 }.model_key(), "slime");
+        assert_eq!(
+            EntityModelKind::Slime { size: 4 }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/slime/slime.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::MagmaCube { size: 3 }.model_key(),
+            "magma_cube"
+        );
+        assert_eq!(
+            EntityModelKind::MagmaCube { size: 3 }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/slime/magmacube.png",
+                size: [64, 64],
+            })
+        );
+    }
+
+    #[test]
     fn spider_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             SPIDER_HEAD[0],
@@ -7889,6 +8233,11 @@ mod tests {
             }
             .model_key(),
             "armor_stand_small"
+        );
+        assert_eq!(EntityModelKind::Slime { size: 4 }.model_key(), "slime");
+        assert_eq!(
+            EntityModelKind::MagmaCube { size: 3 }.model_key(),
+            "magma_cube"
         );
         assert_eq!(
             EntityModelKind::Zombie { baby: true }.model_key(),

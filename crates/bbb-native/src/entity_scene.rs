@@ -176,6 +176,8 @@ const ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 22;
 const ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1;
 const ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 4;
 const ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 8;
+const SLIME_SIZE_DATA_ID: u8 = 16;
+const SLIME_DEFAULT_SIZE: i32 = 1;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -463,9 +465,9 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => {
             placeholder("todo_llama_spit_bounds", 0.25, 0.25, 0.25)
         }
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => {
-            placeholder("todo_magma_cube_bounds", 0.52, 0.52, 0.52)
-        }
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {
+            size: slime_size(data_values),
+        },
         VANILLA_ENTITY_TYPE_MARKER_ID => placeholder("todo_marker_bounds", 0.0625, 0.0625, 0.0625),
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => {
             placeholder("todo_ominous_item_spawner_bounds", 0.25, 0.25, 0.25)
@@ -484,7 +486,9 @@ fn entity_model_kind(
             placeholder("todo_shulker_bullet_bounds", 0.3125, 0.3125, 0.3125)
         }
         VANILLA_ENTITY_TYPE_SILVERFISH_ID => placeholder("todo_silverfish_bounds", 0.4, 0.3, 0.4),
-        VANILLA_ENTITY_TYPE_SLIME_ID => placeholder("todo_slime_bounds", 0.52, 0.52, 0.52),
+        VANILLA_ENTITY_TYPE_SLIME_ID => EntityModelKind::Slime {
+            size: slime_size(data_values),
+        },
         VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID => {
             placeholder("todo_small_fireball_bounds", 0.3125, 0.3125, 0.3125)
         }
@@ -580,6 +584,10 @@ fn armor_stand_pose(values: &[bbb_protocol::packets::EntityDataValue]) -> ArmorS
     }
 }
 
+fn slime_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
+    entity_data_int(values, SLIME_SIZE_DATA_ID, SLIME_DEFAULT_SIZE)
+}
+
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     entity_data_bool(values, AGEABLE_MOB_BABY_DATA_ID, false)
 }
@@ -603,6 +611,22 @@ fn entity_data_bool(
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
+fn entity_data_int(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: i32,
+) -> i32 {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Int(value) => Some(*value),
             _ => None,
         })
         .unwrap_or(default)
@@ -802,6 +826,39 @@ mod tests {
                 false,
                 pose,
             )]
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_slime_and_magma_cube_size() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            117,
+            VANILLA_ENTITY_TYPE_SLIME_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            80,
+            VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 117,
+            values: vec![protocol_int_data(SLIME_SIZE_DATA_ID, 4)],
+        }));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 80,
+            values: vec![protocol_int_data(SLIME_SIZE_DATA_ID, 3)],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![
+                EntityModelInstance::slime(117, [1.0, 64.0, -2.0], 0.0, 4),
+                EntityModelInstance::magma_cube(80, [3.0, 64.0, -2.0], 0.0, 3),
+            ]
         );
     }
 
@@ -1026,6 +1083,32 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_kind_uses_exact_models_for_slime_and_magma_cube() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SLIME_ID, &[]),
+            EntityModelKind::Slime { size: 1 }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_SLIME_ID,
+                &[protocol_int_data(SLIME_SIZE_DATA_ID, 4)]
+            ),
+            EntityModelKind::Slime { size: 4 }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, &[]),
+            EntityModelKind::MagmaCube { size: 1 }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+                &[protocol_int_data(SLIME_SIZE_DATA_ID, 3)]
+            ),
+            EntityModelKind::MagmaCube { size: 3 }
+        );
+    }
+
+    #[test]
     fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_COW_ID, &[]),
@@ -1229,6 +1312,14 @@ mod tests {
             data_id,
             serializer_id: 8,
             value: EntityDataValueKind::Boolean(value),
+        }
+    }
+
+    fn protocol_int_data(data_id: u8, value: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 1,
+            value: EntityDataValueKind::Int(value),
         }
     }
 

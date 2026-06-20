@@ -237,8 +237,8 @@ When an agent does any of the following, update this file in the same slice:
       zombified-piglin variants, skeleton and stray/parched/wither-skeleton
       variants, creeper, spider, enderman, iron-golem, snow-golem, witch, and
       evoker/illusioner/pillager/vindicator illager body-layer geometry, armor
-      stand normal/small body-layer geometry, primitive entity model families,
-      and placeholder bounds
+      stand normal/small body-layer geometry, slime/magma-cube body-layer
+      geometry, primitive entity model families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -389,6 +389,18 @@ When an agent does any of the following, update this file in the same slice:
       arm/leg pose metadata projection; armor/equipment/custom-head/elytra/
       held-item layers, hurt wiggle, marker/invisible render-type nuances,
       animation interpolation, and GPU texture binding remain unsupported
+    - slime entities as renderer-owned vanilla 26.1 `SlimeModel` inner
+      `ModelLayers.SLIME` geometry plus outer `ModelLayers.SLIME_OUTER`
+      geometry, official `textures/entity/slime/slime.png` texture reference,
+      and renderer size scaling from slime size metadata; outer translucent
+      layer blending, squish interpolation, particle/audio coupling, lighting,
+      and GPU texture binding remain unsupported
+    - magma cube entities as renderer-owned vanilla 26.1
+      `MagmaCubeModel.createBodyLayer()` segment/inside-cube geometry, official
+      `textures/entity/slime/magmacube.png` texture reference, and renderer
+      size scaling from inherited slime size metadata; segment squish offsets,
+      full-bright block light, particle/audio coupling, and GPU texture binding
+      remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -409,8 +421,9 @@ When an agent does any of the following, update this file in the same slice:
     spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
     snow golem pumpkin/animation presentation, armor stand equipment/custom
-    layers/wiggle/marker presentation, and precise vanilla mesh parity for
-    primitive/placeholder entity families.
+    layers/wiggle/marker presentation, slime/magma-cube squish/translucency/
+    lighting presentation, and precise vanilla mesh parity for primitive/
+    placeholder entity families.
 
 ### Audio Runtime Parity
 
