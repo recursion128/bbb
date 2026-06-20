@@ -233,8 +233,9 @@ When an agent does any of the following, update this file in the same slice:
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/villager/wandering-trader/zombie and
-      husk/drowned variants, skeleton and stray/parched/wither-skeleton
-      variants, creeper, spider, enderman, iron-golem, snow-golem, witch, and
+      husk/drowned/zombie-villager variants, skeleton and
+      stray/parched/wither-skeleton variants, creeper, spider, enderman,
+      iron-golem, snow-golem, witch, and
       evoker/illusioner/pillager/vindicator illager body-layer geometry,
       primitive entity model families, and placeholder bounds
     - equipment
@@ -301,9 +302,13 @@ When an agent does any of the following, update this file in the same slice:
       the shared baby zombie body layer for baby husks; drowned entities use
       vanilla 26.1 `DrownedModel.createBodyLayer(CubeDeformation.NONE)` /
       `BabyDrownedModel.createBodyLayer(CubeDeformation.NONE)` geometry with
-      official adult/baby texture references; `DrownedOuterLayer`, drowned
-      swim rotation, trident throw arm pose, zombie-family armor, held
-      items, attack/head/walk animation, zombie villager variants, piglin
+      official adult/baby texture references; zombie villagers use vanilla
+      26.1 `ZombieVillagerModel.createBodyLayer()` /
+      `BabyZombieVillagerModel.createBodyLayer()` geometry with official base
+      adult/baby texture references; `DrownedOuterLayer`, drowned swim
+      rotation, trident throw arm pose, zombie villager type/profession/level
+      overlays, zombie villager no-hat model selection, converting shake,
+      zombie-family armor, held items, attack/head/walk animation, piglin
       variants, zombified piglin variants, and GPU texture binding remain
       unsupported
     - base skeleton and stray entities as renderer-owned vanilla 26.1
@@ -381,9 +386,9 @@ When an agent does any of the following, update this file in the same slice:
     presentation, pig saddle presentation, sheep wool presentation,
     villager profession/type/held-item/custom-head presentation,
     illager held-item/custom-head/arm-pose presentation, zombie-family
-    armor/drowned outer-layer/swim/trident/zombie-villager/piglin
-    presentation, skeleton armor/overlay/bogged mushroom and sheared-state
-    presentation,
+    armor/drowned outer-layer/swim/trident/zombie-villager overlays/no-hat/
+    converting-state/piglin presentation, skeleton armor/overlay/bogged
+    mushroom and sheared-state presentation,
     creeper swelling/powered overlays,
     spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and

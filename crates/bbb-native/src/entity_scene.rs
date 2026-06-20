@@ -252,7 +252,11 @@ fn entity_model_kind(
             family: ZombieVariantModelFamily::Drowned,
             baby: zombie_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => EntityModelKind::ZombieVariant {
+            family: ZombieVariantModelFamily::ZombieVillager,
+            baby: zombie_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
             humanoid(HumanoidModelFamily::Zombie, zombie_baby(data_values))
         }
         VANILLA_ENTITY_TYPE_PIGLIN_ID => {
@@ -752,6 +756,23 @@ mod tests {
             ),
             EntityModelKind::ZombieVariant {
                 family: ZombieVariantModelFamily::Drowned,
+                baby: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, &[]),
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
                 baby: true
             }
         );

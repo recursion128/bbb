@@ -66,6 +66,7 @@ pub enum EntityModelKind {
 pub enum ZombieVariantModelFamily {
     Husk,
     Drowned,
+    ZombieVillager,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -186,6 +187,14 @@ impl EntityModelKind {
                 family: ZombieVariantModelFamily::Drowned,
                 baby: true,
             } => "drowned_baby",
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: false,
+            } => "zombie_villager",
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: true,
+            } => "zombie_villager_baby",
             Self::Skeleton => "skeleton",
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Stray,
@@ -288,6 +297,14 @@ impl EntityModelKind {
                 family: ZombieVariantModelFamily::Drowned,
                 baby: true,
             } => Some(DROWNED_BABY_TEXTURE_REF),
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: false,
+            } => Some(ZOMBIE_VILLAGER_TEXTURE_REF),
+            Self::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: true,
+            } => Some(ZOMBIE_VILLAGER_BABY_TEXTURE_REF),
             Self::Skeleton => Some(SKELETON_TEXTURE_REF),
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Stray,
@@ -600,6 +617,7 @@ const PLAYER_BLUE: [f32; 4] = [0.22, 0.42, 0.78, 1.0];
 const ZOMBIE_GREEN: [f32; 4] = [0.33, 0.62, 0.34, 1.0];
 const HUSK_TAN: [f32; 4] = [0.60, 0.50, 0.31, 1.0];
 const DROWNED_BLUE: [f32; 4] = [0.23, 0.48, 0.55, 1.0];
+const ZOMBIE_VILLAGER_ROBE: [f32; 4] = [0.38, 0.55, 0.34, 1.0];
 const SKELETON_BONE: [f32; 4] = [0.82, 0.82, 0.72, 1.0];
 const WITHER_SKELETON_DARK: [f32; 4] = [0.14, 0.14, 0.14, 1.0];
 const PARCHED_BONE: [f32; 4] = [0.70, 0.62, 0.48, 1.0];
@@ -651,6 +669,16 @@ const DROWNED_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const DROWNED_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/zombie/drowned_baby.png",
+    size: [64, 64],
+};
+
+const ZOMBIE_VILLAGER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/zombie_villager/zombie_villager.png",
+    size: [64, 64],
+};
+
+const ZOMBIE_VILLAGER_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/zombie_villager/zombie_villager_baby.png",
     size: [64, 64],
 };
 
@@ -1117,6 +1145,251 @@ const BABY_ZOMBIE_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &BABY_ZOMBIE_LEG,
+        children: &[],
+    },
+];
+
+const ADULT_ZOMBIE_VILLAGER_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-4.0, -10.0, -4.0],
+        size: [8.0, 10.0, 8.0],
+        color: ZOMBIE_VILLAGER_ROBE,
+    },
+    ModelCubeDesc {
+        min: [-1.0, -3.0, -6.0],
+        size: [2.0, 4.0, 2.0],
+        color: ZOMBIE_VILLAGER_ROBE,
+    },
+];
+
+const ADULT_ZOMBIE_VILLAGER_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -10.5, -4.5],
+    size: [9.0, 11.0, 9.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const ADULT_ZOMBIE_VILLAGER_HAT_RIM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-8.0, -8.0, -6.0],
+    size: [16.0, 16.0, 1.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const ADULT_ZOMBIE_VILLAGER_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-4.0, 0.0, -3.0],
+        size: [8.0, 12.0, 6.0],
+        color: ZOMBIE_VILLAGER_ROBE,
+    },
+    ModelCubeDesc {
+        min: [-4.05, -0.05, -3.05],
+        size: [8.1, 20.1, 6.1],
+        color: ZOMBIE_VILLAGER_ROBE,
+    },
+];
+
+const ADULT_ZOMBIE_VILLAGER_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const ADULT_ZOMBIE_VILLAGER_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const ADULT_ZOMBIE_VILLAGER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const ADULT_ZOMBIE_VILLAGER_HAT_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, 0.0, 0.0],
+        rotation: [-std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+    },
+    cubes: &ADULT_ZOMBIE_VILLAGER_HAT_RIM,
+    children: &[],
+}];
+
+const ADULT_ZOMBIE_VILLAGER_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_ZOMBIE_VILLAGER_HAT,
+    children: &ADULT_ZOMBIE_VILLAGER_HAT_CHILDREN,
+}];
+
+// Vanilla 26.1 ZombieVillagerModel.createBodyLayer().
+const ADULT_ZOMBIE_VILLAGER_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_ZOMBIE_VILLAGER_HEAD,
+        children: &ADULT_ZOMBIE_VILLAGER_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_ZOMBIE_VILLAGER_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_VILLAGER_RIGHT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_VILLAGER_LEFT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_VILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_ZOMBIE_VILLAGER_LEG,
+        children: &[],
+    },
+];
+
+const BABY_ZOMBIE_VILLAGER_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-2.0, -2.75, -1.5],
+        size: [4.0, 5.0, 3.0],
+        color: ZOMBIE_VILLAGER_ROBE,
+    },
+    ModelCubeDesc {
+        min: [-2.1, -2.85, -1.6],
+        size: [4.2, 6.2, 3.2],
+        color: ZOMBIE_VILLAGER_ROBE,
+    },
+];
+
+const BABY_ZOMBIE_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -8.0, -3.5],
+    size: [8.0, 8.0, 7.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const BABY_ZOMBIE_VILLAGER_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.3, -4.3, -3.8],
+    size: [8.6, 8.6, 7.6],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const BABY_ZOMBIE_VILLAGER_HAT_RIM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-7.0, -0.5, -6.0],
+    size: [14.0, 1.0, 12.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const BABY_ZOMBIE_VILLAGER_NOSE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.0, -0.5],
+    size: [2.0, 2.0, 1.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const BABY_ZOMBIE_VILLAGER_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -0.5, -1.0],
+    size: [2.0, 5.0, 2.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const BABY_ZOMBIE_VILLAGER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -0.5, -1.0],
+    size: [2.0, 3.0, 2.0],
+    color: ZOMBIE_VILLAGER_ROBE,
+}];
+
+const BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -4.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_HAT,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -4.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_HAT_RIM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -1.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_NOSE,
+        children: &[],
+    },
+];
+
+// Vanilla 26.1 BabyZombieVillagerModel.createBodyLayer().
+const BABY_ZOMBIE_VILLAGER_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 18.75, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 16.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_HEAD,
+        children: &BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 15.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, 15.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, 21.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.0, 21.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_ZOMBIE_VILLAGER_LEG,
         children: &[],
     },
 ];
@@ -3245,6 +3518,18 @@ fn emit_zombie_variant_model(
             entity_model_root_transform(instance),
             DROWNED_BLUE,
         ),
+        (ZombieVariantModelFamily::ZombieVillager, false) => emit_model_parts_with_color(
+            mesh,
+            &ADULT_ZOMBIE_VILLAGER_PARTS,
+            entity_model_root_transform(instance),
+            ZOMBIE_VILLAGER_ROBE,
+        ),
+        (ZombieVariantModelFamily::ZombieVillager, true) => emit_model_parts_with_color(
+            mesh,
+            &BABY_ZOMBIE_VILLAGER_PARTS,
+            entity_model_root_transform(instance),
+            ZOMBIE_VILLAGER_ROBE,
+        ),
     }
 }
 
@@ -4012,6 +4297,149 @@ mod tests {
     }
 
     #[test]
+    fn zombie_villager_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            ADULT_ZOMBIE_VILLAGER_HEAD,
+            [
+                ModelCubeDesc {
+                    min: [-4.0, -10.0, -4.0],
+                    size: [8.0, 10.0, 8.0],
+                    color: ZOMBIE_VILLAGER_ROBE,
+                },
+                ModelCubeDesc {
+                    min: [-1.0, -3.0, -6.0],
+                    size: [2.0, 4.0, 2.0],
+                    color: ZOMBIE_VILLAGER_ROBE,
+                },
+            ]
+        );
+        assert_eq!(
+            ADULT_ZOMBIE_VILLAGER_BODY[1],
+            ModelCubeDesc {
+                min: [-4.05, -0.05, -3.05],
+                size: [8.1, 20.1, 6.1],
+                color: ZOMBIE_VILLAGER_ROBE,
+            }
+        );
+        assert_eq!(ADULT_ZOMBIE_VILLAGER_PARTS.len(), 6);
+        assert_part_tree(
+            &ADULT_ZOMBIE_VILLAGER_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_VILLAGER_HEAD.as_slice(),
+            ADULT_ZOMBIE_VILLAGER_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_ZOMBIE_VILLAGER_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_VILLAGER_HAT.as_slice(),
+            ADULT_ZOMBIE_VILLAGER_HAT_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_VILLAGER_HAT_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [-std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_ZOMBIE_VILLAGER_HAT_RIM.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_VILLAGER_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_VILLAGER_BODY.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_VILLAGER_PARTS[2],
+            [-5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_VILLAGER_RIGHT_ARM.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_VILLAGER_PARTS[3],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_VILLAGER_LEFT_ARM.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_VILLAGER_PARTS[4],
+            [-2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_VILLAGER_LEG.as_slice(),
+        );
+        assert_part(
+            &ADULT_ZOMBIE_VILLAGER_PARTS[5],
+            [2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_ZOMBIE_VILLAGER_LEG.as_slice(),
+        );
+
+        assert_eq!(
+            BABY_ZOMBIE_VILLAGER_BODY[1],
+            ModelCubeDesc {
+                min: [-2.1, -2.85, -1.6],
+                size: [4.2, 6.2, 3.2],
+                color: ZOMBIE_VILLAGER_ROBE,
+            }
+        );
+        assert_eq!(BABY_ZOMBIE_VILLAGER_PARTS.len(), 6);
+        assert_part(
+            &BABY_ZOMBIE_VILLAGER_PARTS[0],
+            [0.0, 18.75, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_BODY.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_ZOMBIE_VILLAGER_PARTS[1],
+            [0.0, 16.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_HEAD.as_slice(),
+            BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN[0],
+            [0.0, -4.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_HAT.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN[1],
+            [0.0, -4.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_HAT_RIM.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_VILLAGER_HEAD_CHILDREN[2],
+            [0.0, -1.0, -4.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_NOSE.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_VILLAGER_PARTS[2],
+            [-3.0, 15.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_ARM.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_VILLAGER_PARTS[3],
+            [3.0, 15.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_ARM.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_VILLAGER_PARTS[4],
+            [-1.0, 21.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_LEG.as_slice(),
+        );
+        assert_part(
+            &BABY_ZOMBIE_VILLAGER_PARTS[5],
+            [1.0, 21.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_ZOMBIE_VILLAGER_LEG.as_slice(),
+        );
+    }
+
+    #[test]
     fn zombie_baby_model_mesh_uses_vanilla_body_layer_geometry() {
         let mesh =
             entity_model_mesh(&[EntityModelInstance::zombie(55, [0.0, 64.0, 0.0], 0.0, true)]);
@@ -4096,6 +4524,43 @@ mod tests {
             .vertices
             .iter()
             .any(|vertex| vertex.color == shade_color(DROWNED_BLUE, 0.78)));
+
+        let zombie_villager = entity_model_mesh(&[EntityModelInstance::zombie_variant(
+            153,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::ZombieVillager,
+            false,
+        )]);
+        assert_eq!(zombie_villager.opaque_faces, 60);
+        assert_eq!(zombie_villager.vertices.len(), 240);
+        assert_eq!(zombie_villager.indices.len(), 360);
+        assert!(zombie_villager
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(ZOMBIE_VILLAGER_ROBE, 0.78)));
+        let (zombie_villager_min, zombie_villager_max) = mesh_extents(&zombie_villager);
+        assert_close3(zombie_villager_min, [-0.50000006, 64.001, -0.50000006]);
+        assert_close3(zombie_villager_max, [0.50000006, 66.15725, 0.50000006]);
+
+        let baby_zombie_villager = entity_model_mesh(&[EntityModelInstance::zombie_variant(
+            153,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ZombieVariantModelFamily::ZombieVillager,
+            true,
+        )]);
+        assert_eq!(baby_zombie_villager.opaque_faces, 60);
+        assert_eq!(baby_zombie_villager.vertices.len(), 240);
+        assert_eq!(baby_zombie_villager.indices.len(), 360);
+        assert!(baby_zombie_villager
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(ZOMBIE_VILLAGER_ROBE, 0.78)));
+        let (baby_zombie_villager_min, baby_zombie_villager_max) =
+            mesh_extents(&baby_zombie_villager);
+        assert_close3(baby_zombie_villager_min, [-0.43750003, 64.001, -0.37500003]);
+        assert_close3(baby_zombie_villager_max, [0.43750003, 65.01975, 0.37500003]);
     }
 
     #[test]
@@ -4221,6 +4686,28 @@ mod tests {
             .vanilla_texture_ref(),
             Some(EntityModelTextureRef {
                 path: "textures/entity/zombie/drowned_baby.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: false,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/zombie_villager/zombie_villager.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: true,
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/zombie_villager/zombie_villager_baby.png",
                 size: [64, 64],
             })
         );
@@ -6057,6 +6544,22 @@ mod tests {
             }
             .model_key(),
             "drowned_baby"
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: false
+            }
+            .model_key(),
+            "zombie_villager"
+        );
+        assert_eq!(
+            EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::ZombieVillager,
+                baby: true
+            }
+            .model_key(),
+            "zombie_villager_baby"
         );
         assert_eq!(EntityModelKind::Skeleton.model_key(), "skeleton");
         assert_eq!(
