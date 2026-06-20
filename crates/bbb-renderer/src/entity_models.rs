@@ -29,6 +29,7 @@ pub enum EntityModelKind {
         baby: bool,
     },
     Creeper,
+    Spider,
     Minecart,
     Boat {
         chest: bool,
@@ -172,6 +173,7 @@ impl EntityModelKind {
                 baby: true,
             } => "quadruped_wolf_baby",
             Self::Creeper => "creeper",
+            Self::Spider => "spider",
             Self::Minecart => "minecart",
             Self::Boat { chest: false } => "boat",
             Self::Boat { chest: true } => "chest_boat",
@@ -187,6 +189,7 @@ impl EntityModelKind {
             Self::Sheep { baby: false } => Some(SHEEP_TEXTURE_REF),
             Self::Sheep { baby: true } => Some(SHEEP_BABY_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
+            Self::Spider => Some(SPIDER_TEXTURE_REF),
             _ => None,
         }
     }
@@ -248,6 +251,10 @@ impl EntityModelInstance {
 
     pub fn sheep(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
         Self::new(entity_id, EntityModelKind::Sheep { baby }, position, y_rot)
+    }
+
+    pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Spider, position, y_rot)
     }
 
     pub fn quadruped(
@@ -398,6 +405,7 @@ const SHEEP_WOOL: [f32; 4] = [0.86, 0.86, 0.80, 1.0];
 const HORSE_BROWN: [f32; 4] = [0.44, 0.27, 0.14, 1.0];
 const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
+const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
 const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
@@ -429,6 +437,11 @@ const SHEEP_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/creeper/creeper.png",
+    size: [64, 32],
+};
+
+const SPIDER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/spider/spider.png",
     size: [64, 32],
 };
 
@@ -1432,6 +1445,144 @@ const CREEPER_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const SPIDER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -4.0, -8.0],
+    size: [8.0, 8.0, 8.0],
+    color: SPIDER_DARK,
+}];
+
+const SPIDER_BODY_0: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -3.0, -3.0],
+    size: [6.0, 6.0, 6.0],
+    color: SPIDER_DARK,
+}];
+
+const SPIDER_BODY_1: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-5.0, -4.0, -6.0],
+    size: [10.0, 8.0, 12.0],
+    color: SPIDER_DARK,
+}];
+
+const SPIDER_RIGHT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-15.0, -1.0, -1.0],
+    size: [16.0, 2.0, 2.0],
+    color: SPIDER_DARK,
+}];
+
+const SPIDER_LEFT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.0, -1.0],
+    size: [16.0, 2.0, 2.0],
+    color: SPIDER_DARK,
+}];
+
+// Vanilla 26.1 SpiderModel.createSpiderBodyLayer().
+const SPIDER_PARTS: [ModelPartDesc; 11] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 15.0, -3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SPIDER_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 15.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SPIDER_BODY_0,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 15.0, 9.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SPIDER_BODY_1,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 15.0, 2.0],
+            rotation: [
+                0.0,
+                std::f32::consts::FRAC_PI_4,
+                -std::f32::consts::FRAC_PI_4,
+            ],
+        },
+        cubes: &SPIDER_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 15.0, 2.0],
+            rotation: [
+                0.0,
+                -std::f32::consts::FRAC_PI_4,
+                std::f32::consts::FRAC_PI_4,
+            ],
+        },
+        cubes: &SPIDER_LEFT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 15.0, 1.0],
+            rotation: [0.0, std::f32::consts::FRAC_PI_8, -0.58119464],
+        },
+        cubes: &SPIDER_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 15.0, 1.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_8, 0.58119464],
+        },
+        cubes: &SPIDER_LEFT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 15.0, 0.0],
+            rotation: [0.0, -std::f32::consts::FRAC_PI_8, -0.58119464],
+        },
+        cubes: &SPIDER_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 15.0, 0.0],
+            rotation: [0.0, std::f32::consts::FRAC_PI_8, 0.58119464],
+        },
+        cubes: &SPIDER_LEFT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 15.0, -1.0],
+            rotation: [
+                0.0,
+                -std::f32::consts::FRAC_PI_4,
+                -std::f32::consts::FRAC_PI_4,
+            ],
+        },
+        cubes: &SPIDER_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 15.0, -1.0],
+            rotation: [
+                0.0,
+                std::f32::consts::FRAC_PI_4,
+                std::f32::consts::FRAC_PI_4,
+            ],
+        },
+        cubes: &SPIDER_LEFT_LEG,
+        children: &[],
+    },
+];
+
 pub(crate) fn create_entity_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -1575,6 +1726,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
             EntityModelKind::Creeper => emit_creeper_model(&mut mesh, *instance),
+            EntityModelKind::Spider => emit_spider_model(&mut mesh, *instance),
             EntityModelKind::Minecart => emit_minecart_model(&mut mesh, *instance),
             EntityModelKind::Boat { chest } => emit_boat_model(&mut mesh, *instance, chest),
             EntityModelKind::Placeholder { bounds, .. } => {
@@ -1819,6 +1971,10 @@ fn emit_pig_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, bab
 
 fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &CREEPER_PARTS, entity_model_root_transform(instance));
+}
+
+fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    emit_model_parts(mesh, &SPIDER_PARTS, entity_model_root_transform(instance));
 }
 
 fn emit_minecart_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -2908,6 +3064,157 @@ mod tests {
     }
 
     #[test]
+    fn spider_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            SPIDER_HEAD[0],
+            ModelCubeDesc {
+                min: [-4.0, -4.0, -8.0],
+                size: [8.0, 8.0, 8.0],
+                color: SPIDER_DARK,
+            }
+        );
+        assert_eq!(
+            SPIDER_BODY_0[0],
+            ModelCubeDesc {
+                min: [-3.0, -3.0, -3.0],
+                size: [6.0, 6.0, 6.0],
+                color: SPIDER_DARK,
+            }
+        );
+        assert_eq!(
+            SPIDER_BODY_1[0],
+            ModelCubeDesc {
+                min: [-5.0, -4.0, -6.0],
+                size: [10.0, 8.0, 12.0],
+                color: SPIDER_DARK,
+            }
+        );
+        assert_eq!(
+            SPIDER_RIGHT_LEG[0],
+            ModelCubeDesc {
+                min: [-15.0, -1.0, -1.0],
+                size: [16.0, 2.0, 2.0],
+                color: SPIDER_DARK,
+            }
+        );
+        assert_eq!(
+            SPIDER_LEFT_LEG[0],
+            ModelCubeDesc {
+                min: [-1.0, -1.0, -1.0],
+                size: [16.0, 2.0, 2.0],
+                color: SPIDER_DARK,
+            }
+        );
+
+        assert_eq!(SPIDER_PARTS.len(), 11);
+        assert_part(
+            &SPIDER_PARTS[0],
+            [0.0, 15.0, -3.0],
+            [0.0, 0.0, 0.0],
+            SPIDER_HEAD.as_slice(),
+        );
+        assert_part(
+            &SPIDER_PARTS[1],
+            [0.0, 15.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SPIDER_BODY_0.as_slice(),
+        );
+        assert_part(
+            &SPIDER_PARTS[2],
+            [0.0, 15.0, 9.0],
+            [0.0, 0.0, 0.0],
+            SPIDER_BODY_1.as_slice(),
+        );
+
+        let leg_specs = [
+            (
+                [-4.0, 15.0, 2.0],
+                [
+                    0.0,
+                    std::f32::consts::FRAC_PI_4,
+                    -std::f32::consts::FRAC_PI_4,
+                ],
+                SPIDER_RIGHT_LEG.as_slice(),
+            ),
+            (
+                [4.0, 15.0, 2.0],
+                [
+                    0.0,
+                    -std::f32::consts::FRAC_PI_4,
+                    std::f32::consts::FRAC_PI_4,
+                ],
+                SPIDER_LEFT_LEG.as_slice(),
+            ),
+            (
+                [-4.0, 15.0, 1.0],
+                [0.0, std::f32::consts::FRAC_PI_8, -0.58119464],
+                SPIDER_RIGHT_LEG.as_slice(),
+            ),
+            (
+                [4.0, 15.0, 1.0],
+                [0.0, -std::f32::consts::FRAC_PI_8, 0.58119464],
+                SPIDER_LEFT_LEG.as_slice(),
+            ),
+            (
+                [-4.0, 15.0, 0.0],
+                [0.0, -std::f32::consts::FRAC_PI_8, -0.58119464],
+                SPIDER_RIGHT_LEG.as_slice(),
+            ),
+            (
+                [4.0, 15.0, 0.0],
+                [0.0, std::f32::consts::FRAC_PI_8, 0.58119464],
+                SPIDER_LEFT_LEG.as_slice(),
+            ),
+            (
+                [-4.0, 15.0, -1.0],
+                [
+                    0.0,
+                    -std::f32::consts::FRAC_PI_4,
+                    -std::f32::consts::FRAC_PI_4,
+                ],
+                SPIDER_RIGHT_LEG.as_slice(),
+            ),
+            (
+                [4.0, 15.0, -1.0],
+                [
+                    0.0,
+                    std::f32::consts::FRAC_PI_4,
+                    std::f32::consts::FRAC_PI_4,
+                ],
+                SPIDER_LEFT_LEG.as_slice(),
+            ),
+        ];
+        for (part, (offset, rotation, cubes)) in SPIDER_PARTS[3..].iter().zip(leg_specs) {
+            assert_part(part, offset, rotation, cubes);
+        }
+    }
+
+    #[test]
+    fn spider_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::spider(124, [0.0, 64.0, 0.0], 0.0)]);
+
+        assert_eq!(mesh.opaque_faces, 66);
+        assert_eq!(mesh.vertices.len(), 264);
+        assert_eq!(mesh.indices.len(), 396);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-1.0282283, 64.0193, -0.9375]);
+        assert_close3(max, [1.0282283, 64.8135, 0.7696068]);
+    }
+
+    #[test]
+    fn spider_texture_ref_matches_vanilla_renderer() {
+        assert_eq!(EntityModelKind::Spider.model_key(), "spider");
+        assert_eq!(
+            EntityModelKind::Spider.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/spider/spider.png",
+                size: [64, 32],
+            })
+        );
+    }
+
+    #[test]
     fn entity_model_root_transform_rotates_instances_by_body_yaw() {
         let mesh = entity_model_mesh(&[EntityModelInstance::chicken(
             26,
@@ -3026,6 +3333,7 @@ mod tests {
             EntityModelKind::Sheep { baby: true }.model_key(),
             "sheep_baby"
         );
+        assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(
             EntityModelKind::Placeholder {
                 name: "todo_test_bounds",

@@ -448,7 +448,7 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID => {
             placeholder("todo_small_fireball_bounds", 0.3125, 0.3125, 0.3125)
         }
-        VANILLA_ENTITY_TYPE_SPIDER_ID => placeholder("todo_spider_bounds", 1.4, 0.9, 1.4),
+        VANILLA_ENTITY_TYPE_SPIDER_ID => EntityModelKind::Spider,
         VANILLA_ENTITY_TYPE_SQUID_ID => placeholder("todo_squid_bounds", 0.8, 0.8, 0.8),
         VANILLA_ENTITY_TYPE_STRIDER_ID => {
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
@@ -737,6 +737,18 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
             quadruped(QuadrupedModelFamily::Cow, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_base_spider() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SPIDER_ID, &[]),
+            EntityModelKind::Spider
+        );
+        assert_eq!(
+            placeholder_name(entity_model_kind(VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, &[])),
+            Some("todo_cave_spider_bounds")
         );
     }
 

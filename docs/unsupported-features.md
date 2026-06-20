@@ -293,6 +293,12 @@ When an agent does any of the following, update this file in the same slice:
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference recorded
       but not yet bound by the GPU entity model pipeline
+    - base spider entities as renderer-owned vanilla 26.1
+      `SpiderModel.createSpiderBodyLayer()` geometry, with the official
+      `textures/entity/spider/spider.png` texture reference from
+      `SpiderRenderer` recorded; cave spider `MeshTransformer.scaling(0.7F)`,
+      `spider_eyes.png` emissive layer, head/walk animation, and death flip
+      remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -304,7 +310,8 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, pig/cow variant
     presentation, pig saddle presentation, sheep wool presentation,
     zombie/skeleton variant presentation, creeper swelling/powered overlays,
-    and precise vanilla mesh parity for primitive/placeholder entity families.
+    spider eyes/cave-spider presentation, and precise vanilla mesh parity for
+    primitive/placeholder entity families.
 
 ### Audio Runtime Parity
 
