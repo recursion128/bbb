@@ -2346,6 +2346,47 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_move_vehicle_without_mount_does_not_ack() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Login(protocol_play_login(99)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(99)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MoveVehicle(MoveVehicle {
+                position: ProtocolVec3d {
+                    x: 5.0,
+                    y: 66.0,
+                    z: -7.0,
+                },
+                y_rot: 45.0,
+                x_rot: -5.0,
+            }))
+            .await
+            .unwrap();
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "ignored vehicle move must not send a vehicle ack"
+        );
+
+        let report = probe.finish(4, ChunkPos { x: 0, z: 0 });
+        assert_eq!(report.world_counters.vehicle_moves_received, 1);
+        assert_eq!(report.world_counters.vehicle_moves_applied, 0);
+        assert_eq!(report.world_counters.vehicle_moves_acked, 0);
+        assert_eq!(report.world_counters.vehicle_moves_snapped, 0);
+        assert_eq!(report.world_counters.vehicle_moves_ignored, 1);
+    }
+
+    #[tokio::test]
     async fn probe_applies_minecart_along_track_to_world() {
         const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
 
