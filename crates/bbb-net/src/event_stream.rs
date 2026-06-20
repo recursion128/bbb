@@ -1450,6 +1450,155 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_local_player_state_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(7);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let abilities = packets::PlayerAbilities {
+            invulnerable: true,
+            flying: false,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::PlayerAbilities(abilities))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player abilities event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::PlayerAbilities(update) if update == abilities));
+
+        let health = packets::PlayerHealth {
+            health: 7.5,
+            food: 16,
+            saturation: 2.0,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SetHealth(health))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player health event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::PlayerHealth(update) if update == health));
+
+        let experience = packets::PlayerExperience {
+            progress: 0.75,
+            level: 8,
+            total: 123,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SetExperience(experience))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player experience event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::PlayerExperience(update) if update == experience
+        ));
+
+        let held_slot = packets::SetHeldSlot { slot: 5 };
+        stream
+            .handle_play_packet(PlayClientbound::SetHeldSlot(held_slot))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("held slot event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::HeldSlot(update) if update == held_slot));
+
+        let spawn = packets::SetDefaultSpawnPosition {
+            dimension: "minecraft:overworld".to_string(),
+            pos: packets::BlockPos {
+                x: -5,
+                y: 70,
+                z: 12,
+            },
+            yaw: 90.0,
+            pitch: -10.0,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::SetDefaultSpawnPosition(spawn.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("default spawn event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::SetDefaultSpawnPosition(update) if update == spawn
+        ));
+
+        let simulation_distance = packets::SetSimulationDistance { distance: 12 };
+        stream
+            .handle_play_packet(PlayClientbound::SetSimulationDistance(simulation_distance))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("simulation distance event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::SetSimulationDistance(update) if update == simulation_distance
+        ));
+
+        let look_at = packets::PlayerLookAt {
+            from_anchor: packets::EntityAnchor::Eyes,
+            position: packets::Vec3d {
+                x: 12.0,
+                y: 65.0,
+                z: -7.0,
+            },
+            target: Some(packets::PlayerLookAtTarget {
+                entity_id: 99,
+                to_anchor: packets::EntityAnchor::Feet,
+            }),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::PlayerLookAt(look_at))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("player look-at event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::PlayerLookAt(update) if update == look_at));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "local-player state packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_passive_world_apply_packets_emit_matching_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
