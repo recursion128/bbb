@@ -234,7 +234,7 @@ When an agent does any of the following, update this file in the same slice:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
-      villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
+      goat/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
       zombified-piglin variants, skeleton and stray/parched/wither-skeleton/
       bogged variants, creeper, spider, enderman, iron-golem, snow-golem,
@@ -336,6 +336,12 @@ When an agent does any of the following, update this file in the same slice:
       decor/body equipment layers, trader llama decor equipment assets, head
       rotation, walk animation, llama spit projectile model, lighting, and GPU
       texture binding remain unsupported
+    - goat entities as renderer-owned vanilla 26.1 adult/baby body-layer
+      geometry from `GoatModel`, `BabyGoatModel`, and `GoatRenderer`,
+      including `ModelLayers.GOAT` / `GOAT_BABY`, official adult/baby texture
+      references, and metadata-driven left/right horn visibility; screaming
+      goat sounds, ramming/lowering-head event animation, walk/head animation,
+      lighting, and GPU texture binding remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`

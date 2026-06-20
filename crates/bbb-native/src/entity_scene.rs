@@ -182,6 +182,8 @@ const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
 const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
 const LLAMA_VARIANT_DATA_ID: u8 = 21;
+const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
+const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -324,7 +326,6 @@ fn entity_model_kind(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID
-        | VANILLA_ENTITY_TYPE_GOAT_ID
         | VANILLA_ENTITY_TYPE_HOGLIN_ID
         | VANILLA_ENTITY_TYPE_ZOGLIN_ID
         | VANILLA_ENTITY_TYPE_POLAR_BEAR_ID
@@ -359,6 +360,7 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
             llama_model_kind(LlamaModelFamily::TraderLlama, data_values)
         }
+        VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
@@ -582,6 +584,14 @@ fn llama_model_kind(
         variant: LlamaVariant::from_vanilla_id(entity_data_int(values, LLAMA_VARIANT_DATA_ID, 0)),
         baby,
         has_chest: !baby && chested_horse_has_chest(values),
+    }
+}
+
+fn goat_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    EntityModelKind::Goat {
+        baby: ageable_baby(values),
+        left_horn: entity_data_bool(values, GOAT_LEFT_HORN_DATA_ID, true),
+        right_horn: entity_data_bool(values, GOAT_RIGHT_HORN_DATA_ID, true),
     }
 }
 
@@ -1207,6 +1217,51 @@ mod tests {
                 &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
             ),
             EntityModelKind::Sheep { baby: true }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
+            quadruped(QuadrupedModelFamily::Cow, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_goats() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_GOAT_ID, &[]),
+            EntityModelKind::Goat {
+                baby: false,
+                left_horn: true,
+                right_horn: true,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_GOAT_ID,
+                &[
+                    protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                    protocol_bool_data(GOAT_LEFT_HORN_DATA_ID, false),
+                    protocol_bool_data(GOAT_RIGHT_HORN_DATA_ID, true),
+                ]
+            ),
+            EntityModelKind::Goat {
+                baby: true,
+                left_horn: false,
+                right_horn: true,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_GOAT_ID,
+                &[
+                    protocol_bool_data(GOAT_LEFT_HORN_DATA_ID, false),
+                    protocol_bool_data(GOAT_RIGHT_HORN_DATA_ID, false),
+                ]
+            ),
+            EntityModelKind::Goat {
+                baby: false,
+                left_horn: false,
+                right_horn: false,
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),

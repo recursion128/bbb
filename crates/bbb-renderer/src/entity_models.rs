@@ -84,6 +84,11 @@ pub enum EntityModelKind {
         baby: bool,
         has_chest: bool,
     },
+    Goat {
+        baby: bool,
+        left_horn: bool,
+        right_horn: bool,
+    },
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
@@ -413,6 +418,8 @@ impl EntityModelKind {
                 baby,
                 ..
             } => llama_model_key(family, variant, baby),
+            Self::Goat { baby: false, .. } => "goat",
+            Self::Goat { baby: true, .. } => "goat_baby",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -601,6 +608,8 @@ impl EntityModelKind {
                 ..
             } => Some(CAMEL_HUSK_TEXTURE_REF),
             Self::Llama { variant, baby, .. } => Some(llama_texture_ref(variant, baby)),
+            Self::Goat { baby: false, .. } => Some(GOAT_TEXTURE_REF),
+            Self::Goat { baby: true, .. } => Some(GOAT_BABY_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
@@ -855,6 +864,26 @@ impl EntityModelInstance {
         )
     }
 
+    pub fn goat(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        baby: bool,
+        left_horn: bool,
+        right_horn: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Goat {
+                baby,
+                left_horn,
+                right_horn,
+            },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Spider, position, y_rot)
     }
@@ -1060,6 +1089,9 @@ const LLAMA_CREAMY: [f32; 4] = [0.78, 0.65, 0.45, 1.0];
 const LLAMA_WHITE: [f32; 4] = [0.86, 0.84, 0.76, 1.0];
 const LLAMA_BROWN: [f32; 4] = [0.43, 0.27, 0.16, 1.0];
 const LLAMA_GRAY: [f32; 4] = [0.45, 0.44, 0.40, 1.0];
+const GOAT_WHITE: [f32; 4] = [0.84, 0.80, 0.70, 1.0];
+const GOAT_HORN: [f32; 4] = [0.72, 0.66, 0.54, 1.0];
+const GOAT_BEARD: [f32; 4] = [0.48, 0.42, 0.32, 1.0];
 const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
@@ -1305,6 +1337,16 @@ const LLAMA_GRAY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const LLAMA_GRAY_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/llama/llama_gray_baby.png",
+    size: [64, 64],
+};
+
+const GOAT_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/goat/goat.png",
+    size: [64, 64],
+};
+
+const GOAT_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/goat/goat_baby.png",
     size: [64, 64],
 };
 
@@ -5059,6 +5101,314 @@ const BABY_LLAMA_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const ADULT_GOAT_HEAD: [ModelCubeDesc; 3] = [
+    ModelCubeDesc {
+        min: [-6.0, -11.0, -10.0],
+        size: [3.0, 2.0, 1.0],
+        color: GOAT_WHITE,
+    },
+    ModelCubeDesc {
+        min: [2.0, -11.0, -10.0],
+        size: [3.0, 2.0, 1.0],
+        color: GOAT_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-0.5, -3.0, -14.0],
+        size: [0.0, 7.0, 5.0],
+        color: GOAT_BEARD,
+    },
+];
+
+const ADULT_GOAT_LEFT_HORN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-0.01, -16.0, -10.0],
+    size: [2.0, 7.0, 2.0],
+    color: GOAT_HORN,
+}];
+
+const ADULT_GOAT_RIGHT_HORN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.99, -16.0, -10.0],
+    size: [2.0, 7.0, 2.0],
+    color: GOAT_HORN,
+}];
+
+const ADULT_GOAT_NOSE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -4.0, -8.0],
+    size: [5.0, 7.0, 10.0],
+    color: GOAT_WHITE,
+}];
+
+const ADULT_GOAT_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-4.0, -17.0, -7.0],
+        size: [9.0, 11.0, 16.0],
+        color: GOAT_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-5.0, -18.0, -8.0],
+        size: [11.0, 14.0, 11.0],
+        color: GOAT_WHITE,
+    },
+];
+
+const ADULT_GOAT_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 4.0, 0.0],
+    size: [3.0, 6.0, 3.0],
+    color: GOAT_WHITE,
+}];
+
+const ADULT_GOAT_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [3.0, 10.0, 3.0],
+    color: GOAT_WHITE,
+}];
+
+const ADULT_GOAT_LEFT_HORN_PART: ModelPartDesc = ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_GOAT_LEFT_HORN,
+    children: &[],
+};
+
+const ADULT_GOAT_RIGHT_HORN_PART: ModelPartDesc = ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_GOAT_RIGHT_HORN,
+    children: &[],
+};
+
+const ADULT_GOAT_NOSE_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -8.0, -8.0],
+        rotation: [0.9599, 0.0, 0.0],
+    },
+    cubes: &ADULT_GOAT_NOSE,
+    children: &[],
+};
+
+const ADULT_GOAT_HEAD_CHILDREN: [ModelPartDesc; 3] = [
+    ADULT_GOAT_LEFT_HORN_PART,
+    ADULT_GOAT_RIGHT_HORN_PART,
+    ADULT_GOAT_NOSE_PART,
+];
+
+const ADULT_GOAT_HEAD_INDEX: usize = 0;
+const ADULT_GOAT_LEFT_HORN_CHILD_INDEX: usize = 0;
+const ADULT_GOAT_RIGHT_HORN_CHILD_INDEX: usize = 1;
+
+// Vanilla 26.1 ModelLayers.GOAT: GoatModel.createBodyLayer().
+const ADULT_GOAT_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.0, 14.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_GOAT_HEAD,
+        children: &ADULT_GOAT_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 24.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_GOAT_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.0, 14.0, 4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_GOAT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 14.0, 4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_GOAT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.0, 14.0, -6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_GOAT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 14.0, -6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_GOAT_FRONT_LEG,
+        children: &[],
+    },
+];
+
+const BABY_GOAT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -0.5, -1.0],
+    size: [2.0, 5.0, 2.0],
+    color: GOAT_WHITE,
+}];
+
+const BABY_GOAT_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-3.0, -2.3, -4.5],
+        size: [6.0, 5.0, 9.0],
+        color: GOAT_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-2.5, -2.2, -4.0],
+        size: [5.0, 4.0, 8.0],
+        color: GOAT_WHITE,
+    },
+];
+
+const BABY_GOAT_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -3.8126, -5.1548],
+    size: [4.0, 4.0, 6.0],
+    color: GOAT_WHITE,
+}];
+
+const BABY_GOAT_RIGHT_HORN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, -4.5, 0.0],
+    size: [1.0, 2.0, 1.0],
+    color: GOAT_HORN,
+}];
+
+const BABY_GOAT_LEFT_HORN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [2.0, -4.5, 0.0],
+    size: [1.0, 2.0, 1.0],
+    color: GOAT_HORN,
+}];
+
+const BABY_GOAT_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -0.5, -0.5],
+    size: [2.0, 1.0, 1.0],
+    color: GOAT_WHITE,
+}];
+
+const BABY_GOAT_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, -0.5, -0.5],
+    size: [2.0, 1.0, 1.0],
+    color: GOAT_WHITE,
+}];
+
+const BABY_GOAT_HEAD_MAIN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -2.5, -4.0],
+    size: [4.0, 4.0, 6.0],
+    color: GOAT_WHITE,
+}];
+
+const BABY_GOAT_RIGHT_HORN_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [-1.5, -1.5, -1.0],
+        rotation: [-0.3926991, 0.0, 0.0],
+    },
+    cubes: &BABY_GOAT_RIGHT_HORN,
+    children: &[],
+};
+
+const BABY_GOAT_LEFT_HORN_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [-1.5, -1.5, -1.0],
+        rotation: [-0.3926991, 0.0, 0.0],
+    },
+    cubes: &BABY_GOAT_LEFT_HORN,
+    children: &[],
+};
+
+const BABY_GOAT_RIGHT_EAR_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [-1.7, -2.3126, 0.1452],
+        rotation: [0.0, -0.5236, 0.0],
+    },
+    cubes: &BABY_GOAT_RIGHT_EAR,
+    children: &[],
+};
+
+const BABY_GOAT_LEFT_EAR_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [1.7, -2.3126, 0.1452],
+        rotation: [0.0, 0.5236, 0.0],
+    },
+    cubes: &BABY_GOAT_LEFT_EAR,
+    children: &[],
+};
+
+const BABY_GOAT_HEAD_MAIN_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -1.3126, -1.1548],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &BABY_GOAT_HEAD_MAIN,
+    children: &[],
+};
+
+const BABY_GOAT_HEAD_CHILDREN: [ModelPartDesc; 5] = [
+    BABY_GOAT_RIGHT_HORN_PART,
+    BABY_GOAT_LEFT_HORN_PART,
+    BABY_GOAT_RIGHT_EAR_PART,
+    BABY_GOAT_LEFT_EAR_PART,
+    BABY_GOAT_HEAD_MAIN_PART,
+];
+
+const BABY_GOAT_HEAD_INDEX: usize = 5;
+const BABY_GOAT_LEFT_HORN_CHILD_INDEX: usize = 1;
+const BABY_GOAT_RIGHT_HORN_CHILD_INDEX: usize = 0;
+
+// Vanilla 26.1 ModelLayers.GOAT_BABY: BabyGoatModel.createBodyLayer().
+const BABY_GOAT_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.5, 19.5, 3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_GOAT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.5, 19.5, 3.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_GOAT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.5, 19.5, -2.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_GOAT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.5, 19.5, -2.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_GOAT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 17.8, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_GOAT_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 15.5, -3.0],
+            rotation: [0.4363, 0.0, 0.0],
+        },
+        cubes: &BABY_GOAT_HEAD,
+        children: &BABY_GOAT_HEAD_CHILDREN,
+    },
+];
+
 const ADULT_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -10.0, -4.0],
     size: [8.0, 10.0, 8.0],
@@ -6397,6 +6747,11 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 baby,
                 has_chest,
             } => emit_llama_model(&mut mesh, *instance, family, variant, baby, has_chest),
+            EntityModelKind::Goat {
+                baby,
+                left_horn,
+                right_horn,
+            } => emit_goat_model(&mut mesh, *instance, baby, left_horn, right_horn),
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -6855,6 +7210,76 @@ fn emit_llama_model(
         entity_model_root_transform(instance),
         llama_model_color(family, variant),
     );
+}
+
+fn emit_goat_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    baby: bool,
+    left_horn: bool,
+    right_horn: bool,
+) {
+    let (parts, head_index, left_horn_child_index, right_horn_child_index): (
+        &[ModelPartDesc],
+        usize,
+        usize,
+        usize,
+    ) = if baby {
+        (
+            &BABY_GOAT_PARTS,
+            BABY_GOAT_HEAD_INDEX,
+            BABY_GOAT_LEFT_HORN_CHILD_INDEX,
+            BABY_GOAT_RIGHT_HORN_CHILD_INDEX,
+        )
+    } else {
+        (
+            &ADULT_GOAT_PARTS,
+            ADULT_GOAT_HEAD_INDEX,
+            ADULT_GOAT_LEFT_HORN_CHILD_INDEX,
+            ADULT_GOAT_RIGHT_HORN_CHILD_INDEX,
+        )
+    };
+    let transform = entity_model_root_transform(instance);
+    emit_goat_parts(
+        mesh,
+        parts,
+        transform,
+        head_index,
+        left_horn_child_index,
+        right_horn_child_index,
+        left_horn,
+        right_horn,
+    );
+}
+
+fn emit_goat_parts(
+    mesh: &mut EntityModelMesh,
+    parts: &[ModelPartDesc],
+    parent_transform: Mat4,
+    head_index: usize,
+    left_horn_child_index: usize,
+    right_horn_child_index: usize,
+    left_horn: bool,
+    right_horn: bool,
+) {
+    let head = &parts[head_index];
+    let head_transform = parent_transform * part_pose_transform(head.pose);
+    for cube in head.cubes {
+        emit_model_cube(mesh, head_transform, *cube);
+    }
+    for (index, child) in head.children.iter().enumerate() {
+        if (index == left_horn_child_index && !left_horn)
+            || (index == right_horn_child_index && !right_horn)
+        {
+            continue;
+        }
+        emit_model_part(mesh, child, head_transform);
+    }
+    for (index, part) in parts.iter().enumerate() {
+        if index != head_index {
+            emit_model_part(mesh, part, parent_transform);
+        }
+    }
 }
 
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -10370,6 +10795,240 @@ mod tests {
     }
 
     #[test]
+    fn goat_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            ADULT_GOAT_HEAD[2],
+            ModelCubeDesc {
+                min: [-0.5, -3.0, -14.0],
+                size: [0.0, 7.0, 5.0],
+                color: GOAT_BEARD,
+            }
+        );
+        assert_eq!(ADULT_GOAT_PARTS.len(), 6);
+        assert_part_tree(
+            &ADULT_GOAT_PARTS[ADULT_GOAT_HEAD_INDEX],
+            [1.0, 14.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_GOAT_HEAD.as_slice(),
+            ADULT_GOAT_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_GOAT_HEAD_CHILDREN[ADULT_GOAT_LEFT_HORN_CHILD_INDEX],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_GOAT_LEFT_HORN.as_slice(),
+        );
+        assert_part(
+            &ADULT_GOAT_HEAD_CHILDREN[ADULT_GOAT_RIGHT_HORN_CHILD_INDEX],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_GOAT_RIGHT_HORN.as_slice(),
+        );
+        assert_part(
+            &ADULT_GOAT_HEAD_CHILDREN[2],
+            [0.0, -8.0, -8.0],
+            [0.9599, 0.0, 0.0],
+            ADULT_GOAT_NOSE.as_slice(),
+        );
+        assert_part(
+            &ADULT_GOAT_PARTS[1],
+            [0.0, 24.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_GOAT_BODY.as_slice(),
+        );
+        for (part, expected_offset, expected_cubes) in [
+            (
+                &ADULT_GOAT_PARTS[2],
+                [1.0, 14.0, 4.0],
+                ADULT_GOAT_HIND_LEG.as_slice(),
+            ),
+            (
+                &ADULT_GOAT_PARTS[3],
+                [-3.0, 14.0, 4.0],
+                ADULT_GOAT_HIND_LEG.as_slice(),
+            ),
+            (
+                &ADULT_GOAT_PARTS[4],
+                [1.0, 14.0, -6.0],
+                ADULT_GOAT_FRONT_LEG.as_slice(),
+            ),
+            (
+                &ADULT_GOAT_PARTS[5],
+                [-3.0, 14.0, -6.0],
+                ADULT_GOAT_FRONT_LEG.as_slice(),
+            ),
+        ] {
+            assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
+        }
+
+        assert_eq!(BABY_GOAT_PARTS.len(), 6);
+        for (part, expected_offset) in [
+            (&BABY_GOAT_PARTS[0], [1.5, 19.5, 3.0]),
+            (&BABY_GOAT_PARTS[1], [-1.5, 19.5, 3.0]),
+            (&BABY_GOAT_PARTS[2], [-1.5, 19.5, -2.0]),
+            (&BABY_GOAT_PARTS[3], [1.5, 19.5, -2.0]),
+        ] {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                BABY_GOAT_LEG.as_slice(),
+            );
+        }
+        assert_part(
+            &BABY_GOAT_PARTS[4],
+            [0.0, 17.8, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_GOAT_BODY.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_GOAT_PARTS[BABY_GOAT_HEAD_INDEX],
+            [0.0, 15.5, -3.0],
+            [0.4363, 0.0, 0.0],
+            BABY_GOAT_HEAD.as_slice(),
+            BABY_GOAT_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_GOAT_HEAD_CHILDREN[BABY_GOAT_RIGHT_HORN_CHILD_INDEX],
+            [-1.5, -1.5, -1.0],
+            [-0.3926991, 0.0, 0.0],
+            BABY_GOAT_RIGHT_HORN.as_slice(),
+        );
+        assert_part(
+            &BABY_GOAT_HEAD_CHILDREN[BABY_GOAT_LEFT_HORN_CHILD_INDEX],
+            [-1.5, -1.5, -1.0],
+            [-0.3926991, 0.0, 0.0],
+            BABY_GOAT_LEFT_HORN.as_slice(),
+        );
+        assert_part(
+            &BABY_GOAT_HEAD_CHILDREN[2],
+            [-1.7, -2.3126, 0.1452],
+            [0.0, -0.5236, 0.0],
+            BABY_GOAT_RIGHT_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_GOAT_HEAD_CHILDREN[3],
+            [1.7, -2.3126, 0.1452],
+            [0.0, 0.5236, 0.0],
+            BABY_GOAT_LEFT_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_GOAT_HEAD_CHILDREN[4],
+            [0.0, -1.3126, -1.1548],
+            [0.0, 0.0, 0.0],
+            BABY_GOAT_HEAD_MAIN.as_slice(),
+        );
+    }
+
+    #[test]
+    fn goat_meshes_use_vanilla_body_layers_and_horn_visibility() {
+        let adult = entity_model_mesh(&[EntityModelInstance::goat(
+            200,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            true,
+        )]);
+        assert_eq!(adult.opaque_faces, 72);
+        assert_eq!(adult.vertices.len(), 288);
+        assert_eq!(adult.indices.len(), 432);
+        assert!(adult
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(GOAT_HORN, 0.78)));
+
+        let adult_left_horn_only = entity_model_mesh(&[EntityModelInstance::goat(
+            201,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            false,
+        )]);
+        assert_eq!(adult_left_horn_only.opaque_faces, 66);
+        assert_eq!(adult_left_horn_only.vertices.len(), 264);
+        assert_eq!(adult_left_horn_only.indices.len(), 396);
+
+        let adult_no_horns = entity_model_mesh(&[EntityModelInstance::goat(
+            202,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            false,
+        )]);
+        assert_eq!(adult_no_horns.opaque_faces, 60);
+        assert!(!adult_no_horns
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(GOAT_HORN, 0.78)));
+
+        let baby = entity_model_mesh(&[EntityModelInstance::goat(
+            203,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            true,
+            true,
+        )]);
+        assert_eq!(baby.opaque_faces, 72);
+        assert_eq!(baby.vertices.len(), 288);
+        assert_eq!(baby.indices.len(), 432);
+
+        let baby_no_horns = entity_model_mesh(&[EntityModelInstance::goat(
+            204,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            false,
+            false,
+        )]);
+        assert_eq!(baby_no_horns.opaque_faces, 60);
+        assert!(!baby_no_horns
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(GOAT_HORN, 0.78)));
+
+        let (adult_min, adult_max) = mesh_extents(&adult);
+        let (baby_min, baby_max) = mesh_extents(&baby);
+        assert!(adult_max[1] > baby_max[1]);
+        assert!(adult_min[2] < baby_min[2]);
+    }
+
+    #[test]
+    fn goat_texture_refs_match_vanilla_renderer() {
+        let cases = [
+            (
+                false,
+                "goat",
+                EntityModelTextureRef {
+                    path: "textures/entity/goat/goat.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                true,
+                "goat_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/goat/goat_baby.png",
+                    size: [64, 64],
+                },
+            ),
+        ];
+
+        for (baby, model_key, texture) in cases {
+            let kind = EntityModelKind::Goat {
+                baby,
+                left_horn: false,
+                right_horn: true,
+            };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
+    }
+
+    #[test]
     fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             ADULT_VILLAGER_HAT[0],
@@ -12201,6 +12860,15 @@ mod tests {
             }
             .model_key(),
             "trader_llama_gray_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Goat {
+                baby: true,
+                left_horn: false,
+                right_horn: true
+            }
+            .model_key(),
+            "goat_baby"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");
