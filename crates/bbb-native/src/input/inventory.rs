@@ -7808,6 +7808,60 @@ mod tests {
     }
 
     #[test]
+    fn merchant_left_click_result_slot_queues_predicted_trade_pickup() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut counters = NetCounters::default();
+        let mut world = WorldStore::new();
+        world.apply_open_screen(OpenScreen {
+            container_id: 7,
+            menu_type_id: MERCHANT_MENU_TYPE_ID,
+            title: "Merchant".to_string(),
+        });
+        let mut items = vec![ItemStackSummary::empty(); 39];
+        items[0] = item_stack(42, 3);
+        items[2] = item_stack(99, 1);
+        world.apply_container_set_content(ContainerSetContent {
+            container_id: 7,
+            state_id: 12,
+            items,
+            carried_item: ItemStackSummary::empty(),
+        });
+        assert!(world.apply_merchant_offers(merchant_offers(7, 1)));
+
+        assert!(handle_inventory_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(730.0, 322.0)),
+            PhysicalSize::new(1280, 720),
+        ));
+
+        assert_eq!(counters.container_click_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::ContainerClick(ContainerClick {
+                container_id: 7,
+                state_id: 12,
+                slot_num: 2,
+                button_num: 0,
+                input: ContainerInput::Pickup,
+                changed_slots: [(0, HashedStack::Item(hashed_item(42, 2)))].into(),
+                carried_item: HashedStack::Item(hashed_item(99, 1)),
+            })
+        );
+        let inventory = world.inventory();
+        let slots = &inventory.open_container.as_ref().unwrap().slots;
+        assert_eq!(slots[0].item, item_stack(42, 2));
+        assert_eq!(slots[2].item, item_stack(99, 1));
+        assert_eq!(inventory.cursor_item, item_stack(99, 1));
+    }
+
+    #[test]
     fn merchant_shift_click_result_slot_queues_predicted_trade_quick_move() {
         let (tx, mut rx) = mpsc::channel(1);
         let commands = Some(tx);

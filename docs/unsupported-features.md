@@ -1294,9 +1294,13 @@ When an agent does any of the following, update this file in the same slice:
           fits the player inventory; payment remainders are kept and the result
           slot is repopulated when the same selected offer remains in stock and
           payable
-        - result-slot pickup, alternate-offer payment remainder recomputation,
-          and component-predicate trade-row/payment result prediction are kept
-          server-authoritative until:
+        - result-slot primary pickup with an empty cursor locally predicts the
+          same component-predicate-free selected-offer payment/remainder path
+          and places the sold item on the cursor
+        - result-slot secondary pickup, carried-cursor pickup, alternate-offer
+          payment remainder recomputation, and component-predicate
+          trade-row/payment result prediction are kept server-authoritative
+          until:
           - full active-offer search across remaining payment slots
           - trade sound/XP side effects
           - component-aware `ItemCost` predicate matching
