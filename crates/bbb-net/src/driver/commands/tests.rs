@@ -9,8 +9,9 @@ use super::{
     send_player_command, send_player_input_command, send_player_move_command,
     send_recipe_book_change_settings, send_recipe_book_seen_recipe, send_rename_item,
     send_seen_advancements, send_select_bundle_item, send_select_trade, send_set_beacon,
-    send_set_held_slot_command, send_sign_update, send_spectate_entity, send_swing_command,
-    send_teleport_to_entity, send_use_item, send_use_item_on,
+    send_set_creative_mode_slot, send_set_held_slot_command, send_sign_update,
+    send_spectate_entity, send_swing_command, send_teleport_to_entity, send_use_item,
+    send_use_item_on,
 };
 use crate::{
     connection::RawConnection,
@@ -23,13 +24,14 @@ use bbb_protocol::{
         AttackEntity, BlockEntityTagQuery, BlockPos, ChangeDifficultyCommand,
         ChangeGameModeCommand, ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage,
         CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
-        ContainerInput, ContainerSlotStateChanged, Difficulty, EditBook, EntityTagQuery, GameType,
-        HashedComponentPatch, HashedItemStack, HashedStack, InteractEntity, InteractionHand,
-        LockDifficultyCommand, PaddleBoat, PickItemFromEntity, PlaceRecipeCommand,
-        PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
-        RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
-        RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-        SetBeacon, SignUpdate, SpectateEntity, TeleportToEntity, Vec3d,
+        ContainerInput, ContainerSlotStateChanged, DataComponentPatchSummary, Difficulty, EditBook,
+        EntityTagQuery, GameType, HashedComponentPatch, HashedItemStack, HashedStack,
+        InteractEntity, InteractionHand, ItemStackSummary, LockDifficultyCommand, PaddleBoat,
+        PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction,
+        PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
+        RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem, SeenAdvancements,
+        SelectBundleItem, SelectTradeCommand, SetBeacon, SetCreativeModeSlot, SignUpdate,
+        SpectateEntity, TeleportToEntity, Vec3d,
     },
 };
 use bytes::BytesMut;
@@ -1537,6 +1539,87 @@ async fn send_set_beacon_encodes_set_beacon_packet() {
     .await
     .unwrap();
 
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_set_creative_mode_slot_encodes_componentless_item() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut conn = RawConnection {
+            stream,
+            read_buf: BytesMut::new(),
+            compression_threshold: None,
+        };
+        let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
+            .await
+            .expect("creative mode slot command should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_SET_CREATIVE_MODE_SLOT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i16().unwrap(), 36);
+        assert_eq!(decoder.read_var_i32().unwrap(), 64);
+        assert_eq!(decoder.read_var_i32().unwrap(), 42);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert_eq!(decoder.read_var_i32().unwrap(), 0);
+        assert!(decoder.is_empty());
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    send_set_creative_mode_slot(
+        &mut conn,
+        SetCreativeModeSlot {
+            slot_num: 36,
+            item: ItemStackSummary {
+                item_id: Some(42),
+                count: 64,
+                component_patch: DataComponentPatchSummary::default(),
+            },
+        },
+    )
+    .await
+    .unwrap();
+
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn send_set_creative_mode_slot_rejects_summarized_components() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = tokio::spawn(async move {
+        let (_stream, _) = listener.accept().await.unwrap();
+    });
+    let mut conn = RawConnection::connect(&addr.to_string(), None)
+        .await
+        .unwrap();
+
+    let err = send_set_creative_mode_slot(
+        &mut conn,
+        SetCreativeModeSlot {
+            slot_num: 36,
+            item: ItemStackSummary {
+                item_id: Some(42),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    added: 1,
+                    added_type_ids: vec![6],
+                    custom_name: Some("Renamed".to_string()),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+
+    assert!(err
+        .to_string()
+        .contains("cannot encode summarized item component patch"));
     server.await.unwrap();
 }
 
