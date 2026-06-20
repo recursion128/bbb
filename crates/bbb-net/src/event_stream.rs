@@ -840,6 +840,120 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_entity_and_respawn_packets_emit_matching_events() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let block_destruction = packets::BlockDestruction {
+            id: 4,
+            pos: packets::BlockPos {
+                x: 12,
+                y: 64,
+                z: -5,
+            },
+            progress: 6,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::BlockDestruction(block_destruction))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("block destruction event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::BlockDestruction(update) if update == block_destruction
+        ));
+
+        let entity_move = packets::EntityMove {
+            id: 123,
+            delta_x: 4096,
+            delta_y: 0,
+            delta_z: -2048,
+            y_rot: Some(-90.0),
+            x_rot: Some(45.0),
+            on_ground: false,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::MoveEntity(entity_move))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("entity move event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::MoveEntity(update) if update == entity_move
+        ));
+
+        let entity_event = packets::EntityEvent {
+            entity_id: 123,
+            event_id: 35,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::EntityEvent(entity_event))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("entity event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::EntityEvent(update) if update == entity_event
+        ));
+
+        let respawn = packets::Respawn {
+            common_spawn_info: packets::CommonPlayerSpawnInfo {
+                dimension_type_id: 1,
+                dimension: "minecraft:the_nether".to_string(),
+                seed: 42,
+                game_type: 1,
+                previous_game_type: 0,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 20,
+                sea_level: 32,
+            },
+            data_to_keep: 0,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::Respawn(respawn.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("respawn event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::Respawn(update) if update == respawn));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "entity and respawn dispatcher packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_resource_pack_push_emits_push_and_response_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(2);
