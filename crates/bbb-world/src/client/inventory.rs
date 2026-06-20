@@ -2636,11 +2636,6 @@ fn quickcraft_type(mask: i8) -> i8 {
     (mask >> 2) & 3
 }
 
-#[cfg(test)]
-fn quickcraft_mask(header: i8, quickcraft_type: i8) -> i8 {
-    (header & 3) | ((quickcraft_type & 3) << 2)
-}
-
 fn apply_throw_click_to_slots(
     slots: &mut [ContainerSlot],
     cursor: &ProtocolItemStackSummary,

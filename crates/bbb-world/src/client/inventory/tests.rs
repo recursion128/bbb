@@ -8087,6 +8087,10 @@ fn apply_player_instabuild(store: &mut WorldStore, instabuild: bool) {
     });
 }
 
+fn quickcraft_mask(header: i8, quickcraft_type: i8) -> i8 {
+    (header & 3) | ((quickcraft_type & 3) << 2)
+}
+
 fn quick_craft_request(
     slot_num: i16,
     header: i8,
