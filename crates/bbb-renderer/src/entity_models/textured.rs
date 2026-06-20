@@ -1,8 +1,10 @@
 use super::{
+    boat_model_root_transform,
     catalog::{
-        chicken_texture_ref, sheep_wool_layer_color, wolf_texture_ref, ChickenModelVariant,
-        EntityDyeColor, EntityModelInstance, EntityModelKind, EntityModelTextureAtlasEntry,
-        EntityModelTextureAtlasLayout, EntityModelTextureRef, SheepWoolColor,
+        boat_texture_ref, chicken_texture_ref, sheep_wool_layer_color, wolf_texture_ref,
+        BoatModelFamily, ChickenModelVariant, EntityDyeColor, EntityModelInstance, EntityModelKind,
+        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
+        SheepWoolColor,
     },
     entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
@@ -11,6 +13,7 @@ use super::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntityModelLayerKind {
+    BoatBase,
     ChickenBase,
     SheepBase,
     SheepWool,
@@ -63,10 +66,36 @@ pub(super) fn entity_model_textured_mesh(
                     atlas,
                 );
             }
+            EntityModelKind::Boat { family, chest } => {
+                emit_boat_textured_model(&mut mesh, *instance, family, chest, atlas);
+            }
             _ => {}
         }
     }
     mesh
+}
+
+fn emit_boat_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    family: BoatModelFamily,
+    chest: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = boat_model_root_transform(instance);
+    for pass in boat_textured_layer_passes(family, chest) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
 }
 
 fn emit_chicken_textured_model(
@@ -139,6 +168,21 @@ fn emit_wolf_textured_model(
             pass.tint,
         );
     }
+}
+
+pub(super) fn boat_textured_layer_passes(
+    family: BoatModelFamily,
+    chest: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::BoatBase,
+        model_layer: boat_model_layer(family, chest),
+        texture: boat_texture_ref(family, chest),
+        parts: boat_textured_model_parts(family, chest),
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
 }
 
 pub(super) fn chicken_textured_layer_passes(
@@ -264,6 +308,43 @@ pub(super) fn wolf_textured_layer_passes(
         });
     }
     passes
+}
+
+fn boat_model_layer(family: BoatModelFamily, chest: bool) -> &'static str {
+    match (family, chest) {
+        (BoatModelFamily::Acacia, false) => MODEL_LAYER_ACACIA_BOAT,
+        (BoatModelFamily::Acacia, true) => MODEL_LAYER_ACACIA_CHEST_BOAT,
+        (BoatModelFamily::Bamboo, false) => MODEL_LAYER_BAMBOO_RAFT,
+        (BoatModelFamily::Bamboo, true) => MODEL_LAYER_BAMBOO_CHEST_RAFT,
+        (BoatModelFamily::Birch, false) => MODEL_LAYER_BIRCH_BOAT,
+        (BoatModelFamily::Birch, true) => MODEL_LAYER_BIRCH_CHEST_BOAT,
+        (BoatModelFamily::Cherry, false) => MODEL_LAYER_CHERRY_BOAT,
+        (BoatModelFamily::Cherry, true) => MODEL_LAYER_CHERRY_CHEST_BOAT,
+        (BoatModelFamily::DarkOak, false) => MODEL_LAYER_DARK_OAK_BOAT,
+        (BoatModelFamily::DarkOak, true) => MODEL_LAYER_DARK_OAK_CHEST_BOAT,
+        (BoatModelFamily::Jungle, false) => MODEL_LAYER_JUNGLE_BOAT,
+        (BoatModelFamily::Jungle, true) => MODEL_LAYER_JUNGLE_CHEST_BOAT,
+        (BoatModelFamily::Mangrove, false) => MODEL_LAYER_MANGROVE_BOAT,
+        (BoatModelFamily::Mangrove, true) => MODEL_LAYER_MANGROVE_CHEST_BOAT,
+        (BoatModelFamily::Oak, false) => MODEL_LAYER_OAK_BOAT,
+        (BoatModelFamily::Oak, true) => MODEL_LAYER_OAK_CHEST_BOAT,
+        (BoatModelFamily::PaleOak, false) => MODEL_LAYER_PALE_OAK_BOAT,
+        (BoatModelFamily::PaleOak, true) => MODEL_LAYER_PALE_OAK_CHEST_BOAT,
+        (BoatModelFamily::Spruce, false) => MODEL_LAYER_SPRUCE_BOAT,
+        (BoatModelFamily::Spruce, true) => MODEL_LAYER_SPRUCE_CHEST_BOAT,
+    }
+}
+
+fn boat_textured_model_parts(
+    family: BoatModelFamily,
+    chest: bool,
+) -> &'static [TexturedModelPartDesc] {
+    match (family, chest) {
+        (BoatModelFamily::Bamboo, false) => &RAFT_TEXTURED_PARTS,
+        (BoatModelFamily::Bamboo, true) => &RAFT_CHEST_TEXTURED_PARTS,
+        (_, false) => &BOAT_TEXTURED_PARTS,
+        (_, true) => &BOAT_CHEST_TEXTURED_PARTS,
+    }
 }
 
 fn chicken_model_layer(variant: ChickenModelVariant, baby: bool) -> &'static str {

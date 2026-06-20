@@ -296,6 +296,114 @@ pub fn chicken_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &CHICKEN_ENTITY_TEXTURE_REFS
 }
 
+pub(super) const BOAT_ACACIA_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/acacia.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_ACACIA_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/acacia.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_BAMBOO_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/bamboo.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_BAMBOO_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/bamboo.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_BIRCH_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/birch.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_BIRCH_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/birch.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_CHERRY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/cherry.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_CHERRY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/cherry.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_DARK_OAK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/dark_oak.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_DARK_OAK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/dark_oak.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_JUNGLE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/jungle.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_JUNGLE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/jungle.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_MANGROVE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/mangrove.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_MANGROVE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/mangrove.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_OAK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/oak.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_OAK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/oak.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_PALE_OAK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/pale_oak.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_PALE_OAK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/pale_oak.png",
+    size: [128, 128],
+};
+pub(super) const BOAT_SPRUCE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/boat/spruce.png",
+    size: [128, 64],
+};
+pub(super) const CHEST_BOAT_SPRUCE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/chest_boat/spruce.png",
+    size: [128, 128],
+};
+
+pub(super) const BOAT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 20] = [
+    BOAT_ACACIA_TEXTURE_REF,
+    CHEST_BOAT_ACACIA_TEXTURE_REF,
+    BOAT_BAMBOO_TEXTURE_REF,
+    CHEST_BOAT_BAMBOO_TEXTURE_REF,
+    BOAT_BIRCH_TEXTURE_REF,
+    CHEST_BOAT_BIRCH_TEXTURE_REF,
+    BOAT_CHERRY_TEXTURE_REF,
+    CHEST_BOAT_CHERRY_TEXTURE_REF,
+    BOAT_DARK_OAK_TEXTURE_REF,
+    CHEST_BOAT_DARK_OAK_TEXTURE_REF,
+    BOAT_JUNGLE_TEXTURE_REF,
+    CHEST_BOAT_JUNGLE_TEXTURE_REF,
+    BOAT_MANGROVE_TEXTURE_REF,
+    CHEST_BOAT_MANGROVE_TEXTURE_REF,
+    BOAT_OAK_TEXTURE_REF,
+    CHEST_BOAT_OAK_TEXTURE_REF,
+    BOAT_PALE_OAK_TEXTURE_REF,
+    CHEST_BOAT_PALE_OAK_TEXTURE_REF,
+    BOAT_SPRUCE_TEXTURE_REF,
+    CHEST_BOAT_SPRUCE_TEXTURE_REF,
+];
+
+pub fn boat_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &BOAT_ENTITY_TEXTURE_REFS
+}
+
 pub(super) const WOLF_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/wolf/wolf.png",
     size: [64, 32],
@@ -356,7 +464,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(super) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 19] = [
+pub(super) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 39] = [
     SHEEP_TEXTURE_REF,
     SHEEP_BABY_TEXTURE_REF,
     SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
@@ -376,6 +484,26 @@ pub(super) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 19] = [
     CHICKEN_WARM_BABY_TEXTURE_REF,
     CHICKEN_COLD_TEXTURE_REF,
     CHICKEN_COLD_BABY_TEXTURE_REF,
+    BOAT_ACACIA_TEXTURE_REF,
+    CHEST_BOAT_ACACIA_TEXTURE_REF,
+    BOAT_BAMBOO_TEXTURE_REF,
+    CHEST_BOAT_BAMBOO_TEXTURE_REF,
+    BOAT_BIRCH_TEXTURE_REF,
+    CHEST_BOAT_BIRCH_TEXTURE_REF,
+    BOAT_CHERRY_TEXTURE_REF,
+    CHEST_BOAT_CHERRY_TEXTURE_REF,
+    BOAT_DARK_OAK_TEXTURE_REF,
+    CHEST_BOAT_DARK_OAK_TEXTURE_REF,
+    BOAT_JUNGLE_TEXTURE_REF,
+    CHEST_BOAT_JUNGLE_TEXTURE_REF,
+    BOAT_MANGROVE_TEXTURE_REF,
+    CHEST_BOAT_MANGROVE_TEXTURE_REF,
+    BOAT_OAK_TEXTURE_REF,
+    CHEST_BOAT_OAK_TEXTURE_REF,
+    BOAT_PALE_OAK_TEXTURE_REF,
+    CHEST_BOAT_PALE_OAK_TEXTURE_REF,
+    BOAT_SPRUCE_TEXTURE_REF,
+    CHEST_BOAT_SPRUCE_TEXTURE_REF,
 ];
 
 pub fn entity_model_texture_refs() -> &'static [EntityModelTextureRef] {
@@ -801,6 +929,27 @@ pub(super) const PLAYER_SLIM_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+pub(super) const MODEL_LAYER_ACACIA_BOAT: &str = "minecraft:boat/acacia#main";
+pub(super) const MODEL_LAYER_ACACIA_CHEST_BOAT: &str = "minecraft:chest_boat/acacia#main";
+pub(super) const MODEL_LAYER_BAMBOO_RAFT: &str = "minecraft:boat/bamboo#main";
+pub(super) const MODEL_LAYER_BAMBOO_CHEST_RAFT: &str = "minecraft:chest_boat/bamboo#main";
+pub(super) const MODEL_LAYER_BIRCH_BOAT: &str = "minecraft:boat/birch#main";
+pub(super) const MODEL_LAYER_BIRCH_CHEST_BOAT: &str = "minecraft:chest_boat/birch#main";
+pub(super) const MODEL_LAYER_CHERRY_BOAT: &str = "minecraft:boat/cherry#main";
+pub(super) const MODEL_LAYER_CHERRY_CHEST_BOAT: &str = "minecraft:chest_boat/cherry#main";
+pub(super) const MODEL_LAYER_DARK_OAK_BOAT: &str = "minecraft:boat/dark_oak#main";
+pub(super) const MODEL_LAYER_DARK_OAK_CHEST_BOAT: &str = "minecraft:chest_boat/dark_oak#main";
+pub(super) const MODEL_LAYER_JUNGLE_BOAT: &str = "minecraft:boat/jungle#main";
+pub(super) const MODEL_LAYER_JUNGLE_CHEST_BOAT: &str = "minecraft:chest_boat/jungle#main";
+pub(super) const MODEL_LAYER_MANGROVE_BOAT: &str = "minecraft:boat/mangrove#main";
+pub(super) const MODEL_LAYER_MANGROVE_CHEST_BOAT: &str = "minecraft:chest_boat/mangrove#main";
+pub(super) const MODEL_LAYER_OAK_BOAT: &str = "minecraft:boat/oak#main";
+pub(super) const MODEL_LAYER_OAK_CHEST_BOAT: &str = "minecraft:chest_boat/oak#main";
+pub(super) const MODEL_LAYER_PALE_OAK_BOAT: &str = "minecraft:boat/pale_oak#main";
+pub(super) const MODEL_LAYER_PALE_OAK_CHEST_BOAT: &str = "minecraft:chest_boat/pale_oak#main";
+pub(super) const MODEL_LAYER_SPRUCE_BOAT: &str = "minecraft:boat/spruce#main";
+pub(super) const MODEL_LAYER_SPRUCE_CHEST_BOAT: &str = "minecraft:chest_boat/spruce#main";
+
 pub(super) const BOAT_BOTTOM: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-14.0, -9.0, -3.0],
     size: [28.0, 16.0, 3.0],
@@ -1018,6 +1167,257 @@ pub(super) const RAFT_CHEST_PARTS: [ModelPartDesc; 3] = [
             rotation: [0.0, -std::f32::consts::FRAC_PI_2, 0.0],
         },
         cubes: &BOAT_CHEST_LOCK,
+        children: &[],
+    },
+];
+
+pub(super) const BOAT_TEXTURED_BOTTOM: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-14.0, -9.0, -3.0],
+    size: [28.0, 16.0, 3.0],
+    uv_size: [28.0, 16.0, 3.0],
+    tex: [0.0, 0.0],
+    mirror: false,
+}];
+
+pub(super) const BOAT_TEXTURED_BACK: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-13.0, -7.0, -1.0],
+    size: [18.0, 6.0, 2.0],
+    uv_size: [18.0, 6.0, 2.0],
+    tex: [0.0, 19.0],
+    mirror: false,
+}];
+
+pub(super) const BOAT_TEXTURED_FRONT: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-8.0, -7.0, -1.0],
+    size: [16.0, 6.0, 2.0],
+    uv_size: [16.0, 6.0, 2.0],
+    tex: [0.0, 27.0],
+    mirror: false,
+}];
+
+pub(super) const BOAT_TEXTURED_RIGHT_SIDE: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-14.0, -7.0, -1.0],
+    size: [28.0, 6.0, 2.0],
+    uv_size: [28.0, 6.0, 2.0],
+    tex: [0.0, 35.0],
+    mirror: false,
+}];
+
+pub(super) const BOAT_TEXTURED_LEFT_SIDE: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-14.0, -7.0, -1.0],
+    size: [28.0, 6.0, 2.0],
+    uv_size: [28.0, 6.0, 2.0],
+    tex: [0.0, 43.0],
+    mirror: false,
+}];
+
+pub(super) const BOAT_TEXTURED_LEFT_PADDLE: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -5.0],
+        size: [2.0, 2.0, 18.0],
+        uv_size: [2.0, 2.0, 18.0],
+        tex: [62.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-1.001, -3.0, 8.0],
+        size: [1.0, 6.0, 7.0],
+        uv_size: [1.0, 6.0, 7.0],
+        tex: [62.0, 0.0],
+        mirror: false,
+    },
+];
+
+pub(super) const BOAT_TEXTURED_RIGHT_PADDLE: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -5.0],
+        size: [2.0, 2.0, 18.0],
+        uv_size: [2.0, 2.0, 18.0],
+        tex: [62.0, 20.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [0.001, -3.0, 8.0],
+        size: [1.0, 6.0, 7.0],
+        uv_size: [1.0, 6.0, 7.0],
+        tex: [62.0, 20.0],
+        mirror: false,
+    },
+];
+
+pub(super) const RAFT_TEXTURED_BOTTOM: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-14.0, -11.0, -4.0],
+        size: [28.0, 20.0, 4.0],
+        uv_size: [28.0, 20.0, 4.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-14.0, -9.0, -8.0],
+        size: [28.0, 16.0, 4.0],
+        uv_size: [28.0, 16.0, 4.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    },
+];
+
+pub(super) const RAFT_TEXTURED_LEFT_PADDLE: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -5.0],
+        size: [2.0, 2.0, 18.0],
+        uv_size: [2.0, 2.0, 18.0],
+        tex: [0.0, 24.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-1.001, -3.0, 8.0],
+        size: [1.0, 6.0, 7.0],
+        uv_size: [1.0, 6.0, 7.0],
+        tex: [0.0, 24.0],
+        mirror: false,
+    },
+];
+
+pub(super) const RAFT_TEXTURED_RIGHT_PADDLE: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -5.0],
+        size: [2.0, 2.0, 18.0],
+        uv_size: [2.0, 2.0, 18.0],
+        tex: [40.0, 24.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [0.001, -3.0, 8.0],
+        size: [1.0, 6.0, 7.0],
+        uv_size: [1.0, 6.0, 7.0],
+        tex: [40.0, 24.0],
+        mirror: false,
+    },
+];
+
+pub(super) const BOAT_TEXTURED_CHEST_BOTTOM: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [12.0, 8.0, 12.0],
+    uv_size: [12.0, 8.0, 12.0],
+    tex: [0.0, 76.0],
+    mirror: false,
+}];
+
+pub(super) const BOAT_TEXTURED_CHEST_LID: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [12.0, 4.0, 12.0],
+    uv_size: [12.0, 4.0, 12.0],
+    tex: [0.0, 59.0],
+    mirror: false,
+}];
+
+pub(super) const BOAT_TEXTURED_CHEST_LOCK: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [2.0, 4.0, 1.0],
+    uv_size: [2.0, 4.0, 1.0],
+    tex: [0.0, 59.0],
+    mirror: false,
+}];
+
+pub(super) const BOAT_TEXTURED_PARTS: [TexturedModelPartDesc; 7] = [
+    TexturedModelPartDesc {
+        pose: BOAT_COMMON_PARTS[0].pose,
+        cubes: &BOAT_TEXTURED_BOTTOM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOAT_COMMON_PARTS[1].pose,
+        cubes: &BOAT_TEXTURED_BACK,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOAT_COMMON_PARTS[2].pose,
+        cubes: &BOAT_TEXTURED_FRONT,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOAT_COMMON_PARTS[3].pose,
+        cubes: &BOAT_TEXTURED_RIGHT_SIDE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOAT_COMMON_PARTS[4].pose,
+        cubes: &BOAT_TEXTURED_LEFT_SIDE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOAT_COMMON_PARTS[5].pose,
+        cubes: &BOAT_TEXTURED_LEFT_PADDLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOAT_COMMON_PARTS[6].pose,
+        cubes: &BOAT_TEXTURED_RIGHT_PADDLE,
+        children: &[],
+    },
+];
+
+pub(super) const BOAT_CHEST_TEXTURED_PARTS: [TexturedModelPartDesc; 10] = [
+    BOAT_TEXTURED_PARTS[0],
+    BOAT_TEXTURED_PARTS[1],
+    BOAT_TEXTURED_PARTS[2],
+    BOAT_TEXTURED_PARTS[3],
+    BOAT_TEXTURED_PARTS[4],
+    BOAT_TEXTURED_PARTS[5],
+    BOAT_TEXTURED_PARTS[6],
+    TexturedModelPartDesc {
+        pose: BOAT_CHEST_PARTS[0].pose,
+        cubes: &BOAT_TEXTURED_CHEST_BOTTOM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOAT_CHEST_PARTS[1].pose,
+        cubes: &BOAT_TEXTURED_CHEST_LID,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BOAT_CHEST_PARTS[2].pose,
+        cubes: &BOAT_TEXTURED_CHEST_LOCK,
+        children: &[],
+    },
+];
+
+pub(super) const RAFT_TEXTURED_PARTS: [TexturedModelPartDesc; 3] = [
+    TexturedModelPartDesc {
+        pose: RAFT_COMMON_PARTS[0].pose,
+        cubes: &RAFT_TEXTURED_BOTTOM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: RAFT_COMMON_PARTS[1].pose,
+        cubes: &RAFT_TEXTURED_LEFT_PADDLE,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: RAFT_COMMON_PARTS[2].pose,
+        cubes: &RAFT_TEXTURED_RIGHT_PADDLE,
+        children: &[],
+    },
+];
+
+pub(super) const RAFT_CHEST_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    RAFT_TEXTURED_PARTS[0],
+    RAFT_TEXTURED_PARTS[1],
+    RAFT_TEXTURED_PARTS[2],
+    TexturedModelPartDesc {
+        pose: RAFT_CHEST_PARTS[0].pose,
+        cubes: &BOAT_TEXTURED_CHEST_BOTTOM,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: RAFT_CHEST_PARTS[1].pose,
+        cubes: &BOAT_TEXTURED_CHEST_LID,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: RAFT_CHEST_PARTS[2].pose,
+        cubes: &BOAT_TEXTURED_CHEST_LOCK,
         children: &[],
     },
 ];

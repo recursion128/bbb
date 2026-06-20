@@ -3442,7 +3442,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let chicken = EntityModelInstance::chicken(303, [-2.0, 64.0, 0.0], 0.0, false);
     let sheep = EntityModelInstance::sheep(304, [0.0, 64.0, 0.0], 0.0, false);
     let wolf = EntityModelInstance::wolf(305, [2.0, 64.0, 0.0], 0.0, false);
-    let colored = entity_model_colored_runtime_mesh(&[chicken, sheep, wolf]);
+    let boat = EntityModelInstance::boat(306, [4.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, true);
+    let colored = entity_model_colored_runtime_mesh(&[chicken, sheep, wolf, boat]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
     let legacy_chicken_geometry_guard = entity_model_mesh(&[chicken]);
@@ -3451,6 +3452,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_geometry_guard.vertices.is_empty());
     let legacy_wolf_geometry_guard = entity_model_mesh(&[wolf]);
     assert!(!legacy_wolf_geometry_guard.vertices.is_empty());
+    let legacy_boat_geometry_guard = entity_model_mesh(&[boat]);
+    assert!(!legacy_boat_geometry_guard.vertices.is_empty());
 }
 
 #[test]
@@ -7026,6 +7029,215 @@ fn boat_texture_refs_match_vanilla_model_layer_paths() {
 }
 
 #[test]
+fn boat_textured_layer_passes_match_vanilla_renderer_model_layers() {
+    let oak_boat = boat_textured_layer_passes(BoatModelFamily::Oak, false);
+    assert_eq!(oak_boat.len(), 1);
+    assert_eq!(oak_boat[0].kind, EntityModelLayerKind::BoatBase);
+    assert_eq!(oak_boat[0].model_layer, MODEL_LAYER_OAK_BOAT);
+    assert_eq!(oak_boat[0].texture, BOAT_OAK_TEXTURE_REF);
+    assert_eq!(oak_boat[0].parts, BOAT_TEXTURED_PARTS.as_slice());
+    assert_eq!(oak_boat[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (oak_boat[0].collector_order, oak_boat[0].submit_sequence),
+        (0, 0)
+    );
+
+    let oak_chest_boat = boat_textured_layer_passes(BoatModelFamily::Oak, true);
+    assert_eq!(oak_chest_boat[0].kind, EntityModelLayerKind::BoatBase);
+    assert_eq!(oak_chest_boat[0].model_layer, MODEL_LAYER_OAK_CHEST_BOAT);
+    assert_eq!(oak_chest_boat[0].texture, CHEST_BOAT_OAK_TEXTURE_REF);
+    assert_eq!(
+        oak_chest_boat[0].parts,
+        BOAT_CHEST_TEXTURED_PARTS.as_slice()
+    );
+
+    let bamboo_raft = boat_textured_layer_passes(BoatModelFamily::Bamboo, false);
+    assert_eq!(bamboo_raft[0].model_layer, MODEL_LAYER_BAMBOO_RAFT);
+    assert_eq!(bamboo_raft[0].texture, BOAT_BAMBOO_TEXTURE_REF);
+    assert_eq!(bamboo_raft[0].parts, RAFT_TEXTURED_PARTS.as_slice());
+
+    let bamboo_chest_raft = boat_textured_layer_passes(BoatModelFamily::Bamboo, true);
+    assert_eq!(
+        bamboo_chest_raft[0].model_layer,
+        MODEL_LAYER_BAMBOO_CHEST_RAFT
+    );
+    assert_eq!(bamboo_chest_raft[0].texture, CHEST_BOAT_BAMBOO_TEXTURE_REF);
+    assert_eq!(
+        bamboo_chest_raft[0].parts,
+        RAFT_CHEST_TEXTURED_PARTS.as_slice()
+    );
+}
+
+#[test]
+fn boat_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_OAK_BOAT, "minecraft:boat/oak#main");
+    assert_eq!(MODEL_LAYER_OAK_CHEST_BOAT, "minecraft:chest_boat/oak#main");
+    assert_eq!(MODEL_LAYER_BAMBOO_RAFT, "minecraft:boat/bamboo#main");
+    assert_eq!(
+        MODEL_LAYER_BAMBOO_CHEST_RAFT,
+        "minecraft:chest_boat/bamboo#main"
+    );
+    assert_eq!(BOAT_TEXTURED_PARTS.len(), 7);
+    assert_eq!(BOAT_CHEST_TEXTURED_PARTS.len(), 10);
+    assert_eq!(RAFT_TEXTURED_PARTS.len(), 3);
+    assert_eq!(RAFT_CHEST_TEXTURED_PARTS.len(), 6);
+    assert_eq!(
+        BOAT_TEXTURED_BOTTOM[0],
+        TexturedModelCubeDesc {
+            min: [-14.0, -9.0, -3.0],
+            size: [28.0, 16.0, 3.0],
+            uv_size: [28.0, 16.0, 3.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        BOAT_TEXTURED_RIGHT_SIDE[0],
+        TexturedModelCubeDesc {
+            min: [-14.0, -7.0, -1.0],
+            size: [28.0, 6.0, 2.0],
+            uv_size: [28.0, 6.0, 2.0],
+            tex: [0.0, 35.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(BOAT_TEXTURED_LEFT_SIDE[0].tex, [0.0, 43.0]);
+    assert_eq!(
+        BOAT_TEXTURED_LEFT_PADDLE[1],
+        TexturedModelCubeDesc {
+            min: [-1.001, -3.0, 8.0],
+            size: [1.0, 6.0, 7.0],
+            uv_size: [1.0, 6.0, 7.0],
+            tex: [62.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        RAFT_TEXTURED_BOTTOM[1],
+        TexturedModelCubeDesc {
+            min: [-14.0, -9.0, -8.0],
+            size: [28.0, 16.0, 4.0],
+            uv_size: [28.0, 16.0, 4.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(RAFT_TEXTURED_LEFT_PADDLE[0].tex, [0.0, 24.0]);
+    assert_eq!(RAFT_TEXTURED_RIGHT_PADDLE[0].tex, [40.0, 24.0]);
+    assert_eq!(
+        BOAT_TEXTURED_CHEST_BOTTOM[0],
+        TexturedModelCubeDesc {
+            min: [0.0, 0.0, 0.0],
+            size: [12.0, 8.0, 12.0],
+            uv_size: [12.0, 8.0, 12.0],
+            tex: [0.0, 76.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(BOAT_TEXTURED_CHEST_LID[0].tex, [0.0, 59.0]);
+    assert_eq!(BOAT_TEXTURED_CHEST_LOCK[0].tex, [0.0, 59.0]);
+    assert_eq!(BOAT_CHEST_TEXTURED_PARTS[7].pose, BOAT_CHEST_PARTS[0].pose);
+    assert_eq!(RAFT_CHEST_TEXTURED_PARTS[3].pose, RAFT_CHEST_PARTS[0].pose);
+}
+
+#[test]
+fn entity_texture_atlas_stitches_official_boat_png_slots() {
+    let images = boat_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect::<Vec<_>>();
+
+    let (layout, rgba) = build_entity_model_texture_atlas(&images).unwrap();
+
+    assert_eq!(layout.width, 128);
+    assert_eq!(layout.height, 1920);
+    assert_eq!(layout.entries.len(), 20);
+    assert_eq!(
+        layout.entries[0].texture.path,
+        "textures/entity/boat/acacia.png"
+    );
+    assert_eq!(
+        layout.entries[1].texture.path,
+        "textures/entity/chest_boat/acacia.png"
+    );
+    assert_eq!(
+        layout.entries[14].texture.path,
+        "textures/entity/boat/oak.png"
+    );
+    assert_eq!(
+        layout.entries[19].texture.path,
+        "textures/entity/chest_boat/spruce.png"
+    );
+    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
+    assert_close2(layout.entries[0].uv.max, [1.0, 64.0 / 1920.0]);
+    assert_close2(layout.entries[1].uv.min, [0.0, 64.0 / 1920.0]);
+    assert_close2(layout.entries[1].uv.max, [1.0, 192.0 / 1920.0]);
+    assert_close2(layout.entries[14].uv.min, [0.0, 1344.0 / 1920.0]);
+    assert_close2(layout.entries[14].uv.max, [1.0, 1408.0 / 1920.0]);
+
+    let acacia_chest_first_pixel = rgba_offset(layout.width, 64, 0, "test").unwrap();
+    assert_eq!(
+        &rgba[acacia_chest_first_pixel..acacia_chest_first_pixel + 4],
+        &[1; 4]
+    );
+    let oak_first_pixel = rgba_offset(layout.width, 1344, 0, "test").unwrap();
+    assert_eq!(&rgba[oak_first_pixel..oak_first_pixel + 4], &[14; 4]);
+    let spruce_chest_first_pixel = rgba_offset(layout.width, 1792, 0, "test").unwrap();
+    assert_eq!(
+        &rgba[spruce_chest_first_pixel..spruce_chest_first_pixel + 4],
+        &[19; 4]
+    );
+}
+
+#[test]
+fn boat_textured_mesh_uses_vanilla_uvs_tints_and_root_transform() {
+    let images = [
+        BOAT_OAK_TEXTURE_REF,
+        CHEST_BOAT_OAK_TEXTURE_REF,
+        BOAT_BAMBOO_TEXTURE_REF,
+        CHEST_BOAT_BAMBOO_TEXTURE_REF,
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(index, texture)| {
+        let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+        EntityModelTextureImage::new(texture, vec![index as u8; len])
+    })
+    .collect::<Vec<_>>();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[
+            EntityModelInstance::boat(201, [0.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, false),
+            EntityModelInstance::boat(202, [3.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, true),
+            EntityModelInstance::boat(203, [6.0, 64.0, 0.0], 0.0, BoatModelFamily::Bamboo, false),
+            EntityModelInstance::boat(204, [9.0, 64.0, 0.0], 0.0, BoatModelFamily::Bamboo, true),
+        ],
+        &atlas,
+    );
+
+    assert_eq!(atlas.width, 128);
+    assert_eq!(atlas.height, 384);
+    assert_eq!(mesh.cutout_faces, 216);
+    assert_eq!(mesh.vertices.len(), 864);
+    assert_eq!(mesh.indices.len(), 1296);
+    assert_close2(mesh.vertices[0].uv, [31.0 / 128.0, 0.0]);
+    assert_close2(mesh.vertices[216].uv, [31.0 / 128.0, 64.0 / 384.0]);
+    assert_close2(mesh.vertices[504].uv, [32.0 / 128.0, 192.0 / 384.0]);
+    assert_close2(mesh.vertices[648].uv, [32.0 / 128.0, 256.0 / 384.0]);
+    assert!(mesh
+        .vertices
+        .iter()
+        .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    let (min, max) = textured_mesh_extents(&mesh);
+    assert!(max[0] - min[0] > 9.0);
+    assert!(max[2] - min[2] > 1.0);
+}
+
+#[test]
 fn vehicle_and_placeholder_models_emit_sane_bounds() {
     let cases = [
         EntityModelInstance::new(1, EntityModelKind::Minecart, [0.0, 64.0, 0.0], 0.0),
@@ -7488,6 +7700,19 @@ fn entity_model_vertex_layout_matches_shader_inputs() {
 }
 
 fn mesh_extents(mesh: &EntityModelMesh) -> ([f32; 3], [f32; 3]) {
+    let mut vertices = mesh.vertices.iter();
+    let first = vertices.next().expect("mesh has vertices").position;
+    let mut min = Vec3::from_array(first);
+    let mut max = Vec3::from_array(first);
+    for vertex in vertices {
+        let position = Vec3::from_array(vertex.position);
+        min = min.min(position);
+        max = max.max(position);
+    }
+    (min.to_array(), max.to_array())
+}
+
+fn textured_mesh_extents(mesh: &EntityModelTexturedMesh) -> ([f32; 3], [f32; 3]) {
     let mut vertices = mesh.vertices.iter();
     let first = vertices.next().expect("mesh has vertices").position;
     let mut min = Vec3::from_array(first);

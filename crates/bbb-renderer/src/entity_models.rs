@@ -19,14 +19,14 @@ pub(crate) use gpu::{create_entity_model_pipeline, create_entity_model_textured_
 pub(super) use gpu::{EntityModelMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu};
 use model_layers::*;
 pub use model_layers::{
-    chicken_entity_texture_refs, entity_model_texture_refs, sheep_entity_texture_refs,
-    wolf_entity_texture_refs,
+    boat_entity_texture_refs, chicken_entity_texture_refs, entity_model_texture_refs,
+    sheep_entity_texture_refs, wolf_entity_texture_refs,
 };
 use textured::entity_model_textured_mesh;
 #[cfg(test)]
 use textured::{
-    chicken_textured_layer_passes, sheep_textured_layer_passes, wolf_textured_layer_passes,
-    EntityModelLayerKind,
+    boat_textured_layer_passes, chicken_textured_layer_passes, sheep_textured_layer_passes,
+    wolf_textured_layer_passes, EntityModelLayerKind,
 };
 
 const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
@@ -163,7 +163,9 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Illager { family } => emit_illager_model(&mut mesh, *instance, family),
             EntityModelKind::Minecart => emit_minecart_model(&mut mesh, *instance),
             EntityModelKind::Boat { family, chest } => {
-                emit_boat_model(&mut mesh, *instance, family, chest)
+                if !skip_texture_backed_entities {
+                    emit_boat_model(&mut mesh, *instance, family, chest);
+                }
             }
             EntityModelKind::Placeholder { bounds, .. } => {
                 emit_placeholder_bounds_model(&mut mesh, *instance, bounds)

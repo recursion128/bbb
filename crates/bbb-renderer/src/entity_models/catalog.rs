@@ -1722,87 +1722,27 @@ fn boat_model_key(family: BoatModelFamily, chest: bool) -> &'static str {
     }
 }
 
-fn boat_texture_ref(family: BoatModelFamily, chest: bool) -> EntityModelTextureRef {
+pub(super) fn boat_texture_ref(family: BoatModelFamily, chest: bool) -> EntityModelTextureRef {
     match (family, chest) {
-        (BoatModelFamily::Acacia, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/acacia.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::Acacia, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/acacia.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::Bamboo, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/bamboo.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::Bamboo, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/bamboo.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::Birch, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/birch.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::Birch, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/birch.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::Cherry, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/cherry.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::Cherry, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/cherry.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::DarkOak, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/dark_oak.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::DarkOak, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/dark_oak.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::Jungle, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/jungle.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::Jungle, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/jungle.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::Mangrove, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/mangrove.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::Mangrove, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/mangrove.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::Oak, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/oak.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::Oak, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/oak.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::PaleOak, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/pale_oak.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::PaleOak, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/pale_oak.png",
-            size: [128, 128],
-        },
-        (BoatModelFamily::Spruce, false) => EntityModelTextureRef {
-            path: "textures/entity/boat/spruce.png",
-            size: [128, 64],
-        },
-        (BoatModelFamily::Spruce, true) => EntityModelTextureRef {
-            path: "textures/entity/chest_boat/spruce.png",
-            size: [128, 128],
-        },
+        (BoatModelFamily::Acacia, false) => BOAT_ACACIA_TEXTURE_REF,
+        (BoatModelFamily::Acacia, true) => CHEST_BOAT_ACACIA_TEXTURE_REF,
+        (BoatModelFamily::Bamboo, false) => BOAT_BAMBOO_TEXTURE_REF,
+        (BoatModelFamily::Bamboo, true) => CHEST_BOAT_BAMBOO_TEXTURE_REF,
+        (BoatModelFamily::Birch, false) => BOAT_BIRCH_TEXTURE_REF,
+        (BoatModelFamily::Birch, true) => CHEST_BOAT_BIRCH_TEXTURE_REF,
+        (BoatModelFamily::Cherry, false) => BOAT_CHERRY_TEXTURE_REF,
+        (BoatModelFamily::Cherry, true) => CHEST_BOAT_CHERRY_TEXTURE_REF,
+        (BoatModelFamily::DarkOak, false) => BOAT_DARK_OAK_TEXTURE_REF,
+        (BoatModelFamily::DarkOak, true) => CHEST_BOAT_DARK_OAK_TEXTURE_REF,
+        (BoatModelFamily::Jungle, false) => BOAT_JUNGLE_TEXTURE_REF,
+        (BoatModelFamily::Jungle, true) => CHEST_BOAT_JUNGLE_TEXTURE_REF,
+        (BoatModelFamily::Mangrove, false) => BOAT_MANGROVE_TEXTURE_REF,
+        (BoatModelFamily::Mangrove, true) => CHEST_BOAT_MANGROVE_TEXTURE_REF,
+        (BoatModelFamily::Oak, false) => BOAT_OAK_TEXTURE_REF,
+        (BoatModelFamily::Oak, true) => CHEST_BOAT_OAK_TEXTURE_REF,
+        (BoatModelFamily::PaleOak, false) => BOAT_PALE_OAK_TEXTURE_REF,
+        (BoatModelFamily::PaleOak, true) => CHEST_BOAT_PALE_OAK_TEXTURE_REF,
+        (BoatModelFamily::Spruce, false) => BOAT_SPRUCE_TEXTURE_REF,
+        (BoatModelFamily::Spruce, true) => CHEST_BOAT_SPRUCE_TEXTURE_REF,
     }
 }

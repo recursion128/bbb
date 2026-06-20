@@ -306,9 +306,11 @@ When an agent does any of the following, update this file in the same slice:
       `AbstractBoatRenderer`, and `LayerDefinitions`, including boat hull
       parts, raft bottom logs, paddles, chest bottom/lid/lock parts, official
       per-wood/per-bamboo texture references, and the vanilla boat root
-      translate/rotate/scale/rotate renderer transform; paddle rowing
+      translate/rotate/scale/rotate renderer transform, texture-backed base
+      layer pass emission, boat/chest-boat/raft/chest-raft model-layer
+      selection, and official PNG atlas upload/bind/sample path; paddle rowing
       animation, hurt/damage roll, bubble wobble, underwater state and water
-      mask submission, lighting, and GPU texture binding remain unsupported
+      mask submission, and lighting remain unsupported
     - chicken entities as renderer-owned vanilla 26.1
       `AdultChickenModel`, `ColdChickenModel`, and `BabyChickenModel` body-layer
       geometry from `ChickenModel`, `ChickenRenderer`, `ChickenVariants`, and
