@@ -971,6 +971,154 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_session_and_player_info_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(6);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        macro_rules! assert_matching_event {
+            ($packet:expr, $message:literal, $pattern:pat $(if $guard:expr)? ) => {{
+                stream.handle_play_packet($packet).await.unwrap();
+                let event = timeout(Duration::from_secs(1), events_rx.recv())
+                    .await
+                    .expect($message)
+                    .unwrap();
+                assert!(matches!(event, $pattern $(if $guard)?));
+            }};
+        }
+
+        let login = packets::PlayLogin {
+            player_id: 99,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: packets::CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 0,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: false,
+        };
+        assert_matching_event!(
+            PlayClientbound::Login(login.clone()),
+            "play login event should be emitted",
+            NetEvent::Login(update) if update == login
+        );
+
+        let profile_id = uuid::Uuid::from_u128(1);
+        let player_info = packets::PlayerInfoUpdate {
+            actions: vec![
+                packets::PlayerInfoAction::AddPlayer,
+                packets::PlayerInfoAction::InitializeChat,
+                packets::PlayerInfoAction::UpdateGameMode,
+                packets::PlayerInfoAction::UpdateListed,
+                packets::PlayerInfoAction::UpdateLatency,
+                packets::PlayerInfoAction::UpdateDisplayName,
+                packets::PlayerInfoAction::UpdateListOrder,
+                packets::PlayerInfoAction::UpdateHat,
+            ],
+            entries: vec![packets::PlayerInfoEntry {
+                profile_id,
+                profile: Some(GameProfile {
+                    uuid: profile_id,
+                    name: "Ada".to_string(),
+                    properties: vec![packets::GameProfileProperty {
+                        name: "textures".to_string(),
+                        value: "skin".to_string(),
+                        signature: Some("signature".to_string()),
+                    }],
+                }),
+                listed: true,
+                latency: 42,
+                game_mode: packets::GameType::Creative,
+                display_name: Some("Ada Lovelace".to_string()),
+                show_hat: true,
+                list_order: 3,
+                chat_session: Some(packets::PlayerInfoChatSession {
+                    session_id: uuid::Uuid::from_u128(3),
+                    expires_at_epoch_millis: 99,
+                    public_key: vec![1, 2],
+                    key_signature: vec![3, 4],
+                }),
+            }],
+        };
+        assert_matching_event!(
+            PlayClientbound::PlayerInfoUpdate(player_info.clone()),
+            "player info update event should be emitted",
+            NetEvent::PlayerInfoUpdate(update) if update == player_info
+        );
+
+        let player_info_remove = packets::PlayerInfoRemove {
+            profile_ids: vec![profile_id],
+        };
+        assert_matching_event!(
+            PlayClientbound::PlayerInfoRemove(player_info_remove.clone()),
+            "player info remove event should be emitted",
+            NetEvent::PlayerInfoRemove(update) if update == player_info_remove
+        );
+
+        let camera = packets::SetCamera { camera_id: 99 };
+        assert_matching_event!(
+            PlayClientbound::SetCamera(camera),
+            "set camera event should be emitted",
+            NetEvent::SetCamera(update) if update == camera
+        );
+
+        let difficulty = packets::ChangeDifficulty {
+            difficulty: packets::Difficulty::Hard,
+            locked: true,
+        };
+        assert_matching_event!(
+            PlayClientbound::ChangeDifficulty(difficulty),
+            "change difficulty event should be emitted",
+            NetEvent::ChangeDifficulty(update) if update == difficulty
+        );
+
+        let tab_list = packets::TabList {
+            header: Some("Welcome".to_string()),
+            footer: None,
+        };
+        assert_matching_event!(
+            PlayClientbound::TabList(tab_list.clone()),
+            "tab list event should be emitted",
+            NetEvent::TabList(update) if update == tab_list
+        );
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "session and player-info packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_entity_state_packets_emit_matching_events_without_responses() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(20);
