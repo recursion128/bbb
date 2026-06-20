@@ -4,9 +4,10 @@ mod catalog;
 mod geometry;
 mod gpu;
 mod model_layers;
+mod textured;
 
+use catalog::sheep_wool_layer_color;
 pub use catalog::*;
-use catalog::{chicken_texture_ref, sheep_wool_layer_color, wolf_texture_ref};
 use geometry::*;
 #[cfg(test)]
 use gpu::{
@@ -21,6 +22,12 @@ pub use model_layers::{
     chicken_entity_texture_refs, entity_model_texture_refs, sheep_entity_texture_refs,
     wolf_entity_texture_refs,
 };
+use textured::entity_model_textured_mesh;
+#[cfg(test)]
+use textured::{
+    chicken_textured_layer_passes, sheep_textured_layer_passes, wolf_textured_layer_passes,
+    EntityModelLayerKind,
+};
 
 const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
 const MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS: f32 = 24.016;
@@ -33,27 +40,6 @@ const HORSE_SCALE: f32 = 1.1;
 const DONKEY_SCALE: f32 = 0.87;
 const MULE_SCALE: f32 = 0.92;
 const POLAR_BEAR_SCALE: f32 = 1.2;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum EntityModelLayerKind {
-    ChickenBase,
-    SheepBase,
-    SheepWool,
-    SheepWoolUndercoat,
-    WolfBase,
-    WolfCollar,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct EntityModelLayerPass {
-    kind: EntityModelLayerKind,
-    model_layer: &'static str,
-    texture: EntityModelTextureRef,
-    parts: &'static [TexturedModelPartDesc],
-    tint: [f32; 4],
-    collector_order: i32,
-    submit_sequence: u32,
-}
 
 #[cfg(test)]
 fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
@@ -185,68 +171,6 @@ fn entity_model_mesh_with_options(
         }
     }
     mesh
-}
-
-fn entity_model_textured_mesh(
-    instances: &[EntityModelInstance],
-    atlas: &EntityModelTextureAtlasLayout,
-) -> EntityModelTexturedMesh {
-    let mut mesh = EntityModelTexturedMesh::new();
-    for instance in instances {
-        match instance.kind {
-            EntityModelKind::Chicken { variant, baby } => {
-                emit_chicken_textured_model(&mut mesh, *instance, variant, baby, atlas);
-            }
-            EntityModelKind::Sheep {
-                baby,
-                sheared,
-                wool_color,
-            } => {
-                emit_sheep_textured_model(&mut mesh, *instance, baby, sheared, wool_color, atlas);
-            }
-            EntityModelKind::Wolf {
-                baby,
-                tame,
-                angry,
-                collar_color,
-            } => {
-                emit_wolf_textured_model(
-                    &mut mesh,
-                    *instance,
-                    baby,
-                    tame,
-                    angry,
-                    collar_color,
-                    atlas,
-                );
-            }
-            _ => {}
-        }
-    }
-    mesh
-}
-
-fn emit_chicken_textured_model(
-    mesh: &mut EntityModelTexturedMesh,
-    instance: EntityModelInstance,
-    variant: ChickenModelVariant,
-    baby: bool,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let transform = entity_model_root_transform(instance);
-    for pass in chicken_textured_layer_passes(variant, baby) {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        emit_textured_model_parts(
-            mesh,
-            pass.parts,
-            transform,
-            pass.texture,
-            entry.uv,
-            pass.tint,
-        );
-    }
 }
 
 fn emit_armor_stand_model(
@@ -615,210 +539,6 @@ fn emit_sheep_model(
             wool_layer_color,
         );
     }
-}
-
-fn emit_sheep_textured_model(
-    mesh: &mut EntityModelTexturedMesh,
-    instance: EntityModelInstance,
-    baby: bool,
-    sheared: bool,
-    wool_color: SheepWoolColor,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let transform = entity_model_root_transform(instance);
-    for pass in sheep_textured_layer_passes(baby, sheared, wool_color) {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        emit_textured_model_parts(
-            mesh,
-            pass.parts,
-            transform,
-            pass.texture,
-            entry.uv,
-            pass.tint,
-        );
-    }
-}
-
-fn emit_wolf_textured_model(
-    mesh: &mut EntityModelTexturedMesh,
-    instance: EntityModelInstance,
-    baby: bool,
-    tame: bool,
-    angry: bool,
-    collar_color: Option<EntityDyeColor>,
-    atlas: &EntityModelTextureAtlasLayout,
-) {
-    let transform = entity_model_root_transform(instance);
-    for pass in wolf_textured_layer_passes(baby, tame, angry, collar_color) {
-        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
-            continue;
-        };
-        emit_textured_model_parts(
-            mesh,
-            pass.parts,
-            transform,
-            pass.texture,
-            entry.uv,
-            pass.tint,
-        );
-    }
-}
-
-fn chicken_textured_layer_passes(
-    variant: ChickenModelVariant,
-    baby: bool,
-) -> Vec<EntityModelLayerPass> {
-    vec![EntityModelLayerPass {
-        kind: EntityModelLayerKind::ChickenBase,
-        model_layer: chicken_model_layer(variant, baby),
-        texture: chicken_texture_ref(variant, baby),
-        parts: chicken_textured_model_parts(variant, baby),
-        tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
-        submit_sequence: 0,
-    }]
-}
-
-fn sheep_textured_layer_passes(
-    baby: bool,
-    sheared: bool,
-    wool_color: SheepWoolColor,
-) -> Vec<EntityModelLayerPass> {
-    let wool_tint = sheep_wool_layer_color(wool_color);
-    let mut passes = Vec::with_capacity(3);
-    passes.push(EntityModelLayerPass {
-        kind: EntityModelLayerKind::SheepBase,
-        model_layer: if baby {
-            MODEL_LAYER_SHEEP_BABY
-        } else {
-            MODEL_LAYER_SHEEP
-        },
-        texture: if baby {
-            SHEEP_BABY_TEXTURE_REF
-        } else {
-            SHEEP_TEXTURE_REF
-        },
-        parts: if baby {
-            &BABY_SHEEP_TEXTURED_PARTS
-        } else {
-            &ADULT_SHEEP_TEXTURED_PARTS
-        },
-        tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
-        submit_sequence: 0,
-    });
-    if !baby && wool_color != SheepWoolColor::White {
-        passes.push(EntityModelLayerPass {
-            kind: EntityModelLayerKind::SheepWoolUndercoat,
-            model_layer: MODEL_LAYER_SHEEP_WOOL_UNDERCOAT,
-            texture: SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
-            parts: &ADULT_SHEEP_TEXTURED_PARTS,
-            tint: wool_tint,
-            collector_order: 1,
-            submit_sequence: 1,
-        });
-    }
-    if !sheared {
-        passes.push(EntityModelLayerPass {
-            kind: EntityModelLayerKind::SheepWool,
-            model_layer: if baby {
-                MODEL_LAYER_SHEEP_BABY_WOOL
-            } else {
-                MODEL_LAYER_SHEEP_WOOL
-            },
-            texture: if baby {
-                SHEEP_WOOL_BABY_TEXTURE_REF
-            } else {
-                SHEEP_WOOL_TEXTURE_REF
-            },
-            parts: if baby {
-                &BABY_SHEEP_TEXTURED_PARTS
-            } else {
-                &ADULT_SHEEP_WOOL_TEXTURED_PARTS
-            },
-            tint: wool_tint,
-            collector_order: if baby { 1 } else { 0 },
-            submit_sequence: 2,
-        });
-    }
-    passes.sort_by_key(|pass| (pass.collector_order, pass.submit_sequence));
-    passes
-}
-
-fn wolf_textured_layer_passes(
-    baby: bool,
-    tame: bool,
-    angry: bool,
-    collar_color: Option<EntityDyeColor>,
-) -> Vec<EntityModelLayerPass> {
-    let parts = if baby {
-        BABY_WOLF_TEXTURED_PARTS.as_slice()
-    } else {
-        ADULT_WOLF_TEXTURED_PARTS.as_slice()
-    };
-    let model_layer = if baby {
-        MODEL_LAYER_WOLF_BABY
-    } else {
-        MODEL_LAYER_WOLF
-    };
-    let mut passes = Vec::with_capacity(2);
-    passes.push(EntityModelLayerPass {
-        kind: EntityModelLayerKind::WolfBase,
-        model_layer,
-        texture: wolf_texture_ref(baby, tame, angry),
-        parts,
-        tint: [1.0, 1.0, 1.0, 1.0],
-        collector_order: 0,
-        submit_sequence: 0,
-    });
-    if let Some(collar_color) = tame.then_some(collar_color).flatten() {
-        passes.push(EntityModelLayerPass {
-            kind: EntityModelLayerKind::WolfCollar,
-            model_layer,
-            texture: if baby {
-                WOLF_BABY_COLLAR_TEXTURE_REF
-            } else {
-                WOLF_COLLAR_TEXTURE_REF
-            },
-            parts,
-            tint: collar_color.texture_diffuse_color(),
-            collector_order: 1,
-            submit_sequence: 1,
-        });
-    }
-    passes
-}
-
-fn chicken_model_layer(variant: ChickenModelVariant, baby: bool) -> &'static str {
-    match (variant, baby) {
-        (_, true) => MODEL_LAYER_CHICKEN_BABY,
-        (ChickenModelVariant::Cold, false) => MODEL_LAYER_COLD_CHICKEN,
-        (_, false) => MODEL_LAYER_CHICKEN,
-    }
-}
-
-fn chicken_textured_model_parts(
-    variant: ChickenModelVariant,
-    baby: bool,
-) -> &'static [TexturedModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_CHICKEN_TEXTURED_PARTS,
-        (ChickenModelVariant::Cold, false) => &COLD_CHICKEN_TEXTURED_PARTS,
-        (_, false) => &ADULT_CHICKEN_TEXTURED_PARTS,
-    }
-}
-
-fn entity_model_texture_atlas_entry(
-    atlas: &EntityModelTextureAtlasLayout,
-    texture: EntityModelTextureRef,
-) -> Option<EntityModelTextureAtlasEntry> {
-    atlas
-        .entries
-        .iter()
-        .copied()
-        .find(|entry| entry.texture == texture)
 }
 
 fn emit_villager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
