@@ -39,6 +39,7 @@ pub enum EntityModelKind {
     Enderman,
     IronGolem,
     SnowGolem,
+    Witch,
     Minecart,
     Boat {
         chest: bool,
@@ -189,6 +190,7 @@ impl EntityModelKind {
             Self::Enderman => "enderman",
             Self::IronGolem => "iron_golem",
             Self::SnowGolem => "snow_golem",
+            Self::Witch => "witch",
             Self::Minecart => "minecart",
             Self::Boat { chest: false } => "boat",
             Self::Boat { chest: true } => "chest_boat",
@@ -211,6 +213,7 @@ impl EntityModelKind {
             Self::Enderman => Some(ENDERMAN_TEXTURE_REF),
             Self::IronGolem => Some(IRON_GOLEM_TEXTURE_REF),
             Self::SnowGolem => Some(SNOW_GOLEM_TEXTURE_REF),
+            Self::Witch => Some(WITCH_TEXTURE_REF),
             _ => None,
         }
     }
@@ -301,6 +304,10 @@ impl EntityModelInstance {
 
     pub fn snow_golem(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::SnowGolem, position, y_rot)
+    }
+
+    pub fn witch(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Witch, position, y_rot)
     }
 
     pub fn quadruped(
@@ -455,6 +462,8 @@ const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
 const ENDERMAN_DARK: [f32; 4] = [0.08, 0.06, 0.10, 1.0];
 const IRON_GOLEM_STONE: [f32; 4] = [0.74, 0.74, 0.68, 1.0];
 const SNOW_GOLEM_WHITE: [f32; 4] = [0.90, 0.92, 0.88, 1.0];
+const WITCH_ROBE: [f32; 4] = [0.28, 0.17, 0.36, 1.0];
+const WITCH_HAT_COLOR: [f32; 4] = [0.16, 0.11, 0.20, 1.0];
 const MINECART_GRAY: [f32; 4] = [0.34, 0.35, 0.37, 1.0];
 const BOAT_WOOD: [f32; 4] = [0.55, 0.36, 0.18, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
@@ -522,6 +531,11 @@ const IRON_GOLEM_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const SNOW_GOLEM_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/snow_golem/snow_golem.png",
     size: [64, 64],
+};
+
+const WITCH_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/witch/witch.png",
+    size: [64, 128],
 };
 
 const ADULT_CHICKEN_BEAK: [ModelCubeDesc; 1] = [ModelCubeDesc {
@@ -2209,6 +2223,184 @@ const SNOW_GOLEM_PARTS: [ModelPartDesc; 5] = [
     },
 ];
 
+const WITCH_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -10.0, -4.0],
+    size: [8.0, 10.0, 8.0],
+    color: WITCH_ROBE,
+}];
+
+const WITCH_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [10.0, 2.0, 10.0],
+    color: WITCH_HAT_COLOR,
+}];
+
+const WITCH_HAT_2: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [7.0, 4.0, 7.0],
+    color: WITCH_HAT_COLOR,
+}];
+
+const WITCH_HAT_3: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, 0.0, 0.0],
+    size: [4.0, 4.0, 4.0],
+    color: WITCH_HAT_COLOR,
+}];
+
+const WITCH_HAT_4: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-0.25, -0.25, -0.25],
+    size: [1.5, 2.5, 1.5],
+    color: WITCH_HAT_COLOR,
+}];
+
+const WITCH_NOSE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.0, -6.0],
+    size: [2.0, 4.0, 2.0],
+    color: WITCH_ROBE,
+}];
+
+const WITCH_MOLE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.25, 3.25, -6.5],
+    size: [0.5, 0.5, 0.5],
+    color: WITCH_ROBE,
+}];
+
+const WITCH_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -3.0],
+    size: [8.0, 12.0, 6.0],
+    color: WITCH_ROBE,
+}];
+
+const WITCH_JACKET: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -0.5, -3.5],
+    size: [9.0, 21.0, 7.0],
+    color: WITCH_ROBE,
+}];
+
+const WITCH_ARMS: [ModelCubeDesc; 3] = [
+    ModelCubeDesc {
+        min: [-8.0, -2.0, -2.0],
+        size: [4.0, 8.0, 4.0],
+        color: WITCH_ROBE,
+    },
+    ModelCubeDesc {
+        min: [4.0, -2.0, -2.0],
+        size: [4.0, 8.0, 4.0],
+        color: WITCH_ROBE,
+    },
+    ModelCubeDesc {
+        min: [-4.0, 2.0, -2.0],
+        size: [8.0, 4.0, 4.0],
+        color: WITCH_ROBE,
+    },
+];
+
+const WITCH_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: WITCH_ROBE,
+}];
+
+const WITCH_HAT_3_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [1.75, -2.0, 2.0],
+        rotation: [-(std::f32::consts::PI / 15.0), 0.0, 0.10471976],
+    },
+    cubes: &WITCH_HAT_4,
+    children: &[],
+}];
+
+const WITCH_HAT_2_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [1.75, -4.0, 2.0],
+        rotation: [-0.10471976, 0.0, 0.05235988],
+    },
+    cubes: &WITCH_HAT_3,
+    children: &WITCH_HAT_3_CHILDREN,
+}];
+
+const WITCH_HAT_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [1.75, -4.0, 2.0],
+        rotation: [-0.05235988, 0.0, 0.02617994],
+    },
+    cubes: &WITCH_HAT_2,
+    children: &WITCH_HAT_2_CHILDREN,
+}];
+
+const WITCH_NOSE_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -2.0, 0.0],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &WITCH_MOLE,
+    children: &[],
+}];
+
+const WITCH_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, -10.03125, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &WITCH_HAT,
+        children: &WITCH_HAT_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &WITCH_NOSE,
+        children: &WITCH_NOSE_CHILDREN,
+    },
+];
+
+const WITCH_BODY_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &WITCH_JACKET,
+    children: &[],
+}];
+
+// Vanilla 26.1 WitchModel.createBodyLayer(), with LayerDefinitions'
+// MeshTransformer.scaling(0.9375F) applied by the emitter root transform.
+const WITCH_PARTS: [ModelPartDesc; 5] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &WITCH_HEAD,
+        children: &WITCH_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &WITCH_BODY,
+        children: &WITCH_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 3.0, -1.0],
+            rotation: [-0.75, 0.0, 0.0],
+        },
+        cubes: &WITCH_ARMS,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &WITCH_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &WITCH_LEG,
+        children: &[],
+    },
+];
+
 pub(crate) fn create_entity_model_pipeline(
     device: &wgpu::Device,
     format: wgpu::TextureFormat,
@@ -2358,6 +2550,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Enderman => emit_enderman_model(&mut mesh, *instance),
             EntityModelKind::IronGolem => emit_iron_golem_model(&mut mesh, *instance),
             EntityModelKind::SnowGolem => emit_snow_golem_model(&mut mesh, *instance),
+            EntityModelKind::Witch => emit_witch_model(&mut mesh, *instance),
             EntityModelKind::Minecart => emit_minecart_model(&mut mesh, *instance),
             EntityModelKind::Boat { chest } => emit_boat_model(&mut mesh, *instance, chest),
             EntityModelKind::Placeholder { bounds, .. } => {
@@ -2508,6 +2701,14 @@ fn emit_wandering_trader_model(mesh: &mut EntityModelMesh, instance: EntityModel
     emit_model_parts(
         mesh,
         &ADULT_VILLAGER_PARTS,
+        villager_adult_model_root_transform(instance),
+    );
+}
+
+fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    emit_model_parts(
+        mesh,
+        &WITCH_PARTS,
         villager_adult_model_root_transform(instance),
     );
 }
@@ -4434,6 +4635,139 @@ mod tests {
     }
 
     #[test]
+    fn witch_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            WITCH_HEAD[0],
+            ModelCubeDesc {
+                min: [-4.0, -10.0, -4.0],
+                size: [8.0, 10.0, 8.0],
+                color: WITCH_ROBE,
+            }
+        );
+        assert_eq!(
+            WITCH_HAT_4[0],
+            ModelCubeDesc {
+                min: [-0.25, -0.25, -0.25],
+                size: [1.5, 2.5, 1.5],
+                color: WITCH_HAT_COLOR,
+            }
+        );
+        assert_eq!(
+            WITCH_MOLE[0],
+            ModelCubeDesc {
+                min: [0.25, 3.25, -6.5],
+                size: [0.5, 0.5, 0.5],
+                color: WITCH_ROBE,
+            }
+        );
+
+        assert_eq!(WITCH_PARTS.len(), 5);
+        assert_part_tree(
+            &WITCH_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            WITCH_HEAD.as_slice(),
+            WITCH_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &WITCH_HEAD_CHILDREN[0],
+            [-5.0, -10.03125, -5.0],
+            [0.0, 0.0, 0.0],
+            WITCH_HAT.as_slice(),
+            WITCH_HAT_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &WITCH_HAT_CHILDREN[0],
+            [1.75, -4.0, 2.0],
+            [-0.05235988, 0.0, 0.02617994],
+            WITCH_HAT_2.as_slice(),
+            WITCH_HAT_2_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &WITCH_HAT_2_CHILDREN[0],
+            [1.75, -4.0, 2.0],
+            [-0.10471976, 0.0, 0.05235988],
+            WITCH_HAT_3.as_slice(),
+            WITCH_HAT_3_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &WITCH_HAT_3_CHILDREN[0],
+            [1.75, -2.0, 2.0],
+            [-(std::f32::consts::PI / 15.0), 0.0, 0.10471976],
+            WITCH_HAT_4.as_slice(),
+        );
+        assert_part_tree(
+            &WITCH_HEAD_CHILDREN[1],
+            [0.0, -2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            WITCH_NOSE.as_slice(),
+            WITCH_NOSE_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &WITCH_NOSE_CHILDREN[0],
+            [0.0, -2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            WITCH_MOLE.as_slice(),
+        );
+        assert_part_tree(
+            &WITCH_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            WITCH_BODY.as_slice(),
+            WITCH_BODY_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &WITCH_BODY_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            WITCH_JACKET.as_slice(),
+        );
+        assert_part(
+            &WITCH_PARTS[2],
+            [0.0, 3.0, -1.0],
+            [-0.75, 0.0, 0.0],
+            WITCH_ARMS.as_slice(),
+        );
+        assert_part(
+            &WITCH_PARTS[3],
+            [-2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            WITCH_LEG.as_slice(),
+        );
+        assert_part(
+            &WITCH_PARTS[4],
+            [2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            WITCH_LEG.as_slice(),
+        );
+    }
+
+    #[test]
+    fn witch_model_mesh_uses_vanilla_scaled_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::witch(66, [0.0, 64.0, 0.0], 0.0)]);
+
+        assert_eq!(mesh.opaque_faces, 84);
+        assert_eq!(mesh.vertices.len(), 336);
+        assert_eq!(mesh.indices.len(), 504);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.46875, 64.00094, -0.29296878]);
+        assert_close3(max, [0.46875003, 66.56483, 0.3839772]);
+    }
+
+    #[test]
+    fn witch_texture_ref_matches_vanilla_renderer() {
+        assert_eq!(EntityModelKind::Witch.model_key(), "witch");
+        assert_eq!(
+            EntityModelKind::Witch.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/witch/witch.png",
+                size: [64, 128],
+            })
+        );
+    }
+
+    #[test]
     fn entity_model_root_transform_rotates_instances_by_body_yaw() {
         let mesh = entity_model_mesh(&[EntityModelInstance::chicken(
             26,
@@ -4564,6 +4898,7 @@ mod tests {
         assert_eq!(EntityModelKind::Enderman.model_key(), "enderman");
         assert_eq!(EntityModelKind::IronGolem.model_key(), "iron_golem");
         assert_eq!(EntityModelKind::SnowGolem.model_key(), "snow_golem");
+        assert_eq!(EntityModelKind::Witch.model_key(), "witch");
         assert_eq!(
             EntityModelKind::Placeholder {
                 name: "todo_test_bounds",

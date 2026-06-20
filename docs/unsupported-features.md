@@ -333,6 +333,14 @@ When an agent does any of the following, update this file in the same slice:
       from `SnowGolemRenderer`; carved pumpkin head block layer, pumpkin/no
       pumpkin state projection, head rotation, upper-body yaw, and arm
       repositioning animation remain unsupported
+    - witch entities as renderer-owned vanilla 26.1
+      `WitchModel.createBodyLayer()` geometry, including the
+      `VillagerModel.createBodyModel()` body/arms/legs/nose, the four nested
+      hat cuboids, baked hat-tip and mole `CubeDeformation` bounds,
+      `LayerDefinitions`' `MeshTransformer.scaling(0.9375F)`, and the official
+      `textures/entity/witch/witch.png` texture reference from
+      `WitchRenderer`; `WitchItemLayer`, held-potion state, head rotation, leg
+      walk animation, and animated nose position/rotation remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder

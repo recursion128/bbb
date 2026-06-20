@@ -264,8 +264,8 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_EVOKER_ID
         | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
         | VANILLA_ENTITY_TYPE_PILLAGER_ID
-        | VANILLA_ENTITY_TYPE_VINDICATOR_ID
-        | VANILLA_ENTITY_TYPE_WITCH_ID => humanoid(HumanoidModelFamily::Illager, false),
+        | VANILLA_ENTITY_TYPE_VINDICATOR_ID => humanoid(HumanoidModelFamily::Illager, false),
+        VANILLA_ENTITY_TYPE_WITCH_ID => EntityModelKind::Witch,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID => EntityModelKind::Enderman,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => EntityModelKind::IronGolem,
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => EntityModelKind::SnowGolem,
@@ -757,6 +757,30 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, &[]),
             EntityModelKind::WanderingTrader
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_witch_only_within_illagers() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_WITCH_ID, &[]),
+            EntityModelKind::Witch
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_EVOKER_ID, &[]),
+            humanoid(HumanoidModelFamily::Illager, false)
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ILLUSIONER_ID, &[]),
+            humanoid(HumanoidModelFamily::Illager, false)
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PILLAGER_ID, &[]),
+            humanoid(HumanoidModelFamily::Illager, false)
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_VINDICATOR_ID, &[]),
+            humanoid(HumanoidModelFamily::Illager, false)
         );
     }
 
