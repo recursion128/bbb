@@ -1,10 +1,11 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{CameraPose, ClearColor};
 pub use crate::entity_models::{
-    ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
-    DonkeyModelFamily, EntityModelBounds, EntityModelInstance, EntityModelKind, HoglinModelFamily,
-    HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
-    PiglinModelFamily, QuadrupedModelFamily, SheepWoolColor, SkeletonModelFamily,
+    sheep_entity_texture_refs, ArmorStandModelPose, BoatModelFamily, CamelModelFamily,
+    ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityModelBounds,
+    EntityModelInstance, EntityModelKind, EntityModelTextureImage, EntityModelTextureRef,
+    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
+    PigModelVariant, PiglinModelFamily, QuadrupedModelFamily, SheepWoolColor, SkeletonModelFamily,
     UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 pub use crate::hud::{

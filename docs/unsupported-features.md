@@ -236,8 +236,8 @@ When an agent does any of the following, update this file in the same slice:
       pig temperate/warm/cold adult and baby/
       cow temperate/warm/cold adult and baby/
       boat/chest-boat/raft/chest-raft/
-      sheep base/wool/undercoat layer geometry with sheared state and dye
-      color projection/
+      sheep base/wool/undercoat layer geometry plus texture-backed layer
+      passes with sheared state and dye color projection/
       wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
       goat/polar-bear/hoglin/zoglin/ravager/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
@@ -256,8 +256,8 @@ When an agent does any of the following, update this file in the same slice:
     - culling
     - ordering
   - Finish sheep presentation parity:
-    - bind and composite base, wool, baby wool, and undercoat textures with
-      vanilla cutout/alpha semantics
+    - extend the texture-backed sheep path with vanilla entity lighting,
+      overlay, and render-state extraction parity
     - project custom-name `jeb_` color cycling from canonical entity data
     - apply eating head position/angle animation from entity event `10`
   - Implement vanilla dropped-item follow-up rendering:

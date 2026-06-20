@@ -20,6 +20,7 @@ mod camera_pose;
 mod code_of_conduct;
 mod code_of_conduct_overlay;
 mod crosshair;
+mod entity_assets;
 mod entity_scene;
 mod hud_assets;
 mod input;
@@ -34,6 +35,7 @@ mod terrain_runtime;
 use audio_runtime::{AudioEventSink, NativeAudioRuntime};
 use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptance};
 use code_of_conduct_overlay::CodeOfConductOverlayState;
+use entity_assets::load_entity_model_textures;
 use hud_assets::load_hud_textures;
 use input::{
     handle_book_screen_mouse_input, handle_focus_change, handle_inventory_cursor_moved,
@@ -225,6 +227,7 @@ fn main() -> Result<()> {
     let mut renderer = pollster::block_on(bbb_renderer::Renderer::new(&window))?;
     let terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     load_hud_textures(&mut renderer, pack_roots.as_ref());
+    load_entity_model_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = &particle_runtime {
         if let Err(err) = particles.upload_particle_atlas(&mut renderer) {
             tracing::warn!(?err, "continuing without native particle atlas");

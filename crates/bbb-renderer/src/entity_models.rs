@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+
+use anyhow::{anyhow, bail, Result};
 use glam::{EulerRot, Mat4, Vec3};
 use wgpu::util::DeviceExt;
 
@@ -363,6 +366,37 @@ pub struct EntityModelBounds {
 pub struct EntityModelTextureRef {
     pub path: &'static str,
     pub size: [u32; 2],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityModelTextureImage {
+    pub texture: EntityModelTextureRef,
+    pub rgba: Vec<u8>,
+}
+
+impl EntityModelTextureImage {
+    pub fn new(texture: EntityModelTextureRef, rgba: Vec<u8>) -> Self {
+        Self { texture, rgba }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EntityModelUvRect {
+    pub min: [f32; 2],
+    pub max: [f32; 2],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EntityModelTextureAtlasEntry {
+    pub texture: EntityModelTextureRef,
+    pub uv: EntityModelUvRect,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EntityModelTextureAtlasLayout {
+    pub width: u32,
+    pub height: u32,
+    pub entries: Vec<EntityModelTextureAtlasEntry>,
 }
 
 impl EntityModelKind {
@@ -1294,11 +1328,25 @@ impl EntityModelInstance {
 }
 
 pub(super) struct EntityModelMeshGpu {
-    pub(super) instances: Vec<EntityModelInstance>,
     pub(super) vertex_buffer: wgpu::Buffer,
     pub(super) index_buffer: wgpu::Buffer,
     pub(super) index_count: u32,
     pub(super) bounds: Option<TerrainBounds>,
+}
+
+pub(super) struct EntityModelTexturedMeshGpu {
+    pub(super) vertex_buffer: wgpu::Buffer,
+    pub(super) index_buffer: wgpu::Buffer,
+    pub(super) index_count: u32,
+    pub(super) bounds: Option<TerrainBounds>,
+}
+
+pub(super) struct EntityModelTextureAtlasGpu {
+    _texture: wgpu::Texture,
+    _view: wgpu::TextureView,
+    _sampler: wgpu::Sampler,
+    pub(super) bind_group: wgpu::BindGroup,
+    pub(super) layout: EntityModelTextureAtlasLayout,
 }
 
 #[repr(C)]
@@ -1306,6 +1354,14 @@ pub(super) struct EntityModelMeshGpu {
 pub(super) struct EntityModelVertex {
     pub(super) position: [f32; 3],
     pub(super) color: [f32; 4],
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(super) struct EntityModelTexturedVertex {
+    pub(super) position: [f32; 3],
+    pub(super) uv: [f32; 2],
+    pub(super) tint: [f32; 4],
 }
 
 struct EntityModelMesh {
@@ -1320,6 +1376,22 @@ impl EntityModelMesh {
             vertices: Vec::new(),
             indices: Vec::new(),
             opaque_faces: 0,
+        }
+    }
+}
+
+struct EntityModelTexturedMesh {
+    vertices: Vec<EntityModelTexturedVertex>,
+    indices: Vec<u32>,
+    cutout_faces: usize,
+}
+
+impl EntityModelTexturedMesh {
+    fn new() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: Vec::new(),
+            cutout_faces: 0,
         }
     }
 }
@@ -1339,6 +1411,39 @@ struct ModelCubeDesc {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+struct TexturedModelPartDesc {
+    pose: PartPose,
+    cubes: &'static [TexturedModelCubeDesc],
+    children: &'static [TexturedModelPartDesc],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct TexturedModelCubeDesc {
+    min: [f32; 3],
+    size: [f32; 3],
+    uv_size: [f32; 3],
+    tex: [f32; 2],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EntityModelLayerKind {
+    SheepBase,
+    SheepWool,
+    SheepWoolUndercoat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct EntityModelLayerPass {
+    kind: EntityModelLayerKind,
+    model_layer: &'static str,
+    texture: EntityModelTextureRef,
+    parts: &'static [TexturedModelPartDesc],
+    tint: [f32; 4],
+    collector_order: i32,
+    submit_sequence: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct PartPose {
     offset: [f32; 3],
     rotation: [f32; 3],
@@ -1351,6 +1456,8 @@ const PART_POSE_ZERO: PartPose = PartPose {
 
 const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
+const ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4];
 
 const ENTITY_MODEL_SHADER: &str = r#"
 struct Camera {
@@ -1381,6 +1488,51 @@ fn vs_main(input: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
     return input.color;
+}
+"#;
+
+const ENTITY_MODEL_TEXTURED_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> camera: Camera;
+
+@group(0) @binding(1)
+var entity_texture_atlas: texture_2d<f32>;
+
+@group(0) @binding(2)
+var entity_sampler: sampler;
+
+struct VertexIn {
+    @location(0) position: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) tint: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+};
+
+@vertex
+fn vs_main(input: VertexIn) -> VertexOut {
+    var out: VertexOut;
+    out.position = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = input.uv;
+    out.tint = input.tint;
+    return out;
+}
+
+@fragment
+fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
+    let texel = textureSample(entity_texture_atlas, entity_sampler, input.uv) * input.tint;
+    if texel.a <= 0.01 {
+        discard;
+    }
+    return texel;
 }
 "#;
 
@@ -1604,6 +1756,18 @@ const SHEEP_UNDERCOAT_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
     [SHEEP_WOOL_UNDERCOAT_TEXTURE_REF];
 const BABY_SHEEP_WOOL_LAYER_TEXTURE_REFS: [EntityModelTextureRef; 1] =
     [SHEEP_WOOL_BABY_TEXTURE_REF];
+
+const SHEEP_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 5] = [
+    SHEEP_TEXTURE_REF,
+    SHEEP_BABY_TEXTURE_REF,
+    SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
+    SHEEP_WOOL_TEXTURE_REF,
+    SHEEP_WOOL_BABY_TEXTURE_REF,
+];
+
+pub fn sheep_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &SHEEP_ENTITY_TEXTURE_REFS
+}
 
 const VILLAGER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/villager/villager.png",
@@ -5347,6 +5511,195 @@ const BABY_SHEEP_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const MODEL_LAYER_SHEEP: &str = "minecraft:sheep#main";
+const MODEL_LAYER_SHEEP_BABY: &str = "minecraft:sheep_baby#main";
+const MODEL_LAYER_SHEEP_WOOL: &str = "minecraft:sheep#wool";
+const MODEL_LAYER_SHEEP_BABY_WOOL: &str = "minecraft:sheep_baby#wool";
+const MODEL_LAYER_SHEEP_WOOL_UNDERCOAT: &str = "minecraft:sheep#wool_undercoat";
+
+const ADULT_SHEEP_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.0, -4.0, -6.0],
+    size: [6.0, 6.0, 8.0],
+    uv_size: [6.0, 6.0, 8.0],
+    tex: [0.0, 0.0],
+}];
+
+const ADULT_SHEEP_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-4.0, -10.0, -7.0],
+    size: [8.0, 16.0, 6.0],
+    uv_size: [8.0, 16.0, 6.0],
+    tex: [28.0, 8.0],
+}];
+
+const ADULT_SHEEP_TEXTURED_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    uv_size: [4.0, 12.0, 4.0],
+    tex: [0.0, 16.0],
+}];
+
+const ADULT_SHEEP_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_PARTS[0].pose,
+        cubes: &ADULT_SHEEP_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_PARTS[1].pose,
+        cubes: &ADULT_SHEEP_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_PARTS[2].pose,
+        cubes: &ADULT_SHEEP_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_PARTS[3].pose,
+        cubes: &ADULT_SHEEP_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_PARTS[4].pose,
+        cubes: &ADULT_SHEEP_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_PARTS[5].pose,
+        cubes: &ADULT_SHEEP_TEXTURED_LEG,
+        children: &[],
+    },
+];
+
+const ADULT_SHEEP_WOOL_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.6, -4.6, -4.6],
+    size: [7.2, 7.2, 7.2],
+    uv_size: [6.0, 6.0, 6.0],
+    tex: [0.0, 0.0],
+}];
+
+const ADULT_SHEEP_WOOL_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-5.75, -11.75, -8.75],
+    size: [11.5, 19.5, 9.5],
+    uv_size: [8.0, 16.0, 6.0],
+    tex: [28.0, 8.0],
+}];
+
+const ADULT_SHEEP_WOOL_TEXTURED_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-2.5, -0.5, -2.5],
+    size: [5.0, 7.0, 5.0],
+    uv_size: [4.0, 6.0, 4.0],
+    tex: [0.0, 16.0],
+}];
+
+const ADULT_SHEEP_WOOL_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_WOOL_PARTS[0].pose,
+        cubes: &ADULT_SHEEP_WOOL_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_WOOL_PARTS[1].pose,
+        cubes: &ADULT_SHEEP_WOOL_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_WOOL_PARTS[2].pose,
+        cubes: &ADULT_SHEEP_WOOL_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_WOOL_PARTS[3].pose,
+        cubes: &ADULT_SHEEP_WOOL_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_WOOL_PARTS[4].pose,
+        cubes: &ADULT_SHEEP_WOOL_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_SHEEP_WOOL_PARTS[5].pose,
+        cubes: &ADULT_SHEEP_WOOL_TEXTURED_LEG,
+        children: &[],
+    },
+];
+
+const BABY_SHEEP_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.0, -2.0, -4.5],
+    size: [6.0, 4.0, 9.0],
+    uv_size: [6.0, 4.0, 9.0],
+    tex: [0.0, 10.0],
+}];
+
+const BABY_SHEEP_TEXTURED_HEAD: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-2.5, -4.5, -3.5],
+    size: [5.0, 5.0, 5.0],
+    uv_size: [5.0, 5.0, 5.0],
+    tex: [0.0, 0.0],
+}];
+
+const BABY_SHEEP_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 5.0, 2.0],
+    uv_size: [2.0, 5.0, 2.0],
+    tex: [0.0, 23.0],
+}];
+
+const BABY_SHEEP_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 5.0, 2.0],
+    uv_size: [2.0, 5.0, 2.0],
+    tex: [24.0, 12.0],
+}];
+
+const BABY_SHEEP_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 5.0, 2.0],
+    uv_size: [2.0, 5.0, 2.0],
+    tex: [8.0, 23.0],
+}];
+
+const BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 5.0, 2.0],
+    uv_size: [2.0, 5.0, 2.0],
+    tex: [24.0, 5.0],
+}];
+
+const BABY_SHEEP_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: BABY_SHEEP_PARTS[0].pose,
+        cubes: &BABY_SHEEP_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_SHEEP_PARTS[1].pose,
+        cubes: &BABY_SHEEP_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_SHEEP_PARTS[2].pose,
+        cubes: &BABY_SHEEP_TEXTURED_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_SHEEP_PARTS[3].pose,
+        cubes: &BABY_SHEEP_TEXTURED_LEFT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_SHEEP_PARTS[4].pose,
+        cubes: &BABY_SHEEP_TEXTURED_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_SHEEP_PARTS[5].pose,
+        cubes: &BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG,
+        children: &[],
+    },
+];
+
 const ADULT_WOLF_REAL_HEAD: [ModelCubeDesc; 4] = [
     ModelCubeDesc {
         min: [-2.0, -3.0, -2.0],
@@ -8477,29 +8830,298 @@ pub(crate) fn create_entity_model_pipeline(
     })
 }
 
+pub(crate) fn create_entity_model_textured_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("bbb-entity-model-textured-shader"),
+        source: wgpu::ShaderSource::Wgsl(ENTITY_MODEL_TEXTURED_SHADER.into()),
+    });
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("bbb-entity-model-textured-pipeline-layout"),
+        bind_group_layouts: &[bind_group_layout],
+        push_constant_ranges: &[],
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("bbb-entity-model-textured-pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[entity_model_textured_vertex_layout()],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::LessEqual,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(wgpu::BlendState::REPLACE),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview: None,
+    })
+}
+
 impl Renderer {
+    pub fn upload_entity_model_textures(
+        &mut self,
+        images: &[EntityModelTextureImage],
+    ) -> Result<()> {
+        self.entity_model_texture_atlas = Some(create_entity_model_texture_atlas_gpu(
+            &self.device,
+            &self.queue,
+            &self.terrain_bind_group_layout,
+            &self.camera_buffer,
+            images,
+        )?);
+        self.rebuild_entity_model_meshes();
+        Ok(())
+    }
+
     pub fn set_entity_model_instances(&mut self, instances: Vec<EntityModelInstance>) {
         let instances = sanitize_entity_model_instances(instances);
-        if self
-            .entity_model_mesh
-            .as_ref()
-            .map(|mesh| mesh.instances.as_slice())
-            == Some(instances.as_slice())
-        {
+        if self.entity_model_instances.as_slice() == instances.as_slice() {
             return;
         }
 
-        self.entity_model_mesh = create_entity_model_mesh_gpu(&self.device, instances);
-        self.entity_model_bounds = self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds);
+        self.entity_model_instances = instances;
+        self.rebuild_entity_model_meshes();
+    }
+
+    fn rebuild_entity_model_meshes(&mut self) {
+        self.entity_model_mesh =
+            create_entity_model_mesh_gpu(&self.device, self.entity_model_instances.clone());
+        self.entity_model_textured_mesh =
+            self.entity_model_texture_atlas.as_ref().and_then(|atlas| {
+                create_entity_model_textured_mesh_gpu(
+                    &self.device,
+                    &self.entity_model_instances,
+                    &atlas.layout,
+                )
+            });
+        self.entity_model_bounds = merged_entity_model_bounds(
+            self.entity_model_mesh.as_ref().and_then(|mesh| mesh.bounds),
+            self.entity_model_textured_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+        );
         self.update_camera();
     }
+}
+
+fn create_entity_model_texture_atlas_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    camera_buffer: &wgpu::Buffer,
+    images: &[EntityModelTextureImage],
+) -> Result<EntityModelTextureAtlasGpu> {
+    let (layout, rgba) = build_entity_model_texture_atlas(images)?;
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bbb-entity-model-texture-atlas"),
+        size: wgpu::Extent3d {
+            width: layout.width,
+            height: layout.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(layout.width * 4),
+            rows_per_image: Some(layout.height),
+        },
+        wgpu::Extent3d {
+            width: layout.width,
+            height: layout.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("bbb-entity-model-texture-sampler"),
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Nearest,
+        min_filter: wgpu::FilterMode::Nearest,
+        mipmap_filter: wgpu::FilterMode::Nearest,
+        ..Default::default()
+    });
+    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("bbb-entity-model-texture-bind-group"),
+        layout: bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+
+    Ok(EntityModelTextureAtlasGpu {
+        _texture: texture,
+        _view: view,
+        _sampler: sampler,
+        bind_group,
+        layout,
+    })
+}
+
+fn build_entity_model_texture_atlas(
+    images: &[EntityModelTextureImage],
+) -> Result<(EntityModelTextureAtlasLayout, Vec<u8>)> {
+    if images.is_empty() {
+        bail!("entity model texture atlas requires at least one image");
+    }
+    let mut seen = BTreeMap::new();
+    let mut width = 0u32;
+    let mut height = 0u32;
+    for image in images {
+        validate_entity_model_texture_image(image)?;
+        if seen.insert(image.texture.path, ()).is_some() {
+            bail!("duplicate entity model texture {}", image.texture.path);
+        }
+        width = width.max(image.texture.size[0]);
+        height = height
+            .checked_add(image.texture.size[1])
+            .ok_or_else(|| anyhow!("entity model texture atlas height overflow"))?;
+    }
+    if width == 0 || height == 0 {
+        bail!("entity model texture atlas dimensions must be non-zero");
+    }
+    let atlas_len = rgba_len(width, height, "entity model texture atlas")?;
+    let mut rgba = vec![0u8; atlas_len];
+    let mut entries = Vec::with_capacity(images.len());
+    let mut y = 0u32;
+    for image in images {
+        let image_width = image.texture.size[0];
+        let image_height = image.texture.size[1];
+        let row_len = usize::try_from(image_width)
+            .ok()
+            .and_then(|width| width.checked_mul(4))
+            .ok_or_else(|| anyhow!("entity model texture row size overflow"))?;
+        for row in 0..image_height {
+            let src_start = rgba_offset(image_width, row, 0, "entity model texture source")?;
+            let src_end = src_start + row_len;
+            let dst_start = rgba_offset(width, y + row, 0, "entity model texture atlas")?;
+            let dst_end = dst_start + row_len;
+            rgba[dst_start..dst_end].copy_from_slice(&image.rgba[src_start..src_end]);
+        }
+        entries.push(EntityModelTextureAtlasEntry {
+            texture: image.texture,
+            uv: EntityModelUvRect {
+                min: [0.0, y as f32 / height as f32],
+                max: [
+                    image_width as f32 / width as f32,
+                    (y + image_height) as f32 / height as f32,
+                ],
+            },
+        });
+        y += image_height;
+    }
+
+    Ok((
+        EntityModelTextureAtlasLayout {
+            width,
+            height,
+            entries,
+        },
+        rgba,
+    ))
+}
+
+fn validate_entity_model_texture_image(image: &EntityModelTextureImage) -> Result<()> {
+    let [width, height] = image.texture.size;
+    if width == 0 || height == 0 {
+        bail!(
+            "entity model texture {} has zero-sized dimensions",
+            image.texture.path
+        );
+    }
+    let expected_len = rgba_len(width, height, image.texture.path)?;
+    if image.rgba.len() != expected_len {
+        bail!(
+            "entity model texture {} has {} RGBA bytes, expected {} for {}x{}",
+            image.texture.path,
+            image.rgba.len(),
+            expected_len,
+            width,
+            height
+        );
+    }
+    Ok(())
+}
+
+fn rgba_len(width: u32, height: u32, label: &str) -> Result<usize> {
+    usize::try_from(width)
+        .ok()
+        .and_then(|width| {
+            usize::try_from(height)
+                .ok()
+                .and_then(|height| width.checked_mul(height))
+        })
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| anyhow!("{label} RGBA size overflow"))
+}
+
+fn rgba_offset(width: u32, y: u32, x: u32, label: &str) -> Result<usize> {
+    let width = usize::try_from(width).map_err(|_| anyhow!("{label} width overflow"))?;
+    let x = usize::try_from(x).map_err(|_| anyhow!("{label} x overflow"))?;
+    let y = usize::try_from(y).map_err(|_| anyhow!("{label} y overflow"))?;
+    y.checked_mul(width)
+        .and_then(|offset| offset.checked_add(x))
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or_else(|| anyhow!("{label} RGBA offset overflow"))
 }
 
 fn create_entity_model_mesh_gpu(
     device: &wgpu::Device,
     instances: Vec<EntityModelInstance>,
 ) -> Option<EntityModelMeshGpu> {
-    let mesh = entity_model_mesh(&instances);
+    let mesh = entity_model_colored_runtime_mesh(&instances);
     if mesh.vertices.is_empty() || mesh.indices.is_empty() {
         return None;
     }
@@ -8520,12 +9142,58 @@ fn create_entity_model_mesh_gpu(
     });
 
     Some(EntityModelMeshGpu {
-        instances,
         vertex_buffer,
         index_buffer,
         index_count: mesh.indices.len() as u32,
         bounds,
     })
+}
+
+fn create_entity_model_textured_mesh_gpu(
+    device: &wgpu::Device,
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> Option<EntityModelTexturedMeshGpu> {
+    let mesh = entity_model_textured_mesh(instances, atlas);
+    if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+        return None;
+    }
+    let bounds = TerrainBounds::from_points(
+        mesh.vertices
+            .iter()
+            .map(|vertex| Vec3::from_array(vertex.position)),
+    );
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-entity-model-textured-vertices"),
+        contents: bytemuck::cast_slice(&mesh.vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("bbb-entity-model-textured-indices"),
+        contents: bytemuck::cast_slice(&mesh.indices),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+
+    Some(EntityModelTexturedMeshGpu {
+        vertex_buffer,
+        index_buffer,
+        index_count: mesh.indices.len() as u32,
+        bounds,
+    })
+}
+
+fn merged_entity_model_bounds(
+    colored: Option<TerrainBounds>,
+    textured: Option<TerrainBounds>,
+) -> Option<TerrainBounds> {
+    match (colored, textured) {
+        (Some(mut colored), Some(textured)) => {
+            colored.include_bounds(textured);
+            Some(colored)
+        }
+        (Some(bounds), None) | (None, Some(bounds)) => Some(bounds),
+        (None, None) => None,
+    }
 }
 
 fn sanitize_entity_model_instances(
@@ -8543,7 +9211,19 @@ fn sanitize_entity_model_instances(
         .collect()
 }
 
+#[cfg(test)]
 fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
+    entity_model_mesh_with_options(instances, false)
+}
+
+fn entity_model_colored_runtime_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
+    entity_model_mesh_with_options(instances, true)
+}
+
+fn entity_model_mesh_with_options(
+    instances: &[EntityModelInstance],
+    skip_texture_backed_sheep: bool,
+) -> EntityModelMesh {
     let mut mesh = EntityModelMesh::new();
     for instance in instances {
         match instance.kind {
@@ -8598,7 +9278,11 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 baby,
                 sheared,
                 wool_color,
-            } => emit_sheep_model(&mut mesh, *instance, baby, sheared, wool_color),
+            } => {
+                if !skip_texture_backed_sheep {
+                    emit_sheep_model(&mut mesh, *instance, baby, sheared, wool_color);
+                }
+            }
             EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
             EntityModelKind::WanderingTrader => emit_wandering_trader_model(&mut mesh, *instance),
             EntityModelKind::Wolf { baby } => emit_wolf_model(&mut mesh, *instance, baby),
@@ -8646,6 +9330,24 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Placeholder { bounds, .. } => {
                 emit_placeholder_bounds_model(&mut mesh, *instance, bounds)
             }
+        }
+    }
+    mesh
+}
+
+fn entity_model_textured_mesh(
+    instances: &[EntityModelInstance],
+    atlas: &EntityModelTextureAtlasLayout,
+) -> EntityModelTexturedMesh {
+    let mut mesh = EntityModelTexturedMesh::new();
+    for instance in instances {
+        if let EntityModelKind::Sheep {
+            baby,
+            sheared,
+            wool_color,
+        } = instance.kind
+        {
+            emit_sheep_textured_model(&mut mesh, *instance, baby, sheared, wool_color, atlas);
         }
     }
     mesh
@@ -9017,6 +9719,107 @@ fn emit_sheep_model(
             wool_layer_color,
         );
     }
+}
+
+fn emit_sheep_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    baby: bool,
+    sheared: bool,
+    wool_color: SheepWoolColor,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in sheep_textured_layer_passes(baby, sheared, wool_color) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
+}
+
+fn sheep_textured_layer_passes(
+    baby: bool,
+    sheared: bool,
+    wool_color: SheepWoolColor,
+) -> Vec<EntityModelLayerPass> {
+    let wool_tint = sheep_wool_layer_color(wool_color);
+    let mut passes = Vec::with_capacity(3);
+    passes.push(EntityModelLayerPass {
+        kind: EntityModelLayerKind::SheepBase,
+        model_layer: if baby {
+            MODEL_LAYER_SHEEP_BABY
+        } else {
+            MODEL_LAYER_SHEEP
+        },
+        texture: if baby {
+            SHEEP_BABY_TEXTURE_REF
+        } else {
+            SHEEP_TEXTURE_REF
+        },
+        parts: if baby {
+            &BABY_SHEEP_TEXTURED_PARTS
+        } else {
+            &ADULT_SHEEP_TEXTURED_PARTS
+        },
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    });
+    if !baby && wool_color != SheepWoolColor::White {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::SheepWoolUndercoat,
+            model_layer: MODEL_LAYER_SHEEP_WOOL_UNDERCOAT,
+            texture: SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
+            parts: &ADULT_SHEEP_TEXTURED_PARTS,
+            tint: wool_tint,
+            collector_order: 1,
+            submit_sequence: 1,
+        });
+    }
+    if !sheared {
+        passes.push(EntityModelLayerPass {
+            kind: EntityModelLayerKind::SheepWool,
+            model_layer: if baby {
+                MODEL_LAYER_SHEEP_BABY_WOOL
+            } else {
+                MODEL_LAYER_SHEEP_WOOL
+            },
+            texture: if baby {
+                SHEEP_WOOL_BABY_TEXTURE_REF
+            } else {
+                SHEEP_WOOL_TEXTURE_REF
+            },
+            parts: if baby {
+                &BABY_SHEEP_TEXTURED_PARTS
+            } else {
+                &ADULT_SHEEP_WOOL_TEXTURED_PARTS
+            },
+            tint: wool_tint,
+            collector_order: if baby { 1 } else { 0 },
+            submit_sequence: 2,
+        });
+    }
+    passes.sort_by_key(|pass| (pass.collector_order, pass.submit_sequence));
+    passes
+}
+
+fn entity_model_texture_atlas_entry(
+    atlas: &EntityModelTextureAtlasLayout,
+    texture: EntityModelTextureRef,
+) -> Option<EntityModelTextureAtlasEntry> {
+    atlas
+        .entries
+        .iter()
+        .copied()
+        .find(|entry| entry.texture == texture)
 }
 
 fn emit_villager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
@@ -10008,6 +10811,19 @@ fn emit_model_parts_with_color(
     }
 }
 
+fn emit_textured_model_parts(
+    mesh: &mut EntityModelTexturedMesh,
+    parts: &[TexturedModelPartDesc],
+    parent_transform: Mat4,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+) {
+    for part in parts {
+        emit_textured_model_part(mesh, part, parent_transform, texture, uv_rect, tint);
+    }
+}
+
 fn emit_model_cubes_at_pose(
     mesh: &mut EntityModelMesh,
     parent_transform: Mat4,
@@ -10026,6 +10842,21 @@ fn emit_model_part(mesh: &mut EntityModelMesh, part: &ModelPartDesc, parent_tran
         emit_model_cube(mesh, transform, *cube);
     }
     emit_model_parts(mesh, part.children, transform);
+}
+
+fn emit_textured_model_part(
+    mesh: &mut EntityModelTexturedMesh,
+    part: &TexturedModelPartDesc,
+    parent_transform: Mat4,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+) {
+    let transform = parent_transform * part_pose_transform(part.pose);
+    for cube in part.cubes {
+        emit_textured_model_cube(mesh, transform, *cube, texture, uv_rect, tint);
+    }
+    emit_textured_model_parts(mesh, part.children, transform, texture, uv_rect, tint);
 }
 
 fn emit_model_part_with_color(
@@ -10108,6 +10939,19 @@ fn emit_model_cube(mesh: &mut EntityModelMesh, transform: Mat4, cube: ModelCubeD
     emit_model_cube_from_min_max(mesh, transform, min, max, cube.color);
 }
 
+fn emit_textured_model_cube(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    cube: TexturedModelCubeDesc,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+) {
+    let min = Vec3::from_array(cube.min) * MODEL_UNIT_SCALE;
+    let max = min + Vec3::from_array(cube.size) * MODEL_UNIT_SCALE;
+    emit_textured_model_cube_from_min_max(mesh, transform, min, max, cube, texture, uv_rect, tint);
+}
+
 fn emit_model_cube_world_units(
     mesh: &mut EntityModelMesh,
     transform: Mat4,
@@ -10155,6 +10999,133 @@ fn emit_model_cube_from_min_max(
     }
 }
 
+fn emit_textured_model_cube_from_min_max(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    min: Vec3,
+    max: Vec3,
+    cube: TexturedModelCubeDesc,
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+) {
+    let t0 = Vec3::new(min.x, min.y, min.z);
+    let t1 = Vec3::new(max.x, min.y, min.z);
+    let t2 = Vec3::new(max.x, max.y, min.z);
+    let t3 = Vec3::new(min.x, max.y, min.z);
+    let l0 = Vec3::new(min.x, min.y, max.z);
+    let l1 = Vec3::new(max.x, min.y, max.z);
+    let l2 = Vec3::new(max.x, max.y, max.z);
+    let l3 = Vec3::new(min.x, max.y, max.z);
+
+    let width = cube.uv_size[0];
+    let height = cube.uv_size[1];
+    let depth = cube.uv_size[2];
+    let x_tex = cube.tex[0];
+    let y_tex = cube.tex[1];
+    let u0 = x_tex;
+    let u1 = x_tex + depth;
+    let u2 = x_tex + depth + width;
+    let u22 = x_tex + depth + width + width;
+    let u3 = x_tex + depth + width + depth;
+    let u4 = x_tex + depth + width + depth + width;
+    let v0 = y_tex;
+    let v1 = y_tex + depth;
+    let v2 = y_tex + depth + height;
+
+    emit_textured_model_polygon(
+        mesh,
+        [l1, l0, t0, t1].map(|corner| transform.transform_point3(corner)),
+        [u1, v0, u2, v1],
+        texture,
+        uv_rect,
+        tint,
+    );
+    emit_textured_model_polygon(
+        mesh,
+        [t2, t3, l3, l2].map(|corner| transform.transform_point3(corner)),
+        [u2, v1, u22, v0],
+        texture,
+        uv_rect,
+        tint,
+    );
+    emit_textured_model_polygon(
+        mesh,
+        [t0, l0, l3, t3].map(|corner| transform.transform_point3(corner)),
+        [u0, v1, u1, v2],
+        texture,
+        uv_rect,
+        tint,
+    );
+    emit_textured_model_polygon(
+        mesh,
+        [t1, t0, t3, t2].map(|corner| transform.transform_point3(corner)),
+        [u1, v1, u2, v2],
+        texture,
+        uv_rect,
+        tint,
+    );
+    emit_textured_model_polygon(
+        mesh,
+        [l1, t1, t2, l2].map(|corner| transform.transform_point3(corner)),
+        [u2, v1, u3, v2],
+        texture,
+        uv_rect,
+        tint,
+    );
+    emit_textured_model_polygon(
+        mesh,
+        [l0, l1, l2, l3].map(|corner| transform.transform_point3(corner)),
+        [u3, v1, u4, v2],
+        texture,
+        uv_rect,
+        tint,
+    );
+}
+
+fn emit_textured_model_polygon(
+    mesh: &mut EntityModelTexturedMesh,
+    corners: [Vec3; 4],
+    texture_uv: [f32; 4],
+    texture: EntityModelTextureRef,
+    uv_rect: EntityModelUvRect,
+    tint: [f32; 4],
+) {
+    let [u0, v0, u1, v1] = texture_uv;
+    let source_uv = [[u1, v0], [u0, v0], [u0, v1], [u1, v1]];
+    let base = mesh.vertices.len() as u32;
+    mesh.vertices
+        .extend(
+            corners
+                .iter()
+                .copied()
+                .zip(source_uv.iter().copied())
+                .map(|(position, uv)| EntityModelTexturedVertex {
+                    position: position.to_array(),
+                    uv: atlas_uv(uv, texture, uv_rect),
+                    tint,
+                }),
+        );
+    mesh.indices
+        .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    mesh.cutout_faces += 1;
+}
+
+fn atlas_uv(
+    texture_uv: [f32; 2],
+    texture: EntityModelTextureRef,
+    rect: EntityModelUvRect,
+) -> [f32; 2] {
+    let source = [
+        texture_uv[0] / texture.size[0] as f32,
+        texture_uv[1] / texture.size[1] as f32,
+    ];
+    [
+        rect.min[0] + source[0] * (rect.max[0] - rect.min[0]),
+        rect.min[1] + source[1] * (rect.max[1] - rect.min[1]),
+    ]
+}
+
 fn emit_model_face(mesh: &mut EntityModelMesh, corners: [Vec3; 4], color: [f32; 4]) {
     let base = mesh.vertices.len() as u32;
     mesh.vertices
@@ -10181,6 +11152,14 @@ fn entity_model_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
         array_stride: std::mem::size_of::<EntityModelVertex>() as wgpu::BufferAddress,
         step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &ENTITY_MODEL_VERTEX_ATTRIBUTES,
+    }
+}
+
+fn entity_model_textured_vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<EntityModelTexturedVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
     }
 }
 
@@ -13140,6 +14119,270 @@ mod tests {
         }
         .vanilla_layer_texture_refs()
         .is_empty());
+    }
+
+    #[test]
+    fn sheep_textured_layer_passes_match_vanilla_renderer_layers() {
+        let adult_red = sheep_textured_layer_passes(false, false, SheepWoolColor::Red);
+        assert_eq!(
+            adult_red.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
+            vec![
+                EntityModelLayerKind::SheepBase,
+                EntityModelLayerKind::SheepWool,
+                EntityModelLayerKind::SheepWoolUndercoat,
+            ]
+        );
+        assert_eq!(adult_red[0].model_layer, MODEL_LAYER_SHEEP);
+        assert_eq!(adult_red[0].texture, SHEEP_TEXTURE_REF);
+        assert_eq!(adult_red[0].parts, ADULT_SHEEP_TEXTURED_PARTS.as_slice());
+        assert_eq!(adult_red[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            (adult_red[0].collector_order, adult_red[0].submit_sequence),
+            (0, 0)
+        );
+        assert_eq!(adult_red[1].model_layer, MODEL_LAYER_SHEEP_WOOL);
+        assert_eq!(adult_red[1].texture, SHEEP_WOOL_TEXTURE_REF);
+        assert_eq!(
+            adult_red[1].parts,
+            ADULT_SHEEP_WOOL_TEXTURED_PARTS.as_slice()
+        );
+        assert_eq!(
+            adult_red[1].tint,
+            sheep_wool_layer_color(SheepWoolColor::Red)
+        );
+        assert_eq!(
+            (adult_red[1].collector_order, adult_red[1].submit_sequence),
+            (0, 2)
+        );
+        assert_eq!(adult_red[2].model_layer, MODEL_LAYER_SHEEP_WOOL_UNDERCOAT);
+        assert_eq!(adult_red[2].texture, SHEEP_WOOL_UNDERCOAT_TEXTURE_REF);
+        assert_eq!(adult_red[2].parts, ADULT_SHEEP_TEXTURED_PARTS.as_slice());
+        assert_eq!(
+            adult_red[2].tint,
+            sheep_wool_layer_color(SheepWoolColor::Red)
+        );
+        assert_eq!(
+            (adult_red[2].collector_order, adult_red[2].submit_sequence),
+            (1, 1)
+        );
+
+        let sheared_red = sheep_textured_layer_passes(false, true, SheepWoolColor::Red);
+        assert_eq!(
+            sheared_red.iter().map(|pass| pass.kind).collect::<Vec<_>>(),
+            vec![
+                EntityModelLayerKind::SheepBase,
+                EntityModelLayerKind::SheepWoolUndercoat,
+            ]
+        );
+        let sheared_white = sheep_textured_layer_passes(false, true, SheepWoolColor::White);
+        assert_eq!(sheared_white.len(), 1);
+        assert_eq!(sheared_white[0].kind, EntityModelLayerKind::SheepBase);
+
+        let baby_black = sheep_textured_layer_passes(true, false, SheepWoolColor::Black);
+        assert_eq!(
+            baby_black
+                .iter()
+                .map(|pass| (
+                    pass.kind,
+                    pass.model_layer,
+                    pass.texture,
+                    pass.collector_order
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    EntityModelLayerKind::SheepBase,
+                    MODEL_LAYER_SHEEP_BABY,
+                    SHEEP_BABY_TEXTURE_REF,
+                    0,
+                ),
+                (
+                    EntityModelLayerKind::SheepWool,
+                    MODEL_LAYER_SHEEP_BABY_WOOL,
+                    SHEEP_WOOL_BABY_TEXTURE_REF,
+                    1,
+                ),
+            ]
+        );
+        assert_eq!(baby_black[1].parts, BABY_SHEEP_TEXTURED_PARTS.as_slice());
+        let sheared_baby_black = sheep_textured_layer_passes(true, true, SheepWoolColor::Black);
+        assert_eq!(sheared_baby_black.len(), 1);
+    }
+
+    #[test]
+    fn sheep_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+        assert_eq!(MODEL_LAYER_SHEEP, "minecraft:sheep#main");
+        assert_eq!(MODEL_LAYER_SHEEP_BABY, "minecraft:sheep_baby#main");
+        assert_eq!(MODEL_LAYER_SHEEP_WOOL, "minecraft:sheep#wool");
+        assert_eq!(MODEL_LAYER_SHEEP_BABY_WOOL, "minecraft:sheep_baby#wool");
+        assert_eq!(
+            MODEL_LAYER_SHEEP_WOOL_UNDERCOAT,
+            "minecraft:sheep#wool_undercoat"
+        );
+        assert_eq!(
+            ADULT_SHEEP_TEXTURED_HEAD[0],
+            TexturedModelCubeDesc {
+                min: [-3.0, -4.0, -6.0],
+                size: [6.0, 6.0, 8.0],
+                uv_size: [6.0, 6.0, 8.0],
+                tex: [0.0, 0.0],
+            }
+        );
+        assert_eq!(
+            ADULT_SHEEP_WOOL_TEXTURED_HEAD[0],
+            TexturedModelCubeDesc {
+                min: [-3.6, -4.6, -4.6],
+                size: [7.2, 7.2, 7.2],
+                uv_size: [6.0, 6.0, 6.0],
+                tex: [0.0, 0.0],
+            }
+        );
+        assert_eq!(
+            ADULT_SHEEP_WOOL_TEXTURED_BODY[0],
+            TexturedModelCubeDesc {
+                min: [-5.75, -11.75, -8.75],
+                size: [11.5, 19.5, 9.5],
+                uv_size: [8.0, 16.0, 6.0],
+                tex: [28.0, 8.0],
+            }
+        );
+        assert_eq!(
+            BABY_SHEEP_TEXTURED_LEFT_FRONT_LEG[0],
+            TexturedModelCubeDesc {
+                min: [-1.0, 0.0, -1.0],
+                size: [2.0, 5.0, 2.0],
+                uv_size: [2.0, 5.0, 2.0],
+                tex: [24.0, 5.0],
+            }
+        );
+    }
+
+    #[test]
+    fn entity_texture_atlas_stitches_official_sheep_png_slots() {
+        let images = sheep_entity_texture_refs()
+            .iter()
+            .enumerate()
+            .map(|(index, texture)| {
+                let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                EntityModelTextureImage::new(*texture, vec![index as u8; len])
+            })
+            .collect::<Vec<_>>();
+
+        let (layout, rgba) = build_entity_model_texture_atlas(&images).unwrap();
+
+        assert_eq!(layout.width, 64);
+        assert_eq!(layout.height, 160);
+        assert_eq!(
+            layout
+                .entries
+                .iter()
+                .map(|entry| entry.texture.path)
+                .collect::<Vec<_>>(),
+            vec![
+                "textures/entity/sheep/sheep.png",
+                "textures/entity/sheep/sheep_baby.png",
+                "textures/entity/sheep/sheep_wool_undercoat.png",
+                "textures/entity/sheep/sheep_wool.png",
+                "textures/entity/sheep/sheep_wool_baby.png",
+            ]
+        );
+        assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
+        assert_close2(layout.entries[0].uv.max, [1.0, 0.2]);
+        assert_close2(layout.entries[2].uv.min, [0.0, 0.4]);
+        assert_close2(layout.entries[2].uv.max, [1.0, 0.6]);
+        assert_close2(layout.entries[3].uv.min, [0.0, 0.6]);
+        assert_close2(layout.entries[3].uv.max, [1.0, 0.8]);
+        let undercoat_first_pixel = rgba_offset(layout.width, 64, 0, "test").unwrap();
+        assert_eq!(
+            &rgba[undercoat_first_pixel..undercoat_first_pixel + 4],
+            &[2; 4]
+        );
+        let wool_first_pixel = rgba_offset(layout.width, 96, 0, "test").unwrap();
+        assert_eq!(&rgba[wool_first_pixel..wool_first_pixel + 4], &[3; 4]);
+    }
+
+    #[test]
+    fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
+        let (atlas, _) = build_entity_model_texture_atlas(&sheep_texture_images()).unwrap();
+        let mesh = entity_model_textured_mesh(
+            &[EntityModelInstance::sheep_wool(
+                301,
+                [0.0, 64.0, 0.0],
+                0.0,
+                false,
+                false,
+                SheepWoolColor::Red,
+            )],
+            &atlas,
+        );
+
+        assert_eq!(mesh.cutout_faces, 108);
+        assert_eq!(mesh.vertices.len(), 432);
+        assert_eq!(mesh.indices.len(), 648);
+        assert_close2(mesh.vertices[0].uv, [14.0 / 64.0, 0.0]);
+        assert_eq!(mesh.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            mesh.vertices[144].tint,
+            sheep_wool_layer_color(SheepWoolColor::Red)
+        );
+        assert_close2(mesh.vertices[144].uv, [12.0 / 64.0, 0.6]);
+        assert_eq!(
+            mesh.vertices[288].tint,
+            sheep_wool_layer_color(SheepWoolColor::Red)
+        );
+        assert_close2(mesh.vertices[288].uv, [14.0 / 64.0, 0.4]);
+
+        let sheared = entity_model_textured_mesh(
+            &[EntityModelInstance::sheep_wool(
+                302,
+                [0.0, 64.0, 0.0],
+                0.0,
+                false,
+                true,
+                SheepWoolColor::Red,
+            )],
+            &atlas,
+        );
+        assert_eq!(sheared.cutout_faces, 72);
+        assert_eq!(sheared.vertices.len(), 288);
+
+        let sheared_baby = entity_model_textured_mesh(
+            &[EntityModelInstance::sheep_wool(
+                303,
+                [0.0, 64.0, 0.0],
+                0.0,
+                true,
+                true,
+                SheepWoolColor::Black,
+            )],
+            &atlas,
+        );
+        assert_eq!(sheared_baby.cutout_faces, 36);
+        assert!(sheared_baby
+            .vertices
+            .iter()
+            .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
+    }
+
+    #[test]
+    fn runtime_colored_mesh_excludes_texture_backed_sheep() {
+        let sheep = EntityModelInstance::sheep(304, [0.0, 64.0, 0.0], 0.0, false);
+        let colored = entity_model_colored_runtime_mesh(&[sheep]);
+        assert!(colored.vertices.is_empty());
+        assert!(colored.indices.is_empty());
+        let legacy_geometry_guard = entity_model_mesh(&[sheep]);
+        assert!(!legacy_geometry_guard.vertices.is_empty());
+    }
+
+    #[test]
+    fn entity_textured_shader_samples_bound_texture_and_discards_alpha() {
+        assert!(ENTITY_MODEL_TEXTURED_SHADER
+            .contains("textureSample(entity_texture_atlas, entity_sampler, input.uv)"));
+        assert!(ENTITY_MODEL_TEXTURED_SHADER.contains("discard"));
+        assert_eq!(
+            ENTITY_MODEL_TEXTURED_VERTEX_ATTRIBUTES,
+            wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x4]
+        );
     }
 
     #[test]
@@ -17002,6 +18245,26 @@ mod tests {
                 "expected {expected}, got {actual}"
             );
         }
+    }
+
+    fn assert_close2(actual: [f32; 2], expected: [f32; 2]) {
+        for (actual, expected) in actual.iter().copied().zip(expected.iter().copied()) {
+            assert!(
+                (actual - expected).abs() < 1.0e-4,
+                "expected {expected}, got {actual}"
+            );
+        }
+    }
+
+    fn sheep_texture_images() -> Vec<EntityModelTextureImage> {
+        sheep_entity_texture_refs()
+            .iter()
+            .enumerate()
+            .map(|(index, texture)| {
+                let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                EntityModelTextureImage::new(*texture, vec![index as u8; len])
+            })
+            .collect()
     }
 
     fn assert_same_geometry(actual: &EntityModelMesh, expected: &EntityModelMesh) {

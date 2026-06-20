@@ -9,7 +9,10 @@ use crate::{
         BlockDestroyOverlaysGpu,
     },
     camera::{CameraPose, CameraUniform, ClearColor, TerrainBounds},
-    entity_models::{create_entity_model_pipeline, EntityModelMeshGpu},
+    entity_models::{
+        create_entity_model_pipeline, create_entity_model_textured_pipeline, EntityModelMeshGpu,
+        EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu,
+    },
     gpu::{
         create_camera_buffer, create_depth_target, create_terrain_atlas_gpu,
         create_terrain_atlas_mips_gpu, create_terrain_bind_group, create_terrain_bind_group_layout,
@@ -43,6 +46,7 @@ pub struct Renderer {
     pub(super) terrain_translucent_pipeline: wgpu::RenderPipeline,
     pub(super) block_destroy_pipeline: wgpu::RenderPipeline,
     pub(super) entity_model_pipeline: wgpu::RenderPipeline,
+    pub(super) entity_model_textured_pipeline: wgpu::RenderPipeline,
     pub(super) particle_pipeline: wgpu::RenderPipeline,
     pub(super) item_entity_pipeline: wgpu::RenderPipeline,
     pub(super) selection_pipeline: wgpu::RenderPipeline,
@@ -62,6 +66,9 @@ pub struct Renderer {
     pub(super) camera_pose: Option<CameraPose>,
     pub(super) block_destroy_overlays: Option<BlockDestroyOverlaysGpu>,
     pub(super) entity_model_mesh: Option<EntityModelMeshGpu>,
+    pub(super) entity_model_textured_mesh: Option<EntityModelTexturedMeshGpu>,
+    pub(super) entity_model_texture_atlas: Option<EntityModelTextureAtlasGpu>,
+    pub(super) entity_model_instances: Vec<crate::EntityModelInstance>,
     pub(super) particle_atlas: Option<ParticleAtlasGpu>,
     pub(super) item_entity_atlas: Option<ItemEntityAtlasGpu>,
     pub(super) item_entity_billboards: Vec<ItemEntityBillboard>,
@@ -282,6 +289,8 @@ impl Renderer {
             create_block_destroy_pipeline(&device, format, &terrain_bind_group_layout);
         let entity_model_pipeline =
             create_entity_model_pipeline(&device, format, &terrain_bind_group_layout);
+        let entity_model_textured_pipeline =
+            create_entity_model_textured_pipeline(&device, format, &terrain_bind_group_layout);
         let particle_pipeline =
             create_particle_pipeline(&device, format, &terrain_bind_group_layout);
         let item_entity_pipeline =
@@ -315,6 +324,7 @@ impl Renderer {
             terrain_translucent_pipeline,
             block_destroy_pipeline,
             entity_model_pipeline,
+            entity_model_textured_pipeline,
             particle_pipeline,
             item_entity_pipeline,
             selection_pipeline,
@@ -334,6 +344,9 @@ impl Renderer {
             camera_pose: None,
             block_destroy_overlays: None,
             entity_model_mesh: None,
+            entity_model_textured_mesh: None,
+            entity_model_texture_atlas: None,
+            entity_model_instances: Vec::new(),
             particle_atlas: None,
             item_entity_atlas: None,
             item_entity_billboards: Vec::new(),
