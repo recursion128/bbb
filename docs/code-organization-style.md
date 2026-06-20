@@ -66,6 +66,10 @@ Use these default thresholds and gates:
 - Files over 1000 lines should be treated as active split candidates whenever
   they are touched. Before adding more behavior to one, look for a semantic or
   feature owner that can be extracted with the current slice.
+- Colocated test files such as `tests.rs` may defer line-count cleanup. Split
+  them when a stable test family, shared fixture owner, or repeated merge
+  conflict justifies the boundary; otherwise keep new focused tests near the
+  behavior they exercise.
 - Prefer splitting over-1000-line files by functional or semantic ownership:
   packet family, menu type, renderer stage, world-state domain, runtime flow, or
   another stable concept users of the code would naturally name.
