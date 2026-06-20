@@ -50,6 +50,7 @@ pub enum EntityModelKind {
         family: HoglinModelFamily,
         baby: bool,
     },
+    Ravager,
     Skeleton,
     SkeletonVariant {
         family: SkeletonModelFamily,
@@ -370,6 +371,7 @@ impl EntityModelKind {
                 family: HoglinModelFamily::Zoglin,
                 baby: true,
             } => "zoglin_baby",
+            Self::Ravager => "ravager",
             Self::Skeleton => "skeleton",
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Stray,
@@ -585,6 +587,7 @@ impl EntityModelKind {
                 family: HoglinModelFamily::Zoglin,
                 baby: true,
             } => Some(ZOGLIN_BABY_TEXTURE_REF),
+            Self::Ravager => Some(RAVAGER_TEXTURE_REF),
             Self::Skeleton => Some(SKELETON_TEXTURE_REF),
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::Stray,
@@ -808,6 +811,10 @@ impl EntityModelInstance {
             position,
             y_rot,
         )
+    }
+
+    pub fn ravager(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::Ravager, position, y_rot)
     }
 
     pub fn skeleton(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -1142,6 +1149,7 @@ const PIGLIN_BRUTE_SKIN: [f32; 4] = [0.58, 0.35, 0.29, 1.0];
 const ZOMBIFIED_PIGLIN_SKIN: [f32; 4] = [0.46, 0.62, 0.42, 1.0];
 const HOGLIN_RED: [f32; 4] = [0.60, 0.28, 0.24, 1.0];
 const ZOGLIN_GREEN: [f32; 4] = [0.42, 0.55, 0.39, 1.0];
+const RAVAGER_GRAY: [f32; 4] = [0.44, 0.38, 0.34, 1.0];
 const SKELETON_BONE: [f32; 4] = [0.82, 0.82, 0.72, 1.0];
 const WITHER_SKELETON_DARK: [f32; 4] = [0.14, 0.14, 0.14, 1.0];
 const PARCHED_BONE: [f32; 4] = [0.70, 0.62, 0.48, 1.0];
@@ -1270,6 +1278,11 @@ const ZOGLIN_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const ZOGLIN_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/hoglin/zoglin_baby.png",
     size: [64, 64],
+};
+
+const RAVAGER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/illager/ravager.png",
+    size: [128, 128],
 };
 
 const SKELETON_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -3143,6 +3156,150 @@ const BABY_HOGLIN_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &BABY_HOGLIN_LEG,
+        children: &[],
+    },
+];
+
+const RAVAGER_NECK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-5.0, -1.0, -18.0],
+    size: [10.0, 10.0, 18.0],
+    color: RAVAGER_GRAY,
+}];
+
+const RAVAGER_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-8.0, -20.0, -14.0],
+        size: [16.0, 20.0, 16.0],
+        color: RAVAGER_GRAY,
+    },
+    ModelCubeDesc {
+        min: [-2.0, -6.0, -18.0],
+        size: [4.0, 8.0, 4.0],
+        color: RAVAGER_GRAY,
+    },
+];
+
+const RAVAGER_HORN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, -14.0, -2.0],
+    size: [2.0, 14.0, 4.0],
+    color: RAVAGER_GRAY,
+}];
+
+const RAVAGER_MOUTH: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-8.0, 0.0, -16.0],
+    size: [16.0, 3.0, 16.0],
+    color: RAVAGER_GRAY,
+}];
+
+const RAVAGER_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-7.0, -10.0, -7.0],
+        size: [14.0, 16.0, 20.0],
+        color: RAVAGER_GRAY,
+    },
+    ModelCubeDesc {
+        min: [-6.0, 6.0, -7.0],
+        size: [12.0, 13.0, 18.0],
+        color: RAVAGER_GRAY,
+    },
+];
+
+const RAVAGER_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -4.0],
+    size: [8.0, 37.0, 8.0],
+    color: RAVAGER_GRAY,
+}];
+
+const RAVAGER_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -4.0],
+    size: [8.0, 37.0, 8.0],
+    color: RAVAGER_GRAY,
+}];
+
+const RAVAGER_HEAD_CHILDREN: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-10.0, -14.0, -8.0],
+            rotation: [1.0995574, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_HORN,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [8.0, -14.0, -8.0],
+            rotation: [1.0995574, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_HORN,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -2.0, 2.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_MOUTH,
+        children: &[],
+    },
+];
+
+const RAVAGER_NECK_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, 16.0, -17.0],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &RAVAGER_HEAD,
+    children: &RAVAGER_HEAD_CHILDREN,
+}];
+
+// Vanilla 26.1 ModelLayers.RAVAGER: RavagerModel.createBodyLayer().
+const RAVAGER_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -7.0, 5.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_NECK,
+        children: &RAVAGER_NECK_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 1.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-8.0, -13.0, 18.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [8.0, -13.0, 18.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-8.0, -13.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [8.0, -13.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &RAVAGER_FRONT_LEG,
         children: &[],
     },
 ];
@@ -7288,6 +7445,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Hoglin { family, baby } => {
                 emit_hoglin_model(&mut mesh, *instance, family, baby)
             }
+            EntityModelKind::Ravager => emit_ravager_model(&mut mesh, *instance),
             EntityModelKind::Skeleton => emit_skeleton_model(&mut mesh, *instance),
             EntityModelKind::SkeletonVariant { family } => {
                 emit_skeleton_variant_model(&mut mesh, *instance, family)
@@ -7608,6 +7766,10 @@ fn emit_hoglin_model(
         entity_model_root_transform(instance),
         hoglin_model_color(family),
     );
+}
+
+fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    emit_model_parts(mesh, &RAVAGER_PARTS, entity_model_root_transform(instance));
 }
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -9256,6 +9418,104 @@ mod tests {
             assert_eq!(kind.model_key(), model_key);
             assert_eq!(kind.vanilla_texture_ref(), Some(texture));
         }
+    }
+
+    #[test]
+    fn ravager_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(RAVAGER_PARTS.len(), 6);
+        assert_part_tree(
+            &RAVAGER_PARTS[0],
+            [0.0, -7.0, 5.5],
+            [0.0, 0.0, 0.0],
+            RAVAGER_NECK.as_slice(),
+            RAVAGER_NECK_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &RAVAGER_NECK_CHILDREN[0],
+            [0.0, 16.0, -17.0],
+            [0.0, 0.0, 0.0],
+            RAVAGER_HEAD.as_slice(),
+            RAVAGER_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &RAVAGER_HEAD_CHILDREN[0],
+            [-10.0, -14.0, -8.0],
+            [1.0995574, 0.0, 0.0],
+            RAVAGER_HORN.as_slice(),
+        );
+        assert_part(
+            &RAVAGER_HEAD_CHILDREN[1],
+            [8.0, -14.0, -8.0],
+            [1.0995574, 0.0, 0.0],
+            RAVAGER_HORN.as_slice(),
+        );
+        assert_part(
+            &RAVAGER_HEAD_CHILDREN[2],
+            [0.0, -2.0, 2.0],
+            [0.0, 0.0, 0.0],
+            RAVAGER_MOUTH.as_slice(),
+        );
+        assert_part(
+            &RAVAGER_PARTS[1],
+            [0.0, 1.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            RAVAGER_BODY.as_slice(),
+        );
+        for (part, expected_offset, expected_cubes) in [
+            (
+                &RAVAGER_PARTS[2],
+                [-8.0, -13.0, 18.0],
+                RAVAGER_HIND_LEG.as_slice(),
+            ),
+            (
+                &RAVAGER_PARTS[3],
+                [8.0, -13.0, 18.0],
+                RAVAGER_HIND_LEG.as_slice(),
+            ),
+            (
+                &RAVAGER_PARTS[4],
+                [-8.0, -13.0, -5.0],
+                RAVAGER_FRONT_LEG.as_slice(),
+            ),
+            (
+                &RAVAGER_PARTS[5],
+                [8.0, -13.0, -5.0],
+                RAVAGER_FRONT_LEG.as_slice(),
+            ),
+        ] {
+            assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
+        }
+    }
+
+    #[test]
+    fn ravager_mesh_uses_vanilla_body_layer_geometry() {
+        let ravager =
+            entity_model_mesh(&[EntityModelInstance::ravager(224, [0.0, 64.0, 0.0], 0.0)]);
+
+        assert_eq!(ravager.opaque_faces, 72);
+        assert_eq!(ravager.vertices.len(), 288);
+        assert_eq!(ravager.indices.len(), 432);
+        assert!(ravager
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(RAVAGER_GRAY, 0.78)));
+
+        let (min, max) = mesh_extents(&ravager);
+        assert!(max[1] - min[1] > 2.0);
+        assert!(max[2] - min[2] > 2.0);
+    }
+
+    #[test]
+    fn ravager_texture_ref_matches_vanilla_renderer() {
+        let kind = EntityModelKind::Ravager;
+        assert_eq!(kind.model_key(), "ravager");
+        assert_eq!(
+            kind.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/illager/ravager.png",
+                size: [128, 128],
+            })
+        );
     }
 
     #[test]

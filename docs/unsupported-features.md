@@ -234,7 +234,7 @@ When an agent does any of the following, update this file in the same slice:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
-      goat/polar-bear/hoglin/zoglin/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
+      goat/polar-bear/hoglin/zoglin/ravager/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
       zombified-piglin variants, skeleton and stray/parched/wither-skeleton/
       bogged variants, creeper, spider, enderman, iron-golem, snow-golem,
@@ -355,6 +355,13 @@ When an agent does any of the following, update this file in the same slice:
       `ZOGLIN_BABY` layers plus official adult/baby hoglin/zoglin texture
       references; headbutt attack animation, ear/head/walk animation, hoglin
       converting shake, lighting, and GPU texture binding remain unsupported
+    - ravager entities as renderer-owned vanilla 26.1 `RavagerModel`
+      body-layer geometry from `RavagerModel` and `RavagerRenderer`,
+      including nested neck/head/horn/mouth parts, official
+      `textures/entity/illager/ravager.png` texture reference, and
+      `ModelLayers.RAVAGER`; attack neck motion, stunned neck/mouth animation,
+      roar mouth animation, head rotation, leg walk animation, lighting, and
+      GPU texture binding remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`
