@@ -18,6 +18,7 @@ const POLAR_BEAR_SCALE: f32 = 1.2;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
+        variant: ChickenModelVariant,
         baby: bool,
     },
     Player {
@@ -247,6 +248,13 @@ pub enum BoatModelFamily {
     Spruce,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChickenModelVariant {
+    Temperate,
+    Warm,
+    Cold,
+}
+
 impl LlamaVariant {
     pub fn from_vanilla_id(id: i32) -> Self {
         match id.clamp(0, 3) {
@@ -274,8 +282,7 @@ pub struct EntityModelTextureRef {
 impl EntityModelKind {
     pub fn model_key(self) -> &'static str {
         match self {
-            Self::Chicken { baby: false } => "chicken",
-            Self::Chicken { baby: true } => "chicken_baby",
+            Self::Chicken { variant, baby } => chicken_model_key(variant, baby),
             Self::Player { slim: false } => "player",
             Self::Player { slim: true } => "player_slim",
             Self::Humanoid {
@@ -542,6 +549,7 @@ impl EntityModelKind {
 
     pub fn vanilla_texture_ref(self) -> Option<EntityModelTextureRef> {
         match self {
+            Self::Chicken { variant, baby } => Some(chicken_texture_ref(variant, baby)),
             Self::Player { slim: false } => Some(PLAYER_WIDE_STEVE_TEXTURE_REF),
             Self::Player { slim: true } => Some(PLAYER_SLIM_STEVE_TEXTURE_REF),
             Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
@@ -729,9 +737,25 @@ impl EntityModelInstance {
     }
 
     pub fn chicken(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::chicken_variant(
+            entity_id,
+            position,
+            y_rot,
+            ChickenModelVariant::Temperate,
+            baby,
+        )
+    }
+
+    pub fn chicken_variant(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        variant: ChickenModelVariant,
+        baby: bool,
+    ) -> Self {
         Self::new(
             entity_id,
-            EntityModelKind::Chicken { baby },
+            EntityModelKind::Chicken { variant, baby },
             position,
             y_rot,
         )
@@ -2502,6 +2526,32 @@ const ADULT_CHICKEN_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
     color: CHICKEN_WHITE,
 }];
 
+const COLD_CHICKEN_HEAD: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-2.0, -6.0, -2.0],
+        size: [4.0, 6.0, 3.0],
+        color: CHICKEN_WHITE,
+    },
+    ModelCubeDesc {
+        min: [-3.0, -7.0, -2.015],
+        size: [6.0, 3.0, 4.0],
+        color: CHICKEN_WING,
+    },
+];
+
+const COLD_CHICKEN_BODY: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-3.0, -4.0, -3.0],
+        size: [6.0, 8.0, 6.0],
+        color: CHICKEN_WHITE,
+    },
+    ModelCubeDesc {
+        min: [0.0, 3.0, -1.0],
+        size: [0.0, 3.0, 5.0],
+        color: CHICKEN_WING,
+    },
+];
+
 const ADULT_CHICKEN_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-1.0, 0.0, -3.0],
     size: [3.0, 5.0, 3.0],
@@ -2535,6 +2585,57 @@ const ADULT_CHICKEN_PARTS: [ModelPartDesc; 6] = [
             rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
         },
         cubes: &ADULT_CHICKEN_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 19.0, 1.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CHICKEN_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.0, 19.0, 1.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CHICKEN_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 13.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CHICKEN_RIGHT_WING,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 13.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_CHICKEN_LEFT_WING,
+        children: &[],
+    },
+];
+
+const COLD_CHICKEN_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 15.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &COLD_CHICKEN_HEAD,
+        children: &ADULT_CHICKEN_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 16.0, 0.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &COLD_CHICKEN_BODY,
         children: &[],
     },
     ModelPartDesc {
@@ -7903,13 +8004,9 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
     let mut mesh = EntityModelMesh::new();
     for instance in instances {
         match instance.kind {
-            EntityModelKind::Chicken { baby } => emit_model_parts(
+            EntityModelKind::Chicken { variant, baby } => emit_model_parts(
                 &mut mesh,
-                if baby {
-                    &BABY_CHICKEN_PARTS
-                } else {
-                    &ADULT_CHICKEN_PARTS
-                },
+                chicken_model_parts(variant, baby),
                 entity_model_root_transform(*instance),
             ),
             EntityModelKind::Player { slim } => emit_player_model(&mut mesh, *instance, slim),
@@ -8932,6 +9029,54 @@ fn llama_model_color(_family: LlamaModelFamily, variant: LlamaVariant) -> [f32; 
     }
 }
 
+fn chicken_model_parts(variant: ChickenModelVariant, baby: bool) -> &'static [ModelPartDesc] {
+    match (variant, baby) {
+        (_, true) => &BABY_CHICKEN_PARTS,
+        (ChickenModelVariant::Cold, false) => &COLD_CHICKEN_PARTS,
+        (_, false) => &ADULT_CHICKEN_PARTS,
+    }
+}
+
+fn chicken_model_key(variant: ChickenModelVariant, baby: bool) -> &'static str {
+    match (variant, baby) {
+        (ChickenModelVariant::Temperate, false) => "chicken_temperate",
+        (ChickenModelVariant::Temperate, true) => "chicken_temperate_baby",
+        (ChickenModelVariant::Warm, false) => "chicken_warm",
+        (ChickenModelVariant::Warm, true) => "chicken_warm_baby",
+        (ChickenModelVariant::Cold, false) => "chicken_cold",
+        (ChickenModelVariant::Cold, true) => "chicken_cold_baby",
+    }
+}
+
+fn chicken_texture_ref(variant: ChickenModelVariant, baby: bool) -> EntityModelTextureRef {
+    match (variant, baby) {
+        (ChickenModelVariant::Temperate, false) => EntityModelTextureRef {
+            path: "textures/entity/chicken/chicken_temperate.png",
+            size: [64, 32],
+        },
+        (ChickenModelVariant::Temperate, true) => EntityModelTextureRef {
+            path: "textures/entity/chicken/chicken_temperate_baby.png",
+            size: [16, 16],
+        },
+        (ChickenModelVariant::Warm, false) => EntityModelTextureRef {
+            path: "textures/entity/chicken/chicken_warm.png",
+            size: [64, 32],
+        },
+        (ChickenModelVariant::Warm, true) => EntityModelTextureRef {
+            path: "textures/entity/chicken/chicken_warm_baby.png",
+            size: [16, 16],
+        },
+        (ChickenModelVariant::Cold, false) => EntityModelTextureRef {
+            path: "textures/entity/chicken/chicken_cold.png",
+            size: [64, 32],
+        },
+        (ChickenModelVariant::Cold, true) => EntityModelTextureRef {
+            path: "textures/entity/chicken/chicken_cold_baby.png",
+            size: [16, 16],
+        },
+    }
+}
+
 fn llama_model_key(family: LlamaModelFamily, variant: LlamaVariant, baby: bool) -> &'static str {
     match (family, variant, baby) {
         (LlamaModelFamily::Llama, LlamaVariant::Creamy, false) => "llama_creamy",
@@ -9274,7 +9419,117 @@ mod tests {
     use super::*;
 
     #[test]
-    fn chicken_adult_model_mesh_uses_vanilla_cuboid_parts() {
+    fn chicken_model_parts_match_vanilla_26_1_layers() {
+        assert_eq!(ADULT_CHICKEN_PARTS.len(), 6);
+        assert_part_tree(
+            &ADULT_CHICKEN_PARTS[0],
+            [0.0, 15.0, -4.0],
+            [0.0, 0.0, 0.0],
+            ADULT_CHICKEN_HEAD.as_slice(),
+            ADULT_CHICKEN_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_CHICKEN_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_CHICKEN_BEAK.as_slice(),
+        );
+        assert_part(
+            &ADULT_CHICKEN_HEAD_CHILDREN[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_CHICKEN_RED_THING.as_slice(),
+        );
+        assert_part(
+            &ADULT_CHICKEN_PARTS[1],
+            [0.0, 16.0, 0.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_CHICKEN_BODY.as_slice(),
+        );
+        assert_part(
+            &ADULT_CHICKEN_PARTS[2],
+            [-2.0, 19.0, 1.0],
+            [0.0, 0.0, 0.0],
+            ADULT_CHICKEN_LEG.as_slice(),
+        );
+        assert_part(
+            &ADULT_CHICKEN_PARTS[3],
+            [1.0, 19.0, 1.0],
+            [0.0, 0.0, 0.0],
+            ADULT_CHICKEN_LEG.as_slice(),
+        );
+
+        assert_eq!(COLD_CHICKEN_PARTS.len(), 6);
+        assert_part_tree(
+            &COLD_CHICKEN_PARTS[0],
+            [0.0, 15.0, -4.0],
+            [0.0, 0.0, 0.0],
+            COLD_CHICKEN_HEAD.as_slice(),
+            ADULT_CHICKEN_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &COLD_CHICKEN_PARTS[1],
+            [0.0, 16.0, 0.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            COLD_CHICKEN_BODY.as_slice(),
+        );
+        assert_eq!(
+            COLD_CHICKEN_HEAD[1],
+            ModelCubeDesc {
+                min: [-3.0, -7.0, -2.015],
+                size: [6.0, 3.0, 4.0],
+                color: CHICKEN_WING,
+            }
+        );
+        assert_eq!(
+            COLD_CHICKEN_BODY[1],
+            ModelCubeDesc {
+                min: [0.0, 3.0, -1.0],
+                size: [0.0, 3.0, 5.0],
+                color: CHICKEN_WING,
+            }
+        );
+
+        assert_eq!(BABY_CHICKEN_PARTS.len(), 5);
+        assert_part(
+            &BABY_CHICKEN_PARTS[0],
+            [0.0, 20.25, -1.25],
+            [0.0, 0.0, 0.0],
+            BABY_CHICKEN_BODY.as_slice(),
+        );
+        assert_part(
+            &BABY_CHICKEN_PARTS[1],
+            [1.0, 22.0, 0.5],
+            [0.0, 0.0, 0.0],
+            BABY_CHICKEN_LEFT_LEG.as_slice(),
+        );
+        assert_part(
+            &BABY_CHICKEN_PARTS[4],
+            [-2.0, 20.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_CHICKEN_LEFT_WING.as_slice(),
+        );
+
+        assert_eq!(
+            chicken_model_parts(ChickenModelVariant::Temperate, false),
+            ADULT_CHICKEN_PARTS.as_slice()
+        );
+        assert_eq!(
+            chicken_model_parts(ChickenModelVariant::Warm, false),
+            ADULT_CHICKEN_PARTS.as_slice()
+        );
+        assert_eq!(
+            chicken_model_parts(ChickenModelVariant::Cold, false),
+            COLD_CHICKEN_PARTS.as_slice()
+        );
+        assert_eq!(
+            chicken_model_parts(ChickenModelVariant::Cold, true),
+            BABY_CHICKEN_PARTS.as_slice()
+        );
+    }
+
+    #[test]
+    fn chicken_adult_model_mesh_uses_vanilla_body_layer_geometry() {
         let mesh = entity_model_mesh(&[EntityModelInstance::chicken(
             26,
             [0.0, 64.0, 0.0],
@@ -9300,6 +9555,29 @@ mod tests {
     }
 
     #[test]
+    fn chicken_cold_adult_model_mesh_uses_vanilla_cold_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::chicken_variant(
+            28,
+            [0.0, 64.0, 0.0],
+            0.0,
+            ChickenModelVariant::Cold,
+            false,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 60);
+        assert_eq!(mesh.vertices.len(), 240);
+        assert_eq!(mesh.indices.len(), 360);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.25, 64.001, -0.375]);
+        assert_close3(max, [0.25, 65.001, 0.5]);
+        assert!(mesh
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(CHICKEN_WING, 0.78)));
+    }
+
+    #[test]
     fn chicken_baby_model_mesh_uses_flat_vanilla_baby_parts() {
         let mesh = entity_model_mesh(&[EntityModelInstance::chicken(
             27,
@@ -9315,6 +9593,72 @@ mod tests {
         let (min, max) = mesh_extents(&mesh);
         assert_close3(min, [-0.1875, 70.001, -0.125]);
         assert_close3(max, [0.1875, 70.376, 0.1875]);
+    }
+
+    #[test]
+    fn chicken_texture_refs_match_vanilla_variant_assets() {
+        let cases = [
+            (
+                ChickenModelVariant::Temperate,
+                false,
+                "chicken_temperate",
+                EntityModelTextureRef {
+                    path: "textures/entity/chicken/chicken_temperate.png",
+                    size: [64, 32],
+                },
+            ),
+            (
+                ChickenModelVariant::Temperate,
+                true,
+                "chicken_temperate_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/chicken/chicken_temperate_baby.png",
+                    size: [16, 16],
+                },
+            ),
+            (
+                ChickenModelVariant::Warm,
+                false,
+                "chicken_warm",
+                EntityModelTextureRef {
+                    path: "textures/entity/chicken/chicken_warm.png",
+                    size: [64, 32],
+                },
+            ),
+            (
+                ChickenModelVariant::Warm,
+                true,
+                "chicken_warm_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/chicken/chicken_warm_baby.png",
+                    size: [16, 16],
+                },
+            ),
+            (
+                ChickenModelVariant::Cold,
+                false,
+                "chicken_cold",
+                EntityModelTextureRef {
+                    path: "textures/entity/chicken/chicken_cold.png",
+                    size: [64, 32],
+                },
+            ),
+            (
+                ChickenModelVariant::Cold,
+                true,
+                "chicken_cold_baby",
+                EntityModelTextureRef {
+                    path: "textures/entity/chicken/chicken_cold_baby.png",
+                    size: [16, 16],
+                },
+            ),
+        ];
+
+        for (variant, baby, model_key, texture) in cases {
+            let kind = EntityModelKind::Chicken { variant, baby };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
     }
 
     #[test]
@@ -13367,8 +13711,15 @@ mod tests {
             })
         );
         assert_eq!(
-            EntityModelKind::Chicken { baby: false }.vanilla_texture_ref(),
-            None
+            EntityModelKind::Chicken {
+                variant: ChickenModelVariant::Temperate,
+                baby: false
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/chicken/chicken_temperate.png",
+                size: [64, 32],
+            })
         );
     }
 
@@ -14789,8 +15140,12 @@ mod tests {
     #[test]
     fn entity_model_kind_exposes_stable_model_keys() {
         assert_eq!(
-            EntityModelKind::Chicken { baby: false }.model_key(),
-            "chicken"
+            EntityModelKind::Chicken {
+                variant: ChickenModelVariant::Temperate,
+                baby: false
+            }
+            .model_key(),
+            "chicken_temperate"
         );
         assert_eq!(
             EntityModelKind::Humanoid {

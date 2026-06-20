@@ -231,8 +231,9 @@ When an agent does any of the following, update this file in the same slice:
     - entity bounds
     - dropped-item icons
   - Extract complete entity presentation data:
-    - precise vanilla meshes and textures beyond the current chicken cuboids,
-      source-verified player/player-slim/boat/chest-boat/raft/chest-raft/
+    - precise vanilla meshes and textures beyond the source-verified
+      player/player-slim/chicken normal/warm/cold adult and baby/
+      boat/chest-boat/raft/chest-raft/
       pig/cow/sheep/wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
       goat/polar-bear/hoglin/zoglin/ravager/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
@@ -293,9 +294,16 @@ When an agent does any of the following, update this file in the same slice:
       translate/rotate/scale/rotate renderer transform; paddle rowing
       animation, hurt/damage roll, bubble wobble, underwater state and water
       mask submission, lighting, and GPU texture binding remain unsupported
-    - chicken entities as renderer-owned vanilla adult/baby cuboid model
-      geometry, projected from canonical world entity state and rendered with
-      temporary vertex colors
+    - chicken entities as renderer-owned vanilla 26.1
+      `AdultChickenModel`, `ColdChickenModel`, and `BabyChickenModel` body-layer
+      geometry from `ChickenModel`, `ChickenRenderer`, `ChickenVariants`, and
+      `LayerDefinitions`, including metadata-driven temperate/warm/cold
+      variant projection through the server-sent `minecraft:chicken_variant`
+      registry order, official adult/baby variant texture references, and
+      vanilla fallback to temperate when no variant metadata is present; head
+      yaw/pitch, leg walk animation, wing flap animation, variant sound
+      metadata, custom/datapack chicken variant asset decoding, lighting, and
+      GPU texture binding remain unsupported
     - pig entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `PigModel`, `BabyPigModel`, and `QuadrupedModel`, including
       baked baby `CubeDeformation` bounds, still rendered with temporary vertex

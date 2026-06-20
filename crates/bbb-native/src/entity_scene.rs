@@ -1,12 +1,12 @@
-use bbb_protocol::packets::EntityDataValueKind;
+use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 use bbb_renderer::{
-    ArmorStandModelPose, BoatModelFamily, CamelModelFamily, DonkeyModelFamily, EntityModelInstance,
-    EntityModelKind, HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily,
-    LlamaVariant, PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline,
-    SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, DonkeyModelFamily,
+    EntityModelInstance, EntityModelKind, HoglinModelFamily, HumanoidModelFamily,
+    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PiglinModelFamily, QuadrupedModelFamily,
+    SelectionBox, SelectionOutline, SkeletonModelFamily, UndeadHorseModelFamily,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
-use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
+use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
 const VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID: i32 = 0;
 const VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID: i32 = 1;
@@ -185,6 +185,7 @@ const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
 const LLAMA_VARIANT_DATA_ID: u8 = 21;
 const GOAT_LEFT_HORN_DATA_ID: u8 = 19;
 const GOAT_RIGHT_HORN_DATA_ID: u8 = 20;
+const CHICKEN_VARIANT_DATA_ID: u8 = 18;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -209,13 +210,14 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
 ) -> Vec<EntityModelInstance> {
     let local_player_id = world.local_player_id();
     let camera_entity_id = world.local_player().camera.entity_id;
+    let chicken_variants = world.registry_content("minecraft:chicken_variant");
     world
         .entity_model_sources_at_partial_tick(entity_partial_tick.clamp(0.0, 1.0))
         .into_iter()
         .filter(|source| {
             local_player_id != Some(source.entity_id) && camera_entity_id != Some(source.entity_id)
         })
-        .filter_map(entity_model_instance)
+        .filter_map(|source| entity_model_instance(source, chicken_variants))
         .collect()
 }
 
@@ -234,8 +236,15 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
     }
 }
 
-fn entity_model_instance(source: EntityModelSourceState) -> Option<EntityModelInstance> {
-    let kind = entity_model_kind(source.entity_type_id, &source.data_values);
+fn entity_model_instance(
+    source: EntityModelSourceState,
+    chicken_variants: Option<&RegistryContentState>,
+) -> Option<EntityModelInstance> {
+    let kind = entity_model_kind_with_registries(
+        source.entity_type_id,
+        &source.data_values,
+        chicken_variants,
+    );
     Some(EntityModelInstance::new(
         source.entity_id,
         kind,
@@ -252,10 +261,16 @@ fn entity_model_kind(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
+    entity_model_kind_with_registries(entity_type_id, data_values, None)
+}
+
+fn entity_model_kind_with_registries(
+    entity_type_id: i32,
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    chicken_variants: Option<&RegistryContentState>,
+) -> EntityModelKind {
     match entity_type_id {
-        VANILLA_ENTITY_TYPE_CHICKEN_ID => EntityModelKind::Chicken {
-            baby: ageable_baby(data_values),
-        },
+        VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, chicken_variants),
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
             EntityModelKind::Player { slim: false }
         }
@@ -566,6 +581,16 @@ fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
     EntityModelKind::Boat { family, chest }
 }
 
+fn chicken_model_kind(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    variants: Option<&RegistryContentState>,
+) -> EntityModelKind {
+    EntityModelKind::Chicken {
+        variant: chicken_model_variant(values, variants),
+        baby: ageable_baby(values),
+    }
+}
+
 fn donkey_model_kind(
     family: DonkeyModelFamily,
     values: &[bbb_protocol::packets::EntityDataValue],
@@ -672,6 +697,62 @@ fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     entity_data_bool(values, AGEABLE_MOB_BABY_DATA_ID, false)
 }
 
+fn chicken_model_variant(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    variants: Option<&RegistryContentState>,
+) -> ChickenModelVariant {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == CHICKEN_VARIANT_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::ChickenVariant,
+                id,
+            } => Some(*id),
+            _ => None,
+        })
+        .map(|id| {
+            if let Some(registry) = variants {
+                chicken_variant_from_registry_id(registry, id)
+                    .unwrap_or(ChickenModelVariant::Temperate)
+            } else {
+                chicken_variant_from_vanilla_registry_id(id)
+            }
+        })
+        .unwrap_or(ChickenModelVariant::Temperate)
+}
+
+fn chicken_variant_from_registry_id(
+    registry: &RegistryContentState,
+    registry_id: i32,
+) -> Option<ChickenModelVariant> {
+    if registry_id < 0 {
+        return None;
+    }
+    registry
+        .entries
+        .get(registry_id as usize)
+        .and_then(|entry| chicken_variant_from_entry_id(entry.id.as_str()))
+}
+
+fn chicken_variant_from_entry_id(id: &str) -> Option<ChickenModelVariant> {
+    match id {
+        "minecraft:temperate" => Some(ChickenModelVariant::Temperate),
+        "minecraft:warm" => Some(ChickenModelVariant::Warm),
+        "minecraft:cold" => Some(ChickenModelVariant::Cold),
+        _ => None,
+    }
+}
+
+fn chicken_variant_from_vanilla_registry_id(registry_id: i32) -> ChickenModelVariant {
+    match registry_id {
+        1 => ChickenModelVariant::Warm,
+        2 => ChickenModelVariant::Cold,
+        _ => ChickenModelVariant::Temperate,
+    }
+}
+
 fn chested_horse_has_chest(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     entity_data_bool(values, ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, false)
 }
@@ -759,7 +840,7 @@ mod tests {
         AddEntity, CommonPlayerSpawnInfo, EntityDataValue, PlayLogin, SetCamera, SetEntityData,
         Vec3d,
     };
-    use bbb_world::{EntityPickBoundsState, EntityVec3};
+    use bbb_world::{EntityPickBoundsState, EntityVec3, RegistryPacketEntry};
     use uuid::Uuid;
 
     const VANILLA_ENTITY_TYPE_MINECART_ID: i32 = 85;
@@ -872,6 +953,109 @@ mod tests {
                 EntityModelInstance::chicken(26, [1.0, 64.0, -2.0], 0.0, false),
                 EntityModelInstance::chicken(27, [3.0, 64.0, -2.0], 0.0, true),
                 EntityModelInstance::new(85, EntityModelKind::Minecart, [5.0, 64.0, -2.0], 0.0),
+            ]
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_vanilla_chicken_variant_metadata() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_CHICKEN_ID, &[]),
+            EntityModelKind::Chicken {
+                variant: ChickenModelVariant::Temperate,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                &[protocol_chicken_variant_data(1)]
+            ),
+            EntityModelKind::Chicken {
+                variant: ChickenModelVariant::Warm,
+                baby: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                &[
+                    protocol_chicken_variant_data(2),
+                    protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                ]
+            ),
+            EntityModelKind::Chicken {
+                variant: ChickenModelVariant::Cold,
+                baby: true
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_chicken_variants_from_world_registry_order() {
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            "minecraft:chicken_variant",
+            0,
+            vec![
+                RegistryPacketEntry::stub("minecraft:cold"),
+                RegistryPacketEntry::stub("minecraft:temperate"),
+                RegistryPacketEntry::stub("minecraft:warm"),
+            ],
+        );
+        let chicken_registry = world.registry_content("minecraft:chicken_variant").unwrap();
+        assert_eq!(
+            entity_model_kind_with_registries(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                &[protocol_chicken_variant_data(99)],
+                Some(chicken_registry)
+            ),
+            EntityModelKind::Chicken {
+                variant: ChickenModelVariant::Temperate,
+                baby: false
+            }
+        );
+        world.apply_add_entity(protocol_add_entity(
+            26,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            27,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 26,
+            values: vec![protocol_chicken_variant_data(0)],
+        }));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 27,
+            values: vec![
+                protocol_chicken_variant_data(2),
+                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            ],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![
+                EntityModelInstance::chicken_variant(
+                    26,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    ChickenModelVariant::Cold,
+                    false
+                ),
+                EntityModelInstance::chicken_variant(
+                    27,
+                    [3.0, 64.0, -2.0],
+                    0.0,
+                    ChickenModelVariant::Warm,
+                    true
+                ),
             ]
         );
     }
@@ -1830,6 +2014,17 @@ mod tests {
             data_id,
             serializer_id: 8,
             value: EntityDataValueKind::Boolean(value),
+        }
+    }
+
+    fn protocol_chicken_variant_data(id: i32) -> EntityDataValue {
+        EntityDataValue {
+            data_id: CHICKEN_VARIANT_DATA_ID,
+            serializer_id: 30,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::ChickenVariant,
+                id,
+            },
         }
     }
 
