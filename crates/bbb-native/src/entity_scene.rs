@@ -257,9 +257,10 @@ fn entity_model_kind(
         | VANILLA_ENTITY_TYPE_BOGGED_ID
         | VANILLA_ENTITY_TYPE_PARCHED_ID
         | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID => humanoid(HumanoidModelFamily::Skeleton, false),
-        VANILLA_ENTITY_TYPE_VILLAGER_ID | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => {
-            humanoid(HumanoidModelFamily::Villager, ageable_baby(data_values))
-        }
+        VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityModelKind::Villager {
+            baby: ageable_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => EntityModelKind::WanderingTrader,
         VANILLA_ENTITY_TYPE_EVOKER_ID
         | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
         | VANILLA_ENTITY_TYPE_PILLAGER_ID
@@ -737,6 +738,25 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, &[]),
             quadruped(QuadrupedModelFamily::Cow, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_villagers() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_VILLAGER_ID, &[]),
+            EntityModelKind::Villager { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Villager { baby: true }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, &[]),
+            EntityModelKind::WanderingTrader
         );
     }
 

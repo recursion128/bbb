@@ -280,6 +280,16 @@ When an agent does any of the following, update this file in the same slice:
       official base texture references recorded; wool undercoat/outer layers,
       sheared state, dye color, `jeb_` color cycling, and eating head animation
       remain unsupported
+    - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
+      geometry from `VillagerModel`, `BabyVillagerModel`, and
+      `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`
+      root transform and official base texture references recorded; wandering
+      trader uses the same adult body layer with the official
+      `textures/entity/wandering_trader/wandering_trader.png` reference;
+      villager type/profession/level overlays, hat metadata/no-hat model
+      selection, crossed-arms item layer, custom head layer, unhappy animation,
+      leg walk animation, and wandering trader baby presentation remain
+      unsupported
     - base zombie entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `HumanoidModel`, `BabyZombieModel`, and `ZombieRenderer`,
       with official default texture references recorded; husk, drowned, zombie
@@ -309,6 +319,7 @@ When an agent does any of the following, update this file in the same slice:
   - Full entity presentation remains phase 6 work, including texture assets,
     variants, equipment, skins, animation, lighting, pig/cow variant
     presentation, pig saddle presentation, sheep wool presentation,
+    villager profession/type/held-item/custom-head presentation,
     zombie/skeleton variant presentation, creeper swelling/powered overlays,
     spider eyes/cave-spider presentation, and precise vanilla mesh parity for
     primitive/placeholder entity families.

@@ -5,6 +5,8 @@ use crate::{camera::TerrainBounds, gpu::DEPTH_FORMAT, Renderer};
 
 const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
 const MODEL_UNIT_SCALE: f32 = 1.0 / 16.0;
+const VILLAGER_LIKE_SCALE: f32 = 0.9375;
+const VILLAGER_LIKE_ROOT_Y_OFFSET_PIXELS: f32 = 24.016 * (1.0 - VILLAGER_LIKE_SCALE);
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -24,6 +26,10 @@ pub enum EntityModelKind {
     Sheep {
         baby: bool,
     },
+    Villager {
+        baby: bool,
+    },
+    WanderingTrader,
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
@@ -132,6 +138,9 @@ impl EntityModelKind {
             Self::Cow { baby: true } => "cow_baby",
             Self::Sheep { baby: false } => "sheep",
             Self::Sheep { baby: true } => "sheep_baby",
+            Self::Villager { baby: false } => "villager",
+            Self::Villager { baby: true } => "villager_baby",
+            Self::WanderingTrader => "wandering_trader",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -188,6 +197,9 @@ impl EntityModelKind {
             Self::Skeleton => Some(SKELETON_TEXTURE_REF),
             Self::Sheep { baby: false } => Some(SHEEP_TEXTURE_REF),
             Self::Sheep { baby: true } => Some(SHEEP_BABY_TEXTURE_REF),
+            Self::Villager { baby: false } => Some(VILLAGER_TEXTURE_REF),
+            Self::Villager { baby: true } => Some(VILLAGER_BABY_TEXTURE_REF),
+            Self::WanderingTrader => Some(WANDERING_TRADER_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             _ => None,
@@ -251,6 +263,19 @@ impl EntityModelInstance {
 
     pub fn sheep(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
         Self::new(entity_id, EntityModelKind::Sheep { baby }, position, y_rot)
+    }
+
+    pub fn villager(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Villager { baby },
+            position,
+            y_rot,
+        )
+    }
+
+    pub fn wandering_trader(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::WanderingTrader, position, y_rot)
     }
 
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -433,6 +458,21 @@ const SHEEP_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const SHEEP_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/sheep/sheep_baby.png",
     size: [64, 32],
+};
+
+const VILLAGER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/villager/villager.png",
+    size: [64, 64],
+};
+
+const VILLAGER_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/villager/villager_baby.png",
+    size: [64, 64],
+};
+
+const WANDERING_TRADER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/wandering_trader/wandering_trader.png",
+    size: [64, 64],
 };
 
 const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -1375,6 +1415,295 @@ const BABY_SHEEP_PARTS: [ModelPartDesc; 6] = [
     },
 ];
 
+const ADULT_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -10.0, -4.0],
+    size: [8.0, 10.0, 8.0],
+    color: VILLAGER_ROBE,
+}];
+
+const ADULT_VILLAGER_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.51, -10.51, -4.51],
+    size: [9.02, 11.02, 9.02],
+    color: VILLAGER_ROBE,
+}];
+
+const ADULT_VILLAGER_HAT_RIM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-8.0, -8.0, -6.0],
+    size: [16.0, 16.0, 1.0],
+    color: VILLAGER_ROBE,
+}];
+
+const ADULT_VILLAGER_NOSE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.0, -6.0],
+    size: [2.0, 4.0, 2.0],
+    color: VILLAGER_ROBE,
+}];
+
+const ADULT_VILLAGER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -3.0],
+    size: [8.0, 12.0, 6.0],
+    color: VILLAGER_ROBE,
+}];
+
+const ADULT_VILLAGER_JACKET: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -0.5, -3.5],
+    size: [9.0, 21.0, 7.0],
+    color: VILLAGER_ROBE,
+}];
+
+const ADULT_VILLAGER_ARMS: [ModelCubeDesc; 3] = [
+    ModelCubeDesc {
+        min: [-8.0, -2.0, -2.0],
+        size: [4.0, 8.0, 4.0],
+        color: VILLAGER_ROBE,
+    },
+    ModelCubeDesc {
+        min: [4.0, -2.0, -2.0],
+        size: [4.0, 8.0, 4.0],
+        color: VILLAGER_ROBE,
+    },
+    ModelCubeDesc {
+        min: [-4.0, 2.0, -2.0],
+        size: [8.0, 4.0, 4.0],
+        color: VILLAGER_ROBE,
+    },
+];
+
+const ADULT_VILLAGER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: VILLAGER_ROBE,
+}];
+
+const ADULT_VILLAGER_HAT_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, 0.0, 0.0],
+        rotation: [-std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+    },
+    cubes: &ADULT_VILLAGER_HAT_RIM,
+    children: &[],
+}];
+
+const ADULT_VILLAGER_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_VILLAGER_HAT,
+        children: &ADULT_VILLAGER_HAT_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_VILLAGER_NOSE,
+        children: &[],
+    },
+];
+
+const ADULT_VILLAGER_BODY_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &ADULT_VILLAGER_JACKET,
+    children: &[],
+}];
+
+// Vanilla 26.1 VillagerModel.createBodyModel(), with LayerDefinitions'
+// MeshTransformer.scaling(0.9375F) applied by the emitter root transform.
+const ADULT_VILLAGER_PARTS: [ModelPartDesc; 5] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_VILLAGER_HEAD,
+        children: &ADULT_VILLAGER_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_VILLAGER_BODY,
+        children: &ADULT_VILLAGER_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 3.0, -1.0],
+            rotation: [-0.75, 0.0, 0.0],
+        },
+        cubes: &ADULT_VILLAGER_ARMS,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_VILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_VILLAGER_LEG,
+        children: &[],
+    },
+];
+
+const BABY_VILLAGER_RIGHT_HAND: [ModelCubeDesc; 2] = [
+    ModelCubeDesc {
+        min: [-1.0, -2.4925, -1.8401],
+        size: [2.0, 4.0, 2.0],
+        color: VILLAGER_ROBE,
+    },
+    ModelCubeDesc {
+        min: [5.0, -2.4925, -1.8401],
+        size: [2.0, 4.0, 2.0],
+        color: VILLAGER_ROBE,
+    },
+];
+
+const BABY_VILLAGER_MIDDLE_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -0.9924, -0.9825],
+    size: [4.0, 2.0, 2.0],
+    color: VILLAGER_ROBE,
+}];
+
+const BABY_VILLAGER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -0.5, -1.0],
+    size: [2.0, 3.0, 2.0],
+    color: VILLAGER_ROBE,
+}];
+
+const BABY_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -8.0, -3.5],
+    size: [8.0, 8.0, 7.0],
+    color: VILLAGER_ROBE,
+}];
+
+const BABY_VILLAGER_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.3, -4.3, -3.8],
+    size: [8.6, 8.6, 7.6],
+    color: VILLAGER_ROBE,
+}];
+
+const BABY_VILLAGER_HAT_RIM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-7.0, -0.5, -6.0],
+    size: [14.0, 1.0, 12.0],
+    color: VILLAGER_ROBE,
+}];
+
+const BABY_VILLAGER_NOSE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -0.5],
+    size: [2.0, 2.0, 1.0],
+    color: VILLAGER_ROBE,
+}];
+
+const BABY_VILLAGER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -2.75, -1.5],
+    size: [4.0, 5.0, 3.0],
+    color: VILLAGER_ROBE,
+}];
+
+const BABY_VILLAGER_BB_MAIN: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.7, -8.2, -1.7],
+    size: [4.4, 6.4, 3.4],
+    color: VILLAGER_ROBE,
+}];
+
+const BABY_VILLAGER_ARMS_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, 1.4025, -0.9599],
+            rotation: [-1.0472, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_RIGHT_HAND,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 0.9024, -1.8175],
+            rotation: [-1.0472, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_MIDDLE_ARM,
+        children: &[],
+    },
+];
+
+const BABY_VILLAGER_HEAD_CHILDREN: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -4.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_HAT,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -4.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_HAT_RIM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, -2.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_NOSE,
+        children: &[],
+    },
+];
+
+// Vanilla 26.1 BabyVillagerModel.createBodyModel().
+const BABY_VILLAGER_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 17.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &[],
+        children: &BABY_VILLAGER_ARMS_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.0, 21.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.0, 21.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 16.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_HEAD,
+        children: &BABY_VILLAGER_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 18.75, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.5, 24.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_VILLAGER_BB_MAIN,
+        children: &[],
+    },
+];
+
 const CREEPER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -8.0, -4.0],
     size: [8.0, 8.0, 8.0],
@@ -1722,6 +2051,8 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Skeleton => emit_skeleton_model(&mut mesh, *instance),
             EntityModelKind::Cow { baby } => emit_cow_model(&mut mesh, *instance, baby),
             EntityModelKind::Sheep { baby } => emit_sheep_model(&mut mesh, *instance, baby),
+            EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
+            EntityModelKind::WanderingTrader => emit_wandering_trader_model(&mut mesh, *instance),
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -1854,6 +2185,30 @@ fn emit_sheep_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, b
             &ADULT_SHEEP_PARTS
         },
         entity_model_root_transform(instance),
+    );
+}
+
+fn emit_villager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    if baby {
+        emit_model_parts(
+            mesh,
+            &BABY_VILLAGER_PARTS,
+            entity_model_root_transform(instance),
+        );
+    } else {
+        emit_model_parts(
+            mesh,
+            &ADULT_VILLAGER_PARTS,
+            villager_adult_model_root_transform(instance),
+        );
+    }
+}
+
+fn emit_wandering_trader_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    emit_model_parts(
+        mesh,
+        &ADULT_VILLAGER_PARTS,
+        villager_adult_model_root_transform(instance),
     );
 }
 
@@ -2126,6 +2481,15 @@ fn emit_placeholder_bounds_model(
 
 fn scaled_model_root_transform(instance: EntityModelInstance, scale: f32) -> Mat4 {
     entity_model_root_transform(instance) * Mat4::from_scale(Vec3::splat(scale))
+}
+
+fn villager_adult_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    entity_model_root_transform(instance)
+        * part_pose_transform(PartPose {
+            offset: [0.0, VILLAGER_LIKE_ROOT_Y_OFFSET_PIXELS, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        })
+        * Mat4::from_scale(Vec3::splat(VILLAGER_LIKE_SCALE))
 }
 
 fn humanoid_model_color(family: HumanoidModelFamily) -> [f32; 4] {
@@ -2983,6 +3347,258 @@ mod tests {
     }
 
     #[test]
+    fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            ADULT_VILLAGER_HAT[0],
+            ModelCubeDesc {
+                min: [-4.51, -10.51, -4.51],
+                size: [9.02, 11.02, 9.02],
+                color: VILLAGER_ROBE,
+            }
+        );
+        assert_eq!(
+            ADULT_VILLAGER_JACKET[0],
+            ModelCubeDesc {
+                min: [-4.5, -0.5, -3.5],
+                size: [9.0, 21.0, 7.0],
+                color: VILLAGER_ROBE,
+            }
+        );
+        assert_eq!(ADULT_VILLAGER_PARTS.len(), 5);
+        assert_part_tree(
+            &ADULT_VILLAGER_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_VILLAGER_HEAD.as_slice(),
+            ADULT_VILLAGER_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_VILLAGER_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_VILLAGER_HAT.as_slice(),
+            ADULT_VILLAGER_HAT_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_VILLAGER_HAT_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [-std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_VILLAGER_HAT_RIM.as_slice(),
+        );
+        assert_part(
+            &ADULT_VILLAGER_HEAD_CHILDREN[1],
+            [0.0, -2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_VILLAGER_NOSE.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_VILLAGER_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_VILLAGER_BODY.as_slice(),
+            ADULT_VILLAGER_BODY_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_VILLAGER_BODY_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_VILLAGER_JACKET.as_slice(),
+        );
+        assert_part(
+            &ADULT_VILLAGER_PARTS[2],
+            [0.0, 3.0, -1.0],
+            [-0.75, 0.0, 0.0],
+            ADULT_VILLAGER_ARMS.as_slice(),
+        );
+        assert_part(
+            &ADULT_VILLAGER_PARTS[3],
+            [-2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_VILLAGER_LEG.as_slice(),
+        );
+        assert_part(
+            &ADULT_VILLAGER_PARTS[4],
+            [2.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_VILLAGER_LEG.as_slice(),
+        );
+    }
+
+    #[test]
+    fn villager_adult_model_mesh_uses_vanilla_scaled_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::villager(
+            139,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 66);
+        assert_eq!(mesh.vertices.len(), 264);
+        assert_eq!(mesh.indices.len(), 396);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.46875003, 64.00094, -0.46875006]);
+        assert_close3(max, [0.46875003, 66.02301, 0.46875003]);
+
+        let wandering_trader_mesh = entity_model_mesh(&[EntityModelInstance::wandering_trader(
+            141,
+            [0.0, 64.0, 0.0],
+            0.0,
+        )]);
+        assert_eq!(wandering_trader_mesh.opaque_faces, mesh.opaque_faces);
+        assert_eq!(wandering_trader_mesh.vertices, mesh.vertices);
+        assert_eq!(wandering_trader_mesh.indices, mesh.indices);
+    }
+
+    #[test]
+    fn villager_baby_model_parts_match_vanilla_26_1_body_layer() {
+        assert_eq!(
+            BABY_VILLAGER_RIGHT_HAND,
+            [
+                ModelCubeDesc {
+                    min: [-1.0, -2.4925, -1.8401],
+                    size: [2.0, 4.0, 2.0],
+                    color: VILLAGER_ROBE,
+                },
+                ModelCubeDesc {
+                    min: [5.0, -2.4925, -1.8401],
+                    size: [2.0, 4.0, 2.0],
+                    color: VILLAGER_ROBE,
+                },
+            ]
+        );
+        assert_eq!(
+            BABY_VILLAGER_BB_MAIN[0],
+            ModelCubeDesc {
+                min: [-2.7, -8.2, -1.7],
+                size: [4.4, 6.4, 3.4],
+                color: VILLAGER_ROBE,
+            }
+        );
+        assert_eq!(BABY_VILLAGER_PARTS.len(), 6);
+        assert_part_tree(
+            &BABY_VILLAGER_PARTS[0],
+            [0.0, 17.5, 0.0],
+            [0.0, 0.0, 0.0],
+            &[],
+            BABY_VILLAGER_ARMS_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_ARMS_CHILDREN[0],
+            [-3.0, 1.4025, -0.9599],
+            [-1.0472, 0.0, 0.0],
+            BABY_VILLAGER_RIGHT_HAND.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_ARMS_CHILDREN[1],
+            [0.0, 0.9024, -1.8175],
+            [-1.0472, 0.0, 0.0],
+            BABY_VILLAGER_MIDDLE_ARM.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_PARTS[1],
+            [-1.0, 21.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_VILLAGER_LEG.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_PARTS[2],
+            [1.0, 21.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_VILLAGER_LEG.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_VILLAGER_PARTS[3],
+            [0.0, 16.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_VILLAGER_HEAD.as_slice(),
+            BABY_VILLAGER_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_HEAD_CHILDREN[0],
+            [0.0, -4.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_VILLAGER_HAT.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_HEAD_CHILDREN[1],
+            [0.0, -4.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_VILLAGER_HAT_RIM.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_HEAD_CHILDREN[2],
+            [0.0, -2.0, -4.0],
+            [0.0, 0.0, 0.0],
+            BABY_VILLAGER_NOSE.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_PARTS[4],
+            [0.0, 18.75, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_VILLAGER_BODY.as_slice(),
+        );
+        assert_part(
+            &BABY_VILLAGER_PARTS[5],
+            [0.5, 24.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_VILLAGER_BB_MAIN.as_slice(),
+        );
+    }
+
+    #[test]
+    fn villager_baby_model_mesh_uses_vanilla_body_layer_geometry() {
+        let mesh = entity_model_mesh(&[EntityModelInstance::villager(
+            140,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+        )]);
+
+        assert_eq!(mesh.opaque_faces, 66);
+        assert_eq!(mesh.vertices.len(), 264);
+        assert_eq!(mesh.indices.len(), 396);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.43750003, 64.001, -0.37500003]);
+        assert_close3(max, [0.43750003, 65.01975, 0.37500003]);
+    }
+
+    #[test]
+    fn villager_and_wandering_trader_texture_refs_match_vanilla_renderers() {
+        assert_eq!(
+            EntityModelKind::Villager { baby: false }.model_key(),
+            "villager"
+        );
+        assert_eq!(
+            EntityModelKind::Villager { baby: false }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/villager/villager.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Villager { baby: true }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/villager/villager_baby.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::WanderingTrader.model_key(),
+            "wandering_trader"
+        );
+        assert_eq!(
+            EntityModelKind::WanderingTrader.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/wandering_trader/wandering_trader.png",
+                size: [64, 64],
+            })
+        );
+    }
+
+    #[test]
     fn creeper_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             CREEPER_HEAD[0],
@@ -3333,6 +3949,14 @@ mod tests {
             EntityModelKind::Sheep { baby: true }.model_key(),
             "sheep_baby"
         );
+        assert_eq!(
+            EntityModelKind::Villager { baby: true }.model_key(),
+            "villager_baby"
+        );
+        assert_eq!(
+            EntityModelKind::WanderingTrader.model_key(),
+            "wandering_trader"
+        );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(
             EntityModelKind::Placeholder {
@@ -3405,5 +4029,18 @@ mod tests {
         assert_eq!(part.pose.rotation, rotation);
         assert_eq!(part.cubes, cubes);
         assert!(part.children.is_empty());
+    }
+
+    fn assert_part_tree(
+        part: &ModelPartDesc,
+        offset: [f32; 3],
+        rotation: [f32; 3],
+        cubes: &[ModelCubeDesc],
+        children: &[ModelPartDesc],
+    ) {
+        assert_eq!(part.pose.offset, offset);
+        assert_eq!(part.pose.rotation, rotation);
+        assert_eq!(part.cubes, cubes);
+        assert_eq!(part.children, children);
     }
 }
