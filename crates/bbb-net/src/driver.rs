@@ -321,11 +321,12 @@ mod tests {
             DataComponentPatchSummary, Difficulty, Direction, EditBook, EntityTagQuery, GameType,
             HashedStack, InteractEntity, InteractionHand, ItemStackSummary, LockDifficultyCommand,
             PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-            PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
-            RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
-            RecipeDisplayId, RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-            ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
-            TeleportToEntity, UseItem, UseItemOn, Vec3d,
+            PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand,
+            PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
+            RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
+            SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
+            SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
+            UseItemOn, Vec3d,
         },
     };
     use bytes::BytesMut;
@@ -1021,6 +1022,48 @@ mod tests {
         assert_eq!(decoder.read_var_i32().unwrap(), 1);
         assert!(decoder.read_bool().unwrap());
         assert_eq!(decoder.read_var_i32().unwrap(), 10);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
+    async fn drive_connection_sends_player_command_and_input_net_commands_in_play() {
+        let (mut conn, mut server) = raw_connection_pair_with_server().await;
+        let (tx, mut commands) = mpsc::channel(3);
+        tx.send(NetCommand::PlayerCommand(PlayerCommand {
+            entity_id: 77,
+            action: PlayerCommandAction::StartRidingJump,
+            data: 12,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::PlayerInput(PlayerInput {
+            forward: true,
+            backward: false,
+            left: true,
+            right: false,
+            jump: true,
+            shift: false,
+            sprint: true,
+        }))
+        .await
+        .unwrap();
+        tx.send(NetCommand::Disconnect).await.unwrap();
+        let mut player_position_state = PlayerPositionState::default();
+
+        drive_play_until_disconnect(&mut conn, &mut commands, &mut player_position_state).await;
+
+        let (packet_id, payload) = read_server_packet(&mut server, "player command").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_COMMAND);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 77);
+        assert_eq!(decoder.read_var_i32().unwrap(), 3);
+        assert_eq!(decoder.read_var_i32().unwrap(), 12);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = read_server_packet(&mut server, "player input").await;
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PLAYER_INPUT);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_u8().unwrap(), 0b0101_0101);
         assert!(decoder.is_empty());
     }
 
