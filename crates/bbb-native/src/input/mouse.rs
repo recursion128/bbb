@@ -491,9 +491,13 @@ fn start_destroy_block(
         hit.face,
         sequence,
     );
-    if local_player_instabuild(world) || world.local_destroy_block_is_immediate(hit.pos) {
+    if local_player_instabuild(world) {
         world.predict_local_destroy_block(hit.pos, sequence);
         world.set_local_destroy_delay_ticks(5);
+        return;
+    }
+    if world.local_destroy_block_is_immediate(hit.pos) {
+        world.predict_local_destroy_block(hit.pos, sequence);
         return;
     }
     world.set_local_destroying_block_hit(hit.pos, hit.face);
@@ -648,7 +652,8 @@ mod tests {
     };
     use bbb_world::{
         BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, LocalPlayerPoseState,
-        PaletteDomain, PaletteKind, PalettedContainerData, WorldBlockSoundProfile, WorldDimension,
+        PaletteDomain, PaletteKind, PalettedContainerData, WorldBlockDestroyProfile,
+        WorldBlockSoundProfile, WorldDimension,
     };
     use std::collections::{BTreeMap, BTreeSet};
     use uuid::Uuid;
@@ -1236,6 +1241,63 @@ mod tests {
             world.local_player().interaction.destroying_block_face,
             Some(ProtocolDirection::North)
         );
+        assert_eq!(counters.player_action_commands_queued, 1);
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::PlayerAction(PlayerAction {
+                action: PlayerActionKind::StartDestroyBlock,
+                pos: ProtocolBlockPos { x: 0, y: 1, z: 3 },
+                direction: ProtocolDirection::North,
+                sequence: 1,
+            })
+        );
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::Swing(InteractionHand::MainHand)
+        );
+    }
+
+    #[test]
+    fn survival_instant_left_mouse_press_predicts_destroy_without_delay() {
+        let (tx, mut rx) = mpsc::channel(2);
+        let commands = Some(tx);
+        let mut input = ClientInputState::new(true);
+        let mut world = world_with_crosshair_block();
+        world.set_default_block_destroy_profiles(BTreeMap::from([(
+            "minecraft:grass_block".to_string(),
+            WorldBlockDestroyProfile {
+                destroy_time_tenths: Some(0),
+                requires_correct_tool: false,
+            },
+        )]));
+        assert!(world.local_destroy_block_is_immediate(CROSSHAIR_BLOCK_POS));
+        let mut counters = NetCounters::default();
+
+        handle_mouse_input(
+            &mut input,
+            &mut world,
+            &mut counters,
+            &commands,
+            MouseButton::Left,
+            ElementState::Pressed,
+        );
+
+        assert!(input.destroy_block_held);
+        assert_eq!(world.local_player().interaction.destroying_block, None);
+        assert_eq!(
+            world.local_player().interaction.destroying_block_stage,
+            None
+        );
+        assert_eq!(world.local_player().interaction.destroy_delay_ticks, 0);
+        assert_eq!(
+            world
+                .probe_block(CROSSHAIR_BLOCK_POS)
+                .unwrap()
+                .block_state_id,
+            VANILLA_AIR_BLOCK_STATE_ID
+        );
+        assert_eq!(world.local_block_predictions().len(), 1);
         assert_eq!(counters.player_action_commands_queued, 1);
         assert_eq!(counters.swing_commands_queued, 1);
         assert_eq!(
