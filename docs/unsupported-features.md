@@ -1348,8 +1348,11 @@ When an agent does any of the following, update this file in the same slice:
         - result-slot quick-move into the player inventory is locally predicted
           when the current server result fully fits and the single
           template/base/addition inputs are consumed to empty.
+        - result-slot primary pickup with an empty cursor is locally predicted
+          from the current server result when the single template/base/addition
+          inputs are consumed to empty.
         - result-slot clicks are kept server-authoritative until:
-          - result-slot pickup
+          - carried-cursor or secondary result-slot pickup
           - result prediction
           - result recomputation after partial input consumption
           - partial/full-inventory result transfers
