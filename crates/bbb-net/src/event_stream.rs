@@ -1757,6 +1757,182 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_debug_game_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(8);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let debug_block = packets::DebugBlockValue {
+            pos: packets::BlockPos { x: 1, y: 64, z: -2 },
+            raw_update_payload: vec![5, 1, 0xaa],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::DebugBlockValue(debug_block.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("debug block value event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::DebugBlockValue(update) if update == debug_block
+        ));
+
+        let debug_chunk = packets::DebugChunkValue {
+            pos: packets::ChunkPos { x: 3, z: -4 },
+            raw_update_payload: vec![7, 0],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::DebugChunkValue(debug_chunk.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("debug chunk value event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::DebugChunkValue(update) if update == debug_chunk
+        ));
+
+        let debug_entity = packets::DebugEntityValue {
+            entity_id: 123,
+            raw_update_payload: vec![9, 1, 0xbb],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::DebugEntityValue(debug_entity.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("debug entity value event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::DebugEntityValue(update) if update == debug_entity
+        ));
+
+        let debug_event = packets::DebugEvent {
+            raw_event_payload: vec![4, 0xcc],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::DebugEvent(debug_event.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("debug event should be emitted")
+            .unwrap();
+        assert!(matches!(event, NetEvent::DebugEvent(update) if update == debug_event));
+
+        let debug_sample = packets::DebugSample {
+            sample: vec![100, -50],
+            sample_type: packets::RemoteDebugSampleType::TickTime,
+        };
+        stream
+            .handle_play_packet(PlayClientbound::DebugSample(debug_sample.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("debug sample event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::DebugSample(update) if update == debug_sample
+        ));
+
+        let game_rules = packets::GameRuleValues {
+            values: vec![
+                packets::GameRuleValue {
+                    rule: "minecraft:do_daylight_cycle".to_string(),
+                    value: "false".to_string(),
+                },
+                packets::GameRuleValue {
+                    rule: "minecraft:random_tick_speed".to_string(),
+                    value: "3".to_string(),
+                },
+            ],
+        };
+        stream
+            .handle_play_packet(PlayClientbound::GameRuleValues(game_rules.clone()))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("game rule values event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::GameRuleValues(update) if update == game_rules
+        ));
+
+        let game_test_highlight = packets::GameTestHighlightPos {
+            absolute_pos: packets::BlockPos {
+                x: -10,
+                y: 70,
+                z: 22,
+            },
+            relative_pos: packets::BlockPos { x: 1, y: 2, z: 3 },
+        };
+        stream
+            .handle_play_packet(PlayClientbound::GameTestHighlightPos(
+                game_test_highlight.clone(),
+            ))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("game test highlight event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::GameTestHighlightPos(update) if update == game_test_highlight
+        ));
+
+        let test_instance_status = packets::TestInstanceBlockStatus {
+            status: "Ready".to_string(),
+            size: Some(packets::Vec3i { x: 3, y: 4, z: 5 }),
+        };
+        stream
+            .handle_play_packet(PlayClientbound::TestInstanceBlockStatus(
+                test_instance_status.clone(),
+            ))
+            .await
+            .unwrap();
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("test instance block status event should be emitted")
+            .unwrap();
+        assert!(matches!(
+            event,
+            NetEvent::TestInstanceBlockStatus(update) if update == test_instance_status
+        ));
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "debug/game-state packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_passive_world_apply_packets_emit_matching_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(8);
