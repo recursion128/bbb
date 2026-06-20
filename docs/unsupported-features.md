@@ -534,8 +534,9 @@ When an agent does any of the following, update this file in the same slice:
         - stonecutter
       - recipe book/creative variants
       - remaining local crafting result parity for container `0`:
-        - tag/composite/component-aware recipe display matching beyond the
-          current direct-item shaped/shapeless 2x2 subset
+        - composite/component-aware/special recipe display matching beyond the
+          current direct-item and crafting-requirement shaped/shapeless 2x2
+          subset
         - recipe-specific remainder items
     - Higher-value next slices should prioritize missing player-visible flows
       such as recipe book/creative variants or container `0` crafting result
@@ -970,8 +971,10 @@ When an agent does any of the following, update this file in the same slice:
           crafting remainder; otherwise the click is queued
           server-authoritatively without mutating the local snapshot
         - local 2x2 input clicks recompute the result slot from server-authored
-          recipe-book shaped/shapeless displays when every ingredient and the
-          result is a direct item or item-stack display
+          recipe-book shaped/shapeless displays when the result is a direct
+          item or item-stack display and inputs are direct items or
+          `crafting_requirements` holder sets, including item tags and mirrored
+          shaped patterns
         - vanilla-shaped result-to-player transfer order
       - routes hovered-slot Q/Ctrl+Q through a basic local `THROW` simulation
       - routes hovered-slot number/F keys through a basic local `SWAP`

@@ -2753,6 +2753,104 @@ fn apply_local_container_click_recomputes_shapeless_recipe_result_from_recipe_bo
 }
 
 #[test]
+fn apply_local_container_click_recomputes_shaped_recipe_result_from_requirements() {
+    let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::new());
+    apply_item_tags(&mut store, vec![("minecraft:planks", vec![42, 43])]);
+    store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+        entries: vec![recipe_book_crafting_entry_with_requirements(
+            9,
+            CraftingRecipeDisplaySummary::Shaped {
+                width: 2,
+                height: 1,
+                ingredients: vec![slot_display_tag("minecraft:planks"), slot_display_item(44)],
+                result: slot_display_item_stack(90, 4),
+                crafting_station: slot_display_empty(),
+            },
+            vec![
+                ingredient_tag("minecraft:planks"),
+                ingredient_items(vec![44]),
+            ],
+        )],
+        replace: true,
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[1] = item_stack(44, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: item_stack(43, 1),
+    });
+    assert!(store.open_local_inventory());
+
+    let pickup = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 2,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup.changed_slots,
+        BTreeMap::from([(0, hashed_item_stack(90, 4)), (2, hashed_item_stack(43, 1)),])
+    );
+    assert_eq!(pickup.carried_item, ProtocolHashedStack::Empty);
+    assert_eq!(inventory_menu_slot_item(&store, 0), item_stack(90, 4));
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(44, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 2), item_stack(43, 1));
+}
+
+#[test]
+fn apply_local_container_click_recomputes_shapeless_recipe_result_from_requirements() {
+    let mut store = WorldStore::new();
+    store.set_default_item_crafting_remainders(BTreeMap::new());
+    apply_item_tags(&mut store, vec![("minecraft:dyes", vec![55])]);
+    store.apply_recipe_book_add(ProtocolRecipeBookAdd {
+        entries: vec![recipe_book_crafting_entry_with_requirements(
+            10,
+            CraftingRecipeDisplaySummary::Shapeless {
+                ingredients: vec![slot_display_item(999), slot_display_tag("minecraft:dyes")],
+                result: slot_display_item(91),
+                crafting_station: slot_display_empty(),
+            },
+            vec![
+                ingredient_items(vec![42, 55]),
+                ingredient_tag("minecraft:dyes"),
+            ],
+        )],
+        replace: true,
+    });
+    let mut items = vec![ProtocolItemStackSummary::empty(); 46];
+    items[4] = item_stack(55, 1);
+    store.apply_container_set_content(ProtocolContainerSetContent {
+        container_id: INVENTORY_MENU_CONTAINER_ID,
+        state_id: 12,
+        items,
+        carried_item: item_stack(42, 1),
+    });
+    assert!(store.open_local_inventory());
+
+    let pickup = store
+        .apply_local_container_click_slot(ContainerClickSlotRequest {
+            slot_num: 1,
+            button_num: 0,
+            input: ProtocolContainerInput::Pickup,
+        })
+        .unwrap();
+
+    assert_eq!(
+        pickup.changed_slots,
+        BTreeMap::from([(0, hashed_item_stack(91, 1)), (1, hashed_item_stack(42, 1)),])
+    );
+    assert_eq!(pickup.carried_item, ProtocolHashedStack::Empty);
+    assert_eq!(inventory_menu_slot_item(&store, 0), item_stack(91, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 1), item_stack(42, 1));
+    assert_eq!(inventory_menu_slot_item(&store, 4), item_stack(55, 1));
+}
+
+#[test]
 fn apply_local_container_result_requires_known_crafting_remainders() {
     let mut store = WorldStore::new();
     let mut items = vec![ProtocolItemStackSummary::empty(); 46];
@@ -8250,9 +8348,33 @@ fn slot_display_item_stack(item_id: i32, count: i32) -> SlotDisplaySummary {
     }
 }
 
+fn slot_display_tag(tag: &str) -> SlotDisplaySummary {
+    SlotDisplaySummary {
+        display_type_id: 6,
+        raw_payload: tag.as_bytes().to_vec(),
+        item_stack: None,
+    }
+}
+
 fn recipe_book_crafting_entry(
     id: i32,
     crafting: CraftingRecipeDisplaySummary,
+) -> ProtocolRecipeBookAddEntry {
+    recipe_book_crafting_entry_with_optional_requirements(id, crafting, None)
+}
+
+fn recipe_book_crafting_entry_with_requirements(
+    id: i32,
+    crafting: CraftingRecipeDisplaySummary,
+    crafting_requirements: Vec<IngredientSummary>,
+) -> ProtocolRecipeBookAddEntry {
+    recipe_book_crafting_entry_with_optional_requirements(id, crafting, Some(crafting_requirements))
+}
+
+fn recipe_book_crafting_entry_with_optional_requirements(
+    id: i32,
+    crafting: CraftingRecipeDisplaySummary,
+    crafting_requirements: Option<Vec<IngredientSummary>>,
 ) -> ProtocolRecipeBookAddEntry {
     let display_type = match crafting {
         CraftingRecipeDisplaySummary::Shapeless { .. } => RecipeDisplayType::CraftingShapeless,
@@ -8268,11 +8390,25 @@ fn recipe_book_crafting_entry(
             },
             group: None,
             category_id: 10,
-            crafting_requirements: None,
+            crafting_requirements,
         },
         flags: 0,
         notification: false,
         highlight: false,
+    }
+}
+
+fn ingredient_items(item_ids: Vec<i32>) -> IngredientSummary {
+    IngredientSummary {
+        tag: None,
+        item_ids,
+    }
+}
+
+fn ingredient_tag(tag: &str) -> IngredientSummary {
+    IngredientSummary {
+        tag: Some(tag.to_string()),
+        item_ids: Vec::new(),
     }
 }
 

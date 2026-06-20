@@ -8,11 +8,12 @@ use bbb_protocol::packets::{
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
     HashedComponentPatch as ProtocolHashedComponentPatch,
     HashedItemStack as ProtocolHashedItemStack, HashedStack as ProtocolHashedStack,
-    InteractionHand, ItemCostSummary as ProtocolItemCostSummary,
-    ItemStackSummary as ProtocolItemStackSummary, MerchantOffer as ProtocolMerchantOffer,
-    MerchantOffers as ProtocolMerchantOffers, OpenScreen as ProtocolOpenScreen,
-    RecipeDisplayEntry as ProtocolRecipeDisplayEntry, SetCursorItem as ProtocolSetCursorItem,
-    SetPlayerInventory as ProtocolSetPlayerInventory,
+    IngredientSummary as ProtocolIngredientSummary, InteractionHand,
+    ItemCostSummary as ProtocolItemCostSummary, ItemStackSummary as ProtocolItemStackSummary,
+    MerchantOffer as ProtocolMerchantOffer, MerchantOffers as ProtocolMerchantOffers,
+    OpenScreen as ProtocolOpenScreen, RecipeDisplayEntry as ProtocolRecipeDisplayEntry,
+    SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
+    SlotDisplaySummary as ProtocolSlotDisplaySummary,
     StonecutterSelectableRecipeSummary as ProtocolStonecutterSelectableRecipeSummary,
 };
 use serde::{Deserialize, Serialize};
@@ -1771,8 +1772,10 @@ impl WorldStore {
             apply_inventory_menu_result_take_side_effects(&mut slots_after);
         }
         if container_id == INVENTORY_MENU_CONTAINER_ID {
+            let item_tags = self.registry_tags("minecraft:item");
             sync_inventory_menu_crafting_result_from_recipe_book(
                 &self.recipe_book.known,
+                item_tags,
                 &mut slots_after,
             );
         }
@@ -2437,12 +2440,13 @@ fn inventory_menu_predictable_input_slot_nums(
 
 fn sync_inventory_menu_crafting_result_from_recipe_book(
     recipes: &BTreeMap<i32, ProtocolRecipeDisplayEntry>,
+    item_tags: Option<&RegistryTagState>,
     slots: &mut [ContainerSlot],
 ) {
     let Some(result_index) = slots.iter().position(|slot| slot.slot == 0) else {
         return;
     };
-    let result = predict_inventory_menu_crafting_result(recipes, slots)
+    let result = predict_inventory_menu_crafting_result(recipes, item_tags, slots)
         .unwrap_or_else(ProtocolItemStackSummary::empty);
     slots[result_index].item = result;
     normalize_container_slot_selection(&mut slots[result_index]);
@@ -2450,6 +2454,7 @@ fn sync_inventory_menu_crafting_result_from_recipe_book(
 
 fn predict_inventory_menu_crafting_result(
     recipes: &BTreeMap<i32, ProtocolRecipeDisplayEntry>,
+    item_tags: Option<&RegistryTagState>,
     slots: &[ContainerSlot],
 ) -> Option<ProtocolItemStackSummary> {
     for recipe in recipes.values() {
@@ -2461,14 +2466,45 @@ fn predict_inventory_menu_crafting_result(
                 ingredients,
                 result,
                 ..
-            } => predict_shapeless_inventory_menu_result(ingredients, result, slots),
+            } => {
+                if let Some(requirements) = recipe.crafting_requirements.as_deref() {
+                    predict_shapeless_inventory_menu_result_from_requirements(
+                        requirements,
+                        result,
+                        item_tags,
+                        slots,
+                    )
+                } else {
+                    predict_shapeless_inventory_menu_result(ingredients, result, slots)
+                }
+            }
             ProtocolCraftingRecipeDisplaySummary::Shaped {
                 width,
                 height,
                 ingredients,
                 result,
                 ..
-            } => predict_shaped_inventory_menu_result(*width, *height, ingredients, result, slots),
+            } => {
+                if let Some(requirements) = recipe.crafting_requirements.as_deref() {
+                    predict_shaped_inventory_menu_result_from_requirements(
+                        *width,
+                        *height,
+                        ingredients,
+                        requirements,
+                        result,
+                        item_tags,
+                        slots,
+                    )
+                } else {
+                    predict_shaped_inventory_menu_result(
+                        *width,
+                        *height,
+                        ingredients,
+                        result,
+                        slots,
+                    )
+                }
+            }
         };
         if result.is_some() {
             return result;
@@ -2485,14 +2521,34 @@ fn predict_shapeless_inventory_menu_result(
     if ingredients.is_empty() || ingredients.len() > 4 {
         return None;
     }
-    let ingredient_counts = item_id_counts(
+    let ingredients = simple_slot_display_item_ids(
         ingredients
             .iter()
             .map(simple_slot_display_item_id)
             .collect::<Option<Vec<_>>>()?,
     );
-    let input_counts = item_id_counts(inventory_menu_crafting_input_item_ids(slots)?);
-    if ingredient_counts != input_counts {
+    let input_item_ids = inventory_menu_crafting_input_item_ids(slots)?;
+    if !shapeless_crafting_ingredients_match(&ingredients, &input_item_ids, None) {
+        return None;
+    }
+    simple_slot_display_item_stack(result)
+}
+
+fn predict_shapeless_inventory_menu_result_from_requirements(
+    requirements: &[ProtocolIngredientSummary],
+    result: &ProtocolSlotDisplaySummary,
+    item_tags: Option<&RegistryTagState>,
+    slots: &[ContainerSlot],
+) -> Option<ProtocolItemStackSummary> {
+    if requirements.is_empty() || requirements.len() > 4 {
+        return None;
+    }
+    let ingredients = requirements
+        .iter()
+        .map(CraftingIngredientMatch::Requirement)
+        .collect::<Vec<_>>();
+    let input_item_ids = inventory_menu_crafting_input_item_ids(slots)?;
+    if !shapeless_crafting_ingredients_match(&ingredients, &input_item_ids, item_tags) {
         return None;
     }
     simple_slot_display_item_stack(result)
@@ -2501,8 +2557,8 @@ fn predict_shapeless_inventory_menu_result(
 fn predict_shaped_inventory_menu_result(
     width: i32,
     height: i32,
-    ingredients: &[bbb_protocol::packets::SlotDisplaySummary],
-    result: &bbb_protocol::packets::SlotDisplaySummary,
+    ingredients: &[ProtocolSlotDisplaySummary],
+    result: &ProtocolSlotDisplaySummary,
     slots: &[ContainerSlot],
 ) -> Option<ProtocolItemStackSummary> {
     if width <= 0 || height <= 0 || width > 2 || height > 2 {
@@ -2513,18 +2569,63 @@ fn predict_shaped_inventory_menu_result(
     if ingredients.len() != width * height {
         return None;
     }
+    let ingredients = simple_shaped_slot_display_ingredients(ingredients)?;
     let grid = inventory_menu_crafting_grid_item_ids(slots);
     for offset_y in 0..=(2 - height) {
         for offset_x in 0..=(2 - width) {
-            if shaped_inventory_menu_recipe_matches(
-                width,
-                height,
-                ingredients,
-                &grid,
-                offset_x,
-                offset_y,
-            ) {
-                return simple_slot_display_item_stack(result);
+            for x_flipped in [false, true] {
+                if shaped_inventory_menu_recipe_matches(
+                    width,
+                    height,
+                    &ingredients,
+                    &grid,
+                    offset_x,
+                    offset_y,
+                    x_flipped,
+                    None,
+                ) {
+                    return simple_slot_display_item_stack(result);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn predict_shaped_inventory_menu_result_from_requirements(
+    width: i32,
+    height: i32,
+    displays: &[ProtocolSlotDisplaySummary],
+    requirements: &[ProtocolIngredientSummary],
+    result: &ProtocolSlotDisplaySummary,
+    item_tags: Option<&RegistryTagState>,
+    slots: &[ContainerSlot],
+) -> Option<ProtocolItemStackSummary> {
+    if width <= 0 || height <= 0 || width > 2 || height > 2 {
+        return None;
+    }
+    let width = usize::try_from(width).ok()?;
+    let height = usize::try_from(height).ok()?;
+    if displays.len() != width * height {
+        return None;
+    }
+    let ingredients = shaped_requirement_ingredients(displays, requirements)?;
+    let grid = inventory_menu_crafting_grid_item_ids(slots);
+    for offset_y in 0..=(2 - height) {
+        for offset_x in 0..=(2 - width) {
+            for x_flipped in [false, true] {
+                if shaped_inventory_menu_recipe_matches(
+                    width,
+                    height,
+                    &ingredients,
+                    &grid,
+                    offset_x,
+                    offset_y,
+                    x_flipped,
+                    item_tags,
+                ) {
+                    return simple_slot_display_item_stack(result);
+                }
             }
         }
     }
@@ -2534,40 +2635,106 @@ fn predict_shaped_inventory_menu_result(
 fn shaped_inventory_menu_recipe_matches(
     width: usize,
     height: usize,
-    ingredients: &[bbb_protocol::packets::SlotDisplaySummary],
+    ingredients: &[CraftingIngredientMatch<'_>],
     grid: &[Option<i32>; 4],
     offset_x: usize,
     offset_y: usize,
+    x_flipped: bool,
+    item_tags: Option<&RegistryTagState>,
 ) -> bool {
     for y in 0..2 {
         for x in 0..2 {
             let grid_item_id = grid[x + y * 2];
-            let expected = if (offset_x..offset_x + width).contains(&x)
+            let ingredient = if (offset_x..offset_x + width).contains(&x)
                 && (offset_y..offset_y + height).contains(&y)
             {
-                let ingredient_index = (x - offset_x) + (y - offset_y) * width;
-                match simple_slot_display_expected_item_id(&ingredients[ingredient_index]) {
-                    Some(expected) => expected,
-                    None => return false,
-                }
+                let recipe_x = x - offset_x;
+                let ingredient_x = if x_flipped {
+                    width - recipe_x - 1
+                } else {
+                    recipe_x
+                };
+                ingredients[ingredient_x + (y - offset_y) * width]
             } else {
-                None
+                CraftingIngredientMatch::Empty
             };
-            if grid_item_id != expected {
-                return false;
+            match ingredient {
+                CraftingIngredientMatch::Empty if grid_item_id.is_none() => {}
+                CraftingIngredientMatch::Empty => return false,
+                _ => {
+                    let Some(item_id) = grid_item_id else {
+                        return false;
+                    };
+                    if !ingredient.accepts_item(item_id, item_tags) {
+                        return false;
+                    }
+                }
             }
         }
     }
     true
 }
 
-fn simple_slot_display_expected_item_id(
-    display: &bbb_protocol::packets::SlotDisplaySummary,
-) -> Option<Option<i32>> {
-    if display.display_type_id == 0 {
-        return Some(None);
+#[derive(Clone, Copy)]
+enum CraftingIngredientMatch<'a> {
+    Empty,
+    OneItem(i32),
+    Requirement(&'a ProtocolIngredientSummary),
+}
+
+impl<'a> CraftingIngredientMatch<'a> {
+    fn accepts_item(self, item_id: i32, item_tags: Option<&RegistryTagState>) -> bool {
+        match self {
+            Self::Empty => false,
+            Self::OneItem(expected) => expected == item_id,
+            Self::Requirement(requirement) => {
+                ingredient_accepts_item(requirement, item_id, item_tags)
+            }
+        }
     }
-    Some(Some(simple_slot_display_item_id(display)?))
+}
+
+fn simple_slot_display_item_ids(item_ids: Vec<i32>) -> Vec<CraftingIngredientMatch<'static>> {
+    item_ids
+        .into_iter()
+        .map(CraftingIngredientMatch::OneItem)
+        .collect()
+}
+
+fn simple_shaped_slot_display_ingredients(
+    displays: &[ProtocolSlotDisplaySummary],
+) -> Option<Vec<CraftingIngredientMatch<'static>>> {
+    displays
+        .iter()
+        .map(|display| {
+            if display.display_type_id == 0 {
+                Some(CraftingIngredientMatch::Empty)
+            } else {
+                Some(CraftingIngredientMatch::OneItem(
+                    simple_slot_display_item_id(display)?,
+                ))
+            }
+        })
+        .collect()
+}
+
+fn shaped_requirement_ingredients<'a>(
+    displays: &[ProtocolSlotDisplaySummary],
+    requirements: &'a [ProtocolIngredientSummary],
+) -> Option<Vec<CraftingIngredientMatch<'a>>> {
+    let mut requirements = requirements.iter();
+    let mut ingredients = Vec::with_capacity(displays.len());
+    for display in displays {
+        if display.display_type_id == 0 {
+            ingredients.push(CraftingIngredientMatch::Empty);
+        } else {
+            ingredients.push(CraftingIngredientMatch::Requirement(requirements.next()?));
+        }
+    }
+    if requirements.next().is_some() {
+        return None;
+    }
+    Some(ingredients)
 }
 
 fn simple_slot_display_item_id(display: &bbb_protocol::packets::SlotDisplaySummary) -> Option<i32> {
@@ -2579,6 +2746,72 @@ fn simple_slot_display_item_stack(
 ) -> Option<ProtocolItemStackSummary> {
     let stack = display.item_stack.clone()?;
     item_stack_is_non_empty(&stack).then_some(stack)
+}
+
+fn shapeless_crafting_ingredients_match(
+    ingredients: &[CraftingIngredientMatch<'_>],
+    input_item_ids: &[i32],
+    item_tags: Option<&RegistryTagState>,
+) -> bool {
+    if ingredients.len() != input_item_ids.len() {
+        return false;
+    }
+    let mut used_inputs = vec![false; input_item_ids.len()];
+    shapeless_crafting_ingredients_match_from(
+        ingredients,
+        input_item_ids,
+        item_tags,
+        &mut used_inputs,
+        0,
+    )
+}
+
+fn shapeless_crafting_ingredients_match_from(
+    ingredients: &[CraftingIngredientMatch<'_>],
+    input_item_ids: &[i32],
+    item_tags: Option<&RegistryTagState>,
+    used_inputs: &mut [bool],
+    ingredient_index: usize,
+) -> bool {
+    let Some(ingredient) = ingredients.get(ingredient_index) else {
+        return true;
+    };
+    if matches!(ingredient, CraftingIngredientMatch::Empty) {
+        return false;
+    }
+    for input_index in 0..input_item_ids.len() {
+        if used_inputs[input_index] {
+            continue;
+        }
+        if !ingredient.accepts_item(input_item_ids[input_index], item_tags) {
+            continue;
+        }
+        used_inputs[input_index] = true;
+        if shapeless_crafting_ingredients_match_from(
+            ingredients,
+            input_item_ids,
+            item_tags,
+            used_inputs,
+            ingredient_index + 1,
+        ) {
+            return true;
+        }
+        used_inputs[input_index] = false;
+    }
+    false
+}
+
+fn ingredient_accepts_item(
+    ingredient: &ProtocolIngredientSummary,
+    item_id: i32,
+    item_tags: Option<&RegistryTagState>,
+) -> bool {
+    ingredient.item_ids.contains(&item_id)
+        || ingredient.tag.as_deref().is_some_and(|tag| {
+            item_tags
+                .and_then(|registry| registry.tags.get(tag))
+                .is_some_and(|entries| entries.contains(&item_id))
+        })
 }
 
 fn inventory_menu_crafting_input_item_ids(slots: &[ContainerSlot]) -> Option<Vec<i32>> {
@@ -2603,14 +2836,6 @@ fn inventory_menu_crafting_grid_item_ids(slots: &[ContainerSlot]) -> [Option<i32
             .then_some(item.item_id)
             .flatten()
     })
-}
-
-fn item_id_counts(item_ids: Vec<i32>) -> BTreeMap<i32, usize> {
-    let mut counts = BTreeMap::new();
-    for item_id in item_ids {
-        *counts.entry(item_id).or_insert(0) += 1;
-    }
-    counts
 }
 
 fn crafting_result_predictable_input_slot_nums(
