@@ -971,6 +971,347 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_entity_state_packets_emit_matching_events_without_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(20);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        macro_rules! assert_matching_event {
+            ($packet:expr, $message:literal, $pattern:pat $(if $guard:expr)? ) => {{
+                stream.handle_play_packet($packet).await.unwrap();
+                let event = timeout(Duration::from_secs(1), events_rx.recv())
+                    .await
+                    .expect($message)
+                    .unwrap();
+                assert!(matches!(event, $pattern $(if $guard)?));
+            }};
+        }
+
+        let add_entity = packets::AddEntity {
+            id: 123,
+            uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
+            entity_type_id: 7,
+            position: packets::Vec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: packets::Vec3d::default(),
+            x_rot: -10.0,
+            y_rot: 20.0,
+            y_head_rot: 30.0,
+            data: 99,
+        };
+        assert_matching_event!(
+            PlayClientbound::AddEntity(add_entity.clone()),
+            "add entity event should be emitted",
+            NetEvent::AddEntity(update) if update == add_entity
+        );
+
+        let entity_animation = packets::EntityAnimation { id: 123, action: 3 };
+        assert_matching_event!(
+            PlayClientbound::EntityAnimation(entity_animation),
+            "entity animation event should be emitted",
+            NetEvent::EntityAnimation(update) if update == entity_animation
+        );
+
+        let hurt_animation = packets::HurtAnimation { id: 123, yaw: 45.5 };
+        assert_matching_event!(
+            PlayClientbound::HurtAnimation(hurt_animation),
+            "hurt animation event should be emitted",
+            NetEvent::HurtAnimation(update) if update == hurt_animation
+        );
+
+        let position_sync = packets::EntityPositionSync {
+            id: 123,
+            position: packets::Vec3d {
+                x: 2.0,
+                y: 65.0,
+                z: -3.0,
+            },
+            delta_movement: packets::Vec3d {
+                x: 0.0,
+                y: 0.25,
+                z: 0.0,
+            },
+            y_rot: 180.0,
+            x_rot: 30.0,
+            on_ground: true,
+        };
+        assert_matching_event!(
+            PlayClientbound::EntityPositionSync(position_sync),
+            "entity position sync event should be emitted",
+            NetEvent::EntityPositionSync(update) if update == position_sync
+        );
+
+        let teleport = packets::TeleportEntity {
+            id: 123,
+            position: packets::Vec3d {
+                x: 0.5,
+                y: 70.0,
+                z: -4.0,
+            },
+            delta_movement: packets::Vec3d {
+                x: 0.0,
+                y: 0.2,
+                z: 0.0,
+            },
+            y_rot: 10.0,
+            x_rot: -120.0,
+            relatives_mask: 0,
+            on_ground: true,
+        };
+        assert_matching_event!(
+            PlayClientbound::TeleportEntity(teleport),
+            "entity teleport event should be emitted",
+            NetEvent::TeleportEntity(update) if update == teleport
+        );
+
+        let rotate_head = packets::RotateHead {
+            id: 123,
+            y_head_rot: 90.0,
+        };
+        assert_matching_event!(
+            PlayClientbound::RotateHead(rotate_head),
+            "entity head rotation event should be emitted",
+            NetEvent::RotateHead(update) if update == rotate_head
+        );
+
+        let motion = packets::SetEntityMotion {
+            id: 123,
+            delta_movement: packets::Vec3d {
+                x: 0.1,
+                y: 0.0,
+                z: -0.1,
+            },
+        };
+        assert_matching_event!(
+            PlayClientbound::SetEntityMotion(motion),
+            "entity motion event should be emitted",
+            NetEvent::SetEntityMotion(update) if update == motion
+        );
+
+        let link = packets::SetEntityLink {
+            source_id: 123,
+            dest_id: 456,
+        };
+        assert_matching_event!(
+            PlayClientbound::SetEntityLink(link),
+            "entity link event should be emitted",
+            NetEvent::SetEntityLink(update) if update == link
+        );
+
+        let passengers = packets::SetPassengers {
+            vehicle_id: 123,
+            passenger_ids: vec![456],
+        };
+        assert_matching_event!(
+            PlayClientbound::SetPassengers(passengers.clone()),
+            "entity passengers event should be emitted",
+            NetEvent::SetPassengers(update) if update == passengers
+        );
+
+        let equipment = packets::SetEquipment {
+            entity_id: 123,
+            slots: vec![packets::EquipmentSlotUpdate {
+                slot: packets::EquipmentSlot::Head,
+                item: test_item_stack(42, 1),
+            }],
+        };
+        assert_matching_event!(
+            PlayClientbound::SetEquipment(equipment.clone()),
+            "entity equipment event should be emitted",
+            NetEvent::SetEquipment(update) if update == equipment
+        );
+
+        let attributes = packets::UpdateAttributes {
+            entity_id: 123,
+            attributes: vec![packets::AttributeSnapshot {
+                attribute_id: 21,
+                base: 20.0,
+                modifiers: vec![packets::AttributeModifier {
+                    id: "minecraft:health_bonus".to_string(),
+                    amount: 4.0,
+                    operation_id: 0,
+                }],
+            }],
+        };
+        assert_matching_event!(
+            PlayClientbound::UpdateAttributes(attributes.clone()),
+            "entity attributes event should be emitted",
+            NetEvent::UpdateAttributes(update) if update == attributes
+        );
+
+        let entity_data = packets::SetEntityData {
+            id: 123,
+            values: vec![
+                packets::EntityDataValue {
+                    data_id: 0,
+                    serializer_id: 0,
+                    value: packets::EntityDataValueKind::Byte(0x20),
+                },
+                packets::EntityDataValue {
+                    data_id: 2,
+                    serializer_id: 1,
+                    value: packets::EntityDataValueKind::Int(301),
+                },
+            ],
+        };
+        assert_matching_event!(
+            PlayClientbound::SetEntityData(entity_data.clone()),
+            "entity data event should be emitted",
+            NetEvent::SetEntityData(update) if update == entity_data
+        );
+
+        let take_item = packets::TakeItemEntity {
+            item_id: 300,
+            player_id: 123,
+            amount: 1,
+        };
+        assert_matching_event!(
+            PlayClientbound::TakeItemEntity(take_item),
+            "take item entity event should be emitted",
+            NetEvent::TakeItemEntity(update) if update == take_item
+        );
+
+        let mob_effect = packets::UpdateMobEffect {
+            entity_id: 123,
+            effect_id: 3,
+            amplifier: 1,
+            duration_ticks: 200,
+            flags: packets::MobEffectFlags {
+                raw: 0b0110,
+                ambient: false,
+                visible: true,
+                show_icon: true,
+                blend: false,
+            },
+        };
+        assert_matching_event!(
+            PlayClientbound::UpdateMobEffect(mob_effect),
+            "mob effect update event should be emitted",
+            NetEvent::UpdateMobEffect(update) if update == mob_effect
+        );
+
+        let damage = packets::DamageEvent {
+            entity_id: 123,
+            source_type_id: 5,
+            source_cause_id: 456,
+            source_direct_id: 300,
+            source_position: Some(packets::Vec3d {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            }),
+        };
+        assert_matching_event!(
+            PlayClientbound::DamageEvent(damage),
+            "damage event should be emitted",
+            NetEvent::DamageEvent(update) if update == damage
+        );
+
+        let remove_effect = packets::RemoveMobEffect {
+            entity_id: 123,
+            effect_id: 3,
+        };
+        assert_matching_event!(
+            PlayClientbound::RemoveMobEffect(remove_effect),
+            "remove mob effect event should be emitted",
+            NetEvent::RemoveMobEffect(update) if update == remove_effect
+        );
+
+        let minecart = packets::MoveMinecartAlongTrack {
+            entity_id: 300,
+            lerp_steps: vec![packets::MinecartStep {
+                position: packets::Vec3d {
+                    x: 1.0,
+                    y: 64.0,
+                    z: -2.0,
+                },
+                movement: packets::Vec3d {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.1,
+                },
+                y_rot: 30.0,
+                x_rot: 0.0,
+                weight: 1.0,
+            }],
+        };
+        assert_matching_event!(
+            PlayClientbound::MoveMinecartAlongTrack(minecart.clone()),
+            "minecart along-track event should be emitted",
+            NetEvent::MoveMinecartAlongTrack(update) if update == minecart
+        );
+
+        let vehicle = packets::MoveVehicle {
+            position: packets::Vec3d {
+                x: 5.0,
+                y: 65.0,
+                z: -6.0,
+            },
+            y_rot: 45.0,
+            x_rot: 5.0,
+        };
+        assert_matching_event!(
+            PlayClientbound::MoveVehicle(vehicle),
+            "move vehicle event should be emitted",
+            NetEvent::MoveVehicle(update) if update == vehicle
+        );
+
+        let explosion = packets::Explosion {
+            center: packets::Vec3d {
+                x: 3.0,
+                y: 66.0,
+                z: -4.0,
+            },
+            radius: 2.5,
+            block_count: 3,
+            player_knockback: Some(packets::Vec3d {
+                x: 0.1,
+                y: 0.2,
+                z: 0.3,
+            }),
+            raw_effect_payload: vec![1, 2, 3],
+        };
+        assert_matching_event!(
+            PlayClientbound::Explosion(explosion.clone()),
+            "explosion event should be emitted",
+            NetEvent::Explosion(update) if update == explosion
+        );
+
+        let remove_entities = packets::RemoveEntities {
+            entity_ids: vec![456, 404],
+        };
+        assert_matching_event!(
+            PlayClientbound::RemoveEntities(remove_entities.clone()),
+            "remove entities event should be emitted",
+            NetEvent::RemoveEntities(update) if update == remove_entities
+        );
+
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "entity state packets must not send serverbound responses"
+        );
+    }
+
+    #[tokio::test]
     async fn play_resource_pack_push_emits_push_and_response_events() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(2);
