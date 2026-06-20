@@ -232,7 +232,7 @@ When an agent does any of the following, update this file in the same slice:
     - dropped-item icons
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
-      source-verified pig/cow/sheep/wolf/base-horse/donkey/mule/
+      source-verified player/player-slim/pig/cow/sheep/wolf/base-horse/donkey/mule/
       skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
       goat/polar-bear/hoglin/zoglin/ravager/villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
@@ -272,6 +272,17 @@ When an agent does any of the following, update this file in the same slice:
     - dropped item entities as camera-facing item-icon billboards from:
       - canonical item entity stack metadata
       - the native item atlas
+    - player and mannequin entities as renderer-owned vanilla 26.1
+      `PlayerModel.createMesh(CubeDeformation.NONE, slim)` body-layer geometry
+      from `PlayerModel`, `AvatarRenderer`, and `LayerDefinitions`, including
+      base head/body/arms/legs plus hat/jacket/sleeves/pants children, the
+      `AvatarRenderer` `0.9375F` render scale, and official wide/slim Steve
+      texture references; UUID/default-skin selection, live skin downloads,
+      automatic slim-vs-wide model selection from `PlayerSkin`, player model
+      part visibility toggles, capes, ears, armor/equipment, held items,
+      elytra/wings, shoulder parrots, arrows/stingers, spectator visibility,
+      crouch/flying offsets, name display, arm poses, and walk/head animation
+      remain unsupported
     - chicken entities as renderer-owned vanilla adult/baby cuboid model
       geometry, projected from canonical world entity state and rendered with
       temporary vertex colors

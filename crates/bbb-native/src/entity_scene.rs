@@ -256,7 +256,7 @@ fn entity_model_kind(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
-            humanoid(HumanoidModelFamily::Player, false)
+            EntityModelKind::Player { slim: false }
         }
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => armor_stand_model_kind(data_values),
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => EntityModelKind::Zombie {
@@ -1622,6 +1622,22 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, &[]),
             EntityModelKind::CaveSpider
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_wide_model_for_players_and_mannequins() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_PLAYER_ID, &[]),
+            EntityModelKind::Player { slim: false }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_MANNEQUIN_ID, &[]),
+            EntityModelKind::Player { slim: false }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),
+            humanoid(HumanoidModelFamily::Player, false)
         );
     }
 

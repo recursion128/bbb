@@ -10,6 +10,7 @@ const VILLAGER_LIKE_SCALE: f32 = 0.9375;
 const HUSK_SCALE: f32 = 1.0625;
 const WITHER_SKELETON_SCALE: f32 = 1.2;
 const CAVE_SPIDER_SCALE: f32 = 0.7;
+const AVATAR_RENDERER_SCALE: f32 = 0.9375;
 const HORSE_SCALE: f32 = 1.1;
 const DONKEY_SCALE: f32 = 0.87;
 const MULE_SCALE: f32 = 0.92;
@@ -18,6 +19,9 @@ const POLAR_BEAR_SCALE: f32 = 1.2;
 pub enum EntityModelKind {
     Chicken {
         baby: bool,
+    },
+    Player {
+        slim: bool,
     },
     Humanoid {
         family: HumanoidModelFamily,
@@ -257,6 +261,8 @@ impl EntityModelKind {
         match self {
             Self::Chicken { baby: false } => "chicken",
             Self::Chicken { baby: true } => "chicken_baby",
+            Self::Player { slim: false } => "player",
+            Self::Player { slim: true } => "player_slim",
             Self::Humanoid {
                 family: HumanoidModelFamily::Player,
                 baby: false,
@@ -522,6 +528,8 @@ impl EntityModelKind {
 
     pub fn vanilla_texture_ref(self) -> Option<EntityModelTextureRef> {
         match self {
+            Self::Player { slim: false } => Some(PLAYER_WIDE_STEVE_TEXTURE_REF),
+            Self::Player { slim: true } => Some(PLAYER_SLIM_STEVE_TEXTURE_REF),
             Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
             Self::Slime { .. } => Some(SLIME_TEXTURE_REF),
             Self::MagmaCube { .. } => Some(MAGMA_CUBE_TEXTURE_REF),
@@ -712,6 +720,10 @@ impl EntityModelInstance {
             position,
             y_rot,
         )
+    }
+
+    pub fn player(entity_id: i32, position: [f32; 3], y_rot: f32, slim: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Player { slim }, position, y_rot)
     }
 
     pub fn humanoid(
@@ -1195,6 +1207,16 @@ const MAGMA_CUBE_ORANGE: [f32; 4] = [0.92, 0.38, 0.12, 1.0];
 const MAGMA_CUBE_CORE: [f32; 4] = [0.98, 0.72, 0.22, 1.0];
 const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
+const PLAYER_WIDE_STEVE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/player/wide/steve.png",
+    size: [64, 64],
+};
+
+const PLAYER_SLIM_STEVE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/player/slim/steve.png",
+    size: [64, 64],
+};
+
 const ZOMBIE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/zombie/zombie.png",
     size: [64, 64],
@@ -1539,6 +1561,230 @@ const MAGMA_CUBE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/slime/magmacube.png",
     size: [64, 64],
 };
+
+const PLAYER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -8.0, -4.0],
+    size: [8.0, 8.0, 8.0],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -8.5, -4.5],
+    size: [9.0, 9.0, 9.0],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_HEAD_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PLAYER_HAT,
+    children: &[],
+}];
+
+const PLAYER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -2.0],
+    size: [8.0, 12.0, 4.0],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_JACKET: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.25, -0.25, -2.25],
+    size: [8.5, 12.5, 4.5],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_BODY_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PLAYER_JACKET,
+    children: &[],
+}];
+
+const PLAYER_WIDE_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_WIDE_RIGHT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.25, -2.25, -2.25],
+    size: [4.5, 12.5, 4.5],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_WIDE_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_WIDE_LEFT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.25, -2.25, -2.25],
+    size: [4.5, 12.5, 4.5],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_SLIM_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -2.0, -2.0],
+    size: [3.0, 12.0, 4.0],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_SLIM_RIGHT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.25, -2.25, -2.25],
+    size: [3.5, 12.5, 4.5],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_SLIM_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -2.0],
+    size: [3.0, 12.0, 4.0],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_SLIM_LEFT_SLEEVE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.25, -2.25, -2.25],
+    size: [3.5, 12.5, 4.5],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 12.0, 4.0],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_PANTS: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.25, -0.25, -2.25],
+    size: [4.5, 12.5, 4.5],
+    color: PLAYER_BLUE,
+}];
+
+const PLAYER_RIGHT_PANTS_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PLAYER_PANTS,
+    children: &[],
+}];
+
+const PLAYER_LEFT_PANTS_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PLAYER_PANTS,
+    children: &[],
+}];
+
+const PLAYER_WIDE_RIGHT_ARM_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PLAYER_WIDE_RIGHT_SLEEVE,
+    children: &[],
+}];
+
+const PLAYER_WIDE_LEFT_ARM_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PLAYER_WIDE_LEFT_SLEEVE,
+    children: &[],
+}];
+
+const PLAYER_SLIM_RIGHT_ARM_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PLAYER_SLIM_RIGHT_SLEEVE,
+    children: &[],
+}];
+
+const PLAYER_SLIM_LEFT_ARM_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &PLAYER_SLIM_LEFT_SLEEVE,
+    children: &[],
+}];
+
+// Vanilla 26.1 ModelLayers.PLAYER / PLAYER_SLIM:
+// PlayerModel.createMesh(CubeDeformation.NONE, slim).
+const PLAYER_WIDE_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &PLAYER_HEAD,
+        children: &PLAYER_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &PLAYER_BODY,
+        children: &PLAYER_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PLAYER_WIDE_RIGHT_ARM,
+        children: &PLAYER_WIDE_RIGHT_ARM_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PLAYER_WIDE_LEFT_ARM,
+        children: &PLAYER_WIDE_LEFT_ARM_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PLAYER_LEG,
+        children: &PLAYER_RIGHT_PANTS_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PLAYER_LEG,
+        children: &PLAYER_LEFT_PANTS_CHILDREN,
+    },
+];
+
+const PLAYER_SLIM_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &PLAYER_HEAD,
+        children: &PLAYER_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &PLAYER_BODY,
+        children: &PLAYER_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PLAYER_SLIM_RIGHT_ARM,
+        children: &PLAYER_SLIM_RIGHT_ARM_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PLAYER_SLIM_LEFT_ARM,
+        children: &PLAYER_SLIM_LEFT_ARM_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PLAYER_LEG,
+        children: &PLAYER_RIGHT_PANTS_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &PLAYER_LEG,
+        children: &PLAYER_LEFT_PANTS_CHILDREN,
+    },
+];
 
 const ARMOR_STAND_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-1.0, -7.0, -1.0],
@@ -7415,6 +7661,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
                 },
                 entity_model_root_transform(*instance),
             ),
+            EntityModelKind::Player { slim } => emit_player_model(&mut mesh, *instance, slim),
             EntityModelKind::Humanoid { family, baby } => {
                 emit_humanoid_model(&mut mesh, *instance, family, baby)
             }
@@ -7591,6 +7838,22 @@ fn emit_magma_cube_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
         Mat4::from_scale(Vec3::splat(size as f32)),
     );
     emit_model_parts(mesh, &MAGMA_CUBE_PARTS, transform);
+}
+
+fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {
+    let transform = living_entity_model_root_transform_with_renderer_transform(
+        instance,
+        Mat4::from_scale(Vec3::splat(AVATAR_RENDERER_SCALE)),
+    );
+    emit_model_parts(
+        mesh,
+        if slim {
+            &PLAYER_SLIM_PARTS
+        } else {
+            &PLAYER_WIDE_PARTS
+        },
+        transform,
+    );
 }
 
 fn emit_humanoid_model(
@@ -9516,6 +9779,178 @@ mod tests {
                 size: [128, 128],
             })
         );
+    }
+
+    #[test]
+    fn player_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(PLAYER_WIDE_PARTS.len(), 6);
+        assert_part_tree(
+            &PLAYER_WIDE_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_HEAD.as_slice(),
+            PLAYER_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &PLAYER_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_HAT.as_slice(),
+        );
+        assert_part_tree(
+            &PLAYER_WIDE_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_BODY.as_slice(),
+            PLAYER_BODY_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &PLAYER_BODY_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_JACKET.as_slice(),
+        );
+        assert_part_tree(
+            &PLAYER_WIDE_PARTS[2],
+            [-5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_WIDE_RIGHT_ARM.as_slice(),
+            PLAYER_WIDE_RIGHT_ARM_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &PLAYER_WIDE_RIGHT_ARM_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_WIDE_RIGHT_SLEEVE.as_slice(),
+        );
+        assert_part_tree(
+            &PLAYER_WIDE_PARTS[3],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_WIDE_LEFT_ARM.as_slice(),
+            PLAYER_WIDE_LEFT_ARM_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &PLAYER_WIDE_LEFT_ARM_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_WIDE_LEFT_SLEEVE.as_slice(),
+        );
+        assert_part_tree(
+            &PLAYER_WIDE_PARTS[4],
+            [-1.9, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_LEG.as_slice(),
+            PLAYER_RIGHT_PANTS_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &PLAYER_WIDE_PARTS[5],
+            [1.9, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_LEG.as_slice(),
+            PLAYER_LEFT_PANTS_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &PLAYER_RIGHT_PANTS_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_PANTS.as_slice(),
+        );
+        assert_part(
+            &PLAYER_LEFT_PANTS_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_PANTS.as_slice(),
+        );
+
+        assert_eq!(PLAYER_SLIM_PARTS.len(), 6);
+        assert_part_tree(
+            &PLAYER_SLIM_PARTS[2],
+            [-5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_SLIM_RIGHT_ARM.as_slice(),
+            PLAYER_SLIM_RIGHT_ARM_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &PLAYER_SLIM_RIGHT_ARM_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_SLIM_RIGHT_SLEEVE.as_slice(),
+        );
+        assert_part_tree(
+            &PLAYER_SLIM_PARTS[3],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_SLIM_LEFT_ARM.as_slice(),
+            PLAYER_SLIM_LEFT_ARM_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &PLAYER_SLIM_LEFT_ARM_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            PLAYER_SLIM_LEFT_SLEEVE.as_slice(),
+        );
+    }
+
+    #[test]
+    fn player_mesh_uses_vanilla_body_layer_geometry_and_avatar_scale() {
+        let wide = entity_model_mesh(&[EntityModelInstance::player(
+            155,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )]);
+        let slim = entity_model_mesh(&[EntityModelInstance::player(
+            156,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+        )]);
+
+        for mesh in [&wide, &slim] {
+            assert_eq!(mesh.opaque_faces, 72);
+            assert_eq!(mesh.vertices.len(), 288);
+            assert_eq!(mesh.indices.len(), 432);
+            assert!(mesh
+                .vertices
+                .iter()
+                .any(|vertex| vertex.color == shade_color(PLAYER_BLUE, 0.78)));
+        }
+
+        let (wide_min, wide_max) = mesh_extents(&wide);
+        let (slim_min, slim_max) = mesh_extents(&slim);
+        assert!(wide_max[1] - wide_min[1] > 1.8);
+        assert!(wide_max[1] - wide_min[1] < 2.0);
+        assert!(wide_max[0] - wide_min[0] > slim_max[0] - slim_min[0]);
+        assert_ne!(wide.vertices, slim.vertices);
+    }
+
+    #[test]
+    fn player_texture_refs_match_vanilla_default_assets() {
+        let cases = [
+            (
+                false,
+                "player",
+                EntityModelTextureRef {
+                    path: "textures/entity/player/wide/steve.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                true,
+                "player_slim",
+                EntityModelTextureRef {
+                    path: "textures/entity/player/slim/steve.png",
+                    size: [64, 64],
+                },
+            ),
+        ];
+
+        for (slim, model_key, texture) in cases {
+            let kind = EntityModelKind::Player { slim };
+            assert_eq!(kind.model_key(), model_key);
+            assert_eq!(kind.vanilla_texture_ref(), Some(texture));
+        }
     }
 
     #[test]
