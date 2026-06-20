@@ -88,6 +88,8 @@ const BEACON_HOTBAR_START: i16 = 28;
 const BEACON_HOTBAR_END: i16 = 37;
 const BEACON_TOTAL_SLOT_COUNT: i16 = 37;
 const BEACON_PAYMENT_ITEM_TAG: &str = "minecraft:beacon_payment_items";
+const BEACON_PRIMARY_EFFECT_DATA_ID: i16 = 1;
+const BEACON_SECONDARY_EFFECT_DATA_ID: i16 = 2;
 const ENCHANTMENT_INPUT_SLOT: i16 = 0;
 const ENCHANTMENT_LAPIS_SLOT: i16 = 1;
 const ENCHANTMENT_PLAYER_MAIN_START: i16 = 2;
@@ -646,22 +648,7 @@ impl WorldStore {
     pub fn apply_container_set_data(&mut self, packet: ProtocolContainerSetData) {
         self.counters.container_data_updates_received += 1;
         let container = self.ensure_container(packet.container_id);
-        if let Some(existing) = container
-            .data_values
-            .iter_mut()
-            .find(|value| value.id == packet.id)
-        {
-            *existing = ContainerDataValue {
-                id: packet.id,
-                value: packet.value,
-            };
-        } else {
-            container.data_values.push(ContainerDataValue {
-                id: packet.id,
-                value: packet.value,
-            });
-        }
-        container.data_values.sort_by_key(|value| value.id);
+        set_container_data_value(&mut container.data_values, packet.id, packet.value);
         self.update_merchant_offer_count();
     }
 
@@ -755,6 +742,56 @@ impl WorldStore {
             .data_values
             .iter()
             .find_map(|value| (value.id == id).then_some(value.value))
+    }
+
+    pub fn apply_local_beacon_confirm_effects(
+        &mut self,
+        primary_effect: i32,
+        secondary_effect: Option<i32>,
+    ) -> bool {
+        let Some(primary_value) = beacon_effect_data_value(Some(primary_effect)) else {
+            return false;
+        };
+        let Some(secondary_value) = beacon_effect_data_value(secondary_effect) else {
+            return false;
+        };
+        let Some(container) = self
+            .inventory
+            .open_container
+            .as_mut()
+            .filter(|container| container.menu_type_id == Some(VANILLA_MENU_TYPE_BEACON_ID))
+        else {
+            return false;
+        };
+
+        {
+            let Some(payment_slot) = container
+                .slots
+                .iter_mut()
+                .find(|slot| slot.slot == BEACON_PAYMENT_SLOT)
+            else {
+                return false;
+            };
+            if item_stack_is_empty(&payment_slot.item) {
+                return false;
+            }
+
+            payment_slot.item.count -= 1;
+            normalize_item_stack(&mut payment_slot.item);
+            normalize_container_slot_selection(payment_slot);
+        }
+
+        set_container_data_value(
+            &mut container.data_values,
+            BEACON_PRIMARY_EFFECT_DATA_ID,
+            primary_value,
+        );
+        set_container_data_value(
+            &mut container.data_values,
+            BEACON_SECONDARY_EFFECT_DATA_ID,
+            secondary_value,
+        );
+        true
     }
 
     pub fn open_mount_inventory_kind(&self) -> Option<MountInventoryKind> {
@@ -3399,6 +3436,25 @@ fn anvil_result_may_pickup(
     cost > 0
         && (abilities.is_some_and(|abilities| abilities.instabuild)
             || experience.is_some_and(|experience| experience.level >= i32::from(cost)))
+}
+
+fn set_container_data_value(data_values: &mut Vec<ContainerDataValue>, id: i16, value: i16) {
+    if let Some(existing) = data_values.iter_mut().find(|value| value.id == id) {
+        *existing = ContainerDataValue { id, value };
+    } else {
+        data_values.push(ContainerDataValue { id, value });
+    }
+    data_values.sort_by_key(|value| value.id);
+}
+
+fn beacon_effect_data_value(effect_id: Option<i32>) -> Option<i16> {
+    match effect_id {
+        Some(effect_id) if effect_id >= 0 => effect_id
+            .checked_add(1)
+            .and_then(|value| i16::try_from(value).ok()),
+        Some(_) => None,
+        None => Some(0),
+    }
 }
 
 fn apply_beacon_menu_quick_move_to_slots(
@@ -9061,6 +9117,124 @@ mod tests {
         assert_eq!(
             open_container_slot_item(&store, BEACON_HOTBAR_START + 1),
             item_stack(42, 2)
+        );
+    }
+
+    #[test]
+    fn apply_local_beacon_confirm_consumes_payment_and_updates_effect_data() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
+            title: "Beacon".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
+        items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 15,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        assert!(store.apply_local_beacon_confirm_effects(4, Some(7)));
+
+        assert_eq!(
+            open_container_slot_item(&store, BEACON_PAYMENT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+        assert_eq!(
+            store.open_container_data_value(BEACON_PRIMARY_EFFECT_DATA_ID),
+            Some(5)
+        );
+        assert_eq!(
+            store.open_container_data_value(BEACON_SECONDARY_EFFECT_DATA_ID),
+            Some(8)
+        );
+    }
+
+    #[test]
+    fn apply_local_beacon_confirm_clears_missing_secondary_effect_data() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
+            title: "Beacon".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize];
+        items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 16,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        store.apply_container_set_data(ProtocolContainerSetData {
+            container_id: 7,
+            id: BEACON_SECONDARY_EFFECT_DATA_ID,
+            value: 8,
+        });
+
+        assert!(store.apply_local_beacon_confirm_effects(4, None));
+
+        assert_eq!(
+            store.open_container_data_value(BEACON_PRIMARY_EFFECT_DATA_ID),
+            Some(5)
+        );
+        assert_eq!(
+            store.open_container_data_value(BEACON_SECONDARY_EFFECT_DATA_ID),
+            Some(0)
+        );
+    }
+
+    #[test]
+    fn apply_local_beacon_confirm_requires_beacon_payment() {
+        let mut store = WorldStore::new();
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
+            title: "Beacon".to_string(),
+        });
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 7,
+            state_id: 17,
+            items: vec![ProtocolItemStackSummary::empty(); BEACON_TOTAL_SLOT_COUNT as usize],
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+        store.apply_container_set_data(ProtocolContainerSetData {
+            container_id: 7,
+            id: BEACON_PRIMARY_EFFECT_DATA_ID,
+            value: 5,
+        });
+
+        assert!(!store.apply_local_beacon_confirm_effects(7, Some(9)));
+        assert_eq!(
+            store.open_container_data_value(BEACON_PRIMARY_EFFECT_DATA_ID),
+            Some(5)
+        );
+        assert_eq!(
+            open_container_slot_item(&store, BEACON_PAYMENT_SLOT),
+            ProtocolItemStackSummary::empty()
+        );
+
+        store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 8,
+            menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
+            title: "Anvil".to_string(),
+        });
+        let mut items = vec![ProtocolItemStackSummary::empty(); ANVIL_TOTAL_SLOT_COUNT as usize];
+        items[BEACON_PAYMENT_SLOT as usize] = item_stack(42, 1);
+        store.apply_container_set_content(ProtocolContainerSetContent {
+            container_id: 8,
+            state_id: 18,
+            items,
+            carried_item: ProtocolItemStackSummary::empty(),
+        });
+
+        assert!(!store.apply_local_beacon_confirm_effects(4, Some(7)));
+        assert_eq!(
+            open_container_slot_item(&store, BEACON_PAYMENT_SLOT),
+            item_stack(42, 1)
         );
     }
 

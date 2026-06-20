@@ -1494,6 +1494,12 @@ fn maybe_queue_beacon_button_click(
             let Some(command) = beacon_set_command(input, world) else {
                 return false;
             };
+            let Some(primary_effect) = command.primary_effect else {
+                return false;
+            };
+            if !world.apply_local_beacon_confirm_effects(primary_effect, command.secondary_effect) {
+                return false;
+            }
             queue_set_beacon_command(counters, net_commands, command);
             queue_container_close_command(counters, world, net_commands)
         }

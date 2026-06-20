@@ -1155,7 +1155,10 @@ When an agent does any of the following, update this file in the same slice:
           - vanilla slot ranges
           - single-item payment routing from `minecraft:beacon_payment_items`
           - max-stack-one payment slot behavior
-        - payment consumption from `SetBeacon` remains server-authoritative.
+        - confirm locally predicts the single payment-slot consumption and
+          primary/secondary effect data update before closing the container.
+        - beacon block entity updates and active player effects remain
+          server-authoritative.
         - deferred presentation parity work:
           - confirm/cancel hover state
           - effect highlighted hover state
