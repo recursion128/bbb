@@ -10,6 +10,7 @@ const VILLAGER_LIKE_SCALE: f32 = 0.9375;
 const HUSK_SCALE: f32 = 1.0625;
 const WITHER_SKELETON_SCALE: f32 = 1.2;
 const CAVE_SPIDER_SCALE: f32 = 0.7;
+const HORSE_SCALE: f32 = 1.1;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -57,6 +58,9 @@ pub enum EntityModelKind {
     },
     WanderingTrader,
     Wolf {
+        baby: bool,
+    },
+    Horse {
         baby: bool,
     },
     Quadruped {
@@ -285,6 +289,8 @@ impl EntityModelKind {
             Self::WanderingTrader => "wandering_trader",
             Self::Wolf { baby: false } => "wolf",
             Self::Wolf { baby: true } => "wolf_baby",
+            Self::Horse { baby: false } => "horse",
+            Self::Horse { baby: true } => "horse_baby",
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -419,6 +425,8 @@ impl EntityModelKind {
             Self::WanderingTrader => Some(WANDERING_TRADER_TEXTURE_REF),
             Self::Wolf { baby: false } => Some(WOLF_TEXTURE_REF),
             Self::Wolf { baby: true } => Some(WOLF_BABY_TEXTURE_REF),
+            Self::Horse { baby: false } => Some(HORSE_WHITE_TEXTURE_REF),
+            Self::Horse { baby: true } => Some(HORSE_WHITE_BABY_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
@@ -595,6 +603,10 @@ impl EntityModelInstance {
 
     pub fn wolf(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
         Self::new(entity_id, EntityModelKind::Wolf { baby }, position, y_rot)
+    }
+
+    pub fn horse(entity_id: i32, position: [f32; 3], y_rot: f32, baby: bool) -> Self {
+        Self::new(entity_id, EntityModelKind::Horse { baby }, position, y_rot)
     }
 
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -925,6 +937,16 @@ const WOLF_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const WOLF_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/wolf/wolf_baby.png",
     size: [32, 32],
+};
+
+const HORSE_WHITE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_white.png",
+    size: [64, 64],
+};
+
+const HORSE_WHITE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/horse/horse_white_baby.png",
+    size: [64, 64],
 };
 
 const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -3281,6 +3303,322 @@ const BABY_WOLF_PARTS: [ModelPartDesc; 7] = [
     },
 ];
 
+const ADULT_HORSE_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-5.05, -8.05, -17.05],
+    size: [10.1, 10.1, 22.1],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_TAIL: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, 0.0, 0.0],
+    size: [3.0, 14.0, 4.0],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_BODY_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -5.0, 2.0],
+        rotation: [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+    },
+    cubes: &ADULT_HORSE_TAIL,
+    children: &[],
+}];
+
+const ADULT_HORSE_NECK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.05, -6.0, -2.0],
+    size: [4.0, 12.0, 7.0],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -11.0, -2.0],
+    size: [6.0, 5.0, 7.0],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.551, -12.999, 4.001],
+    size: [1.998, 2.998, 0.998],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.549, -12.999, 4.001],
+    size: [1.998, 2.998, 0.998],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_EAR,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_RIGHT_EAR,
+        children: &[],
+    },
+];
+
+const ADULT_HORSE_MANE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -11.0, 5.01],
+    size: [2.0, 16.0, 2.0],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_UPPER_MOUTH: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -11.0, -7.0],
+    size: [4.0, 5.0, 5.0],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_HEAD_PARTS_CHILDREN: [ModelPartDesc; 3] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_HEAD,
+        children: &ADULT_HORSE_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_MANE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ADULT_HORSE_UPPER_MOUTH,
+        children: &[],
+    },
+];
+
+const ADULT_HORSE_LEFT_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -1.01, -1.0],
+    size: [4.0, 11.0, 4.0],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_RIGHT_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.01, -1.0],
+    size: [4.0, 11.0, 4.0],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_LEFT_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -1.01, -1.9],
+    size: [4.0, 11.0, 4.0],
+    color: HORSE_BROWN,
+}];
+
+const ADULT_HORSE_RIGHT_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.01, -1.9],
+    size: [4.0, 11.0, 4.0],
+    color: HORSE_BROWN,
+}];
+
+// Vanilla 26.1 ModelLayers.HORSE:
+// AbstractEquineModel.createBodyMesh(CubeDeformation.NONE) with
+// LayerDefinitions' MeshTransformer.scaling(1.1F) applied by the emitter.
+const ADULT_HORSE_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 11.0, 5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_BODY,
+        children: &ADULT_HORSE_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 4.0, -12.0],
+            rotation: [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_NECK,
+        children: &ADULT_HORSE_HEAD_PARTS_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 14.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_LEFT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 14.0, 7.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [4.0, 14.0, -10.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_LEFT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-4.0, 14.0, -10.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_HORSE_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+];
+
+const BABY_HORSE_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -3.5, -7.0],
+    size: [8.0, 7.0, 14.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_TAIL: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -1.5, -1.0],
+    size: [3.0, 3.0, 8.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_BODY_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -1.0, 7.0],
+        rotation: [-0.7418, 0.0, 0.0],
+    },
+    cubes: &BABY_HORSE_TAIL,
+    children: &[],
+}];
+
+const BABY_HORSE_LEFT_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -1.0, -1.5],
+    size: [3.0, 9.0, 3.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_RIGHT_HIND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -1.0, -1.5],
+    size: [3.0, 9.0, 3.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_LEFT_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -1.0, -1.5],
+    size: [3.0, 9.0, 3.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_RIGHT_FRONT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, -1.0, -1.5],
+    size: [3.0, 9.0, 3.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_NECK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -6.0, -2.0],
+    size: [4.0, 8.0, 4.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -3.9484, -6.705],
+    size: [6.0, 4.0, 9.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_LEFT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.5, -0.8],
+    size: [2.0, 3.0, 1.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_RIGHT_EAR: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.5, -0.5],
+    size: [2.0, 3.0, 1.0],
+    color: HORSE_BROWN,
+}];
+
+const BABY_HORSE_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, -4.2484, 1.9451],
+            rotation: [0.0, 0.0, 0.2618],
+        },
+        cubes: &BABY_HORSE_LEFT_EAR,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -4.2484, 1.645],
+            rotation: [0.0, 0.0, -0.2618],
+        },
+        cubes: &BABY_HORSE_RIGHT_EAR,
+        children: &[],
+    },
+];
+
+const BABY_HORSE_HEAD_PARTS_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PartPose {
+        offset: [0.0, -6.0516, -0.2951],
+        rotation: [0.0, 0.0, 0.0],
+    },
+    cubes: &BABY_HORSE_HEAD,
+    children: &BABY_HORSE_HEAD_CHILDREN,
+}];
+
+// Vanilla 26.1 ModelLayers.HORSE_BABY:
+// BabyHorseModel.createBabyMesh(CubeDeformation.NONE), without livingHorseScale.
+const BABY_HORSE_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_HORSE_BODY,
+        children: &BABY_HORSE_BODY_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.4, 16.0, 5.4],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_HORSE_LEFT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.4, 16.0, 5.4],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_HORSE_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.4, 16.0, -5.4],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_HORSE_LEFT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.4, 16.0, -5.4],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_HORSE_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 10.0, -6.0],
+            rotation: [0.6109, 0.0, 0.0],
+        },
+        cubes: &BABY_HORSE_NECK,
+        children: &BABY_HORSE_HEAD_PARTS_CHILDREN,
+    },
+];
+
 const ADULT_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -10.0, -4.0],
     size: [8.0, 10.0, 8.0],
@@ -4601,6 +4939,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Villager { baby } => emit_villager_model(&mut mesh, *instance, baby),
             EntityModelKind::WanderingTrader => emit_wandering_trader_model(&mut mesh, *instance),
             EntityModelKind::Wolf { baby } => emit_wolf_model(&mut mesh, *instance, baby),
+            EntityModelKind::Horse { baby } => emit_horse_model(&mut mesh, *instance, baby),
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -4952,6 +5291,22 @@ fn emit_wolf_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, ba
             &ADULT_WOLF_PARTS
         },
         entity_model_root_transform(instance),
+    );
+}
+
+fn emit_horse_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, baby: bool) {
+    emit_model_parts(
+        mesh,
+        if baby {
+            &BABY_HORSE_PARTS
+        } else {
+            &ADULT_HORSE_PARTS
+        },
+        if baby {
+            entity_model_root_transform(instance)
+        } else {
+            mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE)
+        },
     );
 }
 
@@ -7199,6 +7554,225 @@ mod tests {
     }
 
     #[test]
+    fn horse_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            ADULT_HORSE_BODY[0],
+            ModelCubeDesc {
+                min: [-5.05, -8.05, -17.05],
+                size: [10.1, 10.1, 22.1],
+                color: HORSE_BROWN,
+            }
+        );
+        assert_eq!(
+            ADULT_HORSE_EAR[0],
+            ModelCubeDesc {
+                min: [0.551, -12.999, 4.001],
+                size: [1.998, 2.998, 0.998],
+                color: HORSE_BROWN,
+            }
+        );
+        assert_eq!(ADULT_HORSE_PARTS.len(), 6);
+        assert_part_tree(
+            &ADULT_HORSE_PARTS[0],
+            [0.0, 11.0, 5.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_BODY.as_slice(),
+            ADULT_HORSE_BODY_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_BODY_CHILDREN[0],
+            [0.0, -5.0, 2.0],
+            [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+            ADULT_HORSE_TAIL.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_HORSE_PARTS[1],
+            [0.0, 4.0, -12.0],
+            [std::f32::consts::FRAC_PI_6, 0.0, 0.0],
+            ADULT_HORSE_NECK.as_slice(),
+            ADULT_HORSE_HEAD_PARTS_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &ADULT_HORSE_HEAD_PARTS_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_HEAD.as_slice(),
+            ADULT_HORSE_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_EAR.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_HEAD_CHILDREN[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_RIGHT_EAR.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_HEAD_PARTS_CHILDREN[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_MANE.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_HEAD_PARTS_CHILDREN[2],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_UPPER_MOUTH.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_PARTS[2],
+            [4.0, 14.0, 7.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_LEFT_HIND_LEG.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_PARTS[3],
+            [-4.0, 14.0, 7.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_RIGHT_HIND_LEG.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_PARTS[4],
+            [4.0, 14.0, -10.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_LEFT_FRONT_LEG.as_slice(),
+        );
+        assert_part(
+            &ADULT_HORSE_PARTS[5],
+            [-4.0, 14.0, -10.0],
+            [0.0, 0.0, 0.0],
+            ADULT_HORSE_RIGHT_FRONT_LEG.as_slice(),
+        );
+
+        assert_eq!(
+            BABY_HORSE_HEAD[0],
+            ModelCubeDesc {
+                min: [-3.0, -3.9484, -6.705],
+                size: [6.0, 4.0, 9.0],
+                color: HORSE_BROWN,
+            }
+        );
+        assert_eq!(BABY_HORSE_PARTS.len(), 6);
+        assert_part_tree(
+            &BABY_HORSE_PARTS[0],
+            [0.0, 12.5, 0.0],
+            [0.0, 0.0, 0.0],
+            BABY_HORSE_BODY.as_slice(),
+            BABY_HORSE_BODY_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_HORSE_BODY_CHILDREN[0],
+            [0.0, -1.0, 7.0],
+            [-0.7418, 0.0, 0.0],
+            BABY_HORSE_TAIL.as_slice(),
+        );
+        for (part, expected_offset, expected_cubes) in [
+            (
+                &BABY_HORSE_PARTS[1],
+                [2.4, 16.0, 5.4],
+                BABY_HORSE_LEFT_HIND_LEG.as_slice(),
+            ),
+            (
+                &BABY_HORSE_PARTS[2],
+                [-2.4, 16.0, 5.4],
+                BABY_HORSE_RIGHT_HIND_LEG.as_slice(),
+            ),
+            (
+                &BABY_HORSE_PARTS[3],
+                [2.4, 16.0, -5.4],
+                BABY_HORSE_LEFT_FRONT_LEG.as_slice(),
+            ),
+            (
+                &BABY_HORSE_PARTS[4],
+                [-2.4, 16.0, -5.4],
+                BABY_HORSE_RIGHT_FRONT_LEG.as_slice(),
+            ),
+        ] {
+            assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
+        }
+        assert_part_tree(
+            &BABY_HORSE_PARTS[5],
+            [0.0, 10.0, -6.0],
+            [0.6109, 0.0, 0.0],
+            BABY_HORSE_NECK.as_slice(),
+            BABY_HORSE_HEAD_PARTS_CHILDREN.as_slice(),
+        );
+        assert_part_tree(
+            &BABY_HORSE_HEAD_PARTS_CHILDREN[0],
+            [0.0, -6.0516, -0.2951],
+            [0.0, 0.0, 0.0],
+            BABY_HORSE_HEAD.as_slice(),
+            BABY_HORSE_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BABY_HORSE_HEAD_CHILDREN[0],
+            [2.0, -4.2484, 1.9451],
+            [0.0, 0.0, 0.2618],
+            BABY_HORSE_LEFT_EAR.as_slice(),
+        );
+        assert_part(
+            &BABY_HORSE_HEAD_CHILDREN[1],
+            [-2.0, -4.2484, 1.645],
+            [0.0, 0.0, -0.2618],
+            BABY_HORSE_RIGHT_EAR.as_slice(),
+        );
+    }
+
+    #[test]
+    fn horse_meshes_use_vanilla_body_layer_geometry() {
+        let adult = entity_model_mesh(&[EntityModelInstance::horse(
+            150,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+        )]);
+
+        assert_eq!(adult.opaque_faces, 72);
+        assert_eq!(adult.vertices.len(), 288);
+        assert_eq!(adult.indices.len(), 432);
+        let (adult_min, adult_max) = mesh_extents(&adult);
+        assert_close3(adult_min, [-0.34718758, 64.001785, -1.200657]);
+        assert_close3(adult_max, [0.34718758, 66.32189, 1.6198997]);
+
+        let baby =
+            entity_model_mesh(&[EntityModelInstance::horse(151, [0.0, 64.0, 0.0], 0.0, true)]);
+
+        assert_eq!(baby.opaque_faces, 60);
+        assert_eq!(baby.vertices.len(), 240);
+        assert_eq!(baby.indices.len(), 360);
+        let (baby_min, baby_max) = mesh_extents(&baby);
+        assert_close3(baby_min, [-0.25000003, 64.001, -0.8233875]);
+        assert_close3(baby_max, [0.25000003, 65.60652, 1.0918784]);
+    }
+
+    #[test]
+    fn horse_texture_refs_match_vanilla_renderer_defaults() {
+        assert_eq!(EntityModelKind::Horse { baby: false }.model_key(), "horse");
+        assert_eq!(
+            EntityModelKind::Horse { baby: false }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/horse/horse_white.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(
+            EntityModelKind::Horse { baby: true }.model_key(),
+            "horse_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Horse { baby: true }.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/horse/horse_white_baby.png",
+                size: [64, 64],
+            })
+        );
+    }
+
+    #[test]
     fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             ADULT_VILLAGER_HAT[0],
@@ -8887,6 +9461,10 @@ mod tests {
         assert_eq!(
             EntityModelKind::Wolf { baby: true }.model_key(),
             "wolf_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Horse { baby: true }.model_key(),
+            "horse_baby"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");

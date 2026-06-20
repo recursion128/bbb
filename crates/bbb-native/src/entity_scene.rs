@@ -328,8 +328,10 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_SHEEP_ID => EntityModelKind::Sheep {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_HORSE_ID
-        | VANILLA_ENTITY_TYPE_DONKEY_ID
+        VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
+            baby: ageable_baby(data_values),
+        },
+        VANILLA_ENTITY_TYPE_DONKEY_ID
         | VANILLA_ENTITY_TYPE_MULE_ID
         | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
         | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
@@ -1175,6 +1177,25 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_CAT_ID, &[]),
             quadruped(QuadrupedModelFamily::Wolf, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_horses() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_HORSE_ID, &[]),
+            EntityModelKind::Horse { baby: false }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_HORSE_ID,
+                &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            ),
+            EntityModelKind::Horse { baby: true }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_DONKEY_ID, &[]),
+            quadruped(QuadrupedModelFamily::Horse, false)
         );
     }
 
