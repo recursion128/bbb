@@ -2706,6 +2706,139 @@ fn anvil_control_word_keys_edit_rename_text() {
 }
 
 #[test]
+fn anvil_control_a_selection_replaces_and_deletes_rename_text() {
+    let (tx, mut rx) = mpsc::channel(6);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = anvil_container_world(7, 12, Some(test_item_stack(42, 1)));
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "replace me",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "Diamond Pick",
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Backspace),
+        ElementState::Pressed,
+    );
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "delete me",
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyA),
+        ElementState::Pressed,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::ControlLeft),
+        ElementState::Released,
+    );
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Delete),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(input.anvil_rename_text(), "");
+    assert_eq!(counters.rename_item_commands_queued, 5);
+    for name in ["replace me", "Diamond Pick", "", "delete me", ""] {
+        assert_eq!(
+            rx.try_recv().unwrap(),
+            NetCommand::RenameItem(RenameItem {
+                name: name.to_string(),
+            })
+        );
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn anvil_delete_at_end_is_consumed_without_rename_command() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

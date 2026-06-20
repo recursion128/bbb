@@ -1012,6 +1012,7 @@ When an agent does any of the following, update this file in the same slice:
         - `text_field_disabled`
         - error sprites
         - rename text input that queues `ServerboundRenameItemPacket`
+        - Ctrl+A selection replacement/clearing in the rename text field
       - BeaconMenu screens with official:
         - `beacon.png` background
         - payment slot layout

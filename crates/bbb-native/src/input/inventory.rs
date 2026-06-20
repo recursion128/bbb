@@ -999,11 +999,7 @@ pub(crate) fn handle_inventory_text_input(
     }
 
     let before = input.anvil_rename_text.clone();
-    insert_anvil_rename_text(
-        &mut input.anvil_rename_text,
-        &mut input.anvil_rename_cursor,
-        text,
-    );
+    insert_anvil_rename_text(input, text);
     if input.anvil_rename_text != before {
         queue_anvil_rename(input, counters, net_commands);
     }
@@ -1073,10 +1069,17 @@ fn handle_anvil_rename_key_input(
     }
 
     match code {
+        KeyCode::KeyA if input.control_down() && !input.shift_down() => {
+            sync_anvil_rename_input(input, world, item_runtime);
+            if input.anvil_rename_input.is_some() {
+                select_anvil_rename_text(input);
+            }
+            true
+        }
         KeyCode::ArrowLeft => {
             sync_anvil_rename_input(input, world, item_runtime);
             if input.anvil_rename_input.is_some() {
-                input.anvil_rename_cursor = if input.control_down() {
+                let cursor = if input.control_down() {
                     text_edit::word_position(
                         &input.anvil_rename_text,
                         input.anvil_rename_cursor,
@@ -1085,32 +1088,34 @@ fn handle_anvil_rename_key_input(
                 } else {
                     input.anvil_rename_cursor.saturating_sub(1)
                 };
+                set_anvil_rename_cursor(input, cursor);
             }
             true
         }
         KeyCode::ArrowRight => {
             sync_anvil_rename_input(input, world, item_runtime);
             if input.anvil_rename_input.is_some() {
-                input.anvil_rename_cursor = if input.control_down() {
+                let cursor = if input.control_down() {
                     text_edit::word_position(&input.anvil_rename_text, input.anvil_rename_cursor, 1)
                 } else {
                     (input.anvil_rename_cursor + 1)
                         .min(anvil_rename_char_len(&input.anvil_rename_text))
                 };
+                set_anvil_rename_cursor(input, cursor);
             }
             true
         }
         KeyCode::Home => {
             sync_anvil_rename_input(input, world, item_runtime);
             if input.anvil_rename_input.is_some() {
-                input.anvil_rename_cursor = 0;
+                set_anvil_rename_cursor(input, 0);
             }
             true
         }
         KeyCode::End => {
             sync_anvil_rename_input(input, world, item_runtime);
             if input.anvil_rename_input.is_some() {
-                input.anvil_rename_cursor = anvil_rename_char_len(&input.anvil_rename_text);
+                set_anvil_rename_cursor(input, anvil_rename_char_len(&input.anvil_rename_text));
             }
             true
         }
@@ -1118,16 +1123,19 @@ fn handle_anvil_rename_key_input(
             sync_anvil_rename_input(input, world, item_runtime);
             if input.anvil_rename_input.is_some() {
                 let before = input.anvil_rename_text.clone();
-                if input.control_down() {
+                let deleted_selection = delete_anvil_rename_selection(input);
+                if !deleted_selection && input.control_down() {
                     text_edit::remove_word_before_cursor(
                         &mut input.anvil_rename_text,
                         &mut input.anvil_rename_cursor,
                     );
-                } else {
+                    input.anvil_rename_selection = input.anvil_rename_cursor;
+                } else if !deleted_selection {
                     remove_anvil_rename_char_before_cursor(
                         &mut input.anvil_rename_text,
                         &mut input.anvil_rename_cursor,
                     );
+                    input.anvil_rename_selection = input.anvil_rename_cursor;
                 }
                 if input.anvil_rename_text != before {
                     queue_anvil_rename(input, counters, net_commands);
@@ -1139,16 +1147,19 @@ fn handle_anvil_rename_key_input(
             sync_anvil_rename_input(input, world, item_runtime);
             if input.anvil_rename_input.is_some() {
                 let before = input.anvil_rename_text.clone();
-                if input.control_down() {
+                let deleted_selection = delete_anvil_rename_selection(input);
+                if !deleted_selection && input.control_down() {
                     text_edit::remove_word_at_cursor(
                         &mut input.anvil_rename_text,
                         input.anvil_rename_cursor,
                     );
-                } else {
+                    input.anvil_rename_selection = input.anvil_rename_cursor;
+                } else if !deleted_selection {
                     remove_anvil_rename_char_at_cursor(
                         &mut input.anvil_rename_text,
                         input.anvil_rename_cursor,
                     );
+                    input.anvil_rename_selection = input.anvil_rename_cursor;
                 }
                 if input.anvil_rename_text != before {
                     queue_anvil_rename(input, counters, net_commands);
@@ -1173,6 +1184,7 @@ fn sync_anvil_rename_input(
             .anvil_rename_text
             .clone_from(&input.anvil_rename_hover_name);
         input.anvil_rename_cursor = anvil_rename_char_len(&input.anvil_rename_text);
+        input.anvil_rename_selection = input.anvil_rename_cursor;
     }
 }
 
@@ -1247,19 +1259,50 @@ fn anvil_input_slot_item(world: &WorldStore) -> Option<&ItemStackSummary> {
     (!item_stack_is_empty(item)).then_some(item)
 }
 
-fn insert_anvil_rename_text(current: &mut String, cursor: &mut usize, text: &str) {
-    *cursor = (*cursor).min(anvil_rename_char_len(current));
+fn insert_anvil_rename_text(input: &mut ClientInputState, text: &str) {
+    delete_anvil_rename_selection(input);
+    let current = &mut input.anvil_rename_text;
+    input.anvil_rename_cursor = input
+        .anvil_rename_cursor
+        .min(anvil_rename_char_len(current));
     let mut remaining = ANVIL_RENAME_MAX_LENGTH.saturating_sub(anvil_rename_len(current));
     for ch in text.chars().filter(|ch| is_anvil_rename_char(*ch)) {
         let len = ch.len_utf16();
         if len > remaining {
             break;
         }
-        let insert_at = anvil_rename_byte_index(current, *cursor);
+        let insert_at = anvil_rename_byte_index(current, input.anvil_rename_cursor);
         current.insert(insert_at, ch);
-        *cursor += 1;
+        input.anvil_rename_cursor += 1;
         remaining -= len;
     }
+    input.anvil_rename_selection = input.anvil_rename_cursor;
+}
+
+fn set_anvil_rename_cursor(input: &mut ClientInputState, cursor: usize) {
+    input.anvil_rename_cursor = cursor.min(anvil_rename_char_len(&input.anvil_rename_text));
+    input.anvil_rename_selection = input.anvil_rename_cursor;
+}
+
+fn select_anvil_rename_text(input: &mut ClientInputState) {
+    input.anvil_rename_selection = 0;
+    input.anvil_rename_cursor = anvil_rename_char_len(&input.anvil_rename_text);
+}
+
+fn delete_anvil_rename_selection(input: &mut ClientInputState) -> bool {
+    if input.anvil_rename_selection == input.anvil_rename_cursor {
+        return false;
+    }
+    let start = input.anvil_rename_selection.min(input.anvil_rename_cursor);
+    let end = input.anvil_rename_selection.max(input.anvil_rename_cursor);
+    let start_byte = anvil_rename_byte_index(&input.anvil_rename_text, start);
+    let end_byte = anvil_rename_byte_index(&input.anvil_rename_text, end);
+    input
+        .anvil_rename_text
+        .replace_range(start_byte..end_byte, "");
+    input.anvil_rename_cursor = start;
+    input.anvil_rename_selection = start;
+    true
 }
 
 fn queue_anvil_rename(

@@ -120,6 +120,7 @@ pub(crate) struct ClientInputState {
     anvil_rename_input: Option<AnvilRenameInputSignature>,
     anvil_rename_text: String,
     anvil_rename_cursor: usize,
+    anvil_rename_selection: usize,
     anvil_rename_hover_name: String,
     sign_editor: Option<SignEditorInputState>,
     dismissed_sign_editor: Option<SignEditorInputSignature>,
@@ -206,6 +207,7 @@ impl ClientInputState {
         self.anvil_rename_input = None;
         self.anvil_rename_text.clear();
         self.anvil_rename_cursor = 0;
+        self.anvil_rename_selection = 0;
         self.anvil_rename_hover_name.clear();
         self.chat_entry = None;
         self.local_player_movement_tick_accumulator_seconds = 0.0;
