@@ -5,17 +5,26 @@ use super::geometry::*;
 use super::instances::EntityModelInstance;
 use super::model_layers::*;
 
-const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
-const MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS: f32 = 24.016;
-const VILLAGER_LIKE_SCALE: f32 = 0.9375;
-const HUSK_SCALE: f32 = 1.0625;
-const WITHER_SKELETON_SCALE: f32 = 1.2;
-const CAVE_SPIDER_SCALE: f32 = 0.7;
-const AVATAR_RENDERER_SCALE: f32 = 0.9375;
-const HORSE_SCALE: f32 = 1.1;
-const DONKEY_SCALE: f32 = 0.87;
-const MULE_SCALE: f32 = 0.92;
-const POLAR_BEAR_SCALE: f32 = 1.2;
+mod armor_stand;
+mod selection;
+mod transforms;
+
+use armor_stand::emit_armor_stand_model;
+use selection::{
+    camel_model_color, donkey_model_color, donkey_model_scale, hoglin_model_color,
+    humanoid_model_color, llama_model_color, piglin_model_color, quadruped_model_color,
+    undead_horse_model_color,
+};
+pub(super) use selection::{chicken_model_parts, cow_model_parts, pig_model_parts};
+pub(super) use transforms::{
+    boat_model_root_transform, cave_spider_model_root_transform, entity_model_root_transform,
+    magma_cube_model_root_transform, player_model_root_transform, slime_model_root_transform,
+    wither_skeleton_model_root_transform,
+};
+use transforms::{
+    mesh_transformer_scaled_model_root_transform, scaled_model_root_transform,
+    villager_adult_model_root_transform, HORSE_SCALE, HUSK_SCALE, POLAR_BEAR_SCALE,
+};
 
 #[cfg(test)]
 pub(super) fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
@@ -189,78 +198,6 @@ fn entity_model_mesh_with_options(
     mesh
 }
 
-fn emit_armor_stand_model(
-    mesh: &mut EntityModelMesh,
-    instance: EntityModelInstance,
-    small: bool,
-    show_arms: bool,
-    show_base_plate: bool,
-    pose: ArmorStandModelPose,
-) {
-    let parts = if small {
-        &SMALL_ARMOR_STAND_PARTS
-    } else {
-        &ARMOR_STAND_PARTS
-    };
-    let transform = entity_model_root_transform(instance);
-    emit_armor_stand_part(mesh, transform, &parts[0], degrees_to_radians3(pose.head));
-    emit_armor_stand_part(mesh, transform, &parts[1], degrees_to_radians3(pose.body));
-    if show_arms {
-        emit_armor_stand_part(
-            mesh,
-            transform,
-            &parts[2],
-            degrees_to_radians3(pose.right_arm),
-        );
-        emit_armor_stand_part(
-            mesh,
-            transform,
-            &parts[3],
-            degrees_to_radians3(pose.left_arm),
-        );
-    }
-    emit_armor_stand_part(
-        mesh,
-        transform,
-        &parts[4],
-        degrees_to_radians3(pose.right_leg),
-    );
-    emit_armor_stand_part(
-        mesh,
-        transform,
-        &parts[5],
-        degrees_to_radians3(pose.left_leg),
-    );
-    emit_armor_stand_part(mesh, transform, &parts[6], degrees_to_radians3(pose.body));
-    emit_armor_stand_part(mesh, transform, &parts[7], degrees_to_radians3(pose.body));
-    emit_armor_stand_part(mesh, transform, &parts[8], degrees_to_radians3(pose.body));
-    if show_base_plate {
-        emit_armor_stand_part(
-            mesh,
-            transform,
-            &parts[9],
-            [0.0, -instance.y_rot.to_radians(), 0.0],
-        );
-    }
-}
-
-fn emit_armor_stand_part(
-    mesh: &mut EntityModelMesh,
-    transform: Mat4,
-    part: &ModelPartDesc,
-    rotation: [f32; 3],
-) {
-    emit_model_cubes_at_pose(
-        mesh,
-        transform,
-        PartPose {
-            offset: part.pose.offset,
-            rotation,
-        },
-        part.cubes,
-    );
-}
-
 fn emit_slime_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, size: i32) {
     emit_model_parts(
         mesh,
@@ -277,22 +214,6 @@ fn emit_magma_cube_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
     );
 }
 
-pub(super) fn slime_model_root_transform(instance: EntityModelInstance, size: i32) -> Mat4 {
-    living_entity_model_root_transform_with_renderer_transform(
-        instance,
-        Mat4::from_scale(Vec3::splat(0.999))
-            * Mat4::from_translation(Vec3::new(0.0, 0.001, 0.0))
-            * Mat4::from_scale(Vec3::splat(size as f32)),
-    )
-}
-
-pub(super) fn magma_cube_model_root_transform(instance: EntityModelInstance, size: i32) -> Mat4 {
-    living_entity_model_root_transform_with_renderer_transform(
-        instance,
-        Mat4::from_scale(Vec3::splat(size as f32)),
-    )
-}
-
 fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {
     let transform = player_model_root_transform(instance);
     emit_model_parts(
@@ -304,13 +225,6 @@ fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
         },
         transform,
     );
-}
-
-pub(super) fn player_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    living_entity_model_root_transform_with_renderer_transform(
-        instance,
-        Mat4::from_scale(Vec3::splat(AVATAR_RENDERER_SCALE)),
-    )
 }
 
 fn emit_humanoid_model(
@@ -490,10 +404,6 @@ fn emit_hoglin_model(
 
 fn emit_ravager_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &RAVAGER_PARTS, entity_model_root_transform(instance));
-}
-
-pub(super) fn wither_skeleton_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    mesh_transformer_scaled_model_root_transform(instance, WITHER_SKELETON_SCALE)
 }
 
 fn emit_skeleton_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -956,10 +866,6 @@ fn emit_cave_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInsta
     );
 }
 
-pub(super) fn cave_spider_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    mesh_transformer_scaled_model_root_transform(instance, CAVE_SPIDER_SCALE)
-}
-
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &ENDERMAN_PARTS, entity_model_root_transform(instance));
 }
@@ -1073,160 +979,4 @@ fn emit_placeholder_bounds_model(
         [width, height, depth],
         PLACEHOLDER_COLOR,
     );
-}
-
-fn scaled_model_root_transform(instance: EntityModelInstance, scale: f32) -> Mat4 {
-    entity_model_root_transform(instance) * Mat4::from_scale(Vec3::splat(scale))
-}
-
-fn mesh_transformer_scaled_model_root_transform(instance: EntityModelInstance, scale: f32) -> Mat4 {
-    entity_model_root_transform(instance)
-        * part_pose_transform(PartPose {
-            offset: [
-                0.0,
-                MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS * (1.0 - scale),
-                0.0,
-            ],
-            rotation: [0.0, 0.0, 0.0],
-        })
-        * Mat4::from_scale(Vec3::splat(scale))
-}
-
-fn villager_adult_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    mesh_transformer_scaled_model_root_transform(instance, VILLAGER_LIKE_SCALE)
-}
-
-fn humanoid_model_color(family: HumanoidModelFamily) -> [f32; 4] {
-    match family {
-        HumanoidModelFamily::Player => PLAYER_BLUE,
-        HumanoidModelFamily::Zombie => ZOMBIE_GREEN,
-        HumanoidModelFamily::Skeleton => SKELETON_BONE,
-        HumanoidModelFamily::Villager => VILLAGER_ROBE,
-        HumanoidModelFamily::Illager => ILLAGER_GRAY,
-        HumanoidModelFamily::ArmorStand => ARMOR_STAND_WOOD,
-    }
-}
-
-fn piglin_model_color(family: PiglinModelFamily) -> [f32; 4] {
-    match family {
-        PiglinModelFamily::Piglin => PIGLIN_SKIN,
-        PiglinModelFamily::PiglinBrute => PIGLIN_BRUTE_SKIN,
-        PiglinModelFamily::ZombifiedPiglin => ZOMBIFIED_PIGLIN_SKIN,
-    }
-}
-
-fn hoglin_model_color(family: HoglinModelFamily) -> [f32; 4] {
-    match family {
-        HoglinModelFamily::Hoglin => HOGLIN_RED,
-        HoglinModelFamily::Zoglin => ZOGLIN_GREEN,
-    }
-}
-
-fn quadruped_model_color(family: QuadrupedModelFamily) -> [f32; 4] {
-    match family {
-        QuadrupedModelFamily::Pig => PIG_PINK,
-        QuadrupedModelFamily::Cow => COW_BROWN,
-        QuadrupedModelFamily::Sheep => SHEEP_WOOL,
-        QuadrupedModelFamily::Horse => HORSE_BROWN,
-        QuadrupedModelFamily::Wolf => WOLF_GRAY,
-    }
-}
-
-fn donkey_model_scale(family: DonkeyModelFamily) -> f32 {
-    match family {
-        DonkeyModelFamily::Donkey => DONKEY_SCALE,
-        DonkeyModelFamily::Mule => MULE_SCALE,
-    }
-}
-
-fn donkey_model_color(family: DonkeyModelFamily) -> [f32; 4] {
-    match family {
-        DonkeyModelFamily::Donkey => DONKEY_GRAY,
-        DonkeyModelFamily::Mule => MULE_BROWN,
-    }
-}
-
-fn undead_horse_model_color(family: UndeadHorseModelFamily) -> [f32; 4] {
-    match family {
-        UndeadHorseModelFamily::Skeleton => SKELETON_HORSE_BONE,
-        UndeadHorseModelFamily::Zombie => ZOMBIE_HORSE_GREEN,
-    }
-}
-
-fn camel_model_color(family: CamelModelFamily) -> [f32; 4] {
-    match family {
-        CamelModelFamily::Camel => CAMEL_TAN,
-        CamelModelFamily::CamelHusk => CAMEL_HUSK_BROWN,
-    }
-}
-
-fn llama_model_color(_family: LlamaModelFamily, variant: LlamaVariant) -> [f32; 4] {
-    match variant {
-        LlamaVariant::Creamy => LLAMA_CREAMY,
-        LlamaVariant::White => LLAMA_WHITE,
-        LlamaVariant::Brown => LLAMA_BROWN,
-        LlamaVariant::Gray => LLAMA_GRAY,
-    }
-}
-
-pub(super) fn chicken_model_parts(
-    variant: ChickenModelVariant,
-    baby: bool,
-) -> &'static [ModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_CHICKEN_PARTS,
-        (ChickenModelVariant::Cold, false) => &COLD_CHICKEN_PARTS,
-        (_, false) => &ADULT_CHICKEN_PARTS,
-    }
-}
-
-pub(super) fn pig_model_parts(variant: PigModelVariant, baby: bool) -> &'static [ModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_PIG_PARTS,
-        (PigModelVariant::Cold, false) => &COLD_PIG_PARTS,
-        (_, false) => &ADULT_PIG_PARTS,
-    }
-}
-
-pub(super) fn cow_model_parts(variant: CowModelVariant, baby: bool) -> &'static [ModelPartDesc] {
-    match (variant, baby) {
-        (_, true) => &BABY_COW_PARTS,
-        (CowModelVariant::Warm, false) => &WARM_COW_PARTS,
-        (CowModelVariant::Cold, false) => &COLD_COW_PARTS,
-        (CowModelVariant::Temperate, false) => &ADULT_COW_PARTS,
-    }
-}
-
-pub(super) fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
-        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
-        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
-}
-
-fn living_entity_model_root_transform_with_renderer_transform(
-    instance: EntityModelInstance,
-    renderer_transform: Mat4,
-) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
-        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
-        * renderer_transform
-        * Mat4::from_translation(Vec3::new(0.0, -VANILLA_MODEL_ROOT_Y_OFFSET, 0.0))
-}
-
-pub(super) fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(instance.position))
-        * Mat4::from_translation(Vec3::new(0.0, 0.375, 0.0))
-        * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
-        * Mat4::from_scale(Vec3::new(-1.0, -1.0, 1.0))
-        * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2)
-}
-
-fn degrees_to_radians3(rotation: [f32; 3]) -> [f32; 3] {
-    [
-        rotation[0].to_radians(),
-        rotation[1].to_radians(),
-        rotation[2].to_radians(),
-    ]
 }
