@@ -315,10 +315,12 @@ When an agent does any of the following, update this file in the same slice:
       `LayerDefinitions`, including metadata-driven temperate/warm/cold
       variant projection through the server-sent `minecraft:chicken_variant`
       registry order, official adult/baby variant texture references, and
-      vanilla fallback to temperate when no variant metadata is present; head
-      yaw/pitch, leg walk animation, wing flap animation, variant sound
-      metadata, custom/datapack chicken variant asset decoding, lighting, and
-      GPU texture binding remain unsupported
+      vanilla fallback to temperate when no variant metadata is present,
+      texture-backed base layer pass emission, adult/baby/cold model-layer
+      selection, and official PNG atlas upload/bind/sample path; head yaw/pitch,
+      leg walk animation, wing flap animation, variant sound metadata,
+      custom/datapack chicken variant asset decoding, and lighting remain
+      unsupported
     - pig entities as renderer-owned vanilla 26.1
       `PigModel`, `ColdPigModel`, and `BabyPigModel` body-layer geometry from
       `PigModel`, `ColdPigModel`, `BabyPigModel`, `PigRenderer`,

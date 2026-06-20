@@ -244,6 +244,114 @@ fn chicken_texture_refs_match_vanilla_variant_assets() {
 }
 
 #[test]
+fn chicken_textured_layer_passes_match_vanilla_renderer_model_choice() {
+    let adult_temperate = chicken_textured_layer_passes(ChickenModelVariant::Temperate, false);
+    assert_eq!(adult_temperate.len(), 1);
+    assert_eq!(adult_temperate[0].kind, EntityModelLayerKind::ChickenBase);
+    assert_eq!(adult_temperate[0].model_layer, MODEL_LAYER_CHICKEN);
+    assert_eq!(adult_temperate[0].texture, CHICKEN_TEMPERATE_TEXTURE_REF);
+    assert_eq!(
+        adult_temperate[0].parts,
+        ADULT_CHICKEN_TEXTURED_PARTS.as_slice()
+    );
+    assert_eq!(adult_temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(adult_temperate[0].collector_order, 0);
+    assert_eq!(adult_temperate[0].submit_sequence, 0);
+
+    let adult_warm = chicken_textured_layer_passes(ChickenModelVariant::Warm, false);
+    assert_eq!(adult_warm[0].model_layer, MODEL_LAYER_CHICKEN);
+    assert_eq!(adult_warm[0].texture, CHICKEN_WARM_TEXTURE_REF);
+    assert_eq!(adult_warm[0].parts, ADULT_CHICKEN_TEXTURED_PARTS.as_slice());
+
+    let adult_cold = chicken_textured_layer_passes(ChickenModelVariant::Cold, false);
+    assert_eq!(adult_cold[0].model_layer, MODEL_LAYER_COLD_CHICKEN);
+    assert_eq!(adult_cold[0].texture, CHICKEN_COLD_TEXTURE_REF);
+    assert_eq!(adult_cold[0].parts, COLD_CHICKEN_TEXTURED_PARTS.as_slice());
+
+    let baby_warm = chicken_textured_layer_passes(ChickenModelVariant::Warm, true);
+    assert_eq!(baby_warm[0].model_layer, MODEL_LAYER_CHICKEN_BABY);
+    assert_eq!(baby_warm[0].texture, CHICKEN_WARM_BABY_TEXTURE_REF);
+    assert_eq!(baby_warm[0].parts, BABY_CHICKEN_TEXTURED_PARTS.as_slice());
+}
+
+#[test]
+fn chicken_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_CHICKEN, "minecraft:chicken#main");
+    assert_eq!(MODEL_LAYER_CHICKEN_BABY, "minecraft:chicken_baby#main");
+    assert_eq!(MODEL_LAYER_COLD_CHICKEN, "minecraft:cold_chicken#main");
+    assert_eq!(
+        ADULT_CHICKEN_TEXTURED_HEAD[0],
+        TexturedModelCubeDesc {
+            min: [-2.0, -6.0, -2.0],
+            size: [4.0, 6.0, 3.0],
+            uv_size: [4.0, 6.0, 3.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        ADULT_CHICKEN_TEXTURED_BEAK[0],
+        TexturedModelCubeDesc {
+            min: [-2.0, -4.0, -4.0],
+            size: [4.0, 2.0, 2.0],
+            uv_size: [4.0, 2.0, 2.0],
+            tex: [14.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        ADULT_CHICKEN_TEXTURED_RED_THING[0],
+        TexturedModelCubeDesc {
+            min: [-1.0, -2.0, -3.0],
+            size: [2.0, 2.0, 2.0],
+            uv_size: [2.0, 2.0, 2.0],
+            tex: [14.0, 4.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        COLD_CHICKEN_TEXTURED_HEAD[1],
+        TexturedModelCubeDesc {
+            min: [-3.0, -7.0, -2.015],
+            size: [6.0, 3.0, 4.0],
+            uv_size: [6.0, 3.0, 4.0],
+            tex: [44.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        COLD_CHICKEN_TEXTURED_BODY[1],
+        TexturedModelCubeDesc {
+            min: [0.0, 3.0, -1.0],
+            size: [0.0, 3.0, 5.0],
+            uv_size: [0.0, 3.0, 5.0],
+            tex: [38.0, 9.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        BABY_CHICKEN_TEXTURED_BODY[0],
+        TexturedModelCubeDesc {
+            min: [-2.0, -2.25, -0.75],
+            size: [4.0, 4.0, 4.0],
+            uv_size: [4.0, 4.0, 4.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        BABY_CHICKEN_TEXTURED_RIGHT_LEG[1],
+        TexturedModelCubeDesc {
+            min: [-0.5, 2.0, -1.0],
+            size: [1.0, 0.0, 1.0],
+            uv_size: [1.0, 0.0, 1.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+}
+
+#[test]
 fn zombie_adult_model_parts_match_vanilla_26_1_body_layer() {
     assert_eq!(
         ADULT_ZOMBIE_HAT[0],
@@ -3134,6 +3242,92 @@ fn entity_texture_atlas_stitches_official_sheep_png_slots() {
 }
 
 #[test]
+fn entity_texture_atlas_stitches_official_chicken_png_slots() {
+    let images = chicken_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect::<Vec<_>>();
+
+    let (layout, rgba) = build_entity_model_texture_atlas(&images).unwrap();
+
+    assert_eq!(layout.width, 64);
+    assert_eq!(layout.height, 144);
+    assert_eq!(
+        layout
+            .entries
+            .iter()
+            .map(|entry| entry.texture.path)
+            .collect::<Vec<_>>(),
+        vec![
+            "textures/entity/chicken/chicken_temperate.png",
+            "textures/entity/chicken/chicken_temperate_baby.png",
+            "textures/entity/chicken/chicken_warm.png",
+            "textures/entity/chicken/chicken_warm_baby.png",
+            "textures/entity/chicken/chicken_cold.png",
+            "textures/entity/chicken/chicken_cold_baby.png",
+        ]
+    );
+    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
+    assert_close2(layout.entries[0].uv.max, [1.0, 32.0 / 144.0]);
+    assert_close2(layout.entries[1].uv.min, [0.0, 32.0 / 144.0]);
+    assert_close2(layout.entries[1].uv.max, [0.25, 48.0 / 144.0]);
+    assert_close2(layout.entries[4].uv.min, [0.0, 96.0 / 144.0]);
+    assert_close2(layout.entries[4].uv.max, [1.0, 128.0 / 144.0]);
+    let warm_first_pixel = rgba_offset(layout.width, 48, 0, "test").unwrap();
+    assert_eq!(&rgba[warm_first_pixel..warm_first_pixel + 4], &[2; 4]);
+    let cold_baby_first_pixel = rgba_offset(layout.width, 128, 0, "test").unwrap();
+    assert_eq!(
+        &rgba[cold_baby_first_pixel..cold_baby_first_pixel + 4],
+        &[5; 4]
+    );
+}
+
+#[test]
+fn chicken_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
+    let (atlas, _) = build_entity_model_texture_atlas(&chicken_texture_images()).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[
+            EntityModelInstance::chicken_variant(
+                401,
+                [0.0, 64.0, 0.0],
+                0.0,
+                ChickenModelVariant::Temperate,
+                false,
+            ),
+            EntityModelInstance::chicken_variant(
+                402,
+                [1.0, 64.0, 0.0],
+                0.0,
+                ChickenModelVariant::Cold,
+                false,
+            ),
+            EntityModelInstance::chicken_variant(
+                403,
+                [2.0, 64.0, 0.0],
+                0.0,
+                ChickenModelVariant::Warm,
+                true,
+            ),
+        ],
+        &atlas,
+    );
+
+    assert_eq!(mesh.cutout_faces, 156);
+    assert_eq!(mesh.vertices.len(), 624);
+    assert_eq!(mesh.indices.len(), 936);
+    assert_close2(mesh.vertices[0].uv, [7.0 / 64.0, 0.0]);
+    assert_eq!(mesh.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_close2(mesh.vertices[192].uv, [7.0 / 64.0, 96.0 / 144.0]);
+    assert_eq!(mesh.vertices[192].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_close2(mesh.vertices[432].uv, [8.0 / 64.0, 80.0 / 144.0]);
+    assert_eq!(mesh.vertices[432].tint, [1.0, 1.0, 1.0, 1.0]);
+}
+
+#[test]
 fn sheep_textured_mesh_uses_vanilla_uvs_tints_and_layer_visibility() {
     let (atlas, _) = build_entity_model_texture_atlas(&sheep_texture_images()).unwrap();
     let mesh = entity_model_textured_mesh(
@@ -3245,11 +3439,14 @@ fn wolf_textured_mesh_uses_vanilla_uvs_and_collar_tint() {
 
 #[test]
 fn runtime_colored_mesh_excludes_texture_backed_entities() {
+    let chicken = EntityModelInstance::chicken(303, [-2.0, 64.0, 0.0], 0.0, false);
     let sheep = EntityModelInstance::sheep(304, [0.0, 64.0, 0.0], 0.0, false);
     let wolf = EntityModelInstance::wolf(305, [2.0, 64.0, 0.0], 0.0, false);
-    let colored = entity_model_colored_runtime_mesh(&[sheep, wolf]);
+    let colored = entity_model_colored_runtime_mesh(&[chicken, sheep, wolf]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
+    let legacy_chicken_geometry_guard = entity_model_mesh(&[chicken]);
+    assert!(!legacy_chicken_geometry_guard.vertices.is_empty());
     let legacy_geometry_guard = entity_model_mesh(&[sheep]);
     assert!(!legacy_geometry_guard.vertices.is_empty());
     let legacy_wolf_geometry_guard = entity_model_mesh(&[wolf]);
@@ -7334,6 +7531,17 @@ fn sheep_texture_images() -> Vec<EntityModelTextureImage> {
 
 fn wolf_texture_images() -> Vec<EntityModelTextureImage> {
     wolf_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
+fn chicken_texture_images() -> Vec<EntityModelTextureImage> {
+    chicken_entity_texture_refs()
         .iter()
         .enumerate()
         .map(|(index, texture)| {

@@ -6,7 +6,7 @@ mod gpu;
 mod model_layers;
 
 pub use catalog::*;
-use catalog::{sheep_wool_layer_color, wolf_texture_ref};
+use catalog::{chicken_texture_ref, sheep_wool_layer_color, wolf_texture_ref};
 use geometry::*;
 #[cfg(test)]
 use gpu::{
@@ -18,7 +18,8 @@ pub(crate) use gpu::{create_entity_model_pipeline, create_entity_model_textured_
 pub(super) use gpu::{EntityModelMeshGpu, EntityModelTextureAtlasGpu, EntityModelTexturedMeshGpu};
 use model_layers::*;
 pub use model_layers::{
-    entity_model_texture_refs, sheep_entity_texture_refs, wolf_entity_texture_refs,
+    chicken_entity_texture_refs, entity_model_texture_refs, sheep_entity_texture_refs,
+    wolf_entity_texture_refs,
 };
 
 const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
@@ -35,6 +36,7 @@ const POLAR_BEAR_SCALE: f32 = 1.2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EntityModelLayerKind {
+    ChickenBase,
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
@@ -69,11 +71,15 @@ fn entity_model_mesh_with_options(
     let mut mesh = EntityModelMesh::new();
     for instance in instances {
         match instance.kind {
-            EntityModelKind::Chicken { variant, baby } => emit_model_parts(
-                &mut mesh,
-                chicken_model_parts(variant, baby),
-                entity_model_root_transform(*instance),
-            ),
+            EntityModelKind::Chicken { variant, baby } => {
+                if !skip_texture_backed_entities {
+                    emit_model_parts(
+                        &mut mesh,
+                        chicken_model_parts(variant, baby),
+                        entity_model_root_transform(*instance),
+                    );
+                }
+            }
             EntityModelKind::Pig { variant, baby } => {
                 emit_pig_model(&mut mesh, *instance, variant, baby)
             }
@@ -188,6 +194,9 @@ fn entity_model_textured_mesh(
     let mut mesh = EntityModelTexturedMesh::new();
     for instance in instances {
         match instance.kind {
+            EntityModelKind::Chicken { variant, baby } => {
+                emit_chicken_textured_model(&mut mesh, *instance, variant, baby, atlas);
+            }
             EntityModelKind::Sheep {
                 baby,
                 sheared,
@@ -215,6 +224,29 @@ fn entity_model_textured_mesh(
         }
     }
     mesh
+}
+
+fn emit_chicken_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    variant: ChickenModelVariant,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in chicken_textured_layer_passes(variant, baby) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
 }
 
 fn emit_armor_stand_model(
@@ -634,6 +666,21 @@ fn emit_wolf_textured_model(
     }
 }
 
+fn chicken_textured_layer_passes(
+    variant: ChickenModelVariant,
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::ChickenBase,
+        model_layer: chicken_model_layer(variant, baby),
+        texture: chicken_texture_ref(variant, baby),
+        parts: chicken_textured_model_parts(variant, baby),
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
 fn sheep_textured_layer_passes(
     baby: bool,
     sheared: bool,
@@ -742,6 +789,25 @@ fn wolf_textured_layer_passes(
         });
     }
     passes
+}
+
+fn chicken_model_layer(variant: ChickenModelVariant, baby: bool) -> &'static str {
+    match (variant, baby) {
+        (_, true) => MODEL_LAYER_CHICKEN_BABY,
+        (ChickenModelVariant::Cold, false) => MODEL_LAYER_COLD_CHICKEN,
+        (_, false) => MODEL_LAYER_CHICKEN,
+    }
+}
+
+fn chicken_textured_model_parts(
+    variant: ChickenModelVariant,
+    baby: bool,
+) -> &'static [TexturedModelPartDesc] {
+    match (variant, baby) {
+        (_, true) => &BABY_CHICKEN_TEXTURED_PARTS,
+        (ChickenModelVariant::Cold, false) => &COLD_CHICKEN_TEXTURED_PARTS,
+        (_, false) => &ADULT_CHICKEN_TEXTURED_PARTS,
+    }
 }
 
 fn entity_model_texture_atlas_entry(

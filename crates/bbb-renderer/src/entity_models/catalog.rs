@@ -1451,32 +1451,17 @@ fn chicken_model_key(variant: ChickenModelVariant, baby: bool) -> &'static str {
     }
 }
 
-fn chicken_texture_ref(variant: ChickenModelVariant, baby: bool) -> EntityModelTextureRef {
+pub(super) fn chicken_texture_ref(
+    variant: ChickenModelVariant,
+    baby: bool,
+) -> EntityModelTextureRef {
     match (variant, baby) {
-        (ChickenModelVariant::Temperate, false) => EntityModelTextureRef {
-            path: "textures/entity/chicken/chicken_temperate.png",
-            size: [64, 32],
-        },
-        (ChickenModelVariant::Temperate, true) => EntityModelTextureRef {
-            path: "textures/entity/chicken/chicken_temperate_baby.png",
-            size: [16, 16],
-        },
-        (ChickenModelVariant::Warm, false) => EntityModelTextureRef {
-            path: "textures/entity/chicken/chicken_warm.png",
-            size: [64, 32],
-        },
-        (ChickenModelVariant::Warm, true) => EntityModelTextureRef {
-            path: "textures/entity/chicken/chicken_warm_baby.png",
-            size: [16, 16],
-        },
-        (ChickenModelVariant::Cold, false) => EntityModelTextureRef {
-            path: "textures/entity/chicken/chicken_cold.png",
-            size: [64, 32],
-        },
-        (ChickenModelVariant::Cold, true) => EntityModelTextureRef {
-            path: "textures/entity/chicken/chicken_cold_baby.png",
-            size: [16, 16],
-        },
+        (ChickenModelVariant::Temperate, false) => CHICKEN_TEMPERATE_TEXTURE_REF,
+        (ChickenModelVariant::Temperate, true) => CHICKEN_TEMPERATE_BABY_TEXTURE_REF,
+        (ChickenModelVariant::Warm, false) => CHICKEN_WARM_TEXTURE_REF,
+        (ChickenModelVariant::Warm, true) => CHICKEN_WARM_BABY_TEXTURE_REF,
+        (ChickenModelVariant::Cold, false) => CHICKEN_COLD_TEXTURE_REF,
+        (ChickenModelVariant::Cold, true) => CHICKEN_COLD_BABY_TEXTURE_REF,
     }
 }
 

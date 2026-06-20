@@ -89,46 +89,32 @@ mod tests {
 
         let images = load_entity_model_texture_images(&roots).unwrap();
 
-        assert_eq!(images.len(), 13);
-        assert_eq!(images[0].texture.path, "textures/entity/sheep/sheep.png");
         assert_eq!(
-            images[1].texture.path,
-            "textures/entity/sheep/sheep_baby.png"
-        );
-        assert_eq!(
-            images[2].texture.path,
-            "textures/entity/sheep/sheep_wool_undercoat.png"
-        );
-        assert_eq!(
-            images[3].texture.path,
-            "textures/entity/sheep/sheep_wool.png"
-        );
-        assert_eq!(
-            images[4].texture.path,
-            "textures/entity/sheep/sheep_wool_baby.png"
-        );
-        assert_eq!(images[5].texture.path, "textures/entity/wolf/wolf.png");
-        assert_eq!(images[6].texture.path, "textures/entity/wolf/wolf_tame.png");
-        assert_eq!(
-            images[7].texture.path,
-            "textures/entity/wolf/wolf_angry.png"
-        );
-        assert_eq!(images[8].texture.path, "textures/entity/wolf/wolf_baby.png");
-        assert_eq!(
-            images[9].texture.path,
-            "textures/entity/wolf/wolf_tame_baby.png"
-        );
-        assert_eq!(
-            images[10].texture.path,
-            "textures/entity/wolf/wolf_angry_baby.png"
-        );
-        assert_eq!(
-            images[11].texture.path,
-            "textures/entity/wolf/wolf_collar.png"
-        );
-        assert_eq!(
-            images[12].texture.path,
-            "textures/entity/wolf/wolf_collar_baby.png"
+            images
+                .iter()
+                .map(|image| image.texture.path)
+                .collect::<Vec<_>>(),
+            vec![
+                "textures/entity/sheep/sheep.png",
+                "textures/entity/sheep/sheep_baby.png",
+                "textures/entity/sheep/sheep_wool_undercoat.png",
+                "textures/entity/sheep/sheep_wool.png",
+                "textures/entity/sheep/sheep_wool_baby.png",
+                "textures/entity/wolf/wolf.png",
+                "textures/entity/wolf/wolf_tame.png",
+                "textures/entity/wolf/wolf_angry.png",
+                "textures/entity/wolf/wolf_baby.png",
+                "textures/entity/wolf/wolf_tame_baby.png",
+                "textures/entity/wolf/wolf_angry_baby.png",
+                "textures/entity/wolf/wolf_collar.png",
+                "textures/entity/wolf/wolf_collar_baby.png",
+                "textures/entity/chicken/chicken_temperate.png",
+                "textures/entity/chicken/chicken_temperate_baby.png",
+                "textures/entity/chicken/chicken_warm.png",
+                "textures/entity/chicken/chicken_warm_baby.png",
+                "textures/entity/chicken/chicken_cold.png",
+                "textures/entity/chicken/chicken_cold_baby.png",
+            ]
         );
         for image in images {
             assert_eq!(

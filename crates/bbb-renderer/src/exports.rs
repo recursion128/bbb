@@ -1,13 +1,13 @@
 pub use crate::block_destroy::BlockDestroyOverlay;
 pub use crate::camera::{CameraPose, ClearColor};
 pub use crate::entity_models::{
-    entity_model_texture_refs, sheep_entity_texture_refs, wolf_entity_texture_refs,
-    ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
-    DonkeyModelFamily, EntityDyeColor, EntityModelBounds, EntityModelInstance, EntityModelKind,
-    EntityModelTextureImage, EntityModelTextureRef, HoglinModelFamily, HumanoidModelFamily,
-    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant, PiglinModelFamily,
-    QuadrupedModelFamily, SheepWoolColor, SkeletonModelFamily, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    chicken_entity_texture_refs, entity_model_texture_refs, sheep_entity_texture_refs,
+    wolf_entity_texture_refs, ArmorStandModelPose, BoatModelFamily, CamelModelFamily,
+    ChickenModelVariant, CowModelVariant, DonkeyModelFamily, EntityDyeColor, EntityModelBounds,
+    EntityModelInstance, EntityModelKind, EntityModelTextureImage, EntityModelTextureRef,
+    HoglinModelFamily, HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant,
+    PigModelVariant, PiglinModelFamily, QuadrupedModelFamily, SheepWoolColor, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 pub use crate::hud::{
     HudAsciiGlyph, HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer,
