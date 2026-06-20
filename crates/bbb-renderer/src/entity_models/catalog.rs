@@ -752,8 +752,7 @@ impl EntityModelKind {
         match self {
             Self::Chicken { variant, baby } => Some(chicken_texture_ref(variant, baby)),
             Self::Pig { variant, baby } => Some(pig_texture_ref(variant, baby)),
-            Self::Player { slim: false } => Some(PLAYER_WIDE_STEVE_TEXTURE_REF),
-            Self::Player { slim: true } => Some(PLAYER_SLIM_STEVE_TEXTURE_REF),
+            Self::Player { slim } => Some(player_texture_ref(slim)),
             Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
             Self::Slime { .. } => Some(SLIME_TEXTURE_REF),
             Self::MagmaCube { .. } => Some(MAGMA_CUBE_TEXTURE_REF),
@@ -1624,6 +1623,14 @@ pub(super) fn wolf_texture_ref(baby: bool, tame: bool, angry: bool) -> EntityMod
         (true, true, _) => WOLF_TAME_BABY_TEXTURE_REF,
         (true, false, true) => WOLF_ANGRY_BABY_TEXTURE_REF,
         (true, false, false) => WOLF_BABY_TEXTURE_REF,
+    }
+}
+
+pub(super) fn player_texture_ref(slim: bool) -> EntityModelTextureRef {
+    if slim {
+        PLAYER_SLIM_STEVE_TEXTURE_REF
+    } else {
+        PLAYER_WIDE_STEVE_TEXTURE_REF
     }
 }
 

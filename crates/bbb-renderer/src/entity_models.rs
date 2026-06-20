@@ -8,6 +8,7 @@ mod textured;
 pub use catalog::*;
 use colored::{
     boat_model_root_transform, entity_model_colored_runtime_mesh, entity_model_root_transform,
+    player_model_root_transform,
 };
 #[cfg(test)]
 use colored::{chicken_model_parts, cow_model_parts, entity_model_mesh, pig_model_parts};
@@ -26,15 +27,15 @@ pub(super) use gpu::{EntityModelMeshGpu, EntityModelTextureAtlasGpu, EntityModel
 use model_layers::*;
 pub use model_layers::{
     boat_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
-    entity_model_texture_refs, pig_entity_texture_refs, sheep_entity_texture_refs,
-    wolf_entity_texture_refs,
+    entity_model_texture_refs, pig_entity_texture_refs, player_entity_texture_refs,
+    sheep_entity_texture_refs, wolf_entity_texture_refs,
 };
 use textured::entity_model_textured_mesh;
 #[cfg(test)]
 use textured::{
     boat_textured_layer_passes, chicken_textured_layer_passes, cow_textured_layer_passes,
-    pig_textured_layer_passes, sheep_textured_layer_passes, wolf_textured_layer_passes,
-    EntityModelLayerKind,
+    pig_textured_layer_passes, player_textured_layer_passes, sheep_textured_layer_passes,
+    wolf_textured_layer_passes, EntityModelLayerKind,
 };
 
 #[cfg(test)]

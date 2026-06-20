@@ -48,7 +48,11 @@ fn entity_model_mesh_with_options(
                     emit_pig_model(&mut mesh, *instance, variant, baby);
                 }
             }
-            EntityModelKind::Player { slim } => emit_player_model(&mut mesh, *instance, slim),
+            EntityModelKind::Player { slim } => {
+                if !skip_texture_backed_entities {
+                    emit_player_model(&mut mesh, *instance, slim);
+                }
+            }
             EntityModelKind::Humanoid { family, baby } => {
                 emit_humanoid_model(&mut mesh, *instance, family, baby)
             }
@@ -248,10 +252,7 @@ fn emit_magma_cube_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
 }
 
 fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, slim: bool) {
-    let transform = living_entity_model_root_transform_with_renderer_transform(
-        instance,
-        Mat4::from_scale(Vec3::splat(AVATAR_RENDERER_SCALE)),
-    );
+    let transform = player_model_root_transform(instance);
     emit_model_parts(
         mesh,
         if slim {
@@ -261,6 +262,13 @@ fn emit_player_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance, 
         },
         transform,
     );
+}
+
+pub(super) fn player_model_root_transform(instance: EntityModelInstance) -> Mat4 {
+    living_entity_model_root_transform_with_renderer_transform(
+        instance,
+        Mat4::from_scale(Vec3::splat(AVATAR_RENDERER_SCALE)),
+    )
 }
 
 fn emit_humanoid_model(

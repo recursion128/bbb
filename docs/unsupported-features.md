@@ -293,13 +293,15 @@ When an agent does any of the following, update this file in the same slice:
       `PlayerModel.createMesh(CubeDeformation.NONE, slim)` body-layer geometry
       from `PlayerModel`, `AvatarRenderer`, and `LayerDefinitions`, including
       base head/body/arms/legs plus hat/jacket/sleeves/pants children, the
-      `AvatarRenderer` `0.9375F` render scale, and official wide/slim Steve
-      texture references; UUID/default-skin selection, live skin downloads,
-      automatic slim-vs-wide model selection from `PlayerSkin`, player model
-      part visibility toggles, capes, ears, armor/equipment, held items,
-      elytra/wings, shoulder parrots, arrows/stingers, spectator visibility,
-      crouch/flying offsets, name display, arm poses, and walk/head animation
-      remain unsupported
+      `AvatarRenderer` `0.9375F` render scale, texture-backed base layer pass
+      emission, `ModelLayers.PLAYER` / `PLAYER_SLIM` selection, and official
+      wide/slim Steve PNG atlas upload/bind/sample path; true
+      `RenderTypes.entityTranslucent` alpha blending, UUID/default-skin
+      selection, live skin downloads, automatic slim-vs-wide model selection
+      from `PlayerSkin`, player model part visibility toggles, capes, ears,
+      armor/equipment, held items, elytra/wings, shoulder parrots,
+      arrows/stingers, spectator visibility, crouch/flying offsets, name
+      display, arm poses, and walk/head animation remain unsupported
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,

@@ -12,6 +12,13 @@ pub(in crate::entity_models) const PLAYER_SLIM_STEVE_TEXTURE_REF: EntityModelTex
         size: [64, 64],
     };
 
+pub(in crate::entity_models) const PLAYER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 2] =
+    [PLAYER_WIDE_STEVE_TEXTURE_REF, PLAYER_SLIM_STEVE_TEXTURE_REF];
+
+pub fn player_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &PLAYER_ENTITY_TEXTURE_REFS
+}
+
 pub(in crate::entity_models) const ZOMBIE_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {
         path: "textures/entity/zombie/zombie.png",
@@ -562,7 +569,9 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 51] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 53] = [
+    PLAYER_WIDE_STEVE_TEXTURE_REF,
+    PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
     SHEEP_BABY_TEXTURE_REF,
     SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,

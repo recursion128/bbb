@@ -2,14 +2,15 @@ use super::{
     boat_model_root_transform,
     catalog::{
         boat_texture_ref, chicken_texture_ref, cow_texture_ref, pig_texture_ref,
-        sheep_wool_layer_color, wolf_texture_ref, BoatModelFamily, ChickenModelVariant,
-        CowModelVariant, EntityDyeColor, EntityModelInstance, EntityModelKind,
+        player_texture_ref, sheep_wool_layer_color, wolf_texture_ref, BoatModelFamily,
+        ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelInstance, EntityModelKind,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
         PigModelVariant, SheepWoolColor,
     },
     entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
     model_layers::*,
+    player_model_root_transform,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +19,7 @@ pub(super) enum EntityModelLayerKind {
     ChickenBase,
     CowBase,
     PigBase,
+    PlayerBase,
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
@@ -51,6 +53,9 @@ pub(super) fn entity_model_textured_mesh(
             }
             EntityModelKind::Cow { variant, baby } => {
                 emit_cow_textured_model(&mut mesh, *instance, variant, baby, atlas);
+            }
+            EntityModelKind::Player { slim } => {
+                emit_player_textured_model(&mut mesh, *instance, slim, atlas);
             }
             EntityModelKind::Sheep {
                 baby,
@@ -176,6 +181,28 @@ fn emit_cow_textured_model(
     }
 }
 
+fn emit_player_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    slim: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = player_model_root_transform(instance);
+    for pass in player_textured_layer_passes(slim) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
+}
+
 fn emit_sheep_textured_model(
     mesh: &mut EntityModelTexturedMesh,
     instance: EntityModelInstance,
@@ -279,6 +306,18 @@ pub(super) fn cow_textured_layer_passes(
         model_layer: cow_model_layer(variant, baby),
         texture: cow_texture_ref(variant, baby),
         parts: cow_textured_model_parts(variant, baby),
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(super) fn player_textured_layer_passes(slim: bool) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::PlayerBase,
+        model_layer: player_model_layer(slim),
+        texture: player_texture_ref(slim),
+        parts: player_textured_model_parts(slim),
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -429,6 +468,22 @@ fn boat_textured_model_parts(
         (BoatModelFamily::Bamboo, true) => &RAFT_CHEST_TEXTURED_PARTS,
         (_, false) => &BOAT_TEXTURED_PARTS,
         (_, true) => &BOAT_CHEST_TEXTURED_PARTS,
+    }
+}
+
+fn player_model_layer(slim: bool) -> &'static str {
+    if slim {
+        MODEL_LAYER_PLAYER_SLIM
+    } else {
+        MODEL_LAYER_PLAYER
+    }
+}
+
+fn player_textured_model_parts(slim: bool) -> &'static [TexturedModelPartDesc] {
+    if slim {
+        &PLAYER_SLIM_TEXTURED_PARTS
+    } else {
+        &PLAYER_WIDE_TEXTURED_PARTS
     }
 }
 

@@ -95,6 +95,8 @@ mod tests {
                 .map(|image| image.texture.path)
                 .collect::<Vec<_>>(),
             vec![
+                "textures/entity/player/wide/steve.png",
+                "textures/entity/player/slim/steve.png",
                 "textures/entity/sheep/sheep.png",
                 "textures/entity/sheep/sheep_baby.png",
                 "textures/entity/sheep/sheep_wool_undercoat.png",
