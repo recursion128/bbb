@@ -5577,6 +5577,60 @@ fn stonecutter_left_click_result_slot_queues_predicted_pickup() {
 }
 
 #[test]
+fn stonecutter_left_click_result_slot_with_remaining_input_queues_server_authoritative_click() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    world.apply_open_screen(OpenScreen {
+        container_id: 7,
+        menu_type_id: STONECUTTER_MENU_TYPE_ID,
+        title: "Stonecutter".to_string(),
+    });
+    let mut items = vec![ItemStackSummary::empty(); 38];
+    items[0] = item_stack(42, 2);
+    items[1] = item_stack(90, 1);
+    world.apply_container_set_content(ContainerSetContent {
+        container_id: 7,
+        state_id: 14,
+        items,
+        carried_item: ItemStackSummary::empty(),
+    });
+
+    assert!(handle_inventory_mouse_input(
+        &mut input,
+        &mut world,
+        &mut counters,
+        &commands,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(703.0, 318.0)),
+        PhysicalSize::new(1280, 720),
+    ));
+
+    assert_eq!(counters.container_click_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ContainerClick(ContainerClick {
+            container_id: 7,
+            state_id: 14,
+            slot_num: 1,
+            button_num: 0,
+            input: ContainerInput::Pickup,
+            changed_slots: BTreeMap::new(),
+            carried_item: HashedStack::Empty,
+        })
+    );
+    let inventory = world.inventory();
+    let slots = &inventory.open_container.as_ref().unwrap().slots;
+    assert_eq!(slots[0].item, item_stack(42, 2));
+    assert_eq!(slots[1].item, item_stack(90, 1));
+    assert_eq!(inventory.cursor_item, ItemStackSummary::empty());
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn stonecutter_shift_click_result_slot_queues_predicted_quick_move() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);
