@@ -3,9 +3,9 @@ use bbb_renderer::{
     ArmorStandModelPose, BoatModelFamily, CamelModelFamily, ChickenModelVariant, CowModelVariant,
     DonkeyModelFamily, EntityDyeColor, EntityModelInstance, EntityModelKind, HoglinModelFamily,
     HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PigModelVariant,
-    PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline, SheepWoolColor,
-    SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    PiglinModelFamily, PlayerModelPartVisibility, QuadrupedModelFamily, SelectionBox,
+    SelectionOutline, SheepWoolColor, SkeletonModelFamily, UndeadHorseModelFamily,
+    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, RegistryContentState, WorldStore};
 
@@ -166,6 +166,9 @@ const VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID: i32 = 153;
 const VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID: i32 = 154;
 const VANILLA_ENTITY_TYPE_PLAYER_ID: i32 = 155;
 const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
+const AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
+const AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
+const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL_MASK as i8;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
@@ -320,7 +323,7 @@ fn entity_model_kind_with_time_and_registries(
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, chicken_variants),
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
-            EntityModelKind::Player { slim: false }
+            player_model_kind(entity_type_id, data_values)
         }
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => armor_stand_model_kind(data_values),
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => EntityModelKind::Zombie {
@@ -657,6 +660,22 @@ fn sheep_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entity
         baby: ageable_baby(values),
         sheared: wool & SHEEP_WOOL_SHEARED_FLAG != 0,
         wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
+    }
+}
+
+fn player_model_kind(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> EntityModelKind {
+    let fallback = if entity_type_id == VANILLA_ENTITY_TYPE_MANNEQUIN_ID {
+        MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION
+    } else {
+        AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION
+    };
+    let mask = entity_data_byte(values, AVATAR_MODEL_CUSTOMIZATION_DATA_ID, fallback) as u8;
+    EntityModelKind::Player {
+        slim: false,
+        parts: PlayerModelPartVisibility::from_vanilla_mask(mask),
     }
 }
 
@@ -1512,6 +1531,57 @@ mod tests {
                 false,
                 pose,
             )]
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_avatar_model_part_visibility_from_world() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            1550,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        world.apply_add_entity(protocol_add_entity(
+            830,
+            VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+            [3.0, 64.0, -2.0],
+        ));
+        let player_parts = PlayerModelPartVisibility::from_vanilla_mask(
+            PlayerModelPartVisibility::HAT_MASK
+                | PlayerModelPartVisibility::JACKET_MASK
+                | PlayerModelPartVisibility::RIGHT_PANTS_MASK,
+        );
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 1550,
+            values: vec![protocol_byte_data(
+                AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+                player_parts.vanilla_mask() as i8,
+            )],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![
+                EntityModelInstance::player_with_parts(
+                    1550,
+                    [1.0, 64.0, -2.0],
+                    0.0,
+                    false,
+                    player_parts,
+                ),
+                EntityModelInstance::player_with_parts(
+                    830,
+                    [3.0, 64.0, -2.0],
+                    0.0,
+                    false,
+                    PlayerModelPartVisibility::from_vanilla_mask(
+                        PlayerModelPartVisibility::ALL_MASK,
+                    ),
+                ),
+            ]
         );
     }
 
@@ -2480,14 +2550,48 @@ mod tests {
     }
 
     #[test]
-    fn entity_model_kind_uses_exact_wide_model_for_players_and_mannequins() {
+    fn entity_model_kind_uses_avatar_model_part_visibility_for_players_and_mannequins() {
+        let hat_and_left_sleeve = PlayerModelPartVisibility::from_vanilla_mask(
+            PlayerModelPartVisibility::HAT_MASK | PlayerModelPartVisibility::LEFT_SLEEVE_MASK,
+        );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PLAYER_ID, &[]),
-            EntityModelKind::Player { slim: false }
+            EntityModelKind::Player {
+                slim: false,
+                parts: PlayerModelPartVisibility::from_vanilla_mask(0),
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_MANNEQUIN_ID, &[]),
-            EntityModelKind::Player { slim: false }
+            EntityModelKind::Player {
+                slim: false,
+                parts: PlayerModelPartVisibility::from_vanilla_mask(
+                    PlayerModelPartVisibility::ALL_MASK,
+                ),
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                &[protocol_byte_data(
+                    AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+                    hat_and_left_sleeve.vanilla_mask() as i8,
+                )],
+            ),
+            EntityModelKind::Player {
+                slim: false,
+                parts: hat_and_left_sleeve,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+                &[protocol_byte_data(AVATAR_MODEL_CUSTOMIZATION_DATA_ID, 0)],
+            ),
+            EntityModelKind::Player {
+                slim: false,
+                parts: PlayerModelPartVisibility::from_vanilla_mask(0),
+            }
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),

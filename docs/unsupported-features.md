@@ -298,10 +298,14 @@ When an agent does any of the following, update this file in the same slice:
       wide/slim Steve PNG atlas upload/bind/sample path; true
       `RenderTypes.entityTranslucent` alpha blending, UUID/default-skin
       selection, live skin downloads, automatic slim-vs-wide model selection
-      from `PlayerSkin`, player model part visibility toggles, capes, ears,
-      armor/equipment, held items, elytra/wings, shoulder parrots,
+      from `PlayerSkin`, capes, ears, armor/equipment, held items,
+      elytra/wings, shoulder parrots,
       arrows/stingers, spectator visibility, crouch/flying offsets, name
       display, arm poses, and walk/head animation remain unsupported
+      (metadata-driven `DATA_PLAYER_MODE_CUSTOMISATION` projection now controls
+      hat/jacket/sleeves/pants overlay visibility for the texture-backed base
+      player/mannequin model, and the cape bit is preserved in renderer
+      visibility state for the deferred cape layer)
     - wooden boat, chest boat, bamboo raft, and bamboo chest raft entities as
       renderer-owned vanilla 26.1 `BoatModel` / `RaftModel` body-layer
       geometry from `BoatModel`, `RaftModel`, `BoatRenderer`, `RaftRenderer`,

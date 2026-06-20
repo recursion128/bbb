@@ -5,7 +5,7 @@ use super::{
         player_texture_ref, sheep_wool_layer_color, wolf_texture_ref, BoatModelFamily,
         ChickenModelVariant, CowModelVariant, EntityDyeColor, EntityModelInstance, EntityModelKind,
         EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
-        PigModelVariant, SheepWoolColor,
+        PigModelVariant, PlayerModelPartVisibility, SheepWoolColor,
     },
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
@@ -39,6 +39,12 @@ pub(super) enum EntityModelLayerRenderType {
     Eyes,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum EntityModelLayerVisibility {
+    All,
+    PlayerParts(PlayerModelPartVisibility),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct EntityModelLayerPass {
     pub(super) kind: EntityModelLayerKind,
@@ -46,6 +52,7 @@ pub(super) struct EntityModelLayerPass {
     pub(super) model_layer: &'static str,
     pub(super) texture: EntityModelTextureRef,
     pub(super) parts: &'static [TexturedModelPartDesc],
+    pub(super) visibility: EntityModelLayerVisibility,
     pub(super) tint: [f32; 4],
     pub(super) collector_order: i32,
     pub(super) submit_sequence: u32,
@@ -111,8 +118,8 @@ pub(super) fn entity_model_textured_meshes(
             EntityModelKind::Enderman => {
                 emit_enderman_textured_model(&mut meshes, *instance, atlas);
             }
-            EntityModelKind::Player { slim } => {
-                emit_player_textured_model(&mut meshes, *instance, slim, atlas);
+            EntityModelKind::Player { slim, parts } => {
+                emit_player_textured_model(&mut meshes, *instance, slim, parts, atlas);
             }
             EntityModelKind::Sheep {
                 baby,
@@ -240,11 +247,19 @@ fn emit_player_textured_model(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     slim: bool,
+    parts: PlayerModelPartVisibility,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
     let transform = player_model_root_transform(instance);
-    for pass in player_textured_layer_passes(slim) {
-        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    let visible_parts = player_visible_textured_model_parts(slim, parts);
+    for pass in player_textured_layer_passes(slim, parts) {
+        emit_textured_layer_pass_with_parts(
+            meshes,
+            &pass,
+            visible_parts.as_slice(),
+            transform,
+            atlas,
+        );
     }
 }
 
@@ -283,12 +298,22 @@ fn emit_textured_layer_pass(
     transform: Mat4,
     atlas: &EntityModelTextureAtlasLayout,
 ) {
+    emit_textured_layer_pass_with_parts(meshes, pass, pass.parts, transform, atlas);
+}
+
+fn emit_textured_layer_pass_with_parts(
+    meshes: &mut EntityModelTexturedMeshes,
+    pass: &EntityModelLayerPass,
+    parts: &[TexturedModelPartDesc],
+    transform: Mat4,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
     let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
         return;
     };
     emit_textured_model_parts(
         meshes.mesh_mut(pass.render_type),
-        pass.parts,
+        parts,
         transform,
         pass.texture,
         entry.uv,
@@ -306,6 +331,7 @@ pub(super) fn boat_textured_layer_passes(
         model_layer: boat_model_layer(family, chest),
         texture: boat_texture_ref(family, chest),
         parts: boat_textured_model_parts(family, chest),
+        visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -322,6 +348,7 @@ pub(super) fn chicken_textured_layer_passes(
         model_layer: chicken_model_layer(variant, baby),
         texture: chicken_texture_ref(variant, baby),
         parts: chicken_textured_model_parts(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -338,6 +365,7 @@ pub(super) fn pig_textured_layer_passes(
         model_layer: pig_model_layer(variant, baby),
         texture: pig_texture_ref(variant, baby),
         parts: pig_textured_model_parts(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -354,6 +382,7 @@ pub(super) fn cow_textured_layer_passes(
         model_layer: cow_model_layer(variant, baby),
         texture: cow_texture_ref(variant, baby),
         parts: cow_textured_model_parts(variant, baby),
+        visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -367,6 +396,7 @@ pub(super) fn creeper_textured_layer_passes() -> Vec<EntityModelLayerPass> {
         model_layer: MODEL_LAYER_CREEPER,
         texture: CREEPER_TEXTURE_REF,
         parts: &CREEPER_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -390,6 +420,7 @@ pub(super) fn spider_textured_layer_passes(cave: bool) -> Vec<EntityModelLayerPa
                 SPIDER_TEXTURE_REF
             },
             parts: &SPIDER_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 0,
             submit_sequence: 0,
@@ -400,6 +431,7 @@ pub(super) fn spider_textured_layer_passes(cave: bool) -> Vec<EntityModelLayerPa
             model_layer,
             texture: SPIDER_EYES_TEXTURE_REF,
             parts: &SPIDER_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 1,
             submit_sequence: 1,
@@ -415,6 +447,7 @@ pub(super) fn enderman_textured_layer_passes() -> Vec<EntityModelLayerPass> {
             model_layer: MODEL_LAYER_ENDERMAN,
             texture: ENDERMAN_TEXTURE_REF,
             parts: &ENDERMAN_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 0,
             submit_sequence: 0,
@@ -425,6 +458,7 @@ pub(super) fn enderman_textured_layer_passes() -> Vec<EntityModelLayerPass> {
             model_layer: MODEL_LAYER_ENDERMAN,
             texture: ENDERMAN_EYES_TEXTURE_REF,
             parts: &ENDERMAN_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
             tint: [1.0, 1.0, 1.0, 1.0],
             collector_order: 1,
             submit_sequence: 1,
@@ -432,13 +466,17 @@ pub(super) fn enderman_textured_layer_passes() -> Vec<EntityModelLayerPass> {
     ]
 }
 
-pub(super) fn player_textured_layer_passes(slim: bool) -> Vec<EntityModelLayerPass> {
+pub(super) fn player_textured_layer_passes(
+    slim: bool,
+    parts: PlayerModelPartVisibility,
+) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::PlayerBase,
         render_type: EntityModelLayerRenderType::Cutout,
         model_layer: player_model_layer(slim),
         texture: player_texture_ref(slim),
         parts: player_textured_model_parts(slim),
+        visibility: EntityModelLayerVisibility::PlayerParts(parts),
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -470,6 +508,7 @@ pub(super) fn sheep_textured_layer_passes(
         } else {
             &ADULT_SHEEP_TEXTURED_PARTS
         },
+        visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -481,6 +520,7 @@ pub(super) fn sheep_textured_layer_passes(
             model_layer: MODEL_LAYER_SHEEP_WOOL_UNDERCOAT,
             texture: SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
             parts: &ADULT_SHEEP_TEXTURED_PARTS,
+            visibility: EntityModelLayerVisibility::All,
             tint: wool_tint,
             collector_order: 1,
             submit_sequence: 1,
@@ -505,6 +545,7 @@ pub(super) fn sheep_textured_layer_passes(
             } else {
                 &ADULT_SHEEP_WOOL_TEXTURED_PARTS
             },
+            visibility: EntityModelLayerVisibility::All,
             tint: wool_tint,
             collector_order: if baby { 1 } else { 0 },
             submit_sequence: 2,
@@ -537,6 +578,7 @@ pub(super) fn wolf_textured_layer_passes(
         model_layer,
         texture: wolf_texture_ref(baby, tame, angry),
         parts,
+        visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -552,6 +594,7 @@ pub(super) fn wolf_textured_layer_passes(
                 WOLF_COLLAR_TEXTURE_REF
             },
             parts,
+            visibility: EntityModelLayerVisibility::All,
             tint: collar_color.texture_diffuse_color(),
             collector_order: 1,
             submit_sequence: 1,
@@ -611,6 +654,59 @@ fn player_textured_model_parts(slim: bool) -> &'static [TexturedModelPartDesc] {
     } else {
         &PLAYER_WIDE_TEXTURED_PARTS
     }
+}
+
+fn player_visible_textured_model_parts(
+    slim: bool,
+    parts: PlayerModelPartVisibility,
+) -> [TexturedModelPartDesc; 6] {
+    let source = player_textured_model_parts(slim);
+    [
+        TexturedModelPartDesc {
+            children: if parts.hat { source[0].children } else { &[] },
+            ..source[0]
+        },
+        TexturedModelPartDesc {
+            children: if parts.jacket {
+                source[1].children
+            } else {
+                &[]
+            },
+            ..source[1]
+        },
+        TexturedModelPartDesc {
+            children: if parts.right_sleeve {
+                source[2].children
+            } else {
+                &[]
+            },
+            ..source[2]
+        },
+        TexturedModelPartDesc {
+            children: if parts.left_sleeve {
+                source[3].children
+            } else {
+                &[]
+            },
+            ..source[3]
+        },
+        TexturedModelPartDesc {
+            children: if parts.right_pants {
+                source[4].children
+            } else {
+                &[]
+            },
+            ..source[4]
+        },
+        TexturedModelPartDesc {
+            children: if parts.left_pants {
+                source[5].children
+            } else {
+                &[]
+            },
+            ..source[5]
+        },
+    ]
 }
 
 fn chicken_model_layer(variant: ChickenModelVariant, baby: bool) -> &'static str {

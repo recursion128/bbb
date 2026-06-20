@@ -43,6 +43,7 @@ use textured::{
     creeper_textured_layer_passes, enderman_textured_layer_passes, pig_textured_layer_passes,
     player_textured_layer_passes, sheep_textured_layer_passes, spider_textured_layer_passes,
     wolf_textured_layer_passes, EntityModelLayerKind, EntityModelLayerRenderType,
+    EntityModelLayerVisibility,
 };
 
 #[cfg(test)]

@@ -48,7 +48,7 @@ fn entity_model_mesh_with_options(
                     emit_pig_model(&mut mesh, *instance, variant, baby);
                 }
             }
-            EntityModelKind::Player { slim } => {
+            EntityModelKind::Player { slim, .. } => {
                 if !skip_texture_backed_entities {
                     emit_player_model(&mut mesh, *instance, slim);
                 }

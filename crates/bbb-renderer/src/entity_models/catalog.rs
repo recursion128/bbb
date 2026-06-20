@@ -12,6 +12,7 @@ pub enum EntityModelKind {
     },
     Player {
         slim: bool,
+        parts: PlayerModelPartVisibility,
     },
     Humanoid {
         family: HumanoidModelFamily,
@@ -122,6 +123,77 @@ pub enum EntityModelKind {
         bounds: EntityModelBounds,
     },
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlayerModelPartVisibility {
+    pub cape: bool,
+    pub jacket: bool,
+    pub left_sleeve: bool,
+    pub right_sleeve: bool,
+    pub left_pants: bool,
+    pub right_pants: bool,
+    pub hat: bool,
+}
+
+impl PlayerModelPartVisibility {
+    pub const CAPE_MASK: u8 = 1 << 0;
+    pub const JACKET_MASK: u8 = 1 << 1;
+    pub const LEFT_SLEEVE_MASK: u8 = 1 << 2;
+    pub const RIGHT_SLEEVE_MASK: u8 = 1 << 3;
+    pub const LEFT_PANTS_MASK: u8 = 1 << 4;
+    pub const RIGHT_PANTS_MASK: u8 = 1 << 5;
+    pub const HAT_MASK: u8 = 1 << 6;
+    pub const ALL_MASK: u8 = Self::CAPE_MASK
+        | Self::JACKET_MASK
+        | Self::LEFT_SLEEVE_MASK
+        | Self::RIGHT_SLEEVE_MASK
+        | Self::LEFT_PANTS_MASK
+        | Self::RIGHT_PANTS_MASK
+        | Self::HAT_MASK;
+
+    pub const fn from_vanilla_mask(mask: u8) -> Self {
+        Self {
+            cape: (mask & Self::CAPE_MASK) == Self::CAPE_MASK,
+            jacket: (mask & Self::JACKET_MASK) == Self::JACKET_MASK,
+            left_sleeve: (mask & Self::LEFT_SLEEVE_MASK) == Self::LEFT_SLEEVE_MASK,
+            right_sleeve: (mask & Self::RIGHT_SLEEVE_MASK) == Self::RIGHT_SLEEVE_MASK,
+            left_pants: (mask & Self::LEFT_PANTS_MASK) == Self::LEFT_PANTS_MASK,
+            right_pants: (mask & Self::RIGHT_PANTS_MASK) == Self::RIGHT_PANTS_MASK,
+            hat: (mask & Self::HAT_MASK) == Self::HAT_MASK,
+        }
+    }
+
+    pub const fn vanilla_mask(self) -> u8 {
+        (if self.cape { Self::CAPE_MASK } else { 0 })
+            | (if self.jacket { Self::JACKET_MASK } else { 0 })
+            | (if self.left_sleeve {
+                Self::LEFT_SLEEVE_MASK
+            } else {
+                0
+            })
+            | (if self.right_sleeve {
+                Self::RIGHT_SLEEVE_MASK
+            } else {
+                0
+            })
+            | (if self.left_pants {
+                Self::LEFT_PANTS_MASK
+            } else {
+                0
+            })
+            | (if self.right_pants {
+                Self::RIGHT_PANTS_MASK
+            } else {
+                0
+            })
+            | (if self.hat { Self::HAT_MASK } else { 0 })
+    }
+}
+
+pub const PLAYER_MODEL_PARTS_ALL_VISIBLE: PlayerModelPartVisibility =
+    PlayerModelPartVisibility::from_vanilla_mask(PlayerModelPartVisibility::ALL_MASK);
+pub const PLAYER_MODEL_PARTS_ALL_HIDDEN: PlayerModelPartVisibility =
+    PlayerModelPartVisibility::from_vanilla_mask(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZombieVariantModelFamily {
@@ -481,8 +553,8 @@ impl EntityModelKind {
         match self {
             Self::Chicken { variant, baby } => chicken_model_key(variant, baby),
             Self::Pig { variant, baby } => pig_model_key(variant, baby),
-            Self::Player { slim: false } => "player",
-            Self::Player { slim: true } => "player_slim",
+            Self::Player { slim: false, .. } => "player",
+            Self::Player { slim: true, .. } => "player_slim",
             Self::Humanoid {
                 family: HumanoidModelFamily::Player,
                 baby: false,
@@ -752,7 +824,7 @@ impl EntityModelKind {
         match self {
             Self::Chicken { variant, baby } => Some(chicken_texture_ref(variant, baby)),
             Self::Pig { variant, baby } => Some(pig_texture_ref(variant, baby)),
-            Self::Player { slim } => Some(player_texture_ref(slim)),
+            Self::Player { slim, .. } => Some(player_texture_ref(slim)),
             Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
             Self::Slime { .. } => Some(SLIME_TEXTURE_REF),
             Self::MagmaCube { .. } => Some(MAGMA_CUBE_TEXTURE_REF),
@@ -1030,7 +1102,28 @@ impl EntityModelInstance {
     }
 
     pub fn player(entity_id: i32, position: [f32; 3], y_rot: f32, slim: bool) -> Self {
-        Self::new(entity_id, EntityModelKind::Player { slim }, position, y_rot)
+        Self::player_with_parts(
+            entity_id,
+            position,
+            y_rot,
+            slim,
+            PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        )
+    }
+
+    pub fn player_with_parts(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        slim: bool,
+        parts: PlayerModelPartVisibility,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Player { slim, parts },
+            position,
+            y_rot,
+        )
     }
 
     pub fn humanoid(

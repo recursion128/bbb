@@ -684,29 +684,74 @@ fn player_texture_refs_match_vanilla_default_assets() {
     ];
 
     for (slim, model_key, texture) in cases {
-        let kind = EntityModelKind::Player { slim };
+        let kind = EntityModelKind::Player {
+            slim,
+            parts: PLAYER_MODEL_PARTS_ALL_VISIBLE,
+        };
         assert_eq!(kind.model_key(), model_key);
         assert_eq!(kind.vanilla_texture_ref(), Some(texture));
     }
 }
 
 #[test]
+fn player_model_part_visibility_masks_match_vanilla_player_model_part_bits() {
+    assert_eq!(PlayerModelPartVisibility::CAPE_MASK, 1 << 0);
+    assert_eq!(PlayerModelPartVisibility::JACKET_MASK, 1 << 1);
+    assert_eq!(PlayerModelPartVisibility::LEFT_SLEEVE_MASK, 1 << 2);
+    assert_eq!(PlayerModelPartVisibility::RIGHT_SLEEVE_MASK, 1 << 3);
+    assert_eq!(PlayerModelPartVisibility::LEFT_PANTS_MASK, 1 << 4);
+    assert_eq!(PlayerModelPartVisibility::RIGHT_PANTS_MASK, 1 << 5);
+    assert_eq!(PlayerModelPartVisibility::HAT_MASK, 1 << 6);
+    assert_eq!(PlayerModelPartVisibility::ALL_MASK, 0x7f);
+    assert_eq!(
+        PLAYER_MODEL_PARTS_ALL_VISIBLE.vanilla_mask(),
+        PlayerModelPartVisibility::ALL_MASK
+    );
+    assert_eq!(PLAYER_MODEL_PARTS_ALL_HIDDEN.vanilla_mask(), 0);
+
+    let mask = PlayerModelPartVisibility::HAT_MASK
+        | PlayerModelPartVisibility::JACKET_MASK
+        | PlayerModelPartVisibility::LEFT_SLEEVE_MASK
+        | PlayerModelPartVisibility::RIGHT_PANTS_MASK;
+    let parts = PlayerModelPartVisibility::from_vanilla_mask(mask);
+    assert!(parts.hat);
+    assert!(parts.jacket);
+    assert!(parts.left_sleeve);
+    assert!(!parts.right_sleeve);
+    assert!(!parts.left_pants);
+    assert!(parts.right_pants);
+    assert!(!parts.cape);
+    assert_eq!(parts.vanilla_mask(), mask);
+}
+
+#[test]
 fn player_textured_layer_passes_match_vanilla_avatar_renderer_model_layers() {
-    let wide = player_textured_layer_passes(false);
+    let wide = player_textured_layer_passes(false, PLAYER_MODEL_PARTS_ALL_VISIBLE);
     assert_eq!(wide.len(), 1);
     assert_eq!(wide[0].kind, EntityModelLayerKind::PlayerBase);
     assert_eq!(wide[0].model_layer, MODEL_LAYER_PLAYER);
     assert_eq!(wide[0].texture, PLAYER_WIDE_STEVE_TEXTURE_REF);
     assert_eq!(wide[0].parts, PLAYER_WIDE_TEXTURED_PARTS.as_slice());
+    assert_eq!(
+        wide[0].visibility,
+        EntityModelLayerVisibility::PlayerParts(PLAYER_MODEL_PARTS_ALL_VISIBLE)
+    );
     assert_eq!(wide[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((wide[0].collector_order, wide[0].submit_sequence), (0, 0));
 
-    let slim = player_textured_layer_passes(true);
+    let slim_parts = PlayerModelPartVisibility::from_vanilla_mask(
+        PlayerModelPartVisibility::HAT_MASK | PlayerModelPartVisibility::LEFT_SLEEVE_MASK,
+    );
+    let slim = player_textured_layer_passes(true, slim_parts);
     assert_eq!(slim.len(), 1);
     assert_eq!(slim[0].kind, EntityModelLayerKind::PlayerBase);
     assert_eq!(slim[0].model_layer, MODEL_LAYER_PLAYER_SLIM);
     assert_eq!(slim[0].texture, PLAYER_SLIM_STEVE_TEXTURE_REF);
     assert_eq!(slim[0].parts, PLAYER_SLIM_TEXTURED_PARTS.as_slice());
+    assert_eq!(
+        slim[0].visibility,
+        EntityModelLayerVisibility::PlayerParts(slim_parts)
+    );
     assert_eq!(slim[0].tint, [1.0, 1.0, 1.0, 1.0]);
     assert_eq!((slim[0].collector_order, slim[0].submit_sequence), (0, 0));
 }
@@ -851,6 +896,45 @@ fn player_textured_mesh_uses_vanilla_uvs_tints_and_avatar_scale() {
     assert!(wide_max[1] - wide_min[1] < 2.0);
     assert!(wide_max[0] - wide_min[0] > slim_max[0] - slim_min[0]);
     assert_ne!(wide.vertices, slim.vertices);
+}
+
+#[test]
+fn player_textured_mesh_applies_vanilla_model_part_visibility_to_overlay_parts() {
+    let (atlas, _) = build_entity_model_texture_atlas(&player_texture_images()).unwrap();
+    let hidden = entity_model_textured_mesh(
+        &[EntityModelInstance::player_with_parts(
+            903,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            PLAYER_MODEL_PARTS_ALL_HIDDEN,
+        )],
+        &atlas,
+    );
+    assert_eq!(hidden.cutout_faces, 36);
+    assert_eq!(hidden.vertices.len(), 144);
+    assert_eq!(hidden.indices.len(), 216);
+
+    let partial_parts = PlayerModelPartVisibility::from_vanilla_mask(
+        PlayerModelPartVisibility::HAT_MASK | PlayerModelPartVisibility::RIGHT_SLEEVE_MASK,
+    );
+    let partial = entity_model_textured_mesh(
+        &[EntityModelInstance::player_with_parts(
+            904,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            partial_parts,
+        )],
+        &atlas,
+    );
+    assert_eq!(partial.cutout_faces, 48);
+    assert_eq!(partial.vertices.len(), 192);
+    assert_eq!(partial.indices.len(), 288);
+    assert!(partial
+        .vertices
+        .iter()
+        .any(|vertex| vertex.uv[1] >= 32.0 / 64.0));
 }
 
 #[test]
