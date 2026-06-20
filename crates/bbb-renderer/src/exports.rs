@@ -3,8 +3,8 @@ pub use crate::camera::{CameraPose, ClearColor};
 pub use crate::entity_models::{
     ArmorStandModelPose, CamelModelFamily, DonkeyModelFamily, EntityModelBounds,
     EntityModelInstance, EntityModelKind, HumanoidModelFamily, IllagerModelFamily,
-    PiglinModelFamily, QuadrupedModelFamily, SkeletonModelFamily, UndeadHorseModelFamily,
-    ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
+    LlamaModelFamily, LlamaVariant, PiglinModelFamily, QuadrupedModelFamily, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 pub use crate::hud::{
     HudAsciiGlyph, HudDigitGlyph, HudIconLayer, HudInventoryBackgroundLayer,

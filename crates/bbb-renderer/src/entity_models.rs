@@ -78,6 +78,12 @@ pub enum EntityModelKind {
         family: CamelModelFamily,
         baby: bool,
     },
+    Llama {
+        family: LlamaModelFamily,
+        variant: LlamaVariant,
+        baby: bool,
+        has_chest: bool,
+    },
     Quadruped {
         family: QuadrupedModelFamily,
         baby: bool,
@@ -186,6 +192,31 @@ pub enum UndeadHorseModelFamily {
 pub enum CamelModelFamily {
     Camel,
     CamelHusk,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LlamaModelFamily {
+    Llama,
+    TraderLlama,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LlamaVariant {
+    Creamy,
+    White,
+    Brown,
+    Gray,
+}
+
+impl LlamaVariant {
+    pub fn from_vanilla_id(id: i32) -> Self {
+        match id.clamp(0, 3) {
+            0 => Self::Creamy,
+            1 => Self::White,
+            2 => Self::Brown,
+            _ => Self::Gray,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -376,6 +407,12 @@ impl EntityModelKind {
                 family: CamelModelFamily::CamelHusk,
                 ..
             } => "camel_husk",
+            Self::Llama {
+                family,
+                variant,
+                baby,
+                ..
+            } => llama_model_key(family, variant, baby),
             Self::Quadruped {
                 family: QuadrupedModelFamily::Pig,
                 baby: false,
@@ -563,6 +600,7 @@ impl EntityModelKind {
                 family: CamelModelFamily::CamelHusk,
                 ..
             } => Some(CAMEL_HUSK_TEXTURE_REF),
+            Self::Llama { variant, baby, .. } => Some(llama_texture_ref(variant, baby)),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
             Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
@@ -795,6 +833,28 @@ impl EntityModelInstance {
         )
     }
 
+    pub fn llama(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        family: LlamaModelFamily,
+        variant: LlamaVariant,
+        baby: bool,
+        has_chest: bool,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::Llama {
+                family,
+                variant,
+                baby,
+                has_chest,
+            },
+            position,
+            y_rot,
+        )
+    }
+
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Spider, position, y_rot)
     }
@@ -996,6 +1056,10 @@ const SKELETON_HORSE_BONE: [f32; 4] = [0.78, 0.78, 0.68, 1.0];
 const ZOMBIE_HORSE_GREEN: [f32; 4] = [0.32, 0.54, 0.32, 1.0];
 const CAMEL_TAN: [f32; 4] = [0.72, 0.50, 0.31, 1.0];
 const CAMEL_HUSK_BROWN: [f32; 4] = [0.42, 0.33, 0.25, 1.0];
+const LLAMA_CREAMY: [f32; 4] = [0.78, 0.65, 0.45, 1.0];
+const LLAMA_WHITE: [f32; 4] = [0.86, 0.84, 0.76, 1.0];
+const LLAMA_BROWN: [f32; 4] = [0.43, 0.27, 0.16, 1.0];
+const LLAMA_GRAY: [f32; 4] = [0.45, 0.44, 0.40, 1.0];
 const WOLF_GRAY: [f32; 4] = [0.64, 0.66, 0.66, 1.0];
 const CREEPER_GREEN: [f32; 4] = [0.24, 0.68, 0.23, 1.0];
 const SPIDER_DARK: [f32; 4] = [0.16, 0.12, 0.12, 1.0];
@@ -1202,6 +1266,46 @@ const CAMEL_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 const CAMEL_HUSK_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/camel/camel_husk.png",
     size: [128, 128],
+};
+
+const LLAMA_CREAMY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/llama/llama_creamy.png",
+    size: [128, 64],
+};
+
+const LLAMA_CREAMY_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/llama/llama_creamy_baby.png",
+    size: [64, 64],
+};
+
+const LLAMA_WHITE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/llama/llama_white.png",
+    size: [128, 64],
+};
+
+const LLAMA_WHITE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/llama/llama_white_baby.png",
+    size: [64, 64],
+};
+
+const LLAMA_BROWN_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/llama/llama_brown.png",
+    size: [128, 64],
+};
+
+const LLAMA_BROWN_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/llama/llama_brown_baby.png",
+    size: [64, 64],
+};
+
+const LLAMA_GRAY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/llama/llama_gray.png",
+    size: [128, 64],
+};
+
+const LLAMA_GRAY_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/llama/llama_gray_baby.png",
+    size: [64, 64],
 };
 
 const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
@@ -4736,6 +4840,225 @@ const BABY_CAMEL_PARTS: [ModelPartDesc; 5] = [
     },
 ];
 
+const ADULT_LLAMA_HEAD: [ModelCubeDesc; 4] = [
+    ModelCubeDesc {
+        min: [-2.0, -14.0, -10.0],
+        size: [4.0, 4.0, 9.0],
+        color: LLAMA_CREAMY,
+    },
+    ModelCubeDesc {
+        min: [-4.0, -16.0, -6.0],
+        size: [8.0, 18.0, 6.0],
+        color: LLAMA_CREAMY,
+    },
+    ModelCubeDesc {
+        min: [-4.0, -19.0, -4.0],
+        size: [3.0, 3.0, 2.0],
+        color: LLAMA_CREAMY,
+    },
+    ModelCubeDesc {
+        min: [1.0, -19.0, -4.0],
+        size: [3.0, 3.0, 2.0],
+        color: LLAMA_CREAMY,
+    },
+];
+
+const ADULT_LLAMA_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-6.0, -10.0, -7.0],
+    size: [12.0, 18.0, 10.0],
+    color: LLAMA_CREAMY,
+}];
+
+const LLAMA_CHEST: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, 0.0, 0.0],
+    size: [8.0, 8.0, 3.0],
+    color: LLAMA_CREAMY,
+}];
+
+const ADULT_LLAMA_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 14.0, 4.0],
+    color: LLAMA_CREAMY,
+}];
+
+const ADULT_LLAMA_RIGHT_CHEST_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [-8.5, 3.0, 3.0],
+        rotation: [0.0, std::f32::consts::FRAC_PI_2, 0.0],
+    },
+    cubes: &LLAMA_CHEST,
+    children: &[],
+};
+
+const ADULT_LLAMA_LEFT_CHEST_PART: ModelPartDesc = ModelPartDesc {
+    pose: PartPose {
+        offset: [5.5, 3.0, 3.0],
+        rotation: [0.0, std::f32::consts::FRAC_PI_2, 0.0],
+    },
+    cubes: &LLAMA_CHEST,
+    children: &[],
+};
+
+// Vanilla 26.1 ModelLayers.LLAMA / TRADER_LLAMA:
+// LlamaModel.createBodyLayer(CubeDeformation.NONE). Chest parts are only visible
+// when LlamaRenderState.hasChest is true.
+const ADULT_LLAMA_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 7.0, -6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_LLAMA_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 5.0, 2.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_LLAMA_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.5, 10.0, 6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_LLAMA_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.5, 10.0, 6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_LLAMA_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.5, 10.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_LLAMA_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.5, 10.0, -5.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_LLAMA_LEG,
+        children: &[],
+    },
+];
+
+const ADULT_LLAMA_PARTS_WITH_CHEST: [ModelPartDesc; 8] = [
+    ADULT_LLAMA_PARTS[0],
+    ADULT_LLAMA_PARTS[1],
+    ADULT_LLAMA_RIGHT_CHEST_PART,
+    ADULT_LLAMA_LEFT_CHEST_PART,
+    ADULT_LLAMA_PARTS[2],
+    ADULT_LLAMA_PARTS[3],
+    ADULT_LLAMA_PARTS[4],
+    ADULT_LLAMA_PARTS[5],
+];
+
+const BABY_LLAMA_HEAD: [ModelCubeDesc; 4] = [
+    ModelCubeDesc {
+        min: [-3.0, -9.0, -4.0],
+        size: [6.0, 11.0, 4.0],
+        color: LLAMA_CREAMY,
+    },
+    ModelCubeDesc {
+        min: [-1.5, -7.0, -7.0],
+        size: [3.0, 3.0, 3.0],
+        color: LLAMA_CREAMY,
+    },
+    ModelCubeDesc {
+        min: [0.5, -11.0, -3.0],
+        size: [2.0, 2.0, 2.0],
+        color: LLAMA_CREAMY,
+    },
+    ModelCubeDesc {
+        min: [-2.5, -11.0, -3.0],
+        size: [2.0, 2.0, 2.0],
+        color: LLAMA_CREAMY,
+    },
+];
+
+const BABY_LLAMA_RIGHT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.4, -0.5, -1.5],
+    size: [3.0, 8.0, 3.0],
+    color: LLAMA_CREAMY,
+}];
+
+const BABY_LLAMA_LEFT_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.6, -0.5, -1.5],
+    size: [3.0, 8.0, 3.0],
+    color: LLAMA_CREAMY,
+}];
+
+const BABY_LLAMA_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -3.0, -8.5],
+    size: [8.0, 6.0, 13.0],
+    color: LLAMA_CREAMY,
+}];
+
+// Vanilla 26.1 ModelLayers.LLAMA_BABY / TRADER_LLAMA_BABY:
+// BabyLlamaModel.createBodyLayer(CubeDeformation.NONE). The layer includes
+// chest parts, but LlamaRenderer sets hasChest=false for babies.
+const BABY_LLAMA_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.0, -4.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_LLAMA_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 16.5, 4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_LLAMA_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 16.5, 4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_LLAMA_LEFT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 16.5, -3.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_LLAMA_RIGHT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 16.5, -3.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_LLAMA_LEFT_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 14.0, 2.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_LLAMA_BODY,
+        children: &[],
+    },
+];
+
 const ADULT_VILLAGER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -10.0, -4.0],
     size: [8.0, 10.0, 8.0],
@@ -6068,6 +6391,12 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Camel { family, baby } => {
                 emit_camel_model(&mut mesh, *instance, family, baby)
             }
+            EntityModelKind::Llama {
+                family,
+                variant,
+                baby,
+                has_chest,
+            } => emit_llama_model(&mut mesh, *instance, family, variant, baby, has_chest),
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
@@ -6505,6 +6834,29 @@ fn emit_camel_model(
     );
 }
 
+fn emit_llama_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    family: LlamaModelFamily,
+    variant: LlamaVariant,
+    baby: bool,
+    has_chest: bool,
+) {
+    let parts: &[ModelPartDesc] = if baby {
+        &BABY_LLAMA_PARTS
+    } else if has_chest {
+        &ADULT_LLAMA_PARTS_WITH_CHEST
+    } else {
+        &ADULT_LLAMA_PARTS
+    };
+    emit_model_parts_with_color(
+        mesh,
+        parts,
+        entity_model_root_transform(instance),
+        llama_model_color(family, variant),
+    );
+}
+
 fn emit_witch_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(
         mesh,
@@ -6905,6 +7257,49 @@ fn camel_model_color(family: CamelModelFamily) -> [f32; 4] {
     match family {
         CamelModelFamily::Camel => CAMEL_TAN,
         CamelModelFamily::CamelHusk => CAMEL_HUSK_BROWN,
+    }
+}
+
+fn llama_model_color(_family: LlamaModelFamily, variant: LlamaVariant) -> [f32; 4] {
+    match variant {
+        LlamaVariant::Creamy => LLAMA_CREAMY,
+        LlamaVariant::White => LLAMA_WHITE,
+        LlamaVariant::Brown => LLAMA_BROWN,
+        LlamaVariant::Gray => LLAMA_GRAY,
+    }
+}
+
+fn llama_model_key(family: LlamaModelFamily, variant: LlamaVariant, baby: bool) -> &'static str {
+    match (family, variant, baby) {
+        (LlamaModelFamily::Llama, LlamaVariant::Creamy, false) => "llama_creamy",
+        (LlamaModelFamily::Llama, LlamaVariant::Creamy, true) => "llama_creamy_baby",
+        (LlamaModelFamily::Llama, LlamaVariant::White, false) => "llama_white",
+        (LlamaModelFamily::Llama, LlamaVariant::White, true) => "llama_white_baby",
+        (LlamaModelFamily::Llama, LlamaVariant::Brown, false) => "llama_brown",
+        (LlamaModelFamily::Llama, LlamaVariant::Brown, true) => "llama_brown_baby",
+        (LlamaModelFamily::Llama, LlamaVariant::Gray, false) => "llama_gray",
+        (LlamaModelFamily::Llama, LlamaVariant::Gray, true) => "llama_gray_baby",
+        (LlamaModelFamily::TraderLlama, LlamaVariant::Creamy, false) => "trader_llama_creamy",
+        (LlamaModelFamily::TraderLlama, LlamaVariant::Creamy, true) => "trader_llama_creamy_baby",
+        (LlamaModelFamily::TraderLlama, LlamaVariant::White, false) => "trader_llama_white",
+        (LlamaModelFamily::TraderLlama, LlamaVariant::White, true) => "trader_llama_white_baby",
+        (LlamaModelFamily::TraderLlama, LlamaVariant::Brown, false) => "trader_llama_brown",
+        (LlamaModelFamily::TraderLlama, LlamaVariant::Brown, true) => "trader_llama_brown_baby",
+        (LlamaModelFamily::TraderLlama, LlamaVariant::Gray, false) => "trader_llama_gray",
+        (LlamaModelFamily::TraderLlama, LlamaVariant::Gray, true) => "trader_llama_gray_baby",
+    }
+}
+
+fn llama_texture_ref(variant: LlamaVariant, baby: bool) -> EntityModelTextureRef {
+    match (variant, baby) {
+        (LlamaVariant::Creamy, false) => LLAMA_CREAMY_TEXTURE_REF,
+        (LlamaVariant::Creamy, true) => LLAMA_CREAMY_BABY_TEXTURE_REF,
+        (LlamaVariant::White, false) => LLAMA_WHITE_TEXTURE_REF,
+        (LlamaVariant::White, true) => LLAMA_WHITE_BABY_TEXTURE_REF,
+        (LlamaVariant::Brown, false) => LLAMA_BROWN_TEXTURE_REF,
+        (LlamaVariant::Brown, true) => LLAMA_BROWN_BABY_TEXTURE_REF,
+        (LlamaVariant::Gray, false) => LLAMA_GRAY_TEXTURE_REF,
+        (LlamaVariant::Gray, true) => LLAMA_GRAY_BABY_TEXTURE_REF,
     }
 }
 
@@ -9706,6 +10101,275 @@ mod tests {
     }
 
     #[test]
+    fn llama_model_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(
+            ADULT_LLAMA_HEAD[0],
+            ModelCubeDesc {
+                min: [-2.0, -14.0, -10.0],
+                size: [4.0, 4.0, 9.0],
+                color: LLAMA_CREAMY,
+            }
+        );
+        assert_eq!(
+            ADULT_LLAMA_HEAD[1],
+            ModelCubeDesc {
+                min: [-4.0, -16.0, -6.0],
+                size: [8.0, 18.0, 6.0],
+                color: LLAMA_CREAMY,
+            }
+        );
+        assert_eq!(ADULT_LLAMA_PARTS.len(), 6);
+        assert_part(
+            &ADULT_LLAMA_PARTS[0],
+            [0.0, 7.0, -6.0],
+            [0.0, 0.0, 0.0],
+            ADULT_LLAMA_HEAD.as_slice(),
+        );
+        assert_part(
+            &ADULT_LLAMA_PARTS[1],
+            [0.0, 5.0, 2.0],
+            [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+            ADULT_LLAMA_BODY.as_slice(),
+        );
+        assert_part(
+            &ADULT_LLAMA_RIGHT_CHEST_PART,
+            [-8.5, 3.0, 3.0],
+            [0.0, std::f32::consts::FRAC_PI_2, 0.0],
+            LLAMA_CHEST.as_slice(),
+        );
+        assert_part(
+            &ADULT_LLAMA_LEFT_CHEST_PART,
+            [5.5, 3.0, 3.0],
+            [0.0, std::f32::consts::FRAC_PI_2, 0.0],
+            LLAMA_CHEST.as_slice(),
+        );
+        assert_eq!(ADULT_LLAMA_PARTS_WITH_CHEST.len(), 8);
+        for (part, expected_offset) in [
+            (&ADULT_LLAMA_PARTS[2], [-3.5, 10.0, 6.0]),
+            (&ADULT_LLAMA_PARTS[3], [3.5, 10.0, 6.0]),
+            (&ADULT_LLAMA_PARTS[4], [-3.5, 10.0, -5.0]),
+            (&ADULT_LLAMA_PARTS[5], [3.5, 10.0, -5.0]),
+        ] {
+            assert_part(
+                part,
+                expected_offset,
+                [0.0, 0.0, 0.0],
+                ADULT_LLAMA_LEG.as_slice(),
+            );
+        }
+
+        assert_eq!(
+            BABY_LLAMA_HEAD[0],
+            ModelCubeDesc {
+                min: [-3.0, -9.0, -4.0],
+                size: [6.0, 11.0, 4.0],
+                color: LLAMA_CREAMY,
+            }
+        );
+        assert_eq!(BABY_LLAMA_PARTS.len(), 6);
+        assert_part(
+            &BABY_LLAMA_PARTS[0],
+            [0.0, 12.0, -4.0],
+            [0.0, 0.0, 0.0],
+            BABY_LLAMA_HEAD.as_slice(),
+        );
+        assert_part(
+            &BABY_LLAMA_PARTS[5],
+            [0.0, 14.0, 2.5],
+            [0.0, 0.0, 0.0],
+            BABY_LLAMA_BODY.as_slice(),
+        );
+        for (part, expected_offset, expected_cubes) in [
+            (
+                &BABY_LLAMA_PARTS[1],
+                [-2.5, 16.5, 4.5],
+                BABY_LLAMA_RIGHT_LEG.as_slice(),
+            ),
+            (
+                &BABY_LLAMA_PARTS[2],
+                [2.5, 16.5, 4.5],
+                BABY_LLAMA_LEFT_LEG.as_slice(),
+            ),
+            (
+                &BABY_LLAMA_PARTS[3],
+                [-2.5, 16.5, -3.5],
+                BABY_LLAMA_RIGHT_LEG.as_slice(),
+            ),
+            (
+                &BABY_LLAMA_PARTS[4],
+                [2.5, 16.5, -3.5],
+                BABY_LLAMA_LEFT_LEG.as_slice(),
+            ),
+        ] {
+            assert_part(part, expected_offset, [0.0, 0.0, 0.0], expected_cubes);
+        }
+    }
+
+    #[test]
+    fn llama_meshes_use_vanilla_body_layer_geometry_and_chest_visibility() {
+        let adult = entity_model_mesh(&[EntityModelInstance::llama(
+            190,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::Llama,
+            LlamaVariant::Creamy,
+            false,
+            false,
+        )]);
+        assert_eq!(adult.opaque_faces, 54);
+        assert_eq!(adult.vertices.len(), 216);
+        assert_eq!(adult.indices.len(), 324);
+
+        let adult_with_chest = entity_model_mesh(&[EntityModelInstance::llama(
+            191,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::Llama,
+            LlamaVariant::Brown,
+            false,
+            true,
+        )]);
+        assert_eq!(adult_with_chest.opaque_faces, 66);
+        assert_eq!(adult_with_chest.vertices.len(), 264);
+        assert_eq!(adult_with_chest.indices.len(), 396);
+        assert!(adult_with_chest
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(LLAMA_BROWN, 0.78)));
+
+        let baby = entity_model_mesh(&[EntityModelInstance::llama(
+            192,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::Llama,
+            LlamaVariant::Gray,
+            true,
+            false,
+        )]);
+        assert_eq!(baby.opaque_faces, 54);
+        assert_eq!(baby.vertices.len(), 216);
+        assert_eq!(baby.indices.len(), 324);
+        assert!(baby
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(LLAMA_GRAY, 0.78)));
+
+        let baby_with_chest_metadata = entity_model_mesh(&[EntityModelInstance::llama(
+            193,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::TraderLlama,
+            LlamaVariant::Gray,
+            true,
+            true,
+        )]);
+        assert_same_geometry(&baby_with_chest_metadata, &baby);
+
+        let trader = entity_model_mesh(&[EntityModelInstance::llama(
+            194,
+            [0.0, 64.0, 0.0],
+            0.0,
+            LlamaModelFamily::TraderLlama,
+            LlamaVariant::Creamy,
+            false,
+            false,
+        )]);
+        assert_same_geometry(&trader, &adult);
+
+        let (adult_min, adult_max) = mesh_extents(&adult);
+        let (baby_min, baby_max) = mesh_extents(&baby);
+        assert!(adult_max[1] > baby_max[1]);
+        assert!(adult_min[2] < baby_min[2]);
+    }
+
+    #[test]
+    fn llama_texture_refs_match_vanilla_renderer() {
+        let cases = [
+            (
+                LlamaVariant::Creamy,
+                false,
+                EntityModelTextureRef {
+                    path: "textures/entity/llama/llama_creamy.png",
+                    size: [128, 64],
+                },
+            ),
+            (
+                LlamaVariant::Creamy,
+                true,
+                EntityModelTextureRef {
+                    path: "textures/entity/llama/llama_creamy_baby.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                LlamaVariant::White,
+                false,
+                EntityModelTextureRef {
+                    path: "textures/entity/llama/llama_white.png",
+                    size: [128, 64],
+                },
+            ),
+            (
+                LlamaVariant::White,
+                true,
+                EntityModelTextureRef {
+                    path: "textures/entity/llama/llama_white_baby.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                LlamaVariant::Brown,
+                false,
+                EntityModelTextureRef {
+                    path: "textures/entity/llama/llama_brown.png",
+                    size: [128, 64],
+                },
+            ),
+            (
+                LlamaVariant::Brown,
+                true,
+                EntityModelTextureRef {
+                    path: "textures/entity/llama/llama_brown_baby.png",
+                    size: [64, 64],
+                },
+            ),
+            (
+                LlamaVariant::Gray,
+                false,
+                EntityModelTextureRef {
+                    path: "textures/entity/llama/llama_gray.png",
+                    size: [128, 64],
+                },
+            ),
+            (
+                LlamaVariant::Gray,
+                true,
+                EntityModelTextureRef {
+                    path: "textures/entity/llama/llama_gray_baby.png",
+                    size: [64, 64],
+                },
+            ),
+        ];
+
+        for (variant, baby, texture) in cases {
+            let llama = EntityModelKind::Llama {
+                family: LlamaModelFamily::Llama,
+                variant,
+                baby,
+                has_chest: false,
+            };
+            let trader = EntityModelKind::Llama {
+                family: LlamaModelFamily::TraderLlama,
+                variant,
+                baby,
+                has_chest: false,
+            };
+            assert_eq!(llama.vanilla_texture_ref(), Some(texture));
+            assert_eq!(trader.vanilla_texture_ref(), Some(texture));
+        }
+    }
+
+    #[test]
     fn villager_adult_model_parts_match_vanilla_26_1_body_layer() {
         assert_eq!(
             ADULT_VILLAGER_HAT[0],
@@ -11497,6 +12161,46 @@ mod tests {
             }
             .model_key(),
             "camel_husk"
+        );
+        assert_eq!(
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::Llama,
+                variant: LlamaVariant::Creamy,
+                baby: false,
+                has_chest: true
+            }
+            .model_key(),
+            "llama_creamy"
+        );
+        assert_eq!(
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::Llama,
+                variant: LlamaVariant::White,
+                baby: true,
+                has_chest: false
+            }
+            .model_key(),
+            "llama_white_baby"
+        );
+        assert_eq!(
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::TraderLlama,
+                variant: LlamaVariant::Brown,
+                baby: false,
+                has_chest: false
+            }
+            .model_key(),
+            "trader_llama_brown"
+        );
+        assert_eq!(
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::TraderLlama,
+                variant: LlamaVariant::Gray,
+                baby: true,
+                has_chest: true
+            }
+            .model_key(),
+            "trader_llama_gray_baby"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");

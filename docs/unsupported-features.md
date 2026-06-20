@@ -233,8 +233,8 @@ When an agent does any of the following, update this file in the same slice:
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/wolf/base-horse/donkey/mule/
-      skeleton-horse/zombie-horse/camel/camel-husk/villager/wandering-trader/
-      zombie and husk/drowned/zombie-villager variants,
+      skeleton-horse/zombie-horse/camel/camel-husk/llama/trader-llama/
+      villager/wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
       zombified-piglin variants, skeleton and stray/parched/wither-skeleton/
       bogged variants, creeper, spider, enderman, iron-golem, snow-golem,
@@ -303,8 +303,8 @@ When an agent does any of the following, update this file in the same slice:
       `MeshTransformer.scaling(1.1F)` root transform and default
       `Variant.WHITE` adult/baby texture references recorded from official
       assets; horse variant textures, markings, armor, saddle,
-      ridden/eat/stand/mouth/tail/walk/head animation, and llama-family
-      model parity remain unsupported
+      ridden/eat/stand/mouth/tail/walk/head animation, and non-equine
+      horse-fallback model parity remain unsupported
     - donkey and mule entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `DonkeyModel`, `BabyDonkeyModel`, and
       `DonkeyRenderer`, including adult `DONKEY_SCALE=0.87F` /
@@ -328,6 +328,14 @@ When an agent does any of the following, update this file in the same slice:
       official camel/camel_baby/camel_husk texture references recorded from
       assets; saddle equipment layers, ridden/sit/dash/idle/walk/head/jump
       animation, lighting, and GPU texture binding remain unsupported
+    - llama and trader llama entities as renderer-owned vanilla 26.1 adult/baby
+      body-layer geometry from `LlamaModel`, `BabyLlamaModel`, and
+      `LlamaRenderer`, including variant texture references, metadata-driven
+      adult chest visibility, baby chest suppression, and the shared
+      `ModelLayers.TRADER_LLAMA` / `TRADER_LLAMA_BABY` body layers; llama
+      decor/body equipment layers, trader llama decor equipment assets, head
+      rotation, walk animation, llama spit projectile model, lighting, and GPU
+      texture binding remain unsupported
     - villager entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `VillagerModel`, `BabyVillagerModel`, and
       `VillagerRenderer`, with the adult `MeshTransformer.scaling(0.9375F)`

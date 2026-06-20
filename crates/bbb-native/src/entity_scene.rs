@@ -1,9 +1,9 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
     ArmorStandModelPose, CamelModelFamily, DonkeyModelFamily, EntityModelInstance, EntityModelKind,
-    HumanoidModelFamily, IllagerModelFamily, PiglinModelFamily, QuadrupedModelFamily, SelectionBox,
-    SelectionOutline, SkeletonModelFamily, UndeadHorseModelFamily, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE,
+    HumanoidModelFamily, IllagerModelFamily, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
+    QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
 
@@ -181,6 +181,7 @@ const ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 8;
 const SLIME_SIZE_DATA_ID: u8 = 16;
 const SLIME_DEFAULT_SIZE: i32 = 1;
 const ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
+const LLAMA_VARIANT_DATA_ID: u8 = 21;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -354,10 +355,11 @@ fn entity_model_kind(
             family: CamelModelFamily::CamelHusk,
             baby: false,
         },
-        VANILLA_ENTITY_TYPE_LLAMA_ID
-        | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
-        | VANILLA_ENTITY_TYPE_NAUTILUS_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
+        VANILLA_ENTITY_TYPE_LLAMA_ID => llama_model_kind(LlamaModelFamily::Llama, data_values),
+        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
+            llama_model_kind(LlamaModelFamily::TraderLlama, data_values)
+        }
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
         VANILLA_ENTITY_TYPE_WOLF_ID => EntityModelKind::Wolf {
@@ -567,6 +569,19 @@ fn undead_horse_model_kind(
     EntityModelKind::UndeadHorse {
         family,
         baby: ageable_baby(values),
+    }
+}
+
+fn llama_model_kind(
+    family: LlamaModelFamily,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> EntityModelKind {
+    let baby = ageable_baby(values);
+    EntityModelKind::Llama {
+        family,
+        variant: LlamaVariant::from_vanilla_id(entity_data_int(values, LLAMA_VARIANT_DATA_ID, 0)),
+        baby,
+        has_chest: !baby && chested_horse_has_chest(values),
     }
 }
 
@@ -1311,7 +1326,7 @@ mod tests {
             }
         );
         assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_LLAMA_ID, &[]),
+            entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
             quadruped(QuadrupedModelFamily::Horse, false)
         );
     }
@@ -1353,7 +1368,79 @@ mod tests {
             }
         );
         assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_NAUTILUS_ID, &[]),
+            quadruped(QuadrupedModelFamily::Horse, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_models_for_llamas() {
+        assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_LLAMA_ID, &[]),
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::Llama,
+                variant: LlamaVariant::Creamy,
+                baby: false,
+                has_chest: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_LLAMA_ID,
+                &[
+                    protocol_int_data(LLAMA_VARIANT_DATA_ID, 2),
+                    protocol_bool_data(ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, true),
+                ]
+            ),
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::Llama,
+                variant: LlamaVariant::Brown,
+                baby: false,
+                has_chest: true
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_LLAMA_ID,
+                &[
+                    protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                    protocol_bool_data(ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, true),
+                    protocol_int_data(LLAMA_VARIANT_DATA_ID, 3),
+                ]
+            ),
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::Llama,
+                variant: LlamaVariant::Gray,
+                baby: true,
+                has_chest: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+                &[protocol_int_data(LLAMA_VARIANT_DATA_ID, 99)]
+            ),
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::TraderLlama,
+                variant: LlamaVariant::Gray,
+                baby: false,
+                has_chest: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+                &[protocol_int_data(LLAMA_VARIANT_DATA_ID, -1)]
+            ),
+            EntityModelKind::Llama {
+                family: LlamaModelFamily::TraderLlama,
+                variant: LlamaVariant::Creamy,
+                baby: false,
+                has_chest: false
+            }
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, &[]),
             quadruped(QuadrupedModelFamily::Horse, false)
         );
     }
