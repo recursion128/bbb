@@ -1,23 +1,24 @@
 use std::collections::BTreeMap;
 
 use anyhow::{anyhow, bail, Result};
-use glam::{EulerRot, Mat4, Vec3};
+use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
 
 use crate::{camera::TerrainBounds, gpu::DEPTH_FORMAT, Renderer};
 
 mod catalog;
+mod geometry;
 mod model_layers;
 
 pub use catalog::*;
 use catalog::{sheep_wool_layer_color, wolf_texture_ref};
+use geometry::*;
 use model_layers::*;
 pub use model_layers::{
     entity_model_texture_refs, sheep_entity_texture_refs, wolf_entity_texture_refs,
 };
 
 const VANILLA_MODEL_ROOT_Y_OFFSET: f32 = 1.501;
-const MODEL_UNIT_SCALE: f32 = 1.0 / 16.0;
 const MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS: f32 = 24.016;
 const VILLAGER_LIKE_SCALE: f32 = 0.9375;
 const HUSK_SCALE: f32 = 1.0625;
@@ -50,83 +51,6 @@ pub(super) struct EntityModelTextureAtlasGpu {
     pub(super) layout: EntityModelTextureAtlasLayout,
 }
 
-#[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-pub(super) struct EntityModelVertex {
-    pub(super) position: [f32; 3],
-    pub(super) color: [f32; 4],
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-pub(super) struct EntityModelTexturedVertex {
-    pub(super) position: [f32; 3],
-    pub(super) uv: [f32; 2],
-    pub(super) tint: [f32; 4],
-}
-
-struct EntityModelMesh {
-    vertices: Vec<EntityModelVertex>,
-    indices: Vec<u32>,
-    opaque_faces: usize,
-}
-
-impl EntityModelMesh {
-    fn new() -> Self {
-        Self {
-            vertices: Vec::new(),
-            indices: Vec::new(),
-            opaque_faces: 0,
-        }
-    }
-}
-
-struct EntityModelTexturedMesh {
-    vertices: Vec<EntityModelTexturedVertex>,
-    indices: Vec<u32>,
-    cutout_faces: usize,
-}
-
-impl EntityModelTexturedMesh {
-    fn new() -> Self {
-        Self {
-            vertices: Vec::new(),
-            indices: Vec::new(),
-            cutout_faces: 0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct ModelPartDesc {
-    pose: PartPose,
-    cubes: &'static [ModelCubeDesc],
-    children: &'static [ModelPartDesc],
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct ModelCubeDesc {
-    min: [f32; 3],
-    size: [f32; 3],
-    color: [f32; 4],
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct TexturedModelPartDesc {
-    pose: PartPose,
-    cubes: &'static [TexturedModelCubeDesc],
-    children: &'static [TexturedModelPartDesc],
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct TexturedModelCubeDesc {
-    min: [f32; 3],
-    size: [f32; 3],
-    uv_size: [f32; 3],
-    tex: [f32; 2],
-    mirror: bool,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EntityModelLayerKind {
     SheepBase,
@@ -146,17 +70,6 @@ struct EntityModelLayerPass {
     collector_order: i32,
     submit_sequence: u32,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct PartPose {
-    offset: [f32; 3],
-    rotation: [f32; 3],
-}
-
-const PART_POSE_ZERO: PartPose = PartPose {
-    offset: [0.0, 0.0, 0.0],
-    rotation: [0.0, 0.0, 0.0],
-};
 
 const ENTITY_MODEL_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 2] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
@@ -1988,101 +1901,6 @@ fn cow_model_parts(variant: CowModelVariant, baby: bool) -> &'static [ModelPartD
     }
 }
 
-fn emit_model_parts(mesh: &mut EntityModelMesh, parts: &[ModelPartDesc], parent_transform: Mat4) {
-    for part in parts {
-        emit_model_part(mesh, part, parent_transform);
-    }
-}
-
-fn emit_model_parts_with_color(
-    mesh: &mut EntityModelMesh,
-    parts: &[ModelPartDesc],
-    parent_transform: Mat4,
-    color: [f32; 4],
-) {
-    for part in parts {
-        emit_model_part_with_color(mesh, part, parent_transform, color);
-    }
-}
-
-fn emit_textured_model_parts(
-    mesh: &mut EntityModelTexturedMesh,
-    parts: &[TexturedModelPartDesc],
-    parent_transform: Mat4,
-    texture: EntityModelTextureRef,
-    uv_rect: EntityModelUvRect,
-    tint: [f32; 4],
-) {
-    for part in parts {
-        emit_textured_model_part(mesh, part, parent_transform, texture, uv_rect, tint);
-    }
-}
-
-fn emit_model_cubes_at_pose(
-    mesh: &mut EntityModelMesh,
-    parent_transform: Mat4,
-    pose: PartPose,
-    cubes: &[ModelCubeDesc],
-) {
-    let transform = parent_transform * part_pose_transform(pose);
-    for cube in cubes {
-        emit_model_cube(mesh, transform, *cube);
-    }
-}
-
-fn emit_model_part(mesh: &mut EntityModelMesh, part: &ModelPartDesc, parent_transform: Mat4) {
-    let transform = parent_transform * part_pose_transform(part.pose);
-    for cube in part.cubes {
-        emit_model_cube(mesh, transform, *cube);
-    }
-    emit_model_parts(mesh, part.children, transform);
-}
-
-fn emit_textured_model_part(
-    mesh: &mut EntityModelTexturedMesh,
-    part: &TexturedModelPartDesc,
-    parent_transform: Mat4,
-    texture: EntityModelTextureRef,
-    uv_rect: EntityModelUvRect,
-    tint: [f32; 4],
-) {
-    let transform = parent_transform * part_pose_transform(part.pose);
-    for cube in part.cubes {
-        emit_textured_model_cube(mesh, transform, *cube, texture, uv_rect, tint);
-    }
-    emit_textured_model_parts(mesh, part.children, transform, texture, uv_rect, tint);
-}
-
-fn emit_model_part_with_color(
-    mesh: &mut EntityModelMesh,
-    part: &ModelPartDesc,
-    parent_transform: Mat4,
-    color: [f32; 4],
-) {
-    let transform = parent_transform * part_pose_transform(part.pose);
-    for cube in part.cubes {
-        emit_model_cube_with_color(mesh, transform, *cube, color);
-    }
-    emit_model_parts_with_color(mesh, part.children, transform, color);
-}
-
-fn emit_model_cube_with_color(
-    mesh: &mut EntityModelMesh,
-    transform: Mat4,
-    cube: ModelCubeDesc,
-    color: [f32; 4],
-) {
-    emit_model_cube(
-        mesh,
-        transform,
-        ModelCubeDesc {
-            min: cube.min,
-            size: cube.size,
-            color,
-        },
-    );
-}
-
 fn entity_model_root_transform(instance: EntityModelInstance) -> Mat4 {
     Mat4::from_translation(Vec3::from_array(instance.position))
         * Mat4::from_rotation_y((180.0 - instance.y_rot).to_radians())
@@ -2109,248 +1927,11 @@ fn boat_model_root_transform(instance: EntityModelInstance) -> Mat4 {
         * Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2)
 }
 
-fn part_pose_transform(pose: PartPose) -> Mat4 {
-    Mat4::from_translation(Vec3::from_array(pose.offset) * MODEL_UNIT_SCALE)
-        * Mat4::from_euler(
-            EulerRot::ZYX,
-            pose.rotation[2],
-            pose.rotation[1],
-            pose.rotation[0],
-        )
-}
-
 fn degrees_to_radians3(rotation: [f32; 3]) -> [f32; 3] {
     [
         rotation[0].to_radians(),
         rotation[1].to_radians(),
         rotation[2].to_radians(),
-    ]
-}
-
-fn emit_model_cube(mesh: &mut EntityModelMesh, transform: Mat4, cube: ModelCubeDesc) {
-    let min = Vec3::from_array(cube.min) * MODEL_UNIT_SCALE;
-    let max = min + Vec3::from_array(cube.size) * MODEL_UNIT_SCALE;
-    emit_model_cube_from_min_max(mesh, transform, min, max, cube.color);
-}
-
-fn emit_textured_model_cube(
-    mesh: &mut EntityModelTexturedMesh,
-    transform: Mat4,
-    cube: TexturedModelCubeDesc,
-    texture: EntityModelTextureRef,
-    uv_rect: EntityModelUvRect,
-    tint: [f32; 4],
-) {
-    let mut min = Vec3::from_array(cube.min) * MODEL_UNIT_SCALE;
-    let mut max = min + Vec3::from_array(cube.size) * MODEL_UNIT_SCALE;
-    if cube.mirror {
-        std::mem::swap(&mut min.x, &mut max.x);
-    }
-    emit_textured_model_cube_from_min_max(mesh, transform, min, max, cube, texture, uv_rect, tint);
-}
-
-fn emit_model_cube_world_units(
-    mesh: &mut EntityModelMesh,
-    transform: Mat4,
-    min: [f32; 3],
-    size: [f32; 3],
-    color: [f32; 4],
-) {
-    let min = Vec3::from_array(min);
-    let max = min + Vec3::from_array(size);
-    emit_model_cube_from_min_max(mesh, transform, min, max, color);
-}
-
-fn emit_model_cube_from_min_max(
-    mesh: &mut EntityModelMesh,
-    transform: Mat4,
-    min: Vec3,
-    max: Vec3,
-    color: [f32; 4],
-) {
-    let corners = [
-        Vec3::new(min.x, min.y, min.z),
-        Vec3::new(max.x, min.y, min.z),
-        Vec3::new(max.x, max.y, min.z),
-        Vec3::new(min.x, max.y, min.z),
-        Vec3::new(min.x, min.y, max.z),
-        Vec3::new(max.x, min.y, max.z),
-        Vec3::new(max.x, max.y, max.z),
-        Vec3::new(min.x, max.y, max.z),
-    ];
-    let faces = [
-        ([4, 0, 1, 5], 0.56),
-        ([2, 3, 7, 6], 1.0),
-        ([0, 3, 2, 1], 0.78),
-        ([5, 6, 7, 4], 0.86),
-        ([0, 4, 7, 3], 0.68),
-        ([1, 2, 6, 5], 0.68),
-    ];
-
-    for (face, shade) in faces {
-        emit_model_face(
-            mesh,
-            face.map(|index| transform.transform_point3(corners[index])),
-            shade_color(color, shade),
-        );
-    }
-}
-
-fn emit_textured_model_cube_from_min_max(
-    mesh: &mut EntityModelTexturedMesh,
-    transform: Mat4,
-    min: Vec3,
-    max: Vec3,
-    cube: TexturedModelCubeDesc,
-    texture: EntityModelTextureRef,
-    uv_rect: EntityModelUvRect,
-    tint: [f32; 4],
-) {
-    let t0 = Vec3::new(min.x, min.y, min.z);
-    let t1 = Vec3::new(max.x, min.y, min.z);
-    let t2 = Vec3::new(max.x, max.y, min.z);
-    let t3 = Vec3::new(min.x, max.y, min.z);
-    let l0 = Vec3::new(min.x, min.y, max.z);
-    let l1 = Vec3::new(max.x, min.y, max.z);
-    let l2 = Vec3::new(max.x, max.y, max.z);
-    let l3 = Vec3::new(min.x, max.y, max.z);
-
-    let width = cube.uv_size[0];
-    let height = cube.uv_size[1];
-    let depth = cube.uv_size[2];
-    let x_tex = cube.tex[0];
-    let y_tex = cube.tex[1];
-    let u0 = x_tex;
-    let u1 = x_tex + depth;
-    let u2 = x_tex + depth + width;
-    let u22 = x_tex + depth + width + width;
-    let u3 = x_tex + depth + width + depth;
-    let u4 = x_tex + depth + width + depth + width;
-    let v0 = y_tex;
-    let v1 = y_tex + depth;
-    let v2 = y_tex + depth + height;
-
-    emit_textured_model_polygon(
-        mesh,
-        [l1, l0, t0, t1].map(|corner| transform.transform_point3(corner)),
-        [u1, v0, u2, v1],
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [t2, t3, l3, l2].map(|corner| transform.transform_point3(corner)),
-        [u2, v1, u22, v0],
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [t0, l0, l3, t3].map(|corner| transform.transform_point3(corner)),
-        [u0, v1, u1, v2],
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [t1, t0, t3, t2].map(|corner| transform.transform_point3(corner)),
-        [u1, v1, u2, v2],
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [l1, t1, t2, l2].map(|corner| transform.transform_point3(corner)),
-        [u2, v1, u3, v2],
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-    emit_textured_model_polygon(
-        mesh,
-        [l0, l1, l2, l3].map(|corner| transform.transform_point3(corner)),
-        [u3, v1, u4, v2],
-        texture,
-        uv_rect,
-        tint,
-        cube.mirror,
-    );
-}
-
-fn emit_textured_model_polygon(
-    mesh: &mut EntityModelTexturedMesh,
-    corners: [Vec3; 4],
-    texture_uv: [f32; 4],
-    texture: EntityModelTextureRef,
-    uv_rect: EntityModelUvRect,
-    tint: [f32; 4],
-    mirror: bool,
-) {
-    let [u0, v0, u1, v1] = texture_uv;
-    let source_uv = [[u1, v0], [u0, v0], [u0, v1], [u1, v1]];
-    let mut vertices = [
-        (corners[0], source_uv[0]),
-        (corners[1], source_uv[1]),
-        (corners[2], source_uv[2]),
-        (corners[3], source_uv[3]),
-    ];
-    if mirror {
-        vertices.reverse();
-    }
-    let base = mesh.vertices.len() as u32;
-    mesh.vertices
-        .extend(vertices.map(|(position, uv)| EntityModelTexturedVertex {
-            position: position.to_array(),
-            uv: atlas_uv(uv, texture, uv_rect),
-            tint,
-        }));
-    mesh.indices
-        .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
-    mesh.cutout_faces += 1;
-}
-
-fn atlas_uv(
-    texture_uv: [f32; 2],
-    texture: EntityModelTextureRef,
-    rect: EntityModelUvRect,
-) -> [f32; 2] {
-    let source = [
-        texture_uv[0] / texture.size[0] as f32,
-        texture_uv[1] / texture.size[1] as f32,
-    ];
-    [
-        rect.min[0] + source[0] * (rect.max[0] - rect.min[0]),
-        rect.min[1] + source[1] * (rect.max[1] - rect.min[1]),
-    ]
-}
-
-fn emit_model_face(mesh: &mut EntityModelMesh, corners: [Vec3; 4], color: [f32; 4]) {
-    let base = mesh.vertices.len() as u32;
-    mesh.vertices
-        .extend(corners.map(|position| EntityModelVertex {
-            position: position.to_array(),
-            color,
-        }));
-    mesh.indices
-        .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
-    mesh.opaque_faces += 1;
-}
-
-fn shade_color(color: [f32; 4], shade: f32) -> [f32; 4] {
-    [
-        (color[0] * shade).clamp(0.0, 1.0),
-        (color[1] * shade).clamp(0.0, 1.0),
-        (color[2] * shade).clamp(0.0, 1.0),
-        color[3].clamp(0.0, 1.0),
     ]
 }
 
