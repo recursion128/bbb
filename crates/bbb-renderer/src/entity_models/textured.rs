@@ -1,10 +1,10 @@
 use super::{
     boat_model_root_transform,
     catalog::{
-        boat_texture_ref, chicken_texture_ref, sheep_wool_layer_color, wolf_texture_ref,
-        BoatModelFamily, ChickenModelVariant, EntityDyeColor, EntityModelInstance, EntityModelKind,
-        EntityModelTextureAtlasEntry, EntityModelTextureAtlasLayout, EntityModelTextureRef,
-        SheepWoolColor,
+        boat_texture_ref, chicken_texture_ref, pig_texture_ref, sheep_wool_layer_color,
+        wolf_texture_ref, BoatModelFamily, ChickenModelVariant, EntityDyeColor,
+        EntityModelInstance, EntityModelKind, EntityModelTextureAtlasEntry,
+        EntityModelTextureAtlasLayout, EntityModelTextureRef, PigModelVariant, SheepWoolColor,
     },
     entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
@@ -15,6 +15,7 @@ use super::{
 pub(super) enum EntityModelLayerKind {
     BoatBase,
     ChickenBase,
+    PigBase,
     SheepBase,
     SheepWool,
     SheepWoolUndercoat,
@@ -42,6 +43,9 @@ pub(super) fn entity_model_textured_mesh(
         match instance.kind {
             EntityModelKind::Chicken { variant, baby } => {
                 emit_chicken_textured_model(&mut mesh, *instance, variant, baby, atlas);
+            }
+            EntityModelKind::Pig { variant, baby } => {
+                emit_pig_textured_model(&mut mesh, *instance, variant, baby, atlas);
             }
             EntityModelKind::Sheep {
                 baby,
@@ -107,6 +111,29 @@ fn emit_chicken_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     for pass in chicken_textured_layer_passes(variant, baby) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
+}
+
+fn emit_pig_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    variant: PigModelVariant,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in pig_textured_layer_passes(variant, baby) {
         let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
             continue;
         };
@@ -194,6 +221,21 @@ pub(super) fn chicken_textured_layer_passes(
         model_layer: chicken_model_layer(variant, baby),
         texture: chicken_texture_ref(variant, baby),
         parts: chicken_textured_model_parts(variant, baby),
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(super) fn pig_textured_layer_passes(
+    variant: PigModelVariant,
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::PigBase,
+        model_layer: pig_model_layer(variant, baby),
+        texture: pig_texture_ref(variant, baby),
+        parts: pig_textured_model_parts(variant, baby),
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,
@@ -363,6 +405,25 @@ fn chicken_textured_model_parts(
         (_, true) => &BABY_CHICKEN_TEXTURED_PARTS,
         (ChickenModelVariant::Cold, false) => &COLD_CHICKEN_TEXTURED_PARTS,
         (_, false) => &ADULT_CHICKEN_TEXTURED_PARTS,
+    }
+}
+
+fn pig_model_layer(variant: PigModelVariant, baby: bool) -> &'static str {
+    match (variant, baby) {
+        (_, true) => MODEL_LAYER_PIG_BABY,
+        (PigModelVariant::Cold, false) => MODEL_LAYER_COLD_PIG,
+        (_, false) => MODEL_LAYER_PIG,
+    }
+}
+
+fn pig_textured_model_parts(
+    variant: PigModelVariant,
+    baby: bool,
+) -> &'static [TexturedModelPartDesc] {
+    match (variant, baby) {
+        (_, true) => &BABY_PIG_TEXTURED_PARTS,
+        (PigModelVariant::Cold, false) => &COLD_PIG_TEXTURED_PARTS,
+        (_, false) => &ADULT_PIG_TEXTURED_PARTS,
     }
 }
 

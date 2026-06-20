@@ -2297,6 +2297,149 @@ fn pig_texture_refs_match_vanilla_variant_assets() {
 }
 
 #[test]
+fn pig_textured_layer_passes_match_vanilla_renderer_model_choice() {
+    let temperate = pig_textured_layer_passes(PigModelVariant::Temperate, false);
+    assert_eq!(temperate.len(), 1);
+    assert_eq!(temperate[0].kind, EntityModelLayerKind::PigBase);
+    assert_eq!(temperate[0].model_layer, MODEL_LAYER_PIG);
+    assert_eq!(temperate[0].texture, PIG_TEMPERATE_TEXTURE_REF);
+    assert_eq!(temperate[0].parts, ADULT_PIG_TEXTURED_PARTS.as_slice());
+    assert_eq!(temperate[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(
+        (temperate[0].collector_order, temperate[0].submit_sequence),
+        (0, 0)
+    );
+
+    let warm_baby = pig_textured_layer_passes(PigModelVariant::Warm, true);
+    assert_eq!(warm_baby[0].model_layer, MODEL_LAYER_PIG_BABY);
+    assert_eq!(warm_baby[0].texture, PIG_WARM_BABY_TEXTURE_REF);
+    assert_eq!(warm_baby[0].parts, BABY_PIG_TEXTURED_PARTS.as_slice());
+
+    let cold_adult = pig_textured_layer_passes(PigModelVariant::Cold, false);
+    assert_eq!(cold_adult[0].model_layer, MODEL_LAYER_COLD_PIG);
+    assert_eq!(cold_adult[0].texture, PIG_COLD_TEXTURE_REF);
+    assert_eq!(cold_adult[0].parts, COLD_PIG_TEXTURED_PARTS.as_slice());
+}
+
+#[test]
+fn pig_textured_model_parts_match_vanilla_model_layer_uv_sources() {
+    assert_eq!(MODEL_LAYER_PIG, "minecraft:pig#main");
+    assert_eq!(MODEL_LAYER_PIG_BABY, "minecraft:pig_baby#main");
+    assert_eq!(MODEL_LAYER_COLD_PIG, "minecraft:cold_pig#main");
+    assert_eq!(ADULT_PIG_TEXTURED_PARTS.len(), 6);
+    assert_eq!(COLD_PIG_TEXTURED_PARTS.len(), 6);
+    assert_eq!(BABY_PIG_TEXTURED_PARTS.len(), 6);
+    assert_eq!(
+        ADULT_PIG_TEXTURED_HEAD[0],
+        TexturedModelCubeDesc {
+            min: [-4.0, -4.0, -8.0],
+            size: [8.0, 8.0, 8.0],
+            uv_size: [8.0, 8.0, 8.0],
+            tex: [0.0, 0.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(ADULT_PIG_TEXTURED_HEAD[1].tex, [16.0, 16.0]);
+    assert_eq!(ADULT_PIG_TEXTURED_BODY[0].tex, [28.0, 8.0]);
+    assert_eq!(
+        COLD_PIG_TEXTURED_BODY[1],
+        TexturedModelCubeDesc {
+            min: [-5.5, -10.5, -7.5],
+            size: [11.0, 17.0, 9.0],
+            uv_size: [10.0, 16.0, 8.0],
+            tex: [28.0, 32.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(
+        BABY_PIG_TEXTURED_HEAD[0],
+        TexturedModelCubeDesc {
+            min: [-3.525, -5.025, -5.025],
+            size: [7.05, 6.05, 6.05],
+            uv_size: [7.0, 6.0, 6.0],
+            tex: [0.0, 15.0],
+            mirror: false,
+        }
+    );
+    assert_eq!(BABY_PIG_TEXTURED_HEAD[1].tex, [6.0, 27.0]);
+    assert_eq!(BABY_PIG_TEXTURED_RIGHT_FRONT_LEG[0].tex, [23.0, 0.0]);
+    assert_eq!(BABY_PIG_TEXTURED_RIGHT_HIND_LEG[0].tex, [23.0, 4.0]);
+    assert_eq!(ADULT_PIG_TEXTURED_PARTS[0].pose, ADULT_PIG_PARTS[0].pose);
+    assert_eq!(COLD_PIG_TEXTURED_PARTS[1].pose, COLD_PIG_PARTS[1].pose);
+    assert_eq!(BABY_PIG_TEXTURED_PARTS[1].pose, BABY_PIG_PARTS[1].pose);
+}
+
+#[test]
+fn entity_texture_atlas_stitches_official_pig_png_slots() {
+    let images = pig_texture_images();
+
+    let (layout, rgba) = build_entity_model_texture_atlas(&images).unwrap();
+
+    assert_eq!(layout.width, 64);
+    assert_eq!(layout.height, 288);
+    assert_eq!(
+        layout
+            .entries
+            .iter()
+            .map(|entry| entry.texture.path)
+            .collect::<Vec<_>>(),
+        vec![
+            "textures/entity/pig/pig_temperate.png",
+            "textures/entity/pig/pig_temperate_baby.png",
+            "textures/entity/pig/pig_warm.png",
+            "textures/entity/pig/pig_warm_baby.png",
+            "textures/entity/pig/pig_cold.png",
+            "textures/entity/pig/pig_cold_baby.png",
+        ]
+    );
+    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
+    assert_close2(layout.entries[0].uv.max, [1.0, 64.0 / 288.0]);
+    assert_close2(layout.entries[1].uv.min, [0.0, 64.0 / 288.0]);
+    assert_close2(layout.entries[1].uv.max, [0.5, 96.0 / 288.0]);
+    assert_close2(layout.entries[4].uv.min, [0.0, 192.0 / 288.0]);
+    assert_close2(layout.entries[4].uv.max, [1.0, 256.0 / 288.0]);
+    let warm_baby_first_pixel = rgba_offset(layout.width, 160, 0, "test").unwrap();
+    assert_eq!(
+        &rgba[warm_baby_first_pixel..warm_baby_first_pixel + 4],
+        &[3; 4]
+    );
+    let cold_first_pixel = rgba_offset(layout.width, 192, 0, "test").unwrap();
+    assert_eq!(&rgba[cold_first_pixel..cold_first_pixel + 4], &[4; 4]);
+}
+
+#[test]
+fn pig_textured_mesh_uses_vanilla_uvs_tints_and_variant_textures() {
+    let (atlas, _) = build_entity_model_texture_atlas(&pig_texture_images()).unwrap();
+    let mesh = entity_model_textured_mesh(
+        &[
+            EntityModelInstance::pig(
+                501,
+                [0.0, 64.0, 0.0],
+                0.0,
+                PigModelVariant::Temperate,
+                false,
+            ),
+            EntityModelInstance::pig(502, [1.0, 64.0, 0.0], 0.0, PigModelVariant::Cold, false),
+            EntityModelInstance::pig(503, [2.0, 64.0, 0.0], 0.0, PigModelVariant::Warm, true),
+        ],
+        &atlas,
+    );
+
+    assert_eq!(mesh.cutout_faces, 132);
+    assert_eq!(mesh.vertices.len(), 528);
+    assert_eq!(mesh.indices.len(), 792);
+    assert_close2(mesh.vertices[0].uv, [16.0 / 64.0, 0.0]);
+    assert_eq!(mesh.vertices[0].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_close2(mesh.vertices[168].uv, [16.0 / 64.0, 192.0 / 288.0]);
+    assert_eq!(mesh.vertices[168].tint, [1.0, 1.0, 1.0, 1.0]);
+    assert_close2(mesh.vertices[360].uv, [16.0 / 64.0, 160.0 / 288.0]);
+    assert_eq!(mesh.vertices[360].tint, [1.0, 1.0, 1.0, 1.0]);
+    let (min, max) = textured_mesh_extents(&mesh);
+    assert!(max[0] - min[0] > 2.0);
+    assert_close3([min[1], max[1], max[2] - min[2]], [64.001, 65.001, 1.5]);
+}
+
+#[test]
 fn cow_adult_model_parts_match_vanilla_26_1_body_layer() {
     assert_eq!(
         ADULT_COW_HEAD,
@@ -3443,7 +3586,14 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let sheep = EntityModelInstance::sheep(304, [0.0, 64.0, 0.0], 0.0, false);
     let wolf = EntityModelInstance::wolf(305, [2.0, 64.0, 0.0], 0.0, false);
     let boat = EntityModelInstance::boat(306, [4.0, 64.0, 0.0], 0.0, BoatModelFamily::Oak, true);
-    let colored = entity_model_colored_runtime_mesh(&[chicken, sheep, wolf, boat]);
+    let pig = EntityModelInstance::pig(
+        307,
+        [6.0, 64.0, 0.0],
+        0.0,
+        PigModelVariant::Temperate,
+        false,
+    );
+    let colored = entity_model_colored_runtime_mesh(&[chicken, sheep, wolf, boat, pig]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
     let legacy_chicken_geometry_guard = entity_model_mesh(&[chicken]);
@@ -3454,6 +3604,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_wolf_geometry_guard.vertices.is_empty());
     let legacy_boat_geometry_guard = entity_model_mesh(&[boat]);
     assert!(!legacy_boat_geometry_guard.vertices.is_empty());
+    let legacy_pig_geometry_guard = entity_model_mesh(&[pig]);
+    assert!(!legacy_pig_geometry_guard.vertices.is_empty());
 }
 
 #[test]
@@ -7767,6 +7919,17 @@ fn wolf_texture_images() -> Vec<EntityModelTextureImage> {
 
 fn chicken_texture_images() -> Vec<EntityModelTextureImage> {
     chicken_entity_texture_refs()
+        .iter()
+        .enumerate()
+        .map(|(index, texture)| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![index as u8; len])
+        })
+        .collect()
+}
+
+fn pig_texture_images() -> Vec<EntityModelTextureImage> {
+    pig_entity_texture_refs()
         .iter()
         .enumerate()
         .map(|(index, texture)| {

@@ -1476,32 +1476,14 @@ fn pig_model_key(variant: PigModelVariant, baby: bool) -> &'static str {
     }
 }
 
-fn pig_texture_ref(variant: PigModelVariant, baby: bool) -> EntityModelTextureRef {
+pub(super) fn pig_texture_ref(variant: PigModelVariant, baby: bool) -> EntityModelTextureRef {
     match (variant, baby) {
-        (PigModelVariant::Temperate, false) => EntityModelTextureRef {
-            path: "textures/entity/pig/pig_temperate.png",
-            size: [64, 64],
-        },
-        (PigModelVariant::Temperate, true) => EntityModelTextureRef {
-            path: "textures/entity/pig/pig_temperate_baby.png",
-            size: [32, 32],
-        },
-        (PigModelVariant::Warm, false) => EntityModelTextureRef {
-            path: "textures/entity/pig/pig_warm.png",
-            size: [64, 64],
-        },
-        (PigModelVariant::Warm, true) => EntityModelTextureRef {
-            path: "textures/entity/pig/pig_warm_baby.png",
-            size: [32, 32],
-        },
-        (PigModelVariant::Cold, false) => EntityModelTextureRef {
-            path: "textures/entity/pig/pig_cold.png",
-            size: [64, 64],
-        },
-        (PigModelVariant::Cold, true) => EntityModelTextureRef {
-            path: "textures/entity/pig/pig_cold_baby.png",
-            size: [32, 32],
-        },
+        (PigModelVariant::Temperate, false) => PIG_TEMPERATE_TEXTURE_REF,
+        (PigModelVariant::Temperate, true) => PIG_TEMPERATE_BABY_TEXTURE_REF,
+        (PigModelVariant::Warm, false) => PIG_WARM_TEXTURE_REF,
+        (PigModelVariant::Warm, true) => PIG_WARM_BABY_TEXTURE_REF,
+        (PigModelVariant::Cold, false) => PIG_COLD_TEXTURE_REF,
+        (PigModelVariant::Cold, true) => PIG_COLD_BABY_TEXTURE_REF,
     }
 }
 

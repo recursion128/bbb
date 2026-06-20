@@ -296,6 +296,49 @@ pub fn chicken_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &CHICKEN_ENTITY_TEXTURE_REFS
 }
 
+pub(super) const PIG_TEMPERATE_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/pig/pig_temperate.png",
+    size: [64, 64],
+};
+
+pub(super) const PIG_TEMPERATE_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/pig/pig_temperate_baby.png",
+    size: [32, 32],
+};
+
+pub(super) const PIG_WARM_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/pig/pig_warm.png",
+    size: [64, 64],
+};
+
+pub(super) const PIG_WARM_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/pig/pig_warm_baby.png",
+    size: [32, 32],
+};
+
+pub(super) const PIG_COLD_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/pig/pig_cold.png",
+    size: [64, 64],
+};
+
+pub(super) const PIG_COLD_BABY_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/pig/pig_cold_baby.png",
+    size: [32, 32],
+};
+
+pub(super) const PIG_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 6] = [
+    PIG_TEMPERATE_TEXTURE_REF,
+    PIG_TEMPERATE_BABY_TEXTURE_REF,
+    PIG_WARM_TEXTURE_REF,
+    PIG_WARM_BABY_TEXTURE_REF,
+    PIG_COLD_TEXTURE_REF,
+    PIG_COLD_BABY_TEXTURE_REF,
+];
+
+pub fn pig_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &PIG_ENTITY_TEXTURE_REFS
+}
+
 pub(super) const BOAT_ACACIA_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/boat/acacia.png",
     size: [128, 64],
@@ -464,7 +507,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(super) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 39] = [
+pub(super) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 45] = [
     SHEEP_TEXTURE_REF,
     SHEEP_BABY_TEXTURE_REF,
     SHEEP_WOOL_UNDERCOAT_TEXTURE_REF,
@@ -484,6 +527,12 @@ pub(super) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 39] = [
     CHICKEN_WARM_BABY_TEXTURE_REF,
     CHICKEN_COLD_TEXTURE_REF,
     CHICKEN_COLD_BABY_TEXTURE_REF,
+    PIG_TEMPERATE_TEXTURE_REF,
+    PIG_TEMPERATE_BABY_TEXTURE_REF,
+    PIG_WARM_TEXTURE_REF,
+    PIG_WARM_BABY_TEXTURE_REF,
+    PIG_COLD_TEXTURE_REF,
+    PIG_COLD_BABY_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,
@@ -4012,6 +4061,220 @@ pub(super) const PARCHED_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &PARCHED_LEG,
+        children: &[],
+    },
+];
+
+pub(super) const MODEL_LAYER_PIG: &str = "minecraft:pig#main";
+pub(super) const MODEL_LAYER_PIG_BABY: &str = "minecraft:pig_baby#main";
+pub(super) const MODEL_LAYER_COLD_PIG: &str = "minecraft:cold_pig#main";
+
+pub(super) const ADULT_PIG_TEXTURED_HEAD: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-4.0, -4.0, -8.0],
+        size: [8.0, 8.0, 8.0],
+        uv_size: [8.0, 8.0, 8.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-2.0, 0.0, -9.0],
+        size: [4.0, 3.0, 1.0],
+        uv_size: [4.0, 3.0, 1.0],
+        tex: [16.0, 16.0],
+        mirror: false,
+    },
+];
+
+pub(super) const ADULT_PIG_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-5.0, -10.0, -7.0],
+    size: [10.0, 16.0, 8.0],
+    uv_size: [10.0, 16.0, 8.0],
+    tex: [28.0, 8.0],
+    mirror: false,
+}];
+
+pub(super) const COLD_PIG_TEXTURED_BODY: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-5.0, -10.0, -7.0],
+        size: [10.0, 16.0, 8.0],
+        uv_size: [10.0, 16.0, 8.0],
+        tex: [28.0, 8.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-5.5, -10.5, -7.5],
+        size: [11.0, 17.0, 9.0],
+        uv_size: [10.0, 16.0, 8.0],
+        tex: [28.0, 32.0],
+        mirror: false,
+    },
+];
+
+pub(super) const ADULT_PIG_TEXTURED_LEG: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-2.0, 0.0, -2.0],
+    size: [4.0, 6.0, 4.0],
+    uv_size: [4.0, 6.0, 4.0],
+    tex: [0.0, 16.0],
+    mirror: false,
+}];
+
+pub(super) const ADULT_PIG_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: ADULT_PIG_PARTS[0].pose,
+        cubes: &ADULT_PIG_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_PIG_PARTS[1].pose,
+        cubes: &ADULT_PIG_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_PIG_PARTS[2].pose,
+        cubes: &ADULT_PIG_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_PIG_PARTS[3].pose,
+        cubes: &ADULT_PIG_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_PIG_PARTS[4].pose,
+        cubes: &ADULT_PIG_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: ADULT_PIG_PARTS[5].pose,
+        cubes: &ADULT_PIG_TEXTURED_LEG,
+        children: &[],
+    },
+];
+
+pub(super) const COLD_PIG_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: COLD_PIG_PARTS[0].pose,
+        cubes: &ADULT_PIG_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COLD_PIG_PARTS[1].pose,
+        cubes: &COLD_PIG_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COLD_PIG_PARTS[2].pose,
+        cubes: &ADULT_PIG_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COLD_PIG_PARTS[3].pose,
+        cubes: &ADULT_PIG_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COLD_PIG_PARTS[4].pose,
+        cubes: &ADULT_PIG_TEXTURED_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: COLD_PIG_PARTS[5].pose,
+        cubes: &ADULT_PIG_TEXTURED_LEG,
+        children: &[],
+    },
+];
+
+pub(super) const BABY_PIG_TEXTURED_BODY: [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-3.5, -3.0, -4.5],
+    size: [7.0, 6.0, 9.0],
+    uv_size: [7.0, 6.0, 9.0],
+    tex: [0.0, 0.0],
+    mirror: false,
+}];
+
+pub(super) const BABY_PIG_TEXTURED_HEAD: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-3.525, -5.025, -5.025],
+        size: [7.05, 6.05, 6.05],
+        uv_size: [7.0, 6.0, 6.0],
+        tex: [0.0, 15.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-1.515, -1.99, -6.015],
+        size: [3.03, 2.03, 1.03],
+        uv_size: [3.0, 2.0, 1.0],
+        tex: [6.0, 27.0],
+        mirror: false,
+    },
+];
+
+pub(super) const BABY_PIG_TEXTURED_LEFT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 2.0, 2.0],
+        uv_size: [2.0, 2.0, 2.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    }];
+
+pub(super) const BABY_PIG_TEXTURED_RIGHT_FRONT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 2.0, 2.0],
+        uv_size: [2.0, 2.0, 2.0],
+        tex: [23.0, 0.0],
+        mirror: false,
+    }];
+
+pub(super) const BABY_PIG_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 2.0, 2.0],
+        uv_size: [2.0, 2.0, 2.0],
+        tex: [0.0, 4.0],
+        mirror: false,
+    }];
+
+pub(super) const BABY_PIG_TEXTURED_RIGHT_HIND_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-1.0, 0.0, -1.0],
+        size: [2.0, 2.0, 2.0],
+        uv_size: [2.0, 2.0, 2.0],
+        tex: [23.0, 4.0],
+        mirror: false,
+    }];
+
+pub(super) const BABY_PIG_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: BABY_PIG_PARTS[0].pose,
+        cubes: &BABY_PIG_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_PIG_PARTS[1].pose,
+        cubes: &BABY_PIG_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_PIG_PARTS[2].pose,
+        cubes: &BABY_PIG_TEXTURED_LEFT_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_PIG_PARTS[3].pose,
+        cubes: &BABY_PIG_TEXTURED_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_PIG_PARTS[4].pose,
+        cubes: &BABY_PIG_TEXTURED_LEFT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: BABY_PIG_PARTS[5].pose,
+        cubes: &BABY_PIG_TEXTURED_RIGHT_HIND_LEG,
         children: &[],
     },
 ];

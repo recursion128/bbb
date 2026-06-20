@@ -330,11 +330,12 @@ When an agent does any of the following, update this file in the same slice:
       model reuse, cold adult body overlay geometry, baked baby
       `CubeDeformation` bounds, metadata-driven temperate/warm/cold variant
       projection through the server-sent `minecraft:pig_variant` registry
-      order, official adult/baby variant texture references, and vanilla
-      fallback to temperate when no variant metadata is present; saddle
-      equipment layer, boost/ridden/leg/head animation, variant sound metadata,
-      custom/datapack pig variant asset decoding, lighting, and GPU texture
-      binding remain unsupported
+      order, official adult/baby variant texture references, vanilla fallback
+      to temperate when no variant metadata is present, texture-backed base
+      layer pass emission, adult/baby/cold model-layer selection, and official
+      PNG atlas upload/bind/sample path; saddle equipment layer,
+      boost/ridden/leg/head animation, variant sound metadata, custom/datapack
+      pig variant asset decoding, and lighting remain unsupported
     - cow entities as renderer-owned vanilla 26.1 `CowModel`, `WarmCowModel`,
       `ColdCowModel`, and `BabyCowModel` body-layer geometry from `CowModel`,
       `WarmCowModel`, `ColdCowModel`, `BabyCowModel`, `CowRenderer`,
