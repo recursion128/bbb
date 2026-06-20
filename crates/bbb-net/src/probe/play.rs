@@ -583,12 +583,12 @@ mod tests {
         ContainerSetSlot, CookieRequest, Cooldown, CustomChatCompletions,
         CustomChatCompletionsAction, CustomPayload, CustomPayloadBody, CustomReportDetails,
         DamageEvent, DebugBlockValue, DebugChunkValue, DebugEntityValue, DebugEvent, DebugSample,
-        DeleteChat, DialogHolder, Difficulty, DisguisedChat, EntityAnchor, EntityAnimation,
-        EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove, EntityPositionSync,
-        EquipmentSlot, EquipmentSlotUpdate, Explosion, FilterMask, FilterMaskKind,
-        ForgetLevelChunk, GameEvent, GameProfile, GameProfileProperty, GameRuleValue,
-        GameRuleValues, GameTestHighlightPos, GameType, HurtAnimation, IngredientSummary,
-        InitializeBorder, InteractionHand, ItemCostSummary, ItemStackSummary,
+        DeleteChat, DialogHolder, Difficulty, Disconnect, DisguisedChat, EntityAnchor,
+        EntityAnimation, EntityDataValue, EntityDataValueKind, EntityEvent, EntityMove,
+        EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, Explosion, FilterMask,
+        FilterMaskKind, ForgetLevelChunk, GameEvent, GameProfile, GameProfileProperty,
+        GameRuleValue, GameRuleValues, GameTestHighlightPos, GameType, HurtAnimation,
+        IngredientSummary, InitializeBorder, InteractionHand, ItemCostSummary, ItemStackSummary,
         LevelChunkBlockEntity, LevelChunkData, LevelChunkWithLight, LevelEvent, LevelParticles,
         LightUpdate, LightUpdateData, MapColorPatch, MapDecoration, MapItemData, MerchantOffer,
         MerchantOffers, MessageSignature, MinecartStep, MobEffectFlags, MountScreenOpen,
@@ -4588,6 +4588,53 @@ mod tests {
         assert_eq!(report.last_unsupported_packet_id, Some(0x7e));
         assert_eq!(report.last_unsupported_packet_len, Some(9));
         assert_eq!(report.world_counters.play_logins_received, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_bundle_delimiter_is_transport_noop() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Play;
+
+        let first_chunk = probe
+            .handle_play_packet(PlayClientbound::BundleDelimiter)
+            .await
+            .unwrap();
+
+        assert_eq!(first_chunk, None);
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "bundle delimiter must not send serverbound packets"
+        );
+
+        let report = probe.finish(1, ChunkPos { x: 0, z: 0 });
+        assert_eq!(report.unsupported_packets, 0);
+        assert_eq!(report.world_counters.play_logins_received, 0);
+    }
+
+    #[tokio::test]
+    async fn probe_play_disconnect_returns_disconnect_error() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Play;
+
+        let err = probe
+            .handle_play_packet(PlayClientbound::Disconnect(Disconnect {
+                reason: "Kicked".to_string(),
+                raw_reason: Vec::new(),
+            }))
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.to_string(), "play disconnected: Kicked");
+        assert!(
+            timeout(Duration::from_millis(50), server.read_packet())
+                .await
+                .is_err(),
+            "disconnect handling must not send serverbound packets"
+        );
     }
 
     fn probe_recipe_entry(id: i32, notification: bool, highlight: bool) -> RecipeBookAddEntry {

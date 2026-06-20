@@ -1375,6 +1375,76 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn play_bundle_delimiter_is_transport_noop() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        stream
+            .handle_play_packet(PlayClientbound::BundleDelimiter)
+            .await
+            .unwrap();
+
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+        assert!(timeout(Duration::from_millis(50), events_rx.recv())
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn play_disconnect_packet_returns_disconnect_error() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_loaded_sent: false,
+            player_position_state: PlayerPositionState::default(),
+            play_tick: None,
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let err = stream
+            .handle_play_packet(PlayClientbound::Disconnect(packets::Disconnect {
+                reason: "Kicked".to_string(),
+                raw_reason: Vec::new(),
+            }))
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.to_string(), "play disconnected: Kicked");
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
+        assert!(timeout(Duration::from_millis(50), events_rx.recv())
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
     async fn play_player_position_sends_loaded_after_first_position_sync_only() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
