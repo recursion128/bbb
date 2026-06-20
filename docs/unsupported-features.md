@@ -231,7 +231,8 @@ When an agent does any of the following, update this file in the same slice:
     - entity bounds
     - dropped-item icons
   - Extract complete entity presentation data:
-    - remaining models beyond the current chicken adult/baby cuboid model
+    - precise vanilla meshes and textures beyond the current chicken cuboids,
+      primitive entity model families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -264,9 +265,16 @@ When an agent does any of the following, update this file in the same slice:
     - chicken entities as renderer-owned vanilla adult/baby cuboid model
       geometry, projected from canonical world entity state and rendered with
       temporary vertex colors
+    - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
+      renderer model key; unknown future ids use an explicit
+      `todo_unknown_entity_type_bounds` placeholder
+    - primitive renderer-owned model families for humanoids, quadrupeds,
+      creepers, minecarts, boats, and chest boats, plus named placeholder bounds
+      for remaining entity types
   - Backend GPU resources stay outside `WorldStore`.
-  - Full entity presentation remains phase 6 work, including chicken texture
-    assets, variants, animation, lighting, and all non-chicken entity models.
+  - Full entity presentation remains phase 6 work, including texture assets,
+    variants, equipment, skins, animation, lighting, and precise vanilla mesh
+    parity for primitive/placeholder entity families.
 
 ### Audio Runtime Parity
 
