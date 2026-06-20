@@ -68,17 +68,19 @@ pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
 mod boat;
 mod cow;
+mod creeper;
 mod player;
 mod textures;
 
 pub(super) use boat::*;
 pub(super) use cow::*;
+pub(super) use creeper::*;
 pub(super) use player::*;
 pub(super) use textures::*;
 pub use textures::{
     boat_entity_texture_refs, chicken_entity_texture_refs, cow_entity_texture_refs,
-    entity_model_texture_refs, pig_entity_texture_refs, player_entity_texture_refs,
-    sheep_entity_texture_refs, wolf_entity_texture_refs,
+    creeper_entity_texture_refs, entity_model_texture_refs, pig_entity_texture_refs,
+    player_entity_texture_refs, sheep_entity_texture_refs, wolf_entity_texture_refs,
 };
 
 pub(super) const ARMOR_STAND_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
@@ -6396,76 +6398,6 @@ pub(super) const BABY_VILLAGER_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &BABY_VILLAGER_BB_MAIN,
-        children: &[],
-    },
-];
-
-pub(super) const CREEPER_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, -8.0, -4.0],
-    size: [8.0, 8.0, 8.0],
-    color: CREEPER_GREEN,
-}];
-
-pub(super) const CREEPER_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 0.0, -2.0],
-    size: [8.0, 12.0, 4.0],
-    color: CREEPER_GREEN,
-}];
-
-pub(super) const CREEPER_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 0.0, -2.0],
-    size: [4.0, 6.0, 4.0],
-    color: CREEPER_GREEN,
-}];
-
-// Vanilla 26.1 CreeperModel.createBodyLayer(CubeDeformation.NONE).
-pub(super) const CREEPER_PARTS: [ModelPartDesc; 6] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 6.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 6.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 18.0, 4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 18.0, 4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.0, 18.0, -4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.0, 18.0, -4.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &CREEPER_LEG,
         children: &[],
     },
 ];

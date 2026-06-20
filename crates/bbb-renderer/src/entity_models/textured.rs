@@ -18,6 +18,7 @@ pub(super) enum EntityModelLayerKind {
     BoatBase,
     ChickenBase,
     CowBase,
+    CreeperBase,
     PigBase,
     PlayerBase,
     SheepBase,
@@ -53,6 +54,9 @@ pub(super) fn entity_model_textured_mesh(
             }
             EntityModelKind::Cow { variant, baby } => {
                 emit_cow_textured_model(&mut mesh, *instance, variant, baby, atlas);
+            }
+            EntityModelKind::Creeper => {
+                emit_creeper_textured_model(&mut mesh, *instance, atlas);
             }
             EntityModelKind::Player { slim } => {
                 emit_player_textured_model(&mut mesh, *instance, slim, atlas);
@@ -167,6 +171,27 @@ fn emit_cow_textured_model(
 ) {
     let transform = entity_model_root_transform(instance);
     for pass in cow_textured_layer_passes(variant, baby) {
+        let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
+            continue;
+        };
+        emit_textured_model_parts(
+            mesh,
+            pass.parts,
+            transform,
+            pass.texture,
+            entry.uv,
+            pass.tint,
+        );
+    }
+}
+
+fn emit_creeper_textured_model(
+    mesh: &mut EntityModelTexturedMesh,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = entity_model_root_transform(instance);
+    for pass in creeper_textured_layer_passes() {
         let Some(entry) = entity_model_texture_atlas_entry(atlas, pass.texture) else {
             continue;
         };
@@ -306,6 +331,18 @@ pub(super) fn cow_textured_layer_passes(
         model_layer: cow_model_layer(variant, baby),
         texture: cow_texture_ref(variant, baby),
         parts: cow_textured_model_parts(variant, baby),
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(super) fn creeper_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::CreeperBase,
+        model_layer: MODEL_LAYER_CREEPER,
+        texture: CREEPER_TEXTURE_REF,
+        parts: &CREEPER_TEXTURED_PARTS,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,
         submit_sequence: 0,

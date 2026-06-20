@@ -138,7 +138,11 @@ fn entity_model_mesh_with_options(
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
             }
-            EntityModelKind::Creeper => emit_creeper_model(&mut mesh, *instance),
+            EntityModelKind::Creeper => {
+                if !skip_texture_backed_entities {
+                    emit_creeper_model(&mut mesh, *instance);
+                }
+            }
             EntityModelKind::Spider => emit_spider_model(&mut mesh, *instance),
             EntityModelKind::CaveSpider => emit_cave_spider_model(&mut mesh, *instance),
             EntityModelKind::Enderman => emit_enderman_model(&mut mesh, *instance),

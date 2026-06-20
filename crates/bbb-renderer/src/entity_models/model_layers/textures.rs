@@ -569,7 +569,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 53] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 54] = [
     PLAYER_WIDE_STEVE_TEXTURE_REF,
     PLAYER_SLIM_STEVE_TEXTURE_REF,
     SHEEP_TEXTURE_REF,
@@ -603,6 +603,7 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     COW_WARM_BABY_TEXTURE_REF,
     COW_COLD_TEXTURE_REF,
     COW_COLD_BABY_TEXTURE_REF,
+    CREEPER_TEXTURE_REF,
     BOAT_ACACIA_TEXTURE_REF,
     CHEST_BOAT_ACACIA_TEXTURE_REF,
     BOAT_BAMBOO_TEXTURE_REF,
@@ -784,6 +785,13 @@ pub(in crate::entity_models) const CREEPER_TEXTURE_REF: EntityModelTextureRef =
         path: "textures/entity/creeper/creeper.png",
         size: [64, 32],
     };
+
+pub(in crate::entity_models) const CREEPER_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
+    [CREEPER_TEXTURE_REF];
+
+pub fn creeper_entity_texture_refs() -> &'static [EntityModelTextureRef] {
+    &CREEPER_ENTITY_TEXTURE_REFS
+}
 
 pub(in crate::entity_models) const SPIDER_TEXTURE_REF: EntityModelTextureRef =
     EntityModelTextureRef {

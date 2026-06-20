@@ -486,8 +486,11 @@ When an agent does any of the following, update this file in the same slice:
       GPU texture binding remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
-      official `textures/entity/creeper/creeper.png` texture reference recorded
-      but not yet bound by the GPU entity model pipeline
+      official `textures/entity/creeper/creeper.png` texture reference,
+      `ModelLayers.CREEPER` selection, texture-backed base layer pass emission,
+      and official PNG atlas upload/bind/sample path; powered armor layer,
+      swelling scale, white overlay flash, head/walk animation, and lighting
+      remain unsupported
     - base spider entities as renderer-owned vanilla 26.1
       `SpiderModel.createSpiderBodyLayer()` geometry, with the official
       `textures/entity/spider/spider.png` texture reference from
