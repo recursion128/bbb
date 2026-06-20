@@ -63,9 +63,16 @@ clearer.
 Use these default thresholds and gates:
 
 - Files under 1000 lines should stay as-is by default.
-- Files over 1000 lines are review candidates, not automatic extraction targets.
-- A long file may remain intact when it is cohesive, has local tests, and is easy
-  to scan.
+- Files over 1000 lines should be treated as active split candidates whenever
+  they are touched. Before adding more behavior to one, look for a semantic or
+  feature owner that can be extracted with the current slice.
+- Prefer splitting over-1000-line files by functional or semantic ownership:
+  packet family, menu type, renderer stage, world-state domain, runtime flow, or
+  another stable concept users of the code would naturally name.
+- A long file may remain intact only when the touched code is still cohesive, no
+  stable semantic owner is clear, or extracting it would mix broad mechanical
+  movement with risky behavior changes. Record that judgment in the work summary
+  when continuing to grow such a file.
 - A small file may be split only when the current slice introduces a durable
   feature boundary, a focused test boundary, or a repeated merge-conflict
   hotspot.
