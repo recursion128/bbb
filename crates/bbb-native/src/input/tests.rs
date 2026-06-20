@@ -681,6 +681,98 @@ fn chat_entry_mid_cursor_insert_only_uses_remaining_vanilla_length() {
 }
 
 #[test]
+fn chat_entry_filters_vanilla_disallowed_formatting_character() {
+    let (tx, mut rx) = mpsc::channel(1);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyT),
+        ElementState::Pressed,
+    );
+    handle_text_input(&mut input, &mut counters, &mut world, &commands, "t");
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        &format!("he{}llo", '\u{a7}'),
+    );
+
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("hello")
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    match rx.try_recv().unwrap() {
+        NetCommand::ChatMessage(packet) => assert_eq!(packet.message, "hello"),
+        command => panic!("expected chat message command, got {command:?}"),
+    }
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn command_entry_filters_vanilla_disallowed_formatting_character() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        &format!("/s{}eed", '\u{a7}'),
+    );
+
+    assert_eq!(
+        input.chat_entry.as_ref().map(|entry| entry.text.as_str()),
+        Some("/seed")
+    );
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::CommandSuggestionRequest(CommandSuggestionRequest {
+            id: 0,
+            command: "/seed".to_string(),
+        })
+    );
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Enter),
+        ElementState::Pressed,
+    );
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::ChatCommand(ChatCommand {
+            command: "seed".to_string(),
+        })
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
 fn chat_key_submits_message_with_pending_last_seen_update() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);

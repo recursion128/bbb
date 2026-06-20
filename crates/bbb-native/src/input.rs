@@ -1117,7 +1117,7 @@ fn maybe_queue_command_suggestion_request(
 }
 
 fn is_chat_text_char(ch: char) -> bool {
-    !ch.is_control() && ch != '\u{7f}'
+    ch >= ' ' && ch != '\u{7f}' && ch != '\u{a7}'
 }
 
 fn handle_sign_editor_text(
