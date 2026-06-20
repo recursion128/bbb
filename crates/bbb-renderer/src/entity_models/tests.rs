@@ -560,6 +560,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     let slime = EntityModelInstance::slime(314, [20.0, 64.0, 0.0], 0.0, 1);
     let magma_cube = EntityModelInstance::magma_cube(315, [22.0, 64.0, 0.0], 0.0, 3);
     let goat = EntityModelInstance::goat(316, [24.0, 64.0, 0.0], 0.0, false, true, false);
+    let polar_bear = EntityModelInstance::polar_bear(317, [26.0, 64.0, 0.0], 0.0, false);
     let colored = entity_model_colored_runtime_mesh(&[
         chicken,
         sheep,
@@ -575,6 +576,7 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
         slime,
         magma_cube,
         goat,
+        polar_bear,
     ]);
     assert!(colored.vertices.is_empty());
     assert!(colored.indices.is_empty());
@@ -606,6 +608,8 @@ fn runtime_colored_mesh_excludes_texture_backed_entities() {
     assert!(!legacy_magma_cube_geometry_guard.vertices.is_empty());
     let legacy_goat_geometry_guard = entity_model_mesh(&[goat]);
     assert!(!legacy_goat_geometry_guard.vertices.is_empty());
+    let legacy_polar_bear_geometry_guard = entity_model_mesh(&[polar_bear]);
+    assert!(!legacy_polar_bear_geometry_guard.vertices.is_empty());
 }
 
 #[test]

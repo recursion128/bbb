@@ -1,4 +1,11 @@
-use super::{ModelCubeDesc, ModelPartDesc, PartPose, POLAR_BEAR_WHITE};
+use super::{
+    ModelCubeDesc, ModelPartDesc, PartPose, TexturedModelCubeDesc, TexturedModelPartDesc,
+    POLAR_BEAR_WHITE,
+};
+
+pub(in crate::entity_models) const MODEL_LAYER_POLAR_BEAR: &str = "minecraft:polar_bear#main";
+pub(in crate::entity_models) const MODEL_LAYER_POLAR_BEAR_BABY: &str =
+    "minecraft:polar_bear_baby#main";
 
 pub(in crate::entity_models) const ADULT_POLAR_BEAR_HEAD: [ModelCubeDesc; 4] = [
     ModelCubeDesc {
@@ -23,6 +30,37 @@ pub(in crate::entity_models) const ADULT_POLAR_BEAR_HEAD: [ModelCubeDesc; 4] = [
     },
 ];
 
+pub(in crate::entity_models) const ADULT_POLAR_BEAR_TEXTURED_HEAD: [TexturedModelCubeDesc; 4] = [
+    TexturedModelCubeDesc {
+        min: [-3.5, -3.0, -3.0],
+        size: [7.0, 7.0, 7.0],
+        uv_size: [7.0, 7.0, 7.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-2.5, 1.0, -6.0],
+        size: [5.0, 3.0, 3.0],
+        uv_size: [5.0, 3.0, 3.0],
+        tex: [0.0, 44.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-4.5, -4.0, -1.0],
+        size: [2.0, 2.0, 1.0],
+        uv_size: [2.0, 2.0, 1.0],
+        tex: [26.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [2.5, -4.0, -1.0],
+        size: [2.0, 2.0, 1.0],
+        uv_size: [2.0, 2.0, 1.0],
+        tex: [26.0, 0.0],
+        mirror: true,
+    },
+];
+
 pub(in crate::entity_models) const ADULT_POLAR_BEAR_BODY: [ModelCubeDesc; 2] = [
     ModelCubeDesc {
         min: [-5.0, -13.0, -7.0],
@@ -36,6 +74,23 @@ pub(in crate::entity_models) const ADULT_POLAR_BEAR_BODY: [ModelCubeDesc; 2] = [
     },
 ];
 
+pub(in crate::entity_models) const ADULT_POLAR_BEAR_TEXTURED_BODY: [TexturedModelCubeDesc; 2] = [
+    TexturedModelCubeDesc {
+        min: [-5.0, -13.0, -7.0],
+        size: [14.0, 14.0, 11.0],
+        uv_size: [14.0, 14.0, 11.0],
+        tex: [0.0, 19.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-4.0, -25.0, -7.0],
+        size: [12.0, 12.0, 10.0],
+        uv_size: [12.0, 12.0, 10.0],
+        tex: [39.0, 0.0],
+        mirror: false,
+    },
+];
+
 pub(in crate::entity_models) const ADULT_POLAR_BEAR_HIND_LEG: [ModelCubeDesc; 1] =
     [ModelCubeDesc {
         min: [-2.0, 0.0, -2.0],
@@ -43,11 +98,29 @@ pub(in crate::entity_models) const ADULT_POLAR_BEAR_HIND_LEG: [ModelCubeDesc; 1]
         color: POLAR_BEAR_WHITE,
     }];
 
+pub(in crate::entity_models) const ADULT_POLAR_BEAR_TEXTURED_HIND_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, -2.0],
+        size: [4.0, 10.0, 8.0],
+        uv_size: [4.0, 10.0, 8.0],
+        tex: [50.0, 22.0],
+        mirror: false,
+    }];
+
 pub(in crate::entity_models) const ADULT_POLAR_BEAR_FRONT_LEG: [ModelCubeDesc; 1] =
     [ModelCubeDesc {
         min: [-2.0, 0.0, -2.0],
         size: [4.0, 10.0, 6.0],
         color: POLAR_BEAR_WHITE,
+    }];
+
+pub(in crate::entity_models) const ADULT_POLAR_BEAR_TEXTURED_FRONT_LEG: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-2.0, 0.0, -2.0],
+        size: [4.0, 10.0, 6.0],
+        uv_size: [4.0, 10.0, 6.0],
+        tex: [50.0, 40.0],
+        mirror: false,
     }];
 
 // Vanilla 26.1 ModelLayers.POLAR_BEAR: PolarBearModel.createBodyLayer()
@@ -103,11 +176,71 @@ pub(in crate::entity_models) const ADULT_POLAR_BEAR_PARTS: [ModelPartDesc; 6] = 
     },
 ];
 
+pub(in crate::entity_models) const ADULT_POLAR_BEAR_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 10.0, -16.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 9.0, 12.0],
+            rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [-4.5, 14.0, 6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_TEXTURED_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [4.5, 14.0, 6.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_TEXTURED_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [-3.5, 14.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_TEXTURED_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [3.5, 14.0, -8.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ADULT_POLAR_BEAR_TEXTURED_FRONT_LEG,
+        children: &[],
+    },
+];
+
 pub(in crate::entity_models) const BABY_POLAR_BEAR_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-4.0, -3.5, -6.0],
     size: [8.0, 7.0, 12.0],
     color: POLAR_BEAR_WHITE,
 }];
+
+pub(in crate::entity_models) const BABY_POLAR_BEAR_TEXTURED_BODY: [TexturedModelCubeDesc; 1] =
+    [TexturedModelCubeDesc {
+        min: [-4.0, -3.5, -6.0],
+        size: [8.0, 7.0, 12.0],
+        uv_size: [8.0, 7.0, 12.0],
+        tex: [0.0, 9.0],
+        mirror: false,
+    }];
 
 pub(in crate::entity_models) const BABY_POLAR_BEAR_HEAD: [ModelCubeDesc; 4] = [
     ModelCubeDesc {
@@ -132,10 +265,77 @@ pub(in crate::entity_models) const BABY_POLAR_BEAR_HEAD: [ModelCubeDesc; 4] = [
     },
 ];
 
+pub(in crate::entity_models) const BABY_POLAR_BEAR_TEXTURED_HEAD: [TexturedModelCubeDesc; 4] = [
+    TexturedModelCubeDesc {
+        min: [-3.0, -2.625, -4.25],
+        size: [6.0, 5.0, 4.0],
+        uv_size: [6.0, 5.0, 4.0],
+        tex: [0.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-2.0, 0.375, -6.25],
+        size: [4.0, 2.0, 2.0],
+        uv_size: [4.0, 2.0, 2.0],
+        tex: [20.0, 3.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [-4.0, -3.625, -2.75],
+        size: [2.0, 2.0, 1.0],
+        uv_size: [2.0, 2.0, 1.0],
+        tex: [20.0, 0.0],
+        mirror: false,
+    },
+    TexturedModelCubeDesc {
+        min: [2.0, -3.625, -2.75],
+        size: [2.0, 2.0, 1.0],
+        uv_size: [2.0, 2.0, 1.0],
+        tex: [26.0, 0.0],
+        mirror: false,
+    },
+];
+
 pub(in crate::entity_models) const BABY_POLAR_BEAR_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-1.5, -0.5, -1.5],
     size: [3.0, 3.0, 3.0],
     color: POLAR_BEAR_WHITE,
+}];
+
+pub(in crate::entity_models) const BABY_POLAR_BEAR_TEXTURED_RIGHT_HIND_LEG:
+    [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.5, -0.5, -1.5],
+    size: [3.0, 3.0, 3.0],
+    uv_size: [3.0, 3.0, 3.0],
+    tex: [0.0, 34.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const BABY_POLAR_BEAR_TEXTURED_LEFT_HIND_LEG: [TexturedModelCubeDesc;
+    1] = [TexturedModelCubeDesc {
+    min: [-1.5, -0.5, -1.5],
+    size: [3.0, 3.0, 3.0],
+    uv_size: [3.0, 3.0, 3.0],
+    tex: [12.0, 34.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const BABY_POLAR_BEAR_TEXTURED_RIGHT_FRONT_LEG:
+    [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.5, -0.5, -1.5],
+    size: [3.0, 3.0, 3.0],
+    uv_size: [3.0, 3.0, 3.0],
+    tex: [0.0, 28.0],
+    mirror: false,
+}];
+
+pub(in crate::entity_models) const BABY_POLAR_BEAR_TEXTURED_LEFT_FRONT_LEG:
+    [TexturedModelCubeDesc; 1] = [TexturedModelCubeDesc {
+    min: [-1.5, -0.5, -1.5],
+    size: [3.0, 3.0, 3.0],
+    uv_size: [3.0, 3.0, 3.0],
+    tex: [12.0, 28.0],
+    mirror: false,
 }];
 
 // Vanilla 26.1 ModelLayers.POLAR_BEAR_BABY: BabyPolarBearModel.createBodyLayer().
@@ -186,6 +386,57 @@ pub(in crate::entity_models) const BABY_POLAR_BEAR_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &BABY_POLAR_BEAR_LEG,
+        children: &[],
+    },
+];
+
+pub(in crate::entity_models) const BABY_POLAR_BEAR_TEXTURED_PARTS: [TexturedModelPartDesc; 6] = [
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 17.5, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_TEXTURED_BODY,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 18.625, -5.75],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_TEXTURED_HEAD,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 21.5, 4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_TEXTURED_RIGHT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 21.5, 4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_TEXTURED_LEFT_HIND_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 21.5, -4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_TEXTURED_RIGHT_FRONT_LEG,
+        children: &[],
+    },
+    TexturedModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 21.5, -4.5],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BABY_POLAR_BEAR_TEXTURED_LEFT_FRONT_LEG,
         children: &[],
     },
 ];

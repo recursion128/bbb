@@ -424,8 +424,9 @@ When an agent does any of the following, update this file in the same slice:
       geometry from `PolarBearModel`, `BabyPolarBearModel`, and
       `PolarBearRenderer`, including `ModelLayers.POLAR_BEAR` /
       `POLAR_BEAR_BABY`, adult `MeshTransformer.scaling(1.2F)`, and official
-      adult/baby texture references; standing animation from `standScale`,
-      walk/head animation, lighting, and GPU texture binding remain unsupported
+      adult/baby texture references, texture-backed base layer pass emission,
+      and official PNG atlas upload/bind/sample path; standing animation from
+      `standScale`, walk/head animation, and lighting remain unsupported
     - hoglin and zoglin entities as renderer-owned vanilla 26.1 adult/baby
       body-layer geometry from `HoglinModel`, `BabyHoglinModel`,
       `AbstractHoglinRenderer`, `HoglinRenderer`, and `ZoglinRenderer`,

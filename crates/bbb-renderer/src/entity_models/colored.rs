@@ -18,12 +18,12 @@ use selection::{
 pub(super) use selection::{chicken_model_parts, cow_model_parts, pig_model_parts};
 pub(super) use transforms::{
     boat_model_root_transform, cave_spider_model_root_transform, entity_model_root_transform,
-    magma_cube_model_root_transform, player_model_root_transform, slime_model_root_transform,
-    wither_skeleton_model_root_transform,
+    magma_cube_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
+    slime_model_root_transform, wither_skeleton_model_root_transform,
 };
 use transforms::{
     mesh_transformer_scaled_model_root_transform, scaled_model_root_transform,
-    villager_adult_model_root_transform, HORSE_SCALE, HUSK_SCALE, POLAR_BEAR_SCALE,
+    villager_adult_model_root_transform, HORSE_SCALE, HUSK_SCALE,
 };
 
 #[cfg(test)]
@@ -159,7 +159,9 @@ fn entity_model_mesh_with_options(
                 }
             }
             EntityModelKind::PolarBear { baby } => {
-                emit_polar_bear_model(&mut mesh, *instance, baby)
+                if !skip_texture_backed_entities {
+                    emit_polar_bear_model(&mut mesh, *instance, baby);
+                }
             }
             EntityModelKind::Quadruped { family, baby } => {
                 emit_quadruped_model(&mut mesh, *instance, family, baby)
@@ -706,7 +708,7 @@ fn emit_polar_bear_model(mesh: &mut EntityModelMesh, instance: EntityModelInstan
         if baby {
             entity_model_root_transform(instance)
         } else {
-            mesh_transformer_scaled_model_root_transform(instance, POLAR_BEAR_SCALE)
+            polar_bear_model_root_transform(instance)
         },
     );
 }

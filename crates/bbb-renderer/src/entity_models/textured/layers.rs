@@ -28,6 +28,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     SlimeBase,
     SlimeOuter,
     MagmaCubeBase,
+    PolarBearBase,
     SpiderBase,
     SpiderEyes,
     WolfBase,
@@ -241,6 +242,34 @@ pub(in crate::entity_models) fn magma_cube_textured_layer_passes() -> Vec<Entity
         model_layer: MODEL_LAYER_MAGMA_CUBE,
         texture: MAGMA_CUBE_TEXTURE_REF,
         parts: &MAGMA_CUBE_TEXTURED_PARTS,
+        visibility: EntityModelLayerVisibility::All,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        collector_order: 0,
+        submit_sequence: 0,
+    }]
+}
+
+pub(in crate::entity_models) fn polar_bear_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
+    vec![EntityModelLayerPass {
+        kind: EntityModelLayerKind::PolarBearBase,
+        render_type: EntityModelLayerRenderType::Cutout,
+        model_layer: if baby {
+            MODEL_LAYER_POLAR_BEAR_BABY
+        } else {
+            MODEL_LAYER_POLAR_BEAR
+        },
+        texture: if baby {
+            POLAR_BEAR_BABY_TEXTURE_REF
+        } else {
+            POLAR_BEAR_TEXTURE_REF
+        },
+        parts: if baby {
+            &BABY_POLAR_BEAR_TEXTURED_PARTS
+        } else {
+            &ADULT_POLAR_BEAR_TEXTURED_PARTS
+        },
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         collector_order: 0,

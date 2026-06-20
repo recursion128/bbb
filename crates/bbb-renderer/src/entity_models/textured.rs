@@ -8,8 +8,8 @@ use super::{
     cave_spider_model_root_transform, entity_model_root_transform,
     geometry::{emit_textured_model_parts, EntityModelTexturedMesh, TexturedModelPartDesc},
     instances::EntityModelInstance,
-    magma_cube_model_root_transform, player_model_root_transform, slime_model_root_transform,
-    wither_skeleton_model_root_transform,
+    magma_cube_model_root_transform, player_model_root_transform, polar_bear_model_root_transform,
+    slime_model_root_transform, wither_skeleton_model_root_transform,
 };
 use glam::Mat4;
 
@@ -19,9 +19,9 @@ pub(super) use layers::{
     boat_textured_layer_passes, chicken_textured_layer_passes, cow_textured_layer_passes,
     creeper_textured_layer_passes, enderman_textured_layer_passes, goat_textured_layer_passes,
     magma_cube_textured_layer_passes, pig_textured_layer_passes, player_textured_layer_passes,
-    sheep_textured_layer_passes, skeleton_textured_layer_passes, slime_textured_layer_passes,
-    spider_textured_layer_passes, wolf_textured_layer_passes, EntityModelLayerPass,
-    EntityModelLayerRenderType,
+    polar_bear_textured_layer_passes, sheep_textured_layer_passes, skeleton_textured_layer_passes,
+    slime_textured_layer_passes, spider_textured_layer_passes, wolf_textured_layer_passes,
+    EntityModelLayerPass, EntityModelLayerRenderType,
 };
 use layers::{goat_visible_textured_model_parts, player_visible_textured_model_parts};
 #[cfg(test)]
@@ -95,6 +95,9 @@ pub(super) fn entity_model_textured_meshes(
             }
             EntityModelKind::MagmaCube { size } => {
                 emit_magma_cube_textured_model(&mut meshes, *instance, size, atlas);
+            }
+            EntityModelKind::PolarBear { baby } => {
+                emit_polar_bear_textured_model(&mut meshes, *instance, baby, atlas);
             }
             EntityModelKind::Player { slim, parts } => {
                 emit_player_textured_model(&mut meshes, *instance, slim, parts, atlas);
@@ -261,6 +264,22 @@ fn emit_magma_cube_textured_model(
 ) {
     let transform = magma_cube_model_root_transform(instance, size);
     for pass in magma_cube_textured_layer_passes() {
+        emit_textured_layer_pass(meshes, &pass, transform, atlas);
+    }
+}
+
+fn emit_polar_bear_textured_model(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    baby: bool,
+    atlas: &EntityModelTextureAtlasLayout,
+) {
+    let transform = if baby {
+        entity_model_root_transform(instance)
+    } else {
+        polar_bear_model_root_transform(instance)
+    };
+    for pass in polar_bear_textured_layer_passes(baby) {
         emit_textured_layer_pass(meshes, &pass, transform, atlas);
     }
 }

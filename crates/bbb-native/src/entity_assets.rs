@@ -112,6 +112,8 @@ mod tests {
                 "textures/entity/wolf/wolf_collar_baby.png",
                 "textures/entity/goat/goat.png",
                 "textures/entity/goat/goat_baby.png",
+                "textures/entity/bear/polarbear.png",
+                "textures/entity/bear/polarbear_baby.png",
                 "textures/entity/chicken/chicken_temperate.png",
                 "textures/entity/chicken/chicken_temperate_baby.png",
                 "textures/entity/chicken/chicken_warm.png",

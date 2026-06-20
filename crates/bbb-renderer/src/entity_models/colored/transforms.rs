@@ -83,6 +83,12 @@ pub(in crate::entity_models) fn cave_spider_model_root_transform(
     mesh_transformer_scaled_model_root_transform(instance, CAVE_SPIDER_SCALE)
 }
 
+pub(in crate::entity_models) fn polar_bear_model_root_transform(
+    instance: EntityModelInstance,
+) -> Mat4 {
+    mesh_transformer_scaled_model_root_transform(instance, POLAR_BEAR_SCALE)
+}
+
 pub(super) fn scaled_model_root_transform(instance: EntityModelInstance, scale: f32) -> Mat4 {
     entity_model_root_transform(instance) * Mat4::from_scale(Vec3::splat(scale))
 }
