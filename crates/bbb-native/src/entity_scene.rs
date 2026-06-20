@@ -195,6 +195,7 @@ const SHEEP_WOOL_SHEARED_FLAG: u8 = 0x10;
 const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
 const TAMABLE_ANIMAL_TAME_FLAG: i8 = 0x04;
 const WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
+const WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
 const WOLF_DEFAULT_COLLAR_COLOR_ID: i32 = 14;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
@@ -223,6 +224,7 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
     let chicken_variants = world.registry_content("minecraft:chicken_variant");
     let cow_variants = world.registry_content("minecraft:cow_variant");
     let pig_variants = world.registry_content("minecraft:pig_variant");
+    let game_time = world.world_time().map(|time| time.game_time).unwrap_or(0);
     world
         .entity_model_sources_at_partial_tick(entity_partial_tick.clamp(0.0, 1.0))
         .into_iter()
@@ -230,7 +232,13 @@ pub(crate) fn entity_model_instances_from_world_at_partial_tick(
             local_player_id != Some(source.entity_id) && camera_entity_id != Some(source.entity_id)
         })
         .filter_map(|source| {
-            entity_model_instance(source, chicken_variants, cow_variants, pig_variants)
+            entity_model_instance(
+                source,
+                game_time,
+                chicken_variants,
+                cow_variants,
+                pig_variants,
+            )
         })
         .collect()
 }
@@ -252,13 +260,15 @@ fn entity_pick_target_box(target: EntityPickTargetState) -> SelectionBox {
 
 fn entity_model_instance(
     source: EntityModelSourceState,
+    game_time: i64,
     chicken_variants: Option<&RegistryContentState>,
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
 ) -> Option<EntityModelInstance> {
-    let kind = entity_model_kind_with_registries(
+    let kind = entity_model_kind_with_time_and_registries(
         source.entity_type_id,
         &source.data_values,
+        game_time,
         chicken_variants,
         cow_variants,
         pig_variants,
@@ -285,6 +295,24 @@ fn entity_model_kind(
 fn entity_model_kind_with_registries(
     entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
+    chicken_variants: Option<&RegistryContentState>,
+    cow_variants: Option<&RegistryContentState>,
+    pig_variants: Option<&RegistryContentState>,
+) -> EntityModelKind {
+    entity_model_kind_with_time_and_registries(
+        entity_type_id,
+        data_values,
+        0,
+        chicken_variants,
+        cow_variants,
+        pig_variants,
+    )
+}
+
+fn entity_model_kind_with_time_and_registries(
+    entity_type_id: i32,
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    game_time: i64,
     chicken_variants: Option<&RegistryContentState>,
     cow_variants: Option<&RegistryContentState>,
     pig_variants: Option<&RegistryContentState>,
@@ -402,7 +430,7 @@ fn entity_model_kind_with_registries(
         VANILLA_ENTITY_TYPE_NAUTILUS_ID | VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
             quadruped(QuadrupedModelFamily::Horse, ageable_baby(data_values))
         }
-        VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_WOLF_ID => wolf_model_kind(data_values, game_time),
         VANILLA_ENTITY_TYPE_CAT_ID
         | VANILLA_ENTITY_TYPE_OCELOT_ID
         | VANILLA_ENTITY_TYPE_FOX_ID
@@ -632,13 +660,16 @@ fn sheep_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> Entity
     }
 }
 
-fn wolf_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+fn wolf_model_kind(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    game_time: i64,
+) -> EntityModelKind {
     let tame =
         (entity_data_byte(values, TAMABLE_ANIMAL_FLAGS_DATA_ID, 0) & TAMABLE_ANIMAL_TAME_FLAG) != 0;
     EntityModelKind::Wolf {
         baby: ageable_baby(values),
         tame,
-        angry: false,
+        angry: wolf_is_angry(values, game_time),
         collar_color: tame.then(|| {
             EntityDyeColor::from_vanilla_id(entity_data_int(
                 values,
@@ -647,6 +678,11 @@ fn wolf_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityM
             ))
         }),
     }
+}
+
+fn wolf_is_angry(values: &[bbb_protocol::packets::EntityDataValue], game_time: i64) -> bool {
+    let end_time = entity_data_long(values, WOLF_ANGER_END_TIME_DATA_ID, -1);
+    end_time > 0 && end_time - game_time > 0
 }
 
 fn donkey_model_kind(
@@ -969,6 +1005,22 @@ fn entity_data_int(
         .unwrap_or(default)
 }
 
+fn entity_data_long(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: i64,
+) -> i64 {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Long(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
 fn entity_data_byte(
     values: &[bbb_protocol::packets::EntityDataValue],
     data_id: u8,
@@ -1005,8 +1057,8 @@ fn entity_data_rotations(
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        AddEntity, CommonPlayerSpawnInfo, EntityDataValue, PlayLogin, SetCamera, SetEntityData,
-        Vec3d,
+        AddEntity, CommonPlayerSpawnInfo, EntityDataValue, PlayLogin, PlayTime, SetCamera,
+        SetEntityData, Vec3d,
     };
     use bbb_world::{EntityPickBoundsState, EntityVec3, RegistryPacketEntry};
     use uuid::Uuid;
@@ -2083,6 +2135,114 @@ mod tests {
     }
 
     #[test]
+    fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
+        assert_eq!(
+            entity_model_kind_with_time_and_registries(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
+                199,
+                None,
+                None,
+                None,
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: false,
+                angry: true,
+                collar_color: None,
+            }
+        );
+        assert_eq!(
+            entity_model_kind_with_time_and_registries(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
+                200,
+                None,
+                None,
+                None,
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: false,
+                angry: false,
+                collar_color: None,
+            }
+        );
+        assert_eq!(
+            entity_model_kind_with_time_and_registries(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                &[
+                    protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                    protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200),
+                ],
+                199,
+                None,
+                None,
+                None,
+            ),
+            EntityModelKind::Wolf {
+                baby: false,
+                tame: true,
+                angry: true,
+                collar_color: Some(EntityDyeColor::Red),
+            }
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_wolf_anger_from_world_game_time() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            148,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 148,
+            values: vec![protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 130)],
+        }));
+        world.apply_world_time(PlayTime {
+            game_time: 120,
+            clock_updates: Vec::new(),
+        });
+
+        let angry_instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            angry_instances,
+            vec![EntityModelInstance::wolf_state(
+                148,
+                [1.0, 64.0, -2.0],
+                0.0,
+                false,
+                false,
+                true,
+                None,
+            )]
+        );
+
+        world.apply_world_time(PlayTime {
+            game_time: 130,
+            clock_updates: Vec::new(),
+        });
+
+        let calm_instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            calm_instances,
+            vec![EntityModelInstance::wolf_state(
+                148,
+                [1.0, 64.0, -2.0],
+                0.0,
+                false,
+                false,
+                false,
+                None,
+            )]
+        );
+    }
+
+    #[test]
     fn entity_model_kind_uses_exact_models_for_horses() {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_HORSE_ID, &[]),
@@ -2560,6 +2720,14 @@ mod tests {
             data_id,
             serializer_id: 1,
             value: EntityDataValueKind::Int(value),
+        }
+    }
+
+    fn protocol_long_data(data_id: u8, value: i64) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 2,
+            value: EntityDataValueKind::Long(value),
         }
     }
 

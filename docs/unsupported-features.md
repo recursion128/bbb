@@ -264,9 +264,8 @@ When an agent does any of the following, update this file in the same slice:
     - apply eating head position/angle animation from entity event `10`
   - Finish wolf presentation parity:
     - project registry-driven wolf variants beyond the default/pale texture set
-    - project anger end-time against canonical client game time
     - add armor, wet tint, sitting/head/tail/shake/walk pose, invisibility,
-      lighting, overlay, and render-state extraction parity
+      lighting, overlay, and remaining render-state extraction parity
   - Implement vanilla dropped-item follow-up rendering:
     - ground-context model rendering
     - bobbing
@@ -355,12 +354,12 @@ When an agent does any of the following, update this file in the same slice:
       `CubeDeformation` bounds, official default/pale wild/tame/angry adult
       and baby texture references, adult/baby collar texture references,
       texture-backed base and collar layer passes, vanilla tame-over-angry
-      texture selection, metadata-driven tame flag projection, and collar dye
-      tint projection; registry-driven wolf variants beyond the default/pale
-      texture set, anger end-time/game-time projection, armor layer, wet tint,
-      sitting pose, head/tail pose, shake, walk animation, invisibility-gated
-      collar visibility, lighting, overlay, and full render-state extraction
-      remain unsupported
+      texture selection, metadata-driven tame flag projection, collar dye
+      tint projection, and anger end-time projection against canonical client
+      game time; registry-driven wolf variants beyond the default/pale texture
+      set, armor layer, wet tint, sitting pose, head/tail pose, shake, walk
+      animation, invisibility-gated collar visibility, lighting, overlay, and
+      remaining render-state extraction remain unsupported
     - base horse entities as renderer-owned vanilla 26.1 adult/baby body-layer
       geometry from `AbstractEquineModel.createBodyMesh(CubeDeformation.NONE)`,
       `BabyHorseModel.createBabyMesh(CubeDeformation.NONE)`, `HorseModel`, and
@@ -559,7 +558,7 @@ When an agent does any of the following, update this file in the same slice:
     variants, equipment, skins, animation, lighting, custom/datapack cow/pig
     variant asset presentation, pig saddle presentation, sheep `jeb_`/eating
     presentation,
-    wolf variant/anger-end-time/armor/wet-tint/pose presentation,
+    wolf variant/armor/wet-tint/pose presentation,
     boat/raft paddle animation, damage roll, bubble wobble, and water-mask
     presentation,
     horse variant/markings/saddle/armor/animation, donkey/mule saddle and
