@@ -4817,6 +4817,157 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_respawn_keep_all_data_preserves_local_pose_entity_data_and_attribute_modifiers()
+    {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::Login(protocol_play_login(9)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::AddEntity(protocol_add_entity(9)))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetHealth(PlayerHealth {
+                health: 4.0,
+                food: 7,
+                saturation: 0.5,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::SetExperience(PlayerExperience {
+                progress: 0.25,
+                level: 3,
+                total: 40,
+            }))
+            .await
+            .unwrap();
+        probe.world.set_local_player_pose(LocalPlayerPoseState {
+            position: ProtocolVec3d {
+                x: 10.0,
+                y: 65.0,
+                z: -4.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.1,
+                y: -0.2,
+                z: 0.3,
+            },
+            on_ground: true,
+            horizontal_collision: true,
+            fall_distance: 8.0,
+            sneaking: true,
+            swimming: true,
+            y_rot: 90.0,
+            x_rot: 20.0,
+            last_teleport_id: 77,
+        });
+        let old_pose = probe.world.local_player_pose().unwrap();
+        probe
+            .world
+            .set_local_destroying_block(BlockPos { x: 1, y: 2, z: 3 });
+        probe.world.set_local_using_item(true);
+        probe
+            .handle_play_packet(PlayClientbound::SetEntityData(SetEntityData {
+                id: 9,
+                values: vec![EntityDataValue {
+                    data_id: 0,
+                    serializer_id: 0,
+                    value: EntityDataValueKind::Byte(0x02),
+                }],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::UpdateAttributes(UpdateAttributes {
+                entity_id: 9,
+                attributes: vec![AttributeSnapshot {
+                    attribute_id: 21,
+                    base: 0.1,
+                    modifiers: vec![AttributeModifier {
+                        id: "minecraft:test_speed".to_string(),
+                        amount: 0.25,
+                        operation_id: 1,
+                    }],
+                }],
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::UpdateMobEffect(UpdateMobEffect {
+                entity_id: 9,
+                effect_id: 3,
+                amplifier: 1,
+                duration_ticks: 200,
+                flags: MobEffectFlags::default(),
+            }))
+            .await
+            .unwrap();
+        assert!(probe.world.entity_effect(9, 3).is_some());
+
+        probe
+            .handle_play_packet(PlayClientbound::Respawn(Respawn {
+                common_spawn_info: protocol_play_login(9).common_spawn_info,
+                data_to_keep: 3,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
+
+        assert!(report.world.local_player().health.is_none());
+        assert!(report.world.local_player().experience.is_none());
+        assert_eq!(
+            report.world.local_player_pose(),
+            Some(LocalPlayerPoseState {
+                on_ground: false,
+                horizontal_collision: false,
+                fall_distance: 0.0,
+                ..old_pose
+            })
+        );
+        assert_eq!(
+            report.world.local_player().camera,
+            bbb_world::CameraState::default()
+        );
+        assert_eq!(
+            report.world.local_player().interaction,
+            bbb_world::LocalPlayerInteractionState::default()
+        );
+
+        let entity = report.world.probe_entity(9).unwrap();
+        assert_eq!(entity.data_values.len(), 1);
+        assert_eq!(entity.data_values[0].data_id, 0);
+        assert_eq!(entity.data_values[0].serializer_id, 0);
+        assert_eq!(entity.data_values[0].value, EntityDataValueKind::Byte(0x02));
+        assert!(entity.mob_effects.is_empty());
+        assert_eq!(entity.attributes.len(), 1);
+        assert_eq!(entity.attributes[0].base, 0.1);
+        assert_eq!(
+            entity.attributes[0].modifiers,
+            vec![AttributeModifier {
+                id: "minecraft:test_speed".to_string(),
+                amount: 0.25,
+                operation_id: 1,
+            }]
+        );
+
+        assert_eq!(report.world_counters.play_logins_received, 1);
+        assert_eq!(report.world_counters.respawns_received, 1);
+        assert_eq!(report.world_counters.entity_data_updates_received, 1);
+        assert_eq!(report.world_counters.entity_data_updates_applied, 1);
+        assert_eq!(report.world_counters.entity_attribute_updates_received, 1);
+        assert_eq!(report.world_counters.entity_attribute_updates_applied, 1);
+        assert_eq!(report.world_counters.update_mob_effect_packets, 1);
+        assert_eq!(report.world_counters.update_mob_effects_ignored, 0);
+        assert_eq!(report.world_counters.active_mob_effects_tracked, 0);
+    }
+
+    #[tokio::test]
     async fn probe_set_health_records_dead_health_without_auto_respawn() {
         let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
