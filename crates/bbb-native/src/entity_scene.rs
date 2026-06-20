@@ -268,9 +268,8 @@ fn entity_model_kind(
         | VANILLA_ENTITY_TYPE_WITCH_ID => humanoid(HumanoidModelFamily::Illager, false),
         VANILLA_ENTITY_TYPE_ENDERMAN_ID => EntityModelKind::Enderman,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => EntityModelKind::IronGolem,
-        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID | VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => {
-            humanoid(HumanoidModelFamily::Player, false)
-        }
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => EntityModelKind::SnowGolem,
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => humanoid(HumanoidModelFamily::Player, false),
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
         VANILLA_ENTITY_TYPE_PIG_ID => {
             quadruped(QuadrupedModelFamily::Pig, ageable_baby(data_values))
@@ -785,7 +784,7 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, &[]),
-            humanoid(HumanoidModelFamily::Player, false)
+            EntityModelKind::SnowGolem
         );
     }
 
@@ -801,6 +800,18 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, &[]),
+            EntityModelKind::SnowGolem
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_snow_golem() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, &[]),
+            EntityModelKind::SnowGolem
+        );
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, &[]),
             humanoid(HumanoidModelFamily::Player, false)
         );
     }

@@ -233,8 +233,9 @@ When an agent does any of the following, update this file in the same slice:
   - Extract complete entity presentation data:
     - precise vanilla meshes and textures beyond the current chicken cuboids,
       source-verified pig/cow/sheep/villager/wandering-trader/zombie,
-      skeleton, creeper, spider, enderman, and iron-golem body-layer geometry,
-      primitive entity model families, and placeholder bounds
+      skeleton, creeper, spider, enderman, iron-golem, and snow-golem
+      body-layer geometry, primitive entity model families, and placeholder
+      bounds
     - equipment
     - skin
     - lighting
@@ -325,6 +326,13 @@ When an agent does any of the following, update this file in the same slice:
       `IronGolemRenderer`; crackiness overlay textures, flower block layer,
       attack arm pose, offer-flower arm pose, head rotation, leg walk
       animation, and renderer body-wobble rotation remain unsupported
+    - snow golem entities as renderer-owned vanilla 26.1
+      `SnowGolemModel.createBodyLayer()` geometry, including its 64x64 body
+      layer, baked `CubeDeformation(-0.5F)` snow body/arm/head cubes, and the
+      official `textures/entity/snow_golem/snow_golem.png` texture reference
+      from `SnowGolemRenderer`; carved pumpkin head block layer, pumpkin/no
+      pumpkin state projection, head rotation, upper-body yaw, and arm
+      repositioning animation remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -339,7 +347,8 @@ When an agent does any of the following, update this file in the same slice:
     zombie/skeleton variant presentation, creeper swelling/powered overlays,
     spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
-    precise vanilla mesh parity for primitive/placeholder entity families.
+    snow golem pumpkin/animation presentation, and precise vanilla mesh parity
+    for primitive/placeholder entity families.
 
 ### Audio Runtime Parity
 
