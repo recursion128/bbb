@@ -18,6 +18,12 @@ pub enum EntityModelKind {
         family: HumanoidModelFamily,
         baby: bool,
     },
+    ArmorStand {
+        small: bool,
+        show_arms: bool,
+        show_base_plate: bool,
+        pose: ArmorStandModelPose,
+    },
     Zombie {
         baby: bool,
     },
@@ -89,6 +95,25 @@ pub enum HumanoidModelFamily {
     Illager,
     ArmorStand,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ArmorStandModelPose {
+    pub head: [f32; 3],
+    pub body: [f32; 3],
+    pub left_arm: [f32; 3],
+    pub right_arm: [f32; 3],
+    pub left_leg: [f32; 3],
+    pub right_leg: [f32; 3],
+}
+
+pub const DEFAULT_ARMOR_STAND_MODEL_POSE: ArmorStandModelPose = ArmorStandModelPose {
+    head: [0.0, 0.0, 0.0],
+    body: [0.0, 0.0, 0.0],
+    left_arm: [-10.0, 0.0, -10.0],
+    right_arm: [-15.0, 0.0, 10.0],
+    left_leg: [-1.0, 0.0, -1.0],
+    right_leg: [1.0, 0.0, 1.0],
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SkeletonModelFamily {
@@ -180,6 +205,8 @@ impl EntityModelKind {
                 family: HumanoidModelFamily::ArmorStand,
                 baby: true,
             } => "humanoid_armor_stand_baby",
+            Self::ArmorStand { small: false, .. } => "armor_stand",
+            Self::ArmorStand { small: true, .. } => "armor_stand_small",
             Self::Zombie { baby: false } => "zombie",
             Self::Zombie { baby: true } => "zombie_baby",
             Self::ZombieVariant {
@@ -310,6 +337,7 @@ impl EntityModelKind {
 
     pub fn vanilla_texture_ref(self) -> Option<EntityModelTextureRef> {
         match self {
+            Self::ArmorStand { .. } => Some(ARMOR_STAND_TEXTURE_REF),
             Self::Zombie { baby: false } => Some(ZOMBIE_TEXTURE_REF),
             Self::Zombie { baby: true } => Some(ZOMBIE_BABY_TEXTURE_REF),
             Self::ZombieVariant {
@@ -431,6 +459,28 @@ impl EntityModelInstance {
         Self::new(
             entity_id,
             EntityModelKind::Humanoid { family, baby },
+            position,
+            y_rot,
+        )
+    }
+
+    pub fn armor_stand(
+        entity_id: i32,
+        position: [f32; 3],
+        y_rot: f32,
+        small: bool,
+        show_arms: bool,
+        show_base_plate: bool,
+        pose: ArmorStandModelPose,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::ArmorStand {
+                small,
+                show_arms,
+                show_base_plate,
+                pose,
+            },
             position,
             y_rot,
         )
@@ -870,6 +920,277 @@ const VINDICATOR_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/illager/vindicator.png",
     size: [64, 64],
 };
+
+const ARMOR_STAND_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/armorstand/armorstand.png",
+    size: [64, 64],
+};
+
+const ARMOR_STAND_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -7.0, -1.0],
+    size: [2.0, 7.0, 2.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const ARMOR_STAND_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-6.0, 0.0, -1.5],
+    size: [12.0, 3.0, 3.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const ARMOR_STAND_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, -2.0, -1.0],
+    size: [2.0, 12.0, 2.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const ARMOR_STAND_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, -2.0, -1.0],
+    size: [2.0, 12.0, 2.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const ARMOR_STAND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 11.0, 2.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const ARMOR_STAND_RIGHT_BODY_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, 3.0, -1.0],
+    size: [2.0, 7.0, 2.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const ARMOR_STAND_LEFT_BODY_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [1.0, 3.0, -1.0],
+    size: [2.0, 7.0, 2.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const ARMOR_STAND_SHOULDER_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 10.0, -1.0],
+    size: [8.0, 2.0, 2.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const ARMOR_STAND_BASE_PLATE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-6.0, 11.0, -6.0],
+    size: [12.0, 1.0, 12.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+// Vanilla 26.1 ArmorStandModel.createBodyLayer().
+const ARMOR_STAND_PARTS: [ModelPartDesc; 10] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 1.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ARMOR_STAND_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ARMOR_STAND_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ARMOR_STAND_RIGHT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ARMOR_STAND_LEFT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ARMOR_STAND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [1.9, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ARMOR_STAND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ARMOR_STAND_RIGHT_BODY_STICK,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ARMOR_STAND_LEFT_BODY_STICK,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &ARMOR_STAND_SHOULDER_STICK,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &ARMOR_STAND_BASE_PLATE,
+        children: &[],
+    },
+];
+
+const SMALL_ARMOR_STAND_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-0.75, -5.25, -0.75],
+    size: [1.5, 5.25, 1.5],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const SMALL_ARMOR_STAND_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, 0.0, -0.75],
+    size: [6.0, 1.5, 1.5],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const SMALL_ARMOR_STAND_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -1.0, -0.5],
+    size: [1.0, 6.0, 1.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const SMALL_ARMOR_STAND_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.0, -1.0, -0.5],
+    size: [1.0, 6.0, 1.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const SMALL_ARMOR_STAND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-0.5, 0.0, -0.5],
+    size: [1.0, 5.5, 1.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const SMALL_ARMOR_STAND_RIGHT_BODY_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.5, 1.5, -0.5],
+    size: [1.0, 3.5, 1.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const SMALL_ARMOR_STAND_LEFT_BODY_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [0.5, 1.5, -0.5],
+    size: [1.0, 3.5, 1.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const SMALL_ARMOR_STAND_SHOULDER_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-2.0, 5.0, -0.5],
+    size: [4.0, 1.0, 1.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+const SMALL_ARMOR_STAND_BASE_PLATE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, 5.5, -3.0],
+    size: [6.0, 0.5, 6.0],
+    color: ARMOR_STAND_WOOD,
+}];
+
+// Vanilla 26.1 ModelLayers.ARMOR_STAND_SMALL applies HumanoidModel.BABY_TRANSFORMER:
+// head root parts are translated by y=16 then scaled 0.75; all other root parts
+// are translated by y=24 then scaled 0.5.
+const SMALL_ARMOR_STAND_PARTS: [ModelPartDesc; 10] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.75, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_HEAD,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.5, 13.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_RIGHT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.5, 13.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_LEFT_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-0.95, 18.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.95, 18.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_RIGHT_BODY_STICK,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_LEFT_BODY_STICK,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_SHOULDER_STICK,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [0.0, 18.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &SMALL_ARMOR_STAND_BASE_PLATE,
+        children: &[],
+    },
+];
 
 const ADULT_CHICKEN_BEAK: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-2.0, -4.0, -4.0],
@@ -3762,6 +4083,19 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             EntityModelKind::Humanoid { family, baby } => {
                 emit_humanoid_model(&mut mesh, *instance, family, baby)
             }
+            EntityModelKind::ArmorStand {
+                small,
+                show_arms,
+                show_base_plate,
+                pose,
+            } => emit_armor_stand_model(
+                &mut mesh,
+                *instance,
+                small,
+                show_arms,
+                show_base_plate,
+                pose,
+            ),
             EntityModelKind::Zombie { baby } => emit_zombie_model(&mut mesh, *instance, baby),
             EntityModelKind::ZombieVariant { family, baby } => {
                 emit_zombie_variant_model(&mut mesh, *instance, family, baby)
@@ -3795,6 +4129,78 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
         }
     }
     mesh
+}
+
+fn emit_armor_stand_model(
+    mesh: &mut EntityModelMesh,
+    instance: EntityModelInstance,
+    small: bool,
+    show_arms: bool,
+    show_base_plate: bool,
+    pose: ArmorStandModelPose,
+) {
+    let parts = if small {
+        &SMALL_ARMOR_STAND_PARTS
+    } else {
+        &ARMOR_STAND_PARTS
+    };
+    let transform = entity_model_root_transform(instance);
+    emit_armor_stand_part(mesh, transform, &parts[0], degrees_to_radians3(pose.head));
+    emit_armor_stand_part(mesh, transform, &parts[1], degrees_to_radians3(pose.body));
+    if show_arms {
+        emit_armor_stand_part(
+            mesh,
+            transform,
+            &parts[2],
+            degrees_to_radians3(pose.right_arm),
+        );
+        emit_armor_stand_part(
+            mesh,
+            transform,
+            &parts[3],
+            degrees_to_radians3(pose.left_arm),
+        );
+    }
+    emit_armor_stand_part(
+        mesh,
+        transform,
+        &parts[4],
+        degrees_to_radians3(pose.right_leg),
+    );
+    emit_armor_stand_part(
+        mesh,
+        transform,
+        &parts[5],
+        degrees_to_radians3(pose.left_leg),
+    );
+    emit_armor_stand_part(mesh, transform, &parts[6], degrees_to_radians3(pose.body));
+    emit_armor_stand_part(mesh, transform, &parts[7], degrees_to_radians3(pose.body));
+    emit_armor_stand_part(mesh, transform, &parts[8], degrees_to_radians3(pose.body));
+    if show_base_plate {
+        emit_armor_stand_part(
+            mesh,
+            transform,
+            &parts[9],
+            [0.0, -instance.y_rot.to_radians(), 0.0],
+        );
+    }
+}
+
+fn emit_armor_stand_part(
+    mesh: &mut EntityModelMesh,
+    transform: Mat4,
+    part: &ModelPartDesc,
+    rotation: [f32; 3],
+) {
+    emit_model_cubes_at_pose(
+        mesh,
+        transform,
+        PartPose {
+            offset: part.pose.offset,
+            rotation,
+        },
+        part.cubes,
+    );
 }
 
 fn emit_humanoid_model(
@@ -4411,6 +4817,18 @@ fn emit_model_parts_with_color(
     }
 }
 
+fn emit_model_cubes_at_pose(
+    mesh: &mut EntityModelMesh,
+    parent_transform: Mat4,
+    pose: PartPose,
+    cubes: &[ModelCubeDesc],
+) {
+    let transform = parent_transform * part_pose_transform(pose);
+    for cube in cubes {
+        emit_model_cube(mesh, transform, *cube);
+    }
+}
+
 fn emit_model_part(mesh: &mut EntityModelMesh, part: &ModelPartDesc, parent_transform: Mat4) {
     let transform = parent_transform * part_pose_transform(part.pose);
     for cube in part.cubes {
@@ -4464,6 +4882,14 @@ fn part_pose_transform(pose: PartPose) -> Mat4 {
             pose.rotation[1],
             pose.rotation[0],
         )
+}
+
+fn degrees_to_radians3(rotation: [f32; 3]) -> [f32; 3] {
+    [
+        rotation[0].to_radians(),
+        rotation[1].to_radians(),
+        rotation[2].to_radians(),
+    ]
 }
 
 fn emit_model_cube(mesh: &mut EntityModelMesh, transform: Mat4, cube: ModelCubeDesc) {
@@ -7149,6 +7575,217 @@ mod tests {
     }
 
     #[test]
+    fn armor_stand_parts_match_vanilla_26_1_body_layers() {
+        assert_eq!(ARMOR_STAND_PARTS.len(), 10);
+        assert_part(
+            &ARMOR_STAND_PARTS[0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_HEAD.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_BODY.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[2],
+            [-5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_RIGHT_ARM.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[3],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_LEFT_ARM.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[4],
+            [-1.9, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_LEG.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[5],
+            [1.9, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_LEG.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[6],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_RIGHT_BODY_STICK.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[7],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_LEFT_BODY_STICK.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[8],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_SHOULDER_STICK.as_slice(),
+        );
+        assert_part(
+            &ARMOR_STAND_PARTS[9],
+            [0.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            ARMOR_STAND_BASE_PLATE.as_slice(),
+        );
+
+        assert_eq!(SMALL_ARMOR_STAND_PARTS.len(), 10);
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[0],
+            [0.0, 12.75, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_HEAD.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[1],
+            [0.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_BODY.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[2],
+            [-2.5, 13.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_RIGHT_ARM.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[3],
+            [2.5, 13.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_LEFT_ARM.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[4],
+            [-0.95, 18.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_LEG.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[5],
+            [0.95, 18.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_LEG.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[6],
+            [0.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_RIGHT_BODY_STICK.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[7],
+            [0.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_LEFT_BODY_STICK.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[8],
+            [0.0, 12.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_SHOULDER_STICK.as_slice(),
+        );
+        assert_part(
+            &SMALL_ARMOR_STAND_PARTS[9],
+            [0.0, 18.0, 0.0],
+            [0.0, 0.0, 0.0],
+            SMALL_ARMOR_STAND_BASE_PLATE.as_slice(),
+        );
+    }
+
+    #[test]
+    fn armor_stand_mesh_uses_vanilla_visibility_and_pose_state() {
+        let default = entity_model_mesh(&[EntityModelInstance::armor_stand(
+            5,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            true,
+            DEFAULT_ARMOR_STAND_MODEL_POSE,
+        )]);
+        assert_eq!(default.opaque_faces, 48);
+        assert_eq!(default.vertices.len(), 192);
+        assert_eq!(default.indices.len(), 288);
+
+        let arms_without_base = entity_model_mesh(&[EntityModelInstance::armor_stand(
+            5,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            true,
+            false,
+            DEFAULT_ARMOR_STAND_MODEL_POSE,
+        )]);
+        assert_eq!(arms_without_base.opaque_faces, 54);
+        assert_eq!(arms_without_base.vertices.len(), 216);
+        assert_eq!(arms_without_base.indices.len(), 324);
+
+        let small = entity_model_mesh(&[EntityModelInstance::armor_stand(
+            5,
+            [0.0, 64.0, 0.0],
+            0.0,
+            true,
+            false,
+            true,
+            DEFAULT_ARMOR_STAND_MODEL_POSE,
+        )]);
+        assert_eq!(small.opaque_faces, 48);
+        assert_eq!(small.vertices.len(), 192);
+        assert_eq!(small.indices.len(), 288);
+
+        let mut pose = DEFAULT_ARMOR_STAND_MODEL_POSE;
+        pose.head = [0.0, 45.0, 0.0];
+        pose.body = [0.0, 0.0, 12.0];
+        let posed = entity_model_mesh(&[EntityModelInstance::armor_stand(
+            5,
+            [0.0, 64.0, 0.0],
+            0.0,
+            false,
+            false,
+            true,
+            pose,
+        )]);
+        assert_eq!(posed.opaque_faces, default.opaque_faces);
+        assert_ne!(posed.vertices, default.vertices);
+    }
+
+    #[test]
+    fn armor_stand_texture_refs_match_vanilla_renderer() {
+        let adult = EntityModelKind::ArmorStand {
+            small: false,
+            show_arms: false,
+            show_base_plate: true,
+            pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+        };
+        let small = EntityModelKind::ArmorStand {
+            small: true,
+            show_arms: false,
+            show_base_plate: true,
+            pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+        };
+
+        assert_eq!(adult.model_key(), "armor_stand");
+        assert_eq!(small.model_key(), "armor_stand_small");
+        assert_eq!(
+            adult.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/armorstand/armorstand.png",
+                size: [64, 64],
+            })
+        );
+        assert_eq!(small.vanilla_texture_ref(), adult.vanilla_texture_ref());
+    }
+
+    #[test]
     fn humanoid_model_families_emit_deterministic_non_empty_meshes() {
         for family in [
             HumanoidModelFamily::Player,
@@ -7242,6 +7879,16 @@ mod tests {
             }
             .model_key(),
             "humanoid_zombie_baby"
+        );
+        assert_eq!(
+            EntityModelKind::ArmorStand {
+                small: true,
+                show_arms: true,
+                show_base_plate: false,
+                pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+            }
+            .model_key(),
+            "armor_stand_small"
         );
         assert_eq!(
             EntityModelKind::Zombie { baby: true }.model_key(),

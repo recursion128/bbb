@@ -1,8 +1,8 @@
 use bbb_protocol::packets::EntityDataValueKind;
 use bbb_renderer::{
-    EntityModelInstance, EntityModelKind, HumanoidModelFamily, IllagerModelFamily,
-    PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline, SkeletonModelFamily,
-    ZombieVariantModelFamily,
+    ArmorStandModelPose, EntityModelInstance, EntityModelKind, HumanoidModelFamily,
+    IllagerModelFamily, PiglinModelFamily, QuadrupedModelFamily, SelectionBox, SelectionOutline,
+    SkeletonModelFamily, ZombieVariantModelFamily, DEFAULT_ARMOR_STAND_MODEL_POSE,
 };
 use bbb_world::{EntityModelSourceState, EntityPickTargetState, WorldStore};
 
@@ -166,6 +166,16 @@ const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
+const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 16;
+const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 17;
+const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 18;
+const ARMOR_STAND_LEFT_ARM_POSE_DATA_ID: u8 = 19;
+const ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID: u8 = 20;
+const ARMOR_STAND_LEFT_LEG_POSE_DATA_ID: u8 = 21;
+const ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID: u8 = 22;
+const ARMOR_STAND_CLIENT_FLAG_SMALL: i8 = 1;
+const ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS: i8 = 4;
+const ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE: i8 = 8;
 
 pub(crate) fn entity_scene_outline_from_world_at_partial_tick(
     world: &WorldStore,
@@ -240,7 +250,7 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
             humanoid(HumanoidModelFamily::Player, false)
         }
-        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => humanoid(HumanoidModelFamily::ArmorStand, false),
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => armor_stand_model_kind(data_values),
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => EntityModelKind::Zombie {
             baby: zombie_baby(data_values),
         },
@@ -525,6 +535,51 @@ fn placeholder(name: &'static str, width: f32, height: f32, depth: f32) -> Entit
     }
 }
 
+fn armor_stand_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+    let flags = entity_data_byte(values, ARMOR_STAND_CLIENT_FLAGS_DATA_ID, 0);
+    EntityModelKind::ArmorStand {
+        small: flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0,
+        show_arms: flags & ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS != 0,
+        show_base_plate: flags & ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE == 0,
+        pose: armor_stand_pose(values),
+    }
+}
+
+fn armor_stand_pose(values: &[bbb_protocol::packets::EntityDataValue]) -> ArmorStandModelPose {
+    ArmorStandModelPose {
+        head: entity_data_rotations(
+            values,
+            ARMOR_STAND_HEAD_POSE_DATA_ID,
+            DEFAULT_ARMOR_STAND_MODEL_POSE.head,
+        ),
+        body: entity_data_rotations(
+            values,
+            ARMOR_STAND_BODY_POSE_DATA_ID,
+            DEFAULT_ARMOR_STAND_MODEL_POSE.body,
+        ),
+        left_arm: entity_data_rotations(
+            values,
+            ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
+            DEFAULT_ARMOR_STAND_MODEL_POSE.left_arm,
+        ),
+        right_arm: entity_data_rotations(
+            values,
+            ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
+            DEFAULT_ARMOR_STAND_MODEL_POSE.right_arm,
+        ),
+        left_leg: entity_data_rotations(
+            values,
+            ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
+            DEFAULT_ARMOR_STAND_MODEL_POSE.left_leg,
+        ),
+        right_leg: entity_data_rotations(
+            values,
+            ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID,
+            DEFAULT_ARMOR_STAND_MODEL_POSE.right_leg,
+        ),
+    }
+}
+
 fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     entity_data_bool(values, AGEABLE_MOB_BABY_DATA_ID, false)
 }
@@ -548,6 +603,38 @@ fn entity_data_bool(
         .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Boolean(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
+fn entity_data_byte(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: i8,
+) -> i8 {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Byte(value) => Some(*value),
+            _ => None,
+        })
+        .unwrap_or(default)
+}
+
+fn entity_data_rotations(
+    values: &[bbb_protocol::packets::EntityDataValue],
+    data_id: u8,
+    default: [f32; 3],
+) -> [f32; 3] {
+    values
+        .iter()
+        .rev()
+        .find(|value| value.data_id == data_id)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::Rotations { x, y, z } => Some([*x, *y, *z]),
             _ => None,
         })
         .unwrap_or(default)
@@ -674,6 +761,47 @@ mod tests {
                 EntityModelInstance::chicken(27, [3.0, 64.0, -2.0], 0.0, true),
                 EntityModelInstance::new(85, EntityModelKind::Minecart, [5.0, 64.0, -2.0], 0.0),
             ]
+        );
+    }
+
+    #[test]
+    fn entity_model_instances_project_armor_stand_flags_and_pose() {
+        let mut world = WorldStore::new();
+        world.apply_add_entity(protocol_add_entity(
+            5,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            [1.0, 64.0, -2.0],
+        ));
+        let mut pose = DEFAULT_ARMOR_STAND_MODEL_POSE;
+        pose.body = [0.0, 15.0, 0.0];
+        pose.left_arm = [-30.0, 0.0, -20.0];
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 5,
+            values: vec![
+                protocol_byte_data(
+                    ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+                    ARMOR_STAND_CLIENT_FLAG_SMALL
+                        | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
+                        | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+                ),
+                protocol_rotations_data(ARMOR_STAND_BODY_POSE_DATA_ID, pose.body),
+                protocol_rotations_data(ARMOR_STAND_LEFT_ARM_POSE_DATA_ID, pose.left_arm),
+            ],
+        }));
+
+        let instances = entity_model_instances_from_world_at_partial_tick(&world, 1.0);
+
+        assert_eq!(
+            instances,
+            vec![EntityModelInstance::armor_stand(
+                5,
+                [1.0, 64.0, -2.0],
+                0.0,
+                true,
+                true,
+                false,
+                pose,
+            )]
         );
     }
 
@@ -843,6 +971,57 @@ mod tests {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_BOGGED_ID, &[]),
             humanoid(HumanoidModelFamily::Skeleton, false)
+        );
+    }
+
+    #[test]
+    fn entity_model_kind_uses_exact_model_for_armor_stands() {
+        assert_eq!(
+            entity_model_kind(VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, &[]),
+            EntityModelKind::ArmorStand {
+                small: false,
+                show_arms: false,
+                show_base_plate: true,
+                pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+                &[protocol_byte_data(
+                    ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+                    ARMOR_STAND_CLIENT_FLAG_SMALL
+                        | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
+                        | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+                )],
+            ),
+            EntityModelKind::ArmorStand {
+                small: true,
+                show_arms: true,
+                show_base_plate: false,
+                pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+            }
+        );
+
+        let mut pose = DEFAULT_ARMOR_STAND_MODEL_POSE;
+        pose.head = [1.0, 2.0, 3.0];
+        pose.right_arm = [-20.0, 5.0, 10.0];
+        pose.left_leg = [4.0, 5.0, 6.0];
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+                &[
+                    protocol_rotations_data(ARMOR_STAND_HEAD_POSE_DATA_ID, pose.head),
+                    protocol_rotations_data(ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID, pose.right_arm),
+                    protocol_rotations_data(ARMOR_STAND_LEFT_LEG_POSE_DATA_ID, pose.left_leg),
+                ],
+            ),
+            EntityModelKind::ArmorStand {
+                small: false,
+                show_arms: false,
+                show_base_plate: true,
+                pose,
+            }
         );
     }
 
@@ -1050,6 +1229,26 @@ mod tests {
             data_id,
             serializer_id: 8,
             value: EntityDataValueKind::Boolean(value),
+        }
+    }
+
+    fn protocol_byte_data(data_id: u8, value: i8) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 0,
+            value: EntityDataValueKind::Byte(value),
+        }
+    }
+
+    fn protocol_rotations_data(data_id: u8, value: [f32; 3]) -> EntityDataValue {
+        EntityDataValue {
+            data_id,
+            serializer_id: 9,
+            value: EntityDataValueKind::Rotations {
+                x: value[0],
+                y: value[1],
+                z: value[2],
+            },
         }
     }
 

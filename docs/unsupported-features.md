@@ -236,8 +236,9 @@ When an agent does any of the following, update this file in the same slice:
       husk/drowned/zombie-villager variants, piglin/piglin-brute/
       zombified-piglin variants, skeleton and stray/parched/wither-skeleton
       variants, creeper, spider, enderman, iron-golem, snow-golem, witch, and
-      evoker/illusioner/pillager/vindicator illager body-layer geometry,
-      primitive entity model families, and placeholder bounds
+      evoker/illusioner/pillager/vindicator illager body-layer geometry, armor
+      stand normal/small body-layer geometry, primitive entity model families,
+      and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -380,6 +381,14 @@ When an agent does any of the following, update this file in the same slice:
       celebrating/riding arm poses and animation, held item projection,
       illusioner clone offsets/invisible-body rendering, and renderer state
       extraction for dynamic arm visibility remain unsupported
+    - armor stand entities as renderer-owned vanilla 26.1
+      `ArmorStandModel.createBodyLayer()` geometry, including the normal layer,
+      `ModelLayers.ARMOR_STAND_SMALL` `HumanoidModel.BABY_TRANSFORMER` root-part
+      transform, official `textures/entity/armorstand/armorstand.png` texture
+      reference, client flags for small/show-arms/no-baseplate, and head/body/
+      arm/leg pose metadata projection; armor/equipment/custom-head/elytra/
+      held-item layers, hurt wiggle, marker/invisible render-type nuances,
+      animation interpolation, and GPU texture binding remain unsupported
     - every vanilla 26.1 entity type id `0..=156` maps to a deterministic
       renderer model key; unknown future ids use an explicit
       `todo_unknown_entity_type_bounds` placeholder
@@ -399,8 +408,9 @@ When an agent does any of the following, update this file in the same slice:
     creeper swelling/powered overlays,
     spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
-    snow golem pumpkin/animation presentation, and precise vanilla mesh parity
-    for primitive/placeholder entity families.
+    snow golem pumpkin/animation presentation, armor stand equipment/custom
+    layers/wiggle/marker presentation, and precise vanilla mesh parity for
+    primitive/placeholder entity families.
 
 ### Audio Runtime Parity
 
