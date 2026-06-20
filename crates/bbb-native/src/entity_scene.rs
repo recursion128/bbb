@@ -166,6 +166,7 @@ const VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID: i32 = 156;
 const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const ZOMBIE_BABY_DATA_ID: u8 = 16;
 const PIGLIN_BABY_DATA_ID: u8 = 17;
+const BOGGED_SHEARED_DATA_ID: u8 = 16;
 const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 16;
 const ARMOR_STAND_HEAD_POSE_DATA_ID: u8 = 17;
 const ARMOR_STAND_BODY_POSE_DATA_ID: u8 = 18;
@@ -286,7 +287,11 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID => EntityModelKind::SkeletonVariant {
             family: SkeletonModelFamily::WitherSkeleton,
         },
-        VANILLA_ENTITY_TYPE_BOGGED_ID => humanoid(HumanoidModelFamily::Skeleton, false),
+        VANILLA_ENTITY_TYPE_BOGGED_ID => EntityModelKind::SkeletonVariant {
+            family: SkeletonModelFamily::Bogged {
+                sheared: bogged_sheared(data_values),
+            },
+        },
         VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityModelKind::Villager {
             baby: ageable_baby(data_values),
         },
@@ -602,6 +607,10 @@ fn zombie_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
 
 fn piglin_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
     entity_data_bool(values, PIGLIN_BABY_DATA_ID, false)
+}
+
+fn bogged_sheared(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+    entity_data_bool(values, BOGGED_SHEARED_DATA_ID, false)
 }
 
 fn entity_data_bool(
@@ -1031,7 +1040,18 @@ mod tests {
         );
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_BOGGED_ID, &[]),
-            humanoid(HumanoidModelFamily::Skeleton, false)
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Bogged { sheared: false }
+            }
+        );
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_BOGGED_ID,
+                &[protocol_bool_data(BOGGED_SHEARED_DATA_ID, true)]
+            ),
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Bogged { sheared: true }
+            }
         );
     }
 

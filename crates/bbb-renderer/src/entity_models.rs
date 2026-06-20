@@ -135,6 +135,7 @@ pub enum SkeletonModelFamily {
     Stray,
     Parched,
     WitherSkeleton,
+    Bogged { sheared: bool },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,6 +281,9 @@ impl EntityModelKind {
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::WitherSkeleton,
             } => "wither_skeleton",
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::Bogged { .. },
+            } => "bogged",
             Self::Cow { baby: false } => "cow",
             Self::Cow { baby: true } => "cow_baby",
             Self::Sheep { baby: false } => "sheep",
@@ -418,6 +422,9 @@ impl EntityModelKind {
             Self::SkeletonVariant {
                 family: SkeletonModelFamily::WitherSkeleton,
             } => Some(WITHER_SKELETON_TEXTURE_REF),
+            Self::SkeletonVariant {
+                family: SkeletonModelFamily::Bogged { .. },
+            } => Some(BOGGED_TEXTURE_REF),
             Self::Sheep { baby: false } => Some(SHEEP_TEXTURE_REF),
             Self::Sheep { baby: true } => Some(SHEEP_BABY_TEXTURE_REF),
             Self::Villager { baby: false } => Some(VILLAGER_TEXTURE_REF),
@@ -794,6 +801,9 @@ const ZOMBIFIED_PIGLIN_SKIN: [f32; 4] = [0.46, 0.62, 0.42, 1.0];
 const SKELETON_BONE: [f32; 4] = [0.82, 0.82, 0.72, 1.0];
 const WITHER_SKELETON_DARK: [f32; 4] = [0.14, 0.14, 0.14, 1.0];
 const PARCHED_BONE: [f32; 4] = [0.70, 0.62, 0.48, 1.0];
+const BOGGED_BONE: [f32; 4] = [0.53, 0.61, 0.42, 1.0];
+const BOGGED_RED_MUSHROOM_COLOR: [f32; 4] = [0.78, 0.15, 0.12, 1.0];
+const BOGGED_BROWN_MUSHROOM_COLOR: [f32; 4] = [0.48, 0.31, 0.18, 1.0];
 const VILLAGER_ROBE: [f32; 4] = [0.48, 0.34, 0.23, 1.0];
 const ILLAGER_GRAY: [f32; 4] = [0.42, 0.45, 0.48, 1.0];
 const ARMOR_STAND_WOOD: [f32; 4] = [0.55, 0.36, 0.19, 1.0];
@@ -901,6 +911,11 @@ const PARCHED_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const WITHER_SKELETON_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/skeleton/wither_skeleton.png",
+    size: [64, 32],
+};
+
+const BOGGED_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/skeleton/bogged.png",
     size: [64, 32],
 };
 
@@ -2447,6 +2462,226 @@ const SKELETON_PARTS: [ModelPartDesc; 6] = [
             rotation: [0.0, 0.0, 0.0],
         },
         cubes: &SKELETON_LEG,
+        children: &[],
+    },
+];
+
+const BOGGED_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, -8.0, -4.0],
+    size: [8.0, 8.0, 8.0],
+    color: BOGGED_BONE,
+}];
+
+const BOGGED_HAT: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.5, -8.5, -4.5],
+    size: [9.0, 9.0, 9.0],
+    color: BOGGED_BONE,
+}];
+
+const BOGGED_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-4.0, 0.0, -2.0],
+    size: [8.0, 12.0, 4.0],
+    color: BOGGED_BONE,
+}];
+
+const BOGGED_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, -2.0, -1.0],
+    size: [2.0, 12.0, 2.0],
+    color: BOGGED_BONE,
+}];
+
+const BOGGED_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-1.0, 0.0, -1.0],
+    size: [2.0, 12.0, 2.0],
+    color: BOGGED_BONE,
+}];
+
+const BOGGED_RED_MUSHROOM_PLANE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -3.0, 0.0],
+    size: [6.0, 4.0, 0.0],
+    color: BOGGED_RED_MUSHROOM_COLOR,
+}];
+
+const BOGGED_BROWN_MUSHROOM_PLANE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -3.0, 0.0],
+    size: [6.0, 4.0, 0.0],
+    color: BOGGED_BROWN_MUSHROOM_COLOR,
+}];
+
+const BOGGED_BROWN_TOP_MUSHROOM_PLANE: [ModelCubeDesc; 1] = [ModelCubeDesc {
+    min: [-3.0, -4.0, 0.0],
+    size: [6.0, 4.0, 0.0],
+    color: BOGGED_BROWN_MUSHROOM_COLOR,
+}];
+
+const BOGGED_HAT_CHILDREN: [ModelPartDesc; 1] = [ModelPartDesc {
+    pose: PART_POSE_ZERO,
+    cubes: &BOGGED_HAT,
+    children: &[],
+}];
+
+const BOGGED_MUSHROOM_CHILDREN: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, -8.0, 3.0],
+            rotation: [0.0, std::f32::consts::FRAC_PI_4, 0.0],
+        },
+        cubes: &BOGGED_RED_MUSHROOM_PLANE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [3.0, -8.0, 3.0],
+            rotation: [0.0, std::f32::consts::FRAC_PI_4 * 3.0, 0.0],
+        },
+        cubes: &BOGGED_RED_MUSHROOM_PLANE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, -8.0, -3.0],
+            rotation: [0.0, std::f32::consts::FRAC_PI_4, 0.0],
+        },
+        cubes: &BOGGED_BROWN_MUSHROOM_PLANE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-3.0, -8.0, -3.0],
+            rotation: [0.0, std::f32::consts::FRAC_PI_4 * 3.0, 0.0],
+        },
+        cubes: &BOGGED_BROWN_MUSHROOM_PLANE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -1.0, 4.0],
+            rotation: [
+                -std::f32::consts::FRAC_PI_2,
+                0.0,
+                std::f32::consts::FRAC_PI_4,
+            ],
+        },
+        cubes: &BOGGED_BROWN_TOP_MUSHROOM_PLANE,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, -1.0, 4.0],
+            rotation: [
+                -std::f32::consts::FRAC_PI_2,
+                0.0,
+                std::f32::consts::FRAC_PI_4 * 3.0,
+            ],
+        },
+        cubes: &BOGGED_BROWN_TOP_MUSHROOM_PLANE,
+        children: &[],
+    },
+];
+
+const BOGGED_HEAD_CHILDREN: [ModelPartDesc; 2] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &BOGGED_HAT,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &[],
+        children: &BOGGED_MUSHROOM_CHILDREN,
+    },
+];
+
+// Vanilla 26.1 BoggedModel.createBodyLayer(): HumanoidModel base,
+// SkeletonModel.createDefaultSkeletonMesh(root), then head/mushrooms children.
+const BOGGED_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &BOGGED_HEAD,
+        children: &BOGGED_HEAD_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &BOGGED_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOGGED_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOGGED_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOGGED_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOGGED_LEG,
+        children: &[],
+    },
+];
+
+// Vanilla 26.1 BoggedModel.createBodyLayer(), with mushrooms hidden when
+// BoggedRenderState.isSheared is true.
+const BOGGED_SHEARED_PARTS: [ModelPartDesc; 6] = [
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &BOGGED_HEAD,
+        children: &BOGGED_HAT_CHILDREN,
+    },
+    ModelPartDesc {
+        pose: PART_POSE_ZERO,
+        cubes: &BOGGED_BODY,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOGGED_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [5.0, 2.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOGGED_ARM,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [-2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOGGED_LEG,
+        children: &[],
+    },
+    ModelPartDesc {
+        pose: PartPose {
+            offset: [2.0, 12.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        },
+        cubes: &BOGGED_LEG,
         children: &[],
     },
 ];
@@ -5225,6 +5460,15 @@ fn emit_skeleton_variant_model(
         SkeletonModelFamily::Parched => {
             emit_model_parts(mesh, &PARCHED_PARTS, entity_model_root_transform(instance));
         }
+        SkeletonModelFamily::Bogged { sheared } => emit_model_parts(
+            mesh,
+            if sheared {
+                &BOGGED_SHEARED_PARTS
+            } else {
+                &BOGGED_PARTS
+            },
+            entity_model_root_transform(instance),
+        ),
         SkeletonModelFamily::WitherSkeleton => emit_model_parts_with_color(
             mesh,
             &SKELETON_PARTS,
@@ -6806,6 +7050,16 @@ mod tests {
             })
         );
         assert_eq!(
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Bogged { sheared: false }
+            }
+            .vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/skeleton/bogged.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(
             EntityModelKind::Humanoid {
                 family: HumanoidModelFamily::Zombie,
                 baby: false,
@@ -6890,6 +7144,71 @@ mod tests {
             [0.0, 0.0, 0.0],
             PARCHED_LEG.as_slice(),
         );
+
+        assert_eq!(
+            BOGGED_RED_MUSHROOM_PLANE[0],
+            ModelCubeDesc {
+                min: [-3.0, -3.0, 0.0],
+                size: [6.0, 4.0, 0.0],
+                color: BOGGED_RED_MUSHROOM_COLOR,
+            }
+        );
+        assert_eq!(BOGGED_PARTS.len(), 6);
+        assert_part_tree(
+            &BOGGED_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BOGGED_HEAD.as_slice(),
+            BOGGED_HEAD_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BOGGED_HEAD_CHILDREN[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BOGGED_HAT.as_slice(),
+        );
+        assert_part_tree(
+            &BOGGED_HEAD_CHILDREN[1],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            &[],
+            BOGGED_MUSHROOM_CHILDREN.as_slice(),
+        );
+        assert_part(
+            &BOGGED_MUSHROOM_CHILDREN[0],
+            [3.0, -8.0, 3.0],
+            [0.0, std::f32::consts::FRAC_PI_4, 0.0],
+            BOGGED_RED_MUSHROOM_PLANE.as_slice(),
+        );
+        assert_part(
+            &BOGGED_MUSHROOM_CHILDREN[1],
+            [3.0, -8.0, 3.0],
+            [0.0, std::f32::consts::FRAC_PI_4 * 3.0, 0.0],
+            BOGGED_RED_MUSHROOM_PLANE.as_slice(),
+        );
+        assert_part(
+            &BOGGED_MUSHROOM_CHILDREN[2],
+            [-3.0, -8.0, -3.0],
+            [0.0, std::f32::consts::FRAC_PI_4, 0.0],
+            BOGGED_BROWN_MUSHROOM_PLANE.as_slice(),
+        );
+        assert_part(
+            &BOGGED_MUSHROOM_CHILDREN[5],
+            [-2.0, -1.0, 4.0],
+            [
+                -std::f32::consts::FRAC_PI_2,
+                0.0,
+                std::f32::consts::FRAC_PI_4 * 3.0,
+            ],
+            BOGGED_BROWN_TOP_MUSHROOM_PLANE.as_slice(),
+        );
+        assert_part_tree(
+            &BOGGED_SHEARED_PARTS[0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            BOGGED_HEAD.as_slice(),
+            BOGGED_HAT_CHILDREN.as_slice(),
+        );
     }
 
     #[test]
@@ -6934,6 +7253,34 @@ mod tests {
         let (parched_min, parched_max) = mesh_extents(&parched);
         assert_close3(parched_min, [-0.440625, 64.001, -0.26250002]);
         assert_close3(parched_max, [0.440625, 66.0135, 0.26250002]);
+
+        let bogged = entity_model_mesh(&[EntityModelInstance::skeleton_variant(
+            16,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::Bogged { sheared: false },
+        )]);
+        assert_eq!(bogged.opaque_faces, 78);
+        assert_eq!(bogged.vertices.len(), 312);
+        assert_eq!(bogged.indices.len(), 468);
+        assert!(bogged
+            .vertices
+            .iter()
+            .any(|vertex| vertex.color == shade_color(BOGGED_RED_MUSHROOM_COLOR, 0.78)));
+        let (bogged_min, bogged_max) = mesh_extents(&bogged);
+        assert_close3(bogged_min, [-0.375, 64.001, -0.5]);
+        assert_close3(bogged_max, [0.375, 66.1885, 0.32008255]);
+
+        let sheared_bogged = entity_model_mesh(&[EntityModelInstance::skeleton_variant(
+            17,
+            [0.0, 64.0, 0.0],
+            0.0,
+            SkeletonModelFamily::Bogged { sheared: true },
+        )]);
+        assert_eq!(sheared_bogged.opaque_faces, 42);
+        assert_eq!(sheared_bogged.vertices.len(), 168);
+        assert_eq!(sheared_bogged.indices.len(), 252);
+        assert_same_geometry(&sheared_bogged, &skeleton);
     }
 
     #[test]
@@ -9444,6 +9791,13 @@ mod tests {
             }
             .model_key(),
             "wither_skeleton"
+        );
+        assert_eq!(
+            EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Bogged { sheared: true }
+            }
+            .model_key(),
+            "bogged"
         );
         assert_eq!(EntityModelKind::Cow { baby: true }.model_key(), "cow_baby");
         assert_eq!(

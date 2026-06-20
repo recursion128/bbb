@@ -235,9 +235,10 @@ When an agent does any of the following, update this file in the same slice:
       source-verified pig/cow/sheep/wolf/base-horse/villager/
       wandering-trader/zombie and husk/drowned/zombie-villager variants,
       piglin/piglin-brute/
-      zombified-piglin variants, skeleton and stray/parched/wither-skeleton
-      variants, creeper, spider, enderman, iron-golem, snow-golem, witch, and
-      evoker/illusioner/pillager/vindicator illager body-layer geometry, armor
+      zombified-piglin variants, skeleton and stray/parched/wither-skeleton/
+      bogged variants, creeper, spider, enderman, iron-golem, snow-golem,
+      witch, and evoker/illusioner/pillager/vindicator illager body-layer
+      geometry, armor
       stand normal/small body-layer geometry, slime/magma-cube body-layer
       geometry, cave-spider scaled body-layer geometry, primitive entity model
       families, and placeholder bounds
@@ -346,10 +347,13 @@ When an agent does any of the following, update this file in the same slice:
       wither skeletons use the vanilla 26.1 skeleton body layer with
       `LayerDefinitions`' `MeshTransformer.scaling(1.2F)` root transform and
       official `textures/entity/skeleton/wither_skeleton.png` texture
-      reference; stray `stray_overlay.png` clothing, bogged `BoggedModel`
-      mushrooms/outer layer/sheared-state visibility, skeleton-family armor,
-      held bows/items, attack/head/walk animation, and GPU texture binding
-      remain unsupported
+      reference; bogged skeletons use vanilla 26.1
+      `BoggedModel.createBodyLayer()` geometry, including the head mushroom
+      children and metadata-driven sheared mushroom visibility, with official
+      `textures/entity/skeleton/bogged.png` texture reference recorded; stray
+      `stray_overlay.png` clothing, bogged `bogged_overlay.png` clothing,
+      skeleton-family armor, held bows/items, attack/head/walk animation, and
+      GPU texture binding remain unsupported
     - creeper entities as renderer-owned vanilla 26.1
       `CreeperModel.createBodyLayer(CubeDeformation.NONE)` geometry, with the
       official `textures/entity/creeper/creeper.png` texture reference recorded
@@ -440,7 +444,7 @@ When an agent does any of the following, update this file in the same slice:
     illager held-item/custom-head/arm-pose presentation, zombie-family
     armor/drowned outer-layer/swim/trident/zombie-villager overlays/no-hat/
     converting-state/piglin-family armor/custom-head/arm-pose/converting-state
-    presentation, skeleton armor/overlay/bogged mushroom and sheared-state
+    presentation, skeleton armor/overlay and bogged outer-clothing
     presentation,
     creeper swelling/powered overlays,
     spider eyes/animation/death-flip presentation, enderman eyes/carried-block/creepy
