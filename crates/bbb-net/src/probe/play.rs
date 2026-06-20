@@ -2501,6 +2501,101 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_counts_missing_entity_updates_as_ignored() {
+        let (client, _server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::EntityPositionSync(EntityPositionSync {
+                id: 999,
+                position: ProtocolVec3d {
+                    x: 1.0,
+                    y: 65.0,
+                    z: -1.0,
+                },
+                delta_movement: ProtocolVec3d::default(),
+                y_rot: 0.0,
+                x_rot: 0.0,
+                on_ground: false,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::MoveEntity(EntityMove {
+                id: 999,
+                delta_x: 4096,
+                delta_y: 0,
+                delta_z: -2048,
+                y_rot: Some(90.0),
+                x_rot: Some(10.0),
+                on_ground: true,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::TeleportEntity(TeleportEntity {
+                id: 999,
+                position: ProtocolVec3d {
+                    x: 2.0,
+                    y: 70.0,
+                    z: -2.0,
+                },
+                delta_movement: ProtocolVec3d::default(),
+                y_rot: 180.0,
+                x_rot: 15.0,
+                relatives_mask: 0,
+                on_ground: true,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::EntityAnimation(EntityAnimation {
+                id: 999,
+                action: 4,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 999,
+                event_id: 21,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::HurtAnimation(HurtAnimation {
+                id: 999,
+                yaw: 90.0,
+            }))
+            .await
+            .unwrap();
+
+        let report = probe.finish(6, ChunkPos { x: 0, z: 0 });
+
+        assert!(report.world.probe_entity(999).is_none());
+        assert_eq!(report.world_counters.entities_received, 0);
+        assert_eq!(report.world_counters.entities_tracked, 0);
+        assert_eq!(report.world_counters.entity_position_syncs_received, 1);
+        assert_eq!(report.world_counters.entity_position_syncs_applied, 0);
+        assert_eq!(report.world_counters.entity_position_syncs_ignored, 1);
+        assert_eq!(report.world_counters.entity_moves_received, 1);
+        assert_eq!(report.world_counters.entity_moves_applied, 0);
+        assert_eq!(report.world_counters.entity_moves_ignored, 1);
+        assert_eq!(report.world_counters.entity_teleports_received, 1);
+        assert_eq!(report.world_counters.entity_teleports_applied, 0);
+        assert_eq!(report.world_counters.entity_teleports_ignored, 1);
+        assert_eq!(report.world_counters.entity_animation_updates_received, 1);
+        assert_eq!(report.world_counters.entity_animation_updates_applied, 0);
+        assert_eq!(report.world_counters.entity_animation_updates_ignored, 1);
+        assert_eq!(report.world_counters.entity_events_received, 1);
+        assert_eq!(report.world_counters.entity_events_applied, 0);
+        assert_eq!(report.world_counters.entity_events_ignored, 1);
+        assert_eq!(report.world_counters.entity_hurt_animations_received, 1);
+        assert_eq!(report.world_counters.entity_hurt_animations_applied, 0);
+        assert_eq!(report.world_counters.entity_hurt_animations_ignored, 1);
+    }
+
+    #[tokio::test]
     async fn probe_applies_entity_state_packets_to_world() {
         const VANILLA_ENTITY_TYPE_ITEM_ID: i32 = 71;
 
