@@ -238,7 +238,8 @@ When an agent does any of the following, update this file in the same slice:
       variants, creeper, spider, enderman, iron-golem, snow-golem, witch, and
       evoker/illusioner/pillager/vindicator illager body-layer geometry, armor
       stand normal/small body-layer geometry, slime/magma-cube body-layer
-      geometry, primitive entity model families, and placeholder bounds
+      geometry, cave-spider scaled body-layer geometry, primitive entity model
+      families, and placeholder bounds
     - equipment
     - skin
     - lighting
@@ -338,9 +339,12 @@ When an agent does any of the following, update this file in the same slice:
     - base spider entities as renderer-owned vanilla 26.1
       `SpiderModel.createSpiderBodyLayer()` geometry, with the official
       `textures/entity/spider/spider.png` texture reference from
-      `SpiderRenderer` recorded; cave spider `MeshTransformer.scaling(0.7F)`,
-      `spider_eyes.png` emissive layer, head/walk animation, and death flip
-      remain unsupported
+      `SpiderRenderer` recorded; cave spider entities use the same vanilla
+      26.1 body layer through `ModelLayers.CAVE_SPIDER`
+      `MeshTransformer.scaling(0.7F)` and the official
+      `textures/entity/spider/cave_spider.png` texture reference from
+      `CaveSpiderRenderer`; `spider_eyes.png` emissive layer, head/walk
+      animation, and death flip remain unsupported
     - enderman entities as renderer-owned vanilla 26.1
       `EndermanModel.createBodyLayer()` geometry, including its
       `HumanoidModel.createMesh(CubeDeformation.NONE, -14.0F)` offsets,
@@ -418,7 +422,7 @@ When an agent does any of the following, update this file in the same slice:
     presentation, skeleton armor/overlay/bogged mushroom and sheared-state
     presentation,
     creeper swelling/powered overlays,
-    spider eyes/cave-spider presentation, enderman eyes/carried-block/creepy
+    spider eyes/animation/death-flip presentation, enderman eyes/carried-block/creepy
     presentation, iron golem crackiness/flower/animation presentation, and
     snow golem pumpkin/animation presentation, armor stand equipment/custom
     layers/wiggle/marker presentation, slime/magma-cube squish/translucency/

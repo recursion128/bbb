@@ -406,7 +406,7 @@ fn entity_model_kind(
         VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID => {
             placeholder("todo_breeze_wind_charge_bounds", 0.3125, 0.3125, 0.3125)
         }
-        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => placeholder("todo_cave_spider_bounds", 0.7, 0.5, 0.7),
+        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => EntityModelKind::CaveSpider,
         VANILLA_ENTITY_TYPE_COD_ID => placeholder("todo_cod_bounds", 0.5, 0.3, 0.5),
         VANILLA_ENTITY_TYPE_CREAKING_ID => placeholder("todo_creaking_bounds", 0.9, 2.7, 0.9),
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => placeholder("todo_dolphin_bounds", 0.9, 0.6, 0.9),
@@ -1190,14 +1190,14 @@ mod tests {
     }
 
     #[test]
-    fn entity_model_kind_uses_exact_model_for_base_spider() {
+    fn entity_model_kind_uses_exact_models_for_spiders() {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_SPIDER_ID, &[]),
             EntityModelKind::Spider
         );
         assert_eq!(
-            placeholder_name(entity_model_kind(VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, &[])),
-            Some("todo_cave_spider_bounds")
+            entity_model_kind(VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, &[]),
+            EntityModelKind::CaveSpider
         );
     }
 

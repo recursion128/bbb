@@ -9,6 +9,7 @@ const MESH_TRANSFORMER_ROOT_Y_OFFSET_PIXELS: f32 = 24.016;
 const VILLAGER_LIKE_SCALE: f32 = 0.9375;
 const HUSK_SCALE: f32 = 1.0625;
 const WITHER_SKELETON_SCALE: f32 = 1.2;
+const CAVE_SPIDER_SCALE: f32 = 0.7;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EntityModelKind {
     Chicken {
@@ -61,6 +62,7 @@ pub enum EntityModelKind {
     },
     Creeper,
     Spider,
+    CaveSpider,
     Enderman,
     IronGolem,
     SnowGolem,
@@ -320,6 +322,7 @@ impl EntityModelKind {
             } => "quadruped_wolf_baby",
             Self::Creeper => "creeper",
             Self::Spider => "spider",
+            Self::CaveSpider => "cave_spider",
             Self::Enderman => "enderman",
             Self::IronGolem => "iron_golem",
             Self::SnowGolem => "snow_golem",
@@ -411,6 +414,7 @@ impl EntityModelKind {
             Self::WanderingTrader => Some(WANDERING_TRADER_TEXTURE_REF),
             Self::Creeper => Some(CREEPER_TEXTURE_REF),
             Self::Spider => Some(SPIDER_TEXTURE_REF),
+            Self::CaveSpider => Some(CAVE_SPIDER_TEXTURE_REF),
             Self::Enderman => Some(ENDERMAN_TEXTURE_REF),
             Self::IronGolem => Some(IRON_GOLEM_TEXTURE_REF),
             Self::SnowGolem => Some(SNOW_GOLEM_TEXTURE_REF),
@@ -584,6 +588,10 @@ impl EntityModelInstance {
 
     pub fn spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
         Self::new(entity_id, EntityModelKind::Spider, position, y_rot)
+    }
+
+    pub fn cave_spider(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
+        Self::new(entity_id, EntityModelKind::CaveSpider, position, y_rot)
     }
 
     pub fn enderman(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -905,6 +913,11 @@ const CREEPER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
 
 const SPIDER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/spider/spider.png",
+    size: [64, 32],
+};
+
+const CAVE_SPIDER_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/entity/spider/cave_spider.png",
     size: [64, 32],
 };
 
@@ -4319,6 +4332,7 @@ fn entity_model_mesh(instances: &[EntityModelInstance]) -> EntityModelMesh {
             }
             EntityModelKind::Creeper => emit_creeper_model(&mut mesh, *instance),
             EntityModelKind::Spider => emit_spider_model(&mut mesh, *instance),
+            EntityModelKind::CaveSpider => emit_cave_spider_model(&mut mesh, *instance),
             EntityModelKind::Enderman => emit_enderman_model(&mut mesh, *instance),
             EntityModelKind::IronGolem => emit_iron_golem_model(&mut mesh, *instance),
             EntityModelKind::SnowGolem => emit_snow_golem_model(&mut mesh, *instance),
@@ -4803,6 +4817,14 @@ fn emit_creeper_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance)
 
 fn emit_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
     emit_model_parts(mesh, &SPIDER_PARTS, entity_model_root_transform(instance));
+}
+
+fn emit_cave_spider_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
+    emit_model_parts(
+        mesh,
+        &SPIDER_PARTS,
+        mesh_transformer_scaled_model_root_transform(instance, CAVE_SPIDER_SCALE),
+    );
 }
 
 fn emit_enderman_model(mesh: &mut EntityModelMesh, instance: EntityModelInstance) {
@@ -7286,12 +7308,34 @@ mod tests {
     }
 
     #[test]
-    fn spider_texture_ref_matches_vanilla_renderer() {
+    fn cave_spider_mesh_uses_vanilla_scaled_body_layer_geometry() {
+        let mesh =
+            entity_model_mesh(&[EntityModelInstance::cave_spider(22, [0.0, 64.0, 0.0], 0.0)]);
+
+        assert_eq!(mesh.opaque_faces, 66);
+        assert_eq!(mesh.vertices.len(), 264);
+        assert_eq!(mesh.indices.len(), 396);
+
+        let (min, max) = mesh_extents(&mesh);
+        assert_close3(min, [-0.71976, 64.01351, -0.65625]);
+        assert_close3(max, [0.71976, 64.56945, 0.5387248]);
+    }
+
+    #[test]
+    fn spider_texture_refs_match_vanilla_renderers() {
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
         assert_eq!(
             EntityModelKind::Spider.vanilla_texture_ref(),
             Some(EntityModelTextureRef {
                 path: "textures/entity/spider/spider.png",
+                size: [64, 32],
+            })
+        );
+        assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");
+        assert_eq!(
+            EntityModelKind::CaveSpider.vanilla_texture_ref(),
+            Some(EntityModelTextureRef {
+                path: "textures/entity/spider/cave_spider.png",
                 size: [64, 32],
             })
         );
@@ -8367,6 +8411,7 @@ mod tests {
             "wandering_trader"
         );
         assert_eq!(EntityModelKind::Spider.model_key(), "spider");
+        assert_eq!(EntityModelKind::CaveSpider.model_key(), "cave_spider");
         assert_eq!(EntityModelKind::Enderman.model_key(), "enderman");
         assert_eq!(EntityModelKind::IronGolem.model_key(), "iron_golem");
         assert_eq!(EntityModelKind::SnowGolem.model_key(), "snow_golem");
