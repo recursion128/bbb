@@ -1255,6 +1255,41 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_play_keepalive_and_ping_send_common_responses() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+
+        probe
+            .handle_play_packet(PlayClientbound::KeepAlive {
+                id: 0x1122_3344_5566_7788,
+            })
+            .await
+            .unwrap();
+        probe
+            .handle_play_packet(PlayClientbound::Ping { id: 0x0a0b_0c0d })
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("keepalive response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_KEEP_ALIVE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 0x1122_3344_5566_7788);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("pong response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_PONG);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i32().unwrap(), 0x0a0b_0c0d);
+        assert!(decoder.is_empty());
+    }
+
+    #[tokio::test]
     async fn probe_player_chat_sends_chat_acknowledgement_after_threshold() {
         let (client, mut server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
