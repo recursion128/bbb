@@ -27,7 +27,6 @@ pub(super) const BOGGED_RED_MUSHROOM_COLOR: [f32; 4] = [0.78, 0.15, 0.12, 1.0];
 pub(super) const BOGGED_BROWN_MUSHROOM_COLOR: [f32; 4] = [0.48, 0.31, 0.18, 1.0];
 pub(super) const VILLAGER_ROBE: [f32; 4] = [0.48, 0.34, 0.23, 1.0];
 pub(super) const ILLAGER_GRAY: [f32; 4] = [0.42, 0.45, 0.48, 1.0];
-pub(super) const ARMOR_STAND_WOOD: [f32; 4] = [0.55, 0.36, 0.19, 1.0];
 pub(super) const PIG_PINK: [f32; 4] = [0.92, 0.55, 0.62, 1.0];
 pub(super) const PIG_COLD_FUR: [f32; 4] = [0.82, 0.78, 0.70, 1.0];
 pub(super) const COW_BROWN: [f32; 4] = [0.38, 0.25, 0.18, 1.0];
@@ -66,6 +65,7 @@ pub(super) const MAGMA_CUBE_ORANGE: [f32; 4] = [0.92, 0.38, 0.12, 1.0];
 pub(super) const MAGMA_CUBE_CORE: [f32; 4] = [0.98, 0.72, 0.22, 1.0];
 pub(super) const PLACEHOLDER_COLOR: [f32; 4] = [0.80, 0.20, 0.72, 1.0];
 
+mod armor_stand;
 mod boat;
 mod cow;
 mod creeper;
@@ -74,6 +74,7 @@ mod sheep;
 mod spider;
 mod textures;
 
+pub(super) use armor_stand::*;
 pub(super) use boat::*;
 pub(super) use cow::*;
 pub(super) use creeper::*;
@@ -87,272 +88,6 @@ pub use textures::{
     player_entity_texture_refs, sheep_entity_texture_refs, spider_entity_texture_refs,
     wolf_entity_texture_refs,
 };
-
-pub(super) const ARMOR_STAND_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, -7.0, -1.0],
-    size: [2.0, 7.0, 2.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const ARMOR_STAND_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-6.0, 0.0, -1.5],
-    size: [12.0, 3.0, 3.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const ARMOR_STAND_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, -2.0, -1.0],
-    size: [2.0, 12.0, 2.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const ARMOR_STAND_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, -2.0, -1.0],
-    size: [2.0, 12.0, 2.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const ARMOR_STAND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, 0.0, -1.0],
-    size: [2.0, 11.0, 2.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const ARMOR_STAND_RIGHT_BODY_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, 3.0, -1.0],
-    size: [2.0, 7.0, 2.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const ARMOR_STAND_LEFT_BODY_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [1.0, 3.0, -1.0],
-    size: [2.0, 7.0, 2.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const ARMOR_STAND_SHOULDER_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-4.0, 10.0, -1.0],
-    size: [8.0, 2.0, 2.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const ARMOR_STAND_BASE_PLATE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-6.0, 11.0, -6.0],
-    size: [12.0, 1.0, 12.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-// Vanilla 26.1 ArmorStandModel.createBodyLayer().
-pub(super) const ARMOR_STAND_PARTS: [ModelPartDesc; 10] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 1.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ARMOR_STAND_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ARMOR_STAND_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-5.0, 2.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ARMOR_STAND_RIGHT_ARM,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [5.0, 2.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ARMOR_STAND_LEFT_ARM,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-1.9, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ARMOR_STAND_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [1.9, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ARMOR_STAND_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ARMOR_STAND_RIGHT_BODY_STICK,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ARMOR_STAND_LEFT_BODY_STICK,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PART_POSE_ZERO,
-        cubes: &ARMOR_STAND_SHOULDER_STICK,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &ARMOR_STAND_BASE_PLATE,
-        children: &[],
-    },
-];
-
-pub(super) const SMALL_ARMOR_STAND_HEAD: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-0.75, -5.25, -0.75],
-    size: [1.5, 5.25, 1.5],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const SMALL_ARMOR_STAND_BODY: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, 0.0, -0.75],
-    size: [6.0, 1.5, 1.5],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const SMALL_ARMOR_STAND_RIGHT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.0, -1.0, -0.5],
-    size: [1.0, 6.0, 1.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const SMALL_ARMOR_STAND_LEFT_ARM: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.0, -1.0, -0.5],
-    size: [1.0, 6.0, 1.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const SMALL_ARMOR_STAND_LEG: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-0.5, 0.0, -0.5],
-    size: [1.0, 5.5, 1.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const SMALL_ARMOR_STAND_RIGHT_BODY_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-1.5, 1.5, -0.5],
-    size: [1.0, 3.5, 1.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const SMALL_ARMOR_STAND_LEFT_BODY_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [0.5, 1.5, -0.5],
-    size: [1.0, 3.5, 1.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const SMALL_ARMOR_STAND_SHOULDER_STICK: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-2.0, 5.0, -0.5],
-    size: [4.0, 1.0, 1.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-pub(super) const SMALL_ARMOR_STAND_BASE_PLATE: [ModelCubeDesc; 1] = [ModelCubeDesc {
-    min: [-3.0, 5.5, -3.0],
-    size: [6.0, 0.5, 6.0],
-    color: ARMOR_STAND_WOOD,
-}];
-
-// Vanilla 26.1 ModelLayers.ARMOR_STAND_SMALL applies HumanoidModel.BABY_TRANSFORMER:
-// head root parts are translated by y=16 then scaled 0.75; all other root parts
-// are translated by y=24 then scaled 0.5.
-pub(super) const SMALL_ARMOR_STAND_PARTS: [ModelPartDesc; 10] = [
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 12.75, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_HEAD,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_BODY,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-2.5, 13.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_RIGHT_ARM,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [2.5, 13.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_LEFT_ARM,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [-0.95, 18.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.95, 18.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_LEG,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_RIGHT_BODY_STICK,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_LEFT_BODY_STICK,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 12.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_SHOULDER_STICK,
-        children: &[],
-    },
-    ModelPartDesc {
-        pose: PartPose {
-            offset: [0.0, 18.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        },
-        cubes: &SMALL_ARMOR_STAND_BASE_PLATE,
-        children: &[],
-    },
-];
 
 pub(super) const SLIME_INNER_CUBE: [ModelCubeDesc; 1] = [ModelCubeDesc {
     min: [-3.0, 17.0, -3.0],
