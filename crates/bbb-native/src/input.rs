@@ -9,7 +9,8 @@ use bbb_protocol::packets::{
 use bbb_world::{LocalPlayerInputState, LocalPlayerPoseState, WorldStore};
 use tokio::sync::mpsc;
 use winit::{
-    event::ElementState,
+    dpi::{PhysicalPosition, PhysicalSize},
+    event::{ElementState, MouseButton},
     keyboard::{KeyCode, PhysicalKey},
 };
 
@@ -55,6 +56,24 @@ const CREATIVE_FLIGHT_TICK_SECONDS: f64 = 0.05;
 const SPRINT_TRIGGER_TICKS: u8 = 7;
 const SPRINT_TRIGGER_TICK_SECONDS: f64 = 0.05;
 const SIGN_LINE_MAX_LENGTH: usize = 384;
+const BOOK_SCREEN_WIDTH: i32 = 192;
+const BOOK_SCREEN_HEIGHT: i32 = 192;
+const BOOK_PAGE_BUTTON_Y: i32 = 157;
+const BOOK_PAGE_BACK_BUTTON_X: i32 = 43;
+const BOOK_PAGE_FORWARD_BUTTON_X: i32 = 116;
+const BOOK_PAGE_BUTTON_WIDTH: i32 = 23;
+const BOOK_PAGE_BUTTON_HEIGHT: i32 = 13;
+const BOOK_MENU_BUTTON_Y: i32 = 194;
+const BOOK_MENU_DONE_BUTTON_X: i32 = -4;
+const BOOK_MENU_BUTTON_WIDTH: i32 = 200;
+const BOOK_MENU_BUTTON_HEIGHT: i32 = 20;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BookScreenClickTarget {
+    Done,
+    PreviousPage,
+    NextPage,
+}
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
@@ -373,6 +392,100 @@ pub(crate) fn handle_focus_change(
     input.focused = focused;
 }
 
+fn handle_book_screen_key(world: &mut WorldStore, code: KeyCode, pressed: bool) -> bool {
+    if world.current_book().is_none() {
+        return false;
+    }
+    if !pressed {
+        return true;
+    }
+    match code {
+        KeyCode::Escape | KeyCode::KeyE => {
+            world.close_current_book();
+        }
+        KeyCode::PageUp => {
+            world.turn_current_book_page(-1);
+        }
+        KeyCode::PageDown => {
+            world.turn_current_book_page(1);
+        }
+        _ => {}
+    }
+    true
+}
+
+pub(crate) fn handle_book_screen_mouse_input(
+    world: &mut WorldStore,
+    button: MouseButton,
+    state: ElementState,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> bool {
+    if world.current_book().is_none() {
+        return false;
+    }
+    if !matches!((button, state), (MouseButton::Left, ElementState::Pressed)) {
+        return true;
+    }
+    match book_screen_click_target_at_position(world, cursor_position, surface_size) {
+        Some(BookScreenClickTarget::Done) => {
+            world.close_current_book();
+        }
+        Some(BookScreenClickTarget::PreviousPage) => {
+            world.turn_current_book_page(-1);
+        }
+        Some(BookScreenClickTarget::NextPage) => {
+            world.turn_current_book_page(1);
+        }
+        None => {}
+    }
+    true
+}
+
+fn book_screen_click_target_at_position(
+    world: &WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<BookScreenClickTarget> {
+    let book = world.current_book()?;
+    let cursor = cursor_position?;
+    let (origin_x, origin_y) = book_screen_origin(surface_size);
+    let x = cursor.x - origin_x;
+    let y = cursor.y - origin_y;
+    if y >= f64::from(BOOK_MENU_BUTTON_Y)
+        && y < f64::from(BOOK_MENU_BUTTON_Y + BOOK_MENU_BUTTON_HEIGHT)
+        && x >= f64::from(BOOK_MENU_DONE_BUTTON_X)
+        && x < f64::from(BOOK_MENU_DONE_BUTTON_X + BOOK_MENU_BUTTON_WIDTH)
+    {
+        return Some(BookScreenClickTarget::Done);
+    }
+    if y < f64::from(BOOK_PAGE_BUTTON_Y)
+        || y >= f64::from(BOOK_PAGE_BUTTON_Y + BOOK_PAGE_BUTTON_HEIGHT)
+    {
+        return None;
+    }
+    if book.current_page > 0
+        && x >= f64::from(BOOK_PAGE_BACK_BUTTON_X)
+        && x < f64::from(BOOK_PAGE_BACK_BUTTON_X + BOOK_PAGE_BUTTON_WIDTH)
+    {
+        return Some(BookScreenClickTarget::PreviousPage);
+    }
+    if book.current_page + 1 < book.pages.len()
+        && x >= f64::from(BOOK_PAGE_FORWARD_BUTTON_X)
+        && x < f64::from(BOOK_PAGE_FORWARD_BUTTON_X + BOOK_PAGE_BUTTON_WIDTH)
+    {
+        return Some(BookScreenClickTarget::NextPage);
+    }
+    None
+}
+
+fn book_screen_origin(surface_size: PhysicalSize<u32>) -> (f64, f64) {
+    (
+        (f64::from(surface_size.width.max(1)) - f64::from(BOOK_SCREEN_WIDTH)) * 0.5,
+        (f64::from(surface_size.height.max(1)) - f64::from(BOOK_SCREEN_HEIGHT)) * 0.5,
+    )
+}
+
 pub(crate) fn handle_key_input(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -422,6 +535,10 @@ pub(crate) fn handle_key_input_with_item_runtime(
 
     if input.command_entry_is_active() {
         handle_chat_entry_key(input, counters, world, net_commands, code, pressed);
+        return;
+    }
+
+    if handle_book_screen_key(world, code, pressed) {
         return;
     }
 
@@ -693,6 +810,10 @@ pub(crate) fn handle_text_input_with_item_runtime(
     }
 
     if handle_sign_editor_text(input, counters, world, net_commands, text) {
+        return;
+    }
+
+    if world.current_book().is_some() {
         return;
     }
 

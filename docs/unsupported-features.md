@@ -1068,6 +1068,11 @@ When an agent does any of the following, update this file in the same slice:
     - LecternMenu Take Book queues vanilla container-button id `3`.
     - LecternMenu renders the current book page as basic ASCII text from
       decoded writable/written book item components and server page data.
+    - `ClientboundOpenBook` opens a canonical active book screen when the
+      requested hand holds decoded writable/written book item components.
+      The native client renders the book background/page text, handles local
+      page buttons and PageUp/PageDown, and closes it with Escape/E/Done
+      without queuing container commands.
     - MountScreenOpen opens a server-controlled container and hit-tests:
       - saddle slot
       - body armor slot
@@ -1106,9 +1111,9 @@ When an agent does any of the following, update this file in the same slice:
       - hovered-slot Q/Ctrl+Q as `THROW`
       - hovered-slot number keys and F as `SWAP`
     - Opening a server-driven runtime screen, including containers, dialogs,
-      and sign editors, releases active movement, item use, and block destroy
-      input through the native runtime, matching vanilla `Minecraft.setScreen`
-      screen-open input release.
+      sign editors, and book views, releases active movement, item use, and
+      block destroy input through the native runtime, matching vanilla
+      `Minecraft.setScreen` screen-open input release.
     - MerchantMenu visible trade-row clicks queue
       `ServerboundSelectTradePacket` for the current visible offer window.
     - MerchantMenu mouse wheel input updates the local trade-list scroll offset

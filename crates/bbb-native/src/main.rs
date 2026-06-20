@@ -36,8 +36,8 @@ use code_of_conduct::{default_code_of_conduct_store_path, CodeOfConductAcceptanc
 use code_of_conduct_overlay::CodeOfConductOverlayState;
 use hud_assets::load_hud_textures;
 use input::{
-    handle_focus_change, handle_inventory_cursor_moved, handle_inventory_mouse_input,
-    handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
+    handle_book_screen_mouse_input, handle_focus_change, handle_inventory_cursor_moved,
+    handle_inventory_mouse_input, handle_inventory_mouse_wheel, handle_key_input_with_item_runtime,
     handle_mouse_input_at_partial_tick, handle_mouse_motion, handle_mouse_wheel,
     handle_text_input_with_item_runtime, release_active_input, ClientInputState,
 };
@@ -290,11 +290,13 @@ fn main() -> Result<()> {
                     }
                     let container_open = world.open_container_id().is_some();
                     let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
+                    let book_open = world.current_book().is_some();
                     if matches!(event.state, ElementState::Pressed)
                         && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
                         && cursor_captured
                         && !input.command_entry_is_active()
                         && !sign_editor_open
+                        && !book_open
                         && !world_wants_cursor(&world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
@@ -306,10 +308,10 @@ fn main() -> Result<()> {
                         );
                         return;
                     }
-                    if sign_editor_open {
+                    if sign_editor_open || book_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
-                    if !cursor_captured && !container_open && !sign_editor_open {
+                    if !cursor_captured && !container_open && !sign_editor_open && !book_open {
                         return;
                     }
                     handle_key_input_with_item_runtime(
@@ -329,7 +331,8 @@ fn main() -> Result<()> {
                     }
                     let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
                     let container_open = world.open_container_id().is_some();
-                    if world.current_dialog().is_some() {
+                    let book_open = world.current_book().is_some();
+                    if world.current_dialog().is_some() || book_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
@@ -369,6 +372,17 @@ fn main() -> Result<()> {
                     }
                     if input.sign_editor_is_active_or_pending(&world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if world.current_book().is_some() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        handle_book_screen_mouse_input(
+                            &mut world,
+                            button,
+                            state,
+                            cursor_position,
+                            window.inner_size(),
+                        );
                         return;
                     }
                     if world.open_container_id().is_some() {
@@ -412,6 +426,10 @@ fn main() -> Result<()> {
                         return;
                     }
                     if input.sign_editor_is_active_or_pending(&world) {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if world.current_book().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
@@ -692,7 +710,9 @@ fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
 }
 
 fn world_wants_cursor(world: &WorldStore) -> bool {
-    world.open_container_id().is_some() || world.current_dialog().is_some()
+    world.open_container_id().is_some()
+        || world.current_dialog().is_some()
+        || world.current_book().is_some()
 }
 
 fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {

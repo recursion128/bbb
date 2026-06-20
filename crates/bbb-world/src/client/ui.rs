@@ -1,8 +1,8 @@
 use bbb_protocol::packets::{
-    DialogHolder, InteractionHand, MountScreenOpen as ProtocolMountScreenOpen,
-    OpenBook as ProtocolOpenBook, OpenSignEditor as ProtocolOpenSignEditor,
-    PlaceGhostRecipe as ProtocolPlaceGhostRecipe, PongResponse as ProtocolPongResponse,
-    ShowDialog as ProtocolShowDialog,
+    DialogHolder, InteractionHand, ItemStackSummary as ProtocolItemStackSummary,
+    MountScreenOpen as ProtocolMountScreenOpen, OpenBook as ProtocolOpenBook,
+    OpenSignEditor as ProtocolOpenSignEditor, PlaceGhostRecipe as ProtocolPlaceGhostRecipe,
+    PongResponse as ProtocolPongResponse, ShowDialog as ProtocolShowDialog,
 };
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +14,8 @@ pub struct ClientUiState {
     pub low_disk_space_warning_count: usize,
     #[serde(default)]
     pub current_dialog: Option<DialogState>,
+    #[serde(default)]
+    pub current_book: Option<BookScreenState>,
     #[serde(default)]
     pub last_code_of_conduct: Option<CodeOfConductState>,
     #[serde(default)]
@@ -53,6 +55,15 @@ pub struct OpenBookState {
     pub hand: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BookScreenState {
+    pub hand: String,
+    #[serde(default)]
+    pub pages: Vec<String>,
+    #[serde(default)]
+    pub current_page: usize,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpenSignEditorState {
     pub pos: BlockPos,
@@ -85,6 +96,7 @@ impl WorldStore {
 
     pub fn apply_show_dialog(&mut self, packet: ProtocolShowDialog) {
         self.counters.show_dialog_packets += 1;
+        self.client_ui.current_book = None;
         self.client_ui.current_dialog = Some(DialogState::from_packet(packet));
     }
 
@@ -97,6 +109,7 @@ impl WorldStore {
 
     pub fn apply_mount_screen_open(&mut self, packet: ProtocolMountScreenOpen) {
         self.counters.mount_screen_open_packets += 1;
+        self.client_ui.current_book = None;
         let mount = MountScreenState {
             container_id: packet.container_id,
             inventory_columns: packet.inventory_columns,
@@ -108,13 +121,21 @@ impl WorldStore {
 
     pub fn apply_open_book(&mut self, packet: ProtocolOpenBook) {
         self.counters.open_book_packets += 1;
-        self.client_ui.last_open_book = Some(OpenBookState {
-            hand: interaction_hand_name(packet.hand).to_string(),
-        });
+        let hand = interaction_hand_name(packet.hand).to_string();
+        self.client_ui.last_open_book = Some(OpenBookState { hand: hand.clone() });
+        if let Some(pages) = self.open_book_pages_from_hand(packet.hand) {
+            self.client_ui.current_dialog = None;
+            self.client_ui.current_book = Some(BookScreenState {
+                hand,
+                pages,
+                current_page: 0,
+            });
+        }
     }
 
     pub fn apply_open_sign_editor(&mut self, packet: ProtocolOpenSignEditor) {
         self.counters.open_sign_editor_packets += 1;
+        self.client_ui.current_book = None;
         self.client_ui.last_open_sign_editor = Some(OpenSignEditorState {
             pos: protocol_block_pos(packet.pos),
             is_front_text: packet.is_front_text,
@@ -144,6 +165,37 @@ impl WorldStore {
         self.client_ui.current_dialog.as_ref()
     }
 
+    pub fn current_book(&self) -> Option<&BookScreenState> {
+        self.client_ui.current_book.as_ref()
+    }
+
+    pub fn close_current_book(&mut self) -> bool {
+        self.client_ui.current_book.take().is_some()
+    }
+
+    pub fn set_current_book_page(&mut self, page: usize) -> bool {
+        let Some(book) = &mut self.client_ui.current_book else {
+            return false;
+        };
+        let max_page = book.pages.len().saturating_sub(1);
+        let page = page.min(max_page);
+        if page == book.current_page {
+            return false;
+        }
+        book.current_page = page;
+        true
+    }
+
+    pub fn turn_current_book_page(&mut self, delta: i32) -> bool {
+        let Some(book) = &self.client_ui.current_book else {
+            return false;
+        };
+        let current = book.current_page as i32;
+        let max_page = book.pages.len().saturating_sub(1) as i32;
+        let page = current.saturating_add(delta).clamp(0, max_page);
+        self.set_current_book_page(page as usize)
+    }
+
     pub fn last_code_of_conduct(&self) -> Option<&CodeOfConductState> {
         self.client_ui.last_code_of_conduct.as_ref()
     }
@@ -171,6 +223,10 @@ impl WorldStore {
     pub fn last_pong_response(&self) -> Option<&PongResponseState> {
         self.client_ui.last_pong_response.as_ref()
     }
+
+    fn open_book_pages_from_hand(&self, hand: InteractionHand) -> Option<Vec<String>> {
+        self.local_item_in_hand(hand).and_then(book_pages_from_item)
+    }
 }
 
 impl DialogState {
@@ -197,6 +253,23 @@ fn interaction_hand_name(hand: InteractionHand) -> &'static str {
     }
 }
 
+fn book_pages_from_item(item: &ProtocolItemStackSummary) -> Option<Vec<String>> {
+    if let Some(written) = &item.component_patch.written_book {
+        return Some(written.pages.clone());
+    }
+    if item
+        .component_patch
+        .added_type_ids
+        .contains(&VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID)
+        || !item.component_patch.writable_book_pages.is_empty()
+    {
+        return Some(item.component_patch.writable_book_pages.clone());
+    }
+    None
+}
+
+const VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID: i32 = 54;
+
 pub fn code_of_conduct_text_hash(text: &str) -> i32 {
     text.encode_utf16().fold(0i32, |hash, unit| {
         hash.wrapping_mul(31).wrapping_add(i32::from(unit))
@@ -206,7 +279,11 @@ pub fn code_of_conduct_text_hash(text: &str) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{BlockPos as ProtocolBlockPos, DialogHolder, InteractionHand};
+    use bbb_protocol::packets::{
+        BlockPos as ProtocolBlockPos, DataComponentPatchSummary, DialogHolder, InteractionHand,
+        ItemStackSummary, SetPlayerInventory as ProtocolSetPlayerInventory,
+        WrittenBookContentSummary,
+    };
 
     #[test]
     fn tracks_client_ui_warnings_and_dialogs() {
@@ -343,6 +420,78 @@ mod tests {
     }
 
     #[test]
+    fn open_book_without_book_access_records_request_without_screen() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: item_stack(42, 1),
+        });
+
+        store.apply_open_book(ProtocolOpenBook {
+            hand: InteractionHand::MainHand,
+        });
+
+        assert_eq!(
+            store.last_open_book(),
+            Some(&OpenBookState {
+                hand: "main_hand".to_string(),
+            })
+        );
+        assert_eq!(store.current_book(), None);
+        assert_eq!(store.counters().open_book_packets, 1);
+    }
+
+    #[test]
+    fn open_book_from_held_written_book_tracks_active_screen() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 0,
+            item: written_book_stack(vec!["First", "Second"]),
+        });
+
+        store.apply_open_book(ProtocolOpenBook {
+            hand: InteractionHand::MainHand,
+        });
+
+        assert_eq!(
+            store.current_book(),
+            Some(&BookScreenState {
+                hand: "main_hand".to_string(),
+                pages: vec!["First".to_string(), "Second".to_string()],
+                current_page: 0,
+            })
+        );
+        assert!(store.turn_current_book_page(1));
+        assert_eq!(store.current_book().unwrap().current_page, 1);
+        assert!(!store.turn_current_book_page(1));
+        assert_eq!(store.current_book().unwrap().current_page, 1);
+        assert!(store.close_current_book());
+        assert_eq!(store.current_book(), None);
+    }
+
+    #[test]
+    fn open_book_from_held_writable_book_uses_raw_pages() {
+        let mut store = WorldStore::new();
+        store.apply_set_player_inventory(ProtocolSetPlayerInventory {
+            slot: 40,
+            item: writable_book_stack(vec!["Draft page"]),
+        });
+
+        store.apply_open_book(ProtocolOpenBook {
+            hand: InteractionHand::OffHand,
+        });
+
+        assert_eq!(
+            store.current_book(),
+            Some(&BookScreenState {
+                hand: "off_hand".to_string(),
+                pages: vec!["Draft page".to_string()],
+                current_page: 0,
+            })
+        );
+    }
+
+    #[test]
     fn tracks_client_ui_pong_response() {
         let mut store = WorldStore::new();
 
@@ -353,6 +502,36 @@ mod tests {
             Some(&PongResponseState { time: 123456789 })
         );
         assert_eq!(store.counters().pong_response_packets, 1);
+    }
+
+    fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count,
+            component_patch: DataComponentPatchSummary::default(),
+        }
+    }
+
+    fn written_book_stack(pages: Vec<&str>) -> ItemStackSummary {
+        let mut stack = item_stack(42, 1);
+        stack.component_patch.written_book = Some(WrittenBookContentSummary {
+            title: "Guide".to_string(),
+            author: "Alex".to_string(),
+            generation: 0,
+            pages: pages.into_iter().map(str::to_string).collect(),
+            resolved: true,
+        });
+        stack
+    }
+
+    fn writable_book_stack(pages: Vec<&str>) -> ItemStackSummary {
+        let mut stack = item_stack(43, 1);
+        stack
+            .component_patch
+            .added_type_ids
+            .push(VANILLA_WRITABLE_BOOK_CONTENT_COMPONENT_ID);
+        stack.component_patch.writable_book_pages = pages.into_iter().map(str::to_string).collect();
+        stack
     }
 
     #[test]

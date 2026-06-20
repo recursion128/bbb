@@ -8,9 +8,9 @@ use bbb_protocol::packets::{
     EntityDataValueKind, FilterMask, FilterMaskKind, GameEvent as ProtocolGameEvent,
     HashedComponentPatch, HashedItemStack, HashedStack,
     ItemStackSummary as ProtocolItemStackSummary, LastSeenMessagesUpdate, MessageSignature,
-    OpenScreen as ProtocolOpenScreen, OpenSignEditor, PaddleBoat, PlayLogin, PlayerAbilities,
-    PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth, RenameItem,
-    SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
+    OpenBook, OpenScreen as ProtocolOpenScreen, OpenSignEditor, PaddleBoat, PlayLogin,
+    PlayerAbilities, PlayerAbilitiesCommand, PlayerAction, PlayerChat, PlayerCommand, PlayerHealth,
+    RenameItem, SelectBundleItem, SetCursorItem as ProtocolSetCursorItem,
     SetEntityData as ProtocolSetEntityData, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, SignUpdate, SignedMessageBody,
     Vec3d as ProtocolVec3d, WrittenBookContentSummary,
@@ -2497,6 +2497,91 @@ fn pending_sign_editor_escape_queues_empty_sign_update() {
 }
 
 #[test]
+fn book_screen_keys_turn_pages_close_and_block_gameplay_input() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    open_test_book_screen(&mut world, vec!["First", "Second"]);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::PageDown),
+        ElementState::Pressed,
+    );
+    assert_eq!(world.current_book().unwrap().current_page, 1);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+    assert_eq!(counters.player_input_commands_queued, 0);
+    assert!(rx.try_recv().is_err());
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::Escape),
+        ElementState::Pressed,
+    );
+    assert_eq!(world.current_book(), None);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+    assert_eq!(counters.player_input_commands_queued, 1);
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+}
+
+#[test]
+fn book_screen_mouse_clicks_turn_pages_and_close() {
+    let mut world = WorldStore::new();
+    open_test_book_screen(&mut world, vec!["First", "Second"]);
+    let surface_size = PhysicalSize::new(800, 600);
+    let origin_x = (800.0 - f64::from(BOOK_SCREEN_WIDTH)) * 0.5;
+    let origin_y = (600.0 - f64::from(BOOK_SCREEN_HEIGHT)) * 0.5;
+
+    assert!(handle_book_screen_mouse_input(
+        &mut world,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + f64::from(BOOK_PAGE_FORWARD_BUTTON_X + 1),
+            origin_y + f64::from(BOOK_PAGE_BUTTON_Y + 1),
+        )),
+        surface_size,
+    ));
+    assert_eq!(world.current_book().unwrap().current_page, 1);
+
+    assert!(handle_book_screen_mouse_input(
+        &mut world,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(
+            origin_x + f64::from(BOOK_MENU_DONE_BUTTON_X + 10),
+            origin_y + f64::from(BOOK_MENU_BUTTON_Y + 1),
+        )),
+        surface_size,
+    ));
+    assert_eq!(world.current_book(), None);
+}
+
+#[test]
 fn pending_sign_editor_escape_preserves_existing_sign_text() {
     let (tx, mut rx) = mpsc::channel(2);
     let commands = Some(tx);
@@ -4330,6 +4415,25 @@ fn test_item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
         count,
         component_patch: Default::default(),
     }
+}
+
+fn open_test_book_screen(world: &mut WorldStore, pages: Vec<&str>) {
+    let mut stack = test_item_stack(42, 1);
+    stack.component_patch.written_book = Some(WrittenBookContentSummary {
+        title: "Guide".to_string(),
+        author: "Alex".to_string(),
+        generation: 0,
+        pages: pages.into_iter().map(str::to_string).collect(),
+        resolved: true,
+    });
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: stack,
+    });
+    world.apply_open_book(OpenBook {
+        hand: InteractionHand::MainHand,
+    });
+    assert!(world.current_book().is_some());
 }
 
 fn test_bundle_stack(

@@ -60,7 +60,10 @@ pub(crate) fn handle_mouse_input_at_partial_tick(
     state: ElementState,
     entity_partial_tick: f32,
 ) {
-    if !input.focused || input.sign_editor_is_active_or_pending(world) {
+    if !input.focused
+        || input.sign_editor_is_active_or_pending(world)
+        || world.current_book().is_some()
+    {
         return;
     }
     let player_pose = world.local_player_pose();
@@ -178,6 +181,7 @@ pub(crate) fn advance_using_item_at_partial_tick(
 ) {
     if !input.focused
         || input.sign_editor_is_active_or_pending(world)
+        || world.current_book().is_some()
         || !input.use_item_held
         || use_ticks == 0
     {
@@ -377,7 +381,10 @@ pub(crate) fn advance_destroying_block_at_partial_tick(
     destroy_ticks: u32,
 ) {
     let mut audio_events = audio_events;
-    if !input.focused || input.sign_editor_is_active_or_pending(world) || !input.destroy_block_held
+    if !input.focused
+        || input.sign_editor_is_active_or_pending(world)
+        || world.current_book().is_some()
+        || !input.destroy_block_held
     {
         return;
     }
@@ -543,7 +550,10 @@ pub(crate) fn handle_mouse_wheel(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     delta: MouseScrollDelta,
 ) {
-    if !input.focused || input.sign_editor_is_active_or_pending(world) {
+    if !input.focused
+        || input.sign_editor_is_active_or_pending(world)
+        || world.current_book().is_some()
+    {
         return;
     }
     let Some(wheel) = wheel_steps_from_scroll(input, delta) else {

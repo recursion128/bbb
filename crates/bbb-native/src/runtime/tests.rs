@@ -5,8 +5,9 @@ use std::{
 };
 
 use bbb_protocol::packets::{
-    BlockPos as ProtocolBlockPos, DialogHolder, MerchantOffer, MerchantOffers, OpenSignEditor,
-    ShowDialog,
+    BlockPos as ProtocolBlockPos, DialogHolder, InteractionHand, MerchantOffer, MerchantOffers,
+    OpenBook, OpenSignEditor, SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog,
+    WrittenBookContentSummary,
 };
 use bbb_world::LocalPlayerPoseState;
 use tokio::sync::mpsc;
@@ -217,6 +218,40 @@ fn sign_editor_open_releases_held_movement() {
     world.apply_open_sign_editor(OpenSignEditor {
         pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
         is_front_text: true,
+    });
+    release_input_if_screen_opened(false, &mut input, &mut world, &mut counters, &commands);
+
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::PlayerInput(bbb_protocol::packets::PlayerInput::default())
+    );
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn book_screen_open_releases_held_movement() {
+    let (tx, mut rx) = mpsc::channel(4);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+
+    crate::input::handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        PhysicalKey::Code(KeyCode::KeyW),
+        ElementState::Pressed,
+    );
+
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::PlayerInput(_)));
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: written_book_stack(vec!["First page"]),
+    });
+    world.apply_open_book(OpenBook {
+        hand: InteractionHand::MainHand,
     });
     release_input_if_screen_opened(false, &mut input, &mut world, &mut counters, &commands);
 
@@ -2179,6 +2214,70 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
 }
 
 #[test]
+fn hud_inventory_screen_projects_current_book_screen() {
+    let mut world = WorldStore::new();
+    world.apply_set_player_inventory(ProtocolSetPlayerInventory {
+        slot: 0,
+        item: written_book_stack(vec!["First page", "Second page"]),
+    });
+    world.apply_open_book(OpenBook {
+        hand: InteractionHand::MainHand,
+    });
+
+    let screen = hud_inventory_screen(&world, None, None, 0.0).unwrap();
+
+    assert_eq!(screen.width, 192);
+    assert_eq!(screen.height, 192);
+    assert!(screen.slots.is_empty());
+    assert_eq!(
+        screen.background_layers,
+        vec![
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::Book,
+                0,
+                0,
+                192,
+                192,
+                [0.0, 0.0],
+                [192.0 / 256.0, 192.0 / 256.0],
+            ),
+            hud_inventory_background_layer(
+                HudInventoryBackgroundTexture::PageForward,
+                116,
+                157,
+                23,
+                13,
+                [0.0, 0.0],
+                [1.0, 1.0],
+            ),
+        ]
+    );
+    assert_eq!(
+        screen.text_labels,
+        vec![
+            HudInventoryTextLabel {
+                x: 88,
+                y: BOOK_PAGE_INDICATOR_Y,
+                width: 60,
+                text: "Page 1 of 2".to_string(),
+                tint: BOOK_TEXT_COLOR,
+                background: None,
+                shadow: false,
+            },
+            HudInventoryTextLabel {
+                x: BOOK_PAGE_TEXT_X,
+                y: BOOK_PAGE_TEXT_Y,
+                width: BOOK_PAGE_TEXT_WIDTH,
+                text: "First page".to_string(),
+                tint: BOOK_TEXT_COLOR,
+                background: None,
+                shadow: false,
+            },
+        ]
+    );
+}
+
+#[test]
 fn hud_inventory_screen_projects_shulker_box_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
@@ -3473,6 +3572,18 @@ fn item_stack(item_id: i32, count: i32) -> bbb_protocol::packets::ItemStackSumma
         count,
         component_patch: Default::default(),
     }
+}
+
+fn written_book_stack(pages: Vec<&str>) -> bbb_protocol::packets::ItemStackSummary {
+    let mut item = item_stack(42, 1);
+    item.component_patch.written_book = Some(WrittenBookContentSummary {
+        title: "Guide".to_string(),
+        author: "Alex".to_string(),
+        generation: 0,
+        pages: pages.into_iter().map(str::to_string).collect(),
+        resolved: true,
+    });
+    item
 }
 
 fn item_stack_with_damage(

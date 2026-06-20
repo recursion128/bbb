@@ -529,6 +529,7 @@ impl WorldStore {
 
     pub fn apply_open_screen(&mut self, packet: ProtocolOpenScreen) {
         self.counters.container_open_updates_received += 1;
+        self.client_ui.current_book = None;
         self.inventory.local_inventory_open = false;
         self.inventory.local_quick_craft.reset();
         let existing = self
@@ -635,6 +636,7 @@ impl WorldStore {
     }
 
     pub(crate) fn apply_mount_screen_open_container(&mut self, mount: MountScreenState) {
+        self.client_ui.current_book = None;
         self.inventory.local_inventory_open = false;
         self.inventory.local_quick_craft.reset();
         let existing = self
@@ -744,6 +746,7 @@ impl WorldStore {
         if self.inventory.open_container.is_some() {
             return false;
         }
+        self.client_ui.current_book = None;
         self.sync_inventory_menu_slots_from_player_inventory();
         self.ensure_inventory_menu_slot_shape();
         let was_open = self.inventory.local_inventory_open;
@@ -951,18 +954,25 @@ impl WorldStore {
     }
 
     pub(crate) fn local_item_in_hand_is_non_empty(&self, hand: InteractionHand) -> bool {
+        self.local_item_in_hand(hand).is_some()
+    }
+
+    pub(crate) fn local_item_in_hand(
+        &self,
+        hand: InteractionHand,
+    ) -> Option<&ProtocolItemStackSummary> {
         match hand {
             InteractionHand::MainHand => {
                 let selected_slot = self.local_player.selected_hotbar_slot;
                 if selected_slot > 8 {
-                    return false;
+                    return None;
                 }
                 self.local_player_inventory_item(i32::from(selected_slot))
-                    .is_some_and(item_stack_is_non_empty)
+                    .filter(|item| item_stack_is_non_empty(item))
             }
             InteractionHand::OffHand => self
                 .local_offhand_item()
-                .is_some_and(item_stack_is_non_empty),
+                .filter(|item| item_stack_is_non_empty(item)),
         }
     }
 

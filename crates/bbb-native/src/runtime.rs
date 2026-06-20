@@ -18,7 +18,7 @@ use bbb_renderer::{
     HUD_HOTBAR_SLOTS,
 };
 use bbb_world::{
-    ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
+    BookScreenState, ContainerState, MerchantOfferState, MerchantOffersState, MountArmorSlotKind,
     MountInventoryKind, WorldStore,
 };
 use tokio::sync::mpsc;
@@ -507,6 +507,7 @@ fn release_input_if_screen_opened(
 fn input_screen_is_open(input: &ClientInputState, world: &WorldStore) -> bool {
     world.open_container_id().is_some()
         || world.current_dialog().is_some()
+        || world.current_book().is_some()
         || input.sign_editor_is_active_or_pending(world)
 }
 
@@ -532,6 +533,10 @@ fn hud_inventory_screen_with_local_state(
     local_state: InventoryHudLocalState,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
+    if let Some(book) = world.current_book() {
+        return Some(hud_book_screen(book));
+    }
+
     let layout = inventory_screen_layout(world)?;
     let container = if world.local_inventory_is_open() {
         &world.inventory().inventory_menu
@@ -590,6 +595,58 @@ fn hud_inventory_screen_with_local_state(
     })
 }
 
+fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
+    HudInventoryScreen {
+        width: 192,
+        height: 192,
+        background_layers: book_screen_background_layers(book),
+        slots: Vec::new(),
+        floating_items: Vec::new(),
+        text_labels: book_screen_text_labels(book),
+        hovered_slot_id: None,
+        tooltip: None,
+    }
+}
+
+fn book_screen_background_layers(book: &BookScreenState) -> Vec<HudInventoryBackgroundLayer> {
+    let mut layers = vec![hud_inventory_background_layer(
+        HudInventoryBackgroundTexture::Book,
+        0,
+        0,
+        192,
+        192,
+        [0.0, 0.0],
+        [192.0 / 256.0, 192.0 / 256.0],
+    )];
+    if book.current_page > 0 {
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::PageBackward,
+            43,
+            157,
+            23,
+            13,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+    if book.current_page + 1 < book.pages.len() {
+        layers.push(hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::PageForward,
+            116,
+            157,
+            23,
+            13,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        ));
+    }
+    layers
+}
+
+fn book_screen_text_labels(book: &BookScreenState) -> Vec<HudInventoryTextLabel> {
+    book_page_text_labels(&book.pages, book.current_page)
+}
+
 fn hud_inventory_text_labels(
     world: &WorldStore,
     background: InventoryScreenBackground,
@@ -626,8 +683,13 @@ fn hud_inventory_text_labels(
 
 fn lectern_book_text_labels(world: &WorldStore) -> Vec<HudInventoryTextLabel> {
     let pages = lectern_book_pages(world);
+    let current_page = lectern_current_page(world, pages.len());
+    book_page_text_labels(&pages, current_page)
+}
+
+fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInventoryTextLabel> {
     let page_count = pages.len();
-    let current_page = lectern_current_page(world, page_count);
+    let current_page = current_page.min(page_count.saturating_sub(1));
     let mut labels = Vec::new();
 
     let page_indicator = format!("Page {} of {}", current_page + 1, page_count.max(1));
